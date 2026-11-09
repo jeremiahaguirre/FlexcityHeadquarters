@@ -10,11 +10,12 @@ import { addDays } from '../lib/time.js';
 import { passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
 import { resolveFeatures } from '../services/platform/features.js';
+import { setUserCustomRoles } from '../services/people/customRoles.js';
 
 export const staffRouter = Router();
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const roles = z.array(z.enum(['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'UNION_STEWARD'])).min(1);
+const roles = z.array(z.enum(['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'UNION_STEWARD', 'EMPLOYEE'])).min(1);
 const d = (s: string | null | undefined) => (s ? new Date(`${s}T00:00:00Z`) : s === null ? null : undefined);
 const iso = (x: Date | null) => (x ? x.toISOString().slice(0, 10) : null);
 
@@ -34,13 +35,14 @@ staffRouter.get(
   '/me',
   h(async (req, res) => {
     const a = authOf(req);
-    const [me, tenant] = await withTenant(a.tenantId, (tx) =>
+    const [me, tenant, myRoles] = await withTenant(a.tenantId, (tx) =>
       Promise.all([
         tx.user.findUniqueOrThrow({
           where: { id: a.userId },
           include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { include: certInclude } },
         }),
         tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true } }),
+        tx.userCustomRole.findMany({ where: { userId: a.userId }, include: { customRole: { select: { id: true, name: true, nameFr: true } } } }),
       ]),
     );
     const features = resolveFeatures(tenant.features);
@@ -56,6 +58,7 @@ staffRouter.get(
       phone: me.phone,
       locale: me.locale,
       roles: me.roles,
+      customRoles: myRoles.map((r) => r.customRole),
       permissions: [...permissions].sort(),
       features,
       employmentStatus: me.employmentStatus,
@@ -243,13 +246,17 @@ staffRouter.get(
       ...(q.status ? { status: q.status } : { status: { not: 'TERMINATED' } }),
       ...(q.q ? { OR: [{ firstName: { contains: q.q, mode: 'insensitive' } }, { lastName: { contains: q.q, mode: 'insensitive' } }, { email: { contains: q.q, mode: 'insensitive' } }] } : {}),
     };
-    const users = await withTenant(a.tenantId, (tx) =>
-      tx.user.findMany({
-        where,
-        include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { select: { expiryDate: true, verifiedAt: true } } },
-        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-      }),
+    const [users, assigned] = await withTenant(a.tenantId, (tx) =>
+      Promise.all([
+        tx.user.findMany({
+          where,
+          include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { select: { expiryDate: true, verifiedAt: true } } },
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        }),
+        tx.userCustomRole.findMany({ include: { customRole: { select: { id: true, name: true, nameFr: true } } } }),
+      ]),
     );
+    const rolesOf = (userId: string) => assigned.filter((r) => r.userId === userId).map((r) => r.customRole);
     const now = Date.now();
     res.json(
       users.map((u) => {
@@ -260,6 +267,7 @@ staffRouter.get(
           name: `${u.firstName} ${u.lastName}`,
           email: u.email,
           roles: u.roles,
+          customRoles: rolesOf(u.id),
           status: u.status,
           employmentStatus: u.employmentStatus,
           shadowTier: u.shadowTier,
@@ -291,6 +299,7 @@ staffRouter.get(
       }),
     );
     if (!u || u.anonymizedAt) throw notFound('Staff member');
+    const customRoles = await withTenant(a.tenantId, (tx) => tx.userCustomRole.findMany({ where: { userId: id }, include: { customRole: { select: { id: true, name: true, nameFr: true } } } }));
     const canSeePay = a.permissions.has('users.write');
     res.json({
       id: u.id,
@@ -311,6 +320,7 @@ staffRouter.get(
       vscClearedDate: iso(u.vscClearedDate),
       dateOfBirth: canSeePay ? iso(u.dateOfBirth) : undefined,
       unionMember: u.unionMember,
+      customRoles: customRoles.map((r) => r.customRole),
       invited: !u.passwordHash,
       positions: u.positions.map((p) => p.position),
       certifications: u.certifications.map(certView),
@@ -333,6 +343,8 @@ const newUser = z.object({
   dateOfBirth: isoDate.nullable().optional(),
   employeeNumber: z.string().max(40).nullable().optional(),
   positionIds: z.array(uuid).max(10).default([]),
+  /** The organization's own roles (water works, maintenance…). */
+  customRoleIds: z.array(uuid).max(10).default([]),
 });
 
 /** Creates the account and emails an invitation to set a password (valid 7 days). */
@@ -365,6 +377,7 @@ staffRouter.post(
       if (body.positionIds.length) {
         await tx.userPosition.createMany({ data: body.positionIds.map((positionId) => ({ tenantId: a.tenantId, userId: created.id, positionId })) });
       }
+      if (body.customRoleIds.length) await setUserCustomRoles(tx, a.tenantId, created.id, body.customRoleIds);
       const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
       const token = await issueAuthToken(tx, a.tenantId, created.id, 'INVITE');
       await tx.emailOutbox.create({
@@ -410,6 +423,7 @@ const hrPatch = z.object({
   dateOfBirth: isoDate.nullable(),
   employeeNumber: z.string().max(40).nullable(),
   unionMember: z.boolean(),
+  customRoleIds: z.array(uuid).max(10),
 }).partial();
 
 staffRouter.patch(
@@ -419,7 +433,7 @@ staffRouter.patch(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
-    const body = hrPatch.parse(req.body);
+    const { customRoleIds, ...body } = hrPatch.parse(req.body);
     if (id === a.userId && body.roles && !body.roles.includes('HR_ADMIN')) throw badRequest('You cannot remove your own HR administrator role.');
     await withTenant(a.tenantId, async (tx) => {
       const before = await tx.user.findUnique({ where: { id } });
@@ -433,10 +447,11 @@ staffRouter.patch(
         dateOfBirth: d(body.dateOfBirth),
       };
       await tx.user.update({ where: { id }, data });
+      if (customRoleIds) await setUserCustomRoles(tx, a.tenantId, id, customRoleIds);
       if (body.status && body.status !== 'ACTIVE') {
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
       }
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status }, after: body });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status }, after: { ...body, customRoleIds } });
     });
     res.json({ ok: true });
   }),

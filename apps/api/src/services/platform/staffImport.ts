@@ -71,6 +71,7 @@ const ROLES: Record<string, AccessRole> = {
   front_desk: 'FRONT_DESK', 'front desk': 'FRONT_DESK',
   hr_admin: 'HR_ADMIN', hr: 'HR_ADMIN', 'hr administrator': 'HR_ADMIN',
   union_steward: 'UNION_STEWARD', steward: 'UNION_STEWARD', 'union steward': 'UNION_STEWARD',
+  employee: 'EMPLOYEE', general: 'EMPLOYEE', 'general employee': 'EMPLOYEE', employé: 'EMPLOYEE', employe: 'EMPLOYEE',
 };
 
 export interface ImportIssue { field: string; code: string; value?: string }
@@ -81,6 +82,8 @@ export interface ImportRow {
   email: string;
   employmentStatus: EmploymentStatus | null;
   roles: AccessRole[];
+  /** The organization's own roles (water works, maintenance…), matched by name. */
+  customRoleIds: string[];
   positionIds: string[];
   positions: string[];
   hireDate: string | null;
@@ -107,7 +110,12 @@ const list = (s: string) => s.split(/[;|]/).map((x) => x.trim()).filter(Boolean)
 
 export function previewImport(
   text: string,
-  ctx: { existingEmails: Set<string>; positions: Array<{ id: string; name: string; nameFr: string | null }>; today: string },
+  ctx: {
+    existingEmails: Set<string>;
+    positions: Array<{ id: string; name: string; nameFr: string | null }>;
+    customRoles?: Array<{ id: string; name: string; nameFr: string | null }>;
+    today: string;
+  },
 ): ImportPreview {
   const [header = [], ...body] = parseCsv(text);
   const cols = header.map((h) => HEADERS[norm(h).replace(/ /g, '_')] ?? HEADERS[norm(h)] ?? null);
@@ -118,6 +126,11 @@ export function previewImport(
   for (const p of ctx.positions) {
     byName.set(norm(p.name), p.id);
     if (p.nameFr) byName.set(norm(p.nameFr), p.id);
+  }
+  const customByName = new Map<string, string>();
+  for (const r of ctx.customRoles ?? []) {
+    customByName.set(norm(r.name), r.id);
+    if (r.nameFr) customByName.set(norm(r.nameFr), r.id);
   }
   const seen = new Set<string>();
 
@@ -151,10 +164,19 @@ export function previewImport(
     if (!empRaw) warnings.push({ field: 'employment', code: 'DEFAULTED_PART_TIME' });
 
     const roleNames = list(get('roles'));
-    const roles = [...new Set(roleNames.length ? roleNames.map((r) => ROLES[norm(r)] ?? ROLES[norm(r).replace(/ /g, '_')] ?? null) : ['STAFF' as AccessRole])];
-    roleNames.forEach((r) => {
-      if (!(ROLES[norm(r)] ?? ROLES[norm(r).replace(/ /g, '_')])) errors.push({ field: 'roles', code: 'UNKNOWN_ROLE', value: r });
-    });
+    const builtIn = (r: string) => ROLES[norm(r)] ?? ROLES[norm(r).replace(/ /g, '_')];
+    const accessRoles = new Set<AccessRole>();
+    const customRoleIds = new Set<string>();
+    for (const r of roleNames) {
+      const b = builtIn(r);
+      const c = customByName.get(norm(r));
+      if (b) accessRoles.add(b);
+      else if (c) customRoleIds.add(c);
+      else errors.push({ field: 'roles', code: 'UNKNOWN_ROLE', value: r });
+    }
+    // Nothing given → lifeguard/instructor; only the city's own roles → general employee underneath.
+    if (!accessRoles.size) accessRoles.add(customRoleIds.size ? 'EMPLOYEE' : 'STAFF');
+    const roles = [...accessRoles];
 
     const positions = list(get('positions'));
     const positionIds: string[] = [];
@@ -193,7 +215,8 @@ export function previewImport(
       lastName,
       email,
       employmentStatus,
-      roles: roles.filter((r): r is AccessRole => r !== null),
+      roles,
+      customRoleIds: [...customRoleIds],
       positionIds,
       positions,
       hireDate,

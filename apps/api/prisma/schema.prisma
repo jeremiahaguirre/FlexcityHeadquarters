@@ -49,6 +49,8 @@ enum AccessRole {
   STAFF
   FRONT_DESK
   UNION_STEWARD
+  /// General city employee (water works, maintenance, parks…): everyday work screens, nothing aquatic.
+  EMPLOYEE
 }
 
 enum EmploymentStatus {
@@ -1035,4 +1037,30 @@ model WebAuthnChallenge {
   adminId   String?   @db.Uuid
   expiresAt DateTime  @db.Timestamptz(3)
   usedAt    DateTime? @db.Timestamptz(3)
+}
+
+/// A role an organization defines for its own non-aquatic jobs ("Water Works
+/// Operator", "Maintenance Lead"). Its permissions come only from the safe,
+/// non-aquatic list in src/services/people/customRoles.ts.
+model CustomRole {
+  id          String           @id @default(uuid()) @db.Uuid
+  tenantId    String           @db.Uuid
+  name        String
+  nameFr      String?
+  description String?
+  permissions String[]
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  members     UserCustomRole[]
+
+  @@unique([tenantId, name])
+}
+
+model UserCustomRole {
+  tenantId     String     @db.Uuid
+  userId       String     @db.Uuid
+  customRoleId String     @db.Uuid
+  customRole   CustomRole @relation(fields: [customRoleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, customRoleId])
+  @@index([tenantId, customRoleId])
 }

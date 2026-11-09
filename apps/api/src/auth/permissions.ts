@@ -113,6 +113,8 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   STAFF: STAFF_BASE,
   FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
+  // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {

@@ -27,11 +27,13 @@ import { lessonsRouter } from './lessons.js';
 import { unionRouter } from './union.js';
 import { jobsRouter } from './jobs.js';
 import { myPasskeysRouter } from './passkeys.js';
+import { rolesRouter } from './roles.js';
 
 export const api = Router();
 api.use(requireAuth);
 api.use(notificationsRouter);
 api.use(myPasskeysRouter);
+api.use(rolesRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);

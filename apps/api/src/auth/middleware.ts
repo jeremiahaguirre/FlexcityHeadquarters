@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import { type Permission, permissionsFor } from './permissions.js';
 import { verifyAccessToken } from './tokens.js';
+import { customPermissions } from '../services/people/customRoles.js';
 import { type FeatureKey, tenantFeatures, withoutDisabled } from '../services/platform/features.js';
 
 export interface AuthContext {
@@ -34,8 +35,9 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const features = await tenantFeatures(claims.tid);
-    req.auth = { userId: claims.sub, tenantId: claims.tid, roles: claims.roles, permissions: withoutDisabled(permissionsFor(claims.roles), features), authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null };
+    const [features, custom] = await Promise.all([tenantFeatures(claims.tid), customPermissions(claims.tid, claims.sub)]);
+    const granted = new Set([...permissionsFor(claims.roles), ...custom]);
+    req.auth = { userId: claims.sub, tenantId: claims.tid, roles: claims.roles, permissions: withoutDisabled(granted, features), authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null };
     next();
   } catch (e) {
     next(e);

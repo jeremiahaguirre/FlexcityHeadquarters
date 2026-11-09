@@ -14,6 +14,7 @@ import { badRequest, conflict, notFound } from '../../lib/errors.js';
 import { FEATURE_KEYS, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
+import { CUSTOM_ROLE_PERMISSIONS, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../../services/people/customRoles.js';
 import { forgetTenantLookup, h } from '../context.js';
 import { facilityBody } from '../settings.js';
 import { positionBody } from '../staff.js';
@@ -115,13 +116,14 @@ citiesRouter.get(
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
     const out = await cityOr404(id, async (tx) => {
-      const [t, facilities, positions, certifications, staff, admins] = await Promise.all([
+      const [t, facilities, positions, certifications, staff, admins, customRoles] = await Promise.all([
         tx.tenant.findUniqueOrThrow({ where: { id } }),
         tx.facility.findMany({ orderBy: { name: 'asc' } }),
         tx.position.findMany({ include: { requirements: true, _count: { select: { qualifiedUsers: true } } }, orderBy: { name: 'asc' } }),
         tx.certification.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, nameFr: true } }),
         tx.user.count({ where: { status: 'ACTIVE', anonymizedAt: null } }),
         tx.user.findMany({ where: { roles: { has: 'HR_ADMIN' }, anonymizedAt: null }, select: { id: true, firstName: true, lastName: true, email: true, passwordHash: true } }),
+        listCustomRoles(tx),
       ]);
       return {
         organization: {
@@ -144,6 +146,8 @@ citiesRouter.get(
         certifications,
         staff,
         admins: admins.map((a) => ({ id: a.id, name: `${a.firstName} ${a.lastName}`, email: a.email, invited: !a.passwordHash })),
+        customRoles,
+        roleCatalog: CUSTOM_ROLE_PERMISSIONS,
       };
     });
     res.json(out);
@@ -261,6 +265,51 @@ citiesRouter.put(
   }),
 );
 
+// ------------------------------------------------------- The city's own roles
+citiesRouter.post(
+  '/tenants/:id/roles',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = customRoleBody.parse(req.body);
+    const role = await cityOr404(id, async (tx) => {
+      const r = await saveCustomRole(tx, id, null, body);
+      await record(tx, p.adminId, id, 'role.create', body);
+      return r;
+    });
+    res.status(201).json({ id: role.id });
+  }),
+);
+
+citiesRouter.put(
+  '/tenants/:id/roles/:roleId',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const roleId = uuid.parse(req.params.roleId);
+    const body = customRoleBody.parse(req.body);
+    await cityOr404(id, async (tx) => {
+      await saveCustomRole(tx, id, roleId, body);
+      await record(tx, p.adminId, id, 'role.update', { roleId, ...body });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+citiesRouter.delete(
+  '/tenants/:id/roles/:roleId',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const roleId = uuid.parse(req.params.roleId);
+    await cityOr404(id, async (tx) => {
+      await deleteCustomRole(tx, id, roleId);
+      await record(tx, p.adminId, id, 'role.delete', { roleId });
+    });
+    res.status(204).end();
+  }),
+);
+
 // ------------------------------------------------------------------ Logo
 citiesRouter.put(
   '/tenants/:id/logo',
@@ -310,8 +359,12 @@ citiesRouter.get(
 const importBody = z.object({ csv: z.string().min(1).max(1_500_000), sendInvites: z.boolean().default(false) });
 
 async function preview(tx: Tx, csv: string) {
-  const [users, positions] = await Promise.all([tx.user.findMany({ select: { email: true } }), tx.position.findMany({ select: { id: true, name: true, nameFr: true } })]);
-  return previewImport(csv, { existingEmails: new Set(users.map((u) => u.email.toLowerCase())), positions, today: new Date().toISOString().slice(0, 10) });
+  const [users, positions, customRoles] = await Promise.all([
+    tx.user.findMany({ select: { email: true } }),
+    tx.position.findMany({ select: { id: true, name: true, nameFr: true } }),
+    tx.customRole.findMany({ select: { id: true, name: true, nameFr: true } }),
+  ]);
+  return previewImport(csv, { existingEmails: new Set(users.map((u) => u.email.toLowerCase())), positions, customRoles, today: new Date().toISOString().slice(0, 10) });
 }
 
 citiesRouter.post(
@@ -356,6 +409,7 @@ citiesRouter.post(
               unionMember: r.unionMember,
             },
           });
+          if (r.customRoleIds.length) await setUserCustomRoles(tx, id, u.id, r.customRoleIds);
           if (r.positionIds.length) await tx.userPosition.createMany({ data: [...new Set(r.positionIds)].map((positionId) => ({ tenantId: id, userId: u.id, positionId })) });
           if (sendInvites) {
             const token = await issueAuthToken(tx, id, u.id, 'INVITE');
