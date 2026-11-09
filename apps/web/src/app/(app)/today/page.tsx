@@ -21,7 +21,7 @@ interface Pool { id: string; name: string; status: 'OPEN' | 'CLOSURE_RECOMMENDED
 
 function Tile({ href, icon, label, value, tone }: { href: string; icon: ReactNode; label: string; value: ReactNode; tone?: 'warn' | 'new' }) {
   return (
-    <Link href={href} className="group flex items-center gap-4 rounded-xl2 border border-line bg-panel p-4 shadow-card transition-colors hover:border-brand/40">
+    <Link href={href} className="fh-lift group flex items-center gap-4 rounded-xl2 border border-line bg-panel p-4 shadow-card hover:border-brand/40">
       <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${tone === 'warn' ? 'bg-warn-bg text-warn' : tone === 'new' ? 'bg-new-bg text-new' : 'bg-brand/10 text-brand-text'}`}>{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-heading tabular-nums text-ink">{value}</span>
