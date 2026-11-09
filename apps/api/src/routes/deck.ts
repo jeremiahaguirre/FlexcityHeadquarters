@@ -5,6 +5,7 @@ import { authOf, requireFeature, requirePermission } from '../auth/middleware.js
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { applyRotation, loadPlan } from '../services/ops/rotation.js';
+import { complianceSnapshot } from '../services/ops/compliance.js';
 import { h } from './context.js';
 
 export const deckRouter = Router();
@@ -137,6 +138,24 @@ deckRouter.get(
         tx.facility.findUniqueOrThrow({ where: { id: log.facilityId }, select: { rotationMinutes: true, name: true } }),
       ]);
       return { station: station?.name ?? null, facility: facility.name, startedAt: log.startedAt, dueAt: station ? new Date(log.startedAt.getTime() + facility.rotationMinutes * 60_000) : null };
+    });
+    res.json(out);
+  }),
+);
+
+/** Compliance at any minute: rebuild the deck as it was at a past moment. Every report is logged. */
+export const complianceRouter = Router();
+complianceRouter.get(
+  '/compliance/snapshot',
+  requirePermission('compliance.report'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const q = z.object({ facilityId: uuid, at: z.coerce.date() }).parse(req.query);
+    if (q.at.getTime() > Date.now() + 60_000) throw notFound('A report for the future');
+    const out = await withTenant(a.tenantId, async (tx) => {
+      if (!(await tx.facility.findUnique({ where: { id: q.facilityId } }))) throw notFound('Facility');
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'compliance.snapshot', entity: 'Facility', entityId: q.facilityId, after: { at: q.at.toISOString() } });
+      return complianceSnapshot(tx, q.facilityId, q.at);
     });
     res.json(out);
   }),

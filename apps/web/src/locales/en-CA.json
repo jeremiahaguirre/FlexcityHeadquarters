@@ -148,7 +148,8 @@
     "headcount": "Headcount",
     "headcountShort": "Count",
     "people": "People review",
-    "deck": "Rotation"
+    "deck": "Rotation",
+    "compliance": "Compliance"
   },
   "navGroups": {
     "mine": "My work",
@@ -1686,5 +1687,61 @@
     "available": "Available",
     "yourStation": "You're on {{station}}. Move at {{time}}.",
     "onBreak": "You're on break from the chair."
+  },
+  "compliance": {
+    "title": "Compliance at any minute",
+    "description": "Rebuild what the deck looked like at a past moment: who was working and where, their certifications then, staffing against the bather count, chemistry and incidents. Every report is logged.",
+    "at": "Date and time",
+    "atHint": "Your device's time zone.",
+    "build": "Build report",
+    "pick": "Choose a facility and a moment",
+    "pickHelp": "For an inspector, an insurer, an inquiry or your own review.",
+    "print": "Print or save as PDF",
+    "issues_one": "{{count}} thing to look at",
+    "issues_other": "{{count}} things to look at",
+    "noIssues": "Everyone was certified, staffing met the bather count, and chemistry was in range.",
+    "issue": {
+      "CERT_EXPIRED": "Certification expired: {{detail}}",
+      "CERT_MISSING": "Required certification missing: {{detail}}",
+      "CERT_UNVERIFIED": "Certification not verified yet: {{detail}}",
+      "CERT_NOT_YET_VALID": "Certification not valid yet: {{detail}}",
+      "SCHEDULED_NOT_CLOCKED_IN": "Scheduled but not clocked in: {{detail}}",
+      "OVER_CAPACITY": "Over capacity: {{detail}}",
+      "UNDERSTAFFED": "Fewer guards on station than the bather count required: {{detail}}",
+      "CHEMISTRY_OUT_OF_RANGE": "Chemistry out of range: {{detail}}",
+      "NO_RECENT_CHEMISTRY": "No chemistry reading in the 6 hours before: {{detail}}"
+    },
+    "people_one": "{{count}} person working",
+    "people_other": "{{count}} people working",
+    "noRotation": "No rotation was logged at this moment, so stations aren't shown.",
+    "nobody": "Nobody was scheduled or clocked in.",
+    "person": "Person",
+    "station": "Station",
+    "clock": "Timeclock",
+    "certs": "Required certifications then",
+    "offChair": "Off the chair",
+    "inSince": "In since {{time}}",
+    "notClockedIn": "Not clocked in",
+    "noneRequired": "None required",
+    "cert": {
+      "VALID": "valid",
+      "EXPIRED": "expired",
+      "MISSING": "missing",
+      "UNVERIFIED": "unverified",
+      "NOT_YET_VALID": "not yet valid"
+    },
+    "bathers": "{{count}} bathers (max {{max}}), counted at {{time}}",
+    "noHeadcount": "No headcount in the 3 hours before.",
+    "guards": "{{on}} on station, {{need}} required",
+    "guardsNeeded": "{{need}} lifeguards required",
+    "chem": "Chemistry at {{time}}: free chlorine {{fc}} ppm, pH {{ph}}",
+    "noChem": "No chemistry reading in the 6 hours before.",
+    "outOfRange": "out of range",
+    "closed": "Closed since {{time}}: {{reason}}",
+    "closureRecommended": "Closure recommended at {{time}}: {{reason}}",
+    "incidents": "Incidents within 2 hours",
+    "incidentsHelp": "Type and time only. Reports stay sealed; opening one asks for a reason and is logged.",
+    "noIncidents": "None.",
+    "footer": "Built from the schedule, timeclock, rotation log, certification records, headcounts and chemistry log as recorded at the time. This report's creation is recorded in the audit log."
   }
 }

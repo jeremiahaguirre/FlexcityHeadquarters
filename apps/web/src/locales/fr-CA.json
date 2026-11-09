@@ -148,7 +148,8 @@
     "headcount": "Dénombrement",
     "headcountShort": "Compter",
     "people": "Suivi du personnel",
-    "deck": "Rotation"
+    "deck": "Rotation",
+    "compliance": "Conformité"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -1686,5 +1687,61 @@
     "available": "Disponible",
     "yourStation": "Vous êtes à {{station}}. Changement à {{time}}.",
     "onBreak": "Vous êtes en pause de la chaise."
+  },
+  "compliance": {
+    "title": "Conformité à toute minute",
+    "description": "Reconstituez la surveillance à un moment passé : qui travaillait et où, leurs certifications à ce moment, le personnel selon le nombre de baigneurs, la chimie et les incidents. Chaque rapport est consigné.",
+    "at": "Date et heure",
+    "atHint": "Fuseau horaire de votre appareil.",
+    "build": "Produire le rapport",
+    "pick": "Choisissez une installation et un moment",
+    "pickHelp": "Pour un inspecteur, un assureur, une enquête ou votre propre examen.",
+    "print": "Imprimer ou enregistrer en PDF",
+    "issues_one": "{{count}} point à examiner",
+    "issues_other": "{{count}} points à examiner",
+    "noIssues": "Tout le monde était certifié, le personnel respectait le nombre de baigneurs et la chimie était conforme.",
+    "issue": {
+      "CERT_EXPIRED": "Certification échue : {{detail}}",
+      "CERT_MISSING": "Certification requise absente : {{detail}}",
+      "CERT_UNVERIFIED": "Certification pas encore vérifiée : {{detail}}",
+      "CERT_NOT_YET_VALID": "Certification pas encore valide : {{detail}}",
+      "SCHEDULED_NOT_CLOCKED_IN": "À l’horaire, mais non pointé : {{detail}}",
+      "OVER_CAPACITY": "Capacité dépassée : {{detail}}",
+      "UNDERSTAFFED": "Moins de sauveteurs en poste que requis par le nombre de baigneurs : {{detail}}",
+      "CHEMISTRY_OUT_OF_RANGE": "Chimie hors des limites : {{detail}}",
+      "NO_RECENT_CHEMISTRY": "Aucune lecture de chimie dans les 6 heures précédentes : {{detail}}"
+    },
+    "people_one": "{{count}} personne au travail",
+    "people_other": "{{count}} personnes au travail",
+    "noRotation": "Aucune rotation consignée à ce moment; les postes ne sont pas affichés.",
+    "nobody": "Personne n’était à l’horaire ni pointé.",
+    "person": "Personne",
+    "station": "Poste",
+    "clock": "Pointage",
+    "certs": "Certifications requises à ce moment",
+    "offChair": "Hors poste",
+    "inSince": "Pointé depuis {{time}}",
+    "notClockedIn": "Non pointé",
+    "noneRequired": "Aucune requise",
+    "cert": {
+      "VALID": "valide",
+      "EXPIRED": "échue",
+      "MISSING": "absente",
+      "UNVERIFIED": "non vérifiée",
+      "NOT_YET_VALID": "pas encore valide"
+    },
+    "bathers": "{{count}} baigneurs (max. {{max}}), comptés à {{time}}",
+    "noHeadcount": "Aucun dénombrement dans les 3 heures précédentes.",
+    "guards": "{{on}} en poste, {{need}} requis",
+    "guardsNeeded": "{{need}} sauveteurs requis",
+    "chem": "Chimie à {{time}} : chlore libre {{fc}} ppm, pH {{ph}}",
+    "noChem": "Aucune lecture de chimie dans les 6 heures précédentes.",
+    "outOfRange": "hors des limites",
+    "closed": "Fermé depuis {{time}} : {{reason}}",
+    "closureRecommended": "Fermeture recommandée à {{time}} : {{reason}}",
+    "incidents": "Incidents dans un rayon de 2 heures",
+    "incidentsHelp": "Type et heure seulement. Les rapports restent scellés; en ouvrir un exige une raison et est consigné.",
+    "noIncidents": "Aucun.",
+    "footer": "Établi à partir de l’horaire, du pointage, du registre de rotation, des certifications, des dénombrements et du registre de chimie tels qu’ils ont été consignés. La production de ce rapport est inscrite au journal d’audit."
   }
 }

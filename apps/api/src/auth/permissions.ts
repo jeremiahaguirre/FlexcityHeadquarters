@@ -45,6 +45,7 @@ export const PERMISSIONS = [
   'lessons.teach', // teaches swim lessons: class lists and attendance
   'ops.headcount.record', // bather counts on deck (the clicker)
   'deck.rotate', // run the lifeguard rotation (chair plan)
+  'compliance.report', // rebuild who/what/where at any past minute
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -78,6 +79,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'audit.read',
     'reliability.read',
     'reliability.write',
+    'compliance.report',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -108,6 +110,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'ops.configure',
     'jobs.manage',
     'deck.rotate',
+    'compliance.report',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,

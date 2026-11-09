@@ -231,3 +231,23 @@ describe('deck rotation from an empty deck', () => {
     expect(s.toBreak).toEqual([]);
   });
 });
+
+import { certStatusAt } from '../../src/services/ops/compliance.js';
+
+describe('certification status at a moment', () => {
+  const at = new Date('2026-07-03T21:00:00Z');
+  const d = (s: string) => new Date(`${s}T00:00:00Z`);
+  it('valid only if issued, unexpired and verified by then', () => {
+    expect(certStatusAt([], at)).toBe('MISSING');
+    expect(certStatusAt([{ issueDate: d('2025-01-01'), expiryDate: d('2027-01-01'), verifiedAt: new Date('2025-01-02') }], at)).toBe('VALID');
+    expect(certStatusAt([{ issueDate: d('2025-01-01'), expiryDate: d('2027-01-01'), verifiedAt: new Date('2026-08-01') }], at)).toBe('UNVERIFIED');
+    expect(certStatusAt([{ issueDate: d('2024-01-01'), expiryDate: d('2026-07-02'), verifiedAt: new Date('2024-01-02') }], at)).toBe('EXPIRED');
+    expect(certStatusAt([{ issueDate: d('2026-07-04'), expiryDate: null, verifiedAt: new Date('2026-07-04') }], at)).toBe('NOT_YET_VALID');
+  });
+  it('a renewal on file counts when one certificate is valid', () => {
+    expect(certStatusAt([
+      { issueDate: d('2024-01-01'), expiryDate: d('2026-06-01'), verifiedAt: new Date('2024-01-02') },
+      { issueDate: d('2026-05-20'), expiryDate: d('2028-05-20'), verifiedAt: new Date('2026-05-21') },
+    ], at)).toBe('VALID');
+  });
+});
