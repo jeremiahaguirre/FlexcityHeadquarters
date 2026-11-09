@@ -14,18 +14,22 @@ Aquatic staff scheduling, timekeeping and operations for Canadian municipalities
 | Area | Status |
 | --- | --- |
 | Multi-tenant data model with Postgres row-level security | Done, integration-tested |
-| Provincial employment-standards rules (13 jurisdictions), effective-dated, tenant overrides | Done — **values pending legal review** |
-| Pay engine: daily/weekly OT (stacked and Alberta greater-of), double time, stat-holiday hours, premiums, vacation pay, DST-safe | Done, unit-tested |
-| Shift eligibility: certifications + prerequisites, overlaps, time off, rest periods, young-worker limits, availability, weekly caps | Done, unit-tested |
-| Shift Board: post, claim, overtime approval, concurrency-safe | Done, integration-tested |
-| Scheduling assistant (draft proposals with explanations) | Done (API) |
-| Geofenced timeclock with audited punch edits | Done (API) |
-| Chemical log with human-confirmed closure workflow | Done (API) |
-| Encrypted incident reports with access log | Done (API) |
-| Payroll CSV export with strict validation | Done (API) |
-| Retention-aware privacy erasure | Done (API) |
-| Union Hub on a separate database role | Service done; HTTP routes not yet |
-| Web: sign-in, Shift Board, front-desk pool status, EN/FR toggle, tenant theming | Done |
+| Provincial employment-standards rules (13 jurisdictions), effective-dated, collective-agreement overrides | Done — **values pending legal review** |
+| Pay engine: daily/weekly OT (stacked and Alberta greater-of), double time, stat holidays, premiums, vacation pay, DST-safe | Done, unit-tested |
+| Shift eligibility: certifications, overlaps, time off, rest periods, young-worker limits and school calendar, availability, weekly caps | Done, unit-tested |
+| Scheduling: schedule builder with assistant, shift board with overtime approval, my schedule, availability, time off | Done (API + web) |
+| Timeclock with geofence, punch review, payroll CSV export with holiday and vacation pay | Done (API + web) |
+| Pool deck: chemical log with closure workflow, live status board, sealed incident reports | Done (API + web) |
+| People: staff directory, invitations, roles, pay rates, verified certifications, discipline records with signature | Done (API + web) |
+| Swim lessons with offline attendance | Done (API + web) |
+| Union Hub on a separate database role, per-local encryption | Done (API + web) |
+| Job postings and public careers page | Done (API + web) |
+| Notifications: in-app (live), email outbox, reminders | Done |
+| Menus tailored to each role (e.g. a union steward sees only the Union hub) | Done, tested per role |
+| **FH Dev console**: create cities, switch 15 features per city, facilities, positions, city logo upload, CSV staff import with preview | Done (API + web) |
+| City logo shown beside the FH logo (never replacing it) | Done |
+| **Passkeys** (Windows Hello, Face ID / Touch ID, Android fingerprint or face) for sign-in, and "confirm it's you" before sensitive changes | Done, tested with a virtual authenticator |
+| English and French throughout, tenant theming | Done |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what is not built yet.
 
@@ -68,6 +72,14 @@ npm run dev --workspace apps/web
 ```
 
 Open http://kelowna.localhost:3000 and sign in as any demo user, e.g. `guard@kelowna.test`, `supervisor@kelowna.test`, `hr@kelowna.test`, `frontdesk@kelowna.test` or `steward@kelowna.test`. The password for all of them is `flexcity-dev`.
+
+The **FH Dev console** (for FlexcityHeadquarters staff, not city staff) is at the bare address, http://localhost:3000. Sign in as `dev@flexcity.dev` / `flexcity-dev`. In production, create Dev accounts with:
+
+```bash
+PLATFORM_ADMIN_PASSWORD='a long passphrase' npm run platform:admin --workspace apps/api -- you@flexcity.ca "Your Name"
+```
+
+Passkeys work on `*.localhost` in Chrome, Edge, Safari and Firefox. After a password sign-in on a device with Face ID, Touch ID, a fingerprint reader or Windows Hello, the app offers to set one up.
 
 ## Tests
 

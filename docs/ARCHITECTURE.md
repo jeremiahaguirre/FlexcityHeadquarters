@@ -77,6 +77,28 @@ Domain events (`src/lib/events.ts`) are published only after the transaction com
 
 Access follows union membership, not employer roles: `/api/me` grants `union.hub` to union members while the organization has the hub switched on, and every hub query re-checks membership of the local through the separate `flexcity_union` database role.
 
+## Feature switches
+
+Each organization has fifteen switches (`src/services/platform/features.ts`), set only from the Dev console. A switched-off feature removes its permissions for everyone in that organization when the access token is checked, so menus hide it and permission checks refuse it; features without their own permission (lessons, union hub, public job page) also have a route guard. Notification emails follow their own switch; invitations and password resets always send.
+
+## Menus per role
+
+Menus are driven by permissions, never role names (`apps/web/src/lib/nav.ts`). Two permissions exist only to shape menus: `shifts.self` (works shifts: Today, My schedule) and `lessons.teach`. HR administrators and union stewards don't have them, so they don't see personal shift screens; a steward's menu is just the Union hub. `nav.test.ts` pins the menu for every role against the API's permission matrix.
+
+## FH Dev console
+
+FH staff (`PlatformAdmin`) are not users of any organization. They sign in at the bare FH address with an opaque, revocable session in an HTTP-only, SameSite=Strict cookie scoped to `/api/platform`; every console request must also send `x-fh-platform: 1`. Organization tokens are refused there and console sessions are refused by organization routes. The console still reads and writes an organization's data only through `withTenant`, so row-level security applies. Every change is written to `PlatformAudit` and to the organization's own audit trail (`platform.*` actions, no user as actor).
+
+Uploaded logos (PNG, JPEG, WebP; content-checked; SVG refused) live in `TenantLogo` and are served publicly at `/api/public/logo/:tenantId?v=<hash>`. The web app always shows the FH logo and places the city's logo beside or below it.
+
+Staff import parses CSV on the server (`staffImport.ts`), returns a row-by-row preview with problem codes the web app translates, then creates only valid rows in one transaction, optionally sending invitations.
+
+## Passkeys and "confirm it's you"
+
+Passkeys use WebAuthn (`@simplewebauthn`), so Windows Hello, Face ID / Touch ID, Android biometrics and security keys all work the same way. Credentials are bound to the organization's own subdomain (or the console's address) and require user verification; challenges are stored, single use and expire after five minutes. Only public keys are stored (`Passkey`, under row-level security; `PlatformPasskey`).
+
+Access tokens carry `aat`, the time the person last proved who they are. Refreshing keeps it unchanged; a password or passkey sign-in, or a step-up, renews it. `requireRecentAuth` guards payroll export, pay rates, HR record changes, erasure and passkey changes: older than 10 minutes, the API answers `STEP_UP_REQUIRED`, the web app asks for a passkey or password, and the original request carries on.
+
 ## Static demo
 
-`NEXT_PUBLIC_DEMO=1` builds the web app as static files (GitHub Pages) with no API. `src/lib/demoApi.ts` answers requests in the browser: GETs replay responses recorded per role from a seeded local stack (`scripts/capture-demo.cjs` → `src/lib/demo-fixtures/`), with dates moved so the sample week is always the current one; changes are accepted but not kept. Fixture names are swapped for a fictional organization when recorded.
+`NEXT_PUBLIC_DEMO=1` builds the web app as static files (GitHub Pages) with no API. `src/lib/demoApi.ts` answers requests in the browser: GETs replay responses recorded per role from a seeded local stack (`scripts/capture-demo.cjs` → `src/lib/demo-fixtures/`), with dates moved so the sample week is always the current one; changes are accepted but not kept. Fixture names are swapped for a fictional organization when recorded, and the city logo is an embedded placeholder emblem. The Dev console is recorded too, and its staff-import preview runs the API's validation in the browser. Passkeys are hidden in the demo (there is no server to verify them).
