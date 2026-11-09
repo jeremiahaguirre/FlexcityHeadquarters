@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import type { NotificationDraft } from '../services/notifications/notifier.js';
 
 /**
  * Domain events. In-process for now; the WebSocket gateway and push-notification
@@ -13,7 +14,9 @@ export type DomainEvent =
   | { type: 'shift.offer.denied'; tenantId: string; offerId: string; claimantId: string }
   | { type: 'pool.closure_recommended'; tenantId: string; facilityId: string; poolBodyId: string; reasons: string[] }
   | { type: 'pool.status_changed'; tenantId: string; facilityId: string; poolBodyId: string; status: string }
-  | { type: 'frontdesk.page'; tenantId: string; facilityId: string; fromUserId: string; message: string };
+  | { type: 'frontdesk.page'; tenantId: string; facilityId: string; fromUserId: string; message: string }
+  /** Direct notifications from features that know their recipients. */
+  | { type: 'notify'; tenantId: string; drafts: NotificationDraft[] };
 
 const bus = new EventEmitter();
 bus.setMaxListeners(100);

@@ -10,7 +10,7 @@ GRANT USAGE ON SCHEMA public TO flexcity_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO flexcity_app;
 -- No DELETE for the app role on payroll-bearing tables; deletes are limited below.
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM flexcity_app;
-GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping" TO flexcity_app;
+GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification" TO flexcity_app;
 -- Audit and access logs are append-only for the app.
 REVOKE UPDATE ON "AuditLog", "IncidentAccessLog", "TimePunchEdit" FROM flexcity_app;
 -- Migration bookkeeping is not the app's business.
@@ -29,7 +29,7 @@ DECLARE
     'Availability', 'TimeOffRequest', 'Shift', 'ShiftOffer', 'TimePunch',
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
-    'DisciplinaryRecord', 'AuditLog'
+    'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP
@@ -76,3 +76,10 @@ CREATE OR REPLACE FUNCTION public_tenant_by_subdomain(p_subdomain text)
 $$ SELECT id, name, "logoUrl", "themeColors", "defaultLocale" FROM "Tenant" WHERE subdomain = p_subdomain $$;
 REVOKE ALL ON FUNCTION public_tenant_by_subdomain(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public_tenant_by_subdomain(text) TO flexcity_app;
+
+-- Background workers iterate tenants before any tenant context exists.
+CREATE OR REPLACE FUNCTION all_tenant_ids() RETURNS SETOF uuid
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
+$$ SELECT id FROM "Tenant" $$;
+REVOKE ALL ON FUNCTION all_tenant_ids() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION all_tenant_ids() TO flexcity_app;

@@ -1,0 +1,114 @@
+/**
+ * Turns domain events into per-person notifications (and queued emails).
+ *
+ * Notifications are written inside a tenant transaction and announced with
+ * pg_notify, which Postgres delivers only on COMMIT — so live streams on every
+ * API instance see a notification exactly when it becomes durable.
+ */
+import type { AccessRole, Prisma, PrismaClient } from '@prisma/client';
+import { type Tx, withTenant } from '../../lib/db.js';
+import type { DomainEvent } from '../../lib/events.js';
+
+export const NOTIFY_CHANNEL = 'fh_notifications';
+
+export interface NotificationDraft {
+  userId: string;
+  type: string;
+  params?: Record<string, unknown>;
+  link?: string;
+  /** Also queue an email using this template. */
+  email?: string;
+}
+
+export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft[]): Promise<number> {
+  const unique = dedupe(drafts);
+  if (unique.length === 0) return 0;
+  const emailUsers = unique.filter((d) => d.email).map((d) => d.userId);
+  const people = emailUsers.length
+    ? await tx.user.findMany({ where: { id: { in: emailUsers }, status: 'ACTIVE', anonymizedAt: null }, select: { id: true, email: true, locale: true } })
+    : [];
+
+  for (const d of unique) {
+    const n = await tx.notification.create({
+      data: { tenantId, userId: d.userId, type: d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, link: d.link ?? null },
+    });
+    await tx.$executeRaw`SELECT pg_notify(${NOTIFY_CHANNEL}, ${JSON.stringify({ tenantId, userId: d.userId, id: n.id })})`;
+    const person = d.email ? people.find((p) => p.id === d.userId) : undefined;
+    if (person) {
+      await tx.emailOutbox.create({
+        data: {
+          tenantId,
+          toEmail: person.email,
+          template: d.email!,
+          params: (d.params ?? {}) as Prisma.InputJsonValue,
+          locale: person.locale,
+        },
+      });
+    }
+  }
+  return unique.length;
+}
+
+export async function usersWithRoles(tx: Tx, roles: AccessRole[], exclude: string[] = []): Promise<string[]> {
+  const users = await tx.user.findMany({
+    where: { roles: { hasSome: roles }, status: 'ACTIVE', anonymizedAt: null, id: { notIn: exclude } },
+    select: { id: true },
+  });
+  return users.map((u) => u.id);
+}
+
+/** Who hears about what. Pure mapping except for role lookups. */
+export async function draftsFor(tx: Tx, e: DomainEvent): Promise<NotificationDraft[]> {
+  switch (e.type) {
+    case 'shift.offer.posted':
+      return e.eligibleUserIds.map((userId) => ({ userId, type: 'shift_available', params: { shiftId: e.shiftId, offerId: e.offerId }, link: '/board' }));
+    case 'shift.offer.completed': {
+      const out: NotificationDraft[] = [
+        { userId: e.toUserId, type: 'shift_assigned', params: { shiftId: e.shiftId }, link: '/schedule', email: 'shift_assigned' },
+      ];
+      if (e.fromUserId) out.push({ userId: e.fromUserId, type: 'shift_covered', params: { shiftId: e.shiftId }, link: '/schedule' });
+      return out;
+    }
+    case 'shift.offer.pending_approval': {
+      const sups = await usersWithRoles(tx, ['AQUATIC_SUPERVISOR'], [e.claimantId]);
+      return [
+        ...sups.map((userId) => ({
+          userId,
+          type: 'claim_needs_approval',
+          params: { offerId: e.offerId, claimantId: e.claimantId, overtimeHours: e.overtimeHours },
+          link: '/manage/approvals',
+          email: 'claim_needs_approval',
+        })),
+        { userId: e.claimantId, type: 'claim_pending', params: { offerId: e.offerId, overtimeHours: e.overtimeHours }, link: '/board' },
+      ];
+    }
+    case 'shift.offer.denied':
+      return [{ userId: e.claimantId, type: 'claim_denied', params: { offerId: e.offerId }, link: '/board' }];
+    case 'pool.closure_recommended': {
+      const ids = await usersWithRoles(tx, ['HEAD_LIFEGUARD', 'AQUATIC_SUPERVISOR']);
+      return ids.map((userId) => ({ userId, type: 'closure_recommended', params: { poolBodyId: e.poolBodyId, reasons: e.reasons }, link: '/ops' }));
+    }
+    case 'pool.status_changed':
+      return [];
+    case 'frontdesk.page': {
+      const ids = await usersWithRoles(tx, ['HEAD_LIFEGUARD'], [e.fromUserId]);
+      return ids.map((userId) => ({ userId, type: 'front_desk_page', params: { message: e.message, facilityId: e.facilityId }, link: '/notifications' }));
+    }
+    case 'notify':
+      return e.drafts;
+  }
+}
+
+export async function handleEvent(e: DomainEvent, prisma?: PrismaClient): Promise<number> {
+  return withTenant(e.tenantId, async (tx) => notify(tx, e.tenantId, await draftsFor(tx, e)), { prisma });
+}
+
+function dedupe(drafts: NotificationDraft[]): NotificationDraft[] {
+  const seen = new Set<string>();
+  return drafts.filter((d) => {
+    const k = `${d.userId}|${d.type}|${JSON.stringify(d.params ?? {})}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}

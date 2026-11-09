@@ -757,3 +757,40 @@ model AuditLog {
   @@index([tenantId, entity, entityId])
   @@index([tenantId, at])
 }
+
+// ------------------------------------------------------------------
+// NOTIFICATIONS
+// ------------------------------------------------------------------
+
+/// Stored as a type + params (not text) so each person reads it in their own language.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  userId    String    @db.Uuid
+  type      String // e.g. "shift_available", "claim_needs_approval"
+  params    Json      @default("{}")
+  /// In-app path to open, e.g. "/board"
+  link      String?
+  readAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, createdAt])
+  @@index([tenantId])
+}
+
+/// Emails are queued here inside the business transaction and sent by the worker,
+/// so a mail outage never loses or duplicates a business change.
+model EmailOutbox {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  toEmail   String
+  template  String
+  params    Json      @default("{}")
+  locale    String    @default("en-CA")
+  attempts  Int       @default(0)
+  lastError String?
+  sentAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([sentAt, createdAt])
+}

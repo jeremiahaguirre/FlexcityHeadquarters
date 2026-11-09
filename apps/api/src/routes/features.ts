@@ -16,9 +16,11 @@ import { loadAssistantCandidates, loadShiftBundle } from '../services/scheduling
 import { cancelOffer, claimOffer, decideOffer, postOffer } from '../services/shiftboard/offers.js';
 import { clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
 import { h, keys, tenantKekId } from './context.js';
+import { notificationsRouter } from './notifications.js';
 
 export const api = Router();
 api.use(requireAuth);
+api.use(notificationsRouter);
 
 const uuid = z.string().uuid();
 const actorOf = (req: Parameters<typeof authOf>[0]) => {
