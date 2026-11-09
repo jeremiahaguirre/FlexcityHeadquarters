@@ -7,6 +7,7 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/auth/tokens.js';
+import { seedCityWorkers } from './seedCityWorkers.js';
 
 const prisma = new PrismaClient(); // owner connection (DATABASE_URL)
 
@@ -135,6 +136,8 @@ async function main() {
       await prisma.availability.create({ data: { tenantId: tenant.id, userId: u.id, dayOfWeek: dow, startMinute: 6 * 60, endMinute: 22 * 60, effectiveFrom: new Date('2026-01-01') } });
     }
   }
+
+  await seedCityWorkers(prisma, tenant.id, passwordHash);
 
   // A union local for the Union Hub, with every union member in it and the steward running it.
   const [local] = await prisma.$queryRaw<Array<{ id: string }>>`
