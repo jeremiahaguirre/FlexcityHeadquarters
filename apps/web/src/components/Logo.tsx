@@ -1,9 +1,9 @@
 import { useId } from 'react';
 
 /**
- * FlexcityHeadquarters (FH) mark: a single-stroke FH ligature — one shared stem,
- * the F's arm, the H's stem, and a wave that is both the F's middle bar and the
- * H's crossbar — drawn in the four FH colours. Source of truth: /brand/fh-mark.svg.
+ * FlexcityHeadquarters (FH) mark: a city skyline over water. The chartreuse F and
+ * the magenta H are buildings; the vermilion tower with lit windows between them
+ * is the "city"; the white wave is the pool. Source of truth: /brand/fh-mark.svg.
  */
 export function LogoMark({ size = 32, className }: { size?: number; className?: string }) {
   const id = useId().replace(/:/g, '');
@@ -16,27 +16,37 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
         </linearGradient>
       </defs>
       <rect width="64" height="64" rx="16" fill={`url(#${id}t)`} />
-      <g fill="none" strokeWidth="6.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 15.5V48.5" stroke="#C5F23A" />
-        <path d="M18 15.5H36" stroke="#E34234" />
-        <path d="M46 15.5V48.5" stroke="#E879F9" />
-        <path d="M18 33q7-6.5 14 0t14 0" stroke="#FFFFFF" />
+      <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 45V16M14 16H24M14 28H21" stroke="#C5F23A" strokeWidth="6" />
+        <path d="M32 7.5V12" stroke="#E34234" strokeWidth="2.4" />
+        <path d="M32 45V14" stroke="#E34234" strokeWidth="6" />
+        <path d="M41 45V20M50 45V20M41 32H50" stroke="#E879F9" strokeWidth="6" />
+        <path d="M8 52.5q6-4.5 12 0t12 0t12 0t12 0" stroke="#FFFFFF" strokeWidth="3.6" />
+      </g>
+      <g fill="#0B3B3C">
+        <rect x="30.25" y="21" width="3.5" height="3" rx="1" />
+        <rect x="30.25" y="28" width="3.5" height="3" rx="1" />
+        <rect x="30.25" y="35" width="3.5" height="3" rx="1" />
       </g>
     </svg>
   );
 }
 
-/** Mark + two-line wordmark. */
-export function Logo({ size = 36, subtitle }: { size?: number; subtitle?: string }) {
+/** Mark + "FcityH" wordmark with the full name beneath. */
+export function Logo({ size = 38, compact = false }: { size?: number; compact?: boolean }) {
   return (
-    <span className="flex min-w-0 items-center gap-2.5">
+    <span className="flex min-w-0 items-center gap-2.5" aria-label="FlexcityHeadquarters">
       <LogoMark size={size} className="shrink-0" />
-      <span className="min-w-0 leading-none">
-        <span className="block text-[17px] font-bold tracking-tight text-ink">Flexcity</span>
-        <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-text">
-          {subtitle ?? 'Headquarters'}
+      {compact ? null : (
+        <span className="min-w-0 leading-none" aria-hidden="true">
+          <span className="block text-[21px] font-extrabold tracking-[-0.03em] text-ink">
+            F<span className="font-semibold text-brand-text">city</span>H
+          </span>
+          <span className="mt-1 block truncate text-[9px] font-semibold uppercase tracking-[0.16em] text-muted">
+            Flexcity Headquarters
+          </span>
         </span>
-      </span>
+      )}
     </span>
   );
 }

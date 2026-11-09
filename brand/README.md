@@ -4,7 +4,7 @@
 
 ## The mark
 
-A single-stroke **FH ligature**: one shared stem, the F's top arm, the H's right stem, and a wave that is both the F's middle bar and the H's crossbar — a nod to water and lane lines. Each stroke carries one of the four FH colours — chartreuse stem, vermilion arm, magenta stem, white wave — on a deep teal tile.
+A city skyline over water. The **F** (chartreuse) and the **H** (magenta) are buildings; between them rises a **vermilion tower** with lit windows and an antenna — the "city" in FlexcityHeadquarters; a **white wave** runs beneath, for the pool. All on a deep teal tile.
 
 | File | Use |
 | --- | --- |
@@ -30,7 +30,7 @@ Safety-critical "closed" states use a separate crimson (`#9F1239`) plus an icon 
 
 ## Wordmark
 
-"Flexcity" set bold with tight tracking, "HEADQUARTERS" beneath in small caps with wide tracking in teal (light teal on dark backgrounds). Use the short form **FH** only where space is tight.
+**F**city**H** — "F" and "H" in extra-bold ink, "city" in semibold teal (light teal on dark backgrounds), tight tracking. "FLEXCITY HEADQUARTERS" sits beneath in small caps with wide tracking. Use the short form **FH** only where space is tight.
 
 ## Rules
 
