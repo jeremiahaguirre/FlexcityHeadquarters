@@ -705,5 +705,27 @@
     "erasureHelp": "Their name and contact details are removed after the legal retention period. Payroll totals stay. This can't be undone.",
     "confirmErasure": "Erase {{name}}",
     "certifications": "Certifications"
+  },
+  "payroll": {
+    "title": "Payroll export",
+    "description": "Approved hours, overtime, stat holiday and vacation pay, as a CSV for your payroll system.",
+    "period": "Pay period",
+    "periodHelp": "Only approved punches are included. Review open punches in Approvals first.",
+    "start": "First day",
+    "length": "Length",
+    "weeks_one": "{{count}} week",
+    "weeks_other": "{{count}} weeks",
+    "covers": "Covers {{from}} to {{to}}.",
+    "build": "Build and download",
+    "downloaded": "{{file}} downloaded",
+    "rows_one": "{{count}} line",
+    "rows_other": "{{count}} lines",
+    "fixFirst": "Fix these before exporting",
+    "fixFirstHelp": "Your payroll system would reject the file. Nothing was downloaded.",
+    "openStaff": "Open Staff",
+    "openSettings": "Open Settings",
+    "warnings": "Check before you import",
+    "warningsHelp": "The file was built, but these need a look.",
+    "empty": "No approved hours in this period. Approve punches first if you expected some."
   }
 }

@@ -59,6 +59,30 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+/**
+ * Fetches a file (e.g. a CSV export). Resolves with the blob and response
+ * headers; a JSON error body is returned as `error` instead of thrown so the
+ * screen can show its details (like payroll problems).
+ */
+export async function apiDownload(path: string, retry = true): Promise<{ ok: true; blob: Blob; headers: Headers } | { ok: false; status: number; error: Record<string, unknown> }> {
+  if (DEMO) return demoApi(path, { method: 'DOWNLOAD' });
+  if (!accessToken && retry) await refresh();
+  const res = await fetch(path, { credentials: 'include', headers: { ...tenantHeader(), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) } });
+  if (res.status === 401 && retry && (await refresh())) return apiDownload(path, false);
+  if (!res.ok) return { ok: false, status: res.status, error: (await res.json().catch(() => ({}))) as Record<string, unknown> };
+  return { ok: true, blob: await res.blob(), headers: res.headers };
+}
+
+/** Hands a blob to the browser as a download. */
+export function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export async function login(email: string, password: string) {
   const r = await api<{ accessToken: string; user: { id: string; firstName: string; roles: string[]; locale: string } }>(
     '/api/auth/login',

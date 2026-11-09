@@ -705,5 +705,27 @@
     "erasureHelp": "Le nom et les coordonnées sont retirés après la période de conservation légale. Les totaux de paie restent. Action irréversible.",
     "confirmErasure": "Effacer {{name}}",
     "certifications": "Certifications"
+  },
+  "payroll": {
+    "title": "Exportation de la paie",
+    "description": "Heures approuvées, heures supplémentaires, jours fériés et indemnités de vacances, en CSV pour votre système de paie.",
+    "period": "Période de paie",
+    "periodHelp": "Seuls les pointages approuvés sont inclus. Vérifiez d'abord les pointages ouverts dans Approbations.",
+    "start": "Premier jour",
+    "length": "Durée",
+    "weeks_one": "{{count}} semaine",
+    "weeks_other": "{{count}} semaines",
+    "covers": "Du {{from}} au {{to}}.",
+    "build": "Générer et télécharger",
+    "downloaded": "{{file}} téléchargé",
+    "rows_one": "{{count}} ligne",
+    "rows_other": "{{count}} lignes",
+    "fixFirst": "À corriger avant l'exportation",
+    "fixFirstHelp": "Votre système de paie refuserait le fichier. Rien n'a été téléchargé.",
+    "openStaff": "Ouvrir Personnel",
+    "openSettings": "Ouvrir Paramètres",
+    "warnings": "À vérifier avant l'importation",
+    "warningsHelp": "Le fichier a été généré, mais ces points méritent un coup d'œil.",
+    "empty": "Aucune heure approuvée pour cette période. Approuvez d'abord les pointages si vous en attendiez."
   }
 }

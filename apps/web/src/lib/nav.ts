@@ -48,7 +48,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', permission: 'timeclock.review', ready: true },
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', permission: 'users.read', ready: true },
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', permission: 'certs.verify', ready: true },
-  { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: false },
+  { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: true },
   { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', permission: 'tenant.configure', ready: false },
   { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: false },
 ];
