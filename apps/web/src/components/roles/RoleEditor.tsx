@@ -84,7 +84,7 @@ export function RoleEditor({
             <Field label={t('customRoles.name')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={60} defaultValue={current?.name ?? ''} placeholder="Water Works Operator" />}</Field>
             <Field label={t('customRoles.nameFr')} hint={t('jobs.optional')}>{(p) => <Input {...p} name="nameFr" maxLength={60} defaultValue={current?.nameFr ?? ''} placeholder="Opérateur d’aqueduc" />}</Field>
           </div>
-          <Field label={t('customRoles.description')} hint={t('jobs.optional')}>{(p) => <Input {...p} name="description" maxLength={200} defaultValue={current?.description ?? ''} />}</Field>
+          <Field label={t('customRoles.description')} hint={t('common.optional')}>{(p) => <Input {...p} name="description" maxLength={200} defaultValue={current?.description ?? ''} />}</Field>
           {Object.entries(catalog).map(([group, perms]) => (
             <fieldset key={group} className="grid gap-2 rounded-xl bg-surface p-4">
               <legend className="px-1 text-small font-semibold">{t(`customRoles.groups.${group}`)}</legend>

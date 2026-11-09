@@ -14,11 +14,12 @@ import { PositionsPanel } from '@/components/platform/PositionsPanel';
 import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { RoleEditor } from '@/components/roles/RoleEditor';
 import { type CityDetail, papi, usePlatformQuery } from '@/lib/platform';
 
-type Tab = 'org' | 'features' | 'facilities' | 'positions' | 'roles' | 'import';
-const TABS: Tab[] = ['org', 'features', 'facilities', 'positions', 'roles', 'import'];
+type Tab = 'org' | 'features' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import';
+const TABS: Tab[] = ['org', 'features', 'facilities', 'pools', 'positions', 'roles', 'import'];
 
 function City() {
   const { t } = useTranslation();
@@ -59,6 +60,14 @@ function City() {
         {tab === 'org' ? <OrganizationPanel {...props} /> : null}
         {tab === 'features' ? <FeaturesPanel {...props} /> : null}
         {tab === 'facilities' ? <FacilitiesPanel {...props} /> : null}
+        {tab === 'pools' ? (
+          <PoolsEditor
+            pools={c.pools}
+            facilities={c.facilities}
+            save={(body, poolId) => (poolId ? papi(`/tenants/${id}/pools/${poolId}`, { method: 'PATCH', body }) : papi(`/tenants/${id}/pools`, { method: 'POST', body }))}
+            reload={city.reload}
+          />
+        ) : null}
         {tab === 'positions' ? <PositionsPanel {...props} /> : null}
         {tab === 'roles' ? (
           <RoleEditor

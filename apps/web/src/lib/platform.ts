@@ -69,6 +69,7 @@ export interface CityDetail {
   admins: Array<{ id: string; name: string; email: string; invited: boolean }>;
   customRoles: import('./customRoles').CustomRole[];
   roleCatalog: import('./customRoles').RoleCatalog;
+  pools: import('@/components/pools/PoolsEditor').PoolDetailsRow[];
 }
 export interface ImportIssue { field: string; code: string; value?: string }
 export interface ImportPreview {

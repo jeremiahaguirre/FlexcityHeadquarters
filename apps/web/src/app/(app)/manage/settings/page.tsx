@@ -17,6 +17,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { PROVINCES, TIMEZONES } from '@/lib/regions';
 import { RoleEditor } from '@/components/roles/RoleEditor';
+import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import type { CustomRole, RoleCatalog } from '@/lib/customRoles';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
@@ -37,8 +38,15 @@ interface Settings {
 interface Pool {
   id: string;
   name: string;
-  facility: { name: string };
+  kind: string;
+  facility: { id: string; name: string };
   configured: boolean;
+  maxCapacity: number | null;
+  depthMinM: string | null;
+  depthMaxM: string | null;
+  volumeLitres: number | null;
+  notes: string | null;
+  archived: boolean;
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
@@ -255,7 +263,8 @@ function Facilities({ s, reload }: Props) {
 
 function Pools() {
   const { t } = useTranslation();
-  const pools = useQuery<Pool[]>('/api/ops/pools');
+  const pools = useQuery<Pool[]>('/api/ops/pools?all=1');
+  const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
   const { run, busy } = useAction();
   const [editing, setEditing] = useState<Pool | null>(null);
   async function save(e: FormEvent<HTMLFormElement>) {
@@ -280,28 +289,21 @@ function Pools() {
   const th = editing?.thresholds;
   return (
     <div className="grid max-w-4xl gap-6">
-      <Section title={t('settings.pools')} description={t('settings.poolsHelp')}>
-        {pools.loading ? (
-          <ListSkeleton rows={3} />
-        ) : (
-          <ul className="divide-y divide-line">
-            {pools.data?.map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => setEditing(p)} className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg py-3 text-left hover:bg-surface/60">
-                  <span>
-                    <span className="block text-body-strong">{p.name}</span>
-                    <span className="text-small text-muted">
-                      {p.facility.name}
-                      {p.configured ? ` · ${t('settings.poolSummary', { fcMin: p.thresholds.freeChlorineMinPpm ?? '—', fcMax: p.thresholds.freeChlorineMaxPpm ?? '—', phMin: p.thresholds.phMin ?? '—', phMax: p.thresholds.phMax ?? '—' })}` : ''}
-                    </span>
-                  </span>
-                  {p.configured ? <StatusPill tone="ok">{t('settings.configured')}</StatusPill> : <StatusPill tone="warn">{t('settings.notConfigured')}</StatusPill>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+      {pools.loading && !pools.data ? (
+        <ListSkeleton rows={3} />
+      ) : (
+        <PoolsEditor
+          pools={(pools.data ?? []).map((p) => ({ ...p, bathersPerLifeguard: p.thresholds.bathersPerLifeguard, limitsSet: p.configured }))}
+          facilities={facilities.data ?? []}
+          save={(body, id) => (id ? api(`/api/ops/pools/${id}`, { method: 'PATCH', body }) : api('/api/ops/pools', { method: 'POST', body }))}
+          reload={pools.reload}
+          extra={(row) => (
+            <Button size="sm" variant="secondary" onClick={() => setEditing(pools.data?.find((x) => x.id === row.id) ?? null)}>
+              {t('pools.limits')}
+            </Button>
+          )}
+        />
+      )}
       <Dialog open={!!editing} onClose={() => setEditing(null)} title={editing?.name ?? ''} description={t('settings.thresholdsHelp')} closeLabel={t('common.close')}>
         <form key={editing?.id} onSubmit={(e) => void save(e)} className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
