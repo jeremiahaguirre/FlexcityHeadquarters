@@ -129,6 +129,15 @@ async function main() {
     }
   }
 
+  // A union local for the Union Hub, with every union member in it and the steward running it.
+  const [local] = await prisma.$queryRaw<Array<{ id: string }>>`
+    INSERT INTO union_hub.local (tenant_id, name, kek_id) VALUES (${tenant.id}::uuid, 'CUPE Local 338 (demo)', 'local:cupe338') RETURNING id`;
+  const members = await prisma.user.findMany({ where: { tenantId: tenant.id, unionMember: true }, select: { id: true, roles: true } });
+  for (const m of members) {
+    await prisma.$executeRaw`
+      INSERT INTO union_hub.member_access (local_id, user_id, is_steward) VALUES (${local!.id}::uuid, ${m.id}::uuid, ${m.roles.includes('UNION_STEWARD')})`;
+  }
+
   console.log('Seeded tenant "kelowna". Log in at http://kelowna.localhost:3000 with e.g. guard@kelowna.test / flexcity-dev');
 }
 
