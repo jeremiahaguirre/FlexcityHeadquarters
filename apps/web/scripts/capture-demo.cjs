@@ -196,6 +196,12 @@ async function capturePlatform(browser) {
     await page.goto(`${CONSOLE}${href}`);
     await page.locator('main h1').first().waitFor();
     await page.waitForTimeout(800);
+    // Every tab that loads its own data (menus and access, pools, roles, billing…).
+    const tabs = await page.locator('main [role=radiogroup] [role=radio]').allInnerTexts().catch(() => []);
+    for (const name of tabs) {
+      await page.locator('main [role=radiogroup] [role=radio]', { hasText: name }).first().click().catch(() => {});
+      await page.waitForTimeout(700);
+    }
   }
   await page.goto(`${CONSOLE}/platform/account`);
   await page.waitForTimeout(1200);
