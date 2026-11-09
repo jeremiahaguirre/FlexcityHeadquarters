@@ -30,6 +30,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # The web app's tests share the API's permission matrix, which uses Prisma's generated types.
+      - run: npx prisma generate
+        working-directory: apps/api
       - name: Build static demo
         working-directory: apps/web
         env:
