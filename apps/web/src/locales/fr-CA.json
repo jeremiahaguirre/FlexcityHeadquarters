@@ -140,7 +140,8 @@
     "payroll": "Paie",
     "settings": "Paramètres",
     "union": "Espace syndical",
-    "more": "Plus"
+    "more": "Plus",
+    "jobs": "Offres d'emploi"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -857,5 +858,43 @@
       "vacation.tiers": "Paliers d'indemnité de vacances",
       "statutoryHoliday.workedMultiplier": "Multiplicateur, travail un jour férié"
     }
+  },
+  "jobs": {
+    "title": "Offres d'emploi",
+    "description": "Les postes affichés sur votre page carrières publique.",
+    "viewPublic": "Voir la page carrières",
+    "new": "Nouvelle offre",
+    "none": "Aucune offre",
+    "noneHelp": "Publiez un poste et partagez le lien de votre page carrières.",
+    "closes": "se termine le {{date}}",
+    "status": {
+      "draft": "Brouillon",
+      "live": "En ligne",
+      "closed": "Terminée"
+    },
+    "saved": "Offre enregistrée",
+    "formHelp": "Seules les offres publiées dont la date de fin est à venir sont publiques.",
+    "jobTitle": "Titre",
+    "jobTitleFr": "Titre en français",
+    "optional": "Facultatif. L'anglais s'affiche s'il est vide.",
+    "jobDescription": "Description",
+    "descriptionHint": "Tâches, certifications exigées, horaire.",
+    "jobDescriptionFr": "Description en français",
+    "facility": "Installation",
+    "anyFacility": "Toutes les installations",
+    "payMin": "Salaire de ($/h)",
+    "payMax": "Salaire à ($/h)",
+    "payHint": "Les lois sur la transparence salariale de certaines provinces exigent une fourchette.",
+    "closesOn": "Date de fin",
+    "applyUrl": "Comment postuler",
+    "applyUrlHint": "Votre formulaire (https://) ou un courriel (mailto:).",
+    "publish": "Publier sur la page carrières",
+    "publicTitle": "Travaillez avec nous",
+    "publicIntro": "Postes de sauveteur, de moniteur et en aquatique. Postulez avant la date de fin.",
+    "perHour": "l'heure",
+    "applyBy": "Postulez d'ici le {{date}}",
+    "apply": "Postuler",
+    "noOpenings": "Aucun poste ouvert pour l'instant",
+    "noOpeningsHelp": "Revenez bientôt."
   }
 }

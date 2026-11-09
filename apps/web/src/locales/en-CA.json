@@ -140,7 +140,8 @@
     "payroll": "Payroll",
     "settings": "Settings",
     "union": "Union hub",
-    "more": "More"
+    "more": "More",
+    "jobs": "Job postings"
   },
   "navGroups": {
     "mine": "My work",
@@ -857,5 +858,43 @@
       "vacation.tiers": "Vacation pay tiers",
       "statutoryHoliday.workedMultiplier": "Stat holiday worked multiplier"
     }
+  },
+  "jobs": {
+    "title": "Job postings",
+    "description": "Openings shown on your public careers page.",
+    "viewPublic": "View careers page",
+    "new": "New posting",
+    "none": "No postings yet",
+    "noneHelp": "Post an opening and share your careers page link.",
+    "closes": "closes {{date}}",
+    "status": {
+      "draft": "Draft",
+      "live": "Live",
+      "closed": "Closed"
+    },
+    "saved": "Posting saved",
+    "formHelp": "Only published postings with a future closing date are public.",
+    "jobTitle": "Title",
+    "jobTitleFr": "Title in French",
+    "optional": "Optional. English is shown if blank.",
+    "jobDescription": "Description",
+    "descriptionHint": "Duties, required certifications, schedule.",
+    "jobDescriptionFr": "Description in French",
+    "facility": "Facility",
+    "anyFacility": "Any facility",
+    "payMin": "Pay from ($/h)",
+    "payMax": "Pay to ($/h)",
+    "payHint": "Pay transparency laws in some provinces require a range.",
+    "closesOn": "Closes on",
+    "applyUrl": "How to apply",
+    "applyUrlHint": "Your application form (https://) or an email (mailto:).",
+    "publish": "Publish on the careers page",
+    "publicTitle": "Work with us",
+    "publicIntro": "Lifeguard, instructor and aquatics roles. Apply before the closing date.",
+    "perHour": "per hour",
+    "applyBy": "Apply by {{date}}",
+    "apply": "Apply",
+    "noOpenings": "No openings right now",
+    "noOpeningsHelp": "Check back soon."
   }
 }
