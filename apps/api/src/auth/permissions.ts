@@ -36,6 +36,8 @@ export const PERMISSIONS = [
   'union.hub', // only meaningful through the Union Hub service
   'seniority.read',
   'tenant.configure',
+  'positions.manage', // define positions and their required certifications
+  'users.scheduling', // shadow tier, weekly hour targets/caps, position approvals
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -68,6 +70,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'seniority.read',
     'tenant.configure',
     'ops.status.read',
+    'positions.manage',
   ],
   AQUATIC_SUPERVISOR: [
     ...STAFF_BASE,
@@ -88,6 +91,8 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'discipline.write',
     'reliability.read',
     'seniority.read',
+    'positions.manage',
+    'users.scheduling',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
