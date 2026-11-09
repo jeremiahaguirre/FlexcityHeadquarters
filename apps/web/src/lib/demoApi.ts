@@ -12,6 +12,7 @@ import { type DemoRole, type Fixtures, loadFixtures } from './demoFixtures';
 const FACILITY = { name: 'Lakeview Aquatic Centre', timezone: 'America/Vancouver' };
 const OFFSET = '-07:00';
 const STORE_KEY = 'flexcity-demo-v2';
+const PLATFORM_KEY = 'flexcity-demo-platform';
 
 interface DemoShift {
   offerId: string;
@@ -94,7 +95,7 @@ const delay = () => new Promise((r) => setTimeout(r, 200));
 const roleOf = (email: string) => email.split('@')[0] as DemoRole;
 
 const cache = new Map<string, Promise<Fixtures>>();
-const fixtures = (role: DemoRole | 'public') => {
+const fixtures = (role: DemoRole | 'public' | 'platform') => {
   if (!cache.has(role)) cache.set(role, loadFixtures(role));
   return cache.get(role)!;
 };
@@ -186,8 +187,53 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
   return { id: 'demo', ok: true, outcome: 'ASSIGNED', outOfRange: false, reasons: [], locationStatus: 'ON_SITE' } as T;
 }
 
-/** Dev console in the static demo (filled from recorded responses in demoFixtures). */
-export async function demoPlatformApi<T>(_path: string, _init: { method?: string; body?: unknown } = {}): Promise<T> {
+/** Dev console in the static demo: recorded responses; changes look saved but aren't kept. */
+export async function demoPlatformApi<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   await delay();
-  throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
+  const method = init.method ?? 'GET';
+  const signedIn = () => {
+    try {
+      return sessionStorage.getItem(PLATFORM_KEY) === '1';
+    } catch {
+      return false;
+    }
+  };
+  const setSignedIn = (on: boolean) => {
+    try {
+      if (on) sessionStorage.setItem(PLATFORM_KEY, '1');
+      else sessionStorage.removeItem(PLATFORM_KEY);
+    } catch {
+      /* fine */
+    }
+  };
+  if (path === '/auth/login' && method === 'POST') {
+    const { email, password } = (init.body ?? {}) as { email?: string; password?: string };
+    if (String(email).toLowerCase() !== 'dev@flexcity.dev' || password !== DEMO_PASSWORD) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+    setSignedIn(true);
+    return { admin: { id: 'demo-dev', email: 'dev@flexcity.dev', name: 'FH Dev' } } as T;
+  }
+  if (path === '/auth/logout') {
+    setSignedIn(false);
+    return undefined as T;
+  }
+  if (!signedIn()) throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console');
+  const data = await fixtures('platform');
+
+  const preview = /^\/tenants\/([^/]+)\/import(\/preview)?$/.exec(path);
+  if (preview && method === 'POST') {
+    const city = data.get(`/tenants/${preview[1]}`) as { positions: Array<{ id: string; name: string; nameFr: string | null }> };
+    const { previewImport } = await import('../../../api/src/services/platform/staffImport');
+    const result = previewImport(String((init.body as { csv?: string }).csv ?? ''), { existingEmails: new Set(), positions: city.positions, today: new Date().toISOString().slice(0, 10) });
+    if (preview[2]) return result as T;
+    return { created: result.summary.create, exists: 0, errors: result.summary.error, invited: 0 } as T;
+  }
+  if (method === 'GET') {
+    const body = data.get(path);
+    if (body === undefined) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
+    // Open the demo's own sign-in page instead of a recorded local address.
+    const city = body as { organization?: { signInUrl?: string } };
+    if (city.organization?.signInUrl) city.organization.signInUrl = `${window.location.origin}${window.location.pathname.split('/platform')[0]}/login/`;
+    return body as T;
+  }
+  return { id: 'demo', ok: true } as T;
 }

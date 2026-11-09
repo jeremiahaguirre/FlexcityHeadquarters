@@ -17,6 +17,8 @@ const nextConfig = DEMO
       output: 'export',
       basePath: BASE_PATH,
       trailingSlash: true, // board/index.html, which static hosts serve at /board/
+      // The demo previews staff imports with the API's own validation (apps/api/src/services/platform).
+      experimental: { externalDir: true },
       reactStrictMode: true,
       images: { unoptimized: true },
     }

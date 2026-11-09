@@ -9,10 +9,11 @@
  * Names are swapped for the fictional demo organization before saving.
  */
 const { chromium } = require('playwright');
-const { writeFileSync } = require('node:fs');
+const { readFileSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 
 const BASE = process.env.CAPTURE_BASE ?? 'http://kelowna.localhost:3000';
+const CONSOLE = process.env.CAPTURE_CONSOLE ?? 'http://localhost:3000';
 const API = process.env.CAPTURE_API ?? 'http://localhost:4000';
 const PASSWORD = 'flexcity-dev';
 const OUT = join(__dirname, '../src/lib/demo-fixtures');
@@ -26,7 +27,8 @@ const RENAME = [
   ['Kelowna', 'Lakeview'],
   ['kelowna', 'lakeview'],
 ];
-const rename = (s) => RENAME.reduce((acc, [a, b]) => acc.split(a).join(b), s);
+// Logos are served by the API, which the static demo doesn't have: the demo embeds its own.
+const rename = (s) => RENAME.reduce((acc, [a, b]) => acc.split(a).join(b), s).replace(/\/api\/public\/logo\/[0-9a-f-]+\?v=[0-9a-f]+/g, '__DEMO_LOGO__');
 
 async function apiAs(who) {
   const r = await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-tenant-subdomain': 'kelowna' }, body: JSON.stringify({ email: `${who}@kelowna.test`, password: PASSWORD }) });
@@ -40,6 +42,16 @@ async function apiAs(who) {
 
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
+  // The demo city's (placeholder) logo, uploaded through the Dev console API.
+  const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });
+  const cookie = String(login.headers.get('set-cookie')).split(';')[0];
+  const dev = (method, path, body) => fetch(`${API}/api/platform${path}`, { method, headers: { 'content-type': 'application/json', 'x-fh-platform': '1', cookie }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
+  const city = (await dev('GET', '/tenants')).find((c) => c.subdomain === 'kelowna');
+  if (city && !city.logoUrl) {
+    const png = readFileSync(join(__dirname, 'demo-city-logo.png')).toString('base64');
+    await dev('PUT', `/tenants/${city.id}/logo`, { dataUrl: `data:image/png;base64,${png}` });
+  }
+
   const steward = await apiAs('steward');
   const guard = await apiAs('guard');
   const supervisor = await apiAs('supervisor');
@@ -107,7 +119,7 @@ async function capture(browser, role) {
   await page.goto(`${BASE}/login`);
   await page.getByLabel('Email').fill(`${ROLES[role]}@kelowna.test`);
   await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL((u) => !u.pathname.startsWith('/login'));
   await page.waitForTimeout(1000);
 
@@ -158,6 +170,40 @@ async function capture(browser, role) {
   console.log(role, Object.keys(responses).length, 'responses');
 }
 
+/** The FH Dev console: city list, every city's tabs, and the account page. */
+async function capturePlatform(browser) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  const responses = {};
+  page.on('response', async (res) => {
+    const u = new URL(res.url());
+    if (!u.pathname.startsWith('/api/platform/') || res.request().method() !== 'GET' || res.status() !== 200) return;
+    if (!(res.headers()['content-type'] ?? '').includes('json')) return;
+    try {
+      responses[u.pathname.slice('/api/platform'.length) + u.search] = await res.json();
+    } catch {
+      /* not JSON */
+    }
+  });
+  await page.goto(`${CONSOLE}/platform/login`);
+  await page.getByLabel('Email').fill('dev@flexcity.dev');
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.waitForURL((u) => u.pathname === '/platform');
+  await page.getByRole('button', { name: 'Not now' }).click({ timeout: 3000 }).catch(() => {});
+  await page.locator('main a[href*="/platform/city"]').first().waitFor();
+  const cities = await page.$$eval('main a[href*="/platform/city"]', (as) => as.map((a) => a.getAttribute('href')));
+  for (const href of cities) {
+    await page.goto(`${CONSOLE}${href}`);
+    await page.locator('main h1').first().waitFor();
+    await page.waitForTimeout(800);
+  }
+  await page.goto(`${CONSOLE}/platform/account`);
+  await page.waitForTimeout(1200);
+  await page.close();
+  writeFileSync(join(OUT, 'platform.json'), rename(JSON.stringify({ capturedOn: new Date().toISOString().slice(0, 10), responses })));
+  console.log('platform', Object.keys(responses).length, 'responses');
+}
+
 (async () => {
   await prepare();
   const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP *.localhost 127.0.0.1'] });
@@ -169,5 +215,6 @@ async function capture(browser, role) {
   await page.goto(`${BASE}/jobs`);
   await page.waitForTimeout(1500);
   writeFileSync(join(OUT, 'public.json'), rename(JSON.stringify({ capturedOn: new Date().toISOString().slice(0, 10), responses: { '/api/public/jobs': jobs } })));
+  await capturePlatform(browser);
   await browser.close();
 })();

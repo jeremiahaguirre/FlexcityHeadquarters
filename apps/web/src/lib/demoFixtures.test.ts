@@ -25,4 +25,12 @@ describe('demo fixtures', () => {
       expect(JSON.stringify(f.get('/api/me'))).not.toMatch(/kelowna/i);
     }
   });
+
+  it('serves the Dev console with the embedded demo logo instead of an API address', async () => {
+    const f = await loadFixtures('platform', '2030-01-15');
+    const cities = f.get('/tenants') as Array<{ name: string; logoUrl: string | null }>;
+    expect(cities.length).toBeGreaterThan(1);
+    expect(cities.some((c) => c.logoUrl?.startsWith('data:image/png;base64,'))).toBe(true);
+    expect(JSON.stringify(cities)).not.toMatch(/api\/public\/logo|kelowna/i);
+  });
 });

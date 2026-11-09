@@ -3,16 +3,19 @@
  * for the static demo. Dates move with the calendar so "today" stays today.
  */
 
+import { DEMO_LOGO } from './demoLogo';
+
 export type DemoRole = 'guard' | 'supervisor' | 'hr' | 'frontdesk' | 'steward';
 interface Capture { capturedOn: string; responses: Record<string, unknown> }
 
-const loaders: Record<DemoRole | 'public', () => Promise<{ default: Capture }>> = {
+const loaders: Record<DemoRole | 'public' | 'platform', () => Promise<{ default: Capture }>> = {
   guard: () => import('./demo-fixtures/guard.json') as Promise<{ default: Capture }>,
   supervisor: () => import('./demo-fixtures/supervisor.json') as Promise<{ default: Capture }>,
   hr: () => import('./demo-fixtures/hr.json') as Promise<{ default: Capture }>,
   frontdesk: () => import('./demo-fixtures/frontdesk.json') as Promise<{ default: Capture }>,
   steward: () => import('./demo-fixtures/steward.json') as Promise<{ default: Capture }>,
   public: () => import('./demo-fixtures/public.json') as Promise<{ default: Capture }>,
+  platform: () => import('./demo-fixtures/platform.json') as Promise<{ default: Capture }>,
 };
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/;
@@ -33,6 +36,7 @@ export function shiftDate(value: string, days: number): string {
 }
 
 export function shiftDates<T>(value: T, days: number): T {
+  if (value === '__DEMO_LOGO__') return DEMO_LOGO as T;
   if (typeof value === 'string') return shiftDate(value, days) as T;
   if (Array.isArray(value)) return value.map((v) => shiftDates(v, days)) as T;
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shiftDates(v, days)])) as T;
@@ -55,7 +59,7 @@ function merge(a: unknown, b: unknown): unknown {
 
 export interface Fixtures { get(url: string): unknown }
 
-export async function loadFixtures(role: DemoRole | 'public', today = localToday()): Promise<Fixtures> {
+export async function loadFixtures(role: DemoRole | 'public' | 'platform', today = localToday()): Promise<Fixtures> {
   const { default: capture } = await loaders[role]();
   const days = dayNumber(today) - dayNumber(capture.capturedOn);
   const exact = new Map<string, unknown>();

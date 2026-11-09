@@ -75,7 +75,8 @@
   "demo": {
     "banner": "Démonstration avec des données fictives — rien n'est enregistré.",
     "hint": "Ou connectez-vous avec l'un d'eux, p. ex. guard@demo.flexcity, mot de passe {{password}}.",
-    "pick": "Essayez en tant que :"
+    "pick": "Essayez en tant que :",
+    "devConsole": "Ou essayez la console Dev FH (configuration des villes, fonctions, logo, importation) →"
   },
   "common": {
     "close": "Fermer",

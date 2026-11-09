@@ -75,7 +75,8 @@
   "demo": {
     "banner": "Demo with sample data — nothing you do here is saved.",
     "hint": "Or sign in with any of them, e.g. guard@demo.flexcity, password {{password}}.",
-    "pick": "Try it as:"
+    "pick": "Try it as:",
+    "devConsole": "Or try the FH Dev console (city setup, features, logo, staff import) →"
   },
   "common": {
     "close": "Close",
