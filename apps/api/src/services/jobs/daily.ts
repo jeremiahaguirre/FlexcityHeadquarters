@@ -129,6 +129,20 @@ export async function onboardingReminders(tx: Tx, now = new Date()): Promise<num
   return sent;
 }
 
+/** Daily: accommodation reviews due within 7 days, once, to HR. */
+export async function accommodationReviews(tx: Tx, now = new Date()): Promise<number> {
+  const due = await tx.accommodationCase.findMany({
+    where: { status: 'ACTIVE', reviewNotifiedAt: null, reviewOn: { not: null, lte: new Date(now.getTime() + 7 * 86_400_000) } },
+    include: { user: { select: { firstName: true, lastName: true } } },
+  });
+  const hr = await usersWithRoles(tx, ['HR_ADMIN']);
+  for (const c of due) {
+    await notify(tx, c.tenantId, hr.map((userId) => ({ userId, type: 'accommodation_review', params: { name: `${c.user.firstName} ${c.user.lastName}`, date: c.reviewOn!.toISOString().slice(0, 10) }, link: `/manage/staff/person?id=${c.userId}` })));
+    await tx.accommodationCase.update({ where: { id: c.id }, data: { reviewNotifiedAt: now } });
+  }
+  return due.length;
+}
+
 export const REMINDER_DAYS = [90, 60, 30, 7] as const;
 
 /** Certification reminders at 90/60/30/7 days; supervisors hear at 30 and 7. */

@@ -275,3 +275,26 @@ describe('per-role overrides', () => {
     expect(o.FRONT_DESK!.revoke).toEqual([]);
   });
 });
+
+import { accommodationBlocks } from '../../src/services/people/accommodation.js';
+import { dec } from '../../src/lib/money.js';
+
+describe('accommodation restrictions', () => {
+  const base = { startsOn: '2026-01-01', endsOn: null, maxShiftHours: null, maxWeeklyHours: null, noStartBefore: null, noEndAfter: null, daysOff: [], excludedPositionIds: [] };
+  // Tue Nov 10 2026, 09:00–15:00 (UTC keeps the test free of time-zone data)
+  const shift = { start: new Date('2026-11-10T09:00:00Z'), end: new Date('2026-11-10T15:00:00Z'), positionId: 'p1', timezone: 'UTC' };
+  it('blocks with one generic message, never the detail', () => {
+    expect(accommodationBlocks([{ ...base, maxShiftHours: 4 }], shift, dec('6'))).toEqual(["Outside this person's work restrictions."]);
+  });
+  it('checks start and end times, days off, positions and weekly hours', () => {
+    expect(accommodationBlocks([{ ...base, noStartBefore: 10 * 60 }], shift, dec('6'))).toHaveLength(1);
+    expect(accommodationBlocks([{ ...base, noEndAfter: 15 * 60 }], shift, dec('6'))).toHaveLength(0);
+    expect(accommodationBlocks([{ ...base, noEndAfter: 14 * 60 }], shift, dec('6'))).toHaveLength(1);
+    expect(accommodationBlocks([{ ...base, daysOff: [2] }], shift, dec('6'))).toHaveLength(1);
+    expect(accommodationBlocks([{ ...base, excludedPositionIds: ['p1'] }], shift, dec('6'))).toHaveLength(1);
+    expect(accommodationBlocks([{ ...base, maxWeeklyHours: 20 }], shift, dec('24'))).toHaveLength(1);
+  });
+  it('only applies between its dates', () => {
+    expect(accommodationBlocks([{ ...base, maxShiftHours: 4, endsOn: '2026-11-09' }], shift, dec('6'))).toHaveLength(0);
+  });
+});

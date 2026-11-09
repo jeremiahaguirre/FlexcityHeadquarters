@@ -27,6 +27,7 @@ import {
   startOfLocalDay,
   wholeYearsBetween,
 } from '../../lib/time.js';
+import { type Restriction, accommodationBlocks } from '../people/accommodation.js';
 import type { ProvinceRules } from '../compliance/provincialRules.js';
 import { calculatePay } from '../payroll/payCalc.js';
 
@@ -44,7 +45,8 @@ export type BlockCode =
   | 'YOUNG_WORKER_LIMIT'
   | 'NOT_AVAILABLE'
   | 'OVER_PERSONAL_WEEKLY_MAX'
-  | 'ONBOARDING_INCOMPLETE';
+  | 'ONBOARDING_INCOMPLETE'
+  | 'ACCOMMODATION';
 
 export type FlagCode = 'OVERTIME' | 'PARENTAL_CONSENT_REQUIRED' | 'RULES_UNVERIFIED' | 'DATE_OF_BIRTH_MISSING';
 
@@ -64,6 +66,8 @@ export interface CandidateContext {
   /** Assigned, non-cancelled shifts near the target shift. */
   existingShifts: Array<Interval & { positionId: string }>;
   approvedTimeOff: Interval[];
+  /** Active work restrictions (accommodation / return to work). */
+  restrictions?: Restriction[];
   /** Onboarding itemId → expiry of the latest completion (null = no expiry, or waived). */
   onboardingValid?: ReadonlyMap<string, string | null>;
   availability: Array<{
@@ -224,6 +228,9 @@ export function evaluateCandidate(
       code: 'OVER_PERSONAL_WEEKLY_MAX',
       message: `Would reach ${weeklyHoursAfter.toFixed(2)}h this week (cap ${c.weeklyMaxHours.toFixed(2)}h).`,
     });
+  }
+  for (const message of accommodationBlocks(c.restrictions ?? [], { start: shift.start, end: shift.end, positionId: shift.positionId, timezone: tz }, weeklyHoursAfter)) {
+    blocks.push({ code: 'ACCOMMODATION', message });
   }
   if (overtimeHours.gt(0)) {
     flags.push({ code: 'OVERTIME', message: `Adds ${overtimeHours.toFixed(2)}h of overtime.` });

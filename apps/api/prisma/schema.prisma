@@ -81,6 +81,11 @@ enum ShiftType {
 }
 
 /// Lifecycle only. Claim/swap state lives on ShiftOffer, not here.
+enum AccommodationStatus {
+  ACTIVE
+  CLOSED
+}
+
 enum CareStatus {
   OFFERED
   CHECKED_IN
@@ -365,6 +370,7 @@ model User {
   reliabilityEvents ReliabilityEvent[]
   conductNotes      ConductNote[]
   onboarding        OnboardingRecord[]
+  accommodations    AccommodationCase[]
   refreshTokens    RefreshToken[]
   authTokens       AuthToken[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
@@ -437,6 +443,37 @@ model Position {
   onboarding      PositionOnboarding[]
 
   @@unique([tenantId, name])
+}
+
+/// Work restrictions from an accommodation or return-to-work plan. Holds the
+/// restrictions only, never a diagnosis; the scheduler enforces them and
+/// supervisors see only that a shift is outside the person's restrictions.
+model AccommodationCase {
+  id                  String              @id @default(uuid()) @db.Uuid
+  tenantId            String              @db.Uuid
+  userId              String              @db.Uuid
+  status              AccommodationStatus @default(ACTIVE)
+  /// General label only, e.g. "Return to work" (no medical details).
+  label               String
+  startsOn            DateTime            @db.Date
+  endsOn              DateTime?           @db.Date
+  reviewOn            DateTime?           @db.Date
+  maxShiftHours       Decimal?            @db.Decimal(4, 2)
+  maxWeeklyHours      Decimal?            @db.Decimal(5, 2)
+  /// Minutes after midnight, local time.
+  noStartBefore       Int?
+  noEndAfter          Int?
+  /// Days of week (0 = Sunday) not to schedule.
+  daysOff             Int[]
+  excludedPositionIds String[]            @db.Uuid
+  createdById         String              @db.Uuid
+  createdAt           DateTime            @default(now()) @db.Timestamptz(3)
+  closedAt            DateTime?           @db.Timestamptz(3)
+  reviewNotifiedAt    DateTime?           @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status])
 }
 
 /// A private check-in offered after a critical incident. Only that it was

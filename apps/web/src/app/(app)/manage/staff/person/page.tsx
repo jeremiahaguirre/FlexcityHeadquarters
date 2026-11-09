@@ -11,6 +11,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { AccommodationPanel } from '@/components/people/AccommodationPanel';
 import { CaseFilePanel } from '@/components/people/CaseFilePanel';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -284,6 +285,8 @@ function Person() {
             )}
           </Section>
         ) : null}
+
+        {can('accommodation.manage') ? <AccommodationPanel userId={p.id} positions={(positions.data ?? []).map((x) => ({ id: x.id, name: posName(x) }))} /> : null}
 
         {can('reliability.read') ? <CaseFilePanel userId={p.id} name={name} unionMember={p.unionMember} /> : null}
 

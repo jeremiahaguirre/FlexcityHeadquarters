@@ -121,6 +121,7 @@ export async function loadCandidates(
       positions: true,
       certifications: true,
       onboarding: { orderBy: { recordedAt: 'desc' } },
+      accommodations: { where: { status: 'ACTIVE' } },
       availability: true,
       shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from } } },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: to }, endsAt: { gt: from } } },
@@ -139,6 +140,7 @@ export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string)
       positions: true,
       certifications: true,
       onboarding: { orderBy: { recordedAt: 'desc' } },
+      accommodations: { where: { status: 'ACTIVE' } },
       availability: true,
       shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { not: bundle.shift.id } } },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: to }, endsAt: { gt: from } } },
@@ -148,7 +150,7 @@ export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string)
 }
 
 type LoadedUser = Prisma.UserGetPayload<{
-  include: { positions: true; certifications: true; availability: true; shifts: true; timeOffRequests: true; onboarding: true };
+  include: { positions: true; certifications: true; availability: true; shifts: true; timeOffRequests: true; onboarding: true; accommodations: true };
 }>;
 
 const isoDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -173,6 +175,16 @@ function toCandidateContext(u: LoadedUser): CandidateContext {
     userId: u.id,
     status: u.status,
     onboardingValid,
+    restrictions: u.accommodations.map((r) => ({
+      startsOn: isoDate(r.startsOn)!,
+      endsOn: isoDate(r.endsOn),
+      maxShiftHours: r.maxShiftHours ? Number(r.maxShiftHours) : null,
+      maxWeeklyHours: r.maxWeeklyHours ? Number(r.maxWeeklyHours) : null,
+      noStartBefore: r.noStartBefore,
+      noEndAfter: r.noEndAfter,
+      daysOff: r.daysOff,
+      excludedPositionIds: r.excludedPositionIds,
+    })),
     dateOfBirth: isoDate(u.dateOfBirth),
     weeklyMaxHours: u.weeklyMaxHours ? dec(u.weeklyMaxHours) : null,
     qualifiedPositionIds: new Set(u.positions.map((p) => p.positionId)),
@@ -199,6 +211,7 @@ export async function loadAssistantCandidates(tx: Tx, from: Date, to: Date) {
       positions: true,
       certifications: true,
       onboarding: { orderBy: { recordedAt: 'desc' } },
+      accommodations: { where: { status: 'ACTIVE' } },
       availability: true,
       shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: hi }, endsAt: { gt: lo } } },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: hi }, endsAt: { gt: lo } } },

@@ -51,6 +51,7 @@ export const PERMISSIONS = [
   'onboarding.configure', // the catalogue and which positions need which items
   'overtime.manage', // overtime equalization: standings, call-outs, policy
   'care.manage', // follow up after critical incidents
+  'accommodation.manage', // work restrictions (accommodation, return to work): HR only
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -89,6 +90,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'onboarding.configure',
     'overtime.manage',
     'care.manage',
+    'accommodation.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',

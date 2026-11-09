@@ -71,7 +71,8 @@
     "YOUNG_WORKER_LIMIT": "Cela dépasserait les limites d'heures pour les jeunes travailleurs.",
     "NOT_AVAILABLE": "Ce quart est en dehors de vos disponibilités.",
     "OVER_PERSONAL_WEEKLY_MAX": "Cela dépasserait votre plafond d'heures hebdomadaire.",
-    "ONBOARDING_INCOMPLETE": "L’intégration n’est pas terminée pour ce poste (par exemple une vérification du casier judiciaire ou une formation requise)."
+    "ONBOARDING_INCOMPLETE": "L’intégration n’est pas terminée pour ce poste (par exemple une vérification du casier judiciaire ou une formation requise).",
+    "ACCOMMODATION": "En dehors de vos restrictions de travail."
   },
   "demo": {
     "banner": "Démonstration avec des données fictives — rien n'est enregistré.",
@@ -206,7 +207,9 @@
     "staff_onboarding_expiring": "{{item}} de {{name}} expire le {{date}}.",
     "care_offered": "Après l’incident d’aujourd’hui : vous n’avez pas à le porter seul. Les ressources et options sont sur votre écran Aujourd’hui.",
     "care_checkins_due": "{{count}} personnes pourraient avoir besoin d’un suivi après un incident grave.",
-    "care_break_requested": "{{name}} a demandé à quitter la chaise un moment."
+    "care_break_requested": "{{name}} a demandé à quitter la chaise un moment.",
+    "accommodation_set": "Les RH ont consigné des restrictions de travail pour vous. L’horaire les respectera; consultez-les dans votre profil.",
+    "accommodation_review": "Les restrictions de travail de {{name}} doivent être revues le {{date}}."
   },
   "today": {
     "morning": "Bonjour",
@@ -1150,6 +1153,10 @@
       "care": {
         "name": "Soutien après un incident",
         "help": "Suivis confidentiels, ressources de soutien et temps hors de la chaise après un sauvetage, un appel d’ambulance ou une blessure."
+      },
+      "accommodation": {
+        "name": "Mesures d’adaptation",
+        "help": "Restrictions de travail pour les mesures d’adaptation et le retour au travail, appliquées par l’horaire. RH seulement; aucun détail médical."
       }
     },
     "positions": "Postes",
@@ -1940,5 +1947,46 @@
     "askBreak": "J’aimerais quitter la chaise un moment",
     "breakSent": "Votre superviseur a été avisé. Prenez le temps qu’il vous faut.",
     "imOkay": "Ça va, merci"
+  },
+  "accommodation": {
+    "title": "Restrictions de travail",
+    "help": "Limites liées aux mesures d’adaptation et au retour au travail, appliquées par l’horaire. Les superviseurs voient seulement qu’un quart est en dehors des restrictions de la personne.",
+    "add": "Ajouter des restrictions",
+    "addHelp": "Consignez seulement les limites. N’inscrivez jamais de diagnostic ni de détail médical ici.",
+    "none": "Aucune restriction de travail au dossier.",
+    "label": "Libellé",
+    "labelHint": "Un libellé général, par exemple « Retour au travail » ou « Obligations familiales ».",
+    "defaultLabel": "Retour au travail",
+    "starts": "Début",
+    "ends": "Fin (facultative)",
+    "reviewOn": "Révision le (facultatif)",
+    "maxShiftLabel": "Quart le plus long (heures)",
+    "maxWeekLabel": "Heures maximales par semaine",
+    "notBeforeLabel": "Pas de début avant",
+    "notAfterLabel": "Pas de fin après",
+    "daysOff": "Jours à ne pas mettre à l’horaire",
+    "noPositions": "Postes à ne pas mettre à l’horaire",
+    "save": "Enregistrer les restrictions",
+    "saved": "Enregistré. L’horaire respecte maintenant ces limites.",
+    "close": "Fermer (restrictions levées)",
+    "closed": "Fermé.",
+    "status": {
+      "ACTIVE": "Actives",
+      "CLOSED": "Fermées"
+    },
+    "dates": "du {{from}} au {{to}}",
+    "untilReview": "jusqu’à la fermeture",
+    "review": "révision le {{date}}",
+    "maxShift": "quarts d’au plus {{h}} h",
+    "maxWeek": "au plus {{h}} h par semaine",
+    "notBefore": "pas de début avant {{time}}",
+    "notAfter": "pas de fin après {{time}}",
+    "daysOffList": "pas le {{days}}",
+    "positionsExcluded_one": "{{count}} poste exclu",
+    "positionsExcluded_other": "{{count}} postes exclus",
+    "noLimits": "Aucune limite.",
+    "privacy": "Seules les RH voient ces détails, et chaque consultation est consignée. L’employé voit ses propres restrictions.",
+    "mine": "Mes restrictions de travail",
+    "mineHelp": "Convenues avec les RH. L’horaire ne vous attribuera pas de quart en dehors de celles-ci."
   }
 }

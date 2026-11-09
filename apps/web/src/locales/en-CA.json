@@ -71,7 +71,8 @@
     "YOUNG_WORKER_LIMIT": "This would exceed young-worker hour limits.",
     "NOT_AVAILABLE": "This is outside your availability.",
     "OVER_PERSONAL_WEEKLY_MAX": "This would exceed your weekly hour cap.",
-    "ONBOARDING_INCOMPLETE": "Onboarding isn't finished for this position (for example a criminal record check or required training)."
+    "ONBOARDING_INCOMPLETE": "Onboarding isn't finished for this position (for example a criminal record check or required training).",
+    "ACCOMMODATION": "Outside your work restrictions."
   },
   "demo": {
     "banner": "Demo with sample data — nothing you do here is saved.",
@@ -206,7 +207,9 @@
     "staff_onboarding_expiring": "{{name}}'s {{item}} expires on {{date}}.",
     "care_offered": "After today's incident: you don't have to carry it alone. Support details and options are on your Today screen.",
     "care_checkins_due": "{{count}} people may need a check-in after a critical incident.",
-    "care_break_requested": "{{name}} asked for time away from the chair."
+    "care_break_requested": "{{name}} asked for time away from the chair.",
+    "accommodation_set": "HR recorded work restrictions for you. The schedule will respect them; see them on your profile.",
+    "accommodation_review": "{{name}}'s work restrictions are due for review on {{date}}."
   },
   "today": {
     "morning": "Good morning",
@@ -1150,6 +1153,10 @@
       "care": {
         "name": "Care after incidents",
         "help": "Private check-ins, support details and time off the chair after a rescue, ambulance call or injury."
+      },
+      "accommodation": {
+        "name": "Accommodation",
+        "help": "Work restrictions for accommodation and return to work, enforced by the scheduler. HR only; no medical details."
       }
     },
     "positions": "Positions",
@@ -1940,5 +1947,46 @@
     "askBreak": "I'd like time off the chair",
     "breakSent": "Your supervisor has been told. Take the time you need.",
     "imOkay": "I'm okay, thanks"
+  },
+  "accommodation": {
+    "title": "Work restrictions",
+    "help": "Accommodation and return-to-work limits the scheduler enforces. Supervisors see only that a shift is outside this person's restrictions.",
+    "add": "Add restrictions",
+    "addHelp": "Record the limits only. Never record a diagnosis or medical details here.",
+    "none": "No work restrictions on file.",
+    "label": "Label",
+    "labelHint": "A general label, for example \"Return to work\" or \"Family responsibilities\".",
+    "defaultLabel": "Return to work",
+    "starts": "Starts",
+    "ends": "Ends (optional)",
+    "reviewOn": "Review on (optional)",
+    "maxShiftLabel": "Longest shift (hours)",
+    "maxWeekLabel": "Most hours per week",
+    "notBeforeLabel": "No start before",
+    "notAfterLabel": "No finish after",
+    "daysOff": "Days not to schedule",
+    "noPositions": "Positions not to schedule",
+    "save": "Save restrictions",
+    "saved": "Saved. The schedule now respects these limits.",
+    "close": "Close (restrictions lifted)",
+    "closed": "Closed.",
+    "status": {
+      "ACTIVE": "Active",
+      "CLOSED": "Closed"
+    },
+    "dates": "{{from}} to {{to}}",
+    "untilReview": "until closed",
+    "review": "review {{date}}",
+    "maxShift": "shifts up to {{h}} h",
+    "maxWeek": "up to {{h}} h a week",
+    "notBefore": "no start before {{time}}",
+    "notAfter": "no finish after {{time}}",
+    "daysOffList": "not on {{days}}",
+    "positionsExcluded_one": "{{count}} position excluded",
+    "positionsExcluded_other": "{{count}} positions excluded",
+    "noLimits": "No limits set.",
+    "privacy": "Only HR sees these details, and every view is logged. The employee sees their own restrictions.",
+    "mine": "My work restrictions",
+    "mineHelp": "Agreed with HR. The schedule won't book you outside these."
   }
 }
