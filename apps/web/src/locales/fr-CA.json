@@ -41,7 +41,21 @@
     "OPEN": "Ouvert",
     "CLOSURE_RECOMMENDED": "Fermeture recommandée — en attente du sauveteur en chef",
     "CLOSED": "Fermé",
-    "updated": "Mis à jour à {{time}}"
+    "updated": "Mis à jour à {{time}} · actualisation automatique",
+    "page": "Appeler le sauveteur en chef",
+    "pageHelp": "Il le reçoit tout de suite sur son téléphone.",
+    "message": "Message",
+    "messageHint": "Par exemple : « Un parent demande un changement de cours à l'accueil. »",
+    "send": "Envoyer l'appel",
+    "paged": "Sauveteur en chef appelé.",
+    "emptyTitle": "Aucun bassin configuré",
+    "emptyBody": "Un superviseur ajoute les bassins et les limites du permis dans Paramètres.",
+    "chlorine": "Cl libre",
+    "bathers": "Baigneurs",
+    "lastReading": "Dernière mesure à {{time}}",
+    "noReading": "Aucune mesure aujourd'hui",
+    "guardsNeeded_one": "{{count}} sauveteur requis",
+    "guardsNeeded_other": "{{count}} sauveteurs requis"
   },
   "blocks": {
     "NOT_ACTIVE": "Votre compte n'est pas actif.",
@@ -220,7 +234,10 @@
     "NOT_CLOCKED_IN": "Votre arrivée n'est pas pointée.",
     "TIME_OFF_OVERLAPS": "Vous avez déjà demandé congé pour une partie de ces jours.",
     "ALREADY_STARTED": "Ce congé est commencé. Demandez à votre superviseur de le modifier.",
-    "NOT_ACTIVE": "Cette demande est déjà fermée."
+    "NOT_ACTIVE": "Cette demande est déjà fermée.",
+    "THRESHOLDS_NOT_CONFIGURED": "Les limites de ce bassin ne sont pas encore définies. Un superviseur les définit dans Paramètres.",
+    "NO_RECOMMENDATION": "Aucune fermeture n'attend de décision.",
+    "NOT_CLOSED": "Ce bassin n'est pas fermé."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -316,5 +333,91 @@
       "ABSENT": "Absent",
       "EXCUSED": "Motivé"
     }
+  },
+  "ops": {
+    "title": "Registre du bassin",
+    "description": "Inscrivez la chimie et le nombre de baigneurs. Une mesure hors des limites du permis recommande une fermeture que le sauveteur en chef confirme.",
+    "record": "Inscrire une mesure",
+    "recordHelp": "Valeurs en ppm. Laissez vide ce que vous n'avez pas testé.",
+    "pool": "Bassin",
+    "notConfigured": "limites non définies",
+    "freeChlorine": "Chlore libre",
+    "totalChlorine": "Chlore total",
+    "temp": "Eau °C",
+    "bathers": "Baigneurs dans l'eau",
+    "bathersHint": "Sert à calculer le nombre de sauveteurs requis.",
+    "save": "Enregistrer la mesure",
+    "inRange": "Dans les limites du permis.",
+    "outOfRange": "Hors des limites du permis. Fermeture recommandée; le sauveteur en chef a été avisé.",
+    "decide": "Décision requise",
+    "confirm": "Confirmer la fermeture",
+    "dismiss": "Le nouveau test est bon",
+    "dismissNote": "Résultat du nouveau test",
+    "dismissPlaceholder": "p. ex. Testé de nouveau à 10 h 15 : Cl libre 1,8, pH 7,4",
+    "dismissConfirm": "Garder le bassin ouvert",
+    "reopen": "Rouvrir le bassin",
+    "done": {
+      "CONFIRM": "Bassin fermé. L'accueil le voit maintenant.",
+      "DISMISS": "Le bassin reste ouvert.",
+      "REOPEN": "Bassin rouvert."
+    },
+    "today": "Mesures d'aujourd'hui",
+    "noReadings": "Aucune mesure aujourd'hui.",
+    "time": "Heure",
+    "check": "Signature",
+    "signOff": "Signer",
+    "signed": "Mesure signée.",
+    "unsigned": "Non signée"
+  },
+  "incidents": {
+    "title": "Incidents",
+    "description": "Les rapports sont chiffrés. En ouvrir un exige un motif, qui est consigné.",
+    "file": "Remplir un rapport",
+    "fileHelp": "Décrivez ce qui s'est passé pendant que c'est frais. Tenez-vous-en aux faits.",
+    "when": "Quand",
+    "category": "Type",
+    "categories": {
+      "FIRST_AID": "Premiers soins",
+      "RESCUE": "Sauvetage",
+      "EMS_CALLED": "Ambulance appelée",
+      "INJURY": "Blessure d'un employé",
+      "BEHAVIOUR": "Comportement",
+      "FACILITY": "Problème d'installation",
+      "OTHER": "Autre"
+    },
+    "summary": "Ce qui s'est passé",
+    "people": "Personnes en cause",
+    "peopleHint": "Le rôle et l'âge suffisent, p. ex. « baigneur, environ 9 ans ».",
+    "actions": "Ce que vous avez fait",
+    "witnesses": "Témoins (facultatif)",
+    "ems": "Les services d'urgence ont été appelés",
+    "submit": "Envoyer le rapport de façon sécurisée",
+    "filed": "Rapport envoyé de façon sécurisée",
+    "filedBody": "Votre superviseur l'a reçu. Merci de l'avoir rédigé.",
+    "another": "Remplir un autre rapport",
+    "recent": "30 derniers jours",
+    "recentHelp": "Seuls le type, l'heure et le lieu s'affichent ici.",
+    "none": "Aucun incident dans les 30 derniers jours.",
+    "opened_one": "Ouvert {{count}} fois",
+    "opened_other": "Ouvert {{count}} fois",
+    "open": "Ouvrir",
+    "purposeHelp": "L'ouverture d'un rapport est consignée avec votre motif.",
+    "purpose": "Motif de l'ouverture",
+    "purposes": {
+      "review": "Revue de sécurité du superviseur",
+      "workerComp": "Réclamation pour accident du travail",
+      "healthAuthority": "Rapport à l'autorité sanitaire",
+      "insurance": "Assurances",
+      "legal": "Demande juridique"
+    },
+    "openLogged": "Ouvrir le rapport (consigné)",
+    "fields": {
+      "summary": "Ce qui s'est passé",
+      "peopleInvolved": "Personnes en cause",
+      "actionsTaken": "Ce qui a été fait",
+      "witnesses": "Témoins"
+    },
+    "yes": "Oui",
+    "no": "Non"
   }
 }

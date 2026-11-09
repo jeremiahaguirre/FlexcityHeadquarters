@@ -41,7 +41,21 @@
     "OPEN": "Open",
     "CLOSURE_RECOMMENDED": "Closure recommended — awaiting Head Lifeguard",
     "CLOSED": "Closed",
-    "updated": "Updated {{time}}"
+    "updated": "Updated at {{time}} · refreshes automatically",
+    "page": "Page the head lifeguard",
+    "pageHelp": "They get it right away on their phone.",
+    "message": "Message",
+    "messageHint": "For example: \"Parent asking about lesson change at the desk.\"",
+    "send": "Send page",
+    "paged": "Head lifeguard paged.",
+    "emptyTitle": "No pools set up yet",
+    "emptyBody": "A supervisor adds pools and their permit limits in Settings.",
+    "chlorine": "Free Cl",
+    "bathers": "Bathers",
+    "lastReading": "Last reading {{time}}",
+    "noReading": "No reading yet today",
+    "guardsNeeded_one": "{{count}} guard needed",
+    "guardsNeeded_other": "{{count}} guards needed"
   },
   "blocks": {
     "NOT_ACTIVE": "Your account is not active.",
@@ -220,7 +234,10 @@
     "NOT_CLOCKED_IN": "You're not clocked in.",
     "TIME_OFF_OVERLAPS": "You already asked for time off during part of these days.",
     "ALREADY_STARTED": "This time off has started. Ask your supervisor to change it.",
-    "NOT_ACTIVE": "This request is already closed."
+    "NOT_ACTIVE": "This request is already closed.",
+    "THRESHOLDS_NOT_CONFIGURED": "This pool's limits aren't set yet. A supervisor sets them in Settings.",
+    "NO_RECOMMENDATION": "There's no closure waiting for a decision.",
+    "NOT_CLOSED": "This pool isn't closed."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -316,5 +333,91 @@
       "ABSENT": "Absent",
       "EXCUSED": "Excused"
     }
+  },
+  "ops": {
+    "title": "Pool log",
+    "description": "Record chemistry and bather counts. Readings outside the permit limits recommend a closure for the head lifeguard to confirm.",
+    "record": "Record a reading",
+    "recordHelp": "Values in ppm. Leave blank what you didn't test.",
+    "pool": "Pool",
+    "notConfigured": "limits not set",
+    "freeChlorine": "Free chlorine",
+    "totalChlorine": "Total chlorine",
+    "temp": "Water °C",
+    "bathers": "Bathers in the water",
+    "bathersHint": "Used to work out how many guards are needed.",
+    "save": "Save reading",
+    "inRange": "Within the permit limits.",
+    "outOfRange": "Outside the permit limits. Closure recommended; the head lifeguard has been notified.",
+    "decide": "Needs a decision",
+    "confirm": "Confirm closure",
+    "dismiss": "Retest was fine",
+    "dismissNote": "Retest result",
+    "dismissPlaceholder": "e.g. Retested at 10:15: free Cl 1.8, pH 7.4",
+    "dismissConfirm": "Keep the pool open",
+    "reopen": "Reopen pool",
+    "done": {
+      "CONFIRM": "Pool closed. The front desk sees it now.",
+      "DISMISS": "Pool stays open.",
+      "REOPEN": "Pool reopened."
+    },
+    "today": "Today's readings",
+    "noReadings": "No readings yet today.",
+    "time": "Time",
+    "check": "Sign-off",
+    "signOff": "Sign off",
+    "signed": "Reading signed off.",
+    "unsigned": "Not signed off"
+  },
+  "incidents": {
+    "title": "Incidents",
+    "description": "Reports are encrypted. Opening one asks for a reason and is logged.",
+    "file": "File a report",
+    "fileHelp": "Write what happened while it's fresh. Stick to facts.",
+    "when": "When",
+    "category": "Type",
+    "categories": {
+      "FIRST_AID": "First aid",
+      "RESCUE": "Rescue",
+      "EMS_CALLED": "Ambulance called",
+      "INJURY": "Staff injury",
+      "BEHAVIOUR": "Behaviour",
+      "FACILITY": "Facility issue",
+      "OTHER": "Other"
+    },
+    "summary": "What happened",
+    "people": "People involved",
+    "peopleHint": "Roles and ages are enough, e.g. \"swimmer, about 9\".",
+    "actions": "What you did",
+    "witnesses": "Witnesses (optional)",
+    "ems": "Emergency services were called",
+    "submit": "File report securely",
+    "filed": "Report filed securely",
+    "filedBody": "Your supervisor has it. Thank you for writing it up.",
+    "another": "File another report",
+    "recent": "Last 30 days",
+    "recentHelp": "Only the type, time and place show here.",
+    "none": "No incidents in the last 30 days.",
+    "opened_one": "Opened {{count}} time",
+    "opened_other": "Opened {{count}} times",
+    "open": "Open",
+    "purposeHelp": "Opening a report is logged with your reason.",
+    "purpose": "Reason for opening",
+    "purposes": {
+      "review": "Supervisor safety review",
+      "workerComp": "Workers' compensation claim",
+      "healthAuthority": "Health authority report",
+      "insurance": "Insurance",
+      "legal": "Legal request"
+    },
+    "openLogged": "Open report (logged)",
+    "fields": {
+      "summary": "What happened",
+      "peopleInvolved": "People involved",
+      "actionsTaken": "What was done",
+      "witnesses": "Witnesses"
+    },
+    "yes": "Yes",
+    "no": "No"
   }
 }
