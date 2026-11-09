@@ -55,3 +55,9 @@ export async function audit(
     },
   });
 }
+
+/** Every tenant id (via a SECURITY DEFINER function), for background jobs. */
+export async function tenantIds(prisma: PrismaClient = db()): Promise<string[]> {
+  const rows = await prisma.$queryRaw<Array<{ id: string }>>`SELECT all_tenant_ids() AS id`;
+  return rows.map((r) => r.id);
+}

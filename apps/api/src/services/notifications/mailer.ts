@@ -3,6 +3,7 @@
  * locale picks the language.
  */
 import type { PrismaClient } from '@prisma/client';
+import { tenantIds, withTenant } from '../../lib/db.js';
 
 export interface Mail {
   to: string;
@@ -97,29 +98,33 @@ export function hasEmailTemplate(template: string): boolean {
 }
 
 /**
- * Sends pending outbox emails. Runs with the OWNER connection in the worker
- * (cross-tenant, no RLS context). Retries with a cap; failures are recorded.
+ * Sends pending outbox emails, tenant by tenant under row-level security.
+ * Retries up to 5 times; failures are recorded on the row.
  */
 export async function deliverOutbox(prisma: PrismaClient, mailer: Mailer, batch = 50): Promise<{ sent: number; failed: number }> {
-  const pending = await prisma.emailOutbox.findMany({
-    where: { sentAt: null, attempts: { lt: 5 } },
-    orderBy: { createdAt: 'asc' },
-    take: batch,
-  });
   let sent = 0;
   let failed = 0;
-  for (const m of pending) {
-    try {
-      const { subject, text } = renderEmail(m.template, m.locale, m.params as Params);
-      await mailer.send({ to: m.toEmail, subject, text });
-      await prisma.emailOutbox.update({ where: { id: m.id }, data: { sentAt: new Date(), attempts: { increment: 1 } } });
-      sent++;
-    } catch (err) {
-      await prisma.emailOutbox.update({
-        where: { id: m.id },
-        data: { attempts: { increment: 1 }, lastError: String(err instanceof Error ? err.message : err).slice(0, 500) },
-      });
-      failed++;
+  for (const tenantId of await tenantIds(prisma)) {
+    const pending = await withTenant(
+      tenantId,
+      (tx) => tx.emailOutbox.findMany({ where: { sentAt: null, attempts: { lt: 5 } }, orderBy: { createdAt: 'asc' }, take: batch }),
+      { prisma },
+    );
+    for (const m of pending) {
+      let error: string | null = null;
+      try {
+        const { subject, text } = renderEmail(m.template, m.locale, m.params as Params);
+        await mailer.send({ to: m.toEmail, subject, text });
+        sent++;
+      } catch (err) {
+        error = String(err instanceof Error ? err.message : err).slice(0, 500);
+        failed++;
+      }
+      await withTenant(
+        tenantId,
+        (tx) => tx.emailOutbox.update({ where: { id: m.id }, data: error ? { attempts: { increment: 1 }, lastError: error } : { sentAt: new Date(), attempts: { increment: 1 } } }),
+        { prisma },
+      );
     }
   }
   return { sent, failed };

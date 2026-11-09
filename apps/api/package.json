@@ -12,7 +12,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy && node --env-file-if-exists=.env scripts/apply-sql.mjs db/rls.sql db/union_hub.sql",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "worker": "tsx src/worker.ts",
+    "start:worker": "node dist/worker.js"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
