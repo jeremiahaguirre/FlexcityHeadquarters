@@ -1,0 +1,60 @@
+/**
+ * The only place times, dates, hours and money are formatted (FH Typography doc).
+ * Times are shown in the FACILITY's wall-clock time: callers pass the
+ * facility-local ISO string the API returns (e.g. "2026-11-14T06:30:00.000-07:00"),
+ * and we format its wall-clock part without converting time zones.
+ */
+type Locale = 'en-CA' | 'fr-CA' | string;
+
+function wallClock(localIso: string): Date {
+  const wall = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}:\d{2})(?::(\d{2}))?)?/.exec(localIso);
+  if (!wall) throw new Error(`Not a local ISO timestamp: ${localIso}`);
+  return new Date(`${wall[1]}T${wall[2] ?? '00:00'}:${wall[3] ?? '00'}Z`);
+}
+
+const fmt = (locale: Locale, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { ...opts, timeZone: 'UTC' });
+
+/** Keep "6 h 30" / "6:30 a.m." on one line. */
+const glue = (s: string) => s.replace(/ /g, '\u00a0');
+
+/** "6:30 a.m." · "6 h 30" */
+export function formatTime(localIso: string, locale: Locale): string {
+  return glue(fmt(locale, { hour: 'numeric', minute: '2-digit' }).format(wallClock(localIso)));
+}
+
+/** "6:00 a.m.–2:00 p.m." · "6 h – 14 h" */
+export function formatTimeRange(startIso: string, endIso: string, locale: Locale): string {
+  const f = fmt(locale, { hour: 'numeric', minute: '2-digit' });
+  if (locale.startsWith('fr')) {
+    const short = (iso: string) => glue(f.format(wallClock(iso)).replace(/ h 00$/, ' h'));
+    return `${short(startIso)} – ${short(endIso)}`;
+  }
+  return `${glue(f.format(wallClock(startIso)))}–${glue(f.format(wallClock(endIso)))}`;
+}
+
+/** short: "Sat, Nov 14" · "sam. 14 nov."; long: "Saturday, November 14" · "samedi 14 novembre" */
+export function formatDate(localIso: string, locale: Locale, style: 'short' | 'long' = 'short'): string {
+  return fmt(locale, style === 'short' ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' }).format(wallClock(localIso));
+}
+
+/** schedule: "7.5 h" · "7,5 h"; payroll: "7.50 h" · "7,50 h" */
+export function formatHours(hours: number | string, locale: Locale, style: 'schedule' | 'payroll' = 'schedule'): string {
+  const n = typeof hours === 'string' ? Number(hours) : hours;
+  const opts = style === 'payroll' ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 2 };
+  return `${new Intl.NumberFormat(locale, opts).format(n)} h`;
+}
+
+/** "$22.50" · "22,50 $" */
+export function formatMoney(amount: number | string, locale: Locale): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'CAD' }).format(typeof amount === 'string' ? Number(amount) : amount);
+}
+
+/** "1,250" · "1 250" */
+export function formatNumber(n: number, locale: Locale): string {
+  return new Intl.NumberFormat(locale).format(n);
+}
+
+/** Facility-local ISO for "now"-relative labels; "Today" etc. are handled by callers via i18n. */
+export function localDateKey(localIso: string): string {
+  return localIso.slice(0, 10);
+}
