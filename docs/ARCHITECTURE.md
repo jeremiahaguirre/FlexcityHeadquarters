@@ -71,4 +71,12 @@ Chemical readings are checked against each pool's configured thresholds; there a
 
 ## Events
 
-Domain events (`src/lib/events.ts`) are published only after the transaction commits. The WebSocket gateway and push-notification worker (see roadmap) subscribe there.
+Domain events (`src/lib/events.ts`) are published only after the transaction commits. Notifications are written to the database and announced with `pg_notify`; browsers listen over server-sent events (`/api/notifications/stream`) and emails go out through an outbox the worker drains. Push notifications (see roadmap) will subscribe to the same events.
+
+## Union Hub access
+
+Access follows union membership, not employer roles: `/api/me` grants `union.hub` to union members while the organization has the hub switched on, and every hub query re-checks membership of the local through the separate `flexcity_union` database role.
+
+## Static demo
+
+`NEXT_PUBLIC_DEMO=1` builds the web app as static files (GitHub Pages) with no API. `src/lib/demoApi.ts` answers requests in the browser: GETs replay responses recorded per role from a seeded local stack (`scripts/capture-demo.cjs` → `src/lib/demo-fixtures/`), with dates moved so the sample week is always the current one; changes are accepted but not kept. Fixture names are swapped for a fictional organization when recorded.

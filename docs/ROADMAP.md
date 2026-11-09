@@ -3,30 +3,35 @@
 ## Before the first customer
 
 - [ ] **Legal review of provincial rules** (see `COMPLIANCE.md` checklist); flip `verified` per province.
-- [ ] HTTP routes for: availability, time off (request/approve), shift CRUD and publishing, users/positions/pay rates admin, certifications upload and verification, pool threshold setup, punch approval queue.
-- [ ] Union Hub HTTP routes (service exists) behind a separate deployment using `UNION_DATABASE_URL`.
-- [ ] Notifications: push (web push / FCM) and email workers subscribing to domain events; WebSocket gateway for the front-desk board (currently polls every 15 s).
-- [ ] Shift Board: supervisor approval queue UI; "my schedule" page.
-- [ ] Chemical reading entry UI and Head Lifeguard closure confirmation UI.
-- [ ] Rate limiting and account lockout on login; password reset by email.
+- [ ] Push notifications (web push / FCM). In-app notifications (live over SSE) and email already work.
 - [ ] SSO (SAML / Entra ID) for municipal tenants.
 - [ ] Subprocessor list and data-residency assessment.
-- [ ] Holiday-pay entitlement (`holidayPay.ts`) wired into the payroll run.
-- [ ] Tenant-configurable school calendars for young-worker rules (default is weekdays, Sept–June).
+- [ ] Union Hub as its own deployment. Today the API mounts its routes when `UNION_DATABASE_URL` is set; the database role and per-local keys already keep employers out.
+- [ ] Translate payroll export problems and warnings (currently English-only text from the API).
 
 ## Next
 
-- [ ] Disciplinary records UI with signature capture.
-- [ ] Offline-first instructor attendance (PWA, IndexedDB queue with conflict handling).
-- [ ] Certification expiry reminders (30/60/90 days).
-- [ ] Nightly reliability recalculation (currently computed on request).
 - [ ] Demand generation from facility hours, lesson registrations and bather-load history.
+- [ ] Bulk staff import (CSV) for onboarding a new organization.
+- [ ] Creating pools from Settings (thresholds are editable; new pools are added by support today).
 
 ## Later
 
 - [ ] Constraint-solver scheduling (OR-Tools CP-SAT in a Python worker) behind the existing `proposeSchedule` input/output types, for multi-facility terms.
 - [ ] Direct integrations with payroll providers (ADP, Ceridian Dayforce, Wagepoint) in addition to CSV.
-- [ ] Public job board (SEO pages) for seasonal hiring.
+- [ ] Search-engine-friendly job pages (server-rendered, structured data).
+
+## Done
+
+- Shift board with eligibility reasons, overtime approval and optimistic locking; schedule builder with assistant; my schedule.
+- Availability, time off, timeclock with geofence, punch review; chemical readings and closure workflow; incidents with sealed narratives.
+- Staff directory, invitations, roles, pay rates, verified certifications, discipline records with signature capture.
+- Login lockout and rate limits, password reset by email.
+- Payroll CSV export with overtime, statutory holiday pay and vacation pay.
+- Settings: organization, facilities, pay codes, school calendar, collective-agreement overrides, pool thresholds.
+- Offline-first instructor attendance; certification reminders at 90/60/30/7 days; nightly reliability recalculation.
+- Union Hub: discussions, seniority list, membership managed by stewards.
+- Job postings and a public careers page.
 
 ## Deliberately out of scope
 

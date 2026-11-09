@@ -7,7 +7,7 @@ Aquatic staff scheduling, timekeeping and operations for Canadian municipalities
 - **apps/api** — Node.js, Express, TypeScript, Prisma, PostgreSQL (row-level security)
 - **apps/web** — Next.js, Tailwind, i18next (English / Canadian French)
 
-**Live demo:** https://jeremiahaguirre.github.io/FlexcityHeadquarters/ — a static build with sample data and no server (sign in as `guard@demo.flexcity` or `frontdesk@demo.flexcity`, password `flexcity-dev`). Build it locally with `npm run build:demo --workspace apps/web`.
+**Live demo:** https://jeremiahaguirre.github.io/FlexcityHeadquarters/ — a static build with sample data and no server (pick a role on the sign-in page: lifeguard, supervisor, HR, front desk or union steward). Build it locally with `npm run build:demo --workspace apps/web`. Its sample data is recorded from a seeded local stack by `apps/web/scripts/capture-demo.cjs`; rerun it after changing what a screen loads.
 
 ## What works today
 
@@ -67,7 +67,7 @@ npm run dev --workspace apps/api
 npm run dev --workspace apps/web
 ```
 
-Open http://kelowna.localhost:3000 and sign in as any demo user, e.g. `guard@kelowna.test`, `supervisor@kelowna.test` or `frontdesk@kelowna.test`. The password for all of them is `flexcity-dev`.
+Open http://kelowna.localhost:3000 and sign in as any demo user, e.g. `guard@kelowna.test`, `supervisor@kelowna.test`, `hr@kelowna.test`, `frontdesk@kelowna.test` or `steward@kelowna.test`. The password for all of them is `flexcity-dev`.
 
 ## Tests
 
