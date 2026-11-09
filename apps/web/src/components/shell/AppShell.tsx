@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CityBrand, CoBrand, type Organization } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { Dialog } from '@/components/ui/Dialog';
 import { cn } from '@/lib/cn';
@@ -19,7 +20,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function AppShell({ children, organization }: { children: ReactNode; organization: string }) {
+export function AppShell({ children, organization }: { children: ReactNode; organization: Organization }) {
   const { t } = useTranslation();
   const { can } = useSession();
   const pathname = usePathname();
@@ -54,6 +55,10 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
           <Link href="/" className="inline-block rounded-xl" aria-label="FlexcityHeadquarters">
             <Logo size={40} />
           </Link>
+          {/* The organization sits under the FH logo, never in its place. */}
+          <div className="mt-4 flex min-h-[2.5rem] items-center border-t border-line pt-4">
+            <CityBrand org={organization} showName={!!organization.logoUrl} />
+          </div>
         </div>
         <nav aria-label={t('shell.mainNav')} className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
           {GROUPS.map((g) => {
@@ -76,10 +81,10 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         {/* Top bar */}
         <header className="sticky top-0 z-30 border-b border-line bg-page/85 backdrop-blur supports-[backdrop-filter]:bg-page/70">
           <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 md:px-8">
-            <Link href="/" className="rounded-xl md:hidden" aria-label="FlexcityHeadquarters">
-              <Logo size={34} />
+            <Link href="/" className="min-w-0 rounded-xl md:hidden" aria-label={`FlexcityHeadquarters · ${organization.name}`}>
+              <CoBrand org={organization} logoSize={30} citySize="sm" />
             </Link>
-            <p className="hidden truncate text-small font-medium text-muted md:block">{organization}</p>
+            <span className="hidden md:block" />
             <div className="flex items-center gap-1">
               <NotificationBell />
               <div className="md:hidden">

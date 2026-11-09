@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CoBrand } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
@@ -10,11 +11,8 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   return (
     <div className="min-h-screen bg-page">
       <header className="border-b border-line bg-panel">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Logo variant="mark" size={36} />
-            <span className="text-body-strong">{tenant?.name ?? 'FlexcityHeadquarters'}</span>
-          </div>
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          {tenant ? <CoBrand org={{ name: tenant.name, logoUrl: tenant.logoUrl }} logoSize={32} /> : <Logo size={32} />}
           <AuthLanguageSwitch />
         </div>
       </header>

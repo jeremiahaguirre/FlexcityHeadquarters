@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CityBrand } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
@@ -15,7 +16,12 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
         <div className="mx-auto w-full max-w-sm">
           <div className="mb-10 flex flex-col items-center text-center">
             <Logo variant="stacked" size={88} />
-            {tenant ? <p className="mt-5 rounded-full bg-surface px-3 py-1 text-caption text-muted">{tenant.name}</p> : null}
+            {tenant ? (
+              <div className="mt-6 flex w-full flex-col items-center gap-2 border-t border-line pt-5">
+                <CityBrand org={{ name: tenant.name, logoUrl: tenant.logoUrl }} size="lg" />
+                {tenant.logoUrl ? <p className="text-caption text-muted">{tenant.name}</p> : null}
+              </div>
+            ) : null}
           </div>
           {children}
         </div>

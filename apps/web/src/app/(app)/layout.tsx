@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider fallback={<ShellLoading />}>
       <ServiceWorker />
-      <AppShell organization={tenant?.name ?? ''}>{children}</AppShell>
+      <AppShell organization={{ name: tenant?.name ?? '', logoUrl: tenant?.logoUrl ?? null }}>{children}</AppShell>
     </SessionProvider>
   );
 }
