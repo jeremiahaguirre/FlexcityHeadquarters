@@ -81,6 +81,12 @@ enum ShiftType {
 }
 
 /// Lifecycle only. Claim/swap state lives on ShiftOffer, not here.
+enum CareStatus {
+  OFFERED
+  CHECKED_IN
+  DECLINED
+}
+
 enum OvertimeEntryKind {
   ACCEPTED
   REFUSED
@@ -242,6 +248,8 @@ model Tenant {
   roleOverrides Json @default("{}")
   /// Overtime equalization: { countRefusals, clause, periodStartMonth }.
   overtimePolicy Json @default("{}")
+  /// Care after critical incidents: { eap: "Employee assistance: 1-800-…" }.
+  careSettings   Json @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -429,6 +437,24 @@ model Position {
   onboarding      PositionOnboarding[]
 
   @@unique([tenantId, name])
+}
+
+/// A private check-in offered after a critical incident. Only that it was
+/// offered and followed up is kept, never what was said.
+model CareCheckIn {
+  id            String     @id @default(uuid()) @db.Uuid
+  tenantId      String     @db.Uuid
+  userId        String     @db.Uuid
+  incidentId    String     @db.Uuid
+  status        CareStatus @default(OFFERED)
+  dueAt         DateTime   @db.Timestamptz(3)
+  breakAskedAt  DateTime?  @db.Timestamptz(3)
+  completedAt   DateTime?  @db.Timestamptz(3)
+  completedById String?    @db.Uuid
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@unique([incidentId, userId])
+  @@index([status, dueAt])
 }
 
 /// Overtime equalization ledger: overtime accepted (automatic from approvals

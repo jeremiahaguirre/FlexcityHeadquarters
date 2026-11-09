@@ -25,6 +25,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/staff', key: 'staff', group: 'manage', permissions: ['users.read'] },
   { href: '/manage/overtime', key: 'overtime', group: 'manage', permissions: ['overtime.manage'] },
   { href: '/manage/onboarding', key: 'onboarding', group: 'manage', permissions: ['onboarding.hr', 'onboarding.lead'] },
+  { href: '/manage/care', key: 'care', group: 'manage', permissions: ['care.manage'] },
   { href: '/manage/people', key: 'people', group: 'manage', permissions: ['reliability.read'] },
   { href: '/manage/compliance', key: 'compliance', group: 'manage', permissions: ['compliance.report'] },
   { href: '/manage/certifications', key: 'certifications', group: 'manage', permissions: ['certs.verify'] },

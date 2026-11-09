@@ -152,7 +152,8 @@
     "deck": "Rotation",
     "compliance": "Compliance",
     "onboarding": "Onboarding",
-    "overtime": "Overtime"
+    "overtime": "Overtime",
+    "care": "Care"
   },
   "navGroups": {
     "mine": "My work",
@@ -202,7 +203,10 @@
     "discipline_response": "An employee added their response to a record you issued.",
     "rotation_overdue": "Rotation overdue at {{station}}. Move the guards along.",
     "onboarding_expiring": "{{item}} expires on {{date}}. Renew it to keep getting shifts.",
-    "staff_onboarding_expiring": "{{name}}'s {{item}} expires on {{date}}."
+    "staff_onboarding_expiring": "{{name}}'s {{item}} expires on {{date}}.",
+    "care_offered": "After today's incident: you don't have to carry it alone. Support details and options are on your Today screen.",
+    "care_checkins_due": "{{count}} people may need a check-in after a critical incident.",
+    "care_break_requested": "{{name}} asked for time away from the chair."
   },
   "today": {
     "morning": "Good morning",
@@ -1142,6 +1146,10 @@
       "overtime": {
         "name": "Overtime equalization",
         "help": "Overtime offered in agreement order (fewest hours, then seniority), call-out records, and warnings before anyone is skipped."
+      },
+      "care": {
+        "name": "Care after incidents",
+        "help": "Private check-ins, support details and time off the chair after a rescue, ambulance call or injury."
       }
     },
     "positions": "Positions",
@@ -1907,5 +1915,30 @@
   "brand": {
     "category": "FlexcityHeadquarters · Workforce management",
     "motto": "Every shift covered. Every person cared for. Every need met."
+  },
+  "care": {
+    "title": "Care after incidents",
+    "description": "After a rescue, an ambulance call or a staff injury, everyone involved is offered a private check-in, your support details and time away from the chair. Only that care was offered and followed up is kept.",
+    "toCheck_one": "{{count}} person to check on",
+    "toCheck_other": "{{count}} people to check on",
+    "toCheckHelp": "A short private conversation within a day. Nothing you discuss is recorded here.",
+    "none": "Nobody needs a check-in right now",
+    "noneHelp": "When a serious incident is reported, the people involved appear here.",
+    "askedBreak": "Asked for a break {{time}}",
+    "checkedIn": "I checked in",
+    "recorded": "Recorded. Thank you for looking out for them.",
+    "closed_one": "{{count}} follow-up closed in the last 30 days.",
+    "closed_other": "{{count}} follow-ups closed in the last 30 days.",
+    "support": "Support details",
+    "supportHelp": "Shown to staff after a critical incident.",
+    "eap": "Employee assistance and other support",
+    "eapHint": "For example your EFAP phone number, hours and website, or a peer-support contact.",
+    "saved": "Saved.",
+    "privacy": "Check-ins record only that they were offered and followed up, by whom and when, never what was said.",
+    "mineTitle": "Checking in after the incident",
+    "mineBody": "What happened can stay with people. You don't have to handle it alone. A supervisor will check in with you, and you can reach confidential support any time.",
+    "askBreak": "I'd like time off the chair",
+    "breakSent": "Your supervisor has been told. Take the time you need.",
+    "imOkay": "I'm okay, thanks"
   }
 }

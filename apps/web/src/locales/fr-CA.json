@@ -152,7 +152,8 @@
     "deck": "Rotation",
     "compliance": "Conformité",
     "onboarding": "Intégration",
-    "overtime": "Heures supplémentaires"
+    "overtime": "Heures supplémentaires",
+    "care": "Soutien"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -202,7 +203,10 @@
     "discipline_response": "Un employé a ajouté sa réponse à un dossier que vous avez émis.",
     "rotation_overdue": "Rotation en retard à {{station}}. Faites avancer les sauveteurs.",
     "onboarding_expiring": "{{item}} expire le {{date}}. Renouvelez-le pour continuer à recevoir des quarts.",
-    "staff_onboarding_expiring": "{{item}} de {{name}} expire le {{date}}."
+    "staff_onboarding_expiring": "{{item}} de {{name}} expire le {{date}}.",
+    "care_offered": "Après l’incident d’aujourd’hui : vous n’avez pas à le porter seul. Les ressources et options sont sur votre écran Aujourd’hui.",
+    "care_checkins_due": "{{count}} personnes pourraient avoir besoin d’un suivi après un incident grave.",
+    "care_break_requested": "{{name}} a demandé à quitter la chaise un moment."
   },
   "today": {
     "morning": "Bonjour",
@@ -1142,6 +1146,10 @@
       "overtime": {
         "name": "Répartition des heures supplémentaires",
         "help": "Heures supplémentaires offertes selon l’ordre de la convention (le moins d’heures, puis l’ancienneté), registre des appels et avertissements avant de sauter quelqu’un."
+      },
+      "care": {
+        "name": "Soutien après un incident",
+        "help": "Suivis confidentiels, ressources de soutien et temps hors de la chaise après un sauvetage, un appel d’ambulance ou une blessure."
       }
     },
     "positions": "Postes",
@@ -1907,5 +1915,30 @@
   "brand": {
     "category": "FlexcityHeadquarters · Gestion de la main-d’œuvre",
     "motto": "Chaque quart comblé. Chaque personne épaulée. Chaque besoin satisfait."
+  },
+  "care": {
+    "title": "Soutien après un incident",
+    "description": "Après un sauvetage, un appel d’ambulance ou une blessure d’un employé, toutes les personnes concernées se voient offrir un suivi confidentiel, vos ressources de soutien et du temps hors de la chaise. Seul le fait que le soutien a été offert et assuré est conservé.",
+    "toCheck_one": "{{count}} personne à rencontrer",
+    "toCheck_other": "{{count}} personnes à rencontrer",
+    "toCheckHelp": "Une courte conversation confidentielle dans la journée. Rien de ce qui est dit n’est consigné ici.",
+    "none": "Personne n’a besoin d’un suivi pour le moment",
+    "noneHelp": "Quand un incident grave est signalé, les personnes concernées apparaissent ici.",
+    "askedBreak": "Pause demandée {{time}}",
+    "checkedIn": "J’ai fait le suivi",
+    "recorded": "Consigné. Merci de veiller sur elles.",
+    "closed_one": "{{count}} suivi terminé dans les 30 derniers jours.",
+    "closed_other": "{{count}} suivis terminés dans les 30 derniers jours.",
+    "support": "Ressources de soutien",
+    "supportHelp": "Montrées au personnel après un incident grave.",
+    "eap": "Programme d’aide aux employés et autres ressources",
+    "eapHint": "Par exemple le numéro, les heures et le site de votre PAEF, ou une personne-ressource en soutien par les pairs.",
+    "saved": "Enregistré.",
+    "privacy": "Les suivis consignent seulement qu’ils ont été offerts et assurés, par qui et quand, jamais ce qui a été dit.",
+    "mineTitle": "Un suivi après l’incident",
+    "mineBody": "Ce qui s’est passé peut rester avec nous. Vous n’avez pas à le vivre seul. Un superviseur prendra de vos nouvelles, et vous pouvez joindre un soutien confidentiel en tout temps.",
+    "askBreak": "J’aimerais quitter la chaise un moment",
+    "breakSent": "Votre superviseur a été avisé. Prenez le temps qu’il vous faut.",
+    "imOkay": "Ça va, merci"
   }
 }

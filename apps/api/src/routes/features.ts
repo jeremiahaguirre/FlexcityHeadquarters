@@ -1,3 +1,5 @@
+import { offerCare } from '../services/people/care.js';
+import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
@@ -26,6 +28,7 @@ import { peopleRouter } from './people.js';
 import { complianceRouter, deckRouter } from './deck.js';
 import { onboardingRouter } from './onboarding.js';
 import { overtimeRouter } from './overtime.js';
+import { careRouter } from './care.js';
 import { settingsRouter } from './settings.js';
 import { lessonsRouter } from './lessons.js';
 import { unionRouter } from './union.js';
@@ -48,6 +51,7 @@ api.use(deckRouter);
 api.use(complianceRouter);
 api.use(onboardingRouter);
 api.use(overtimeRouter);
+api.use(careRouter);
 api.use(settingsRouter);
 api.use(lessonsRouter);
 api.use(unionRouter);
@@ -288,7 +292,14 @@ api.post(
         narrative: z.object({ summary: z.string().min(1), peopleInvolved: z.string(), actionsTaken: z.string(), emsCalled: z.boolean(), witnesses: z.string().optional() }),
       })
       .parse(req.body);
-    const out = await withTenant(a.tenantId, (tx) => createIncident(tx, keys(), tenantKekId(a.tenantId), { ...body, tenantId: a.tenantId, reportedById: a.userId }));
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const created = await createIncident(tx, keys(), tenantKekId(a.tenantId), { ...body, tenantId: a.tenantId, reportedById: a.userId });
+      // Serious incidents start private care check-ins for everyone involved.
+      if ((await tenantFeatures(a.tenantId)).care) {
+        await offerCare(tx, { id: created.id, tenantId: a.tenantId, facilityId: body.facilityId, reportedById: a.userId, occurredAt: body.occurredAt, category: body.category }, body.narrative.emsCalled);
+      }
+      return created;
+    });
     res.status(201).json(out);
   }),
 );

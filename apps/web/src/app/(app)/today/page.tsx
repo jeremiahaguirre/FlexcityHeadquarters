@@ -1,6 +1,7 @@
 'use client';
 
 import { MyStation } from '@/components/punch/MyStation';
+import { MyCare } from '@/components/people/MyCare';
 import { MyOnboarding } from '@/components/people/MyOnboarding';
 import { ArrowRight, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
@@ -65,6 +66,7 @@ export default function TodayPage() {
           {greeting}, {me?.firstName}
         </h1>
       </header>
+      <MyCare />
       <MyStation />
       <MyOnboarding compact />
 
