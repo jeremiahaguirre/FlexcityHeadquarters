@@ -4,6 +4,7 @@
  * needs an explicit acknowledgement from the person assigning.
  */
 import type { Prisma, ShiftType } from '@prisma/client';
+import { chargeOvertime, fairnessCheck } from './overtime.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';
@@ -137,8 +138,12 @@ export async function assignShift(
     evaluation = evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle));
     if (!evaluation.eligible) throw new HttpError(422, 'NOT_ELIGIBLE', 'This person cannot work this shift.', { blocks: evaluation.blocks });
     if (evaluation.overtimeHours.gt(0) && !acknowledgeOvertime) {
+      // Say who would be skipped under the overtime-equalization order, if anyone.
+      const fairness = await fairnessCheck(tx, shiftId, userId);
       throw conflict('OVERTIME_REQUIRES_ACK', `This adds ${evaluation.overtimeHours.toFixed(2)} h of overtime. Confirm to assign anyway.`, {
         overtimeHours: evaluation.overtimeHours.toFixed(2),
+        skipped: fairness?.skipped ?? [],
+        clause: fairness?.clause ?? null,
       });
     }
   }
@@ -161,6 +166,7 @@ export async function assignShift(
     after: { userId, overtimeAcknowledged: acknowledgeOvertime && !!evaluation?.overtimeHours.gt(0), overtimeHours: evaluation?.overtimeHours.toString() },
   });
 
+  if (userId && evaluation?.overtimeHours.gt(0)) await chargeOvertime(tx, actor.tenantId, actor.userId, userId, shiftId, evaluation.overtimeHours.toFixed(2), bundle.shift.positionId);
   const shift = await tx.shift.findUniqueOrThrow({ where: { id: shiftId } });
   const drafts: NotificationDraft[] = [];
   if (shift.status === 'PUBLISHED') {

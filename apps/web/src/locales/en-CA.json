@@ -151,7 +151,8 @@
     "people": "People review",
     "deck": "Rotation",
     "compliance": "Compliance",
-    "onboarding": "Onboarding"
+    "onboarding": "Onboarding",
+    "overtime": "Overtime"
   },
   "navGroups": {
     "mine": "My work",
@@ -1137,6 +1138,10 @@
       "onboarding": {
         "name": "Onboarding",
         "help": "Checklists for HR, supervisors and new staff; per-position checks and training such as criminal record checks and child protection."
+      },
+      "overtime": {
+        "name": "Overtime equalization",
+        "help": "Overtime offered in agreement order (fewest hours, then seniority), call-out records, and warnings before anyone is skipped."
       }
     },
     "positions": "Positions",
@@ -1860,5 +1865,47 @@
     "affected_other": "{{count}} people in this position can’t be scheduled until HR records it.",
     "othersOpen_one": "HR or your supervisor has {{count}} more item to finish.",
     "othersOpen_other": "HR or your supervisor have {{count}} more items to finish."
+  },
+  "overtime": {
+    "title": "Overtime",
+    "description": "Overtime offered in the order your collective agreement sets: fewest hours charged this period first, then seniority. Accepted overtime is recorded automatically; record phone call-outs here.",
+    "position": "Position",
+    "order": "Who's next",
+    "orderHelp": "Charged since {{date}}. Ties go to the more senior person.",
+    "person": "Person",
+    "charged": "Hours charged",
+    "refusals": "Refused",
+    "seniority": "Seniority date",
+    "next": "Next",
+    "call": "Record a call",
+    "callTitle": "Call-out: {{name}}",
+    "callHelp": "What happened when you offered the overtime. Refusals and unanswered calls count as charged hours if your policy says so.",
+    "outcome": "Outcome",
+    "kind": {
+      "ACCEPTED": "Accepted",
+      "REFUSED": "Refused",
+      "NO_ANSWER": "No answer"
+    },
+    "hours": "Hours offered",
+    "when": "When",
+    "note2": "Note (optional)",
+    "notePlaceholder": "Called 7:10 a.m., left a message",
+    "save": "Save",
+    "recorded": "Recorded.",
+    "policy": "Your agreement's rule",
+    "policyHelp": "How overtime is equalized in your collective agreement.",
+    "clause": "Article or clause",
+    "clauseHint": "Shown with every warning, so supervisors know which rule applies.",
+    "periodStart": "Period starts in",
+    "countRefusals": "Charge refused and unanswered offers as if worked",
+    "policySaved": "Saved.",
+    "note": "Warnings appear before overtime goes to someone out of order. They inform the decision; a supervisor still decides, and every override is logged.",
+    "skips_one": "This skips {{count}} person ahead in the overtime order",
+    "skips_other": "This skips {{count}} people ahead in the overtime order",
+    "skippedLine": "{{name}}: {{hours}} h charged, seniority {{since}}"
+  },
+  "brand": {
+    "category": "FlexcityHeadquarters · Workforce management",
+    "motto": "Every shift covered. Every person cared for. Every need met."
   }
 }

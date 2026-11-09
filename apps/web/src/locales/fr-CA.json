@@ -151,7 +151,8 @@
     "people": "Suivi du personnel",
     "deck": "Rotation",
     "compliance": "Conformité",
-    "onboarding": "Intégration"
+    "onboarding": "Intégration",
+    "overtime": "Heures supplémentaires"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -1137,6 +1138,10 @@
       "onboarding": {
         "name": "Intégration",
         "help": "Listes pour les RH, les superviseurs et le nouveau personnel; vérifications et formations par poste, comme le casier judiciaire et la protection de l’enfance."
+      },
+      "overtime": {
+        "name": "Répartition des heures supplémentaires",
+        "help": "Heures supplémentaires offertes selon l’ordre de la convention (le moins d’heures, puis l’ancienneté), registre des appels et avertissements avant de sauter quelqu’un."
       }
     },
     "positions": "Postes",
@@ -1860,5 +1865,47 @@
     "affected_other": "{{count}} personnes de ce poste ne peuvent pas être à l’horaire tant que les RH ne l’ont pas consigné.",
     "othersOpen_one": "Les RH ou votre superviseur ont encore {{count}} élément à terminer.",
     "othersOpen_other": "Les RH ou votre superviseur ont encore {{count}} éléments à terminer."
+  },
+  "overtime": {
+    "title": "Heures supplémentaires",
+    "description": "Les heures supplémentaires sont offertes dans l’ordre prévu par votre convention collective : le moins d’heures imputées pendant la période d’abord, puis l’ancienneté. Les heures acceptées sont consignées automatiquement; consignez ici les appels téléphoniques.",
+    "position": "Poste",
+    "order": "Qui est le suivant",
+    "orderHelp": "Imputées depuis le {{date}}. En cas d’égalité, la personne la plus ancienne passe en premier.",
+    "person": "Personne",
+    "charged": "Heures imputées",
+    "refusals": "Refus",
+    "seniority": "Date d’ancienneté",
+    "next": "Suivant",
+    "call": "Consigner un appel",
+    "callTitle": "Appel : {{name}}",
+    "callHelp": "Ce qui s’est passé quand vous avez offert les heures. Les refus et appels sans réponse comptent comme heures imputées si votre politique le prévoit.",
+    "outcome": "Résultat",
+    "kind": {
+      "ACCEPTED": "Accepté",
+      "REFUSED": "Refusé",
+      "NO_ANSWER": "Sans réponse"
+    },
+    "hours": "Heures offertes",
+    "when": "Quand",
+    "note2": "Note (facultative)",
+    "notePlaceholder": "Appelé à 7 h 10, message laissé",
+    "save": "Enregistrer",
+    "recorded": "Consigné.",
+    "policy": "La règle de votre convention",
+    "policyHelp": "Comment votre convention collective répartit les heures supplémentaires.",
+    "clause": "Article ou clause",
+    "clauseHint": "Affiché avec chaque avertissement, pour que les superviseurs sachent quelle règle s’applique.",
+    "periodStart": "La période commence en",
+    "countRefusals": "Imputer les offres refusées ou sans réponse comme des heures travaillées",
+    "policySaved": "Enregistré.",
+    "note": "Les avertissements apparaissent avant que des heures supplémentaires soient attribuées hors de l’ordre. Ils éclairent la décision; un superviseur décide, et chaque dérogation est consignée.",
+    "skips_one": "Cela saute {{count}} personne devant dans l’ordre des heures supplémentaires",
+    "skips_other": "Cela saute {{count}} personnes devant dans l’ordre des heures supplémentaires",
+    "skippedLine": "{{name}} : {{hours}} h imputées, ancienneté {{since}}"
+  },
+  "brand": {
+    "category": "FlexcityHeadquarters · Gestion de la main-d’œuvre",
+    "motto": "Chaque quart comblé. Chaque personne épaulée. Chaque besoin satisfait."
   }
 }

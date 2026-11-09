@@ -81,6 +81,12 @@ enum ShiftType {
 }
 
 /// Lifecycle only. Claim/swap state lives on ShiftOffer, not here.
+enum OvertimeEntryKind {
+  ACCEPTED
+  REFUSED
+  NO_ANSWER
+}
+
 enum OnboardingOwner {
   HR
   SUPERVISOR
@@ -234,6 +240,8 @@ model Tenant {
   payCodeMappings PayCodeMapping[]
   /// Dev console per-role customization: { ROLE: { grant: [], revoke: [], hideMenu: [] } }.
   roleOverrides Json @default("{}")
+  /// Overtime equalization: { countRefusals, clause, periodStartMonth }.
+  overtimePolicy Json @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -421,6 +429,24 @@ model Position {
   onboarding      PositionOnboarding[]
 
   @@unique([tenantId, name])
+}
+
+/// Overtime equalization ledger: overtime accepted (automatic from approvals
+/// and assignments) and call-outs refused or unanswered (recorded by a supervisor).
+model OvertimeEntry {
+  id           String            @id @default(uuid()) @db.Uuid
+  tenantId     String            @db.Uuid
+  userId       String            @db.Uuid
+  positionId   String?           @db.Uuid
+  shiftId      String?           @db.Uuid
+  kind         OvertimeEntryKind
+  hours        Decimal           @db.Decimal(6, 2)
+  occurredAt   DateTime          @db.Timestamptz(3)
+  recordedById String            @db.Uuid
+  note         String?
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@index([userId, occurredAt])
 }
 
 /// One onboarding requirement in a city's catalogue: a check, training, policy

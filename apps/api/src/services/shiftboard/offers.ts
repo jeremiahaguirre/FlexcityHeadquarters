@@ -11,6 +11,7 @@
  *    time off may have changed since the claim.
  *  - The original holder remains assigned (and responsible) until COMPLETED.
  */
+import { chargeOvertime } from '../scheduling/overtime.js';
 import { Prisma } from '@prisma/client';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
@@ -175,7 +176,9 @@ export async function decideOffer(
     overtimeApprovedBy: actor.userId,
     evaluatedAt: new Date().toISOString(),
   } satisfies Prisma.InputJsonValue;
-  return completeTransfer(tx, actor, offerId, bundle.shift.version, bundle.shift.userId, claimantId, snapshot);
+  const events = await completeTransfer(tx, actor, offerId, bundle.shift.version, bundle.shift.userId, claimantId, snapshot);
+  await chargeOvertime(tx, actor.tenantId, actor.userId, claimantId, bundle.shift.id, evaluation.overtimeHours.toFixed(2), bundle.shift.positionId);
+  return events;
 }
 
 export async function cancelOffer(tx: Tx, actor: Actor, offerId: string): Promise<void> {

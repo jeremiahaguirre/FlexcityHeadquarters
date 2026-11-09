@@ -1,5 +1,6 @@
 'use client';
 
+import { OvertimeOrder, type Skipped } from '@/components/OvertimeOrder';
 import { CalendarRange, ChevronLeft, ChevronRight, Plus, Send, Sparkles, UserCheck, UserMinus, XCircle } from 'lucide-react';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -324,7 +325,7 @@ function ShiftDialog({ shift, onClose, onChanged }: { shift: Shift; onClose: () 
   const toast = useToast();
   const candidates = useQuery<{ shiftVersion: number; candidates: Candidate[] }>(`/api/shifts/${shift.id}/candidates`);
   const [busy, setBusy] = useState<string | null>(null);
-  const [ackFor, setAckFor] = useState<{ userId: string; hours: string } | null>(null);
+  const [ackFor, setAckFor] = useState<{ userId: string; hours: string; skipped: Skipped[]; clause: string | null } | null>(null);
   const [cancelling, setCancelling] = useState(false);
 
   async function assign(userId: string | null, acknowledgeOvertime = false) {
@@ -335,7 +336,7 @@ function ShiftDialog({ shift, onClose, onChanged }: { shift: Shift; onClose: () 
       onChanged();
       onClose();
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'OVERTIME_REQUIRES_ACK' && userId) setAckFor({ userId, hours: (e.details as { overtimeHours: string }).overtimeHours });
+      if (e instanceof ApiError && e.code === 'OVERTIME_REQUIRES_ACK' && userId) setAckFor({ userId, ...(e.details as { overtimeHours: string; skipped?: Skipped[]; clause?: string | null }), hours: (e.details as { overtimeHours: string }).overtimeHours, skipped: (e.details as { skipped?: Skipped[] }).skipped ?? [], clause: (e.details as { clause?: string | null }).clause ?? null });
       else toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
     } finally {
       setBusy(null);
@@ -370,6 +371,7 @@ function ShiftDialog({ shift, onClose, onChanged }: { shift: Shift; onClose: () 
         {ackFor ? (
           <div className="rounded-xl bg-warn-bg p-4">
             <p className="text-small text-ink">{t('builder.overtimeAsk', { hours: ackFor.hours })}</p>
+            <OvertimeOrder skipped={ackFor.skipped} clause={ackFor.clause} />
             <div className="mt-3 flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setAckFor(null)}>
                 {t('common.cancel')}

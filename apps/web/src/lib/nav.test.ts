@@ -28,7 +28,7 @@ describe('menus per role', () => {
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/approvals', '/manage/staff', '/manage/onboarding', '/manage/people', '/manage/compliance', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/settings'],
+      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/people', '/manage/compliance', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/settings'],
       home: '/manage/approvals',
     });
   });
@@ -52,7 +52,7 @@ describe('menus per role', () => {
       return phoneTabs(visibleNav((p) => perms.has(p as never))).tabs.map((n) => n.href);
     };
     expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/headcount', '/board']);
-    expect(tabsFor('HR_ADMIN')).toEqual(['/manage/approvals', '/manage/staff', '/manage/onboarding', '/manage/people']);
+    expect(tabsFor('HR_ADMIN')).toEqual(['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding']);
     expect(tabsFor('UNION_STEWARD')).toEqual(['/union']);
   });
 

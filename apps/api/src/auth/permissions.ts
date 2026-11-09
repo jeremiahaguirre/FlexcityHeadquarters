@@ -49,6 +49,7 @@ export const PERMISSIONS = [
   'onboarding.hr', // HR onboarding items: checks, forms, training; waive items
   'onboarding.lead', // supervisor onboarding items: orientation, equipment, shadow shifts
   'onboarding.configure', // the catalogue and which positions need which items
+  'overtime.manage', // overtime equalization: standings, call-outs, policy
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -85,6 +86,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'compliance.report',
     'onboarding.hr',
     'onboarding.configure',
+    'overtime.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -118,6 +120,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'compliance.report',
     'onboarding.lead',
     'onboarding.configure',
+    'overtime.manage',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,

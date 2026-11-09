@@ -27,6 +27,7 @@ export const FEATURES = {
   jobs: { default: true, permissions: ['jobs.manage'] },
   union: { default: false, permissions: ['union.hub', 'seniority.read'] },
   rotations: { default: true, permissions: ['deck.rotate'] },
+  overtime: { default: true, permissions: ['overtime.manage'] },
   onboarding: { default: true, permissions: ['onboarding.hr', 'onboarding.lead', 'onboarding.configure'] },
   emailNotifications: { default: true, permissions: [] },
 } as const satisfies Record<string, { default: boolean; permissions: readonly Permission[] }>;

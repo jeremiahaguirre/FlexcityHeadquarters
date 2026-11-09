@@ -1,5 +1,6 @@
 'use client';
 
+import { OvertimeOrder } from '@/components/OvertimeOrder';
 import { Check, ClipboardCheck, X } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,7 +19,7 @@ import { formatDate, formatHours, formatTime, formatTimeRange } from '@/lib/form
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
-interface Claim { id: string; claimant: { name: string } | null; complianceSnapshot: { overtimeHours?: string } | null; shift: ShiftLike & { id: string } }
+interface Claim { id: string; claimant: { id: string; name: string } | null; complianceSnapshot: { overtimeHours?: string } | null; shift: ShiftLike & { id: string } }
 interface TimeOff { id: string; type: string; startsAt: string; endsAt: string; note: string | null; user: { name: string }; affectedShifts: number }
 interface Punch {
   id: string;
@@ -98,9 +99,12 @@ export default function ApprovalsPage() {
                 aside={<StatusPill tone="warn">{t('approvals.overtime', { hours: c.complianceSnapshot?.overtimeHours ?? '?' })}</StatusPill>}
                 footer={
                   <>
-                    <p className="mr-auto text-small">
-                      <span className="font-semibold">{c.claimant?.name}</span> {t('approvals.wantsShift')}
-                    </p>
+                    <div className="mr-auto text-small">
+                      <p>
+                        <span className="font-semibold">{c.claimant?.name}</span> {t('approvals.wantsShift')}
+                      </p>
+                      {c.claimant ? <ClaimFairness shiftId={c.shift.id} userId={c.claimant.id} /> : null}
+                    </div>
                     <Button variant="secondary" size="sm" icon={<X className="h-4 w-4" aria-hidden="true" />} loading={busy === `DENY-${c.id}`} onClick={() => void decideClaim(c.id, 'DENY')}>
                       {t('approvals.decline')}
                     </Button>
@@ -248,4 +252,10 @@ export default function ApprovalsPage() {
       </Dialog>
     </>
   );
+}
+
+/** Who would be skipped in the overtime order if this claim is approved. */
+function ClaimFairness({ shiftId, userId }: { shiftId: string; userId: string }) {
+  const check = useQuery<{ overtime: boolean; skipped: Array<{ userId: string; name: string; chargedHours: number; seniorityDate: string | null }>; clause: string | null }>(`/api/overtime/check?shiftId=${shiftId}&userId=${userId}`);
+  return check.data?.overtime ? <OvertimeOrder skipped={check.data.skipped} clause={check.data.clause} /> : null;
 }
