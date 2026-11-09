@@ -10,6 +10,7 @@ import { addDays } from '../lib/time.js';
 import { passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
 import { resolveFeatures } from '../services/platform/features.js';
+import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
 import { setUserCustomRoles } from '../services/people/customRoles.js';
 
 export const staffRouter = Router();
@@ -41,7 +42,7 @@ staffRouter.get(
           where: { id: a.userId },
           include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { include: certInclude } },
         }),
-        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true } }),
+        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true, roleOverrides: true } }),
         tx.userCustomRole.findMany({ where: { userId: a.userId }, include: { customRole: { select: { id: true, name: true, nameFr: true } } } }),
       ]),
     );
@@ -61,6 +62,8 @@ staffRouter.get(
       customRoles: myRoles.map((r) => r.customRole),
       permissions: [...permissions].sort(),
       features,
+      // Menu items the city's Dev console hid for every one of this person's roles.
+      hiddenMenu: hiddenMenuFor(me.roles, parseOverrides(tenant.roleOverrides)),
       employmentStatus: me.employmentStatus,
       positions: me.positions.map((p) => p.position),
       certifications: me.certifications.map(certView),

@@ -251,3 +251,27 @@ describe('certification status at a moment', () => {
     ], at)).toBe('VALID');
   });
 });
+
+import { hiddenMenuFor, permissionsWithOverrides, setMenu, setPermission } from '../../src/services/platform/roleOverrides.js';
+
+describe('per-role overrides', () => {
+  it('hiding a screen removes only the permissions no other visible screen needs', () => {
+    const o = setMenu({}, 'AQUATIC_SUPERVISOR', '/manage/settings', false);
+    // ops.configure and tenant-wide settings: supervisors have ops.configure only for settings.
+    expect(o.AQUATIC_SUPERVISOR!.hideMenu).toEqual(['/manage/settings']);
+    expect(permissionsWithOverrides(['AQUATIC_SUPERVISOR'], o).has('ops.configure')).toBe(false);
+  });
+  it('a menu item stays visible to someone if any of their roles still shows it', () => {
+    const o = setMenu({}, 'STAFF', '/board', false);
+    expect(hiddenMenuFor(['STAFF'], o)).toEqual(['/board']);
+    expect(hiddenMenuFor(['STAFF', 'HEAD_LIFEGUARD'], o)).toEqual([]);
+    expect(permissionsWithOverrides(['STAFF', 'HEAD_LIFEGUARD'], o).has('shiftboard.claim')).toBe(true);
+  });
+  it('permission toggles are relative to the defaults and undo cleanly', () => {
+    let o = setPermission({}, 'FRONT_DESK', 'payroll.export', true);
+    expect(o.FRONT_DESK!.grant).toEqual(['payroll.export']);
+    o = setPermission(o, 'FRONT_DESK', 'payroll.export', false);
+    expect(o.FRONT_DESK!.grant).toEqual([]);
+    expect(o.FRONT_DESK!.revoke).toEqual([]);
+  });
+});

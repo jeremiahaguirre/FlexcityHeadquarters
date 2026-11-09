@@ -1034,7 +1034,8 @@
       "import": "Importer le personnel",
       "roles": "Rôles",
       "pools": "Bassins",
-      "billing": "Facturation"
+      "billing": "Facturation",
+      "access": "Menus et accès"
     },
     "logo": "Logo de la ville",
     "logoHelp": "Affiché à côté du logo FlexcityHeadquarters sur la page de connexion, dans l'application et sur la page carrières. Il ne remplace jamais le logo FH.",
@@ -1743,5 +1744,22 @@
     "incidentsHelp": "Type et heure seulement. Les rapports restent scellés; en ouvrir un exige une raison et est consigné.",
     "noIncidents": "Aucun.",
     "footer": "Établi à partir de l’horaire, du pointage, du registre de rotation, des certifications, des dénombrements et du registre de chimie tels qu’ils ont été consignés. La production de ce rapport est inscrite au journal d’audit."
+  },
+  "access": {
+    "help": "Activez ou désactivez chaque élément de menu pour chaque niveau d’accès dans cette ville. Désactiver un élément retire aussi l’accès que seul cet écran utilise, donc l’application le refuse aussi. Les changements s’appliquent à la prochaine action; chacun est consigné dans le journal d’audit de la ville.",
+    "reset": "Réinitialiser",
+    "resetDone": "{{role}} retrouve l’accès standard.",
+    "default": "Standard",
+    "featureOff": "Fonction désactivée pour cette ville",
+    "menuSwitch": "{{item}} pour {{role}}",
+    "permSwitch": "{{perm}} pour {{role}}",
+    "hidden": "{{item}} est maintenant masqué pour {{role}}.",
+    "shown": "{{item}} est maintenant affiché pour {{role}}.",
+    "saved": "Enregistré.",
+    "advanced": "Permissions individuelles",
+    "advancedHelp": "Contrôle détaillé de ce que chaque niveau d’accès peut faire. Les cellules ombrées diffèrent du standard. Les permissions sensibles touchent la paie, les dossiers personnels, la discipline ou la configuration de la ville.",
+    "showAdvanced": "Afficher",
+    "hideAdvanced": "Masquer",
+    "sensitive": "Sensible"
   }
 }

@@ -213,6 +213,8 @@ model Tenant {
   positions       Position[]
   ruleOverrides   RuleOverride[]
   payCodeMappings PayCodeMapping[]
+  /// Dev console per-role customization: { ROLE: { grant: [], revoke: [], hideMenu: [] } }.
+  roleOverrides Json @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,

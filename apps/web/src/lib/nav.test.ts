@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROLE_PERMISSIONS } from '../../../api/src/auth/permissions';
-import { homePath, phoneTabs, visibleNav } from './nav';
+import { MENU } from '../../../api/src/auth/menu';
+import { NAV, homePath, phoneTabs, visibleNav } from './nav';
 
 /** Each sign-in sees only the screens its job needs (permissions come from the API's matrix). */
 function menu(...roles: Array<keyof typeof ROLE_PERMISSIONS>) {
@@ -53,5 +54,15 @@ describe('menus per role', () => {
     expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/headcount', '/board']);
     expect(tabsFor('HR_ADMIN')).toEqual(['/manage/approvals', '/manage/staff', '/manage/people', '/manage/compliance']);
     expect(tabsFor('UNION_STEWARD')).toEqual(['/union']);
+  });
+
+  it('matches the API menu, so the Dev console can switch every item', () => {
+    const web = NAV.filter((n) => n.ready).map((n) => ({ href: n.href, key: n.key, group: n.group, permissions: [n.permission].flat() }));
+    expect(web).toEqual(MENU);
+  });
+
+  it('a menu item the city hid is gone even with the permission', () => {
+    const perms = new Set(ROLE_PERMISSIONS.STAFF);
+    expect(visibleNav((p) => perms.has(p as never), ['/board']).map((n) => n.href)).not.toContain('/board');
   });
 });

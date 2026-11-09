@@ -12,7 +12,7 @@ import type { PanelProps } from './types';
 const GROUPS: Array<{ key: string; features: string[] }> = [
   { key: 'scheduling', features: ['shiftBoard', 'scheduleAssistant', 'availability', 'timeOff', 'lessons'] },
   { key: 'time', features: ['timeclock', 'payroll'] },
-  { key: 'deck', features: ['poolChemistry', 'statusBoard', 'incidents'] },
+  { key: 'deck', features: ['poolChemistry', 'headcounts', 'rotations', 'statusBoard', 'incidents'] },
   { key: 'people', features: ['discipline', 'reliability', 'jobs', 'union'] },
   { key: 'communication', features: ['emailNotifications'] },
 ];
@@ -32,7 +32,7 @@ export function FeaturesPanel({ id, city, reload }: PanelProps) {
   return (
     <div className="grid gap-6">
       <p className="text-small text-muted">{t('platform.featuresHelp')}</p>
-      {GROUPS.map((g) => (
+      {[...GROUPS, { key: 'other', features: Object.keys(city.features).filter((k) => !GROUPS.some((g) => g.features.includes(k))) }].filter((g) => g.features.length).map((g) => (
         <Card key={g.key}>
           <CardHeader title={t(`platform.featureGroups.${g.key}`)} />
           <CardBody className="pt-2">

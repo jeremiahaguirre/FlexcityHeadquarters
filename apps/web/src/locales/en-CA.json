@@ -1034,7 +1034,8 @@
       "import": "Import staff",
       "roles": "Roles",
       "pools": "Pools",
-      "billing": "Billing"
+      "billing": "Billing",
+      "access": "Menus and access"
     },
     "logo": "City logo",
     "logoHelp": "Shown beside the FlexcityHeadquarters logo on the sign-in page, in the app and on the careers page. It never replaces the FH logo.",
@@ -1743,5 +1744,22 @@
     "incidentsHelp": "Type and time only. Reports stay sealed; opening one asks for a reason and is logged.",
     "noIncidents": "None.",
     "footer": "Built from the schedule, timeclock, rotation log, certification records, headcounts and chemistry log as recorded at the time. This report's creation is recorded in the audit log."
+  },
+  "access": {
+    "help": "Switch any menu item on or off for each access level in this city. Switching an item off also removes the access only that screen uses, so the app refuses it too. Changes apply on people's next action; every change is logged in the city's audit trail.",
+    "reset": "Reset",
+    "resetDone": "{{role}} is back to the standard access.",
+    "default": "Standard",
+    "featureOff": "Feature off for this city",
+    "menuSwitch": "{{item}} for {{role}}",
+    "permSwitch": "{{perm}} for {{role}}",
+    "hidden": "{{item}} is now hidden for {{role}}.",
+    "shown": "{{item}} is now shown for {{role}}.",
+    "saved": "Saved.",
+    "advanced": "Individual permissions",
+    "advancedHelp": "Fine-grained control over what each access level can do. Shaded cells differ from the standard. Sensitive permissions reach pay, personal records, discipline or city setup.",
+    "showAdvanced": "Show",
+    "hideAdvanced": "Hide",
+    "sensitive": "Sensitive"
   }
 }

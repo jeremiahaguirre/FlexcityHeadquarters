@@ -17,6 +17,10 @@ import { previewImport } from '../../services/platform/staffImport.js';
 import { createPool, poolDetailsBody, poolDetailsView, updatePool } from '../../services/ops/pools.js';
 import { CUSTOM_ROLE_PERMISSIONS, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../../services/people/customRoles.js';
 import { forgetTenantLookup, h } from '../context.js';
+import type { AccessRole } from '@prisma/client';
+import { MENU } from '../../auth/menu.js';
+import { PERMISSIONS, type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
+import { parseOverrides, rolePermissions, setMenu, setPermission, type RoleOverrides } from '../../services/platform/roleOverrides.js';
 import { facilityBody } from '../settings.js';
 import { positionBody } from '../staff.js';
 
@@ -458,5 +462,87 @@ citiesRouter.post(
       { timeoutMs: 120_000 }, // up to 2,000 people in one all-or-nothing import
     );
     res.json(out);
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Menus and access per role: every menu item and permission, toggled per city.
+// ---------------------------------------------------------------------------
+const ROLE_KEYS = Object.keys(ROLE_PERMISSIONS) as [AccessRole, ...AccessRole[]];
+
+function accessView(stored: unknown, features: ReturnType<typeof resolveFeatures>) {
+  const overrides = parseOverrides(stored);
+  const featureOf = (p: string) => (FEATURE_KEYS as string[]).find((k) => (FEATURES[k as keyof typeof FEATURES].permissions as readonly string[]).includes(p)) ?? null;
+  return {
+    roles: ROLE_KEYS.map((role) => {
+      const effective = rolePermissions(role, overrides);
+      const hidden = overrides[role]?.hideMenu ?? [];
+      return {
+        role,
+        customized: !!overrides[role] && (overrides[role]!.grant.length + overrides[role]!.revoke.length + overrides[role]!.hideMenu.length > 0),
+        permissions: [...effective].sort(),
+        defaults: [...ROLE_PERMISSIONS[role]].sort(),
+        menu: MENU.map((m) => ({ href: m.href, shown: !hidden.includes(m.href) && m.permissions.some((p) => effective.has(p)) })),
+      };
+    }),
+    menu: MENU.map((m) => ({ ...m, feature: featureOf(m.permissions[0]!), featureOn: (() => { const f = featureOf(m.permissions[0]!); return f ? features[f as keyof typeof features] : true; })() })),
+    permissions: PERMISSIONS.map((p) => ({ key: p, feature: featureOf(p) })),
+  };
+}
+
+async function saveOverrides(id: string, adminId: string, action: string, detail: unknown, change: (o: RoleOverrides) => RoleOverrides) {
+  const out = await cityOr404(id, async (tx) => {
+    const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true } });
+    const next = change(parseOverrides(t.roleOverrides));
+    await tx.tenant.update({ where: { id }, data: { roleOverrides: next as Prisma.InputJsonValue } });
+    await record(tx, adminId, id, action, detail);
+    return accessView(next, resolveFeatures(t.features));
+  });
+  forgetFeatures(id);
+  return out;
+}
+
+citiesRouter.get(
+  '/tenants/:id/access',
+  h(async (req, res) => {
+    platformOf(req);
+    const id = uuid.parse(req.params.id);
+    res.json(await cityOr404(id, async (tx) => {
+      const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true } });
+      return accessView(t.roleOverrides, resolveFeatures(t.features));
+    }));
+  }),
+);
+
+citiesRouter.put(
+  '/tenants/:id/access/menu',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = z.object({ role: z.enum(ROLE_KEYS), href: z.enum(MENU.map((m) => m.href) as [string, ...string[]]), shown: z.boolean() }).parse(req.body);
+    res.json(await saveOverrides(id, p.adminId, 'access.menu', body, (o) => setMenu(o, body.role, body.href, body.shown)));
+  }),
+);
+
+citiesRouter.put(
+  '/tenants/:id/access/permission',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = z.object({ role: z.enum(ROLE_KEYS), permission: z.enum(PERMISSIONS as unknown as [Permission, ...Permission[]]), on: z.boolean() }).parse(req.body);
+    res.json(await saveOverrides(id, p.adminId, 'access.permission', body, (o) => setPermission(o, body.role, body.permission, body.on)));
+  }),
+);
+
+citiesRouter.post(
+  '/tenants/:id/access/reset',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const { role } = z.object({ role: z.enum(ROLE_KEYS) }).parse(req.body);
+    res.json(await saveOverrides(id, p.adminId, 'access.reset', { role }, (o) => {
+      const { [role]: _, ...rest } = o;
+      return rest;
+    }));
   }),
 );

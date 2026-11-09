@@ -16,6 +16,8 @@ export interface Me {
   roles: string[];
   customRoles?: Array<{ id: string; name: string; nameFr: string | null }>;
   permissions: string[];
+  /** Menu items the city hid for this person's roles (Dev console). */
+  hiddenMenu?: string[];
   employmentStatus: string;
   positions: Array<{ id: string; name: string; nameFr: string | null }>;
   certifications: Array<{ id: string; certification: { id: string; name: string; nameFr: string | null }; issueDate: string; expiryDate: string | null; verified: boolean }>;

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CityBrand } from '@/components/CoBrand';
+import { AccessPanel } from '@/components/platform/AccessPanel';
 import { BillingPanel } from '@/components/platform/BillingPanel';
 import { FacilitiesPanel } from '@/components/platform/FacilitiesPanel';
 import { FeaturesPanel } from '@/components/platform/FeaturesPanel';
@@ -19,8 +20,8 @@ import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { RoleEditor } from '@/components/roles/RoleEditor';
 import { type CityDetail, papi, usePlatformQuery } from '@/lib/platform';
 
-type Tab = 'org' | 'features' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing';
-const TABS: Tab[] = ['org', 'features', 'facilities', 'pools', 'positions', 'roles', 'import', 'billing'];
+type Tab = 'org' | 'features' | 'access' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing';
+const TABS: Tab[] = ['org', 'features', 'access', 'facilities', 'pools', 'positions', 'roles', 'import', 'billing'];
 
 function City() {
   const { t } = useTranslation();
@@ -61,6 +62,7 @@ function City() {
       <div className="max-w-4xl">
         {tab === 'org' ? <OrganizationPanel {...props} /> : null}
         {tab === 'features' ? <FeaturesPanel {...props} /> : null}
+        {tab === 'access' ? <AccessPanel {...props} /> : null}
         {tab === 'facilities' ? <FacilitiesPanel {...props} /> : null}
         {tab === 'pools' ? (
           <PoolsEditor

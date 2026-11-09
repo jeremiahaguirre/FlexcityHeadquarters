@@ -39,8 +39,9 @@ export const NAV: NavItem[] = [
   { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: true },
 ];
 
-export function visibleNav(can: (p: string) => boolean): NavItem[] {
-  return NAV.filter((n) => n.ready && (!n.permission || [n.permission].flat().some(can)));
+/** Menu items a person may open, minus any the city's Dev console hid for their roles. */
+export function visibleNav(can: (p: string) => boolean, hidden: readonly string[] = []): NavItem[] {
+  return NAV.filter((n) => n.ready && !hidden.includes(n.href) && (!n.permission || [n.permission].flat().some(can)));
 }
 
 /**
@@ -54,6 +55,6 @@ export function phoneTabs(items: NavItem[]): { tabs: NavItem[]; more: NavItem[] 
   return { tabs, more: items.filter((n) => !tabs.includes(n)) };
 }
 
-export function homePath(can: (p: string) => boolean): string {
-  return visibleNav(can)[0]?.href ?? '/profile';
+export function homePath(can: (p: string) => boolean, hidden: readonly string[] = []): string {
+  return visibleNav(can, hidden)[0]?.href ?? '/profile';
 }

@@ -188,6 +188,9 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
 }
 
 /** Dev console in the static demo: recorded responses; changes look saved but aren't kept. */
+/** Menus-and-access switches flipped in this demo session (never saved). */
+const demoAccess = new Map<string, unknown>();
+
 export async function demoPlatformApi<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   await delay();
   const method = init.method ?? 'GET';
@@ -227,8 +230,32 @@ export async function demoPlatformApi<T>(path: string, init: { method?: string; 
     if (preview[2]) return result as T;
     return { created: result.summary.create, exists: 0, errors: result.summary.error, invited: 0 } as T;
   }
+  // Menus and access: flip switches in the browser so the demo console feels real (nothing is saved).
+  const access = /^\/tenants\/([^/]+)\/access\/(menu|permission|reset)$/.exec(path);
+  if (access) {
+    const key = `/tenants/${access[1]}/access`;
+    const current = (demoAccess.get(key) ?? data.get(key)) as { roles: Array<{ role: string; customized: boolean; permissions: string[]; defaults: string[]; menu: Array<{ href: string; shown: boolean }> }> } | undefined;
+    if (!current) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
+    const b = (init.body ?? {}) as { role: string; href?: string; shown?: boolean; permission?: string; on?: boolean };
+    const next = structuredClone(current);
+    const r = next.roles.find((x) => x.role === b.role);
+    if (r) {
+      if (access[2] === 'menu') r.menu = r.menu.map((m) => (m.href === b.href ? { ...m, shown: !!b.shown } : m));
+      if (access[2] === 'permission') r.permissions = b.on ? [...new Set([...r.permissions, b.permission!])] : r.permissions.filter((p) => p !== b.permission);
+      r.customized = true;
+    }
+    if (access[2] === 'reset') {
+      // Back to the recorded city for that role.
+      const recorded = data.get(key) as typeof current;
+      const i = next.roles.findIndex((x) => x.role === b.role);
+      const orig = recorded.roles.find((x) => x.role === b.role);
+      if (i >= 0 && orig) next.roles[i] = structuredClone(orig);
+    }
+    demoAccess.set(key, next);
+    return next as T;
+  }
   if (method === 'GET') {
-    const body = data.get(path);
+    const body = demoAccess.get(path) ?? data.get(path);
     if (body === undefined) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
     // Open the demo's own sign-in page instead of a recorded local address.
     const city = body as { organization?: { signInUrl?: string } };

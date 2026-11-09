@@ -7,6 +7,7 @@
  * switched off.
  */
 import type { Permission } from '../../auth/permissions.js';
+import { type RoleOverrides, parseOverrides } from './roleOverrides.js';
 import { withTenant } from '../../lib/db.js';
 
 export const FEATURES = {
@@ -45,17 +46,22 @@ export function withoutDisabled<P extends string>(permissions: Set<P>, features:
   return out;
 }
 
-const cache = new Map<string, { at: number; features: FeatureSet }>();
+const cache = new Map<string, { at: number; features: FeatureSet; overrides: RoleOverrides }>();
 const TTL_MS = 30_000;
 
 /** Cached per process; the Dev console clears it when switches change. */
 export async function tenantFeatures(tenantId: string): Promise<FeatureSet> {
+  return (await tenantSettings(tenantId)).features;
+}
+
+/** Feature switches and per-role overrides, cached together. */
+export async function tenantSettings(tenantId: string): Promise<{ features: FeatureSet; overrides: RoleOverrides }> {
   const hit = cache.get(tenantId);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.features;
-  const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true } }));
-  const features = resolveFeatures(row?.features);
-  cache.set(tenantId, { at: Date.now(), features });
-  return features;
+  if (hit && Date.now() - hit.at < TTL_MS) return hit;
+  const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true, roleOverrides: true } }));
+  const entry = { at: Date.now(), features: resolveFeatures(row?.features), overrides: parseOverrides(row?.roleOverrides) };
+  cache.set(tenantId, entry);
+  return entry;
 }
 
 export function forgetFeatures(tenantId?: string): void {

@@ -31,7 +31,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   const { can, me } = useSession();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
-  const items = visibleNav(can);
+  const items = visibleNav(can, me?.hiddenMenu ?? []);
   const { tabs, more } = phoneTabs(items);
 
   const link = (n: NavItem, onClick?: () => void) => {
