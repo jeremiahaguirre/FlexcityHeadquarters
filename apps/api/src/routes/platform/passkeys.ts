@@ -17,7 +17,7 @@ export const platformPasskeyRouter = Router();
 platformPasskeyRouter.post(
   '/auth/passkey/options',
   h(async (req, res) => {
-    if (!allow(`platform-passkey:${req.ip}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!await allow(`platform-passkey:${req.ip}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     res.json(await authenticationOptions(platformRp(), 'platform-login', [], {}));
   }),
 );

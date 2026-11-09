@@ -46,7 +46,7 @@ authRouter.post(
   h(async (req, res) => {
     const { email, password } = loginBody.parse(req.body);
     const tenantId = req.tenantId!;
-    if (!allow(`login:${req.ip}:${tenantId}`, 20, 10 * 60_000)) {
+    if (!await allow(`login:${req.ip}:${tenantId}`, 20, 10 * 60_000)) {
       throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
     }
     // The transaction returns its outcome instead of throwing, so the failed-attempt
@@ -123,7 +123,7 @@ authRouter.post(
     const { email } = z.object({ email: z.string().email() }).parse(req.body);
     const tenantId = req.tenantId!;
     const sub = subdomainOf(req)!;
-    if (allow(`forgot:${req.ip}:${tenantId}`, 5, 15 * 60_000) && allow(`forgot:${email.toLowerCase()}:${tenantId}`, 3, 60 * 60_000)) {
+    if ((await allow(`forgot:${req.ip}:${tenantId}`, 5, 15 * 60_000)) && (await allow(`forgot:${email.toLowerCase()}:${tenantId}`, 3, 60 * 60_000))) {
       await withTenant(tenantId, async (tx) => {
         const user = await tx.user.findUnique({ where: { tenantId_email: { tenantId, email: email.toLowerCase() } } });
         if (!user || user.status !== 'ACTIVE' || user.processingRestrictedAt) return;
@@ -143,7 +143,7 @@ authRouter.post(
   h(async (req, res) => {
     const body = z.object({ token: z.string().min(20).max(100), password: passwordRule }).parse(req.body);
     const tenantId = req.tenantId!;
-    if (!allow(`reset:${req.ip}:${tenantId}`, 10, 15 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!await allow(`reset:${req.ip}:${tenantId}`, 10, 15 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const passwordHash = await hashPassword(body.password);
     const done = await withTenant(tenantId, async (tx) => {
       const t = await consumeAuthToken(tx, body.token);

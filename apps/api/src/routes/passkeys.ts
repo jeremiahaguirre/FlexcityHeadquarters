@@ -33,7 +33,7 @@ export const passkeyAuthRouter = Router();
 passkeyAuthRouter.post(
   '/auth/passkey/options',
   h(async (req, res) => {
-    if (!allow(`passkey:${req.ip}:${req.tenantId}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!await allow(`passkey:${req.ip}:${req.tenantId}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     // Discoverable credentials: the device offers this organization's passkeys itself.
     res.json(await authenticationOptions(await rpFor(req), 'login', [], { tenantId: req.tenantId }));
   }),
@@ -82,7 +82,7 @@ passkeyAuthRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.union([z.object({ challengeId: uuid, response: credential }), z.object({ password: z.string().min(1) })]).parse(req.body);
-    if (!allow(`stepup:${a.userId}`, 10, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!await allow(`stepup:${a.userId}`, 10, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     if ('password' in body) {
       const user = await withTenant(a.tenantId, (tx) => tx.user.findUniqueOrThrow({ where: { id: a.userId } }));
       if (!user.passwordHash || !(await verifyPassword(body.password, user.passwordHash))) throw new HttpError(401, 'WRONG_PASSWORD', 'That password isn’t right.');

@@ -16,7 +16,7 @@ platformAuthRouter.post(
   '/auth/login',
   h(async (req, res) => {
     const { email, password } = z.object({ email: z.string().email(), password: z.string().min(1) }).parse(req.body);
-    if (!allow(`platform-login:${req.ip}`, 10, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
+    if (!await allow(`platform-login:${req.ip}`, 10, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
     const admin = await db().platformAdmin.findUnique({ where: { email: email.toLowerCase() } });
     const ok = admin ? await verifyPassword(password, admin.passwordHash) : await verifyPassword(password, 'scrypt$AAAA$AAAA').then(() => false);
     if (admin?.lockedUntil && admin.lockedUntil > new Date()) throw new HttpError(423, 'ACCOUNT_LOCKED', 'This account is locked for 15 minutes after too many attempts.');
