@@ -85,6 +85,16 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Renouvelez-la avant le ${p.expiryDate} pour rester admissible aux quarts. ${APP_URL()}/profile`,
     }),
   },
+  invoice: {
+    'en-CA': (p) => ({
+      subject: `Invoice ${p.number} from ${p.from}: ${p.total}`,
+      text: `Hello ${p.organization},\n\nInvoice ${p.number} for ${p.period} is ${p.total}, due ${p.dueDate}.\n\n${p.remittance}\n\nQuestions about this invoice: ${p.contact}`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `Facture ${p.number} de ${p.from} : ${p.total}`,
+      text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période du ${p.period} s'élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.remittance}\n\nQuestions sur cette facture : ${p.contact}`,
+    }),
+  },
 };
 
 export function renderEmail(template: string, locale: string, params: Params): { subject: string; text: string } {

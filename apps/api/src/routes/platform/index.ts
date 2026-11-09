@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import express, { Router } from 'express';
 import { requirePlatform, requirePlatformHeader } from '../../auth/platform.js';
 import { platformAuthRouter } from './auth.js';
+import { billingRouter } from './billing.js';
 import { citiesRouter } from './cities.js';
 import { platformPasskeyRouter } from './passkeys.js';
 
@@ -9,4 +10,4 @@ import { platformPasskeyRouter } from './passkeys.js';
 export const platformRouter = Router();
 platformRouter.use(express.json({ limit: '2mb' }), cookieParser(), requirePlatformHeader);
 platformRouter.use(platformAuthRouter, platformPasskeyRouter);
-platformRouter.use(requirePlatform, citiesRouter);
+platformRouter.use(requirePlatform, citiesRouter, billingRouter);

@@ -10,7 +10,7 @@ GRANT USAGE ON SCHEMA public TO flexcity_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO flexcity_app;
 -- No DELETE for the app role on payroll-bearing tables; deletes are limited below.
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM flexcity_app;
-GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole" TO flexcity_app;
+GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole", "InvoiceLine", "Invoice" TO flexcity_app;
 -- Audit and access logs are append-only for the app.
 REVOKE UPDATE ON "AuditLog", "IncidentAccessLog", "TimePunchEdit" FROM flexcity_app;
 -- Migration bookkeeping is not the app's business.

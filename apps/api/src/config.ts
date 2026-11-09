@@ -14,6 +14,13 @@ const schema = z.object({
   ROOT_DOMAIN: z.string().default('localhost'),
   /** Link template for emails; {subdomain} is replaced per organization. */
   PUBLIC_APP_URL: z.string().default('http://{subdomain}.localhost:3000'),
+  /** Shown on FH's invoices to organizations. */
+  BILLING_LEGAL_NAME: z.string().default('FlexcityHeadquarters'),
+  BILLING_ADDRESS: z.string().default(''),
+  BILLING_EMAIL: z.string().default('billing@flexcityhq.example'),
+  BILLING_GST_NUMBER: z.string().default(''),
+  BILLING_QST_NUMBER: z.string().default(''),
+  BILLING_REMITTANCE: z.string().default('Pay by EFT or cheque. Banking details are on file with your accounts payable team; quote the invoice number.'),
   /** Local/dev key-encryption key. Production uses AWS KMS (KMS_KEY_ARN). */
   LOCAL_KEK_BASE64: z.string().optional(),
   KMS_KEY_ARN: z.string().optional(),

@@ -210,6 +210,10 @@ model Facility {
   longitude   Decimal? @db.Decimal(9, 6)
   geoRadiusM  Int      @default(150)
   costCenter  String? // e.g. "CC-405-AQUATICS" for payroll export
+  /// FH billing tier for municipal plans: 1 minor/seasonal, 2 standard, 3 major; null = not billed.
+  billingTier         Int?
+  /// Overrides the tier price (cents per month) when set.
+  billingMonthlyCents Int?
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
@@ -1088,4 +1092,108 @@ model HeadCount {
 
   @@index([poolBodyId, recordedAt])
   @@index([tenantId, recordedAt])
+}
+
+// ------------------------------------------------------------------ Billing
+// FlexcityHeadquarters' own invoicing of organizations (Dev console only).
+
+enum BillingPlan {
+  /// Per facility per month by tier, unlimited staff.
+  MUNICIPAL
+  /// Base fee including 20 active users, then per active user.
+  CLUB
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+}
+
+model BillingAccount {
+  tenantId          String      @id @db.Uuid
+  plan              BillingPlan @default(MUNICIPAL)
+  legalName         String
+  contactName       String?
+  email             String
+  addressLine1      String?
+  addressLine2      String?
+  city              String?
+  /// Two-letter province or territory: decides the sales tax.
+  province          String
+  postalCode        String?
+  poNumber          String?
+  paymentTermsDays  Int         @default(30)
+  taxExempt         Boolean     @default(false)
+  taxExemptNote     String?
+  addOnHr           Boolean     @default(false)
+  addOnOps          Boolean     @default(false)
+  /// CLUB plan: price per active user beyond the 20 included, in cents.
+  clubUserRateCents Int         @default(500)
+  notes             String?
+  createdAt         DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime    @updatedAt @db.Timestamptz(3)
+}
+
+model Invoice {
+  id            String           @id @default(uuid()) @db.Uuid
+  tenantId      String           @db.Uuid
+  /// Assigned when sent, in sequence (FH-2026-0001); drafts have none.
+  number        String?          @unique
+  status        InvoiceStatus    @default(DRAFT)
+  periodStart   DateTime         @db.Date
+  periodEnd     DateTime         @db.Date
+  issueDate     DateTime?        @db.Date
+  dueDate       DateTime?        @db.Date
+  currency      String           @default("CAD")
+  subtotalCents Int              @default(0)
+  /// [{ name: "GST", rate: "5", amountCents: 12500 }]
+  taxLines      Json             @default("[]")
+  totalCents    Int              @default(0)
+  paidCents     Int              @default(0)
+  /// The billing details as they were when sent.
+  billTo        Json
+  poNumber      String?
+  notes         String?
+  sentAt        DateTime?        @db.Timestamptz(3)
+  paidAt        DateTime?        @db.Timestamptz(3)
+  voidedAt      DateTime?        @db.Timestamptz(3)
+  voidReason    String?
+  createdById   String           @db.Uuid
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  lines         InvoiceLine[]
+  payments      InvoicePayment[]
+
+  @@index([tenantId, periodStart])
+  @@index([status])
+}
+
+model InvoiceLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  invoiceId   String  @db.Uuid
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  position    Int
+  description String
+  quantity    Decimal @db.Decimal(10, 2)
+  unitCents   Int
+  amountCents Int
+}
+
+model InvoicePayment {
+  id           String   @id @default(uuid()) @db.Uuid
+  invoiceId    String   @db.Uuid
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  amountCents  Int
+  receivedOn   DateTime @db.Date
+  /// EFT | CHEQUE | CARD | OTHER
+  method       String
+  reference    String?
+  recordedById String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model InvoiceCounter {
+  year Int @id
+  last Int @default(0)
 }
