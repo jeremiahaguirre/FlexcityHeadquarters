@@ -1411,6 +1411,16 @@ model BillingAccount {
   taxExemptNote     String?
   addOnHr           Boolean     @default(false)
   addOnOps          Boolean     @default(false)
+  /// Union hub, usually paid by the union local.
+  addOnUnion        Boolean     @default(false)
+  /// Until then, every feature is on (a trial or pilot).
+  trialEndsAt       DateTime?   @db.Timestamptz(3)
+  /// Days after an invoice's due date before the app turns read-only.
+  graceDays         Int         @default(30)
+  /// The Dev console can hold off suspension (e.g. a cheque is in the mail).
+  suspensionHoldUntil DateTime? @db.Timestamptz(3)
+  /// How they usually pay: INVOICE (EFT or cheque), CARD or PAD (pre-authorized debit).
+  preferredPayment  String      @default("INVOICE")
   /// CLUB plan: price per active user beyond the 20 included, in cents.
   clubUserRateCents Int         @default(500)
   notes             String?
@@ -1442,6 +1452,8 @@ model Invoice {
   paidAt        DateTime?        @db.Timestamptz(3)
   voidedAt      DateTime?        @db.Timestamptz(3)
   voidReason    String?
+  /// Last online checkout started for this invoice (Stripe Checkout Session id).
+  checkoutId    String?
   createdById   String           @db.Uuid
   createdAt     DateTime         @default(now()) @db.Timestamptz(3)
   lines         InvoiceLine[]
@@ -1468,7 +1480,7 @@ model InvoicePayment {
   invoice      Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
   amountCents  Int
   receivedOn   DateTime @db.Date
-  /// EFT | CHEQUE | CARD | OTHER
+  /// EFT | CHEQUE | CARD | PAD | OTHER
   method       String
   reference    String?
   recordedById String   @db.Uuid

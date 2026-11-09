@@ -6,6 +6,7 @@ import { verifyAccessToken } from './tokens.js';
 import { customPermissions, stillActive } from '../services/people/customRoles.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
+import { allowedWhileSuspended } from '../services/billing/entitlements.js';
 
 export interface AuthContext {
   userId: string;
@@ -44,7 +45,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const [{ features, overrides, mfaRoles }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customPermissions(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
+    const [{ features, overrides, mfaRoles, billing }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customPermissions(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
     // Terminated, deactivated or restricted people lose access at once, not when their token expires.
     if (!ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
     // Each role's permissions after the city's Dev console overrides, plus custom roles.
@@ -60,6 +61,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       mfa,
       mfaPending,
     };
+    // Unpaid past the grace period: read-only, except safety work, clocking and paying.
+    if (billing.stage === 'suspended' && !allowedWhileSuspended(req.method, req.originalUrl)) {
+      throw new HttpError(402, 'ACCOUNT_SUSPENDED', 'Your organization’s account is read-only until the overdue balance is paid.');
+    }
     if (mfaPending && !mfaExempt(req.originalUrl)) throw new HttpError(403, 'MFA_REQUIRED', 'Your organization requires a passkey for this account. Confirm with your passkey to continue.');
     next();
   } catch (e) {

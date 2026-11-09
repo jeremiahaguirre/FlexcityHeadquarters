@@ -1,4 +1,5 @@
 import cookieParser from 'cookie-parser';
+import { stripeWebhookRouter } from './routes/billing.js';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { ZodError } from 'zod';
 import { HttpError } from './lib/errors.js';
@@ -30,6 +31,8 @@ export function createApp() {
   app.use('/api', marketingRouter);
   // Before the 100 kB body limit: the Dev console uploads logos and spreadsheets.
   app.use('/api/platform', platformRouter);
+  // Stripe signs the raw body, so this comes before JSON parsing.
+  app.use('/api', stripeWebhookRouter);
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
 

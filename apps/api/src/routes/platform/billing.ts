@@ -21,6 +21,7 @@ import {
   voidInvoice,
 } from '../../services/billing/invoices.js';
 import { TAX_RATES_AS_OF, TAX_RATES_VERIFIED } from '../../services/billing/tax.js';
+import { billingState } from '../../services/billing/entitlements.js';
 import { h } from '../context.js';
 
 export const billingRouter = Router();
@@ -111,6 +112,8 @@ billingRouter.get(
       account,
       facilities: facilities.map((f) => ({ id: f.id, name: f.name, province: f.province, tier: f.billingTier, customCents: f.billingMonthlyCents })),
       estimate: account ? await estimate(tenantId, thisMonth()) : null,
+      // Where the organization stands: trial, overdue (warning) or suspended (read-only).
+      state: await billingState(tenantId),
     });
   }),
 );

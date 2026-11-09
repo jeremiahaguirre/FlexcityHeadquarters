@@ -163,7 +163,8 @@
     "forecast": "Prévisions",
     "benchmarks": "Comparaisons",
     "loneWork": "Travail seul",
-    "loneWorkMonitor": "Travailleurs isolés"
+    "loneWorkMonitor": "Travailleurs isolés",
+    "billing": "Facturation"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -299,7 +300,11 @@
     "TOO_MANY_PASSKEYS": "Retirez une clé d'accès avant d'en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d'accès pour ce compte.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d'abord.",
-    "ALREADY_ENDED": "Cette séance est déjà terminée."
+    "ALREADY_ENDED": "Cette séance est déjà terminée.",
+    "ACCOUNT_SUSPENDED": "Le compte de votre organisation est en lecture seule jusqu'au paiement du solde en retard.",
+    "ONLINE_PAYMENTS_OFF": "Le paiement en ligne n'est pas configuré. Payez par TEF ou par chèque.",
+    "PAYMENT_PROVIDER": "La page de paiement n'a pas pu s'ouvrir. Réessayez sous peu.",
+    "NOT_PAYABLE": "Il ne reste rien à payer sur cette facture."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1495,7 +1500,8 @@
       "EFT": "TEF",
       "CHEQUE": "Chèque",
       "CARD": "Carte",
-      "OTHER": "Autre"
+      "OTHER": "Autre",
+      "PAD": "Débit préautorisé"
     },
     "saved": "Brouillon enregistré",
     "discard": "Supprimer le brouillon",
@@ -1569,7 +1575,33 @@
     "exemptNoteHint": "p. ex. numéro de certificat ou motif; figure sur les factures.",
     "internalNotes": "Notes internes",
     "internalNotesHint": "Visibles par FH seulement.",
-    "lineDescription": "Description"
+    "lineDescription": "Description",
+    "addOnUnion": "Espace syndical",
+    "addOnsLock": "Les fonctions des modules que l'organisation n'a pas sont verrouillées dans son application. Les RH les voient avec un cadenas et une note pour nous joindre.",
+    "accessTitle": "Accès et paiement",
+    "trialEnds": "Essai : tout est activé jusqu'au",
+    "trialEndsHint": "Laissez vide s'il n'y a pas d'essai.",
+    "grace": "Lecture seule après",
+    "graceHint": "Compté à partir de l'échéance d'une facture. Les RH voient un avertissement entre-temps.",
+    "graceDays_one": "{{count}} jour de retard",
+    "graceDays_other": "{{count}} jours de retard",
+    "hold": "Ne pas suspendre avant le",
+    "holdHint": "P. ex. un chèque est en route.",
+    "preferred": "Paie habituellement par",
+    "pay": {
+      "INVOICE": "Facture (TEF ou chèque)",
+      "CARD": "Carte",
+      "PAD": "Débit préautorisé"
+    },
+    "stage": {
+      "unbilled": "Non facturé",
+      "trial": "Essai",
+      "ok": "En règle",
+      "overdue": "En retard",
+      "suspended": "Lecture seule"
+    },
+    "suspendsOn": "Lecture seule à partir du {{date}}",
+    "suspendedSince": "Lecture seule depuis le {{date}}"
   },
   "people": {
     "title": "Suivi du personnel",
@@ -2139,5 +2171,74 @@
     "endedToday_one": "{{count}} séance terminée au cours des dernières 24 heures",
     "endedToday_other": "{{count}} séances terminées au cours des dernières 24 heures",
     "monitorFoot": "Une vérification manquée alerte la personne et tous ceux qui surveillent les travailleurs isolés. Sans réponse 15 minutes plus tard, les RH sont aussi alertées par courriel."
+  },
+  "billingPage": {
+    "title": "Facturation",
+    "description": "Votre forfait, vos factures de FlexcityHeadquarters et leur paiement.",
+    "plan": "Votre forfait",
+    "planName": {
+      "MUNICIPAL": "Municipal : par installation, personnel illimité",
+      "CLUB": "Secteur privé : par personne active"
+    },
+    "stage": {
+      "unbilled": "En configuration",
+      "trial": "Essai",
+      "ok": "En règle",
+      "overdue": "Paiement en retard",
+      "suspended": "Lecture seule"
+    },
+    "trialUntil": "Toutes les fonctions sont activées pendant votre essai, jusqu'au {{date}}.",
+    "base": "Base",
+    "baseIncludes": "Horaires et assistant de planification, babillard des quarts, horodateur, exportation de la paie, certifications et règles provinciales, cours de natation, comptages, rotation, prévisions, équité des heures supplémentaires, travail seul, soutien après un incident et conformité à tout moment.",
+    "addOn": {
+      "hr": "Conformité RH",
+      "ops": "Opérations",
+      "union": "Espace syndical"
+    },
+    "addOnIncludes": {
+      "hr": "Vérifications d'intégration (antécédents judiciaires, secteur vulnérable, formation), examen du personnel, dossiers disciplinaires et dossiers d'accommodement.",
+      "ops": "Registres de chimie de l'eau et fermetures, rapports d'incident et tableau d'état de l'accueil.",
+      "union": "L'espace de la section locale : discussions, documents et liste d'ancienneté."
+    },
+    "notIncluded": "Pas dans votre forfait",
+    "locked": "Pas dans votre forfait",
+    "lockedHint": "Inclus avec le module {{addOn}}",
+    "changePlan": "Pour ajouter ou modifier un module, écrivez-nous à {{contact}}. Les écrans verrouillés s'ouvrent dès l'ajout.",
+    "howToPay": "Comment payer",
+    "balance": "Solde : {{amount}}",
+    "nothingOwing": "Aucun solde. Merci!",
+    "card": "Carte de crédit",
+    "cardHelp": "Payez n'importe quelle facture en ligne sur une page sécurisée. Nous ne voyons jamais votre numéro de carte.",
+    "pad": "Débit préautorisé",
+    "padHelp": "Payez en ligne à partir du compte bancaire de votre organisation; le paiement est réglé en quelques jours ouvrables.",
+    "onlineOff": "Pas encore offert. Payez par TEF ou par chèque.",
+    "direct": "TEF ou chèque (facturation directe)",
+    "payee": "À l'ordre de {{name}}. Indiquez le numéro de facture.",
+    "invoices": "Factures",
+    "noInvoices": "Aucune facture pour l'instant",
+    "noInvoicesHelp": "Elles apparaîtront ici dès leur envoi.",
+    "number": "Facture",
+    "period": "Période",
+    "due": "Échéance",
+    "total": "Total",
+    "owing": "Solde",
+    "status": "État",
+    "invoiceStatus": {
+      "SENT": "Envoyée",
+      "PARTIAL": "Payée en partie",
+      "OVERDUE": "En retard",
+      "PAID": "Payée",
+      "VOID": "Annulée"
+    },
+    "payCard": "Payer par carte",
+    "payPad": "Débit bancaire",
+    "invoiceTitle": "Facture {{number}}",
+    "paid": "Payé le {{date}} ({{method}})",
+    "thanks": "Merci! Votre paiement est en cours d'enregistrement; il peut falloir une minute pour qu'il apparaisse.",
+    "cancelled": "Paiement annulé. Rien n'a été facturé.",
+    "overdue": "Une facture est en retard depuis le {{since}}. Payez avant le {{date}} pour garder l'accès complet; après cette date, l'application passe en lecture seule.",
+    "suspendedPay": "Votre compte est en lecture seule en raison d'un solde en retard. Les dossiers de sécurité, l'horodateur et le paiement fonctionnent toujours. Payez maintenant pour tout rétablir.",
+    "suspendedStaff": "Le compte de votre organisation est en lecture seule pour l'instant. Les dossiers de sécurité et l'horodateur fonctionnent toujours. Les RH savent comment le rétablir.",
+    "payNow": "Payer maintenant"
   }
 }

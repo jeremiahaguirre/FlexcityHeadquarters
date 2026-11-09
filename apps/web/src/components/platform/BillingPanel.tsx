@@ -3,6 +3,7 @@
 import { FilePlus2 } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StatusPill } from '@/components/ui/StatusPill';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
@@ -32,11 +33,16 @@ interface Account {
   taxExemptNote: string | null;
   addOnHr: boolean;
   addOnOps: boolean;
+  addOnUnion: boolean;
+  trialEndsAt: string | null;
+  graceDays: number;
+  suspensionHoldUntil: string | null;
+  preferredPayment: 'INVOICE' | 'CARD' | 'PAD';
   clubUserRateCents: number;
   notes: string | null;
 }
 interface Estimate { lines: Array<{ description: string; quantity: number; amountCents: number }>; subtotalCents: number; taxLines: TaxLine[]; totalCents: number; activeUsers: number }
-interface BillingData { organization: { name: string }; account: Account | null; facilities: Array<{ id: string; name: string; province: string; tier: number | null; customCents: number | null }>; estimate: Estimate | null }
+interface BillingData { organization: { name: string }; account: Account | null; facilities: Array<{ id: string; name: string; province: string; tier: number | null; customCents: number | null }>; estimate: Estimate | null; state?: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; overdueCents: number; overdueSince: string | null; suspendsOn: string | null } }
 
 const TIER_PRICE: Record<number, number> = { 1: 100_000, 2: 250_000, 3: 500_000 };
 
@@ -75,6 +81,11 @@ export function BillingPanel({ id, city }: PanelProps) {
       taxExemptNote: isExempt ? s('exemptNote') : null,
       addOnHr: f.get('hr') === 'on',
       addOnOps: f.get('ops') === 'on',
+      addOnUnion: f.get('union') === 'on',
+      trialEndsOn: s('trialEnds'),
+      graceDays: Number(s('grace') ?? 30),
+      suspensionHoldUntil: s('hold'),
+      preferredPayment: s('preferred') ?? 'INVOICE',
       clubUserRateCents: Math.round(Number((s('clubRate') ?? '5').replace(',', '.')) * 100),
       notes: s('notes'),
       facilities: data.data!.facilities.map((x) => {
@@ -198,6 +209,38 @@ export function BillingPanel({ id, city }: PanelProps) {
                 <input type="checkbox" name="ops" defaultChecked={a?.addOnOps} className="h-5 w-5 accent-[rgb(var(--brand))]" />
                 {t('billing.addOnOps')}
               </label>
+              <label className="flex items-center gap-2 text-small">
+                <input type="checkbox" name="union" defaultChecked={a?.addOnUnion} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+                {t('billing.addOnUnion')}
+              </label>
+              <p className="text-caption text-muted">{t('billing.addOnsLock')}</p>
+            </fieldset>
+            <fieldset className="grid gap-3 rounded-2xl border border-line p-4">
+              <legend className="px-1 text-small font-semibold">{t('billing.accessTitle')}</legend>
+              {data.data?.state ? (
+                <p className="text-small">
+                  <StatusPill tone={({ unbilled: 'neutral', trial: 'brand', ok: 'ok', overdue: 'warn', suspended: 'danger' } as const)[data.data.state.stage]}>{t(`billing.stage.${data.data.state.stage}`)}</StatusPill>
+                  {data.data.state.suspendsOn ? <span className="ml-2 text-muted">{t(data.data.state.stage === 'suspended' ? 'billing.suspendedSince' : 'billing.suspendsOn', { date: data.data.state.suspendsOn })}</span> : null}
+                </p>
+              ) : null}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t('billing.trialEnds')} hint={t('billing.trialEndsHint')}>{(fp) => <Input {...fp} name="trialEnds" type="date" defaultValue={a?.trialEndsAt?.slice(0, 10) ?? ''} />}</Field>
+                <Field label={t('billing.grace')} hint={t('billing.graceHint')}>
+                  {(fp) => (
+                    <Select {...fp} name="grace" defaultValue={String(a?.graceDays ?? 30)}>
+                      {[15, 30, 45, 60, 90].map((d) => <option key={d} value={d}>{t('billing.graceDays', { count: d })}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                <Field label={t('billing.hold')} hint={t('billing.holdHint')}>{(fp) => <Input {...fp} name="hold" type="date" defaultValue={a?.suspensionHoldUntil?.slice(0, 10) ?? ''} />}</Field>
+                <Field label={t('billing.preferred')}>
+                  {(fp) => (
+                    <Select {...fp} name="preferred" defaultValue={a?.preferredPayment ?? 'INVOICE'}>
+                      {(['INVOICE', 'CARD', 'PAD'] as const).map((m) => <option key={m} value={m}>{t(`billing.pay.${m}`)}</option>)}
+                    </Select>
+                  )}
+                </Field>
+              </div>
             </fieldset>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('billing.legalName')}>{(fp) => <Input {...fp} name="legalName" required defaultValue={a?.legalName ?? city.organization.name} />}</Field>

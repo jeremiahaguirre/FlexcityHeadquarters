@@ -263,7 +263,7 @@ function Invoice() {
             <Field label={t('billing.method')}>
               {(p) => (
                 <Select {...p} name="method" defaultValue="EFT">
-                  {['EFT', 'CHEQUE', 'CARD', 'OTHER'].map((m) => (
+                  {['EFT', 'CHEQUE', 'CARD', 'PAD', 'OTHER'].map((m) => (
                     <option key={m} value={m}>
                       {t(`billing.methods.${m}`)}
                     </option>

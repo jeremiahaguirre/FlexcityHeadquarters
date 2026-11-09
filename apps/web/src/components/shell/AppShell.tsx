@@ -1,6 +1,6 @@
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
+import { Lock, MoreHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -9,7 +9,8 @@ import { CityBrand, CoBrand, type Organization } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { Dialog } from '@/components/ui/Dialog';
 import { cn } from '@/lib/cn';
-import { type NavItem, phoneTabs, visibleNav } from '@/lib/nav';
+import { NAV, type NavItem, phoneTabs, visibleNav } from '@/lib/nav';
+import { BillingBanner } from '@/components/shell/BillingBanner';
 import { useSession } from '@/lib/session';
 import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
 import { MfaDialog } from '@/components/auth/MfaDialog';
@@ -75,7 +76,26 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
             return (
               <div key={g}>
                 <p className="mb-1.5 px-3 text-label uppercase text-muted/80">{t(`navGroups.${g}`)}</p>
-                <div className="grid gap-0.5">{list.map((n) => link(n))}</div>
+                <div className="grid gap-0.5">
+                  {list.map((n) => link(n))}
+                  {(me?.lockedMenu ?? [])
+                    .filter((l) => l.group === g)
+                    .map((l) => {
+                      const Icon = NAV.find((n) => n.href === l.href)?.icon ?? Lock;
+                      return (
+                        <Link
+                          key={l.href}
+                          href={`/manage/billing?unlock=${l.addOn}`}
+                          title={t('billingPage.lockedHint', { addOn: t(`billingPage.addOn.${l.addOn}`) })}
+                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-small font-semibold text-muted/60 hover:bg-surface"
+                        >
+                          <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                          <span className="flex-1">{t(`nav.${l.key}`)}</span>
+                          <Lock className="h-3.5 w-3.5" aria-label={t('billingPage.locked')} />
+                        </Link>
+                      );
+                    })}
+                </div>
               </div>
             );
           })}
@@ -104,6 +124,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         </header>
 
         <main id="main" key={pathname} className="animate-page-in mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:px-8 md:pb-12 md:pt-8">
+          <BillingBanner />
           {children}
         </main>
       </div>

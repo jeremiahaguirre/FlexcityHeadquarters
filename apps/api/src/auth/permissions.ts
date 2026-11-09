@@ -54,6 +54,7 @@ export const PERMISSIONS = [
   'accommodation.manage', // work restrictions (accommodation, return to work): HR only
   'lonework.self', // working alone: start a session, check in, ask for help
   'lonework.monitor', // watch people working alone and respond to missed check-ins
+  'billing.manage', // the organization's plan, invoices and payments
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -95,6 +96,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'care.manage',
     'accommodation.manage',
     'lonework.monitor',
+    'billing.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',

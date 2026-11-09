@@ -10,6 +10,7 @@ import { db, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { type Line, lineLabel, monthlyLines } from './pricing.js';
 import { SALES_TAX, taxFor } from './tax.js';
+import { forgetFeatures } from '../platform/features.js';
 
 const PROVINCES = Object.keys(SALES_TAX) as [string, ...string[]];
 
@@ -31,6 +32,13 @@ export const accountBody = z.object({
   addOnOps: z.boolean(),
   clubUserRateCents: z.number().int().min(0).max(10_000),
   notes: z.string().trim().max(1000).nullable(),
+  addOnUnion: z.boolean().optional(),
+  /** YYYY-MM-DD: every feature is on until the end of that day. */
+  trialEndsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  graceDays: z.number().int().min(0).max(180).optional(),
+  /** YYYY-MM-DD: don't suspend before the end of that day. */
+  suspensionHoldUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  preferredPayment: z.enum(['INVOICE', 'CARD', 'PAD']).optional(),
   facilities: z.array(z.object({ id: z.string().uuid(), tier: z.number().int().min(1).max(3).nullable(), customCents: z.number().int().min(0).max(10_000_000).nullable() })).max(100),
 });
 export type AccountInput = z.infer<typeof accountBody>;
@@ -93,7 +101,9 @@ export function totals(lines: Array<Pick<Line, 'amountCents'>>, province: string
 }
 
 export async function saveAccount(tenantId: string, body: AccountInput) {
-  const { facilities, ...data } = body;
+  const { facilities, trialEndsOn, suspensionHoldUntil, ...rest } = body;
+  const endOfDay = (d: string | null | undefined) => (d === undefined ? undefined : d === null ? null : new Date(`${d}T23:59:59.999Z`));
+  const data = { ...rest, trialEndsAt: endOfDay(trialEndsOn), suspensionHoldUntil: endOfDay(suspensionHoldUntil) };
   await withTenant(tenantId, async (tx) => {
     for (const f of facilities) {
       const updated = await tx.facility.updateMany({ where: { id: f.id }, data: { billingTier: f.tier, billingMonthlyCents: f.customCents } });
@@ -101,6 +111,7 @@ export async function saveAccount(tenantId: string, body: AccountInput) {
     }
   });
   await db().billingAccount.upsert({ where: { tenantId }, create: { tenantId, ...data }, update: data });
+  forgetFeatures(tenantId);
 }
 
 const billToOf = (a: NonNullable<Awaited<ReturnType<typeof getAccount>>['account']>) => ({
@@ -201,6 +212,7 @@ export async function sendInvoice(id: string) {
       },
     }),
   );
+  forgetFeatures(sent.tenantId);
   return sent;
 }
 
@@ -209,21 +221,27 @@ export const money = (cents: number, locale = 'en-CA') => new Intl.NumberFormat(
 export const paymentBody = z.object({
   amountCents: z.number().int().min(1).max(100_000_000),
   receivedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  method: z.enum(['EFT', 'CHEQUE', 'CARD', 'OTHER']),
+  method: z.enum(['EFT', 'CHEQUE', 'CARD', 'PAD', 'OTHER']),
   reference: z.string().trim().max(120).nullable().optional(),
 });
 
-export async function recordPayment(id: string, adminId: string, p: z.infer<typeof paymentBody>) {
-  return db().$transaction(async (tx) => {
+export async function recordPayment(id: string, adminId: string | null, p: z.infer<typeof paymentBody>) {
+  const out = await db().$transaction(async (tx) => {
     const inv = await tx.invoice.findUnique({ where: { id } });
     if (!inv) throw notFound('Invoice');
     if (inv.status !== 'SENT') throw conflict('NOT_PAYABLE', inv.status === 'DRAFT' ? 'Send the invoice before recording payments.' : 'This invoice is closed.');
     if (inv.paidCents + p.amountCents > inv.totalCents) throw new HttpError(400, 'OVERPAYMENT', 'That is more than the balance owing.');
-    await tx.invoicePayment.create({ data: { invoiceId: id, amountCents: p.amountCents, receivedOn: day(p.receivedOn), method: p.method, reference: p.reference ?? null, recordedById: adminId } });
+    await tx.invoicePayment.create({ data: { invoiceId: id, amountCents: p.amountCents, receivedOn: day(p.receivedOn), method: p.method, reference: p.reference ?? null, recordedById: adminId ?? ONLINE_PAYMENT_ACTOR } });
     const paid = inv.paidCents + p.amountCents;
     return tx.invoice.update({ where: { id }, data: { paidCents: paid, ...(paid >= inv.totalCents ? { status: 'PAID', paidAt: new Date() } : {}) } });
   });
+  // Paying can lift a warning or a suspension right away.
+  forgetFeatures(out.tenantId);
+  return out;
 }
+
+/** Payments that arrive by themselves (card or debit through the payment provider). */
+export const ONLINE_PAYMENT_ACTOR = '00000000-0000-0000-0000-000000000000';
 
 export async function voidInvoice(id: string, reason: string) {
   const inv = await db().invoice.findUnique({ where: { id } });
@@ -234,6 +252,7 @@ export async function voidInvoice(id: string, reason: string) {
     return 'deleted' as const;
   }
   await db().invoice.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date(), voidReason: reason } });
+  forgetFeatures(inv.tenantId);
   return 'voided' as const;
 }
 

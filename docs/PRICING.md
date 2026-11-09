@@ -48,3 +48,12 @@ Unlimited users keep budgets predictable through summer hiring surges and put ev
 | Municipality, 3+ facilities or custom payroll mapping | $8,000–$15,000 |
 
 Includes subdomain and branding, pay-code and cost-centre mapping with a parallel-run payroll check, import of staff and certification history, collective-agreement rule overrides, pool threshold setup from permits, and supervisor training.
+
+## In the app: what each plan unlocks, and unpaid invoices
+
+- **Base** is everything not listed under an add-on. **HR Compliance** unlocks onboarding checks, people review, discipline records and accommodation cases. **Operations** unlocks water chemistry, incident reports and the front-desk board. **Union hub** unlocks the union local's hub. The mapping lives in `apps/api/src/services/billing/entitlements.ts`.
+- Features an organization hasn't bought are switched off. HR sees them in the menu with a lock, linking to the Billing page.
+- Organizations with no billing account, or in a trial (Dev console, Billing tab), have every feature.
+- **Overdue invoice:** HR sees a warning with the date access becomes read-only (due date plus the grace period, 30 days by default).
+- **Read-only:** every change is refused except safety records (incidents, water chemistry, headcounts, pool closures, working alone), clocking in and out, signing in, and paying. The Dev console can hold off suspension until a date.
+- **Paying:** the Billing page lists invoices. Cities pay by card or pre-authorized debit through Stripe Checkout when `STRIPE_SECRET_KEY` is set, or by EFT or cheque (the remittance text). Online payments are recorded automatically from Stripe's webhook, and access is restored as soon as the balance is paid.

@@ -24,6 +24,9 @@ const schema = z.object({
   BILLING_EMAIL: z.string().default('billing@flexcityhq.example'),
   BILLING_GST_NUMBER: z.string().default(''),
   BILLING_QST_NUMBER: z.string().default(''),
+  /** Card and pre-authorized debit payments through Stripe Checkout. Unset = invoices are paid by EFT or cheque only. */
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
   BILLING_REMITTANCE: z.string().default('Pay by EFT or cheque. Banking details are on file with your accounts payable team; quote the invoice number.'),
   /** Local/dev key-encryption key. Production uses AWS KMS (KMS_KEY_ARN). */
   LOCAL_KEK_BASE64: z.string().optional(),

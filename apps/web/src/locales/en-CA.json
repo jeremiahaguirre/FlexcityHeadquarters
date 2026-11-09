@@ -163,7 +163,8 @@
     "forecast": "Forecast",
     "benchmarks": "Benchmarks",
     "loneWork": "Working alone",
-    "loneWorkMonitor": "Lone workers"
+    "loneWorkMonitor": "Lone workers",
+    "billing": "Billing"
   },
   "navGroups": {
     "mine": "My work",
@@ -299,7 +300,11 @@
     "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
-    "ALREADY_ENDED": "This session has already ended."
+    "ALREADY_ENDED": "This session has already ended.",
+    "ACCOUNT_SUSPENDED": "Your organization's account is read-only until the overdue balance is paid.",
+    "ONLINE_PAYMENTS_OFF": "Online payment isn't set up. Pay by EFT or cheque.",
+    "PAYMENT_PROVIDER": "The payment page couldn't be opened. Try again shortly.",
+    "NOT_PAYABLE": "This invoice has nothing left to pay."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1495,7 +1500,8 @@
       "EFT": "EFT",
       "CHEQUE": "Cheque",
       "CARD": "Card",
-      "OTHER": "Other"
+      "OTHER": "Other",
+      "PAD": "Pre-authorized debit"
     },
     "saved": "Draft saved",
     "discard": "Discard draft",
@@ -1569,7 +1575,33 @@
     "exemptNoteHint": "e.g. certificate number or reason; printed on invoices.",
     "internalNotes": "Internal notes",
     "internalNotesHint": "Only FH sees these.",
-    "lineDescription": "Description"
+    "lineDescription": "Description",
+    "addOnUnion": "Union hub",
+    "addOnsLock": "Features from add-ons the organization doesn't have are locked in its app. HR sees them with a lock and a note to contact us.",
+    "accessTitle": "Access and payment",
+    "trialEnds": "Trial: everything on until",
+    "trialEndsHint": "Leave empty for no trial.",
+    "grace": "Read-only after",
+    "graceHint": "Counted from an invoice's due date. HR sees a warning in the meantime.",
+    "graceDays_one": "{{count}} day overdue",
+    "graceDays_other": "{{count}} days overdue",
+    "hold": "Don't suspend before",
+    "holdHint": "E.g. a cheque is in the mail.",
+    "preferred": "Usually pays by",
+    "pay": {
+      "INVOICE": "Invoice (EFT or cheque)",
+      "CARD": "Card",
+      "PAD": "Pre-authorized debit"
+    },
+    "stage": {
+      "unbilled": "Not billed",
+      "trial": "Trial",
+      "ok": "In good standing",
+      "overdue": "Overdue",
+      "suspended": "Read-only"
+    },
+    "suspendsOn": "Read-only from {{date}}",
+    "suspendedSince": "Read-only since {{date}}"
   },
   "people": {
     "title": "People review",
@@ -2139,5 +2171,74 @@
     "endedToday_one": "{{count}} session ended in the last 24 hours",
     "endedToday_other": "{{count}} sessions ended in the last 24 hours",
     "monitorFoot": "A missed check-in alerts the person and everyone who monitors lone workers. If there's still no answer 15 minutes later, HR is alerted by email too."
+  },
+  "billingPage": {
+    "title": "Billing",
+    "description": "Your plan, your invoices from FlexcityHeadquarters, and paying them.",
+    "plan": "Your plan",
+    "planName": {
+      "MUNICIPAL": "Municipal: per facility, unlimited staff",
+      "CLUB": "Private sector: per active person"
+    },
+    "stage": {
+      "unbilled": "Setting up",
+      "trial": "Trial",
+      "ok": "In good standing",
+      "overdue": "Payment overdue",
+      "suspended": "Read-only"
+    },
+    "trialUntil": "Every feature is on during your trial, until {{date}}.",
+    "base": "Base",
+    "baseIncludes": "Scheduling and the scheduling assistant, shift board, timeclock, payroll export, certifications and provincial rules, swim lessons, headcounts, deck rotation, forecasts, overtime fairness, working alone, care after incidents, and compliance at any minute.",
+    "addOn": {
+      "hr": "HR Compliance",
+      "ops": "Operations",
+      "union": "Union hub"
+    },
+    "addOnIncludes": {
+      "hr": "Onboarding checks (criminal record, vulnerable sector, training), people review, discipline records and accommodation cases.",
+      "ops": "Water chemistry logs and closures, incident reports, and the front-desk status board.",
+      "union": "The union local's own hub: discussions, documents and the seniority list."
+    },
+    "notIncluded": "Not in your plan",
+    "locked": "Not in your plan",
+    "lockedHint": "Included with the {{addOn}} add-on",
+    "changePlan": "To add or change an add-on, contact us at {{contact}}. Locked screens open as soon as it's added.",
+    "howToPay": "How to pay",
+    "balance": "Owing: {{amount}}",
+    "nothingOwing": "Nothing owing. Thank you!",
+    "card": "Credit card",
+    "cardHelp": "Pay any invoice online on a secure payment page. We never see your card number.",
+    "pad": "Pre-authorized debit",
+    "padHelp": "Pay from your organization's bank account online; it settles in a few business days.",
+    "onlineOff": "Not available yet. Pay by EFT or cheque.",
+    "direct": "EFT or cheque (direct billing)",
+    "payee": "Payable to {{name}}. Quote the invoice number.",
+    "invoices": "Invoices",
+    "noInvoices": "No invoices yet",
+    "noInvoicesHelp": "They appear here when we send them.",
+    "number": "Invoice",
+    "period": "Period",
+    "due": "Due",
+    "total": "Total",
+    "owing": "Owing",
+    "status": "Status",
+    "invoiceStatus": {
+      "SENT": "Sent",
+      "PARTIAL": "Partly paid",
+      "OVERDUE": "Overdue",
+      "PAID": "Paid",
+      "VOID": "Void"
+    },
+    "payCard": "Pay by card",
+    "payPad": "Bank debit",
+    "invoiceTitle": "Invoice {{number}}",
+    "paid": "Paid {{date}} ({{method}})",
+    "thanks": "Thank you! Your payment is being recorded; it can take a minute to show here.",
+    "cancelled": "Payment cancelled. Nothing was charged.",
+    "overdue": "An invoice has been overdue since {{since}}. Pay by {{date}} to keep full access; after that the app becomes read-only.",
+    "suspendedPay": "Your account is read-only because of an overdue balance. Safety records, clocking in and out, and paying still work. Pay now to restore everything.",
+    "suspendedStaff": "Your organization's account is read-only for now. Safety records and clocking in and out still work. HR has been told how to restore it.",
+    "payNow": "Pay now"
   }
 }

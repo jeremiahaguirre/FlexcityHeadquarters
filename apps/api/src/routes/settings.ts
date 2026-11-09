@@ -6,7 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
 import { h } from './context.js';
-import { resolveFeatures } from '../services/platform/features.js';
+import { resolveFeatures, tenantSettings } from '../services/platform/features.js';
 
 export const settingsRouter = Router();
 settingsRouter.use('/settings', requirePermission('tenant.configure'));
@@ -48,7 +48,7 @@ settingsRouter.get(
           payWeekStartDay: tenant.payWeekStartDay,
           vacationPayMode: tenant.vacationPayMode,
           payrollRetentionYears: tenant.payrollRetentionYears,
-          features: resolveFeatures(tenant.features),
+          features: (await tenantSettings(a.tenantId)).features,
         },
         facilities: facilities.map((f) => ({ ...f, latitude: f.latitude?.toNumber() ?? null, longitude: f.longitude?.toNumber() ?? null })),
         payCodes,

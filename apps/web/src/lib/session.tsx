@@ -20,6 +20,9 @@ export interface Me {
   hiddenMenu?: string[];
   /** The organization requires a passkey for this account and this session hasn't used one. */
   mfaRequired?: boolean;
+  /** For whoever handles billing: screens their plan doesn't include yet, and the add-on that unlocks each. */
+  lockedMenu?: Array<{ href: string; key: string; group: 'mine' | 'deck' | 'manage' | 'union'; addOn: 'hr' | 'ops' | 'union' }>;
+  billing?: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; overdueSince: string | null; suspendsOn: string | null; trialEndsAt: string | null; canPay: boolean };
   employmentStatus: string;
   positions: Array<{ id: string; name: string; nameFr: string | null }>;
   certifications: Array<{ id: string; certification: { id: string; name: string; nameFr: string | null }; issueDate: string; expiryDate: string | null; verified: boolean }>;

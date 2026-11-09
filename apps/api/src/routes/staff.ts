@@ -9,7 +9,9 @@ import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/err
 import { addDays } from '../lib/time.js';
 import { passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
-import { resolveFeatures } from '../services/platform/features.js';
+import { FEATURES, type FeatureKey, tenantSettings } from '../services/platform/features.js';
+import { MENU } from '../auth/menu.js';
+import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
 import { forgetActive, setUserCustomRoles } from '../services/people/customRoles.js';
 
@@ -46,7 +48,17 @@ staffRouter.get(
         tx.userCustomRole.findMany({ where: { userId: a.userId }, include: { customRole: { select: { id: true, name: true, nameFr: true } } } }),
       ]),
     );
-    const features = resolveFeatures(tenant.features);
+    const { features, billing } = await tenantSettings(a.tenantId);
+    // For whoever handles billing: screens their roles would have if the plan included them.
+    const lockedMenu = a.permissions.has('billing.manage')
+      ? MENU.flatMap((m) => {
+          if (m.permissions.some((p) => a.permissions.has(p))) return []; // already open to them
+          const addOn = (Object.keys(billing.locked) as FeatureKey[]).find((f) =>
+            (FEATURES[f].permissions as readonly string[]).some((p) => m.permissions.includes(p as never) && permissionsWithOverrides(me.roles, parseOverrides(tenant.roleOverrides)).has(p as never)),
+          );
+          return addOn ? [{ href: m.href, key: m.key, group: m.group, addOn: billing.locked[addOn]! }] : [];
+        })
+      : [];
     // Switched-off features are already gone from a.permissions. The Union Hub
     // follows membership, not employer roles: members see it too.
     const permissions = new Set(a.permissions);
@@ -69,6 +81,8 @@ staffRouter.get(
       certifications: me.certifications.map(certView),
       // The city requires a passkey for this access level and this session hasn't used one.
       mfaRequired: a.mfaPending,
+      lockedMenu,
+      billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: a.permissions.has('billing.manage') },
     });
   }),
 );

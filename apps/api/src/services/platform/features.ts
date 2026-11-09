@@ -10,6 +10,7 @@ import type { AccessRole } from '@prisma/client';
 import type { Permission } from '../../auth/permissions.js';
 import { type RoleOverrides, parseOverrides } from './roleOverrides.js';
 import { withTenant } from '../../lib/db.js';
+import { type BillingState, billingState } from '../billing/entitlements.js';
 
 export const FEATURES = {
   shiftBoard: { default: true, permissions: ['shiftboard.claim', 'shiftboard.post', 'shiftboard.approve', 'shiftboard.assign_emergency'] },
@@ -53,7 +54,7 @@ export function withoutDisabled<P extends string>(permissions: Set<P>, features:
   return out;
 }
 
-const cache = new Map<string, { at: number; features: FeatureSet; overrides: RoleOverrides; mfaRoles: AccessRole[] }>();
+const cache = new Map<string, TenantSettings & { at: number }>();
 const TTL_MS = 30_000;
 
 /** Cached per process; the Dev console clears it when switches change. */
@@ -62,11 +63,17 @@ export async function tenantFeatures(tenantId: string): Promise<FeatureSet> {
 }
 
 /** Feature switches and per-role overrides, cached together. */
-export async function tenantSettings(tenantId: string): Promise<{ features: FeatureSet; overrides: RoleOverrides; mfaRoles: AccessRole[] }> {
+export interface TenantSettings { features: FeatureSet; overrides: RoleOverrides; mfaRoles: AccessRole[]; billing: BillingState }
+
+export async function tenantSettings(tenantId: string): Promise<TenantSettings> {
   const hit = cache.get(tenantId);
   if (hit && Date.now() - hit.at < TTL_MS) return hit;
   const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true, roleOverrides: true, mfaRoles: true } }));
-  const entry = { at: Date.now(), features: resolveFeatures(row?.features), overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [] };
+  const billing = await billingState(tenantId);
+  // A feature the plan doesn't include is off, whatever its switch says.
+  const features = resolveFeatures(row?.features);
+  for (const k of Object.keys(billing.locked) as FeatureKey[]) features[k] = false;
+  const entry = { at: Date.now(), features, overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [], billing };
   cache.set(tenantId, entry);
   return entry;
 }
