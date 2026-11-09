@@ -1,6 +1,7 @@
 import { pageMeta } from '@/lib/seo';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import { reveal } from '@/lib/reveal';
 import { Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
 
@@ -32,14 +33,14 @@ export default function Faq({ params }: { params: { lang: Lang } }) {
         </nav>
         <div className="grid gap-10">
           {c.groups.map((g, i) => (
-            <section key={g.name} id={`g${i}`} className="scroll-mt-24">
+            <section key={g.name} id={`g${i}`} {...(i ? reveal() : {})} className="scroll-mt-24">
               <h2 className="mb-3 text-heading">{g.name}</h2>
               <div className="divide-y divide-line rounded-2xl border border-line bg-panel">
                 {g.items.map((it) => (
                   <details key={it.q} className="group px-5 py-4">
                     <summary className="flex cursor-pointer items-center justify-between gap-4 text-body-strong">
                       {it.q}
-                      <ChevronDown className="h-5 w-5 shrink-0 text-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+                      <ChevronDown className="h-5 w-5 shrink-0 text-muted transition-transform duration-300 group-open:rotate-180" aria-hidden="true" />
                     </summary>
                     <p className="mt-2 text-body leading-7 text-muted">{it.a}</p>
                   </details>

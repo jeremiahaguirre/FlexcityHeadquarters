@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import type { ReactNode } from 'react';
+import { RevealObserver } from '@/components/Motion';
+import { REVEAL_BOOT } from '@/lib/reveal';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { LANGS, type Lang, copy } from '@/content/copy';
@@ -28,6 +30,8 @@ export default function LangLayout({ children, params }: { children: ReactNode; 
   return (
     <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable}>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
+        <script dangerouslySetInnerHTML={{ __html: REVEAL_BOOT }} />
+        <RevealObserver />
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
           {params.lang === 'fr' ? 'Aller au contenu' : 'Skip to content'}
         </a>

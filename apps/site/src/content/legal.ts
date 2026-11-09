@@ -32,7 +32,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
         {
           heading: 'What the application holds',
           body: [
-            'Work contact details, positions, certifications, availability, schedules, time punches (with location only at the moment of punching, to confirm you are on site), time-off requests, pay rates and payroll hours, pool operations logs and incident reports.',
+            'Work contact details, positions, certifications, availability, schedules, time punches (with location only at the moment of punching, to confirm you are on site), time-off requests, pay rates and payroll hours, onboarding checks (only that a check was seen, when and by whom; never its result, a SIN or banking details), work restrictions for accommodation, pool operations logs and encrypted incident reports.',
             'Union Hub records are kept in a separate database area with their own encryption key per union local, and the employer cannot read them.',
             'Passkeys (Face ID, fingerprint, Windows Hello) never leave your device: we store only a public key.',
           ],
@@ -54,7 +54,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
         {
           heading: 'Where information is stored',
           body: [
-            'Application data for Canadian customers is intended to be hosted in Canada. Where a customer’s contract or provincial law requires Canadian residency, we confirm the hosting location in writing before go-live. This website and its contact form may be served from outside Canada.',
+            'The application is built to be hosted in Canada (AWS, Montréal region); it is not yet in production. Where a customer’s contract or provincial law requires Canadian residency, we confirm the hosting location in writing before go-live. This website and its contact form may be served from outside Canada.',
           ],
         },
         {
@@ -97,7 +97,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
         {
           heading: 'Ce que contient l’application',
           body: [
-            'Coordonnées professionnelles, postes, certifications, disponibilités, horaires, pointages (avec la position uniquement au moment du pointage, pour confirmer votre présence sur place), demandes de congé, taux de salaire et heures de paie, registres d’exploitation des bassins et rapports d’incident.',
+            'Coordonnées professionnelles, postes, certifications, disponibilités, horaires, pointages (avec la position uniquement au moment du pointage, pour confirmer votre présence sur place), demandes de congé, taux de salaire et heures de paie, vérifications d’intégration (seulement le fait qu’elles ont été vues, quand et par qui; jamais le résultat, un NAS ou des coordonnées bancaires), restrictions de travail liées aux mesures d’adaptation, registres d’exploitation des bassins et rapports d’incident chiffrés.',
             'Les dossiers du Carrefour syndical sont conservés dans une zone distincte de la base de données, chiffrés avec une clé propre à chaque section locale, et l’employeur ne peut pas les lire.',
             'Les clés d’accès (Face ID, empreinte, Windows Hello) ne quittent jamais votre appareil : nous ne conservons qu’une clé publique.',
           ],
@@ -119,7 +119,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
         {
           heading: 'Lieu de conservation',
           body: [
-            'Les données de l’application pour les clients canadiens sont destinées à être hébergées au Canada. Lorsque le contrat ou la loi provinciale exige une résidence canadienne, nous confirmons le lieu d’hébergement par écrit avant la mise en service. Ce site et son formulaire de contact peuvent être servis depuis l’extérieur du Canada.',
+            'L’application est conçue pour être hébergée au Canada (AWS, région de Montréal); elle n’est pas encore en production. Lorsque le contrat ou la loi provinciale exige une résidence canadienne, nous confirmons le lieu d’hébergement par écrit avant la mise en service. Ce site et son formulaire de contact peuvent être servis depuis l’extérieur du Canada.',
           ],
         },
         {
@@ -144,10 +144,10 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
   accessibility: {
     en: {
       updated: '2026-11-09',
-      intro: 'We want everyone on an aquatic team, and everyone evaluating us, to be able to use FlexcityHeadquarters and this website. Our target is WCAG 2.1 level AA, the standard referenced by Ontario’s AODA, the Accessible Canada Act and most municipal procurement.',
+      intro: 'We want everyone on a city team, and everyone evaluating us, to be able to use FlexcityHeadquarters and this website. Our target is WCAG 2.1 level AA, the standard referenced by Ontario’s AODA, the Accessible Canada Act and most municipal procurement.',
       sections: [
         {
-          heading: 'What we do',
+          heading: 'What we design for',
           body: [
             'Full keyboard use, visible focus, skip links and landmarks; labels on every form field; text and controls that meet contrast ratios in light and dark mode; layouts that work at 400% zoom and on phones; touch targets at least 44 pixels; animations that stop when your device asks for reduced motion.',
             'Everything is available in English and Canadian French.',
@@ -157,7 +157,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
           heading: 'Known limitations',
           body: [
             'Some charts in reports are summarized in text but not yet as data tables. Uploaded documents such as certification scans are only as accessible as the file provided.',
-            'We have not yet completed an independent audit; one is planned before general availability.',
+            'We have not yet completed an independent audit, so we do not claim conformance; one is planned before general availability.',
           ],
         },
         {
@@ -168,10 +168,10 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
     },
     fr: {
       updated: '2026-11-09',
-      intro: 'Nous voulons que toute l’équipe aquatique, et toute personne qui nous évalue, puisse utiliser FlexcityHeadquarters et ce site. Notre cible est le niveau AA des WCAG 2.1, la norme citée par la LAPHO de l’Ontario, la Loi canadienne sur l’accessibilité et la plupart des appels d’offres municipaux.',
+      intro: 'Nous voulons que toute l’équipe municipale, et toute personne qui nous évalue, puisse utiliser FlexcityHeadquarters et ce site. Notre cible est le niveau AA des WCAG 2.1, la norme citée par la LAPHO de l’Ontario, la Loi canadienne sur l’accessibilité et la plupart des appels d’offres municipaux.',
       sections: [
         {
-          heading: 'Ce que nous faisons',
+          heading: 'Ce que nous visons',
           body: [
             'Utilisation complète au clavier, focus visible, liens d’évitement et repères; étiquette pour chaque champ; contrastes conformes en mode clair et sombre; mises en page fonctionnelles à 400 % de zoom et sur téléphone; cibles tactiles d’au moins 44 pixels; animations qui s’arrêtent lorsque votre appareil demande moins de mouvement.',
             'Tout est offert en anglais et en français canadien.',
@@ -181,7 +181,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
           heading: 'Limites connues',
           body: [
             'Certains graphiques des rapports sont résumés en texte, mais pas encore sous forme de tableaux de données. Les documents téléversés, comme les certifications numérisées, ne sont accessibles que dans la mesure où le fichier fourni l’est.',
-            'Aucune vérification indépendante n’a encore été réalisée; elle est prévue avant la disponibilité générale.',
+            'Aucune vérification indépendante n’a encore été réalisée, et nous ne déclarons donc pas la conformité; elle est prévue avant la disponibilité générale.',
           ],
         },
         {

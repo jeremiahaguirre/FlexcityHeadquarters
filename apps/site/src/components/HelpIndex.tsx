@@ -32,7 +32,7 @@ export function HelpIndex({ lang }: { lang: Lang }) {
               {list.map((a) => {
                 const b = articleIn(a, lang);
                 return (
-                  <Link key={a.slug} href={`/${lang}/help/${a.slug}/`} className="flex gap-4 rounded-2xl border border-line bg-panel p-5 shadow-card transition-transform hover:-translate-y-0.5 hover:border-brand/40">
+                  <Link key={a.slug} href={`/${lang}/help/${a.slug}/`} className="flex gap-4 rounded-2xl border border-line bg-panel p-5 lift shadow-card">
                     <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-brand-text" aria-hidden="true" />
                     <span>
                       <span className="block text-body-strong">{b.title}</span>

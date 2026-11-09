@@ -29,13 +29,13 @@ export const ARTICLES: Article[] = [
       title: 'Clocking in and out',
       summary: 'Slide to clock in for your shift, and back out at the end.',
       steps: ['Open Today, or tap Clock in at the top of any screen.', 'Slide the button to the right. If your shift starts within 30 minutes or has started, you’re clocked into it.', 'No shift right now? Choose the facility and position, then clock in.', 'At the end, slide to clock out. Your supervisor reviews punches before payroll.'],
-      tip: 'We check your location once, at the moment you clock in. We never track you.',
+      tip: 'Your location is checked only at the moment you punch, to confirm you’re on site. You are never tracked.',
     },
     fr: {
       title: 'Pointer l’arrivée et la sortie',
       summary: 'Glissez pour pointer votre quart, puis pour pointer la sortie.',
       steps: ['Ouvrez Aujourd’hui, ou touchez Pointer en haut de n’importe quel écran.', 'Glissez le bouton vers la droite. Si votre quart commence dans 30 minutes ou est en cours, vous y êtes pointé.', 'Pas de quart en ce moment? Choisissez l’installation et le poste, puis pointez.', 'À la fin, glissez pour pointer la sortie. Votre superviseur révise les pointages avant la paie.'],
-      tip: 'Nous vérifions votre position une seule fois, au moment du pointage. Nous ne vous suivons jamais.',
+      tip: 'Votre position est vérifiée seulement au moment du pointage, pour confirmer que vous êtes sur place. Vous n’êtes jamais suivi.',
     },
   },
   {
@@ -57,13 +57,13 @@ export const ARTICLES: Article[] = [
     audience: 'staff',
     en: {
       title: 'Picking up and giving away shifts',
-      summary: 'Use the shift board to swap shifts with coworkers.',
-      steps: ['Open Shift board to see open shifts you’re eligible for.', 'Tap Claim. If it would put you into overtime, a supervisor approves it first.', 'To give away a shift, open it from My schedule and choose Post to board.', 'You stay on the shift until someone takes it.'],
+      summary: 'Use the shift board to take open shifts and hand off your own.',
+      steps: ['Open Shift board to see open shifts you’re eligible for, with an estimate of what each pays.', 'Tap Take this shift. If it would put you into overtime, a supervisor approves it first.', 'To give away a shift, open it from My schedule and choose Give away.', 'You stay on the shift until someone takes it.'],
     },
     fr: {
       title: 'Prendre et céder des quarts',
-      summary: 'Utilisez le babillard pour échanger des quarts avec vos collègues.',
-      steps: ['Ouvrez Babillard des quarts pour voir les quarts ouverts auxquels vous êtes admissible.', 'Touchez Réclamer. S’il vous ferait faire des heures supplémentaires, un superviseur l’approuve d’abord.', 'Pour céder un quart, ouvrez-le depuis Mon horaire et choisissez Afficher au babillard.', 'Le quart reste le vôtre jusqu’à ce que quelqu’un le prenne.'],
+      summary: 'Utilisez le babillard pour prendre des quarts ouverts et céder les vôtres.',
+      steps: ['Ouvrez Babillard des quarts pour voir les quarts ouverts auxquels vous êtes admissible, avec une estimation de la paie.', 'Touchez Prendre ce quart. S’il vous ferait faire des heures supplémentaires, un superviseur l’approuve d’abord.', 'Pour céder un quart, ouvrez-le depuis Mon horaire et choisissez Céder.', 'Le quart reste le vôtre jusqu’à ce que quelqu’un le prenne.'],
     },
   },
   {

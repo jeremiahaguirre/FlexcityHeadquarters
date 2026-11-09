@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, Send } from 'lucide-react';
+import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { type Lang, copy } from '@/content/copy';
 import { SITE } from '@/lib/site';
@@ -16,6 +17,8 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const s = (k: string) => String(f.get(k) ?? '').trim() || null;
+    // Not connected yet: say so kindly and keep what the person typed.
+    if (!SITE.leadsUrl) return setState('error');
     setState('sending');
     try {
       const r = await fetch(SITE.leadsUrl, {
@@ -41,19 +44,9 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
     }
   }
 
-  if (!SITE.leadsUrl) {
-    return (
-      <p className="rounded-2xl bg-surface px-5 py-4 text-body">
-        {c.offline}{' '}
-        <a href={`mailto:${SITE.contactEmail}`} className="font-semibold text-brand-text underline">
-          {SITE.contactEmail}
-        </a>
-      </p>
-    );
-  }
   if (state === 'sent') {
     return (
-      <p role="status" className="flex items-center gap-3 rounded-2xl bg-ok-bg px-5 py-4 text-body-strong text-ok">
+      <p role="status" className="rise flex items-center gap-3 rounded-2xl bg-ok-bg px-5 py-4 text-body-strong text-ok">
         <CheckCircle2 className="h-6 w-6 shrink-0" aria-hidden="true" />
         {c.sent}
       </p>
@@ -110,19 +103,17 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
           <span className="block text-caption text-muted">{c.consentHint}</span>
         </span>
       </label>
-      {state === 'error' ? (
-        <p role="alert" className="rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">
-          {c.error}{' '}
-          <a href={`mailto:${SITE.contactEmail}`} className="font-semibold underline">
-            {SITE.contactEmail}
-          </a>
-        </p>
-      ) : null}
+      <div role="alert">
+        {state === 'error' ? <p className="rise rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">{c.error}</p> : null}
+      </div>
       <button type="submit" disabled={state === 'sending'} className="inline-flex h-12 items-center justify-center gap-2 justify-self-start rounded-xl bg-brand px-6 text-body-strong text-brand-contrast shadow-card hover:bg-brand-hover disabled:opacity-60">
-        <Send className="h-4 w-4" aria-hidden="true" />
+        <Send className="nudge h-4 w-4" aria-hidden="true" />
         {state === 'sending' ? c.sending : c.send}
       </button>
-      <p className="text-caption text-muted">{c.privacy}</p>
+      <p className="text-caption text-muted">
+        {c.privacy}{' '}
+        <Link href={`/${lang}/privacy/`} className="font-semibold text-brand-text underline">{c.privacyLink}</Link>
+      </p>
     </form>
   );
 }

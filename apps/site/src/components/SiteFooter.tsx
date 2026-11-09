@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { type Lang, copy } from '@/content/copy';
-import { SITE, demoLink } from '@/lib/site';
+import { demoLink } from '@/lib/site';
 import { Logo } from './Logo';
 
 export function SiteFooter({ lang }: { lang: Lang }) {
@@ -12,10 +12,8 @@ export function SiteFooter({ lang }: { lang: Lang }) {
         <div className="grid content-start gap-3">
           <Logo size={32} />
           <p className="max-w-xs text-small text-muted">{c.footer.tagline}</p>
-          <p className="text-small text-muted">
-            <a href={`mailto:${SITE.contactEmail}`} className="font-semibold text-brand-text hover:underline">
-              {SITE.contactEmail}
-            </a>
+          <p className="text-small">
+            <Link href={`/${lang}/contact/`} className="font-semibold text-brand-text hover:underline">{c.contact.title}</Link>
           </p>
         </div>
         <div className={col}>

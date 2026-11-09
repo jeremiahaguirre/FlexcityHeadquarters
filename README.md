@@ -106,8 +106,7 @@ Vercel builds it with **Root Directory** `apps/site` (the settings are in `apps/
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | The site's public address, e.g. `https://www.example.ca` (canonical links and sitemap) |
 | `NEXT_PUBLIC_DEMO_URL` | The app demo, default `https://jeremiahaguirre.github.io/FlexcityHeadquarters` |
-| `NEXT_PUBLIC_LEADS_URL` | `https://<api host>/api/marketing/leads`; without it the contact form shows the email address instead |
-| `NEXT_PUBLIC_CONTACT_EMAIL` | The address shown on the site |
+| `NEXT_PUBLIC_LEADS_URL` | `https://<api host>/api/marketing/leads`; without it the contact form asks visitors to try again shortly |
 
 On the API, add the website's address to `MARKETING_ORIGINS` so the contact form is accepted.
 

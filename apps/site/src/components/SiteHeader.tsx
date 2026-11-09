@@ -52,7 +52,7 @@ export function SiteHeader({ lang }: { lang: Lang }) {
         </div>
       </div>
       {open ? (
-        <nav id="mobile-nav" aria-label="Main" className="border-t border-line bg-page px-4 pb-6 pt-2 lg:hidden">
+        <nav id="mobile-nav" aria-label="Main" className="rise border-t border-line bg-page px-4 pb-6 pt-2 lg:hidden">
           <ul className="grid gap-1">
             {links.map((l) => (
               <li key={l.href}>
