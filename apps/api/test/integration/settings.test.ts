@@ -30,7 +30,8 @@ async function openShift(startUtc: string, endUtc: string) {
 beforeAll(async () => {
   t = await seedTenant(SUB, 3);
   const h = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'H', lastName: 'R', email: 'hr@mu.test' } });
-  hr = await signAccessToken({ sub: h.id, tid: t.tenant.id, roles: ['HR_ADMIN'] });
+  // Signed in just now, as sensitive HR actions require.
+  hr = await signAccessToken({ sub: h.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: Math.floor(Date.now() / 1000) });
 });
 afterAll(async () => {
   await appDb.$disconnect();

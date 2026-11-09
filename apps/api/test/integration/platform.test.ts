@@ -53,6 +53,15 @@ describe('Dev console sign-in', () => {
     expect((await attempt('right password!')).status).toBe(423);
   });
 
+  it('offers Dev console passkeys on the console’s own address, only soon after signing in', async () => {
+    const opts = await dev().post('/api/platform/passkeys/options');
+    expect(opts.body.options.rp.id).toBe('localhost');
+    expect((await request(server).post('/api/platform/auth/passkey/options').set('x-fh-platform', '1').send({})).body.options.rpId).toBe('localhost');
+    await owner.platformSession.updateMany({ where: { admin: { email: EMAIL } }, data: { createdAt: new Date(Date.now() - 20 * 60_000) } });
+    expect((await dev().post('/api/platform/passkeys/options')).body.code).toBe('STEP_UP_REQUIRED');
+    expect((await dev().get('/api/platform/passkeys')).body).toEqual([]);
+  });
+
   it('signing out ends the session', async () => {
     const r = await request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').send({ email: EMAIL, password: 'correct horse battery' });
     const c = String(r.headers['set-cookie']).split(';')[0]!;

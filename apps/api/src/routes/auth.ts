@@ -2,14 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, consumeAuthToken, issueAuthToken } from '../auth/authTokens.js';
 import { allow } from '../auth/rateLimit.js';
-import { hashPassword, signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword } from '../auth/tokens.js';
+import { epochSeconds, hashPassword, signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword } from '../auth/tokens.js';
 import { config } from '../config.js';
 import { withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { h, lookupTenant, subdomainOf } from './context.js';
 
-const COOKIE = 'fc_refresh';
+export const COOKIE = 'fc_refresh';
 const LOCKOUT_AFTER = 5;
 const LOCKOUT_MS = 15 * 60_000;
 
@@ -19,7 +19,7 @@ export const passwordRule = z
   .max(200)
   .refine((p) => /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p), 'Mix letters with numbers or symbols.');
 
-const cookieOpts = () => ({
+export const cookieOpts = () => ({
   httpOnly: true,
   secure: config().NODE_ENV === 'production',
   sameSite: 'strict' as const,
@@ -75,7 +75,7 @@ authRouter.post(
     }
     if (outcome.kind === 'invalid') throw new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     const result = outcome;
-    const accessToken = await signAccessToken({ sub: result.user.id, tid: tenantId, roles: result.user.roles });
+    const accessToken = await signAccessToken({ sub: result.user.id, tid: tenantId, roles: result.user.roles, aat: epochSeconds() });
     res.cookie(COOKIE, result.refresh, cookieOpts());
     res.json({
       accessToken,
@@ -102,7 +102,7 @@ authRouter.post(
       throw new HttpError(401, 'UNAUTHENTICATED', 'Session expired');
     }
     res.cookie(COOKIE, rotated.token, cookieOpts());
-    res.json({ accessToken: await signAccessToken({ sub: rotated.userId, tid: tenantId, roles: rotated.roles }) });
+    res.json({ accessToken: await signAccessToken({ sub: rotated.userId, tid: tenantId, roles: rotated.roles, aat: epochSeconds(rotated.authenticatedAt) }) });
   }),
 );
 

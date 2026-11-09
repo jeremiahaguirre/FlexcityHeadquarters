@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
@@ -415,6 +415,7 @@ const hrPatch = z.object({
 staffRouter.patch(
   '/users/:id',
   requirePermission('users.write'),
+  requireRecentAuth, // roles, employment status, terminations
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -473,6 +474,7 @@ staffRouter.patch(
 staffRouter.post(
   '/users/:id/pay-rates',
   requirePermission('users.write'),
+  requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);

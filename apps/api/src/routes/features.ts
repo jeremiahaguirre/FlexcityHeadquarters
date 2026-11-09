@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireAuth, requirePermission } from '../auth/middleware.js';
+import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 import { publish } from '../lib/events.js';
@@ -26,10 +26,12 @@ import { settingsRouter } from './settings.js';
 import { lessonsRouter } from './lessons.js';
 import { unionRouter } from './union.js';
 import { jobsRouter } from './jobs.js';
+import { myPasskeysRouter } from './passkeys.js';
 
 export const api = Router();
 api.use(requireAuth);
 api.use(notificationsRouter);
+api.use(myPasskeysRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);
@@ -295,6 +297,7 @@ api.get(
 api.get(
   '/payroll/export',
   requirePermission('payroll.export'),
+  requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
     const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5) }).parse(req.query);
@@ -329,6 +332,7 @@ api.get(
 api.post(
   '/users/:id/erasure',
   requirePermission('users.privacy'),
+  requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
     const out = await withTenant(a.tenantId, (tx) => requestErasure(tx, a.tenantId, a.userId, uuid.parse(req.params.id)));

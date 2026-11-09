@@ -11,12 +11,14 @@ export interface AccessClaims {
   sub: string; // user id
   tid: string; // tenant id
   roles: AccessRole[];
+  /** When the person last proved who they are (epoch seconds). Absent = unknown, never "recent". */
+  aat?: number;
 }
 
 const secret = () => new TextEncoder().encode(config().JWT_SECRET);
 
 export async function signAccessToken(claims: AccessClaims): Promise<string> {
-  return new SignJWT({ tid: claims.tid, roles: claims.roles })
+  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}) })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(claims.sub)
     .setIssuedAt()
@@ -29,7 +31,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
   if (typeof payload.sub !== 'string' || typeof payload.tid !== 'string' || !Array.isArray(payload.roles)) {
     throw new Error('Malformed token');
   }
-  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[] };
+  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined };
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -40,6 +42,7 @@ export async function issueRefreshToken(
   tenantId: string,
   userId: string,
   familyId: string = randomUUID(),
+  authenticatedAt: Date = new Date(),
 ): Promise<string> {
   const raw = randomBytes(32).toString('base64url');
   await tx.refreshToken.create({
@@ -47,6 +50,7 @@ export async function issueRefreshToken(
       tenantId,
       userId,
       familyId,
+      authenticatedAt,
       tokenHash: sha256(raw),
       expiresAt: new Date(Date.now() + config().REFRESH_TOKEN_TTL_DAYS * 86_400_000),
     },
@@ -61,7 +65,7 @@ export async function issueRefreshToken(
 export async function rotateRefreshToken(
   tx: Tx,
   raw: string,
-): Promise<{ userId: string; tenantId: string; token: string } | null> {
+): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date } | null> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (!existing) return null;
   if (existing.revokedAt || existing.expiresAt < new Date()) {
@@ -71,8 +75,9 @@ export async function rotateRefreshToken(
     return null;
   }
   await tx.refreshToken.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
-  const token = await issueRefreshToken(tx, existing.tenantId, existing.userId, existing.familyId);
-  return { userId: existing.userId, tenantId: existing.tenantId, token };
+  // Rotation keeps the original sign-in time: refreshing is not proving who you are.
+  const token = await issueRefreshToken(tx, existing.tenantId, existing.userId, existing.familyId, existing.authenticatedAt);
+  return { userId: existing.userId, tenantId: existing.tenantId, token, authenticatedAt: existing.authenticatedAt };
 }
 
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {
@@ -94,4 +99,12 @@ export async function verifyPassword(password: string, stored: string): Promise<
   const expected = Buffer.from(keyB64, 'base64');
   const actual = await scryptAsync(password, Buffer.from(saltB64, 'base64'), expected.length);
   return timingSafeEqual(expected, actual);
+}
+
+export const epochSeconds = (d: Date = new Date()) => Math.floor(d.getTime() / 1000);
+
+/** Marks the session behind this refresh token as just re-authenticated (step-up). */
+export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Date()): Promise<void> {
+  const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
+  if (existing) await tx.refreshToken.updateMany({ where: { familyId: existing.familyId, revokedAt: null }, data: { authenticatedAt: at } });
 }

@@ -7,6 +7,7 @@ import { publicJobsRouter } from './routes/jobs.js';
 import { resolveTenant } from './routes/context.js';
 import { api } from './routes/features.js';
 import { platformRouter } from './routes/platform/index.js';
+import { passkeyAuthRouter } from './routes/passkeys.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
 
 export function createApp() {
@@ -26,7 +27,7 @@ export function createApp() {
 
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
   app.use('/api', publicLogoRouter);
-  app.use('/api', resolveTenant, authRouter, publicJobsRouter);
+  app.use('/api', resolveTenant, authRouter, passkeyAuthRouter, publicJobsRouter);
   app.use('/api', api);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

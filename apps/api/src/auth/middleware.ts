@@ -10,6 +10,8 @@ export interface AuthContext {
   tenantId: string;
   roles: AccessRole[];
   permissions: Set<Permission>;
+  /** Last time the person proved who they are (password or passkey), if known. */
+  authenticatedAt: Date | null;
 }
 
 declare global {
@@ -33,7 +35,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
     const features = await tenantFeatures(claims.tid);
-    req.auth = { userId: claims.sub, tenantId: claims.tid, roles: claims.roles, permissions: withoutDisabled(permissionsFor(claims.roles), features) };
+    req.auth = { userId: claims.sub, tenantId: claims.tid, roles: claims.roles, permissions: withoutDisabled(permissionsFor(claims.roles), features), authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null };
     next();
   } catch (e) {
     next(e);
@@ -66,4 +68,19 @@ export function requireFeature(feature: FeatureKey) {
       next(e);
     }
   };
+}
+
+export const RECENT_AUTH_MS = 10 * 60_000;
+
+/**
+ * Sensitive actions need the person to have proved who they are in the last
+ * 10 minutes. Otherwise the app asks for their passkey (Face ID, fingerprint,
+ * Windows Hello) or password, then retries.
+ */
+export function requireRecentAuth(req: Request, _res: Response, next: NextFunction) {
+  const at = req.auth?.authenticatedAt;
+  if (!at || Date.now() - at.getTime() > RECENT_AUTH_MS) {
+    return next(new HttpError(401, 'STEP_UP_REQUIRED', 'Confirm it’s you to continue.'));
+  }
+  next();
 }
