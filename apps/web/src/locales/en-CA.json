@@ -157,7 +157,8 @@
     "HEAD_LIFEGUARD": "Head lifeguard",
     "STAFF": "Lifeguard / instructor",
     "FRONT_DESK": "Front desk",
-    "UNION_STEWARD": "Union steward"
+    "UNION_STEWARD": "Union steward",
+    "EMPLOYEE": "General employee"
   },
   "notifications": {
     "generic": "You have a new update.",
@@ -751,7 +752,8 @@
       "pools": "Pools",
       "pay": "Pay codes",
       "calendar": "School calendar",
-      "rules": "Agreement rules"
+      "rules": "Agreement rules",
+      "roles": "Roles"
     },
     "org": "Organization",
     "orgHelp": "Your staff sign in at {{host}}.",
@@ -990,7 +992,8 @@
       "features": "Features",
       "facilities": "Facilities",
       "positions": "Positions",
-      "import": "Import staff"
+      "import": "Import staff",
+      "roles": "Roles"
     },
     "logo": "City logo",
     "logoHelp": "Shown beside the FlexcityHeadquarters logo on the sign-in page, in the app and on the careers page. It never replaces the FH logo.",
@@ -1101,7 +1104,7 @@
       "choose": "Choose a CSV file",
       "template": "Download a template",
       "columns": "Columns",
-      "columnsHelp": "Needed: first_name, last_name, email. Optional: employment (full-time, part-time, casual, on call, volunteer), positions (separated by ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date and date_of_birth (YYYY-MM-DD), employee_number, phone, language (en or fr), union_member (yes/no). French column names work too.",
+      "columnsHelp": "Needed: first_name, last_name, email. Optional: employment (full-time, part-time, casual, on call, volunteer), positions (separated by ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date and date_of_birth (YYYY-MM-DD), employee_number, phone, language (en or fr), union_member (yes/no). French column names work too. roles also accepts employee (general city worker) and your city's own role names.",
       "positionsKnown": "Positions in this city: {{list}}.",
       "paste": "…or paste the spreadsheet here",
       "check": "Check rows",
@@ -1181,5 +1184,51 @@
     "confirmHelp": "This change needs a recent sign-in. Use your passkey or password to continue; you won't be asked again for 10 minutes.",
     "confirmWithPasskey": "Use Face ID, fingerprint or Windows Hello",
     "confirmWithPassword": "Confirm with password"
+  },
+  "customRoles": {
+    "title": "City roles",
+    "help": "Roles for your other city jobs, like water works, maintenance or parks. People with these roles see their own schedule, time and requests; never the pool deck.",
+    "add": "Add a role",
+    "none": "No city roles yet",
+    "noneHelp": "Add one for each kind of non-aquatic job, e.g. Water Works Operator or Maintenance Worker.",
+    "members_one": "{{count}} person",
+    "members_other": "{{count}} people",
+    "noPool": "Pool status, water chemistry, headcounts, incidents and lessons are never part of a city role. Aquatic staff use the built-in aquatic roles.",
+    "formHelp": "Choose what people in this role can do. Only non-aquatic capabilities are offered.",
+    "name": "Role name",
+    "nameFr": "Role name in French",
+    "description": "Description",
+    "saved": "Role saved",
+    "delete": "Delete role",
+    "confirmDelete_one": "Delete, and remove it from {{count}} person",
+    "confirmDelete_other": "Delete, and remove it from {{count}} people",
+    "deleted": "Role deleted",
+    "cityRoles": "City roles",
+    "groups": {
+      "everyday": "Their own work",
+      "shiftBoard": "Shift board",
+      "lead": "Leading a team"
+    },
+    "groupHelp": {
+      "everyday": "What almost every employee needs.",
+      "shiftBoard": "Pick up and give away shifts with coworkers.",
+      "lead": "For crew leads and foremen: their team's schedule and approvals."
+    },
+    "perms": {
+      "schedule.read": "See the schedule",
+      "shifts.self": "Today and My schedule",
+      "timeclock.punch": "Clock in and out",
+      "timeoff.self": "Request time off",
+      "availability.self": "Set availability",
+      "shiftboard.claim": "Pick up open shifts",
+      "shiftboard.post": "Give away shifts",
+      "users.read": "See the staff directory",
+      "users.scheduling": "Set team hours and positions",
+      "schedule.write": "Build and publish schedules",
+      "shiftboard.approve": "Approve overtime claims",
+      "timeoff.approve": "Approve time off",
+      "timeclock.review": "Review punches",
+      "certs.verify": "Verify certifications"
+    }
   }
 }

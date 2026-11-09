@@ -16,6 +16,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useSession } from '@/lib/session';
+import type { CustomRole } from '@/lib/customRoles';
 import { EMPLOYMENT, type Position, ROLES, TIERS } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
 
@@ -39,6 +40,7 @@ interface Detail {
   dateOfBirth?: string | null;
   unionMember: boolean;
   invited: boolean;
+  customRoles: CustomRole[];
   positions: Position[];
   certifications: Array<{ id: string; certification: { name: string; nameFr: string | null }; expiryDate: string | null; verified: boolean }>;
   payRates?: Array<{ id: string; position: string; hourlyRate: string; effectiveFrom: string; effectiveTo: string | null }>;
@@ -62,6 +64,7 @@ function Person() {
   const person = useQuery<Detail>(id ? `/api/users/${id}` : null);
   const positions = useQuery<Position[]>('/api/positions');
   const catalog = useQuery<Array<{ id: string; name: string; nameFr: string | null }>>(can('certs.verify') ? '/api/certifications' : null);
+  const cityRoles = useQuery<{ roles: CustomRole[] }>('/api/roles');
   const records = useQuery<Record[]>(can('discipline.read') && id ? `/api/users/${id}/discipline` : null);
   const { run, busy } = useAction();
   const [dialog, setDialog] = useState<'cert' | 'rate' | 'record' | 'erase' | null>(null);
@@ -84,7 +87,8 @@ function Person() {
       api(`/api/users/${id}`, {
         method: 'PATCH',
         body: {
-          roles: f.getAll('roles'),
+          roles: f.getAll('roles').length ? f.getAll('roles') : f.getAll('customRoles').length ? ['EMPLOYEE'] : [],
+          customRoleIds: f.getAll('customRoles'),
           status: val(f, 'status'),
           employmentStatus: val(f, 'employment'),
           hireDate: val(f, 'hireDate'),
@@ -241,6 +245,19 @@ function Person() {
                   ))}
                 </div>
               </fieldset>
+              {cityRoles.data?.roles.length ? (
+                <fieldset className="grid gap-2">
+                  <legend className="mb-1 text-small font-semibold">{t('customRoles.cityRoles')}</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {cityRoles.data.roles.map((r) => (
+                      <label key={r.id} className="flex items-center gap-2 text-small">
+                        <input type="checkbox" name="customRoles" value={r.id} defaultChecked={p.customRoles.some((x) => x.id === r.id)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+                        {posName(r)}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : null}
               <Button type="submit" className="justify-self-start" loading={busy === 'hr'}>
                 {t('common.save')}
               </Button>

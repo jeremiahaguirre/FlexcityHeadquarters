@@ -16,6 +16,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
+import { type CustomRole, roleName } from '@/lib/customRoles';
 import { EMPLOYMENT, type Position, ROLES } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
 
@@ -31,6 +32,7 @@ interface Person {
   certAttention: boolean;
   unverifiedCerts: number;
   invited: boolean;
+  customRoles?: CustomRole[];
 }
 
 export default function StaffPage() {
@@ -41,6 +43,7 @@ export default function StaffPage() {
   const [q, setQ] = useState('');
   const people = useQuery<Person[]>(`/api/users?status=${status}${q.trim().length > 1 ? `&q=${encodeURIComponent(q.trim())}` : ''}`);
   const positions = useQuery<Position[]>('/api/positions');
+  const cityRoles = useQuery<{ roles: CustomRole[] }>('/api/roles');
   const { run, busy } = useAction();
   const [inviting, setInviting] = useState(false);
   const posName = (p: Position) => (lng === 'fr-CA' && p.nameFr ? p.nameFr : p.name);
@@ -58,7 +61,9 @@ export default function StaffPage() {
             firstName: s('firstName'),
             lastName: s('lastName'),
             email: s('email'),
-            roles: f.getAll('roles'),
+            // Only city roles picked → the general employee base underneath.
+            roles: f.getAll('roles').length ? f.getAll('roles') : f.getAll('customRoles').length ? ['EMPLOYEE'] : [],
+            customRoleIds: f.getAll('customRoles'),
             employmentStatus: s('employment'),
             locale: s('locale'),
             hireDate: s('hireDate'),
@@ -122,7 +127,12 @@ export default function StaffPage() {
                 {p.invited ? <StatusPill tone="new">{t('staff.pendingInvite')}</StatusPill> : null}
                 {p.unverifiedCerts ? <StatusPill tone="neutral">{t('staff.toVerify', { count: p.unverifiedCerts })}</StatusPill> : null}
                 {p.certAttention ? <StatusPill tone="warn">{t('staff.certSoon')}</StatusPill> : null}
-                {p.roles.filter((r) => r !== 'STAFF').map((r) => (
+                {p.customRoles?.map((r) => (
+                  <StatusPill key={r.id} tone="brand">
+                    {roleName(r, lng)}
+                  </StatusPill>
+                ))}
+                {p.roles.filter((r) => r !== 'STAFF' && !(r === 'EMPLOYEE' && p.customRoles?.length)).map((r) => (
                   <StatusPill key={r} tone="brand">
                     {t(`roles.${r}`)}
                   </StatusPill>
@@ -175,6 +185,19 @@ export default function StaffPage() {
               ))}
             </div>
           </fieldset>
+          {cityRoles.data?.roles.length ? (
+            <fieldset className="grid gap-2">
+              <legend className="mb-1 text-small font-semibold">{t('customRoles.cityRoles')}</legend>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {cityRoles.data.roles.map((r) => (
+                  <label key={r.id} className="flex items-center gap-2 text-small">
+                    <input type="checkbox" name="customRoles" value={r.id} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+                    {roleName(r, lng)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
           <fieldset className="grid gap-2">
             <legend className="mb-1 text-small font-semibold">{t('staff.approvedPositions')}</legend>
             <div className="grid gap-2 sm:grid-cols-2">

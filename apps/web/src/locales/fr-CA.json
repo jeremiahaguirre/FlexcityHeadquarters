@@ -157,7 +157,8 @@
     "HEAD_LIFEGUARD": "Sauveteur en chef",
     "STAFF": "Sauveteur / moniteur",
     "FRONT_DESK": "Accueil",
-    "UNION_STEWARD": "Délégué syndical"
+    "UNION_STEWARD": "Délégué syndical",
+    "EMPLOYEE": "Employé (général)"
   },
   "notifications": {
     "generic": "Vous avez une nouvelle mise à jour.",
@@ -751,7 +752,8 @@
       "pools": "Bassins",
       "pay": "Codes de paie",
       "calendar": "Calendrier scolaire",
-      "rules": "Convention collective"
+      "rules": "Convention collective",
+      "roles": "Rôles"
     },
     "org": "Organisation",
     "orgHelp": "Votre personnel se connecte à {{host}}.",
@@ -990,7 +992,8 @@
       "features": "Fonctions",
       "facilities": "Installations",
       "positions": "Postes",
-      "import": "Importer le personnel"
+      "import": "Importer le personnel",
+      "roles": "Rôles"
     },
     "logo": "Logo de la ville",
     "logoHelp": "Affiché à côté du logo FlexcityHeadquarters sur la page de connexion, dans l'application et sur la page carrières. Il ne remplace jamais le logo FH.",
@@ -1101,7 +1104,7 @@
       "choose": "Choisir un fichier CSV",
       "template": "Télécharger un modèle",
       "columns": "Colonnes",
-      "columnsHelp": "Obligatoires : first_name, last_name, email. Facultatives : employment (temps plein, temps partiel, occasionnel, sur appel, bénévole), positions (séparés par ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date et date_of_birth (AAAA-MM-JJ), employee_number, phone, language (en ou fr), union_member (oui/non). Les noms de colonnes en français fonctionnent aussi.",
+      "columnsHelp": "Obligatoires : first_name, last_name, email. Facultatives : employment (temps plein, temps partiel, occasionnel, sur appel, bénévole), positions (séparés par ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date et date_of_birth (AAAA-MM-JJ), employee_number, phone, language (en ou fr), union_member (oui/non). Les noms de colonnes en français fonctionnent aussi. roles accepte aussi employee (employé municipal général) et les noms des rôles de votre ville.",
       "positionsKnown": "Postes de cette ville : {{list}}.",
       "paste": "…ou collez le chiffrier ici",
       "check": "Vérifier les lignes",
@@ -1181,5 +1184,51 @@
     "confirmHelp": "Ce changement exige une connexion récente. Utilisez votre clé d'accès ou votre mot de passe pour continuer; on ne vous le redemandera pas pendant 10 minutes.",
     "confirmWithPasskey": "Utiliser Face ID, l'empreinte ou Windows Hello",
     "confirmWithPassword": "Confirmer avec le mot de passe"
+  },
+  "customRoles": {
+    "title": "Rôles municipaux",
+    "help": "Des rôles pour vos autres emplois municipaux, comme l'aqueduc, l'entretien ou les parcs. Ces personnes voient leur horaire, leur temps et leurs demandes, jamais le bord de la piscine.",
+    "add": "Ajouter un rôle",
+    "none": "Aucun rôle municipal",
+    "noneHelp": "Ajoutez-en un pour chaque type d'emploi hors aquatique, p. ex. Opérateur d'aqueduc ou Préposé à l'entretien.",
+    "members_one": "{{count}} personne",
+    "members_other": "{{count}} personnes",
+    "noPool": "L'état des bassins, la chimie de l'eau, le dénombrement des baigneurs, les incidents et les cours ne font jamais partie d'un rôle municipal. Le personnel aquatique utilise les rôles aquatiques intégrés.",
+    "formHelp": "Choisissez ce que les personnes ayant ce rôle peuvent faire. Seules les fonctions hors aquatique sont offertes.",
+    "name": "Nom du rôle",
+    "nameFr": "Nom du rôle en français",
+    "description": "Description",
+    "saved": "Rôle enregistré",
+    "delete": "Supprimer le rôle",
+    "confirmDelete_one": "Supprimer et le retirer à {{count}} personne",
+    "confirmDelete_other": "Supprimer et le retirer à {{count}} personnes",
+    "deleted": "Rôle supprimé",
+    "cityRoles": "Rôles municipaux",
+    "groups": {
+      "everyday": "Son propre travail",
+      "shiftBoard": "Babillard des quarts",
+      "lead": "Diriger une équipe"
+    },
+    "groupHelp": {
+      "everyday": "Ce dont presque tout employé a besoin.",
+      "shiftBoard": "Prendre et céder des quarts avec des collègues.",
+      "lead": "Pour les chefs d'équipe et contremaîtres : l'horaire et les approbations de l'équipe."
+    },
+    "perms": {
+      "schedule.read": "Voir l'horaire",
+      "shifts.self": "Aujourd'hui et Mon horaire",
+      "timeclock.punch": "Pointer",
+      "timeoff.self": "Demander un congé",
+      "availability.self": "Indiquer ses disponibilités",
+      "shiftboard.claim": "Prendre des quarts ouverts",
+      "shiftboard.post": "Céder des quarts",
+      "users.read": "Voir le répertoire du personnel",
+      "users.scheduling": "Régler les heures et postes de l'équipe",
+      "schedule.write": "Préparer et publier les horaires",
+      "shiftboard.approve": "Approuver les heures supplémentaires",
+      "timeoff.approve": "Approuver les congés",
+      "timeclock.review": "Réviser les pointages",
+      "certs.verify": "Vérifier les certifications"
+    }
   }
 }

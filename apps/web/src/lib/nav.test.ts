@@ -32,6 +32,10 @@ describe('menus per role', () => {
     });
   });
 
+  it('general employee (water works, maintenance…): their own work, no pool screens at all', () => {
+    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability'], home: '/today' });
+  });
+
   it('a steward who is also a lifeguard gets both', () => {
     expect(menu('UNION_STEWARD', 'STAFF').items).toContain('/board');
   });

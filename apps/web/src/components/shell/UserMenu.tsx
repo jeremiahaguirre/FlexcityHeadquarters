@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/cn';
 import { LOCALE_COOKIE } from '@/lib/i18n';
 import { useSession } from '@/lib/session';
+import { roleName } from '@/lib/customRoles';
 
 export function useLanguageSwitch() {
   const { i18n } = useTranslation();
@@ -27,7 +28,7 @@ export function useLanguageSwitch() {
 
 /** Avatar button with profile, language and sign-out. `compact` shows only the avatar. */
 export function UserMenu({ compact = false, placement = 'down' }: { compact?: boolean; placement?: 'down' | 'up' }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { me, signOut } = useSession();
   const { switchLanguage } = useLanguageSwitch();
   const [open, setOpen] = useState(false);
@@ -64,7 +65,7 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-small font-semibold text-ink">{name}</span>
-              <span className="block truncate text-caption text-muted">{t(`roles.${me.roles[0]}`)}</span>
+              <span className="block truncate text-caption text-muted">{me.customRoles?.[0] ? roleName(me.customRoles[0], i18n.language) : t(`roles.${me.roles[0]}`)}</span>
             </span>
             <ChevronDown className="h-4 w-4 text-muted" aria-hidden="true" />
           </>

@@ -14,6 +14,7 @@ export interface Me {
   phone: string | null;
   locale: 'en-CA' | 'fr-CA';
   roles: string[];
+  customRoles?: Array<{ id: string; name: string; nameFr: string | null }>;
   permissions: string[];
   employmentStatus: string;
   positions: Array<{ id: string; name: string; nameFr: string | null }>;

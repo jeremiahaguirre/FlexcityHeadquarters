@@ -67,6 +67,8 @@ export interface CityDetail {
   certifications: Array<{ id: string; name: string; nameFr: string | null }>;
   staff: number;
   admins: Array<{ id: string; name: string; email: string; invited: boolean }>;
+  customRoles: import('./customRoles').CustomRole[];
+  roleCatalog: import('./customRoles').RoleCatalog;
 }
 export interface ImportIssue { field: string; code: string; value?: string }
 export interface ImportPreview {
