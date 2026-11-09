@@ -34,12 +34,20 @@ staffRouter.get(
   '/me',
   h(async (req, res) => {
     const a = authOf(req);
-    const me = await withTenant(a.tenantId, (tx) =>
-      tx.user.findUniqueOrThrow({
-        where: { id: a.userId },
-        include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { include: certInclude } },
-      }),
+    const [me, tenant] = await withTenant(a.tenantId, (tx) =>
+      Promise.all([
+        tx.user.findUniqueOrThrow({
+          where: { id: a.userId },
+          include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { include: certInclude } },
+        }),
+        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { unionEnabled: true } }),
+      ]),
     );
+    // The Union Hub follows membership, not employer roles: members see it too,
+    // and nobody does while the organization has it switched off.
+    const permissions = permissionsFor(me.roles);
+    if (tenant.unionEnabled && me.unionMember) permissions.add('union.hub');
+    if (!tenant.unionEnabled) permissions.delete('union.hub');
     res.json({
       id: me.id,
       firstName: me.firstName,
@@ -48,7 +56,7 @@ staffRouter.get(
       phone: me.phone,
       locale: me.locale,
       roles: me.roles,
-      permissions: [...permissionsFor(me.roles)].sort(),
+      permissions: [...permissions].sort(),
       employmentStatus: me.employmentStatus,
       positions: me.positions.map((p) => p.position),
       certifications: me.certifications.map(certView),
