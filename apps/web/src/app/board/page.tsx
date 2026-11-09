@@ -18,7 +18,8 @@ interface Offer {
   };
 }
 
-type Notice = { kind: 'ok' | 'warn' | 'error'; text: string; reasons?: string[] };
+/** Stored as translation keys, not text, so it re-renders when the language changes. */
+type Notice = { kind: 'ok' | 'warn' | 'error'; key: string; params?: Record<string, string>; reasonKeys?: string[] };
 
 export default function BoardPage() {
   const { t, i18n } = useTranslation();
@@ -32,9 +33,9 @@ export default function BoardPage() {
       setOffers(await api<Offer[]>('/api/shiftboard/offers'));
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) router.push('/login');
-      else setNotice({ kind: 'error', text: t('board.error') });
+      else setNotice({ kind: 'error', key: 'board.error' });
     }
-  }, [router, t]);
+  }, [router]);
 
   useEffect(() => {
     void load();
@@ -50,15 +51,15 @@ export default function BoardPage() {
       });
       setNotice(
         r.outcome === 'ASSIGNED'
-          ? { kind: 'ok', text: t('board.assigned') }
-          : { kind: 'warn', text: t('board.pendingApproval', { hours: r.overtimeHours }) },
+          ? { kind: 'ok', key: 'board.assigned' }
+          : { kind: 'warn', key: 'board.pendingApproval', params: { hours: r.overtimeHours ?? '' } },
       );
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) setNotice({ kind: 'warn', text: t('board.alreadyClaimed') });
+      if (e instanceof ApiError && e.status === 409) setNotice({ kind: 'warn', key: 'board.alreadyClaimed' });
       else if (e instanceof ApiError && e.status === 422) {
-        const blocks = ((e.details as { blocks?: Array<{ code: string }> })?.blocks ?? []).map((b) => t(`blocks.${b.code}`));
-        setNotice({ kind: 'error', text: t('board.notEligible'), reasons: blocks });
-      } else setNotice({ kind: 'error', text: t('board.error') });
+        const reasonKeys = ((e.details as { blocks?: Array<{ code: string }> })?.blocks ?? []).map((b) => `blocks.${b.code}`);
+        setNotice({ kind: 'error', key: 'board.notEligible', reasonKeys });
+      } else setNotice({ kind: 'error', key: 'board.error' });
     } finally {
       setBusy(null);
       void load();
@@ -76,11 +77,11 @@ export default function BoardPage() {
       <div aria-live="polite">
         {notice ? (
           <div className={`mb-4 rounded-md border-l-4 bg-surface px-4 py-3 ${tone[notice.kind]}`}>
-            <p>{notice.text}</p>
-            {notice.reasons?.length ? (
+            <p>{t(notice.key, notice.params)}</p>
+            {notice.reasonKeys?.length ? (
               <ul className="mt-1 list-disc pl-5 text-ink">
-                {notice.reasons.map((r) => (
-                  <li key={r}>{r}</li>
+                {notice.reasonKeys.map((k) => (
+                  <li key={k}>{t(k)}</li>
                 ))}
               </ul>
             ) : null}

@@ -17,6 +17,7 @@ export function LanguageToggle() {
       className="rounded-md border border-line px-3 py-1.5 text-sm hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
       onClick={() => {
         document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+        document.documentElement.lang = next;
         void i18n.changeLanguage(next);
         router.refresh();
       }}
