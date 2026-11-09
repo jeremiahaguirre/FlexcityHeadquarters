@@ -4,10 +4,12 @@ import { Logo } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { currentTenant } from '@/lib/tenant';
+import { UnknownOrg } from '@/components/UnknownOrg';
 
 /** Pages anyone can open without signing in (e.g. job postings). */
 export default async function PublicLayout({ children }: { children: ReactNode }) {
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
+  if (!tenant) return <UnknownOrg />;
   return (
     <div className="min-h-screen bg-page">
       <header className="border-b border-line bg-panel">

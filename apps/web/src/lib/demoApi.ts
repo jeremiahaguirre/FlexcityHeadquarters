@@ -185,3 +185,9 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
   // Changes look like they worked, but nothing is kept (the banner says so).
   return { id: 'demo', ok: true, outcome: 'ASSIGNED', outOfRange: false, reasons: [], locationStatus: 'ON_SITE' } as T;
 }
+
+/** Dev console in the static demo (filled from recorded responses in demoFixtures). */
+export async function demoPlatformApi<T>(_path: string, _init: { method?: string; body?: unknown } = {}): Promise<T> {
+  await delay();
+  throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
+}

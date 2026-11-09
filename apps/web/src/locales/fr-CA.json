@@ -940,5 +940,213 @@
     "makeSteward": "Nommer délégué",
     "madeSteward": "{{name}} est maintenant délégué",
     "search": "Rechercher par nom"
+  },
+  "platform": {
+    "home": "Accueil de la console Dev FH",
+    "badge": "Console Dev",
+    "cities": "Villes",
+    "signOut": "Se déconnecter",
+    "locked": "Ce compte est verrouillé 15 minutes après trop de tentatives.",
+    "signInTitle": "Console Dev FH",
+    "signInHelp": "Pour l'équipe FlexcityHeadquarters qui configure et soutient les organisations.",
+    "demoSignIn": "Essayer la console Dev",
+    "citiesTitle": "Villes",
+    "citiesHelp": "Toutes les organisations sur FlexcityHeadquarters. Ouvrez-en une pour la configurer ou changer ce qu'elle peut utiliser.",
+    "newCity": "Nouvelle ville",
+    "newCityHelp": "Crée l'organisation et sa première installation et, si vous l'indiquez, invite son administrateur RH.",
+    "searchCities": "Rechercher une ville",
+    "noCities": "Aucune ville trouvée",
+    "staffCount_one": "{{count}} employé",
+    "staffCount_other": "{{count}} employés",
+    "facilityCount_one": "{{count}} installation",
+    "facilityCount_other": "{{count}} installations",
+    "positionCount_one": "{{count}} poste",
+    "positionCount_other": "{{count}} postes",
+    "since": "depuis le {{date}}",
+    "featuresOn": "{{on}}/{{total}} fonctions actives",
+    "orgName": "Nom de l'organisation",
+    "subdomain": "Adresse Web",
+    "subdomainHint": "Le personnel se connecte à cette adresse. Minuscules, chiffres et traits d'union, p. ex. lakeview.",
+    "subdomainFixed": "Ne change plus après la création.",
+    "firstFacility": "Première installation",
+    "firstAdmin": "Administrateur RH (facultatif)",
+    "firstAdminHelp": "La personne reçoit un courriel pour choisir un mot de passe, puis gère la ville.",
+    "createCity": "Créer la ville",
+    "created": "Ville créée",
+    "errors": {
+      "SUBDOMAIN_TAKEN": "Une autre organisation utilise déjà cette adresse Web.",
+      "POSITION_EXISTS": "Cette ville a déjà un poste portant ce nom.",
+      "VALIDATION": "Vérifiez les renseignements et réessayez."
+    },
+    "tabs": {
+      "org": "Organisation",
+      "features": "Fonctions",
+      "facilities": "Installations",
+      "positions": "Postes",
+      "import": "Importer le personnel"
+    },
+    "logo": "Logo de la ville",
+    "logoHelp": "Affiché à côté du logo FlexcityHeadquarters sur la page de connexion, dans l'application et sur la page carrières. Il ne remplace jamais le logo FH.",
+    "previewSignIn": "Page de connexion",
+    "previewHeader": "En-tête de l'application et des carrières",
+    "uploadLogo": "Téléverser un logo",
+    "replaceLogo": "Remplacer le logo",
+    "removeLogo": "Retirer",
+    "logoRules": "PNG, JPEG ou WebP, 512 Ko au plus. Un logo horizontal sur fond transparent donne le meilleur résultat.",
+    "logoType": "Utilisez une image PNG, JPEG ou WebP.",
+    "logoSize": "Ce fichier dépasse 512 Ko.",
+    "logoSaved": "Logo mis à jour",
+    "logoRemoved": "Logo retiré",
+    "orgHelp": "Le nom, la langue et les paramètres de paie de la ville. Les RH de la ville peuvent aussi les modifier.",
+    "brandColourHint": "Pour les boutons et accents de la ville. Le logo FH garde ses propres couleurs.",
+    "admins": "Administrateurs RH",
+    "adminsHelp": "Les personnes qui gèrent cette ville dans l'application.",
+    "noAdmins": "Aucun administrateur RH. Ajoutez-en un en important le personnel avec le rôle hr.",
+    "featuresHelp": "Désactivez ce que cette ville n'utilise pas. Les écrans disparaissent pour tout le monde dans la ville et l'application refuse ces actions. Réactiver rétablit tout; rien n'est supprimé.",
+    "changedFromDefault": "Modifié",
+    "featureOn": "{{name}} activé",
+    "featureOff": "{{name}} désactivé",
+    "featureGroups": {
+      "scheduling": "Horaires",
+      "time": "Temps et paie",
+      "deck": "Bord de la piscine",
+      "people": "Personnel",
+      "communication": "Communication"
+    },
+    "features": {
+      "shiftBoard": {
+        "name": "Babillard des quarts",
+        "help": "Le personnel affiche et prend des quarts; les heures supplémentaires vont à un superviseur."
+      },
+      "scheduleAssistant": {
+        "name": "Assistant d'horaire",
+        "help": "Suggère qui placer sur chaque quart pendant la préparation de l'horaire."
+      },
+      "availability": {
+        "name": "Disponibilités",
+        "help": "Le personnel indique quand il peut travailler."
+      },
+      "timeOff": {
+        "name": "Congés",
+        "help": "Demandes et approbations de vacances, de maladie et de congés."
+      },
+      "lessons": {
+        "name": "Cours de natation",
+        "help": "Listes de classes et présences hors ligne pour les moniteurs."
+      },
+      "timeclock": {
+        "name": "Pointage",
+        "help": "Pointer l'arrivée et le départ avec vérification du lieu, et révision des pointages."
+      },
+      "payroll": {
+        "name": "Exportation de la paie",
+        "help": "La paie brute en CSV pour le système de paie de la ville."
+      },
+      "poolChemistry": {
+        "name": "Chimie de l'eau",
+        "help": "Lectures, approbation et recommandations de fermeture."
+      },
+      "statusBoard": {
+        "name": "Tableau d'état des bassins",
+        "help": "Tableau ouvert/fermé en direct pour l'accueil, avec appel."
+      },
+      "incidents": {
+        "name": "Rapports d'incident",
+        "help": "Rapports de premiers soins et de sauvetage au récit scellé."
+      },
+      "discipline": {
+        "name": "Dossiers disciplinaires",
+        "help": "Documents que le personnel lit et signe."
+      },
+      "reliability": {
+        "name": "Indices de fiabilité",
+        "help": "Indices de présence à titre indicatif pour les superviseurs."
+      },
+      "jobs": {
+        "name": "Offres d'emploi",
+        "help": "Postes ouverts et page carrières publique."
+      },
+      "union": {
+        "name": "Espace syndical",
+        "help": "Discussions et liste d'ancienneté gérées par la section locale."
+      },
+      "emailNotifications": {
+        "name": "Courriels d'avis",
+        "help": "Courriels pour les changements d'horaire, les approbations et les certifications qui expirent. Les invitations et réinitialisations de mot de passe partent toujours."
+      }
+    },
+    "positions": "Postes",
+    "positionsHelp": "Les emplois pour lesquels on planifie le personnel dans cette ville, et ce que chacun exige.",
+    "addPosition": "Ajouter un poste",
+    "noPositions": "Aucun poste",
+    "noPositionsHelp": "Ajoutez les postes avant d'importer le personnel pour que leurs postes soient reconnus.",
+    "noCertsRequired": "Aucune certification exigée",
+    "minAgeShort": "{{age}} ans et +",
+    "positionSaved": "Poste enregistré",
+    "positionHelp": "Le personnel doit détenir chaque certification exigée, vérifiée et valide, pour être planifié.",
+    "positionName": "Nom",
+    "positionNameFr": "Nom en français",
+    "minAge": "Âge minimum",
+    "minAgeHint": "Laissez vide s'il n'y en a pas.",
+    "requiredCerts": "Certifications exigées",
+    "import": {
+      "title": "Importer le personnel d'un chiffrier",
+      "choose": "Choisir un fichier CSV",
+      "template": "Télécharger un modèle",
+      "columns": "Colonnes",
+      "columnsHelp": "Obligatoires : first_name, last_name, email. Facultatives : employment (temps plein, temps partiel, occasionnel, sur appel, bénévole), positions (séparés par ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date et date_of_birth (AAAA-MM-JJ), employee_number, phone, language (en ou fr), union_member (oui/non). Les noms de colonnes en français fonctionnent aussi.",
+      "positionsKnown": "Postes de cette ville : {{list}}.",
+      "paste": "…ou collez le chiffrier ici",
+      "check": "Vérifier les lignes",
+      "previewTitle": "Vérifier avant d'importer",
+      "missing": "Colonnes manquantes : {{list}}.",
+      "ignored": "Colonnes ignorées : {{list}}.",
+      "willCreate": "{{count}} à ajouter",
+      "alreadyThere": "{{count}} déjà au personnel",
+      "toFix": "{{count}} à corriger",
+      "line": "Ligne",
+      "notes": "Notes",
+      "sendInvites": "Envoyer à chaque nouvelle personne une invitation à choisir son mot de passe",
+      "run_one": "Importer {{count}} personne",
+      "run_other": "Importer {{count}} personnes",
+      "skipNote": "Les lignes à corriger sont ignorées. Corrigez-les dans le fichier et importez de nouveau; les personnes déjà ajoutées ne seront pas dupliquées.",
+      "allGood": "Toutes les lignes sont prêtes.",
+      "done_one": "{{count}} personne ajoutée",
+      "done_other": "{{count}} personnes ajoutées",
+      "status": {
+        "create": "À ajouter",
+        "exists": "Déjà au personnel",
+        "error": "À corriger"
+      },
+      "fields": {
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "name": "Nom",
+        "email": "Courriel",
+        "employment": "Emploi",
+        "positions": "Postes",
+        "roles": "Rôles",
+        "hireDate": "Date d'embauche",
+        "dateOfBirth": "Date de naissance",
+        "employeeNumber": "Numéro d'employé",
+        "row": "Ligne"
+      },
+      "codes": {
+        "REQUIRED": "{{field}} : valeur manquante.",
+        "TOO_LONG": "{{field}} : trop long.",
+        "EMAIL_INVALID": "« {{value}} » n'est pas une adresse courriel.",
+        "DUPLICATE_IN_FILE": "{{value}} figure plus d'une fois dans le fichier.",
+        "UNKNOWN_EMPLOYMENT": "Type d'emploi inconnu « {{value}} ».",
+        "DEFAULTED_PART_TIME": "Aucun type d'emploi; temps partiel par défaut.",
+        "UNKNOWN_ROLE": "Rôle inconnu « {{value}} ».",
+        "UNKNOWN_POSITION": "Aucun poste « {{value}} » dans cette ville.",
+        "DATE_FORMAT": "{{field}} « {{value}} » n'est pas une date (AAAA-MM-JJ).",
+        "DATE_IN_FUTURE": "{{field}} est dans le futur.",
+        "NO_EMPLOYEE_NUMBER": "Aucun numéro d'employé; la paie en aura besoin.",
+        "TOO_MANY_ROWS": "Plus de 2 000 lignes; importez le reste séparément."
+      },
+      "help_one": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} poste reconnu.",
+      "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus."
+    }
   }
 }

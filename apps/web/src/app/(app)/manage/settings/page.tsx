@@ -15,11 +15,10 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
+import { PROVINCES, TIMEZONES } from '@/lib/regions';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
-const PROVINCES = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'] as const;
-const TIMEZONES = ['America/Vancouver', 'America/Edmonton', 'America/Regina', 'America/Winnipeg', 'America/Toronto', 'America/Halifax', 'America/St_Johns', 'America/Whitehorse', 'America/Yellowknife', 'America/Iqaluit'];
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
 
 interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null }

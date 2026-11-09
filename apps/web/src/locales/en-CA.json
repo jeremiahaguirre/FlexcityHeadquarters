@@ -940,5 +940,213 @@
     "makeSteward": "Make steward",
     "madeSteward": "{{name}} is now a steward",
     "search": "Search by name"
+  },
+  "platform": {
+    "home": "FH Dev console home",
+    "badge": "Dev console",
+    "cities": "Cities",
+    "signOut": "Sign out",
+    "locked": "This account is locked for 15 minutes after too many attempts.",
+    "signInTitle": "FH Dev console",
+    "signInHelp": "For FlexcityHeadquarters staff who set up and support organizations.",
+    "demoSignIn": "Try the Dev console",
+    "citiesTitle": "Cities",
+    "citiesHelp": "Every organization on FlexcityHeadquarters. Open one to set it up or change what it can use.",
+    "newCity": "New city",
+    "newCityHelp": "Creates the organization, its first facility and, if you add one, invites its HR administrator.",
+    "searchCities": "Search cities",
+    "noCities": "No cities match",
+    "staffCount_one": "{{count}} staff",
+    "staffCount_other": "{{count}} staff",
+    "facilityCount_one": "{{count}} facility",
+    "facilityCount_other": "{{count}} facilities",
+    "positionCount_one": "{{count}} position",
+    "positionCount_other": "{{count}} positions",
+    "since": "since {{date}}",
+    "featuresOn": "{{on}}/{{total}} features on",
+    "orgName": "Organization name",
+    "subdomain": "Web address",
+    "subdomainHint": "Staff sign in at this address. Lowercase letters, digits and hyphens, e.g. lakeview.",
+    "subdomainFixed": "Fixed once created.",
+    "firstFacility": "First facility",
+    "firstAdmin": "HR administrator (optional)",
+    "firstAdminHelp": "They get an email to set a password, then run the city from there.",
+    "createCity": "Create city",
+    "created": "City created",
+    "errors": {
+      "SUBDOMAIN_TAKEN": "Another organization already uses that web address.",
+      "POSITION_EXISTS": "This city already has a position with that name.",
+      "VALIDATION": "Check the highlighted details and try again."
+    },
+    "tabs": {
+      "org": "Organization",
+      "features": "Features",
+      "facilities": "Facilities",
+      "positions": "Positions",
+      "import": "Import staff"
+    },
+    "logo": "City logo",
+    "logoHelp": "Shown beside the FlexcityHeadquarters logo on the sign-in page, in the app and on the careers page. It never replaces the FH logo.",
+    "previewSignIn": "Sign-in page",
+    "previewHeader": "App and careers header",
+    "uploadLogo": "Upload logo",
+    "replaceLogo": "Replace logo",
+    "removeLogo": "Remove",
+    "logoRules": "PNG, JPEG or WebP, up to 512 KB. A wide logo on a transparent background works best.",
+    "logoType": "Use a PNG, JPEG or WebP image.",
+    "logoSize": "That file is over 512 KB.",
+    "logoSaved": "Logo updated",
+    "logoRemoved": "Logo removed",
+    "orgHelp": "The city's name, language and pay settings. The city's HR can change these too.",
+    "brandColourHint": "For the city's buttons and highlights. The FH logo keeps its own colours.",
+    "admins": "HR administrators",
+    "adminsHelp": "The people who run this city in the app.",
+    "noAdmins": "No HR administrator yet. Add one by importing staff with the role hr.",
+    "featuresHelp": "Switch off anything this city doesn't use. Its screens disappear for everyone in the city, and the app refuses its actions. Switching back on restores everything; nothing is deleted.",
+    "changedFromDefault": "Changed from default",
+    "featureOn": "{{name}} switched on",
+    "featureOff": "{{name}} switched off",
+    "featureGroups": {
+      "scheduling": "Scheduling",
+      "time": "Time and pay",
+      "deck": "Pool deck",
+      "people": "People",
+      "communication": "Communication"
+    },
+    "features": {
+      "shiftBoard": {
+        "name": "Shift board",
+        "help": "Staff post and pick up shifts; overtime goes to a supervisor."
+      },
+      "scheduleAssistant": {
+        "name": "Schedule assistant",
+        "help": "Suggests who to put on each shift when building the schedule."
+      },
+      "availability": {
+        "name": "Availability",
+        "help": "Staff tell schedulers when they can work."
+      },
+      "timeOff": {
+        "name": "Time off",
+        "help": "Requests and approvals for vacation, sick days and leave."
+      },
+      "lessons": {
+        "name": "Swim lessons",
+        "help": "Class lists and offline attendance for instructors."
+      },
+      "timeclock": {
+        "name": "Timeclock",
+        "help": "Clock in and out with a facility check, and punch review."
+      },
+      "payroll": {
+        "name": "Payroll export",
+        "help": "Gross pay as a CSV for the city's payroll system."
+      },
+      "poolChemistry": {
+        "name": "Pool chemistry",
+        "help": "Water readings, sign-off and closure recommendations."
+      },
+      "statusBoard": {
+        "name": "Pool status board",
+        "help": "Live open/closed board for the front desk, with paging."
+      },
+      "incidents": {
+        "name": "Incident reports",
+        "help": "First aid and rescue reports with sealed narratives."
+      },
+      "discipline": {
+        "name": "Discipline records",
+        "help": "Records staff read and sign."
+      },
+      "reliability": {
+        "name": "Reliability scores",
+        "help": "Advisory attendance scores for supervisors."
+      },
+      "jobs": {
+        "name": "Job postings",
+        "help": "Openings and the public careers page."
+      },
+      "union": {
+        "name": "Union hub",
+        "help": "Discussions and seniority list run by the union local."
+      },
+      "emailNotifications": {
+        "name": "Notification emails",
+        "help": "Emails for schedule changes, approvals and expiring certifications. Invitations and password resets always send."
+      }
+    },
+    "positions": "Positions",
+    "positionsHelp": "The jobs people are scheduled for in this city, and what each one requires.",
+    "addPosition": "Add position",
+    "noPositions": "No positions yet",
+    "noPositionsHelp": "Add positions before importing staff so their positions can be matched.",
+    "noCertsRequired": "No certification required",
+    "minAgeShort": "{{age}}+",
+    "positionSaved": "Position saved",
+    "positionHelp": "Staff need every required certification, verified and current, to be scheduled.",
+    "positionName": "Name",
+    "positionNameFr": "Name in French",
+    "minAge": "Minimum age",
+    "minAgeHint": "Leave blank for no minimum.",
+    "requiredCerts": "Required certifications",
+    "import": {
+      "title": "Import staff from a spreadsheet",
+      "choose": "Choose a CSV file",
+      "template": "Download a template",
+      "columns": "Columns",
+      "columnsHelp": "Needed: first_name, last_name, email. Optional: employment (full-time, part-time, casual, on call, volunteer), positions (separated by ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date and date_of_birth (YYYY-MM-DD), employee_number, phone, language (en or fr), union_member (yes/no). French column names work too.",
+      "positionsKnown": "Positions in this city: {{list}}.",
+      "paste": "…or paste the spreadsheet here",
+      "check": "Check rows",
+      "previewTitle": "Check before importing",
+      "missing": "Missing columns: {{list}}.",
+      "ignored": "Ignored columns: {{list}}.",
+      "willCreate": "{{count}} to add",
+      "alreadyThere": "{{count}} already on staff",
+      "toFix": "{{count}} to fix",
+      "line": "Line",
+      "notes": "Notes",
+      "sendInvites": "Email each new person an invitation to set their password",
+      "run_one": "Import {{count}} person",
+      "run_other": "Import {{count}} people",
+      "skipNote": "Rows to fix are skipped. Fix them in the file and import again; people already added won't be duplicated.",
+      "allGood": "Every row is ready.",
+      "done_one": "{{count}} person added",
+      "done_other": "{{count}} people added",
+      "status": {
+        "create": "Will add",
+        "exists": "Already on staff",
+        "error": "Fix"
+      },
+      "fields": {
+        "firstName": "First name",
+        "lastName": "Last name",
+        "name": "Name",
+        "email": "Email",
+        "employment": "Employment",
+        "positions": "Positions",
+        "roles": "Roles",
+        "hireDate": "Hire date",
+        "dateOfBirth": "Date of birth",
+        "employeeNumber": "Employee number",
+        "row": "Row"
+      },
+      "codes": {
+        "REQUIRED": "{{field}} is missing.",
+        "TOO_LONG": "{{field}} is too long.",
+        "EMAIL_INVALID": "“{{value}}” isn't an email address.",
+        "DUPLICATE_IN_FILE": "{{value}} appears more than once in the file.",
+        "UNKNOWN_EMPLOYMENT": "Unknown employment type “{{value}}”.",
+        "DEFAULTED_PART_TIME": "No employment type; part-time assumed.",
+        "UNKNOWN_ROLE": "Unknown role “{{value}}”.",
+        "UNKNOWN_POSITION": "No position called “{{value}}” in this city.",
+        "DATE_FORMAT": "{{field}} “{{value}}” isn't a date (use YYYY-MM-DD).",
+        "DATE_IN_FUTURE": "{{field}} is in the future.",
+        "NO_EMPLOYEE_NUMBER": "No employee number; payroll will need one.",
+        "TOO_MANY_ROWS": "Over 2,000 rows; import the rest separately."
+      },
+      "help_one": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You'll see every row checked before anything is created. This city has {{count}} position to match against.",
+      "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You'll see every row checked before anything is created. This city has {{count}} positions to match against."
+    }
   }
 }

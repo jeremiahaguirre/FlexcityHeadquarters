@@ -3,7 +3,6 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { DemoBanner } from '@/components/DemoBanner';
-import { Logo } from '@/components/Logo';
 import { Providers } from '@/components/Providers';
 import { ToastProvider } from '@/components/ui/Toast';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
@@ -44,18 +43,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           </a>
           {DEMO ? <DemoBanner /> : null}
           <ToastProvider dismissLabel={t('common.dismiss')}>
-            {tenant ? (
-              children
-            ) : (
-              <main id="main" className="mx-auto grid min-h-screen max-w-md place-items-center px-6 text-center">
-                <div>
-                  <Logo variant="stacked" size={96} />
-                  <p role="alert" className="mt-8 text-body text-muted">
-                    {t('app.unknownOrg')}
-                  </p>
-                </div>
-              </main>
-            )}
+            {children}
           </ToastProvider>
         </Providers>
       </body>

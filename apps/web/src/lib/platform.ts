@@ -1,0 +1,77 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ApiError } from './apiError';
+import { DEMO } from './demo';
+import { demoPlatformApi } from './demoApi';
+
+/**
+ * FH Dev console client. The session is an HTTP-only cookie the browser sends
+ * by itself; the x-fh-platform header is the API's guard against cross-site requests.
+ */
+export async function papi<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  if (DEMO) return demoPlatformApi<T>(path, init);
+  const res = await fetch(`/api/platform${path}`, {
+    method: init.method ?? 'GET',
+    credentials: 'include',
+    headers: { 'x-fh-platform': '1', ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}) },
+    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+  });
+  if (!res.ok) {
+    const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string; details?: unknown };
+    throw new ApiError(res.status, b.code ?? 'ERROR', b.message ?? res.statusText, b.details);
+  }
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+/** Like useQuery, for the Dev console. A lost session sends you to its sign-in page. */
+export function usePlatformQuery<T>(path: string | null) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [loading, setLoading] = useState(!!path);
+  const router = useRouter();
+  const current = useRef(path);
+  current.current = path;
+  const load = useCallback(async () => {
+    if (!path) return;
+    setLoading(true);
+    try {
+      const d = await papi<T>(path);
+      if (current.current === path) {
+        setData(d);
+        setError(null);
+      }
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) router.replace('/platform/login');
+      setError(e instanceof ApiError ? e : new ApiError(0, 'NETWORK', String(e)));
+    } finally {
+      setLoading(false);
+    }
+  }, [path, router]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  return { data, error, loading, reload: load };
+}
+
+export interface CitySummary { id: string; name: string; subdomain: string; logoUrl: string | null; staff: number; facilities: number; featuresOn: number; featuresTotal: number; createdAt: string }
+export interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null }
+export interface PositionRow { id: string; name: string; nameFr: string | null; minimumAge: number | null; requiredCertificationIds: string[]; staff: number }
+export interface CityDetail {
+  organization: { id: string; name: string; subdomain: string; defaultLocale: string; themeColors: { primary?: string } | null; logoUrl: string | null; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number; createdAt: string; signInUrl: string };
+  features: Record<string, boolean>;
+  featureDefaults: Record<string, boolean>;
+  facilities: Facility[];
+  positions: PositionRow[];
+  certifications: Array<{ id: string; name: string; nameFr: string | null }>;
+  staff: number;
+  admins: Array<{ id: string; name: string; email: string; invited: boolean }>;
+}
+export interface ImportIssue { field: string; code: string; value?: string }
+export interface ImportPreview {
+  rows: Array<{ line: number; firstName: string; lastName: string; email: string; employmentStatus: string | null; positions: string[]; status: 'create' | 'exists' | 'error'; errors: ImportIssue[]; warnings: ImportIssue[] }>;
+  missingColumns: string[];
+  unknownColumns: string[];
+  summary: { create: number; exists: number; error: number };
+}

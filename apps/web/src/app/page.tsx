@@ -1,18 +1,10 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { HomeRedirect } from '@/components/HomeRedirect';
+import { DEMO } from '@/lib/demo';
+import { currentTenant } from '@/lib/tenant';
 
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { ShellLoading } from '@/components/shell/ShellLoading';
-import { api } from '@/lib/api';
-import { homePath } from '@/lib/nav';
-
-/** Sends people to the first screen their role can use, or to sign-in. */
-export default function Home() {
-  const router = useRouter();
-  useEffect(() => {
-    api<{ permissions: string[] }>('/api/me')
-      .then((me) => router.replace(homePath((p) => me.permissions.includes(p))))
-      .catch(() => router.replace('/login'));
-  }, [router]);
-  return <ShellLoading />;
+/** An organization's address goes to its app; the bare FH address goes to the Dev console. */
+export default async function Home() {
+  if (!DEMO && !(await currentTenant())) redirect('/platform');
+  return <HomeRedirect />;
 }

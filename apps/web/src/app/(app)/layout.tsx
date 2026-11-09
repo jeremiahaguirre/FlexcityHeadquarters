@@ -5,9 +5,11 @@ import { ShellLoading } from '@/components/shell/ShellLoading';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { SessionProvider } from '@/lib/session';
 import { currentTenant } from '@/lib/tenant';
+import { UnknownOrg } from '@/components/UnknownOrg';
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
+  if (!tenant) return <UnknownOrg />;
   return (
     <SessionProvider fallback={<ShellLoading />}>
       <ServiceWorker />
