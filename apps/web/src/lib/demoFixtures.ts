@@ -5,7 +5,7 @@
 
 import { DEMO_LOGO } from './demoLogo';
 
-export type DemoRole = 'guard' | 'supervisor' | 'hr' | 'frontdesk' | 'steward';
+export type DemoRole = 'guard' | 'supervisor' | 'hr' | 'frontdesk' | 'steward' | 'waterworks';
 interface Capture { capturedOn: string; responses: Record<string, unknown> }
 
 const loaders: Record<DemoRole | 'public' | 'platform', () => Promise<{ default: Capture }>> = {
@@ -14,6 +14,7 @@ const loaders: Record<DemoRole | 'public' | 'platform', () => Promise<{ default:
   hr: () => import('./demo-fixtures/hr.json') as Promise<{ default: Capture }>,
   frontdesk: () => import('./demo-fixtures/frontdesk.json') as Promise<{ default: Capture }>,
   steward: () => import('./demo-fixtures/steward.json') as Promise<{ default: Capture }>,
+  waterworks: () => import('./demo-fixtures/waterworks.json') as Promise<{ default: Capture }>,
   public: () => import('./demo-fixtures/public.json') as Promise<{ default: Capture }>,
   platform: () => import('./demo-fixtures/platform.json') as Promise<{ default: Capture }>,
 };

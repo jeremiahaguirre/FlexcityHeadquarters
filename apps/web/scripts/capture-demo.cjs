@@ -17,10 +17,10 @@ const CONSOLE = process.env.CAPTURE_CONSOLE ?? 'http://localhost:3000';
 const API = process.env.CAPTURE_API ?? 'http://localhost:4000';
 const PASSWORD = 'flexcity-dev';
 const OUT = join(__dirname, '../src/lib/demo-fixtures');
-const ROLES = { guard: 'guard', supervisor: 'supervisor', hr: 'hr', frontdesk: 'frontdesk', steward: 'steward' };
+const ROLES = { guard: 'guard', supervisor: 'supervisor', hr: 'hr', frontdesk: 'frontdesk', steward: 'steward', waterworks: 'waterworks' };
 
 const RENAME = [
-  ['City of Kelowna (demo)', 'Lakeview Aquatic Centre (demo)'],
+  ['City of Kelowna (demo)', 'City of Lakeview (demo)'],
   ['Parkinson Recreation Centre', 'Lakeview Aquatic Centre'],
   ['CUPE Local 338 (demo)', 'Aquatic Workers Local 101 (demo)'],
   ['@kelowna.test', '@demo.flexcity'],

@@ -19,7 +19,7 @@ describe('demo fixtures', () => {
   });
 
   it('serves every role a profile, with dates moved to today', async () => {
-    for (const role of ['guard', 'supervisor', 'hr', 'frontdesk', 'steward'] as const) {
+    for (const role of ['guard', 'supervisor', 'hr', 'frontdesk', 'steward', 'waterworks'] as const) {
       const f = await loadFixtures(role, '2030-01-15');
       expect(f.get('/api/me')).toMatchObject({ permissions: expect.any(Array) });
       expect(JSON.stringify(f.get('/api/me'))).not.toMatch(/kelowna/i);
