@@ -146,6 +146,38 @@ export default function Home({ params }: { params: { lang: Lang } }) {
         </div>
       </Section>
 
+      {/* People review: the HR differentiator */}
+      <Section id="people-review" className="scroll-mt-16">
+        <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.15fr]">
+          <div>
+            <p className="mb-3 inline-flex rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-caption font-semibold text-accent">{h.peopleEyebrow}</p>
+            <h2 className="text-title [text-wrap:balance]">{h.peopleTitle}</h2>
+            <p className="mt-3 text-body leading-7 text-muted">{h.peopleLead}</p>
+            <ul className="mt-6 grid gap-4">
+              {h.peoplePoints.map((pt) => (
+                <li key={pt.title} className="flex gap-3">
+                  <Check className="mt-1 h-5 w-5 shrink-0 text-ok" aria-hidden="true" />
+                  <span>
+                    <span className="block text-body-strong">{pt.title}</span>
+                    <span className="text-small leading-6 text-muted">{pt.body}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-7 flex flex-wrap items-center gap-4">
+              <a href={demoLink('HR_ADMIN', params.lang)} className="inline-flex h-12 items-center gap-2 rounded-xl bg-brand px-6 text-body-strong text-brand-contrast hover:bg-brand-hover">
+                {h.peopleCta}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+            <p className="mt-4 text-caption text-muted">{h.peopleNote}</p>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-line bg-panel shadow-lift">
+            <img src={`/screens/desktop-casefile${fr ? '-fr' : ''}.png`} alt={fr ? 'Dossier d’un employé : score, signalements motivés et faits datés' : 'An employee’s case file: score, flags with reasons and dated facts'} className="block w-full" width={944} height={640} loading="lazy" />
+          </div>
+        </div>
+      </Section>
+
       {/* Why FH is different: compared with today's workarounds, never with named products */}
       <Section id="why" className="scroll-mt-16">
         <SectionHead title={h.whyTitle} lead={h.whyLead} />

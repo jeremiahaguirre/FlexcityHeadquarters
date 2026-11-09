@@ -95,6 +95,60 @@ export const ARTICLES: Article[] = [
     },
   },
   {
+    slug: 'people-review',
+    audience: 'leads',
+    en: {
+      title: 'People review and documenting discipline',
+      summary: 'See who may need a conversation, why, and write a record that holds up.',
+      steps: [
+        'Open Manage, then People review. "Needs attention" lists people whose facts crossed a threshold, with the reason for each flag.',
+        'Open someone to see their case file: attendance events, supervisors’ notes and records in one timeline. Excuse an event or retract a note with a reason if it shouldn’t count.',
+        'Use Record attendance for what the timeclock can’t see, like a missed in-service, and Add a note for conduct, performance, safety or a commendation. Link the incident if there is one.',
+        'Have the conversation first. Then choose Start a record, pick the step, tick the facts it relies on and complete the drafted summary: impact, what was discussed, expectation, support and next step.',
+        'For a suspension or termination (HR only), confirm each fair-process step. The employee is notified, signs to confirm they received it, and can add their own response.',
+      ],
+      tip: 'The typical next step is a suggestion. Your policy, your collective agreement and the seriousness of what happened decide; when you skip steps, say why in the summary.',
+    },
+    fr: {
+      title: 'Suivi du personnel et documentation disciplinaire',
+      summary: 'Voyez qui pourrait avoir besoin d’une discussion, pourquoi, et rédigez un dossier solide.',
+      steps: [
+        'Ouvrez Gestion, puis Suivi du personnel. « À examiner » liste les personnes dont les faits ont dépassé un seuil, avec la raison de chaque signalement.',
+        'Ouvrez une personne pour voir son dossier : événements d’assiduité, notes des superviseurs et dossiers sur une seule ligne du temps. Excusez un événement ou retirez une note avec une raison s’il ne doit pas compter.',
+        'Utilisez Consigner l’assiduité pour ce que le pointage ne voit pas, comme une formation manquée, et Ajouter une note pour la conduite, le rendement, la sécurité ou une mention d’éloge. Liez l’incident s’il y en a un.',
+        'Tenez d’abord la discussion. Choisissez ensuite Ouvrir un dossier, l’étape, cochez les faits sur lesquels il repose et complétez le résumé rédigé : conséquences, discussion, attente, soutien et suite.',
+        'Pour une suspension ou un congédiement (RH seulement), confirmez chaque étape d’équité. L’employé est avisé, signe pour confirmer la réception et peut ajouter sa propre réponse.',
+      ],
+      tip: 'L’étape habituelle suivante est une suggestion. Votre politique, votre convention collective et la gravité des faits décident; si vous sautez des étapes, expliquez pourquoi dans le résumé.',
+    },
+  },
+  {
+    slug: 'my-file',
+    audience: 'staff',
+    en: {
+      title: 'Your file and your right to respond',
+      summary: 'See what your managers see, and add your side to any record.',
+      steps: [
+        'Open your profile and scroll to My file. You see your attendance score, every event and note, and any records.',
+        'Sick days and protected leave never count. If something is wrong, ask your supervisor to excuse it; the reason stays visible to you.',
+        'On a record, choose Add my response to give your account. It stays with the record for anyone who reads it.',
+        'Choose How this works for a plain explanation of what is tracked and how it is used.',
+      ],
+      tip: 'Signing a record confirms you received it, not that you agree with it.',
+    },
+    fr: {
+      title: 'Votre dossier et votre droit de réponse',
+      summary: 'Voyez ce que voient vos gestionnaires, et ajoutez votre version à tout dossier.',
+      steps: [
+        'Ouvrez votre profil et descendez jusqu’à Mon dossier. Vous y voyez votre score d’assiduité, chaque événement et chaque note, et vos dossiers.',
+        'Les congés de maladie et protégés ne comptent jamais. Si quelque chose est inexact, demandez à votre superviseur de l’excuser; la raison reste visible pour vous.',
+        'Dans un dossier, choisissez Ajouter ma réponse pour donner votre version. Elle reste avec le dossier pour quiconque le lit.',
+        'Choisissez Comment ça fonctionne pour une explication simple de ce qui est suivi et de son utilisation.',
+      ],
+      tip: 'Signer un dossier confirme que vous l’avez reçu, pas que vous êtes d’accord.',
+    },
+  },
+  {
     slug: 'import-staff',
     audience: 'admin',
     en: {

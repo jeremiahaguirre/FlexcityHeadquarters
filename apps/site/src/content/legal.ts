@@ -38,6 +38,13 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
           ],
         },
         {
+          heading: 'Attendance and people review',
+          body: [
+            'The application keeps an attendance score and lets supervisors write notes about conduct, performance and safety, including commendations. Employers use them to notice when a conversation may help and to document discipline.',
+            'Nothing is decided automatically: a person makes every decision, sick days and protected leave never count, and being named in an incident report never counts. Employees can see their own file, ask for corrections, and add a written response to any record. Every time a manager opens a file, it is logged.',
+          ],
+        },
+        {
           heading: 'Safeguards',
           body: [
             'Each organization’s data is separated at the database level with row-level security. Passwords are hashed, sensitive changes require you to confirm your identity again, and administrative actions are written to an audit log.',
@@ -93,6 +100,13 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
             'Coordonnées professionnelles, postes, certifications, disponibilités, horaires, pointages (avec la position uniquement au moment du pointage, pour confirmer votre présence sur place), demandes de congé, taux de salaire et heures de paie, registres d’exploitation des bassins et rapports d’incident.',
             'Les dossiers du Carrefour syndical sont conservés dans une zone distincte de la base de données, chiffrés avec une clé propre à chaque section locale, et l’employeur ne peut pas les lire.',
             'Les clés d’accès (Face ID, empreinte, Windows Hello) ne quittent jamais votre appareil : nous ne conservons qu’une clé publique.',
+          ],
+        },
+        {
+          heading: 'Assiduité et suivi du personnel',
+          body: [
+            'L’application tient un score d’assiduité et permet aux superviseurs de rédiger des notes sur la conduite, le rendement et la sécurité, y compris des mentions d’éloge. Les employeurs s’en servent pour voir quand une discussion pourrait aider et pour documenter la discipline.',
+            'Rien n’est décidé automatiquement : une personne prend chaque décision, les congés de maladie et protégés ne comptent jamais, et être nommé dans un rapport d’incident ne compte jamais. Le personnel peut consulter son dossier, demander des corrections et ajouter une réponse écrite à tout dossier. Chaque consultation par un gestionnaire est consignée.',
           ],
         },
         {
