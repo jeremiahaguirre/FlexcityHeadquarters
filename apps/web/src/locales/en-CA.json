@@ -184,7 +184,8 @@
     "discipline_issued": "A record was added to your file. Please read and sign it.",
     "cert_expiring": "Your {{certification}} expires in {{days}} days. Renew it to keep getting shifts.",
     "staff_cert_expiring": "{{name}}'s {{certification}} expires in {{days}} days.",
-    "forgot_clock_out": "You're still clocked in. Clock out, or ask a supervisor to fix the time."
+    "forgot_clock_out": "You're still clocked in. Clock out, or ask a supervisor to fix the time.",
+    "over_capacity": "{{pool}} is over capacity: {{count}} bathers (max {{max}})."
   },
   "today": {
     "morning": "Good morning",

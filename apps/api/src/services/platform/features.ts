@@ -17,6 +17,7 @@ export const FEATURES = {
   timeclock: { default: true, permissions: ['timeclock.punch', 'timeclock.review'] },
   lessons: { default: true, permissions: ['lessons.teach'] },
   poolChemistry: { default: true, permissions: ['ops.chemical.record', 'ops.chemical.signoff', 'ops.pool.close', 'ops.configure'] },
+  headcounts: { default: true, permissions: ['ops.headcount.record'] },
   statusBoard: { default: true, permissions: ['ops.status.read', 'ops.page_head_guard'] },
   incidents: { default: true, permissions: ['incidents.create', 'incidents.read'] },
   discipline: { default: true, permissions: ['discipline.read', 'discipline.write'] },

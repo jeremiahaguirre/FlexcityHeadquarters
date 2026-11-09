@@ -694,6 +694,15 @@ model PoolBody {
   thresholdSource     String? // e.g. "BC Pool Regulation / Interior Health permit conditions"
   /// Max bathers per on-duty lifeguard, per the regulation / facility safety plan.
   bathersPerLifeguard Int?
+  /// Maximum bathers allowed at once (permit / occupant load). Headcounts above it alert supervisors.
+  maxCapacity         Int?
+  depthMinM           Decimal?       @db.Decimal(4, 2)
+  depthMaxM           Decimal?       @db.Decimal(4, 2)
+  volumeLitres        Int?
+  notes               String?
+  /// Retired pools keep their history but leave the deck screens.
+  archivedAt          DateTime?      @db.Timestamptz(3)
+  headcounts          HeadCount[]
 
   facility  Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   readings  ChemicalReading[]
@@ -1063,4 +1072,20 @@ model UserCustomRole {
 
   @@id([userId, customRoleId])
   @@index([tenantId, customRoleId])
+}
+
+/// A bather count taken on deck (the clicker). Kept apart from water chemistry.
+model HeadCount {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  poolBodyId   String   @db.Uuid
+  count        Int
+  overCapacity Boolean  @default(false)
+  recordedById String   @db.Uuid
+  recordedAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  poolBody PoolBody @relation(fields: [poolBodyId], references: [id], onDelete: Restrict)
+
+  @@index([poolBodyId, recordedAt])
+  @@index([tenantId, recordedAt])
 }

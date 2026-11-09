@@ -14,6 +14,7 @@ import { badRequest, conflict, notFound } from '../../lib/errors.js';
 import { FEATURE_KEYS, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
+import { createPool, poolDetailsBody, poolDetailsView, updatePool } from '../../services/ops/pools.js';
 import { CUSTOM_ROLE_PERMISSIONS, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../../services/people/customRoles.js';
 import { forgetTenantLookup, h } from '../context.js';
 import { facilityBody } from '../settings.js';
@@ -116,7 +117,7 @@ citiesRouter.get(
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
     const out = await cityOr404(id, async (tx) => {
-      const [t, facilities, positions, certifications, staff, admins, customRoles] = await Promise.all([
+      const [t, facilities, positions, certifications, staff, admins, customRoles, pools] = await Promise.all([
         tx.tenant.findUniqueOrThrow({ where: { id } }),
         tx.facility.findMany({ orderBy: { name: 'asc' } }),
         tx.position.findMany({ include: { requirements: true, _count: { select: { qualifiedUsers: true } } }, orderBy: { name: 'asc' } }),
@@ -124,6 +125,7 @@ citiesRouter.get(
         tx.user.count({ where: { status: 'ACTIVE', anonymizedAt: null } }),
         tx.user.findMany({ where: { roles: { has: 'HR_ADMIN' }, anonymizedAt: null }, select: { id: true, firstName: true, lastName: true, email: true, passwordHash: true } }),
         listCustomRoles(tx),
+        tx.poolBody.findMany({ orderBy: [{ archivedAt: { sort: 'desc', nulls: 'first' } }, { name: 'asc' }] }),
       ]);
       return {
         organization: {
@@ -148,6 +150,7 @@ citiesRouter.get(
         admins: admins.map((a) => ({ id: a.id, name: `${a.firstName} ${a.lastName}`, email: a.email, invited: !a.passwordHash })),
         customRoles,
         roleCatalog: CUSTOM_ROLE_PERMISSIONS,
+        pools: pools.map((p) => ({ id: p.id, facilityId: p.facilityId, name: p.name, kind: p.kind, bathersPerLifeguard: p.bathersPerLifeguard, limitsSet: p.freeChlorineMinPpm !== null || p.phMin !== null, ...poolDetailsView(p) })),
       };
     });
     res.json(out);
@@ -307,6 +310,37 @@ citiesRouter.delete(
       await record(tx, p.adminId, id, 'role.delete', { roleId });
     });
     res.status(204).end();
+  }),
+);
+
+// ------------------------------------------------------------------ Pools
+citiesRouter.post(
+  '/tenants/:id/pools',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = poolDetailsBody.parse(req.body);
+    const pool = await cityOr404(id, async (tx) => {
+      const created = await createPool(tx, id, body);
+      await record(tx, p.adminId, id, 'pool.create', body);
+      return created;
+    });
+    res.status(201).json({ id: pool.id });
+  }),
+);
+
+citiesRouter.patch(
+  '/tenants/:id/pools/:poolId',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const poolId = uuid.parse(req.params.poolId);
+    const body = poolDetailsBody.partial().parse(req.body);
+    await cityOr404(id, async (tx) => {
+      await updatePool(tx, poolId, body);
+      await record(tx, p.adminId, id, 'pool.update', { poolId, ...body });
+    });
+    res.json({ ok: true });
   }),
 );
 

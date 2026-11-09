@@ -5,13 +5,13 @@ import { audit, withTenant } from '../lib/db.js';
 import { badRequest, forbidden, notFound } from '../lib/errors.js';
 import { localIso } from '../lib/time.js';
 import { lifeguardsRequired } from '../services/ops/chemistry.js';
+import { createPool, headcountBoard, headcountReport, poolDetailsBody, poolDetailsView, recordHeadcount, updatePool } from '../services/ops/pools.js';
 import { h } from './context.js';
 
 export const opsRouter = Router();
 const uuid = z.string().uuid();
 const ppm = z.string().regex(/^\d{1,2}(\.\d{1,2})?$/).nullable();
 
-const poolKinds = z.enum(['POOL', 'LEISURE_POOL', 'HOT_TUB', 'WADING_POOL', 'WAVE_POOL', 'SPLASH_PAD']);
 
 /** Pools with their thresholds, status, latest reading and lifeguards needed for the latest bather count. */
 opsRouter.get(
@@ -24,6 +24,7 @@ opsRouter.get(
         include: {
           facility: { select: { id: true, name: true, timezone: true } },
           readings: { orderBy: { recordedAt: 'desc' }, take: 1 },
+          headcounts: { orderBy: { recordedAt: 'desc' }, take: 1 },
           closures: { where: { reopenedAt: null, dismissedAt: null }, orderBy: { recommendedAt: 'desc' }, take: 1 },
         },
         orderBy: [{ facility: { name: 'asc' } }, { name: 'asc' }],
@@ -32,6 +33,7 @@ opsRouter.get(
     res.json(
       pools.map((p) => {
         const last = p.readings[0];
+        const count = p.headcounts[0];
         return {
           id: p.id,
           name: p.name,
@@ -39,6 +41,8 @@ opsRouter.get(
           status: p.status,
           facility: { id: p.facility.id, name: p.facility.name },
           configured: p.freeChlorineMinPpm !== null || p.phMin !== null,
+          ...poolDetailsView(p),
+          lastHeadcount: count ? { count: count.count, overCapacity: count.overCapacity, localRecordedAt: localIso(count.recordedAt, p.facility.timezone) } : null,
           thresholds: {
             freeChlorineMinPpm: p.freeChlorineMinPpm?.toString() ?? null,
             freeChlorineMaxPpm: p.freeChlorineMaxPpm?.toString() ?? null,
@@ -59,7 +63,8 @@ opsRouter.get(
                 signedOff: last.signedOffAt !== null,
               }
             : null,
-          lifeguardsRequired: last?.batherCount != null ? lifeguardsRequired(last.batherCount, p.bathersPerLifeguard) : null,
+          // The latest deck headcount decides; older chemistry entries carried a bather count too.
+          lifeguardsRequired: count ? lifeguardsRequired(count.count, p.bathersPerLifeguard) : last?.batherCount != null ? lifeguardsRequired(last.batherCount, p.bathersPerLifeguard) : null,
           openClosure: p.closures[0] ? { reason: p.closures[0].reason, confirmed: p.closures[0].confirmedAt !== null } : null,
         };
       }),
@@ -90,10 +95,63 @@ opsRouter.post(
   requirePermission('ops.configure'),
   h(async (req, res) => {
     const a = authOf(req);
-    const body = thresholdBody.extend({ facilityId: uuid, name: z.string().min(2).max(60), kind: poolKinds }).parse(req.body);
-    checkThresholds(body);
-    const p = await withTenant(a.tenantId, (tx) => tx.poolBody.create({ data: { ...body, tenantId: a.tenantId } }));
+    // Details now; permit limits now or later (Settings → Pools). If any limit is sent, all are checked.
+    const body = poolDetailsBody.partial().required({ facilityId: true, name: true, kind: true }).parse(req.body);
+    const sentLimits = Object.keys(thresholdBody.shape).some((k) => k in (req.body ?? {}) && k !== 'bathersPerLifeguard');
+    const limits = sentLimits ? thresholdBody.parse(req.body) : null;
+    if (limits) checkThresholds(limits);
+    const p = await withTenant(a.tenantId, async (tx) => {
+      const created = await createPool(tx, a.tenantId, { maxCapacity: null, bathersPerLifeguard: null, depthMinM: null, depthMaxM: null, volumeLitres: null, notes: null, ...body });
+      if (limits) await tx.poolBody.update({ where: { id: created.id }, data: limits });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'pool.create', entity: 'PoolBody', entityId: created.id, after: body });
+      return created;
+    });
     res.status(201).json({ id: p.id });
+  }),
+);
+
+opsRouter.patch(
+  '/ops/pools/:id',
+  requirePermission('ops.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = poolDetailsBody.partial().parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      await updatePool(tx, id, body);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'pool.update', entity: 'PoolBody', entityId: id, after: body });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+// ------------------------------------------------------------- Headcounts
+opsRouter.get(
+  '/ops/headcounts/current',
+  requirePermission('ops.headcount.record'),
+  h(async (req, res) => {
+    res.json(await withTenant(authOf(req).tenantId, headcountBoard));
+  }),
+);
+
+opsRouter.post(
+  '/ops/headcounts',
+  requirePermission('ops.headcount.record'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ poolBodyId: uuid, count: z.number().int().min(0).max(10_000) }).parse(req.body);
+    res.status(201).json(await withTenant(a.tenantId, (tx) => recordHeadcount(tx, a.tenantId, a.userId, body.poolBodyId, body.count)));
+  }),
+);
+
+opsRouter.get(
+  '/ops/headcounts',
+  requirePermission('ops.headcount.record'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const q = z.object({ from: z.coerce.date(), to: z.coerce.date(), poolBodyId: uuid.optional() }).parse(req.query);
+    if (q.to.getTime() - q.from.getTime() > 93 * 86_400_000) throw badRequest('Choose a period of three months or less.');
+    res.json(await withTenant(a.tenantId, (tx) => headcountReport(tx, q.from, q.to, q.poolBodyId)));
   }),
 );
 

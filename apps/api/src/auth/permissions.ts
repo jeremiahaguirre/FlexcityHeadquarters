@@ -42,6 +42,7 @@ export const PERMISSIONS = [
   'jobs.manage', // public job postings
   'shifts.self', // works shifts: Today and My schedule
   'lessons.teach', // teaches swim lessons: class lists and attendance
+  'ops.headcount.record', // bather counts on deck (the clicker)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -56,6 +57,7 @@ const STAFF_BASE: Permission[] = [
   'timeoff.self',
   'timeclock.punch',
   'ops.chemical.record',
+  'ops.headcount.record',
   'incidents.create',
 ];
 

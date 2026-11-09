@@ -18,6 +18,7 @@ const call = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
   put: (p: string, b: object) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  patch: (p: string, b: object) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 const THRESHOLDS = { freeChlorineMinPpm: '1.0', freeChlorineMaxPpm: '5.0', combinedChlorineMaxPpm: '0.5', phMin: '7.2', phMax: '7.8', thresholdSource: 'Facility permit 2026', bathersPerLifeguard: 50 };
 
@@ -87,4 +88,34 @@ describe('pool operations', () => {
     expect(list.body[0]).toMatchObject({ category: 'FIRST_AID', timesOpened: 1 });
     expect(JSON.stringify(list.body)).not.toContain('scrape');
   });
+
+  it('pool details: capacity, depth and retiring a pool', async () => {
+    expect((await call(sup).patch(`/api/ops/pools/${poolId}`, { maxCapacity: 150, depthMinM: '1.10', depthMaxM: '3.80', volumeLitres: 1200000, notes: '25 m, 6 lanes' })).status).toBe(200);
+    expect((await call(sup).patch(`/api/ops/pools/${poolId}`, { depthMinM: '4.00' })).status).toBe(400);
+    expect((await call(staff).patch(`/api/ops/pools/${poolId}`, { maxCapacity: 999 })).status).toBe(403);
+    const lead = await call(head).get('/api/ops/pools');
+    expect(lead.body[0]).toMatchObject({ maxCapacity: 150, depthMinM: '1.1', depthMaxM: '3.8', volumeLitres: 1200000, archived: false });
+  });
+
+  it('headcounts are their own record; going over capacity alerts the leads', async () => {
+    const board = await call(staff).get('/api/ops/headcounts/current');
+    expect(board.body[0]).toMatchObject({ id: poolId, maxCapacity: 150, last: null });
+    const ok = await call(staff).post('/api/ops/headcounts', { poolBodyId: poolId, count: 80 });
+    expect(ok.body).toMatchObject({ overCapacity: false, lifeguardsRequired: 2 });
+    const over = await call(staff).post('/api/ops/headcounts', { poolBodyId: poolId, count: 160 });
+    expect(over.body.overCapacity).toBe(true);
+    expect(await owner.notification.count({ where: { tenantId: t.tenant.id, type: 'over_capacity' } })).toBeGreaterThan(0);
+    // The status board follows the latest count, not old chemistry entries.
+    expect((await call(head).get('/api/ops/pools')).body[0]).toMatchObject({ lifeguardsRequired: 4, lastHeadcount: { count: 160, overCapacity: true } });
+    const report = await call(staff).get(`/api/ops/headcounts?from=${new Date(Date.now() - 3_600_000).toISOString()}&to=${new Date(Date.now() + 60_000).toISOString()}`);
+    expect(report.body.map((r: { count: number }) => r.count)).toEqual([160, 80]);
+  });
+
+  it('a retired pool leaves the clicker but keeps its history', async () => {
+    await call(sup).patch(`/api/ops/pools/${poolId}`, { archived: true });
+    expect((await call(staff).get('/api/ops/headcounts/current')).body).toEqual([]);
+    expect((await call(staff).post('/api/ops/headcounts', { poolBodyId: poolId, count: 5 })).status).toBe(404);
+    await call(sup).patch(`/api/ops/pools/${poolId}`, { archived: false });
+  });
 });
+
