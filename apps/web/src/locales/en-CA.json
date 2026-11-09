@@ -20,16 +20,21 @@
     "forgot": "Forgot your password?"
   },
   "board": {
-    "title": "Shift Board",
+    "title": "Shift board",
     "empty": "No open shifts right now.",
-    "claim": "Claim shift",
+    "claim": "Take this shift",
     "claiming": "Claiming…",
     "pendingBadge": "Awaiting approval",
     "assigned": "Shift claimed. It's now on your schedule.",
     "pendingApproval": "This shift would add {{hours}} h of overtime, so it has been sent to a supervisor for approval.",
     "alreadyClaimed": "Someone else claimed this shift first.",
     "notEligible": "You can't take this shift:",
-    "error": "Something went wrong. Please try again."
+    "error": "Something went wrong. Please try again.",
+    "description": "Open shifts and shifts coworkers are giving away. You only see the ones you're qualified and available for.",
+    "emptyBody": "When a shift opens up that you can work, it appears here and you get a notification.",
+    "swap": "From a coworker",
+    "open": "Open shift",
+    "notEligibleHelp": "These rules protect you and the people in the water."
   },
   "status": {
     "title": "Pool Status",
@@ -64,7 +69,8 @@
     "retry": "Try again",
     "save": "Save",
     "cancel": "Cancel",
-    "loading": "Loading"
+    "loading": "Loading",
+    "ok": "OK"
   },
   "forgot": {
     "title": "Reset your password",
@@ -156,5 +162,58 @@
     "front_desk_page": "Front desk: {{message}}",
     "welcome": "Welcome to FlexcityHeadquarters.",
     "password_changed": "Your password was changed."
+  },
+  "today": {
+    "morning": "Good morning",
+    "afternoon": "Good afternoon",
+    "evening": "Good evening",
+    "nextShift": "Your next shift",
+    "onlyShift": "Next up",
+    "moreShifts": "+{{count}} more in 2 weeks",
+    "seeSchedule": "See my schedule",
+    "noShiftsTitle": "No shifts in the next two weeks",
+    "noShiftsBody": "Pick up open shifts from the board, or check back after the next schedule is published.",
+    "findShift": "Find a shift",
+    "atAGlance": "At a glance",
+    "clockedIn": "Clocked in",
+    "notClockedIn": "Not clocked in",
+    "since": "Since {{time}} at {{place}}",
+    "clockHint": "Clock in when your shift starts",
+    "openShifts_one": "open shift you can take",
+    "openShifts_other": "open shifts you can take",
+    "approvals_one": "item waiting for your approval",
+    "approvals_other": "items waiting for your approval",
+    "allOpen": "All open",
+    "poolsOk": "Every pool is open",
+    "poolsNeedAttention_one": "pool needs attention",
+    "poolsNeedAttention_other": "pools need attention",
+    "comingUp": "Coming up"
+  },
+  "schedule": {
+    "title": "My schedule",
+    "description": "Your shifts for the next four weeks, in each facility's local time.",
+    "view": "Whose shifts",
+    "mine": "Mine",
+    "everyone": "Everyone",
+    "you": "You",
+    "open": "Open",
+    "onBoard": "On the board",
+    "claimPending": "Claim awaiting approval",
+    "giveAway": "Give away",
+    "posted": "Posted to the shift board. You stay responsible until someone takes it.",
+    "emptyTitle": "Nothing scheduled yet",
+    "emptyBody": "Shifts appear here once a supervisor publishes the schedule."
+  },
+  "errors": {
+    "SHIFT_ALREADY_CLAIMED": "Someone else took this shift first.",
+    "SHIFT_CHANGED": "This shift just changed. Refresh to see the latest.",
+    "OWN_OFFER": "That's your own shift.",
+    "ALREADY_POSTED": "This shift is already on the board.",
+    "SHIFT_STARTED": "This shift has already started.",
+    "SHIFT_NOT_PUBLISHED": "Only published shifts can go on the board.",
+    "NOT_ELIGIBLE": "You can't take this shift.",
+    "FORBIDDEN": "You don't have access to do that.",
+    "VALIDATION": "Some details aren't right. Check the form and try again.",
+    "BAD_REQUEST": "Some details aren't right. Check the form and try again."
   }
 }

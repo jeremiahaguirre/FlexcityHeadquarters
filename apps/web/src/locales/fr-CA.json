@@ -29,7 +29,12 @@
     "pendingApproval": "Ce quart ajouterait {{hours}} h d'heures supplémentaires; il a donc été envoyé à un superviseur pour approbation.",
     "alreadyClaimed": "Une autre personne a pris ce quart avant vous.",
     "notEligible": "Vous ne pouvez pas prendre ce quart :",
-    "error": "Une erreur s'est produite. Veuillez réessayer."
+    "error": "Une erreur s'est produite. Veuillez réessayer.",
+    "description": "Quarts libres et quarts cédés par des collègues. Vous ne voyez que ceux pour lesquels vous êtes qualifié·e et disponible.",
+    "emptyBody": "Dès qu'un quart que vous pouvez faire se libère, il s'affiche ici et vous recevez une notification.",
+    "swap": "D'un collègue",
+    "open": "Quart libre",
+    "notEligibleHelp": "Ces règles vous protègent, vous et les baigneurs."
   },
   "status": {
     "title": "État des bassins",
@@ -64,7 +69,8 @@
     "retry": "Réessayer",
     "save": "Enregistrer",
     "cancel": "Annuler",
-    "loading": "Chargement"
+    "loading": "Chargement",
+    "ok": "OK"
   },
   "forgot": {
     "title": "Réinitialiser votre mot de passe",
@@ -156,5 +162,58 @@
     "front_desk_page": "Accueil : {{message}}",
     "welcome": "Bienvenue sur FlexcityHeadquarters.",
     "password_changed": "Votre mot de passe a été modifié."
+  },
+  "today": {
+    "morning": "Bonjour",
+    "afternoon": "Bon après-midi",
+    "evening": "Bonsoir",
+    "nextShift": "Votre prochain quart",
+    "onlyShift": "Prochain",
+    "moreShifts": "+{{count}} autres d'ici 2 semaines",
+    "seeSchedule": "Voir mon horaire",
+    "noShiftsTitle": "Aucun quart d'ici deux semaines",
+    "noShiftsBody": "Prenez des quarts disponibles au tableau ou revenez quand le prochain horaire sera publié.",
+    "findShift": "Trouver un quart",
+    "atAGlance": "En bref",
+    "clockedIn": "Au travail",
+    "notClockedIn": "Pas pointé",
+    "since": "Depuis {{time}} à {{place}}",
+    "clockHint": "Pointez au début de votre quart",
+    "openShifts_one": "quart disponible pour vous",
+    "openShifts_other": "quarts disponibles pour vous",
+    "approvals_one": "élément attend votre approbation",
+    "approvals_other": "éléments attendent votre approbation",
+    "allOpen": "Tout est ouvert",
+    "poolsOk": "Tous les bassins sont ouverts",
+    "poolsNeedAttention_one": "bassin demande votre attention",
+    "poolsNeedAttention_other": "bassins demandent votre attention",
+    "comingUp": "À venir"
+  },
+  "schedule": {
+    "title": "Mon horaire",
+    "description": "Vos quarts des quatre prochaines semaines, à l'heure locale de chaque installation.",
+    "view": "Quarts de qui",
+    "mine": "Les miens",
+    "everyone": "Tout le monde",
+    "you": "Vous",
+    "open": "Libre",
+    "onBoard": "Au tableau",
+    "claimPending": "Demande en attente",
+    "giveAway": "Céder",
+    "posted": "Affiché au tableau des quarts. Vous restez responsable jusqu'à ce que quelqu'un le prenne.",
+    "emptyTitle": "Rien à l'horaire pour l'instant",
+    "emptyBody": "Vos quarts s'afficheront ici dès qu'un superviseur publiera l'horaire."
+  },
+  "errors": {
+    "SHIFT_ALREADY_CLAIMED": "Quelqu'un d'autre a pris ce quart avant vous.",
+    "SHIFT_CHANGED": "Ce quart vient de changer. Actualisez pour voir la dernière version.",
+    "OWN_OFFER": "C'est votre propre quart.",
+    "ALREADY_POSTED": "Ce quart est déjà au tableau.",
+    "SHIFT_STARTED": "Ce quart est déjà commencé.",
+    "SHIFT_NOT_PUBLISHED": "Seuls les quarts publiés peuvent aller au tableau.",
+    "NOT_ELIGIBLE": "Vous ne pouvez pas prendre ce quart.",
+    "FORBIDDEN": "Vous n'avez pas accès à cette action.",
+    "VALIDATION": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez.",
+    "BAD_REQUEST": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez."
   }
 }

@@ -34,8 +34,8 @@ export interface NavItem {
 }
 
 export const NAV: NavItem[] = [
-  { href: '/today', key: 'today', icon: Home, group: 'mine', tab: 1, ready: false },
-  { href: '/schedule', key: 'schedule', icon: CalendarDays, group: 'mine', permission: 'schedule.read', tab: 2, ready: false },
+  { href: '/today', key: 'today', icon: Home, group: 'mine', tab: 1, ready: true },
+  { href: '/schedule', key: 'schedule', icon: CalendarDays, group: 'mine', permission: 'schedule.read', tab: 2, ready: true },
   { href: '/board', key: 'board', icon: Repeat, group: 'mine', permission: 'shiftboard.claim', tab: 3, ready: true },
   { href: '/timeclock', key: 'timeclock', icon: Clock, group: 'mine', permission: 'timeclock.punch', tab: 4, ready: false },
   { href: '/time-off', key: 'timeOff', icon: CalendarClock, group: 'mine', permission: 'timeoff.self', ready: false },
