@@ -25,8 +25,8 @@ export interface NavItem {
   key: string;
   icon: LucideIcon;
   group: 'mine' | 'deck' | 'manage' | 'union';
-  /** Shown only when the person has this permission. */
-  permission?: string;
+  /** Shown only when the person has this permission (or any of these). */
+  permission?: string | string[];
   /** Order in the phone tab bar (lower first); omitted = only under "More". */
   tab?: number;
   /** Set once the screen exists, so navigation never leads to a missing page. */
@@ -49,12 +49,12 @@ export const NAV: NavItem[] = [
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', permission: 'users.read', ready: true },
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', permission: 'certs.verify', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: true },
-  { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', permission: 'tenant.configure', ready: false },
+  { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', permission: ['tenant.configure', 'ops.configure'], ready: true },
   { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: false },
 ];
 
 export function visibleNav(can: (p: string) => boolean): NavItem[] {
-  return NAV.filter((n) => n.ready && (!n.permission || can(n.permission)));
+  return NAV.filter((n) => n.ready && (!n.permission || [n.permission].flat().some(can)));
 }
 
 /** Up to four tabs on phones; everything else lives under "More". */
