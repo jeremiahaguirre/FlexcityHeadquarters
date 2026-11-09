@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
+import { DemoBanner } from '@/components/DemoBanner';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { NavLinks } from '@/components/NavLinks';
 import { Providers } from '@/components/Providers';
+import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
 import { currentTenant } from '@/lib/tenant';
 import { themeVars } from '@/lib/theme';
@@ -13,10 +15,11 @@ export const metadata: Metadata = { title: 'Flexcity', description: 'Aquatic sta
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const tenant = await currentTenant();
-  const locale = normalizeLocale(
-    cookies().get(LOCALE_COOKIE)?.value ?? tenant?.defaultLocale ?? headers().get('accept-language'),
-  );
+  // The static demo has no server: fixed tenant, and the client applies the saved language.
+  const tenant = DEMO ? DEMO_TENANT : await currentTenant();
+  const locale = DEMO
+    ? normalizeLocale(tenant?.defaultLocale)
+    : normalizeLocale(cookies().get(LOCALE_COOKIE)?.value ?? tenant?.defaultLocale ?? headers().get('accept-language'));
   const t = createI18n(locale).t;
 
   return (
@@ -26,6 +29,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
             {t('app.skipToContent')}
           </a>
+          {DEMO ? <DemoBanner /> : null}
           <header className="border-b border-line">
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">

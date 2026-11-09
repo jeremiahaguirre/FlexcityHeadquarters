@@ -5,7 +5,11 @@
     "language": "Français",
     "languageLabel": "Passer au français",
     "unknownOrg": "We couldn't find this organization. Check the web address you were given.",
-    "nav": { "board": "Shift Board", "status": "Pool Status", "signOut": "Sign out" }
+    "nav": {
+      "board": "Shift Board",
+      "status": "Pool Status",
+      "signOut": "Sign out"
+    }
   },
   "login": {
     "title": "Sign in",
@@ -48,5 +52,9 @@
     "YOUNG_WORKER_LIMIT": "This would exceed young-worker hour limits.",
     "NOT_AVAILABLE": "This is outside your availability.",
     "OVER_PERSONAL_WEEKLY_MAX": "This would exceed your weekly hour cap."
+  },
+  "demo": {
+    "banner": "Demo with sample data — nothing you do here is saved.",
+    "hint": "Demo accounts: {{accounts}} — password {{password}}"
   }
 }

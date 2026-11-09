@@ -1,5 +1,11 @@
 'use client';
 
+import { ApiError } from './apiError';
+import { DEMO } from './demo';
+import { demoApi } from './demoApi';
+
+export { ApiError };
+
 /**
  * Browser API client.
  * - The access token lives only in memory (never localStorage), so XSS can't
@@ -8,17 +14,6 @@
  */
 let accessToken: string | null = null;
 let refreshing: Promise<boolean> | null = null;
-
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public code: string,
-    message: string,
-    public details?: unknown,
-  ) {
-    super(message);
-  }
-}
 
 function tenantHeader(): Record<string, string> {
   // In development the API trusts this header; production resolves the tenant from Host.
@@ -42,6 +37,7 @@ async function refresh(): Promise<boolean> {
 }
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}, retry = true): Promise<T> {
+  if (DEMO) return demoApi<T>(path, init);
   if (!accessToken && retry && !path.startsWith('/api/auth/')) await refresh();
   const res = await fetch(path, {
     method: init.method ?? 'GET',

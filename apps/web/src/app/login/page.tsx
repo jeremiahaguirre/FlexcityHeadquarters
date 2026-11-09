@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, login } from '@/lib/api';
+import { DEMO, DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/demo';
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -31,6 +32,11 @@ export default function LoginPage() {
   return (
     <section className="mx-auto max-w-sm">
       <h1 className="mb-6 text-2xl font-semibold">{t('login.title')}</h1>
+      {DEMO ? (
+        <p className="mb-4 rounded-md bg-surface px-3 py-2 text-sm">
+          {t('demo.hint', { accounts: DEMO_ACCOUNTS.join(', '), password: DEMO_PASSWORD })}
+        </p>
+      ) : null}
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <label className="block">
           <span className="text-sm font-medium">{t('login.email')}</span>

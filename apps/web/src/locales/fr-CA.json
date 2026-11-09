@@ -5,7 +5,11 @@
     "language": "English",
     "languageLabel": "Switch to English",
     "unknownOrg": "Nous n'avons pas trouvé cette organisation. Vérifiez l'adresse web qui vous a été fournie.",
-    "nav": { "board": "Tableau des quarts", "status": "État des bassins", "signOut": "Se déconnecter" }
+    "nav": {
+      "board": "Tableau des quarts",
+      "status": "État des bassins",
+      "signOut": "Se déconnecter"
+    }
   },
   "login": {
     "title": "Connexion",
@@ -48,5 +52,9 @@
     "YOUNG_WORKER_LIMIT": "Cela dépasserait les limites d'heures pour les jeunes travailleurs.",
     "NOT_AVAILABLE": "Ce quart est en dehors de vos disponibilités.",
     "OVER_PERSONAL_WEEKLY_MAX": "Cela dépasserait votre plafond d'heures hebdomadaire."
+  },
+  "demo": {
+    "banner": "Démonstration avec des données fictives — rien n'est enregistré.",
+    "hint": "Comptes de démonstration : {{accounts}} — mot de passe {{password}}"
   }
 }
