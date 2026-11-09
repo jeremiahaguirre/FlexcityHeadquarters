@@ -74,7 +74,8 @@
   },
   "demo": {
     "banner": "Démonstration avec des données fictives — rien n'est enregistré.",
-    "hint": "Comptes de démonstration : {{accounts}} — mot de passe {{password}}"
+    "hint": "Ou connectez-vous avec l'un d'eux, p. ex. guard@demo.flexcity, mot de passe {{password}}.",
+    "pick": "Essayez en tant que :"
   },
   "common": {
     "close": "Fermer",

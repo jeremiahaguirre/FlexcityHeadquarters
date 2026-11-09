@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { ApiError, login } from '@/lib/api';
-import { DEMO, DEMO_ACCOUNTS, DEMO_PASSWORD } from '@/lib/demo';
+import { DEMO, DEMO_ACCOUNTS, DEMO_PASSWORD, DEMO_ROLES } from '@/lib/demo';
 
 function LoginForm() {
   const { t } = useTranslation();
@@ -20,10 +20,14 @@ function LoginForm() {
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
+    await signIn(String(form.get('email')), String(form.get('password')));
+  }
+
+  async function signIn(email: string, password: string) {
     setBusy(true);
     setError(null);
     try {
-      await login(String(form.get('email')), String(form.get('password')));
+      await login(email, password);
       const next = params.get('next');
       router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
     } catch (err) {
@@ -41,7 +45,15 @@ function LoginForm() {
       <h1 className="text-title">{t('login.title')}</h1>
       <p className="mt-2 text-body text-muted">{t('login.subtitle')}</p>
       {DEMO ? (
-        <p className="mt-5 rounded-xl bg-new-bg px-4 py-3 text-small text-ink">{t('demo.hint', { accounts: DEMO_ACCOUNTS.join(', '), password: DEMO_PASSWORD })}</p>
+        <div className="mt-6 grid gap-2">
+          <p className="text-small font-semibold">{t('demo.pick')}</p>
+          {DEMO_ACCOUNTS.map((a) => (
+            <Button key={a} variant="secondary" block disabled={busy} onClick={() => void signIn(a, DEMO_PASSWORD)} className="justify-start">
+              {t(`roles.${DEMO_ROLES[a]}`)}
+            </Button>
+          ))}
+          <p className="mt-2 text-caption text-muted">{t('demo.hint', { password: DEMO_PASSWORD })}</p>
+        </div>
       ) : null}
       <form onSubmit={onSubmit} className="mt-8 grid gap-5" noValidate>
         <Field label={t('login.email')}>{(p) => <Input {...p} name="email" type="email" autoComplete="username" required />}</Field>

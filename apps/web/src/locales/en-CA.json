@@ -74,7 +74,8 @@
   },
   "demo": {
     "banner": "Demo with sample data — nothing you do here is saved.",
-    "hint": "Demo accounts: {{accounts}} — password {{password}}"
+    "hint": "Or sign in with any of them, e.g. guard@demo.flexcity, password {{password}}.",
+    "pick": "Try it as:"
   },
   "common": {
     "close": "Close",
