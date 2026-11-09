@@ -28,13 +28,13 @@ describe('menus per role', () => {
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/care', '/manage/lone-work', '/manage/people', '/manage/compliance', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/roles', '/manage/billing', '/manage/settings'],
+      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/people', '/manage/compliance', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/roles', '/manage/billing', '/manage/settings'],
       home: '/manage/approvals',
     });
   });
 
   it('general employee (water works, maintenance…): their own work, no pool screens at all', () => {
-    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/alone'], home: '/today' });
+    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/alone', '/patrol'], home: '/today' });
   });
 
   it('people review is for HR and supervisors only', () => {

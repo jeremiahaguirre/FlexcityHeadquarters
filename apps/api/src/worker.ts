@@ -9,6 +9,8 @@ import { config } from './config.js';
 import { db, tenantIds, withTenant } from './lib/db.js';
 import { anonymizeDue, certificationReminders, accommodationReviews, detectNoShows, flagForReview, forgottenClockOuts, onboardingReminders, rotationAlerts, recomputeReliability } from './services/jobs/daily.js';
 import { loneWorkChecks } from './services/safety/loneWork.js';
+import { callOutTimeouts } from './services/winter/callOuts.js';
+import { patrolReminders } from './services/winter/patrols.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 
 const cfg = config();
@@ -38,10 +40,12 @@ async function perTenant(fn: (tx: Parameters<Parameters<typeof withTenant>[1]>[0
 
 const minutely = async () => {
   await exclusive('lone-work', () => perTenant((tx) => loneWorkChecks(tx)));
+  await exclusive('call-outs', () => perTenant((tx) => callOutTimeouts(tx)));
   await exclusive('rotation-alerts', () => perTenant((tx) => rotationAlerts(tx)));
   await exclusive('email', () => deliverOutbox(db(), mailer));
 };
 const hourly = async () => {
+  await exclusive('patrols', () => perTenant((tx) => patrolReminders(tx)));
   await exclusive('clock-out', () => perTenant((tx) => forgottenClockOuts(tx)));
   await exclusive('cert-reminders', () => perTenant((tx) => certificationReminders(tx)));
   await exclusive('onboarding-reminders', () => perTenant((tx) => onboardingReminders(tx)));

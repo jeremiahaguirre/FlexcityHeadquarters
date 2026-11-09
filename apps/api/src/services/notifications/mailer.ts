@@ -31,6 +31,16 @@ type Template = (p: Params) => { subject: string; text: string };
 const APP_URL = () => process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
+  callout_offer: {
+    'en-CA': (p) => ({
+      subject: `Call-out: can you work? Answer within ${p.minutes} minutes`,
+      text: `${p.reason} at ${p.facility}. You're next in line for this overtime. Answer in the app within ${p.minutes} minutes, or it goes to the next person:\n${APP_URL()}/call-outs`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `Rappel au travail : êtes-vous disponible? Répondez d'ici ${p.minutes} minutes`,
+      text: `${p.reason} à ${p.facility}. Vous êtes le prochain sur la liste pour ces heures supplémentaires. Répondez dans l'application d'ici ${p.minutes} minutes, sinon l'offre passe à la personne suivante :\n${APP_URL()}/call-outs`,
+    }),
+  },
   lonework_escalated: {
     'en-CA': (p) => ({
       subject: `URGENT: ${p.name} hasn't checked in while working alone`,

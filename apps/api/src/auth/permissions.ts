@@ -56,6 +56,10 @@ export const PERMISSIONS = [
   'lonework.monitor', // watch people working alone and respond to missed check-ins
   'billing.manage', // the organization's plan, invoices and payments
   'roles.manage', // create roles and give them to people (only capabilities you hold, in your department)
+  'winter.manage', // switch call-outs and patrol records on or off; season, response time, rest, routes
+  'winter.callout', // run storm call-outs
+  'winter.patrol', // record winter patrols
+  'winter.records', // read and export patrol records
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -99,6 +103,9 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'lonework.monitor',
     'billing.manage',
     'roles.manage',
+    'winter.manage',
+    'winter.callout',
+    'winter.records',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -149,7 +156,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {

@@ -33,6 +33,9 @@ export const FEATURES = {
   accommodation: { default: true, permissions: ['accommodation.manage'] },
   care: { default: true, permissions: ['care.manage'] },
   loneWork: { default: true, permissions: ['lonework.self', 'lonework.monitor'] },
+  /** Off until the city's managers switch them on (Winter operations screen). */
+  callOuts: { default: false, permissions: ['winter.callout'] },
+  patrols: { default: false, permissions: ['winter.patrol', 'winter.records'] },
   overtime: { default: true, permissions: ['overtime.manage'] },
   onboarding: { default: true, permissions: ['onboarding.hr', 'onboarding.lead', 'onboarding.configure'] },
   emailNotifications: { default: true, permissions: [] },

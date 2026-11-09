@@ -259,6 +259,9 @@ model Tenant {
   benchmarkOptIn Boolean @default(false)
   /// Access levels that must sign in with a passkey as a second factor.
   mfaRoles       AccessRole[] @default([])
+  /// Winter operations, set by the city's managers: { season: { start: "11-01", end: "04-15" },
+  /// callOuts: { responseMinutes, minRestHours }, patrols: { maxShiftHours } }.
+  winterSettings Json @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -1585,5 +1588,109 @@ model LoneWorkSession {
   endedAt         DateTime?      @db.Timestamptz(3)
 
   @@index([tenantId, status, nextDueAt])
+  @@index([userId, startedAt])
+}
+
+// ------------------------------------------------------------ Winter operations
+
+enum CallOutStatus {
+  OPEN
+  FILLED
+  CANCELLED
+}
+
+enum CallOutContactStatus {
+  /// Waiting for their turn.
+  WAITING
+  /// Offered now; answer within the response time.
+  OFFERED
+  ACCEPTED
+  DECLINED
+  NO_ANSWER
+  /// Not eligible (rest, hours, certificates, time off…); the reason is kept.
+  SKIPPED
+  /// The call-out was filled or cancelled before their turn.
+  NOT_NEEDED
+}
+
+/// A storm call-out: extra crew offered in overtime order, one at a time.
+model CallOut {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  facilityId      String        @db.Uuid
+  positionId      String        @db.Uuid
+  /// The open shift created for it; assigned to whoever accepts.
+  shiftId         String        @db.Uuid
+  reason          String
+  startsAt        DateTime      @db.Timestamptz(3)
+  endsAt          DateTime      @db.Timestamptz(3)
+  responseMinutes Int
+  status          CallOutStatus @default(OPEN)
+  filledUserId    String?       @db.Uuid
+  createdById     String        @db.Uuid
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  closedAt        DateTime?     @db.Timestamptz(3)
+  contacts        CallOutContact[]
+
+  @@index([tenantId, status, createdAt])
+}
+
+model CallOutContact {
+  id          String               @id @default(uuid()) @db.Uuid
+  tenantId    String               @db.Uuid
+  callOutId   String               @db.Uuid
+  callOut     CallOut              @relation(fields: [callOutId], references: [id], onDelete: Cascade)
+  userId      String               @db.Uuid
+  rank        Int
+  status      CallOutContactStatus @default(WAITING)
+  skipReason  String?
+  offeredAt   DateTime?            @db.Timestamptz(3)
+  respondedAt DateTime?            @db.Timestamptz(3)
+  /// Who recorded the answer when it came by phone (null = the person answered in the app).
+  recordedById String?             @db.Uuid
+
+  @@index([callOutId, rank])
+  @@index([tenantId, status, offeredAt])
+}
+
+/// A road or area patrolled in winter, and how often it must be checked.
+model PatrolRoute {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  name          String
+  /// e.g. a road class under the city's maintenance standard (Ontario O. Reg. 239/02: 1–5).
+  roadClass     String?
+  /// Hours between patrols during the winter season.
+  intervalHours Int
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([tenantId, name])
+}
+
+/// One patrol: what the roads were like and what was done, as evidence.
+model PatrolRecord {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  routeId        String    @db.Uuid
+  userId         String    @db.Uuid
+  startedAt      DateTime  @default(now()) @db.Timestamptz(3)
+  endedAt        DateTime? @db.Timestamptz(3)
+  /// CLEAR, WET, SLUSH, SNOW_PACKED, LOOSE_SNOW, ICE, BLACK_ICE, DRIFTING, FREEZING_RAIN
+  conditions     String[]
+  /// INSPECTED, PLOWED, SALTED, SANDED, BRINE, HAZARD_REPORTED
+  actions        String[]
+  snowCm         Decimal?  @db.Decimal(5, 1)
+  airTempC       Decimal?  @db.Decimal(4, 1)
+  roadTempC      Decimal?  @db.Decimal(4, 1)
+  materialTonnes Decimal?  @db.Decimal(7, 2)
+  vehicle        String?
+  notes          String?
+  startLat       Decimal?  @db.Decimal(9, 6)
+  startLng       Decimal?  @db.Decimal(9, 6)
+  endLat         Decimal?  @db.Decimal(9, 6)
+  endLng         Decimal?  @db.Decimal(9, 6)
+
+  @@index([tenantId, routeId, startedAt])
   @@index([userId, startedAt])
 }

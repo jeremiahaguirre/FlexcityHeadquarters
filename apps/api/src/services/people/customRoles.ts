@@ -18,6 +18,7 @@ export const CUSTOM_ROLE_PERMISSIONS = {
   everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self'],
   shiftBoard: ['shiftboard.claim', 'shiftboard.post'],
   safety: ['incidents.create', 'ops.headcount.record'],
+  winter: ['winter.patrol', 'winter.callout', 'winter.records', 'winter.manage'],
   aquatics: ['lessons.teach', 'ops.chemical.record', 'ops.chemical.signoff', 'ops.pool.close', 'ops.status.read', 'ops.page_head_guard', 'deck.rotate', 'ops.configure'],
   lead: ['users.read', 'users.scheduling', 'schedule.write', 'schedule.assist', 'shiftboard.approve', 'shiftboard.assign_emergency', 'timeoff.approve', 'timeclock.review', 'certs.verify', 'lonework.monitor', 'onboarding.lead', 'overtime.manage'],
   manager: ['reliability.read', 'reliability.write', 'discipline.read', 'discipline.write', 'incidents.read', 'care.manage', 'compliance.report', 'payroll.export', 'positions.manage', 'jobs.manage', 'roles.manage'],
@@ -28,7 +29,7 @@ export const ALLOWED_CUSTOM_PERMISSIONS: ReadonlySet<Permission> = new Set(Objec
 export const isAllowedCustomPermission = (p: string): p is Permission => ALLOWED_CUSTOM_PERMISSIONS.has(p as Permission);
 
 /** Capabilities that act on other people or their shifts: these follow a role's department. */
-export const SUPERVISORY: ReadonlySet<Permission> = new Set([...CUSTOM_ROLE_PERMISSIONS.lead, ...CUSTOM_ROLE_PERMISSIONS.manager, ...CUSTOM_ROLE_PERMISSIONS.admin]);
+export const SUPERVISORY: ReadonlySet<Permission> = new Set([...CUSTOM_ROLE_PERMISSIONS.lead, ...CUSTOM_ROLE_PERMISSIONS.manager, ...CUSTOM_ROLE_PERMISSIONS.admin, 'winter.callout', 'winter.records', 'winter.manage']);
 
 /** null = the whole organization. */
 export type Scope = { positionIds: string[]; facilityIds: string[] } | null;
