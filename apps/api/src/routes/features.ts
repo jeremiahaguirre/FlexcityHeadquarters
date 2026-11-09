@@ -249,7 +249,7 @@ api.get(
   h(async (req, res) => {
     const a = authOf(req);
     const pools = await withTenant(a.tenantId, (tx) =>
-      tx.poolBody.findMany({ select: { id: true, name: true, kind: true, status: true, facility: { select: { id: true, name: true } } }, orderBy: { name: 'asc' } }),
+      tx.poolBody.findMany({ where: { archivedAt: null }, select: { id: true, name: true, kind: true, status: true, facility: { select: { id: true, name: true } } }, orderBy: { name: 'asc' } }),
     );
     res.json(pools);
   }),

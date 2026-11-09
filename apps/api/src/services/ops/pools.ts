@@ -96,6 +96,7 @@ export async function headcountBoard(tx: Tx) {
       facility: { id: p.facility.id, name: p.facility.name },
       maxCapacity: p.maxCapacity,
       bathersPerLifeguard: p.bathersPerLifeguard,
+      limitsSet: p.freeChlorineMinPpm !== null || p.phMin !== null,
       last: last
         ? { count: last.count, overCapacity: last.overCapacity, localRecordedAt: localIso(last.recordedAt, p.facility.timezone), by: who ? `${who.firstName} ${who.lastName}` : null, lifeguardsRequired: lifeguardsRequired(last.count, p.bathersPerLifeguard) }
         : null,

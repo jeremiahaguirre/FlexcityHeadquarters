@@ -65,8 +65,8 @@ async function main() {
   });
   await prisma.poolBody.createMany({
     data: [
-      { tenantId: tenant.id, facilityId: facility.id, name: 'Main Tank', kind: 'POOL', freeChlorineMinPpm: 1.0, freeChlorineMaxPpm: 5.0, combinedChlorineMaxPpm: 0.5, phMin: 7.2, phMax: 7.8, thresholdSource: 'DEV PLACEHOLDER — replace from permit', bathersPerLifeguard: 50 },
-      { tenantId: tenant.id, facilityId: facility.id, name: 'Hot Tub', kind: 'HOT_TUB', freeChlorineMinPpm: 2.0, freeChlorineMaxPpm: 5.0, combinedChlorineMaxPpm: 0.5, phMin: 7.2, phMax: 7.8, thresholdSource: 'DEV PLACEHOLDER — replace from permit', bathersPerLifeguard: 25 },
+      { tenantId: tenant.id, facilityId: facility.id, name: 'Main Tank', kind: 'POOL', maxCapacity: 150, depthMinM: 1.1, depthMaxM: 3.8, notes: '25 m, 6 lanes', freeChlorineMinPpm: 1.0, freeChlorineMaxPpm: 5.0, combinedChlorineMaxPpm: 0.5, phMin: 7.2, phMax: 7.8, thresholdSource: 'DEV PLACEHOLDER — replace from permit', bathersPerLifeguard: 50 },
+      { tenantId: tenant.id, facilityId: facility.id, name: 'Hot Tub', kind: 'HOT_TUB', maxCapacity: 12, freeChlorineMinPpm: 2.0, freeChlorineMaxPpm: 5.0, combinedChlorineMaxPpm: 0.5, phMin: 7.2, phMax: 7.8, thresholdSource: 'DEV PLACEHOLDER — replace from permit', bathersPerLifeguard: 25 },
     ],
   });
 

@@ -99,7 +99,7 @@ describe('pool operations', () => {
 
   it('headcounts are their own record; going over capacity alerts the leads', async () => {
     const board = await call(staff).get('/api/ops/headcounts/current');
-    expect(board.body[0]).toMatchObject({ id: poolId, maxCapacity: 150, last: null });
+    expect(board.body[0]).toMatchObject({ id: poolId, maxCapacity: 150, limitsSet: true, last: null });
     const ok = await call(staff).post('/api/ops/headcounts', { poolBodyId: poolId, count: 80 });
     expect(ok.body).toMatchObject({ overCapacity: false, lifeguardsRequired: 2 });
     const over = await call(staff).post('/api/ops/headcounts', { poolBodyId: poolId, count: 160 });

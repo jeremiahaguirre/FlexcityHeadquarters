@@ -19,8 +19,11 @@ opsRouter.get(
   requirePermission('ops.status.read'),
   h(async (req, res) => {
     const a = authOf(req);
+    // Retired pools stay out of deck screens; Settings asks for ?all=1 to list them too.
+    const all = req.query.all === '1' && a.permissions.has('ops.configure');
     const pools = await withTenant(a.tenantId, (tx) =>
       tx.poolBody.findMany({
+        where: all ? {} : { archivedAt: null },
         include: {
           facility: { select: { id: true, name: true, timezone: true } },
           readings: { orderBy: { recordedAt: 'desc' }, take: 1 },
@@ -126,11 +129,16 @@ opsRouter.patch(
 );
 
 // ------------------------------------------------------------- Headcounts
+/**
+ * The deck's pools: capacity, permit limits set or not, latest headcount.
+ * For anyone who records on deck (headcounts or water chemistry), not only leads.
+ */
 opsRouter.get(
   '/ops/headcounts/current',
-  requirePermission('ops.headcount.record'),
   h(async (req, res) => {
-    res.json(await withTenant(authOf(req).tenantId, headcountBoard));
+    const a = authOf(req);
+    if (!a.permissions.has('ops.headcount.record') && !a.permissions.has('ops.chemical.record')) throw forbidden();
+    res.json(await withTenant(a.tenantId, headcountBoard));
   }),
 );
 
