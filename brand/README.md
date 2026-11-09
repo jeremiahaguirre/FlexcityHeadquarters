@@ -4,7 +4,7 @@
 
 ## The mark
 
-A single-stroke **FH ligature**: one shared stem, the F's top arm, the H's right stem, and a wave that is both the F's middle bar and the H's crossbar — a nod to water and lane lines. It sits on a rounded tile with a deep-blue-to-teal gradient.
+A single-stroke **FH ligature**: one shared stem, the F's top arm, the H's right stem, and a wave that is both the F's middle bar and the H's crossbar — a nod to water and lane lines. Each stroke carries one of the four FH colours — chartreuse stem, vermilion arm, magenta stem, white wave — on a deep teal tile.
 
 | File | Use |
 | --- | --- |
@@ -16,16 +16,21 @@ A single-stroke **FH ligature**: one shared stem, the F's top arm, the H's right
 
 ## Colours
 
-| Token | Hex | Use |
-| --- | --- | --- |
-| Deep Harbour | `#0A3D7A` | Gradient start |
-| FH Blue | `#0B63B6` | Primary brand colour, links, primary buttons |
-| Lagoon Teal | `#14B8A6` | Gradient end, accents |
-| Ink | `#0F172A` | Wordmark on light backgrounds |
+The four FH colours, and the role each plays in the app. Shades marked *text* are the ones that pass WCAG AA (4.5:1) as text on white.
+
+| Colour | Logo / fill | Text on light | On dark | Role in the app |
+| --- | --- | --- | --- | --- |
+| **Teal** | `#0F766E` | `#0F766E` | `#5EEAD4` | Primary: buttons, links, active navigation |
+| **Chartreuse** | `#C5F23A` | `#4D7C0F` | `#C5F23A` | Positive: success, open, confirmed (fills use dark text) |
+| **Magenta** | `#E879F9` / `#C026D3` | `#A21CAF` | `#F0ABFC` | Highlights: badges, new items, notifications |
+| **Vermilion** | `#E34234` | `#B42318` | `#FF8A7A` | Attention: warnings, overtime, pending approval |
+| Tile | `#0B3B3C` → `#0F766E` | | | Logo background |
+
+Safety-critical "closed" states use a separate crimson (`#9F1239`) plus an icon shape, so they're never confused with vermilion and never rely on colour alone.
 
 ## Wordmark
 
-"Flexcity" set bold with tight tracking, "HEADQUARTERS" beneath in small caps with wide tracking in FH Blue (teal on dark backgrounds). Use the short form **FH** only where space is tight.
+"Flexcity" set bold with tight tracking, "HEADQUARTERS" beneath in small caps with wide tracking in teal (light teal on dark backgrounds). Use the short form **FH** only where space is tight.
 
 ## Rules
 

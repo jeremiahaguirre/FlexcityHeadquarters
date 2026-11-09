@@ -6,7 +6,7 @@ describe('tenant theming', () => {
     expect(hexToRgbTriplet('#0b5fa5')).toBe('11 95 165');
   });
   it('ignores anything that is not a hex colour (no CSS injection)', () => {
-    expect(themeVars({ primary: 'red; background:url(x)' })['--brand']).toBe('11 95 165');
+    expect(themeVars({ primary: 'red; background:url(x)' })['--brand']).toBe('15 118 110');
   });
   it('fixes unreadable button text to meet WCAG AA', () => {
     const v = themeVars({ primary: '#ffeb3b', primaryContrast: '#ffffff' });

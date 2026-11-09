@@ -1,21 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FlexcityHeadquarters">
   <defs>
-    <linearGradient id="fh-tile" x1="8" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0A3D7A"/>
-      <stop offset="0.55" stop-color="#0B63B6"/>
-      <stop offset="1" stop-color="#14B8A6"/>
+    <linearGradient id="fh-tile" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B3B3C"/>
+      <stop offset="1" stop-color="#0F766E"/>
     </linearGradient>
-    <radialGradient id="fh-glow" cx="14" cy="10" r="38" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fff" stop-opacity=".22"/>
-      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
-    </radialGradient>
   </defs>
   <rect width="64" height="64" rx="16" fill="url(#fh-tile)"/>
-  <rect width="64" height="64" rx="16" fill="url(#fh-glow)"/>
-  <g fill="none" stroke="#fff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 15.5V48.5"/>
-    <path d="M18 15.5H36"/>
-    <path d="M46 15.5V48.5"/>
-    <path d="M18 33q7-6.5 14 0t14 0"/>
+  <g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 15.5V48.5" stroke="#C5F23A"/>
+    <path d="M18 15.5H36" stroke="#E34234"/>
+    <path d="M46 15.5V48.5" stroke="#E879F9"/>
+    <path d="M18 33q7-6.5 14 0t14 0" stroke="#FFFFFF"/>
   </g>
 </svg>

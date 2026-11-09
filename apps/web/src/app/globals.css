@@ -12,7 +12,7 @@
   --warn: 180 83 9;
   --danger: 185 28 28;
   --page: 255 255 255;
-  --brand-text: 11 99 182; /* FH Blue, for brand-coloured text */
+  --brand-text: 15 118 110; /* FH teal, for brand-coloured text */
   color-scheme: light;
 }
 
@@ -26,7 +26,7 @@
     --warn: 251 191 36;
     --danger: 248 113 113;
     --page: 17 24 39;
-    --brand-text: 94 234 212;
+    --brand-text: 94 234 212; /* light teal */
     color-scheme: dark;
   }
 }

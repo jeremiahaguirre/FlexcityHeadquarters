@@ -11,7 +11,7 @@ export const DEMO_TENANT: PublicTenant = {
   id: '00000000-0000-4000-8000-000000000001',
   name: 'Lakeview Aquatic Centre (demo)',
   logoUrl: null,
-  themeColors: { primary: '#0b5fa5', primaryHover: '#084b83', primaryContrast: '#ffffff', accent: '#0d9488' },
+  themeColors: { primary: '#0f766e', primaryHover: '#115e59', primaryContrast: '#ffffff', accent: '#c026d3' },
   defaultLocale: 'en-CA',
 };
 
