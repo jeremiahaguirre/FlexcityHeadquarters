@@ -1,0 +1,759 @@
+// Flexcity — aquatic staff management
+//
+// Conventions
+// - Every tenant-scoped table carries `tenantId` so Postgres row-level security
+//   (db/rls.sql) can isolate tenants without joins.
+// - All instants are `@db.Timestamptz(3)`. Local-time reasoning (work days,
+//   pay weeks, availability) always uses the Facility's IANA timezone.
+// - Payroll-bearing rows use `onDelete: Restrict`. People are never hard-deleted;
+//   see services/privacy/erasure.ts for retention-aware anonymization.
+// - Money is Decimal, never Float.
+// - Union Hub data is NOT in this schema. It lives in the `union_hub` Postgres
+//   schema (db/union_hub.sql), reachable only through a separate DB role.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------
+
+enum Province {
+  BC
+  AB
+  SK
+  MB
+  ON
+  QC
+  NB
+  NS
+  PE
+  NL
+  YT
+  NT
+  NU
+}
+
+/// Permission roles (what a user may DO in the app). A user may hold several.
+/// What a user may WORK is modelled separately by Position + certifications.
+enum AccessRole {
+  HR_ADMIN
+  AQUATIC_SUPERVISOR
+  HEAD_LIFEGUARD
+  STAFF
+  FRONT_DESK
+  UNION_STEWARD
+}
+
+enum EmploymentStatus {
+  FULL_TIME
+  PART_TIME
+  CASUAL
+  ON_CALL
+  VOLUNTEER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE // seasonal / away at school — not billed, data retained
+  TERMINATED
+}
+
+enum ShadowTier {
+  A_SQUAD
+  B_SQUAD
+  C_SQUAD
+  UNASSIGNED
+}
+
+enum ShiftType {
+  STANDARD
+  CUSTOM // e.g. private rental
+  MANDATORY // e.g. in-service training
+}
+
+/// Lifecycle only. Claim/swap state lives on ShiftOffer, not here.
+enum ShiftStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
+enum OfferSource {
+  OPEN_SHIFT // unassigned shift posted to the board
+  SWAP // assigned shift the holder wants to give away
+}
+
+enum OfferStatus {
+  OPEN
+  PENDING_APPROVAL // claimant would incur overtime (or other soft rule) — supervisor decides
+  COMPLETED
+  DENIED
+  CANCELLED
+}
+
+enum TimeOffType {
+  VACATION
+  SICK // statutory sick leave — protected
+  PROTECTED_LEAVE // family responsibility, bereavement, jury duty, etc.
+  UNPAID_PERSONAL
+  OTHER
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CANCELLED
+}
+
+enum PunchLocationStatus {
+  VERIFIED
+  OUTSIDE_RADIUS
+  LOW_ACCURACY
+  NO_LOCATION
+  FACILITY_NOT_CONFIGURED
+}
+
+enum PunchStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PoolBodyKind {
+  POOL
+  LEISURE_POOL
+  HOT_TUB
+  WADING_POOL
+  WAVE_POOL
+  SPLASH_PAD
+}
+
+enum PoolBodyStatus {
+  OPEN
+  CLOSURE_RECOMMENDED // system detected out-of-range reading, awaiting human confirmation
+  CLOSED
+}
+
+enum ReliabilityEventType {
+  LATE_PUNCH
+  NO_SHOW
+  MISSED_IN_SERVICE
+  LATE_DROP // gave away a shift with < 24h notice
+  PICKED_UP_SHIFT
+}
+
+enum PayCodeKey {
+  REGULAR
+  OVERTIME_1_5
+  OVERTIME_2_0
+  STAT_WORKED
+  STAT_HOLIDAY_PAY
+  SHIFT_PREMIUM
+  VACATION_PAY
+}
+
+enum VacationPayMode {
+  PAY_EACH_PERIOD
+  ACCRUE
+}
+
+// ------------------------------------------------------------------
+// TENANCY
+// ------------------------------------------------------------------
+
+model Tenant {
+  id              String          @id @default(uuid()) @db.Uuid
+  name            String
+  subdomain       String          @unique
+  logoUrl         String?
+  /// { primary, primaryHover, primaryContrast, accent } — injected as CSS variables
+  themeColors     Json            @default("{}")
+  defaultLocale   String          @default("en-CA")
+  /// 0 = Sunday ... 6 = Saturday, in each facility's local time
+  payWeekStartDay Int             @default(0)
+  vacationPayMode VacationPayMode @default(PAY_EACH_PERIOD)
+  /// Years to keep payroll records after the end of the tax year they relate to.
+  /// CRA requires 6; default adds a year of margin.
+  payrollRetentionYears Int       @default(7)
+  unionEnabled    Boolean         @default(false)
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
+
+  facilities      Facility[]
+  users           User[]
+  positions       Position[]
+  ruleOverrides   RuleOverride[]
+  payCodeMappings PayCodeMapping[]
+}
+
+/// Employment-standards province follows the WORK LOCATION, so it lives here,
+/// not on Tenant (a YMCA association can span provinces).
+model Facility {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  name        String
+  province    Province
+  timezone    String // IANA, e.g. "America/Vancouver"
+  latitude    Decimal? @db.Decimal(9, 6)
+  longitude   Decimal? @db.Decimal(9, 6)
+  geoRadiusM  Int      @default(150)
+  costCenter  String? // e.g. "CC-405-AQUATICS" for payroll export
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  shifts      Shift[]
+  poolBodies  PoolBody[]
+  timePunches TimePunch[]
+  incidents   IncidentReport[]
+
+  @@index([tenantId])
+}
+
+/// Tenant-specific overrides of provincial rules, e.g. a collective agreement
+/// that pays OT after 7.5h/day. Effective-dated so history recalculates correctly.
+model RuleOverride {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  province      Province?
+  ruleKey       String // e.g. "dailyOvertimeHours"
+  value         Json
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+  source        String? // e.g. "CUPE Local 338 CBA art. 14.02"
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, ruleKey, effectiveFrom])
+}
+
+// ------------------------------------------------------------------
+// PEOPLE
+// ------------------------------------------------------------------
+
+model User {
+  id               String           @id @default(uuid()) @db.Uuid
+  tenantId         String           @db.Uuid
+  roles            AccessRole[]
+  status           UserStatus       @default(ACTIVE)
+  employmentStatus EmploymentStatus
+  shadowTier       ShadowTier       @default(UNASSIGNED) // set by a manager, never automatically
+
+  firstName        String
+  lastName         String
+  email            String
+  phone            String?
+  locale           String           @default("en-CA")
+  /// Needed only to apply young-worker rules. Not exported anywhere.
+  dateOfBirth      DateTime?        @db.Date
+  /// The employer's HR/payroll system ID — used in payroll exports.
+  employeeNumber   String?
+  passwordHash     String?
+
+  hireDate         DateTime?        @db.Date
+  /// Collective-agreement seniority can differ from hire date; hours-based
+  /// seniority is accumulated separately.
+  seniorityDate    DateTime?        @db.Date
+  seniorityHours   Decimal          @default(0) @db.Decimal(10, 2)
+  /// Target / cap hours per week, used by the scheduling assistant.
+  weeklyMinHours   Decimal?         @db.Decimal(5, 2)
+  weeklyMaxHours   Decimal?         @db.Decimal(5, 2)
+  vscClearedDate   DateTime?        @db.Date
+  unionMember      Boolean          @default(false)
+
+  /// Advisory only (see services/reliability). Never drives automated decisions.
+  reliabilityScore Int              @default(100)
+
+  /// Privacy: set when erasure was requested but payroll retention still applies.
+  processingRestrictedAt DateTime?  @db.Timestamptz(3)
+  erasureDueAt     DateTime?        @db.Date
+  anonymizedAt     DateTime?        @db.Timestamptz(3)
+
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id])
+  positions        UserPosition[]
+  payRates         PayRate[]
+  certifications   UserCertification[]
+  availability     Availability[]
+  timeOffRequests  TimeOffRequest[]
+  shifts           Shift[]
+  timePunches      TimePunch[]
+  offersPosted     ShiftOffer[]     @relation("OfferPostedBy")
+  offersClaimed    ShiftOffer[]     @relation("OfferClaimedBy")
+  reliabilityEvents ReliabilityEvent[]
+  refreshTokens    RefreshToken[]
+  disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, employeeNumber])
+  @@index([tenantId, status])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  userId    String    @db.Uuid
+  /// SHA-256 of the opaque token; the raw token only ever lives in an HTTP-only cookie.
+  tokenHash String    @unique
+  /// Rotation family — reuse of a revoked token revokes the whole family.
+  familyId  String    @db.Uuid
+  expiresAt DateTime  @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([familyId])
+}
+
+// ------------------------------------------------------------------
+// POSITIONS, PAY & CERTIFICATIONS
+// ------------------------------------------------------------------
+
+/// What can be worked: "Lifeguard", "Swim Instructor", "Head Lifeguard"...
+/// Shifts require a Position; Positions require certifications.
+model Position {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  name        String
+  nameFr      String?
+  minimumAge  Int?
+
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id])
+  requirements    PositionCertRequirement[]
+  qualifiedUsers  UserPosition[]
+  payRates        PayRate[]
+  shifts          Shift[]
+  payCodeMappings PayCodeMapping[]
+
+  @@unique([tenantId, name])
+}
+
+model PositionCertRequirement {
+  tenantId        String @db.Uuid
+  positionId      String @db.Uuid
+  certificationId String @db.Uuid
+
+  position      Position      @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  certification Certification @relation(fields: [certificationId], references: [id])
+
+  @@id([positionId, certificationId])
+}
+
+/// A manager has approved this user to work this position.
+model UserPosition {
+  tenantId   String   @db.Uuid
+  userId     String   @db.Uuid
+  positionId String   @db.Uuid
+  approvedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  position Position @relation(fields: [positionId], references: [id], onDelete: Restrict)
+
+  @@id([userId, positionId])
+}
+
+/// Effective-dated, per position — a guard and an instructor shift can pay differently.
+model PayRate {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  userId        String    @db.Uuid
+  positionId    String    @db.Uuid
+  hourlyRate    Decimal   @db.Decimal(10, 2)
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  position Position @relation(fields: [positionId], references: [id], onDelete: Restrict)
+
+  @@index([userId, positionId, effectiveFrom])
+}
+
+/// Global catalogue rows have tenantId = null; tenants may add their own.
+model Certification {
+  id             String  @id @default(uuid()) @db.Uuid
+  tenantId       String? @db.Uuid
+  name           String
+  nameFr         String?
+  issuingBody    String
+  /// null = does not expire
+  validityMonths Int?
+
+  userCerts      UserCertification[]
+  requiredFor    PositionCertRequirement[]
+  prerequisites  CertificationPrerequisite[] @relation("CertRequires")
+  prerequisiteOf CertificationPrerequisite[] @relation("CertIsRequiredBy")
+}
+
+/// e.g. National Lifeguard is only valid while the holder also has current
+/// Standard First Aid.
+model CertificationPrerequisite {
+  certificationId String @db.Uuid
+  requiresId      String @db.Uuid
+
+  certification Certification @relation("CertRequires", fields: [certificationId], references: [id], onDelete: Cascade)
+  requires      Certification @relation("CertIsRequiredBy", fields: [requiresId], references: [id], onDelete: Cascade)
+
+  @@id([certificationId, requiresId])
+}
+
+model UserCertification {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  userId          String    @db.Uuid
+  certificationId String    @db.Uuid
+  issueDate       DateTime  @db.Date
+  /// null = does not expire
+  expiryDate      DateTime? @db.Date
+  documentUrl     String?
+  verifiedById    String?   @db.Uuid
+  verifiedAt      DateTime? @db.Timestamptz(3)
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  certification Certification @relation(fields: [certificationId], references: [id])
+
+  @@index([tenantId, expiryDate])
+  @@index([userId])
+}
+
+// ------------------------------------------------------------------
+// AVAILABILITY & TIME OFF
+// ------------------------------------------------------------------
+
+/// Recurring weekly availability, in the facility's local time.
+model Availability {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  userId        String    @db.Uuid
+  dayOfWeek     Int // 0 = Sunday
+  startMinute   Int // minutes after local midnight
+  endMinute     Int // may exceed 1440 for availability running past midnight
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+}
+
+model TimeOffRequest {
+  id           String        @id @default(uuid()) @db.Uuid
+  tenantId     String        @db.Uuid
+  userId       String        @db.Uuid
+  type         TimeOffType
+  startsAt     DateTime      @db.Timestamptz(3)
+  endsAt       DateTime      @db.Timestamptz(3)
+  status       RequestStatus @default(PENDING)
+  decidedById  String?       @db.Uuid
+  decidedAt    DateTime?     @db.Timestamptz(3)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, startsAt, endsAt])
+}
+
+// ------------------------------------------------------------------
+// SCHEDULING
+// ------------------------------------------------------------------
+
+model Shift {
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String      @db.Uuid
+  facilityId     String      @db.Uuid
+  positionId     String      @db.Uuid
+  userId         String?     @db.Uuid // null = open shift
+  startsAt       DateTime    @db.Timestamptz(3)
+  endsAt         DateTime    @db.Timestamptz(3)
+  shiftType      ShiftType   @default(STANDARD)
+  status         ShiftStatus @default(DRAFT)
+  customTitle    String?
+  /// Extra $/h on top of the base rate (e.g. specialised class).
+  premiumPerHour Decimal?    @db.Decimal(10, 2)
+  /// Why the scheduling assistant could not fill it (null when filled or not attempted).
+  conflictReason String?
+  /// Optimistic-lock counter. Every assignment change must match + increment it.
+  version        Int         @default(0)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+
+  facility    Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  position    Position     @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  timePunches TimePunch[]
+  offers      ShiftOffer[]
+
+  @@index([tenantId, facilityId, startsAt, endsAt])
+  @@index([userId, startsAt])
+}
+
+/// A shift on the Shift Board: either an open shift or a swap offer.
+/// The original holder stays responsible until status = COMPLETED.
+model ShiftOffer {
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String      @db.Uuid
+  shiftId        String      @db.Uuid
+  source         OfferSource
+  postedById     String?     @db.Uuid // null for OPEN_SHIFT posted by the system
+  claimedById    String?     @db.Uuid
+  status         OfferStatus @default(OPEN)
+  /// Snapshot of the compliance evaluation at claim time (reasons, OT hours).
+  complianceSnapshot Json?
+  decidedById    String?     @db.Uuid
+  decidedAt      DateTime?   @db.Timestamptz(3)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+
+  shift     Shift @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  postedBy  User? @relation("OfferPostedBy", fields: [postedById], references: [id], onDelete: Restrict)
+  claimedBy User? @relation("OfferClaimedBy", fields: [claimedById], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, status])
+  @@index([shiftId])
+}
+
+model StatutoryHoliday {
+  id       String   @id @default(uuid()) @db.Uuid
+  province Province
+  date     DateTime @db.Date
+  name     String
+  nameFr   String?
+
+  @@unique([province, date])
+}
+
+// ------------------------------------------------------------------
+// TIMEKEEPING
+// ------------------------------------------------------------------
+
+model TimePunch {
+  id             String              @id @default(uuid()) @db.Uuid
+  tenantId       String              @db.Uuid
+  userId         String              @db.Uuid
+  facilityId     String              @db.Uuid
+  /// Nullable: unscheduled call-ins still need a punch.
+  shiftId        String?             @db.Uuid
+  /// Position worked — determines pay rate. Defaults from the shift.
+  positionId     String              @db.Uuid
+  clockIn        DateTime            @db.Timestamptz(3)
+  clockOut       DateTime?           @db.Timestamptz(3)
+  ipAddress      String?
+  latitude       Decimal?            @db.Decimal(9, 6)
+  longitude      Decimal?            @db.Decimal(9, 6)
+  accuracyM      Int?
+  distanceM      Int?
+  locationStatus PunchLocationStatus @default(NO_LOCATION)
+  status         PunchStatus         @default(PENDING)
+  varianceReason String?
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+
+  user     User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  facility Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  shift    Shift?          @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  edits    TimePunchEdit[]
+
+  @@index([tenantId, userId, clockIn])
+}
+
+/// Every change to a punch is recorded — original values are never lost.
+model TimePunchEdit {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  punchId     String   @db.Uuid
+  editedById  String   @db.Uuid
+  field       String
+  oldValue    String?
+  newValue    String?
+  reason      String
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  punch TimePunch @relation(fields: [punchId], references: [id], onDelete: Restrict)
+
+  @@index([punchId])
+}
+
+model PayCodeMapping {
+  id         String     @id @default(uuid()) @db.Uuid
+  tenantId   String     @db.Uuid
+  key        PayCodeKey
+  /// null = default for all positions
+  positionId String?    @db.Uuid
+  code       String // employer's pay code, e.g. "REG_LIFEGUARD"
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  position Position? @relation(fields: [positionId], references: [id])
+
+  @@unique([tenantId, key, positionId])
+}
+
+// ------------------------------------------------------------------
+// RELIABILITY (advisory)
+// ------------------------------------------------------------------
+
+model ReliabilityEvent {
+  id             String               @id @default(uuid()) @db.Uuid
+  tenantId       String               @db.Uuid
+  userId         String               @db.Uuid
+  type           ReliabilityEventType
+  occurredAt     DateTime             @db.Timestamptz(3)
+  /// e.g. punch id / offer id that produced the event
+  sourceId       String?
+  /// Set when the event overlaps protected leave or a manager excuses it.
+  excludedReason String?
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, occurredAt])
+}
+
+// ------------------------------------------------------------------
+// AQUATIC OPERATIONS
+// ------------------------------------------------------------------
+
+/// A body of water with its own chemistry and its own thresholds.
+/// Thresholds come from the applicable provincial / health-authority regulation
+/// and MUST be configured before readings are accepted — there are no defaults.
+model PoolBody {
+  id                  String         @id @default(uuid()) @db.Uuid
+  tenantId            String         @db.Uuid
+  facilityId          String         @db.Uuid
+  name                String
+  kind                PoolBodyKind
+  status              PoolBodyStatus @default(OPEN)
+  freeChlorineMinPpm  Decimal?       @db.Decimal(5, 2)
+  freeChlorineMaxPpm  Decimal?       @db.Decimal(5, 2)
+  combinedChlorineMaxPpm Decimal?    @db.Decimal(5, 2)
+  phMin               Decimal?       @db.Decimal(4, 2)
+  phMax               Decimal?       @db.Decimal(4, 2)
+  thresholdSource     String? // e.g. "BC Pool Regulation / Interior Health permit conditions"
+  /// Max bathers per on-duty lifeguard, per the regulation / facility safety plan.
+  bathersPerLifeguard Int?
+
+  facility  Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  readings  ChemicalReading[]
+  closures  PoolClosure[]
+
+  @@index([facilityId])
+}
+
+model ChemicalReading {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @db.Uuid
+  poolBodyId         String   @db.Uuid
+  recordedById       String   @db.Uuid
+  recordedAt         DateTime @db.Timestamptz(3)
+  freeChlorinePpm    Decimal? @db.Decimal(5, 2)
+  totalChlorinePpm   Decimal? @db.Decimal(5, 2)
+  ph                 Decimal? @db.Decimal(4, 2)
+  waterTempC         Decimal? @db.Decimal(4, 1)
+  batherCount        Int?
+  outOfRange         Boolean  @default(false)
+  outOfRangeDetails  Json?
+  signedOffById      String?  @db.Uuid
+  signedOffAt        DateTime? @db.Timestamptz(3)
+
+  poolBody PoolBody @relation(fields: [poolBodyId], references: [id], onDelete: Restrict)
+
+  @@index([poolBodyId, recordedAt])
+}
+
+model PoolClosure {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  poolBodyId    String    @db.Uuid
+  readingId     String?   @db.Uuid
+  reason        String
+  recommendedAt DateTime  @db.Timestamptz(3)
+  confirmedById String?   @db.Uuid
+  confirmedAt   DateTime? @db.Timestamptz(3)
+  dismissedById String?   @db.Uuid
+  dismissedAt   DateTime? @db.Timestamptz(3)
+  reopenedById  String?   @db.Uuid
+  reopenedAt    DateTime? @db.Timestamptz(3)
+
+  poolBody PoolBody @relation(fields: [poolBodyId], references: [id], onDelete: Restrict)
+
+  @@index([poolBodyId, recommendedAt])
+}
+
+/// Envelope-encrypted: the narrative is AES-256-GCM encrypted with a per-record
+/// data key, which is itself wrapped by the tenant's KMS key.
+model IncidentReport {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @db.Uuid
+  facilityId       String   @db.Uuid
+  reportedById     String   @db.Uuid
+  occurredAt       DateTime @db.Timestamptz(3)
+  category         String // non-sensitive, for reporting (e.g. "FIRST_AID", "RESCUE")
+  ciphertext       Bytes
+  iv               Bytes
+  authTag          Bytes
+  wrappedDataKey   Bytes
+  kekId            String
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+
+  facility  Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  accessLog IncidentAccessLog[]
+
+  @@index([tenantId, occurredAt])
+}
+
+model IncidentAccessLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  incidentId String   @db.Uuid
+  userId     String   @db.Uuid
+  purpose    String
+  accessedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  incident IncidentReport @relation(fields: [incidentId], references: [id], onDelete: Restrict)
+}
+
+// ------------------------------------------------------------------
+// HR
+// ------------------------------------------------------------------
+
+model DisciplinaryRecord {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  userId           String    @db.Uuid
+  issuedById       String    @db.Uuid
+  issuedAt         DateTime  @db.Timestamptz(3)
+  summary          String
+  /// PNG data captured from the signature canvas.
+  acknowledgementSignature Bytes?
+  acknowledgedAt   DateTime? @db.Timestamptz(3)
+  /// Union members may request a steward was present.
+  stewardPresent   Boolean   @default(false)
+
+  user User @relation("DisciplineSubject", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  actorId   String?  @db.Uuid
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  at        DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, entity, entityId])
+  @@index([tenantId, at])
+}

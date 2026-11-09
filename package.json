@@ -1,0 +1,16 @@
+{
+  "name": "flexcity",
+  "private": true,
+  "description": "Aquatic staff scheduling, timekeeping and operations platform for Canadian municipalities and swim clubs",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22.9"
+  }
+}
