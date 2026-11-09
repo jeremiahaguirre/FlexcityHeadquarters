@@ -39,3 +39,21 @@ describe('de-provisioning', () => {
     expect(r.headers['content-security-policy']).toMatch(/frame-ancestors 'none'/);
   });
 });
+
+describe('records for an access or freedom-of-information request', () => {
+  it('HR exports everything held about a person, minus union and sealed narratives, and it is logged', async () => {
+    const h = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'R', lastName: 'X', email: 'hr2@deprov.test' } });
+    const hr = await signAccessToken({ sub: h.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: Math.floor(Date.now() / 1000) });
+    const stale = await signAccessToken({ sub: h.id, tid: t.tenant.id, roles: ['HR_ADMIN'] });
+    const path = `/api/users/${t.users[0]!.id}/records-export`;
+    expect((await request(server).get(path).auth(stale, { type: 'bearer' }).set('x-tenant-subdomain', SUB)).body.code).toBe('STEP_UP_REQUIRED');
+    const r = await request(server).get(path).auth(hr, { type: 'bearer' }).set('x-tenant-subdomain', SUB);
+    expect(r.status).toBe(200);
+    expect(r.headers['content-disposition']).toMatch(/attachment/);
+    const body = JSON.parse(r.text);
+    expect(body.person.email).toBe(`guard0@${SUB}.test`);
+    expect(body.excluded.join(' ')).toMatch(/Union Hub/);
+    expect(Object.keys(body)).toEqual(expect.arrayContaining(['shifts', 'punches', 'disciplineRecords', 'onboarding', 'workRestrictions', 'auditTrail']));
+    expect(await owner.auditLog.count({ where: { action: 'privacy.records_export', entityId: t.users[0]!.id } })).toBe(1);
+  });
+});

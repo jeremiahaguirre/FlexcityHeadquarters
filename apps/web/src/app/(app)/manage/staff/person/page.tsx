@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, BadgeCheck, MailPlus, Plus, ShieldOff } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, FileDown, MailPlus, Plus, ShieldOff } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { type FormEvent, type ReactNode, Suspense, useState } from 'react';
@@ -15,7 +15,7 @@ import { AccommodationPanel } from '@/components/people/AccommodationPanel';
 import { CaseFilePanel } from '@/components/people/CaseFilePanel';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { api } from '@/lib/api';
+import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import type { CustomRole } from '@/lib/customRoles';
@@ -312,9 +312,26 @@ function Person() {
 
         {can('users.privacy') ? (
           <Section title={t('staff.privacy')} description={t('staff.privacyHelp')}>
+            <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              icon={<FileDown className="h-4 w-4" aria-hidden="true" />}
+              loading={busy === 'export'}
+              onClick={() =>
+                void run('export', async () => {
+                  const r = await apiDownload(`/api/users/${p.id}/records-export`);
+                  if (!r.ok) throw new Error('export');
+                  saveBlob(r.blob, `records-${p.lastName}-${p.firstName}.json`);
+                  return true;
+                }, t('staff.exported'))
+              }
+            >
+              {t('staff.exportRecords')}
+            </Button>
             <Button variant="danger" icon={<ShieldOff className="h-4 w-4" aria-hidden="true" />} onClick={() => setDialog('erase')}>
               {t('staff.requestErasure')}
             </Button>
+            </div>
           </Section>
         ) : null}
       </div>

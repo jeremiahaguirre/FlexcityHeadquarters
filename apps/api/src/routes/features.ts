@@ -1,9 +1,10 @@
+import { exportPersonRecords } from '../services/privacy/recordsExport.js';
 import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { withTenant } from '../lib/db.js';
+import { audit, withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 import { publish } from '../lib/events.js';
 import { localDate, localIso } from '../lib/time.js';
@@ -352,6 +353,23 @@ api.get(
       return computeReliability(events, leave, new Date());
     });
     res.json({ ...out, notice: 'Advisory only. Not used for automated scheduling or discipline decisions.' });
+  }),
+);
+
+/** Everything held about one person, for a privacy access or freedom-of-information request. */
+api.get(
+  '/users/:id/records-export',
+  requirePermission('users.privacy'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.id);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const data = await exportPersonRecords(tx, userId);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'privacy.records_export', entity: 'User', entityId: userId });
+      return data;
+    });
+    res.attachment(`records-${userId}.json`).type('application/json').send(JSON.stringify(out, null, 2));
   }),
 );
 
