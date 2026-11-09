@@ -41,7 +41,10 @@ export async function seedTenant(sub: string, guards = 3) {
 
 /** A published open shift a few days out, posted to the board. */
 export async function seedOpenOffer(t: Awaited<ReturnType<typeof seedTenant>>, startInDays = 3, hours = 4) {
-  const startsAt = new Date(Math.floor(day(startInDays).getTime() / 3_600_000) * 3_600_000);
+  // 16:00 UTC (8 or 9 a.m. in Vancouver): a fixed morning start, so long shifts never cross
+  // local midnight and split daily overtime depending on when the tests run.
+  const d = day(startInDays);
+  const startsAt = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 16));
   const shift = await owner.shift.create({
     data: {
       tenantId: t.tenant.id,
