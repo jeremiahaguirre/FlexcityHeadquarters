@@ -1,0 +1,55 @@
+import { pageMeta } from '@/lib/seo';
+import { ArrowLeft, Lightbulb } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Section } from '@/components/Section';
+import { LANGS, type Lang, copy } from '@/content/copy';
+import { ARTICLES, articleIn } from '@/content/help';
+
+export const generateStaticParams = () => LANGS.flatMap((lang) => ARTICLES.map((a) => ({ lang, slug: a.slug })));
+
+export function generateMetadata({ params }: { params: { lang: Lang; slug: string } }) {
+  const a = ARTICLES.find((x) => x.slug === params.slug);
+  return a ? pageMeta(params.lang, `help/${a.slug}/`, articleIn(a, params.lang).title, articleIn(a, params.lang).summary) : {};
+}
+
+export default function Article({ params }: { params: { lang: Lang; slug: string } }) {
+  const a = ARTICLES.find((x) => x.slug === params.slug);
+  if (!a) notFound();
+  const b = articleIn(a, params.lang);
+  const c = copy(params.lang);
+  return (
+    <Section>
+      <div className="mx-auto max-w-2xl">
+        <Link href={`/${params.lang}/help/`} className="mb-6 inline-flex items-center gap-1.5 text-small font-semibold text-brand-text hover:underline">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {c.help.back}
+        </Link>
+        <p className="text-label uppercase text-muted">{c.help.audience[a.audience]}</p>
+        <h1 className="mt-2 text-title">{b.title}</h1>
+        <p className="mt-3 text-body text-muted">{b.summary}</p>
+        <ol className="mt-8 grid gap-4">
+          {b.steps.map((s, i) => (
+            <li key={s} className="flex gap-4">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand text-small font-bold text-brand-contrast">{i + 1}</span>
+              <p className="pt-1 text-body leading-7">{s}</p>
+            </li>
+          ))}
+        </ol>
+        {b.tip ? (
+          <p className="mt-8 flex gap-3 rounded-2xl bg-surface px-5 py-4 text-small">
+            <Lightbulb className="h-5 w-5 shrink-0 text-brand-text" aria-hidden="true" />
+            {b.tip}
+          </p>
+        ) : null}
+        <div className="mt-12 rounded-2xl border border-line bg-panel p-6">
+          <h2 className="text-subheading">{c.help.still}</h2>
+          <p className="mt-1 text-small text-muted">{c.help.stillBody}</p>
+          <Link href={`/${params.lang}/contact/?kind=SUPPORT`} className="mt-4 inline-flex h-11 items-center rounded-xl bg-brand px-5 text-body-strong text-brand-contrast hover:bg-brand-hover">
+            {c.nav.contact}
+          </Link>
+        </div>
+      </div>
+    </Section>
+  );
+}

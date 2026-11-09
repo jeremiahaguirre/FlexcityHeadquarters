@@ -6,6 +6,7 @@ Aquatic staff scheduling, timekeeping and operations for Canadian municipalities
 
 - **apps/api** — Node.js, Express, TypeScript, Prisma, PostgreSQL (row-level security)
 - **apps/web** — Next.js, Tailwind, i18next (English / Canadian French)
+- **apps/site** — the marketing website (static Next.js export, English and French), deployed on Vercel
 
 **Live demo:** https://jeremiahaguirre.github.io/FlexcityHeadquarters/ — a static build with sample data and no server (pick a role on the sign-in page: lifeguard, supervisor, HR, front desk or union steward). Build it locally with `npm run build:demo --workspace apps/web`. Its sample data is recorded from a seeded local stack by `apps/web/scripts/capture-demo.cjs`; rerun it after changing what a screen loads.
 
@@ -94,6 +95,23 @@ DATABASE_URL=postgresql://postgres@localhost:5432/flexcity_test APP_DATABASE_URL
 ```
 
 CI runs typecheck, unit tests, a migration-drift check and the integration tests on every push.
+
+## Marketing website
+
+`apps/site` is the public website: home, why FH, private sector, plans, demo, help centre, FAQ, contact and legal pages, in English and French, with a sitemap, canonical and hreflang links and structured data. Run it with `npm run dev --workspace apps/site` (http://localhost:3100).
+
+Vercel builds it with **Root Directory** `apps/site` (the settings are in `apps/site/vercel.json`). Environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | The site's public address, e.g. `https://www.example.ca` (canonical links and sitemap) |
+| `NEXT_PUBLIC_DEMO_URL` | The app demo, default `https://jeremiahaguirre.github.io/FlexcityHeadquarters` |
+| `NEXT_PUBLIC_LEADS_URL` | `https://<api host>/api/marketing/leads`; without it the contact form shows the email address instead |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | The address shown on the site |
+
+On the API, add the website's address to `MARKETING_ORIGINS` so the contact form is accepted.
+
+Screenshots on the site come from the demo (`apps/site/public/screens`). Retake them after visible app changes.
 
 ## Documentation
 

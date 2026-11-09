@@ -1,0 +1,128 @@
+'use client';
+
+import { CheckCircle2, Send } from 'lucide-react';
+import { type FormEvent, useState } from 'react';
+import { type Lang, copy } from '@/content/copy';
+import { SITE } from '@/lib/site';
+
+const PROVINCES = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'];
+const input = 'block h-12 w-full rounded-xl border border-line bg-panel px-3.5 text-body text-ink placeholder:text-muted/70 focus:border-brand';
+
+export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' | 'DEMO' | 'SUPPORT' }) {
+  const c = copy(lang).contact;
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const s = (k: string) => String(f.get(k) ?? '').trim() || null;
+    setState('sending');
+    try {
+      const r = await fetch(SITE.leadsUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          kind: s('kind'),
+          name: s('name'),
+          email: s('email'),
+          organization: s('organization'),
+          role: s('role'),
+          province: s('province'),
+          facilities: s('facilities') ? Number(s('facilities')) : null,
+          message: s('message'),
+          locale: lang === 'fr' ? 'fr-CA' : 'en-CA',
+          marketingConsent: f.get('consent') === 'on',
+          website: String(f.get('website') ?? ''),
+        }),
+      });
+      setState(r.ok ? 'sent' : 'error');
+    } catch {
+      setState('error');
+    }
+  }
+
+  if (!SITE.leadsUrl) {
+    return (
+      <p className="rounded-2xl bg-surface px-5 py-4 text-body">
+        {c.offline}{' '}
+        <a href={`mailto:${SITE.contactEmail}`} className="font-semibold text-brand-text underline">
+          {SITE.contactEmail}
+        </a>
+      </p>
+    );
+  }
+  if (state === 'sent') {
+    return (
+      <p role="status" className="flex items-center gap-3 rounded-2xl bg-ok-bg px-5 py-4 text-body-strong text-ok">
+        <CheckCircle2 className="h-6 w-6 shrink-0" aria-hidden="true" />
+        {c.sent}
+      </p>
+    );
+  }
+  const field = (id: string, label: string, el: React.ReactNode, hint?: string) => (
+    <div className="grid gap-1.5">
+      <label htmlFor={id} className="text-small font-semibold">
+        {label}
+      </label>
+      {el}
+      {hint ? <p className="text-caption text-muted">{hint}</p> : null}
+    </div>
+  );
+  return (
+    <form onSubmit={(e) => void submit(e)} className="grid gap-4">
+      {field('kind', c.kind, (
+        <select id="kind" name="kind" defaultValue={kind} className={`${input} pr-9`}>
+          {(['SALES', 'DEMO', 'SUPPORT'] as const).map((k) => (
+            <option key={k} value={k}>
+              {c.kinds[k]}
+            </option>
+          ))}
+        </select>
+      ))}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field('name', c.name, <input id="name" name="name" required minLength={2} autoComplete="name" className={input} />)}
+        {field('email', c.email, <input id="email" name="email" type="email" required autoComplete="email" className={input} />)}
+        {field('organization', c.organization, <input id="organization" name="organization" autoComplete="organization" className={input} />)}
+        {field('role', c.role, <input id="role" name="role" autoComplete="organization-title" className={input} />)}
+        {field('province', c.province, (
+          <select id="province" name="province" defaultValue="" className={`${input} pr-9`}>
+            <option value="">{c.choose}</option>
+            {PROVINCES.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        ))}
+        {field('facilities', c.facilities, <input id="facilities" name="facilities" type="number" min={0} max={500} className={input} />)}
+      </div>
+      {field('message', c.message, <textarea id="message" name="message" required minLength={5} maxLength={4000} rows={5} placeholder={c.messagePlaceholder} className={`${input} h-auto py-3`} />)}
+      {/* Honeypot: hidden from people and screen readers. */}
+      <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
+        <label>
+          Website <input name="website" tabIndex={-1} autoComplete="off" />
+        </label>
+      </div>
+      <label className="flex items-start gap-3 text-small">
+        <input type="checkbox" name="consent" className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" />
+        <span>
+          {c.consent}
+          <span className="block text-caption text-muted">{c.consentHint}</span>
+        </span>
+      </label>
+      {state === 'error' ? (
+        <p role="alert" className="rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">
+          {c.error}{' '}
+          <a href={`mailto:${SITE.contactEmail}`} className="font-semibold underline">
+            {SITE.contactEmail}
+          </a>
+        </p>
+      ) : null}
+      <button type="submit" disabled={state === 'sending'} className="inline-flex h-12 items-center justify-center gap-2 justify-self-start rounded-xl bg-brand px-6 text-body-strong text-brand-contrast shadow-card hover:bg-brand-hover disabled:opacity-60">
+        <Send className="h-4 w-4" aria-hidden="true" />
+        {state === 'sending' ? c.sending : c.send}
+      </button>
+      <p className="text-caption text-muted">{c.privacy}</p>
+    </form>
+  );
+}
