@@ -1,0 +1,52 @@
+{
+  "app": {
+    "name": "Flexcity",
+    "skipToContent": "Passer au contenu principal",
+    "language": "English",
+    "languageLabel": "Switch to English",
+    "unknownOrg": "Nous n'avons pas trouvé cette organisation. Vérifiez l'adresse web qui vous a été fournie.",
+    "nav": { "board": "Tableau des quarts", "status": "État des bassins", "signOut": "Se déconnecter" }
+  },
+  "login": {
+    "title": "Connexion",
+    "email": "Courriel",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "submitting": "Connexion…",
+    "invalid": "Le courriel ou le mot de passe est incorrect."
+  },
+  "board": {
+    "title": "Tableau des quarts",
+    "empty": "Aucun quart disponible pour le moment.",
+    "claim": "Prendre ce quart",
+    "claiming": "En cours…",
+    "pendingBadge": "En attente d'approbation",
+    "assigned": "Quart obtenu. Il figure maintenant à votre horaire.",
+    "pendingApproval": "Ce quart ajouterait {{hours}} h d'heures supplémentaires; il a donc été envoyé à un superviseur pour approbation.",
+    "alreadyClaimed": "Une autre personne a pris ce quart avant vous.",
+    "notEligible": "Vous ne pouvez pas prendre ce quart :",
+    "error": "Une erreur s'est produite. Veuillez réessayer."
+  },
+  "status": {
+    "title": "État des bassins",
+    "OPEN": "Ouvert",
+    "CLOSURE_RECOMMENDED": "Fermeture recommandée — en attente du sauveteur en chef",
+    "CLOSED": "Fermé",
+    "updated": "Mis à jour à {{time}}"
+  },
+  "blocks": {
+    "NOT_ACTIVE": "Votre compte n'est pas actif.",
+    "NOT_QUALIFIED_FOR_POSITION": "Vous n'êtes pas autorisé·e à occuper ce poste.",
+    "MISSING_CERTIFICATION": "Une certification requise est manquante.",
+    "CERTIFICATION_EXPIRES": "Une certification requise expire avant la fin de ce quart.",
+    "PREREQUISITE_LAPSED": "Une certification préalable (p. ex. secourisme) est échue.",
+    "OVERLAPPING_SHIFT": "Vous travaillez déjà pendant cette période.",
+    "ON_APPROVED_TIME_OFF": "Vous avez un congé approuvé pendant ce quart.",
+    "REST_BETWEEN_SHIFTS": "Vous n'auriez pas le repos requis entre deux quarts.",
+    "DAILY_REST": "Vous n'auriez pas le repos quotidien requis.",
+    "UNDER_MINIMUM_AGE": "Vous n'avez pas l'âge minimum pour ce poste.",
+    "YOUNG_WORKER_LIMIT": "Cela dépasserait les limites d'heures pour les jeunes travailleurs.",
+    "NOT_AVAILABLE": "Ce quart est en dehors de vos disponibilités.",
+    "OVER_PERSONAL_WEEKLY_MAX": "Cela dépasserait votre plafond d'heures hebdomadaire."
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "app": {
+    "name": "Flexcity",
+    "skipToContent": "Skip to main content",
+    "language": "Français",
+    "languageLabel": "Passer au français",
+    "unknownOrg": "We couldn't find this organization. Check the web address you were given.",
+    "nav": { "board": "Shift Board", "status": "Pool Status", "signOut": "Sign out" }
+  },
+  "login": {
+    "title": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "invalid": "Email or password is incorrect."
+  },
+  "board": {
+    "title": "Shift Board",
+    "empty": "No open shifts right now.",
+    "claim": "Claim shift",
+    "claiming": "Claiming…",
+    "pendingBadge": "Awaiting approval",
+    "assigned": "Shift claimed. It's now on your schedule.",
+    "pendingApproval": "This shift would add {{hours}} h of overtime, so it has been sent to a supervisor for approval.",
+    "alreadyClaimed": "Someone else claimed this shift first.",
+    "notEligible": "You can't take this shift:",
+    "error": "Something went wrong. Please try again."
+  },
+  "status": {
+    "title": "Pool Status",
+    "OPEN": "Open",
+    "CLOSURE_RECOMMENDED": "Closure recommended — awaiting Head Lifeguard",
+    "CLOSED": "Closed",
+    "updated": "Updated {{time}}"
+  },
+  "blocks": {
+    "NOT_ACTIVE": "Your account is not active.",
+    "NOT_QUALIFIED_FOR_POSITION": "You're not approved for this position.",
+    "MISSING_CERTIFICATION": "A required certification is missing.",
+    "CERTIFICATION_EXPIRES": "A required certification expires before this shift ends.",
+    "PREREQUISITE_LAPSED": "A prerequisite certification (e.g. first aid) has lapsed.",
+    "OVERLAPPING_SHIFT": "You're already working during this time.",
+    "ON_APPROVED_TIME_OFF": "You have approved time off during this shift.",
+    "REST_BETWEEN_SHIFTS": "You wouldn't get the required rest between shifts.",
+    "DAILY_REST": "You wouldn't get the required daily rest.",
+    "UNDER_MINIMUM_AGE": "You're under the minimum age for this position.",
+    "YOUNG_WORKER_LIMIT": "This would exceed young-worker hour limits.",
+    "NOT_AVAILABLE": "This is outside your availability.",
+    "OVER_PERSONAL_WEEKLY_MAX": "This would exceed your weekly hour cap."
+  }
+}

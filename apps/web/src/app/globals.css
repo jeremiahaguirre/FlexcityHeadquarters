@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Neutral tokens. Brand tokens (--brand, --accent…) are injected per tenant in layout.tsx. */
+:root {
+  --surface: 246 248 250;
+  --ink: 17 24 39;
+  --muted: 75 85 99;
+  --line: 209 213 219;
+  --ok: 21 128 61;
+  --warn: 180 83 9;
+  --danger: 185 28 28;
+  --page: 255 255 255;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: 31 41 55;
+    --ink: 243 244 246;
+    --muted: 156 163 175;
+    --line: 55 65 81;
+    --ok: 74 222 128;
+    --warn: 251 191 36;
+    --danger: 248 113 113;
+    --page: 17 24 39;
+    color-scheme: dark;
+  }
+}
+
+body {
+  background: rgb(var(--page));
+  color: rgb(var(--ink));
+}
