@@ -39,6 +39,7 @@ export const PERMISSIONS = [
   'positions.manage', // define positions and their required certifications
   'users.scheduling', // shadow tier, weekly hour targets/caps, position approvals
   'ops.configure', // pools and their permit thresholds
+  'jobs.manage', // public job postings
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -73,6 +74,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'ops.status.read',
     'positions.manage',
     'ops.configure',
+    'jobs.manage',
   ],
   AQUATIC_SUPERVISOR: [
     ...STAFF_BASE,
@@ -96,6 +98,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'positions.manage',
     'users.scheduling',
     'ops.configure',
+    'jobs.manage',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,

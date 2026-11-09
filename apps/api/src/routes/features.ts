@@ -25,6 +25,7 @@ import { disciplineRouter } from './discipline.js';
 import { settingsRouter } from './settings.js';
 import { lessonsRouter } from './lessons.js';
 import { unionRouter } from './union.js';
+import { jobsRouter } from './jobs.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -37,6 +38,7 @@ api.use(disciplineRouter);
 api.use(settingsRouter);
 api.use(lessonsRouter);
 api.use(unionRouter);
+api.use(jobsRouter);
 
 const uuid = z.string().uuid();
 const actorOf = (req: Parameters<typeof authOf>[0]) => {

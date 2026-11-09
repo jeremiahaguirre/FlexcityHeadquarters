@@ -910,3 +910,29 @@ model LessonAttendance {
 
   @@unique([enrollmentId, sessionDate])
 }
+
+// ------------------------------------------------------------------
+// JOB BOARD
+// ------------------------------------------------------------------
+
+/// Public job posting. Applications go to the organization's own page or inbox
+/// (applyUrl), so FH never collects applicant personal information.
+model JobPosting {
+  id               String           @id @default(uuid()) @db.Uuid
+  tenantId         String           @db.Uuid
+  facilityId       String?          @db.Uuid
+  title            String
+  titleFr          String?
+  description      String
+  descriptionFr    String?
+  employmentStatus EmploymentStatus
+  payMin           Decimal?         @db.Decimal(10, 2)
+  payMax           Decimal?         @db.Decimal(10, 2)
+  closesOn         DateTime         @db.Date
+  applyUrl         String
+  published        Boolean          @default(false)
+  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, published, closesOn])
+}
