@@ -32,6 +32,8 @@ export const FEATURES = {
   benchmarks: { default: true, permissions: [] },
   accommodation: { default: true, permissions: ['accommodation.manage'] },
   care: { default: true, permissions: ['care.manage'] },
+  /** Lesson and swim club campaigns, member services and the price list. */
+  registration: { default: true, permissions: ['lessons.plan', 'members.manage', 'fees.manage'] },
   loneWork: { default: true, permissions: ['lonework.self', 'lonework.monitor'] },
   /** Off until the city's managers switch them on (Winter operations screen). */
   callOuts: { default: false, permissions: ['winter.callout'] },

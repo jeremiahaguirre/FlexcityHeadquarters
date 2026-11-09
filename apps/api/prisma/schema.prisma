@@ -1163,6 +1163,17 @@ model LessonClass {
   startsOn    DateTime @db.Date
   endsOn      DateTime @db.Date
   maxSwimmers Int      @default(8)
+  /// Several days a week (e.g. Monday to Friday); empty = just `dayOfWeek`.
+  daysOfWeek  Int[]    @default([])
+  /// Part of a registration campaign (lessons, swim club…), with its level and price.
+  campaignId  String?  @db.Uuid
+  levelId     String?  @db.Uuid
+  minAgeMonths Int?
+  maxAgeMonths Int?
+  priceCents       Int?
+  memberPriceCents Int?
+  /// Instructors and member services see it once its campaign is published.
+  published   Boolean  @default(true)
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
 
   enrollments LessonEnrollment[]
@@ -1180,6 +1191,14 @@ model LessonEnrollment {
   /// Short safety note visible to the instructor (e.g. "Asthma: inhaler in bag").
   safetyNote   String?
   active       Boolean  @default(true)
+  /// Registered by member services for a child (or adult) on file.
+  memberId     String?  @db.Uuid
+  householdId  String?  @db.Uuid
+  status       EnrollmentStatus @default(ENROLLED)
+  priceCents   Int?
+  registeredById String? @db.Uuid
+  /// Age check skipped by staff, and why.
+  ageOverride  String?
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
   lessonClass LessonClass        @relation(fields: [classId], references: [id], onDelete: Restrict)
@@ -1693,4 +1712,168 @@ model PatrolRecord {
 
   @@index([tenantId, routeId, startedAt])
   @@index([userId, startedAt])
+}
+
+// ------------------------------------------------- Programs and member services
+
+enum EnrollmentStatus {
+  ENROLLED
+  WAITLISTED
+  CANCELLED
+}
+
+/// A swim level (Red Cross, Lifesaving Society, or the city's own), with its ages.
+model SwimLevel {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  program        String
+  name           String
+  nameFr         String?
+  minAgeMonths   Int
+  maxAgeMonths   Int?
+  parentInWater  Boolean  @default(false)
+  /// Swimmers per instructor.
+  ratio          Int      @default(6)
+  durationMinutes Int     @default(30)
+  sortOrder      Int      @default(0)
+  active         Boolean  @default(true)
+
+  @@unique([tenantId, program, name])
+}
+
+enum CampaignKind {
+  LESSONS
+  SWIM_CLUB
+  CAMP
+  OTHER
+}
+
+enum CampaignStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+/// A registration campaign: a season of lessons, a swim club session, a camp.
+model LessonCampaign {
+  id                   String         @id @default(uuid()) @db.Uuid
+  tenantId             String         @db.Uuid
+  name                 String
+  nameFr               String?
+  kind                 CampaignKind   @default(LESSONS)
+  status               CampaignStatus @default(DRAFT)
+  startsOn             DateTime       @db.Date
+  endsOn               DateTime       @db.Date
+  registrationOpensAt  DateTime?      @db.Timestamptz(3)
+  registrationClosesAt DateTime?      @db.Timestamptz(3)
+  /// No lessons these days (stat holidays, pool closures).
+  skipDates            DateTime[]     @db.Date
+  notes                String?
+  createdById          String         @db.Uuid
+  publishedAt          DateTime?      @db.Timestamptz(3)
+  createdAt            DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, status])
+}
+
+/// A family on file: parents or guardians and their children.
+model Household {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  name       String
+  address    String?
+  emergencyName  String?
+  emergencyPhone String?
+  notes      String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  members    Member[]
+
+  @@index([tenantId, name])
+}
+
+enum MemberRole {
+  GUARDIAN
+  CHILD
+  ADULT
+}
+
+model Member {
+  id          String     @id @default(uuid()) @db.Uuid
+  tenantId    String     @db.Uuid
+  householdId String     @db.Uuid
+  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  role        MemberRole
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?  @db.Date
+  email       String?
+  phone       String?
+  /// Short note the instructor sees on deck (e.g. "Asthma: inhaler in bag").
+  safetyNote  String?
+  /// Consent to share photos, recorded at registration.
+  photoConsent Boolean   @default(false)
+  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, lastName])
+  @@index([householdId])
+}
+
+enum FeeKind {
+  MEMBERSHIP
+  DROP_IN
+  PASS
+  PROGRAM
+}
+
+enum FeePeriod {
+  YEAR
+  MONTH
+  VISIT
+  NONE
+}
+
+/// The facility price list: memberships by year or month, drop-in, passes, programs.
+model FeeItem {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  /// null = every facility.
+  facilityId String?   @db.Uuid
+  kind       FeeKind
+  period     FeePeriod @default(NONE)
+  /// ADULT, YOUTH, CHILD, SENIOR, FAMILY, STUDENT, ALL
+  ageGroup   String    @default("ALL")
+  name       String
+  nameFr     String?
+  priceCents Int
+  /// Visits on a pass (e.g. 10).
+  visits     Int?
+  active     Boolean   @default(true)
+  sortOrder  Int       @default(0)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, kind])
+}
+
+/// Something member services sold: a membership, a drop-in, a pass, a lesson registration.
+model Sale {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  householdId   String?   @db.Uuid
+  memberId      String?   @db.Uuid
+  feeId         String?   @db.Uuid
+  enrollmentId  String?   @db.Uuid
+  facilityId    String?   @db.Uuid
+  description   String
+  priceCents    Int
+  validFrom     DateTime? @db.Date
+  validTo       DateTime? @db.Date
+  /// CASH, DEBIT, CREDIT, ON_ACCOUNT, COMPLIMENTARY
+  paymentMethod String
+  soldById      String    @db.Uuid
+  refundedAt    DateTime? @db.Timestamptz(3)
+  refundedById  String?   @db.Uuid
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, createdAt])
+  @@index([householdId])
 }

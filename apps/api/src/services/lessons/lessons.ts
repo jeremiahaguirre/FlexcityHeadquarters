@@ -13,11 +13,16 @@ import { addDays, dayOfWeek, localIso, startOfLocalDay } from '../../lib/time.js
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
-export function sessionDates(cls: Pick<LessonClass, 'dayOfWeek' | 'startsOn' | 'endsOn'>, from: string, to: string): string[] {
+/**
+ * The dates a class meets in [from, to]: its days of the week (one, several, or
+ * Monday to Friday), minus the campaign's skipped dates (holidays, closures).
+ */
+export function sessionDates(cls: Pick<LessonClass, 'dayOfWeek' | 'startsOn' | 'endsOn'> & { daysOfWeek?: number[] }, from: string, to: string, skip: string[] = []): string[] {
   const out: string[] = [];
+  const days = cls.daysOfWeek?.length ? cls.daysOfWeek : [cls.dayOfWeek];
   const start = from > iso(cls.startsOn) ? from : iso(cls.startsOn);
   const end = to < iso(cls.endsOn) ? to : iso(cls.endsOn);
-  for (let d = start; d <= end; d = addDays(d, 1)) if (dayOfWeek(d) === cls.dayOfWeek) out.push(d);
+  for (let d = start; d <= end; d = addDays(d, 1)) if (days.includes(dayOfWeek(d)) && !skip.includes(d)) out.push(d);
   return out;
 }
 
@@ -40,10 +45,12 @@ export interface SessionView {
 /** Sessions in [from, to] (facility-local dates), optionally only those `userId` is teaching. */
 export async function listSessions(tx: Tx, from: string, to: string, userId?: string): Promise<SessionView[]> {
   const classes = await tx.lessonClass.findMany({
-    where: { startsOn: { lte: new Date(to) }, endsOn: { gte: new Date(from) } },
+    where: { startsOn: { lte: new Date(to) }, endsOn: { gte: new Date(from) }, published: true },
     include: { enrollments: { where: { active: true }, orderBy: { swimmerName: 'asc' } } },
   });
   if (!classes.length) return [];
+  const campaigns = await tx.lessonCampaign.findMany({ where: { id: { in: classes.map((c) => c.campaignId).filter((x): x is string => !!x) } }, select: { id: true, skipDates: true } });
+  const skipOf = (c: { campaignId: string | null }) => (campaigns.find((x) => x.id === c.campaignId)?.skipDates ?? []).map(iso);
   const facilities = await tx.facility.findMany({ where: { id: { in: [...new Set(classes.map((c) => c.facilityId))] } } });
   const shifts = userId
     ? await tx.shift.findMany({
@@ -57,7 +64,7 @@ export async function listSessions(tx: Tx, from: string, to: string, userId?: st
   const out: SessionView[] = [];
   for (const c of classes) {
     const f = facilities.find((x) => x.id === c.facilityId)!;
-    for (const date of sessionDates(c, from, to)) {
+    for (const date of sessionDates(c, from, to, skipOf(c))) {
       const w = sessionWindow(c, date, f.timezone);
       if (userId && !shifts.some((s) => s.facilityId === c.facilityId && s.positionId === c.positionId && s.startsAt <= w.start && s.endsAt >= w.end)) continue;
       out.push({

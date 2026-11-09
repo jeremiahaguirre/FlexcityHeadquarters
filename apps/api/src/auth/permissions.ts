@@ -60,6 +60,9 @@ export const PERMISSIONS = [
   'winter.callout', // run storm call-outs
   'winter.patrol', // record winter patrols
   'winter.records', // read and export patrol records
+  'lessons.plan', // swim levels, lesson and swim club campaigns, sets; publish them
+  'members.manage', // member services: families on file, registrations, memberships and drop-ins
+  'fees.manage', // the facility price list
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -106,6 +109,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'winter.manage',
     'winter.callout',
     'winter.records',
+    'fees.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -142,6 +146,9 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'overtime.manage',
     'care.manage',
     'lonework.monitor',
+    'lessons.plan',
+    'members.manage',
+    'fees.manage',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
@@ -151,9 +158,11 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'ops.chemical.signoff',
     'ops.pool.close',
     'ops.status.read',
+    'lessons.plan',
   ],
   STAFF: STAFF_BASE,
-  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch'],
+  // Front desk is member services: families, registrations, memberships and drop-ins.
+  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
   EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol'],

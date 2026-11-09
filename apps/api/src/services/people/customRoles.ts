@@ -18,6 +18,7 @@ export const CUSTOM_ROLE_PERMISSIONS = {
   everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self'],
   shiftBoard: ['shiftboard.claim', 'shiftboard.post'],
   safety: ['incidents.create', 'ops.headcount.record'],
+  memberServices: ['members.manage', 'lessons.plan', 'fees.manage'],
   winter: ['winter.patrol', 'winter.callout', 'winter.records', 'winter.manage'],
   aquatics: ['lessons.teach', 'ops.chemical.record', 'ops.chemical.signoff', 'ops.pool.close', 'ops.status.read', 'ops.page_head_guard', 'deck.rotate', 'ops.configure'],
   lead: ['users.read', 'users.scheduling', 'schedule.write', 'schedule.assist', 'shiftboard.approve', 'shiftboard.assign_emergency', 'timeoff.approve', 'timeclock.review', 'certs.verify', 'lonework.monitor', 'onboarding.lead', 'overtime.manage'],
