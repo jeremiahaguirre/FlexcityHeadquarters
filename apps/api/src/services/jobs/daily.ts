@@ -6,6 +6,7 @@ import type { Tx } from '../../lib/db.js';
 import { notify, usersWithRoles } from '../notifications/notifier.js';
 import { anonymizeUser } from '../privacy/erasure.js';
 import { computeReliability } from '../reliability/score.js';
+import { reviewList } from '../people/reviewList.js';
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const dayStart = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -26,6 +27,59 @@ export async function recomputeReliability(tx: Tx, now = new Date()): Promise<nu
     }
   }
   return changed;
+}
+
+/**
+ * Missed shifts: a published shift that ended at least an hour ago with no punch
+ * for it, while the person had no time off covering it. Supervisors can excuse
+ * a mistaken one (forgot to punch but worked), and punch review can add the punch.
+ */
+export async function detectNoShows(tx: Tx, now = new Date()): Promise<number> {
+  const shifts = await tx.shift.findMany({
+    where: { status: 'PUBLISHED', userId: { not: null }, endsAt: { gte: new Date(now.getTime() - 48 * 3_600_000), lte: new Date(now.getTime() - 3_600_000) } },
+    select: { id: true, tenantId: true, userId: true, startsAt: true, endsAt: true },
+  });
+  let created = 0;
+  for (const s of shifts) {
+    const userId = s.userId!;
+    const [already, punch, leave] = await Promise.all([
+      tx.reliabilityEvent.findFirst({ where: { userId, sourceId: s.id }, select: { id: true } }),
+      tx.timePunch.findFirst({
+        where: { userId, OR: [{ shiftId: s.id }, { clockIn: { lt: s.endsAt }, OR: [{ clockOut: null }, { clockOut: { gt: s.startsAt } }] }] },
+        select: { id: true },
+      }),
+      tx.timeOffRequest.findFirst({ where: { userId, status: { in: ['APPROVED', 'PENDING'] }, startsAt: { lt: s.endsAt }, endsAt: { gt: s.startsAt } }, select: { id: true } }),
+    ]);
+    if (already || punch || leave) continue;
+    await tx.reliabilityEvent.create({ data: { tenantId: s.tenantId, userId, type: 'NO_SHOW', occurredAt: s.startsAt, sourceId: s.id } });
+    created++;
+  }
+  return created;
+}
+
+/**
+ * Flags people for review when their facts cross a threshold, and tells HR and
+ * supervisors once (not every night). Clears the flag when things improve.
+ */
+export async function flagForReview(tx: Tx, now = new Date()): Promise<number> {
+  const rows = await reviewList(tx, now);
+  const reviewers = await usersWithRoles(tx, ['HR_ADMIN', 'AQUATIC_SUPERVISOR']);
+  let flagged = 0;
+  for (const r of rows) {
+    const substantive = r.review.flags.some((f) => f.code !== 'UNSIGNED_RECORD');
+    if (substantive && !r.flaggedSince) {
+      await tx.user.update({ where: { id: r.id }, data: { reviewFlaggedAt: now } });
+      await notify(
+        tx,
+        r.tenantId,
+        reviewers.filter((id) => id !== r.id).map((userId) => ({ userId, type: 'review_needed', params: { name: r.name }, link: `/manage/staff/person?id=${r.id}` })),
+      );
+      flagged++;
+    } else if (!substantive && r.flaggedSince) {
+      await tx.user.update({ where: { id: r.id }, data: { reviewFlaggedAt: null } });
+    }
+  }
+  return flagged;
 }
 
 export const REMINDER_DAYS = [90, 60, 30, 7] as const;

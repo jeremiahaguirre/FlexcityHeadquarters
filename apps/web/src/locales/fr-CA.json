@@ -188,7 +188,12 @@
     "cert_expiring": "Votre certification {{certification}} expire dans {{days}} jours. Renouvelez-la pour continuer à obtenir des quarts.",
     "staff_cert_expiring": "La certification {{certification}} de {{name}} expire dans {{days}} jours.",
     "forgot_clock_out": "Vous êtes toujours pointé. Pointez votre départ ou demandez à un superviseur de corriger l'heure.",
-    "over_capacity": "{{pool}} dépasse sa capacité : {{count}} baigneurs (max. {{max}})."
+    "over_capacity": "{{pool}} dépasse sa capacité : {{count}} baigneurs (max. {{max}}).",
+    "attendance_recorded": "Un superviseur a consigné un événement d’assiduité à votre dossier. Vous pouvez le consulter, avec la note, dans votre profil.",
+    "conduct_note_added": "Un superviseur a ajouté une note à votre dossier. Vous pouvez la lire dans votre profil.",
+    "commendation_added": "Vous avez reçu une mention d’éloge. Bravo!",
+    "review_needed": "Une discussion avec {{name}} pourrait être nécessaire. Voyez pourquoi dans son dossier.",
+    "discipline_response": "Un employé a ajouté sa réponse à un dossier que vous avez émis."
   },
   "today": {
     "morning": "Bonjour",

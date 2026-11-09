@@ -136,3 +136,45 @@ describe('erasure retention', () => {
     expect(erasureDueDate(null, 7, now)).toEqual(now);
   });
 });
+
+import { requiredChecks, review } from '../../src/services/people/review.js';
+
+describe('people review', () => {
+  const now = new Date('2026-11-10T12:00:00Z');
+  const ago = (d: number) => new Date(now.getTime() - d * 86_400_000);
+  const base = { score: 100, counted: [], excludedCount: 0, notes: [], records: [] };
+
+  it('flags nothing for a clean file', () => {
+    expect(review(base, now)).toMatchObject({ attention: false, flags: [], suggestedLevel: null });
+  });
+
+  it('flags frequent lateness in 30 days but not older ones', () => {
+    const late = (d: number) => ({ type: 'LATE_PUNCH' as const, occurredAt: ago(d) });
+    expect(review({ ...base, counted: [late(1), late(5), late(40)] }, now).flags).toEqual([]);
+    expect(review({ ...base, counted: [late(1), late(5), late(20)] }, now).flags).toEqual([{ code: 'FREQUENT_LATE', count: 3 }]);
+  });
+
+  it('suggests the next step after the most serious record still active', () => {
+    const r = review({ ...base, score: 60, records: [{ level: 'VERBAL_WARNING', issuedAt: ago(100), acknowledgedAt: ago(99) }, { level: 'FINAL_WARNING', issuedAt: ago(400), acknowledgedAt: ago(399) }] }, now);
+    expect(r.activeLevel).toBe('VERBAL_WARNING');
+    expect(r.suggestedLevel).toBe('WRITTEN_WARNING');
+  });
+
+  it('an unsigned record is a reminder, not a reason to escalate', () => {
+    const r = review({ ...base, records: [{ level: 'COACHING', issuedAt: ago(20), acknowledgedAt: null }] }, now);
+    expect(r.flags).toEqual([{ code: 'UNSIGNED_RECORD', days: 20 }]);
+    expect(r.suggestedLevel).toBeNull();
+  });
+
+  it('retracted notes never count; commendations are counted separately', () => {
+    const r = review({ ...base, notes: [{ category: 'SAFETY_PROCEDURE', occurredAt: ago(3), retractedAt: ago(1) }, { category: 'COMMENDATION', occurredAt: ago(3), retractedAt: null }] }, now);
+    expect(r.flags).toEqual([]);
+    expect(r.commendations90).toBe(1);
+  });
+
+  it('asks for fair-process confirmations only on serious records', () => {
+    expect(requiredChecks('WRITTEN_WARNING', true)).toEqual([]);
+    expect(requiredChecks('SUSPENSION', false)).toEqual(['factsReviewed', 'protectedGrounds', 'employeeHeard', 'agreementChecked']);
+    expect(requiredChecks('TERMINATION', true)).toContain('counselReviewed');
+  });
+});

@@ -188,7 +188,12 @@
     "cert_expiring": "Your {{certification}} expires in {{days}} days. Renew it to keep getting shifts.",
     "staff_cert_expiring": "{{name}}'s {{certification}} expires in {{days}} days.",
     "forgot_clock_out": "You're still clocked in. Clock out, or ask a supervisor to fix the time.",
-    "over_capacity": "{{pool}} is over capacity: {{count}} bathers (max {{max}})."
+    "over_capacity": "{{pool}} is over capacity: {{count}} bathers (max {{max}}).",
+    "attendance_recorded": "A supervisor recorded an attendance event on your file. You can see it, with the note, on your profile.",
+    "conduct_note_added": "A supervisor added a note to your file. You can read it on your profile.",
+    "commendation_added": "You received a commendation. Nice work!",
+    "review_needed": "{{name}} may need a conversation. See why on their file.",
+    "discipline_response": "An employee added their response to a record you issued."
   },
   "today": {
     "morning": "Good morning",

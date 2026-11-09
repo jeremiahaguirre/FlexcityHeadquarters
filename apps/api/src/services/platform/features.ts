@@ -21,7 +21,7 @@ export const FEATURES = {
   statusBoard: { default: true, permissions: ['ops.status.read', 'ops.page_head_guard'] },
   incidents: { default: true, permissions: ['incidents.create', 'incidents.read'] },
   discipline: { default: true, permissions: ['discipline.read', 'discipline.write'] },
-  reliability: { default: true, permissions: ['reliability.read'] },
+  reliability: { default: true, permissions: ['reliability.read', 'reliability.write'] },
   payroll: { default: true, permissions: ['payroll.export'] },
   jobs: { default: true, permissions: ['jobs.manage'] },
   union: { default: false, permissions: ['union.hub', 'seniority.read'] },

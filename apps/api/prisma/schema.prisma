@@ -81,6 +81,23 @@ enum ShiftType {
 }
 
 /// Lifecycle only. Claim/swap state lives on ShiftOffer, not here.
+enum DisciplineLevel {
+  COACHING
+  VERBAL_WARNING
+  WRITTEN_WARNING
+  FINAL_WARNING
+  SUSPENSION
+  TERMINATION
+}
+
+enum ConductCategory {
+  SAFETY_PROCEDURE
+  POLICY
+  CONDUCT
+  PERFORMANCE
+  COMMENDATION
+}
+
 enum ShiftStatus {
   DRAFT
   PUBLISHED
@@ -282,6 +299,8 @@ model User {
 
   /// Advisory only (see services/reliability). Never drives automated decisions.
   reliabilityScore Int              @default(100)
+  /// Set while the nightly review flags this person for HR / supervisor attention.
+  reviewFlaggedAt  DateTime?        @db.Timestamptz(3)
 
   /// Privacy: set when erasure was requested but payroll retention still applies.
   processingRestrictedAt DateTime?  @db.Timestamptz(3)
@@ -302,6 +321,7 @@ model User {
   offersPosted     ShiftOffer[]     @relation("OfferPostedBy")
   offersClaimed    ShiftOffer[]     @relation("OfferClaimedBy")
   reliabilityEvents ReliabilityEvent[]
+  conductNotes      ConductNote[]
   refreshTokens    RefreshToken[]
   authTokens       AuthToken[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
@@ -669,6 +689,13 @@ model ReliabilityEvent {
   sourceId       String?
   /// Set when the event overlaps protected leave or a manager excuses it.
   excludedReason String?
+  /// Who excused it and when (null for automatic exclusions).
+  excusedById    String?              @db.Uuid
+  excusedAt      DateTime?            @db.Timestamptz(3)
+  /// Recorded by a supervisor (missed in-service, a no-show the timeclock can't see).
+  recordedById   String?              @db.Uuid
+  /// Factual note the employee can read alongside the event.
+  note           String?
   createdAt      DateTime             @default(now()) @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
@@ -777,6 +804,27 @@ model IncidentReport {
   @@index([tenantId, occurredAt])
 }
 
+/// A supervisor's factual note about someone's conduct or performance,
+/// optionally tied to an incident. Being named in an incident report never
+/// creates one: a person decides, so reporting stays safe.
+model ConductNote {
+  id              String          @id @default(uuid()) @db.Uuid
+  tenantId        String          @db.Uuid
+  userId          String          @db.Uuid
+  recordedById    String          @db.Uuid
+  occurredAt      DateTime        @db.Timestamptz(3)
+  category        ConductCategory
+  summary         String
+  incidentId      String?         @db.Uuid
+  retractedAt     DateTime?       @db.Timestamptz(3)
+  retractedReason String?
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, occurredAt])
+}
+
 model IncidentAccessLog {
   id         String   @id @default(uuid()) @db.Uuid
   tenantId   String   @db.Uuid
@@ -804,6 +852,15 @@ model DisciplinaryRecord {
   acknowledgedAt   DateTime? @db.Timestamptz(3)
   /// Union members may request a steward was present.
   stewardPresent   Boolean   @default(false)
+  /// Step in progressive discipline (null on records made before levels existed).
+  level            DisciplineLevel?
+  /// Frozen copy of the facts relied on (events, notes) as they were when issued.
+  evidence         Json      @default("[]")
+  /// Fair-process confirmations made by the issuer, with the time they were made.
+  fairProcess      Json?
+  /// The employee's own written response, kept with the record.
+  employeeResponse String?
+  respondedAt      DateTime? @db.Timestamptz(3)
 
   user User @relation("DisciplineSubject", fields: [userId], references: [id], onDelete: Restrict)
 

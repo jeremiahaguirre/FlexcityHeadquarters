@@ -33,6 +33,7 @@ export const PERMISSIONS = [
   'discipline.write',
   'audit.read',
   'reliability.read',
+  'reliability.write', // record missed shifts / in-service, excuse events, write conduct notes
   'union.hub', // only meaningful through the Union Hub service
   'seniority.read',
   'tenant.configure',
@@ -75,6 +76,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'discipline.write',
     'audit.read',
     'reliability.read',
+    'reliability.write',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -98,6 +100,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'discipline.read',
     'discipline.write',
     'reliability.read',
+    'reliability.write',
     'seniority.read',
     'positions.manage',
     'users.scheduling',
