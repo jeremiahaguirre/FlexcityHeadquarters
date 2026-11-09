@@ -5,10 +5,11 @@
 import type { PayCodeKey } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
 import { badRequest } from '../../lib/errors.js';
-import { Decimal, dec } from '../../lib/money.js';
-import { addDays, startOfLocalDay, wholeYearsBetween } from '../../lib/time.js';
+import { Decimal, ZERO, cents, dec } from '../../lib/money.js';
+import { addDays, payWeekStart, startOfLocalDay, wholeYearsBetween } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
 import { type ExportEmployee, buildPayrollCsv } from './export.js';
+import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
 import { type PayResult, calculatePay } from './payCalc.js';
 
 export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, weeks: number) {
@@ -35,19 +36,26 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
   if (openPunches) warnings.add(`${openPunches} punch(es) have no clock-out and were excluded.`);
 
   for (const f of facilities) {
-    const from = startOfLocalDay(periodStart, f.timezone);
+    const holidays = await tx.statutoryHoliday.findMany({
+      where: { province: f.province, date: { gte: new Date(periodStart), lt: new Date(periodEnd) } },
+    });
+    const statDates = holidays.map((h) => h.date.toISOString().slice(0, 10));
+    const statSet = new Set(statDates);
+    const rules = resolveRules(f.province, periodStart, overrides);
+    const formula = rules.statutoryHoliday.holidayPayFormula;
+    if (statDates.length && formula === null) {
+      warnings.add(`Statutory holiday pay for ${f.province} (${statDates.join(', ')}) is not automated; add it manually.`);
+    }
+
+    // Holiday-pay formulas look back 30 days (4 weeks), so load enough history.
+    const lookbackStart = statDates.length && formula ? payWeekStart(addDays(periodStart, -35), tenant.payWeekStartDay) : periodStart;
+    const from = startOfLocalDay(lookbackStart, f.timezone);
     const to = startOfLocalDay(periodEnd, f.timezone);
     const punches = await tx.timePunch.findMany({
       where: { facilityId: f.id, status: 'APPROVED', clockOut: { not: null, gt: from }, clockIn: { lt: to } },
       include: { shift: true, user: { include: { payRates: true } } },
     });
     if (punches.length === 0) continue;
-
-    const holidays = await tx.statutoryHoliday.findMany({
-      where: { province: f.province, date: { gte: new Date(periodStart), lt: new Date(periodEnd) } },
-    });
-    const statSet = new Set(holidays.map((h) => h.date.toISOString().slice(0, 10)));
-    const rules = resolveRules(f.province, periodStart, overrides);
 
     const byUser = new Map<string, typeof punches>();
     for (const p of punches) byUser.set(p.userId, [...(byUser.get(p.userId) ?? []), p]);
@@ -61,19 +69,45 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
         if (!r) throw badRequest(`${user.firstName} ${user.lastName} has no pay rate for position ${positionId} on ${localDate}.`);
         return dec(r.hourlyRate);
       };
-      const result = calculatePay({
-        intervals: ps.map((p) => ({ start: p.clockIn, end: p.clockOut!, positionId: p.positionId, premiumPerHour: p.shift?.premiumPerHour ? dec(p.shift.premiumPerHour) : null })),
+      const intervals = ps.map((p) => ({ start: p.clockIn, end: p.clockOut!, positionId: p.positionId, premiumPerHour: p.shift?.premiumPerHour ? dec(p.shift.premiumPerHour) : null }));
+      const common = {
+        intervals,
         timezone: f.timezone,
         payWeekStartDay: tenant.payWeekStartDay,
-        periodStart,
-        weeks,
         rules,
         rateFor,
         statHolidays: statSet,
         completedYearsOfService: user.hireDate ? wholeYearsBetween(user.hireDate.toISOString().slice(0, 10), periodStart) : 0,
         vacationPayMode: tenant.vacationPayMode,
-      });
+      };
+      // calculatePay clips to the period, so history punches don't leak into this period's pay.
+      const result = calculatePay({ ...common, periodStart, weeks });
       result.warnings.forEach((w) => warnings.add(w));
+
+      // Statutory holiday pay for each holiday in the period.
+      if (statDates.length && formula) {
+        const history = calculatePay({ ...common, periodStart: lookbackStart, weeks: Math.round((Date.parse(periodEnd) - Date.parse(lookbackStart)) / (7 * 86_400_000)) });
+        const days: DailyEarnings[] = [...history.dailyWages].map(([localDate, wages]) => ({ localDate, wages, hoursWorked: history.dailyHours.get(localDate) ?? ZERO }));
+        if (!user.hireDate) warnings.add(`${user.firstName} ${user.lastName} has no hire date; holiday pay eligibility assumed.`);
+        for (const h of statDates) {
+          const hp = statutoryHolidayPay(formula, h, user.hireDate?.toISOString().slice(0, 10) ?? '1900-01-01', days);
+          if (hp.eligible && hp.amount.gt(0)) {
+            result.lines.push({ code: 'STAT_HOLIDAY_PAY', positionId: null, hours: ZERO, rate: ZERO, multiplier: ZERO, amount: hp.amount });
+            result.grossWages = result.grossWages.plus(hp.amount);
+            // Vacation pay is a percentage of all wages, holiday pay included.
+            const vac = cents(hp.amount.mul(result.vacationPercent).div(100));
+            if (tenant.vacationPayMode === 'PAY_EACH_PERIOD' && vac.gt(0)) {
+              const line = result.lines.find((l) => l.code === 'VACATION_PAY');
+              if (line) line.amount = line.amount.plus(vac);
+              else result.lines.push({ code: 'VACATION_PAY', positionId: null, hours: ZERO, rate: ZERO, multiplier: new Decimal(result.vacationPercent).div(100), amount: vac });
+              result.vacationPay = result.vacationPay.plus(vac);
+            } else {
+              result.vacationAccrued = result.vacationAccrued.plus(vac);
+            }
+          }
+        }
+      }
+      if (result.lines.length === 0) continue;
       results.push({ userId, facilityId: f.id, result });
       employees.push({
         userId,

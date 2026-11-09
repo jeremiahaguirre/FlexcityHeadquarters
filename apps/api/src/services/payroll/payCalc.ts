@@ -58,6 +58,10 @@ export interface PayResult {
   vacationPercent: number;
   vacationPay: Decimal; // paid this period
   vacationAccrued: Decimal; // banked, not paid
+  /** Wages earned per local date (excluding vacation pay) — input to holiday-pay formulas. */
+  dailyWages: Map<string, Decimal>;
+  /** Hours worked per local date. */
+  dailyHours: Map<string, Decimal>;
   warnings: string[];
 }
 
@@ -132,9 +136,15 @@ export function calculatePay(input: PayCalcInput): PayResult {
   };
 
   const statMult = new Decimal(rules.statutoryHoliday.workedMultiplier);
+  const dailyWages = new Map<string, Decimal>();
+  const dailyHours = new Map<string, Decimal>();
+  const bump = (m: Map<string, Decimal>, k: string, v: Decimal) => m.set(k, (m.get(k) ?? ZERO).plus(v));
   for (const p of finalPortions) {
     const rate = input.rateFor(p.positionId, p.localDate);
     const isStat = input.statHolidays.has(p.localDate);
+    const mult = p.bucket === 'OT15' ? new Decimal(1.5) : p.bucket === 'OT20' ? new Decimal(2) : isStat ? statMult : new Decimal(1);
+    bump(dailyWages, p.localDate, p.hours.mul(rate).mul(mult).plus(p.premiumPerHour ? p.hours.mul(p.premiumPerHour) : ZERO));
+    bump(dailyHours, p.localDate, p.hours);
     if (p.bucket === 'REG') {
       if (isStat) add('STAT_WORKED', p.positionId, p.hours, rate, statMult);
       else add('REGULAR', p.positionId, p.hours, rate, new Decimal(1));
@@ -169,7 +179,7 @@ export function calculatePay(input: PayCalcInput): PayResult {
     vacationAccrued = vacation;
   }
 
-  return { lines, totalHours, grossWages, vacationPercent: pct, vacationPay, vacationAccrued, warnings };
+  return { lines, totalHours, grossWages, vacationPercent: pct, vacationPay, vacationAccrued, dailyWages, dailyHours, warnings };
 }
 
 /** Split one piece of a day into REG / OT15 / OT20 given hours already worked that day. */
