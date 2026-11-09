@@ -15,7 +15,7 @@ export const FEATURES = {
   availability: { default: true, permissions: ['availability.self'] },
   timeOff: { default: true, permissions: ['timeoff.self', 'timeoff.approve'] },
   timeclock: { default: true, permissions: ['timeclock.punch', 'timeclock.review'] },
-  lessons: { default: true, permissions: [] },
+  lessons: { default: true, permissions: ['lessons.teach'] },
   poolChemistry: { default: true, permissions: ['ops.chemical.record', 'ops.chemical.signoff', 'ops.pool.close', 'ops.configure'] },
   statusBoard: { default: true, permissions: ['ops.status.read', 'ops.page_head_guard'] },
   incidents: { default: true, permissions: ['incidents.create', 'incidents.read'] },

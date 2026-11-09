@@ -99,7 +99,7 @@ async function main() {
     { email: 'casual@kelowna.test', firstName: 'Riley', lastName: 'Chen', roles: ['STAFF'], employmentStatus: 'CASUAL', positions: [guard.id] },
     { email: 'junior@kelowna.test', firstName: 'Morgan', lastName: 'Lee', roles: ['STAFF'], employmentStatus: 'CASUAL', positions: [instructor.id], dob: '2011-03-14' },
     { email: 'frontdesk@kelowna.test', firstName: 'Casey', lastName: 'Martin', roles: ['FRONT_DESK'], employmentStatus: 'PART_TIME', positions: [] },
-    { email: 'steward@kelowna.test', firstName: 'Taylor', lastName: 'Nguyen', roles: ['UNION_STEWARD', 'STAFF'], employmentStatus: 'FULL_TIME', positions: [guard.id] },
+    { email: 'steward@kelowna.test', firstName: 'Taylor', lastName: 'Nguyen', roles: ['UNION_STEWARD'], employmentStatus: 'FULL_TIME', positions: [] },
   ] as const;
 
   let n = 100;
@@ -117,7 +117,7 @@ async function main() {
         hireDate: new Date('2022-05-01'),
         seniorityDate: new Date('2022-05-01'),
         dateOfBirth: new Date('dob' in p ? p.dob : '1999-06-01'),
-        unionMember: p.roles.includes('STAFF' as never),
+        unionMember: p.roles.includes('STAFF' as never) || p.roles.includes('UNION_STEWARD' as never),
         weeklyMinHours: p.employmentStatus === 'FULL_TIME' ? 32 : null,
         weeklyMaxHours: p.employmentStatus === 'PART_TIME' ? 28 : null,
       },

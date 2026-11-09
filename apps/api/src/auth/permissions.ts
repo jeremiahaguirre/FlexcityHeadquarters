@@ -40,12 +40,16 @@ export const PERMISSIONS = [
   'users.scheduling', // shadow tier, weekly hour targets/caps, position approvals
   'ops.configure', // pools and their permit thresholds
   'jobs.manage', // public job postings
+  'shifts.self', // works shifts: Today and My schedule
+  'lessons.teach', // teaches swim lessons: class lists and attendance
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
 
 const STAFF_BASE: Permission[] = [
   'schedule.read',
+  'shifts.self',
+  'lessons.teach',
   'shiftboard.claim',
   'shiftboard.post',
   'availability.self',
@@ -71,9 +75,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'reliability.read',
     'seniority.read',
     'tenant.configure',
-    'ops.status.read',
     'positions.manage',
-    'ops.configure',
     'jobs.manage',
   ],
   AQUATIC_SUPERVISOR: [
@@ -109,7 +111,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'ops.status.read',
   ],
   STAFF: STAFF_BASE,
-  FRONT_DESK: ['schedule.read', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch'],
+  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
 };
 

@@ -35,13 +35,13 @@ export interface NavItem {
 }
 
 export const NAV: NavItem[] = [
-  { href: '/today', key: 'today', icon: Home, group: 'mine', tab: 1, ready: true },
-  { href: '/schedule', key: 'schedule', icon: CalendarDays, group: 'mine', permission: 'schedule.read', tab: 2, ready: true },
+  { href: '/today', key: 'today', icon: Home, group: 'mine', permission: 'shifts.self', tab: 1, ready: true },
+  { href: '/schedule', key: 'schedule', icon: CalendarDays, group: 'mine', permission: 'shifts.self', tab: 2, ready: true },
   { href: '/board', key: 'board', icon: Repeat, group: 'mine', permission: 'shiftboard.claim', tab: 3, ready: true },
   { href: '/timeclock', key: 'timeclock', icon: Clock, group: 'mine', permission: 'timeclock.punch', tab: 4, ready: true },
   { href: '/time-off', key: 'timeOff', icon: CalendarClock, group: 'mine', permission: 'timeoff.self', ready: true },
   { href: '/availability', key: 'availability', icon: CalendarRange, group: 'mine', permission: 'availability.self', ready: true },
-  { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'schedule.read', ready: true },
+  { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'lessons.teach', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 5, ready: true },
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: true },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: true },
@@ -59,10 +59,14 @@ export function visibleNav(can: (p: string) => boolean): NavItem[] {
   return NAV.filter((n) => n.ready && (!n.permission || [n.permission].flat().some(can)));
 }
 
-/** Up to four tabs on phones; everything else lives under "More". */
+/**
+ * Up to four tabs on phones; everything else lives under "More". Roles without
+ * shift screens (HR, union stewards) get their own first screens as tabs.
+ */
 export function phoneTabs(items: NavItem[]): { tabs: NavItem[]; more: NavItem[] } {
   const tabbable = items.filter((n) => n.tab !== undefined).sort((a, b) => a.tab! - b.tab!);
-  const tabs = tabbable.slice(0, 4);
+  const fill = items.filter((n) => n.tab === undefined);
+  const tabs = [...tabbable, ...fill].slice(0, 4);
   return { tabs, more: items.filter((n) => !tabs.includes(n)) };
 }
 
