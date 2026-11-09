@@ -16,4 +16,14 @@ export const DEMO_TENANT: PublicTenant = {
 };
 
 export const DEMO_PASSWORD = 'flexcity-dev';
-export const DEMO_ACCOUNTS = ['guard@demo.flexcity', 'supervisor@demo.flexcity', 'frontdesk@demo.flexcity'] as const;
+export const DEMO_ACCOUNTS = ['guard@demo.flexcity', 'supervisor@demo.flexcity', 'hr@demo.flexcity', 'frontdesk@demo.flexcity', 'steward@demo.flexcity'] as const;
+export type DemoAccount = (typeof DEMO_ACCOUNTS)[number];
+
+/** What each demo account shows off, labelled with its role. */
+export const DEMO_ROLES: Record<DemoAccount, string> = {
+  'guard@demo.flexcity': 'STAFF',
+  'supervisor@demo.flexcity': 'AQUATIC_SUPERVISOR',
+  'hr@demo.flexcity': 'HR_ADMIN',
+  'frontdesk@demo.flexcity': 'FRONT_DESK',
+  'steward@demo.flexcity': 'UNION_STEWARD',
+};
