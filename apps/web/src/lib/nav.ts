@@ -1,4 +1,4 @@
-import { Activity, Armchair, BadgeCheck, Banknote, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
+import { Activity, Armchair, BadgeCheck, Banknote, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, TrendingUp, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -28,6 +28,7 @@ export const NAV: NavItem[] = [
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: true },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: true },
   { href: '/manage/schedule', key: 'manageSchedule', icon: Activity, group: 'manage', permission: 'schedule.write', ready: true },
+  { href: '/manage/forecast', key: 'forecast', icon: TrendingUp, group: 'manage', permission: 'schedule.write', ready: true },
   { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', permission: 'timeclock.review', ready: true },
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', permission: 'users.read', ready: true },
   { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', permission: 'overtime.manage', ready: true },

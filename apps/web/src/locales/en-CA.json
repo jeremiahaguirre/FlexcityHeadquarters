@@ -159,7 +159,8 @@
     "compliance": "Compliance",
     "onboarding": "Onboarding",
     "overtime": "Overtime",
-    "care": "Care"
+    "care": "Care",
+    "forecast": "Forecast"
   },
   "navGroups": {
     "mine": "My work",
@@ -1993,5 +1994,20 @@
     "privacy": "Only HR sees these details, and every view is logged. The employee sees their own restrictions.",
     "mine": "My work restrictions",
     "mineHelp": "Agreed with HR. The schedule won't book you outside these."
+  },
+  "forecast": {
+    "title": "Forecast",
+    "description": "Expected bathers and lifeguards needed each hour, from your own headcounts on the same weekday and hour (school days and holidays kept apart), against who is scheduled.",
+    "prev": "Previous week",
+    "next": "Next week",
+    "noHistory": "Not enough headcounts yet",
+    "noHistoryHelp": "The forecast learns from bather counts. A few weeks of counts on the deck are enough to start.",
+    "gaps_one": "{{count}} guard-hour short this week",
+    "gaps_other": "{{count}} guard-hours short this week",
+    "covered": "Scheduled staff cover the expected bathers all week.",
+    "school": "School day",
+    "noSchool": "No school",
+    "cellTitle": "About {{expected}} bathers, {{needed}} guards needed, {{scheduled}} scheduled (from {{days}} past days)",
+    "legend": "Each cell: scheduled / needed, and about how many bathers. Based on the last {{weeks}} weeks; weather and special events aren't included, so check the forecast before a heat wave or a holiday."
   }
 }

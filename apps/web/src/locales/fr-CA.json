@@ -159,7 +159,8 @@
     "compliance": "Conformité",
     "onboarding": "Intégration",
     "overtime": "Heures supplémentaires",
-    "care": "Soutien"
+    "care": "Soutien",
+    "forecast": "Prévisions"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -1993,5 +1994,20 @@
     "privacy": "Seules les RH voient ces détails, et chaque consultation est consignée. L’employé voit ses propres restrictions.",
     "mine": "Mes restrictions de travail",
     "mineHelp": "Convenues avec les RH. L’horaire ne vous attribuera pas de quart en dehors de celles-ci."
+  },
+  "forecast": {
+    "title": "Prévisions",
+    "description": "Baigneurs attendus et sauveteurs requis chaque heure, d’après vos propres dénombrements au même jour et à la même heure (jours d’école et congés séparés), comparés au personnel à l’horaire.",
+    "prev": "Semaine précédente",
+    "next": "Semaine suivante",
+    "noHistory": "Pas encore assez de dénombrements",
+    "noHistoryHelp": "Les prévisions apprennent des dénombrements de baigneurs. Quelques semaines de dénombrements suffisent pour commencer.",
+    "gaps_one": "{{count}} heure-sauveteur manquante cette semaine",
+    "gaps_other": "{{count}} heures-sauveteur manquantes cette semaine",
+    "covered": "Le personnel à l’horaire couvre les baigneurs attendus toute la semaine.",
+    "school": "Jour d’école",
+    "noSchool": "Pas d’école",
+    "cellTitle": "Environ {{expected}} baigneurs, {{needed}} sauveteurs requis, {{scheduled}} à l’horaire (d’après {{days}} jours passés)",
+    "legend": "Chaque case : à l’horaire / requis, et environ combien de baigneurs. D’après les {{weeks}} dernières semaines; la météo et les événements spéciaux ne sont pas inclus, alors vérifiez avant une canicule ou un congé."
   }
 }

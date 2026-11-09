@@ -21,6 +21,7 @@ export const MENU: MenuItem[] = [
   { href: '/ops', key: 'ops', group: 'deck', permissions: ['ops.chemical.record'] },
   { href: '/incidents', key: 'incidents', group: 'deck', permissions: ['incidents.create'] },
   { href: '/manage/schedule', key: 'manageSchedule', group: 'manage', permissions: ['schedule.write'] },
+  { href: '/manage/forecast', key: 'forecast', group: 'manage', permissions: ['schedule.write'] },
   { href: '/manage/approvals', key: 'approvals', group: 'manage', permissions: ['timeclock.review'] },
   { href: '/manage/staff', key: 'staff', group: 'manage', permissions: ['users.read'] },
   { href: '/manage/overtime', key: 'overtime', group: 'manage', permissions: ['overtime.manage'] },

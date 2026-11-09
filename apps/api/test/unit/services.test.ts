@@ -298,3 +298,25 @@ describe('accommodation restrictions', () => {
     expect(accommodationBlocks([{ ...base, maxShiftHours: 4, endsOn: '2026-11-09' }], shift, dec('6'))).toHaveLength(0);
   });
 });
+
+import { expectedByHour } from '../../src/services/ops/forecast.js';
+
+describe('demand forecast', () => {
+  it('averages each day’s busiest count for the same weekday and hour, keeping school days apart', () => {
+    const school = (d: string) => d < '2026-06-27';
+    const samples = [
+      // Saturdays at 14:00 in summer: peaks 80 and 100 → 90
+      { day: '2026-07-04', hour: 14, poolId: 'p', count: 60 },
+      { day: '2026-07-04', hour: 14, poolId: 'p', count: 80 },
+      { day: '2026-07-11', hour: 14, poolId: 'p', count: 100 },
+      // A Tuesday school day at 14:00 must not mix with a summer Tuesday
+      { day: '2026-06-23', hour: 14, poolId: 'p', count: 10 },
+      { day: '2026-07-07', hour: 14, poolId: 'p', count: 50 },
+    ];
+    const f = expectedByHour(samples, school);
+    expect(f('p', '2026-07-18', 14)).toEqual({ expected: 90, basedOnDays: 2 });
+    expect(f('p', '2026-07-14', 14)).toEqual({ expected: 50, basedOnDays: 1 });
+    expect(f('p', '2026-06-16', 14)).toEqual({ expected: 10, basedOnDays: 1 });
+    expect(f('p', '2026-07-18', 9)).toBeNull();
+  });
+});

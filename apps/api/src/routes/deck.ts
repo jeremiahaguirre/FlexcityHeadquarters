@@ -6,6 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { applyRotation, loadPlan } from '../services/ops/rotation.js';
 import { complianceSnapshot } from '../services/ops/compliance.js';
+import { forecastWeek } from '../services/ops/forecast.js';
 import { h } from './context.js';
 
 export const deckRouter = Router();
@@ -158,5 +159,19 @@ complianceRouter.get(
       return complianceSnapshot(tx, q.facilityId, q.at);
     });
     res.json(out);
+  }),
+);
+
+/** Expected bathers and lifeguards needed per hour for a week, against who is scheduled. */
+complianceRouter.get(
+  '/forecast',
+  requirePermission('schedule.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const q = z.object({ facilityId: uuid, weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), positionId: uuid.optional() }).parse(req.query);
+    res.json(await withTenant(a.tenantId, async (tx) => {
+      if (!(await tx.facility.findUnique({ where: { id: q.facilityId } }))) throw notFound('Facility');
+      return forecastWeek(tx, q.facilityId, q.weekStart, q.positionId ?? null);
+    }));
   }),
 );
