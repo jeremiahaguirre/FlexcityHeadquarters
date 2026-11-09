@@ -1,21 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="FlexcityHeadquarters">
-  <defs>
-    <linearGradient id="fh-tile" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#0B3B3C"/>
-      <stop offset="1" stop-color="#0F766E"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="16" fill="url(#fh-tile)"/>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M14 45V16M14 16H24M14 28H21" stroke="#C5F23A" stroke-width="6"/>
-    <path d="M32 7.5V12" stroke="#E34234" stroke-width="2.4"/>
-    <path d="M32 45V14" stroke="#E34234" stroke-width="6"/>
-    <path d="M41 45V20M50 45V20M41 32H50" stroke="#E879F9" stroke-width="6"/>
-    <path d="M8 52.5q6-4.5 12 0t12 0t12 0t12 0" stroke="#FFFFFF" stroke-width="3.6"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="FlexcityHeadquarters">
+<defs>
+  <linearGradient id="fh-main" x1="30" y1="112" x2="96" y2="10" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#0B3B3C"/><stop offset=".5" stop-color="#0F766E"/><stop offset="1" stop-color="#2DD4BF"/>
+  </linearGradient>
+  <linearGradient id="fh-back" x1="22" y1="104" x2="96" y2="6" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#14B8A6" stop-opacity=".18"/><stop offset=".6" stop-color="#5EEAD4" stop-opacity=".45"/><stop offset="1" stop-color="#C5F23A" stop-opacity=".9"/>
+  </linearGradient>
+  <linearGradient id="fh-arm" x1="44" y1="62" x2="92" y2="46" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#0F766E"/><stop offset="1" stop-color="#5EEAD4"/>
+  </linearGradient>
+  <radialGradient id="fh-disc" cx="72" cy="78" r="27" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#FFFFFF"/><stop offset=".68" stop-color="#F2FAF8"/><stop offset="1" stop-color="#CFE9E3"/>
+  </radialGradient>
+  <clipPath id="fh-city"><circle cx="77" cy="86" r="22"/></clipPath>
+</defs>
+<path transform="translate(-5 -4)" fill="url(#fh-back)" d="M37 110C24 88 19 60 26 40 33 20 53 10 76 8.5 87 8 95 9.5 101 12.5 85 14.5 69 18.5 58 25.5 47.5 32.5 42.5 44 42.5 58 42.5 76 41.5 94 37 110Z"/>
+<path fill="url(#fh-main)" d="M37 110C24 88 19 60 26 40 33 20 53 10 76 8.5 87 8 95 9.5 101 12.5 85 14.5 69 18.5 58 25.5 47.5 32.5 42.5 44 42.5 58 42.5 76 41.5 94 37 110Z"/>
+<path fill="url(#fh-arm)" d="M42.5 60C53 50 69 47 88 48 75 52 63 56 52 64 47.5 67 43.5 64.5 42.5 60Z"/>
+<circle cx="77" cy="86" r="22" fill="url(#fh-disc)"/>
+<g clip-path="url(#fh-city)">
   <g fill="#0B3B3C">
-    <rect x="30.25" y="21" width="3.5" height="3" rx="1"/>
-    <rect x="30.25" y="28" width="3.5" height="3" rx="1"/>
-    <rect x="30.25" y="35" width="3.5" height="3" rx="1"/>
+    <rect x="66" y="72" width="6.6" height="38" rx="1.5"/>
+    <rect x="79.4" y="77" width="6.6" height="33" rx="1.5"/>
+    <rect x="66" y="84.5" width="20" height="4.2" rx="1.2"/>
+    <rect x="89" y="92" width="5.6" height="18" rx="1.2"/>
+    <rect x="59.4" y="94" width="4.6" height="16" rx="1.2"/>
   </g>
+  <g fill="#F2FAF8"><rect x="68.25" y="75.5" width="2.1" height="2.5" rx=".5"/><rect x="68.25" y="79.6" width="2.1" height="2.5" rx=".5"/><rect x="81.65" y="80.5" width="2.1" height="2.5" rx=".5"/><rect x="68.25" y="92.5" width="2.1" height="2.5" rx=".5"/><rect x="81.65" y="92.5" width="2.1" height="2.5" rx=".5"/><rect x="68.25" y="97" width="2.1" height="2.5" rx=".5"/><rect x="81.65" y="97" width="2.1" height="2.5" rx=".5"/></g>
+</g>
 </svg>

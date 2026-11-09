@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -11,6 +12,14 @@ import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
 import { currentTenant } from '@/lib/tenant';
 import { themeVars } from '@/lib/theme';
 import './globals.css';
+
+// Brand typeface (wordmark + UI). Self-hosted by Next at build time.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: { default: 'FlexcityHeadquarters', template: '%s · FH' },
@@ -28,8 +37,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const t = createI18n(locale).t;
 
   return (
-    <html lang={locale} style={themeVars(tenant?.themeColors) as CSSProperties}>
-      <body className="min-h-screen antialiased">
+    <html lang={locale} className={jakarta.variable} style={themeVars(tenant?.themeColors) as CSSProperties}>
+      <body className="min-h-screen font-sans antialiased">
         <Providers locale={locale}>
           <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
             {t('app.skipToContent')}

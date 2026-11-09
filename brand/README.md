@@ -2,39 +2,46 @@
 
 ![FH mark](fh-mark-512.png)
 
+Live brand sheet: https://claude.ai/artifact/RVezCWRV6pniiHhXrN1unv
+
 ## The mark
 
-A city skyline over water. The **F** (chartreuse) and the **H** (magenta) are buildings; between them rises a **vermilion tower** with lit windows and an antenna — the "city" in FlexcityHeadquarters; a **white wave** runs beneath, for the pool. All on a deep teal tile.
+**The flowing F and the city H.** The F is drawn as two sweeping ribbons, with a lighter layer behind for depth; it stands for the flexibility the app gives staff. Beside it, a soft white disc holds the city: an H-shaped twin tower joined by a skybridge, the headquarters.
 
 | File | Use |
 | --- | --- |
 | `fh-mark.svg` | Master artwork (scales to any size) |
-| `fh-mark-512.png` | Raster for documents and slides |
+| `fh-mark-512.png` | Raster for documents and slides (transparent) |
+| `fh-lockups.png` | Long-form lockups, horizontal and stacked, light and dark |
 | `apps/web/src/app/icon.svg` | Browser favicon |
-| `apps/web/src/app/apple-icon.png` | iOS home screen (full-bleed) |
+| `apps/web/src/app/apple-icon.png` | iOS home screen (white, full-bleed) |
 | `apps/web/public/icon-*.png` | Installable web app icons (incl. maskable) |
+| `apps/web/src/components/Logo.tsx` | `<Logo variant="horizontal" \| "stacked" \| "mark">` |
+
+## Long form
+
+- **Horizontal:** mark, then **Flexcity** (ExtraBold) **Headquarters** (Medium, teal) set solid as one word, tight tracking.
+- **Stacked:** mark above **Flexcity**, with **HEADQUARTERS** beneath in small caps, wide tracking, teal.
+- Typeface: **Plus Jakarta Sans**. On dark backgrounds, "Headquarters" switches to light teal `#5EEAD4`.
+- Short form **FH** only where space is tight.
 
 ## Colours
 
-The four FH colours, and the role each plays in the app. Shades marked *text* are the ones that pass WCAG AA (4.5:1) as text on white.
+The mark is teal-led. The app uses the four FH colours in a fixed balance so screens feel comfortable and confident, with the accents reserved for meaning:
 
-| Colour | Logo / fill | Text on light | On dark | Role in the app |
-| --- | --- | --- | --- | --- |
-| **Teal** | `#0F766E` | `#0F766E` | `#5EEAD4` | Primary: buttons, links, active navigation |
-| **Chartreuse** | `#C5F23A` | `#4D7C0F` | `#C5F23A` | Positive: success, open, confirmed (fills use dark text) |
-| **Magenta** | `#E879F9` / `#C026D3` | `#A21CAF` | `#F0ABFC` | Highlights: badges, new items, notifications |
-| **Vermilion** | `#E34234` | `#B42318` | `#FF8A7A` | Attention: warnings, overtime, pending approval |
-| Tile | `#0B3B3C` → `#0F766E` | | | Logo background |
+| Colour | Fill | Text on light | On dark | Share | Role |
+| --- | --- | --- | --- | --- | --- |
+| Soft neutrals | `#F3F7F6` / `#FFFFFF` | `#0B1F22` | `#0B1416` | ~70% | Surfaces, text |
+| **Teal** | `#0F766E` | `#0F766E` | `#5EEAD4` | ~20% | Actions, navigation, the mark |
+| **Chartreuse** | `#C5F23A` | `#4D7C0F` | `#C5F23A` | ~5% | Confirmed, open; the mark's highlight |
+| **Magenta** | `#C026D3` | `#A21CAF` | `#F0ABFC` | ~3% | New items, notifications |
+| **Vermilion** | `#E34234` | `#B42318` | `#FF8A7A` | ~2% | Needs attention, overtime |
 
-Safety-critical "closed" states use a separate crimson (`#9F1239`) plus an icon shape, so they're never confused with vermilion and never rely on colour alone.
-
-## Wordmark
-
-**F**city**H** — "F" and "H" in extra-bold ink, "city" in semibold teal (light teal on dark backgrounds), tight tracking. "FLEXCITY HEADQUARTERS" sits beneath in small caps with wide tracking. Use the short form **FH** only where space is tight.
+All text shades pass WCAG AA (4.5:1). Safety-critical "closed" states use crimson `#9F1239` plus an icon shape, never colour alone.
 
 ## Rules
 
-- Keep clear space around the tile of at least ¼ of its width.
-- Don't recolour the strokes, rotate the mark, or place it on busy photography.
-- Below 20 px, use the mark without the wordmark.
-- Customers' own logos appear alongside FH in the app header (white-labelling); they never replace the FH mark on the sign-in page footer or the favicon.
+- Keep clear space around the mark of at least the disc's width.
+- Don't recolour the ribbons, separate the disc from the F, or rotate the mark.
+- On app icons the mark sits on white, mist (`#E1F1EE`) or night (`#0B1416`) tiles.
+- Customers' own logos appear alongside FH in the app header (white-labelling); they never replace the FH favicon.
