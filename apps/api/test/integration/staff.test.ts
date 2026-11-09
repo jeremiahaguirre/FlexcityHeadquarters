@@ -134,6 +134,8 @@ describe('staff admin', () => {
       ['22.75', null],
       ['21.5', '2026-06-30'],
     ]);
+    // Seeded users never set a password, so they still show as invited.
+    expect(detail.body.invited).toBe(true);
   });
 
   it('hides pay rates from supervisors and keeps staff out', async () => {

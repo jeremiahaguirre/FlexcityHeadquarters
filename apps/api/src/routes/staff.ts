@@ -302,6 +302,7 @@ staffRouter.get(
       vscClearedDate: iso(u.vscClearedDate),
       dateOfBirth: canSeePay ? iso(u.dateOfBirth) : undefined,
       unionMember: u.unionMember,
+      invited: !u.passwordHash,
       positions: u.positions.map((p) => p.position),
       certifications: u.certifications.map(certView),
       payRates: canSeePay
