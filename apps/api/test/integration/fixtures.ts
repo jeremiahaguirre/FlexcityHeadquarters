@@ -32,7 +32,7 @@ export async function seedTenant(sub: string, guards = 3) {
     });
     await owner.userPosition.create({ data: { tenantId: tenant.id, userId: u.id, positionId: position.id } });
     await owner.userCertification.create({
-      data: { tenantId: tenant.id, userId: u.id, certificationId: nls.id, issueDate: day(-100), expiryDate: day(400) },
+      data: { tenantId: tenant.id, userId: u.id, certificationId: nls.id, issueDate: day(-100), expiryDate: day(400), verifiedAt: new Date() },
     });
     users.push(u);
   }

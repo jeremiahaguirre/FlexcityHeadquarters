@@ -91,7 +91,7 @@ export async function loadCandidates(
     // Each required cert must be held — one `some` per cert (NOT `every`).
     AND: position.requiredCertIds.map((certificationId) => ({
       certifications: {
-        some: { certificationId, OR: [{ expiryDate: null }, { expiryDate: { gte: shiftEndDate } }] },
+        some: { certificationId, verifiedAt: { not: null }, OR: [{ expiryDate: null }, { expiryDate: { gte: shiftEndDate } }] },
       },
     })),
     shifts: { none: { status: { not: 'CANCELLED' }, startsAt: { lt: shift.end }, endsAt: { gt: shift.start } } },
@@ -140,7 +140,8 @@ const isoDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 function toCandidateContext(u: LoadedUser): CandidateContext {
   // Keep the LATEST expiry per certification (renewals add new rows).
   const certExpiry = new Map<string, string | null>();
-  for (const c of u.certifications) {
+  // Only certifications a supervisor has verified count toward eligibility.
+  for (const c of u.certifications.filter((x) => x.verifiedAt !== null)) {
     const exp = isoDate(c.expiryDate);
     const prev = certExpiry.get(c.certificationId);
     if (!certExpiry.has(c.certificationId) || exp === null || (prev !== null && prev !== undefined && exp > prev)) {

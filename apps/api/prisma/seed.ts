@@ -122,7 +122,7 @@ async function main() {
     const certs = p.positions.includes(guard.id as never) ? [sfa, nls] : [];
     if (p.positions.includes(instructor.id as never)) certs.push(wsi);
     for (const c of certs) {
-      await prisma.userCertification.create({ data: { tenantId: tenant.id, userId: u.id, certificationId: c.id, issueDate: new Date('2025-06-01'), expiryDate: new Date('2027-06-01') } });
+      await prisma.userCertification.create({ data: { tenantId: tenant.id, userId: u.id, certificationId: c.id, issueDate: new Date('2025-06-01'), expiryDate: new Date('2027-06-01'), verifiedAt: new Date() } });
     }
     for (let dow = 0; dow < 7; dow++) {
       await prisma.availability.create({ data: { tenantId: tenant.id, userId: u.id, dayOfWeek: dow, startMinute: 6 * 60, endMinute: 22 * 60, effectiveFrom: new Date('2026-01-01') } });
