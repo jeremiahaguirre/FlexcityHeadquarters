@@ -10,6 +10,9 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
   // Static demo: no server reads the language cookie, so apply it after load.
   useEffect(() => {
     if (!DEMO) return;
+    // Links from the marketing site carry the reader's language: ?lang=fr.
+    const asked = new URLSearchParams(window.location.search).get('lang');
+    if (asked === 'fr' || asked === 'en') document.cookie = `${LOCALE_COOKIE}=${asked}-CA; path=/; max-age=31536000; samesite=lax`;
     const saved = document.cookie.split('; ').find((c) => c.startsWith(`${LOCALE_COOKIE}=`))?.split('=')[1];
     if (saved) {
       const next = normalizeLocale(saved);

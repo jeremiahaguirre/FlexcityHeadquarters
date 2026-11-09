@@ -22,6 +22,11 @@ export default function PlatformLogin() {
   const [busy, setBusy] = useState(false);
   const [canPasskey, setCanPasskey] = useState(false);
   useEffect(() => setCanPasskey(passkeysSupported()), []);
+  // The marketing site links straight into the console: /platform/login?demo=1.
+  useEffect(() => {
+    if (DEMO && new URLSearchParams(window.location.search).get('demo') === '1') void signIn('dev@flexcity.dev', DEMO_PASSWORD);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function signIn(email: string, password: string) {
     setBusy(true);

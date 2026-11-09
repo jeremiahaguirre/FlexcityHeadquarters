@@ -21,6 +21,13 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [canPasskey, setCanPasskey] = useState(false);
   useEffect(() => setCanPasskey(passkeysSupported()), []);
+  // The marketing site links straight into a role: /login?as=AQUATIC_SUPERVISOR.
+  const as = DEMO ? params.get('as') : null;
+  useEffect(() => {
+    const account = as ? DEMO_ACCOUNTS.find((a) => DEMO_ROLES[a] === as) : undefined;
+    if (account) void signIn(account, DEMO_PASSWORD);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [as]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
