@@ -160,7 +160,8 @@
     "onboarding": "Onboarding",
     "overtime": "Overtime",
     "care": "Care",
-    "forecast": "Forecast"
+    "forecast": "Forecast",
+    "benchmarks": "Benchmarks"
   },
   "navGroups": {
     "mine": "My work",
@@ -1163,6 +1164,10 @@
       "accommodation": {
         "name": "Accommodation",
         "help": "Work restrictions for accommodation and return to work, enforced by the scheduler. HR only; no medical details."
+      },
+      "benchmarks": {
+        "name": "Benchmarks",
+        "help": "Compare anonymous measures with other cities that choose to share."
       }
     },
     "positions": "Positions",
@@ -2009,5 +2014,31 @@
     "noSchool": "No school",
     "cellTitle": "About {{expected}} bathers, {{needed}} guards needed, {{scheduled}} scheduled (from {{days}} past days)",
     "legend": "Each cell: scheduled / needed, and about how many bathers. Based on the last {{weeks}} weeks; weather and special events aren't included, so check the forecast before a heat wave or a holiday."
+  },
+  "benchmarks": {
+    "title": "Benchmarks",
+    "description": "How your city compares with others on the measures that matter, over the last 90 days. Lower is better for each.",
+    "share": "Share and compare",
+    "privacy": "Anonymous by design: only cities that share see the comparison, figures appear only when at least {{n}} cities share, and only the spread (quartiles) is kept, never another city's numbers or name.",
+    "joined": "You're sharing. Comparisons appear once enough cities take part.",
+    "left": "You've stopped sharing.",
+    "metric": {
+      "noShowRate": "Missed shifts",
+      "lateRate": "Late clock-ins",
+      "certLapseRate": "Staff with a lapsed certification",
+      "fillHours": "Time to fill an open shift",
+      "overtimeShare": "Overtime share of hours"
+    },
+    "help": {
+      "noShowRate": "Missed shifts per 100 scheduled shifts.",
+      "lateRate": "Late clock-ins per 100 punches.",
+      "certLapseRate": "Share of certified staff with at least one expired certificate.",
+      "fillHours": "Typical hours from posting to taken.",
+      "overtimeShare": "Overtime hours as a share of scheduled hours."
+    },
+    "peers": "Typical city {{p50}}{{unit}}; middle half {{p25}}–{{p75}}{{unit}} ({{n}} cities).",
+    "notEnough": "Not enough cities share yet ({{n}} needed).",
+    "joinToSee": "Share to see how other cities compare.",
+    "legend": "Dark mark: your city. Shaded band: the middle half of sharing cities; thin line: the typical city."
   }
 }

@@ -4,6 +4,7 @@
  * Each job takes a Postgres advisory lock, so two workers never run the same job at once.
  */
 import pg from 'pg';
+import { computeBenchmarks } from './services/platform/benchmarks.js';
 import { config } from './config.js';
 import { db, tenantIds, withTenant } from './lib/db.js';
 import { anonymizeDue, certificationReminders, accommodationReviews, detectNoShows, flagForReview, forgottenClockOuts, onboardingReminders, rotationAlerts, recomputeReliability } from './services/jobs/daily.js';
@@ -47,6 +48,7 @@ const hourly = async () => {
   await exclusive('reliability', () => perTenant((tx) => recomputeReliability(tx)));
   await exclusive('people-review', () => perTenant((tx) => flagForReview(tx)));
   await exclusive('anonymize', () => perTenant((tx) => anonymizeDue(tx)));
+  await exclusive('benchmarks', () => computeBenchmarks(db()));
 };
 
 await minutely();

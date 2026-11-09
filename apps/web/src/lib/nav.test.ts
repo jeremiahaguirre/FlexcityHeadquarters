@@ -28,7 +28,7 @@ describe('menus per role', () => {
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/care', '/manage/people', '/manage/compliance', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/settings'],
+      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/care', '/manage/people', '/manage/compliance', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/settings'],
       home: '/manage/approvals',
     });
   });

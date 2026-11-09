@@ -255,6 +255,8 @@ model Tenant {
   overtimePolicy Json @default("{}")
   /// Care after critical incidents: { eap: "Employee assistance: 1-800-…" }.
   careSettings   Json @default("{}")
+  /// Shares anonymous measures with other cities (and sees theirs).
+  benchmarkOptIn Boolean @default(false)
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -1494,4 +1496,19 @@ model Lead {
   updatedAt         DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([status, createdAt])
+}
+
+/// Cross-city benchmark: quartiles of one measure across opted-in cities on a
+/// date. No city ids or values are stored, and only when at least five cities
+/// contribute. Platform-owned (no tenant).
+model BenchmarkSnapshot {
+  id         String   @id @default(uuid()) @db.Uuid
+  metric     String
+  computedOn DateTime @db.Date
+  cities     Int
+  p25        Float
+  p50        Float
+  p75        Float
+
+  @@unique([metric, computedOn])
 }

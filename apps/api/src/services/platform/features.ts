@@ -27,6 +27,7 @@ export const FEATURES = {
   jobs: { default: true, permissions: ['jobs.manage'] },
   union: { default: false, permissions: ['union.hub', 'seniority.read'] },
   rotations: { default: true, permissions: ['deck.rotate'] },
+  benchmarks: { default: true, permissions: [] },
   accommodation: { default: true, permissions: ['accommodation.manage'] },
   care: { default: true, permissions: ['care.manage'] },
   overtime: { default: true, permissions: ['overtime.manage'] },

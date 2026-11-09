@@ -320,3 +320,12 @@ describe('demand forecast', () => {
     expect(f('p', '2026-07-18', 9)).toBeNull();
   });
 });
+
+import { quartiles } from '../../src/services/platform/benchmarks.js';
+
+describe('benchmark quartiles', () => {
+  it('needs at least five cities so none can be picked out', () => {
+    expect(quartiles([1, 2, 3, 4])).toBeNull();
+    expect(quartiles([1, 2, 3, 4, 5])).toEqual({ p25: 2, p50: 3, p75: 4 });
+  });
+});

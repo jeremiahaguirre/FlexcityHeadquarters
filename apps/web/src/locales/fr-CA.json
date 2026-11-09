@@ -160,7 +160,8 @@
     "onboarding": "Intégration",
     "overtime": "Heures supplémentaires",
     "care": "Soutien",
-    "forecast": "Prévisions"
+    "forecast": "Prévisions",
+    "benchmarks": "Comparaisons"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -1163,6 +1164,10 @@
       "accommodation": {
         "name": "Mesures d’adaptation",
         "help": "Restrictions de travail pour les mesures d’adaptation et le retour au travail, appliquées par l’horaire. RH seulement; aucun détail médical."
+      },
+      "benchmarks": {
+        "name": "Comparaisons",
+        "help": "Comparez des indicateurs anonymes avec les autres villes qui choisissent de partager."
       }
     },
     "positions": "Postes",
@@ -2009,5 +2014,31 @@
     "noSchool": "Pas d’école",
     "cellTitle": "Environ {{expected}} baigneurs, {{needed}} sauveteurs requis, {{scheduled}} à l’horaire (d’après {{days}} jours passés)",
     "legend": "Chaque case : à l’horaire / requis, et environ combien de baigneurs. D’après les {{weeks}} dernières semaines; la météo et les événements spéciaux ne sont pas inclus, alors vérifiez avant une canicule ou un congé."
+  },
+  "benchmarks": {
+    "title": "Comparaisons",
+    "description": "Comment votre ville se compare aux autres sur les indicateurs qui comptent, pour les 90 derniers jours. Plus bas, c’est mieux.",
+    "share": "Partager et comparer",
+    "privacy": "Anonyme par conception : seules les villes qui partagent voient la comparaison, les chiffres n’apparaissent que si au moins {{n}} villes partagent, et seule la répartition (quartiles) est conservée, jamais les chiffres ni le nom d’une autre ville.",
+    "joined": "Vous partagez. Les comparaisons apparaîtront quand assez de villes participeront.",
+    "left": "Vous ne partagez plus.",
+    "metric": {
+      "noShowRate": "Quarts manqués",
+      "lateRate": "Pointages en retard",
+      "certLapseRate": "Personnel avec une certification échue",
+      "fillHours": "Délai pour combler un quart libre",
+      "overtimeShare": "Part des heures supplémentaires"
+    },
+    "help": {
+      "noShowRate": "Quarts manqués par 100 quarts à l’horaire.",
+      "lateRate": "Pointages en retard par 100 pointages.",
+      "certLapseRate": "Part du personnel certifié ayant au moins un certificat échu.",
+      "fillHours": "Heures habituelles entre l’affichage et la prise du quart.",
+      "overtimeShare": "Heures supplémentaires en part des heures à l’horaire."
+    },
+    "peers": "Ville type {{p50}}{{unit}}; moitié centrale {{p25}}–{{p75}}{{unit}} ({{n}} villes).",
+    "notEnough": "Pas encore assez de villes qui partagent ({{n}} requises).",
+    "joinToSee": "Partagez pour voir comment les autres villes se comparent.",
+    "legend": "Marque foncée : votre ville. Bande ombrée : la moitié centrale des villes qui partagent; ligne fine : la ville type."
   }
 }
