@@ -1,9 +1,13 @@
+import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
+
+// Incident reports are encrypted; tests use a throwaway key.
+process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
 
 const server = createApp();
 const SUB = 'carefollow';
