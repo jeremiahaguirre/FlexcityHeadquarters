@@ -70,7 +70,8 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "loading": "Chargement",
-    "ok": "OK"
+    "ok": "OK",
+    "choose": "Choisir…"
   },
   "forgot": {
     "title": "Réinitialiser votre mot de passe",
@@ -214,6 +215,89 @@
     "NOT_ELIGIBLE": "Vous ne pouvez pas prendre ce quart.",
     "FORBIDDEN": "Vous n'avez pas accès à cette action.",
     "VALIDATION": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez.",
-    "BAD_REQUEST": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez."
+    "BAD_REQUEST": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez.",
+    "ALREADY_CLOCKED_IN": "Votre arrivée est déjà pointée.",
+    "NOT_CLOCKED_IN": "Votre arrivée n'est pas pointée.",
+    "TIME_OFF_OVERLAPS": "Vous avez déjà demandé congé pour une partie de ces jours.",
+    "ALREADY_STARTED": "Ce congé est commencé. Demandez à votre superviseur de le modifier.",
+    "NOT_ACTIVE": "Cette demande est déjà fermée."
+  },
+  "timeclock": {
+    "title": "Horodateur",
+    "description": "Pointez au début et à la fin de votre quart. Votre superviseur révise les pointages avant la paie.",
+    "onTheClock": "Vous êtes au travail",
+    "since": "Depuis {{time}} à {{place}}",
+    "clockOut": "Pointer la sortie",
+    "clockIn": "Pointer l'arrivée",
+    "clockInFor": "Pointer l'arrivée · {{time}} · {{place}}",
+    "noShiftToday": "Vous n'avez pas de quart aujourd'hui.",
+    "unscheduled": "Pointer sans quart prévu",
+    "unscheduledTitle": "Pointer sans quart",
+    "unscheduledHelp": "Pour les rappels et les remplacements. Votre superviseur le révisera.",
+    "facility": "Installation",
+    "position": "Poste occupé",
+    "locationNote": "Au pointage, nous vérifions une seule fois que vous êtes à l'installation. Nous ne suivons pas votre position.",
+    "clockedOut": "Sortie pointée. Merci!",
+    "recent": "Deux dernières semaines",
+    "noPunches": "Aucun pointage dans les deux dernières semaines.",
+    "location": {
+      "VERIFIED": "Arrivée pointée. Position confirmée.",
+      "OUTSIDE_RADIUS": "Arrivée pointée. Vous semblez loin de l'installation; votre superviseur vérifiera ce pointage.",
+      "LOW_ACCURACY": "Arrivée pointée. Votre position était imprécise; votre superviseur vérifiera ce pointage.",
+      "NO_LOCATION": "Arrivée pointée sans position. Votre superviseur vérifiera ce pointage.",
+      "FACILITY_NOT_CONFIGURED": "Arrivée pointée."
+    },
+    "status": {
+      "PENDING": "En attente de révision",
+      "APPROVED": "Approuvé",
+      "REJECTED": "À corriger"
+    }
+  },
+  "timeOff": {
+    "title": "Congés",
+    "description": "Demandez du temps libre. S'il est approuvé, vos quarts pendant cette période vont au tableau pour être remplacés.",
+    "request": "Demander un congé",
+    "emptyTitle": "Aucune demande de congé",
+    "emptyBody": "Vos demandes s'affichent ici avec leur réponse.",
+    "type": "Motif",
+    "types": {
+      "VACATION": "Vacances",
+      "SICK": "Congé de maladie",
+      "PROTECTED_LEAVE": "Congé protégé (famille, deuil, juré…)",
+      "UNPAID_PERSONAL": "Congé personnel non payé",
+      "OTHER": "Autre"
+    },
+    "protectedHint": "Les normes du travail vous donnent droit à ce congé. Vous n'avez pas à donner de détails médicaux.",
+    "partOfDay": "Seulement une partie de la journée",
+    "date": "Date",
+    "from": "Premier jour",
+    "to": "Dernier jour",
+    "startTime": "De",
+    "endTime": "À",
+    "note": "Note pour votre superviseur (facultatif)",
+    "noteHint": "Visible par les superviseurs seulement.",
+    "send": "Envoyer la demande",
+    "cancel": "Retirer",
+    "cancelled": "Demande retirée.",
+    "endBeforeStart": "La fin doit être après le début.",
+    "status": {
+      "PENDING": "En attente",
+      "APPROVED": "Approuvé",
+      "DENIED": "Refusé",
+      "CANCELLED": "Retiré"
+    }
+  },
+  "availability": {
+    "title": "Disponibilités",
+    "description": "Quand vous pouvez travailler chaque semaine. L'assistant d'horaire ne vous propose que des quarts dans ces plages.",
+    "unavailable": "Non disponible",
+    "from": "De",
+    "to": "À",
+    "addWindow": "Ajouter une plage",
+    "remove": "Retirer cette plage",
+    "effectiveFrom": "À partir du",
+    "effectiveHint": "Les semaines précédentes gardent vos anciennes disponibilités.",
+    "saved": "Disponibilités enregistrées.",
+    "endBeforeStart": "Chaque plage doit finir après son début."
   }
 }

@@ -70,7 +70,8 @@
     "save": "Save",
     "cancel": "Cancel",
     "loading": "Loading",
-    "ok": "OK"
+    "ok": "OK",
+    "choose": "Choose…"
   },
   "forgot": {
     "title": "Reset your password",
@@ -214,6 +215,89 @@
     "NOT_ELIGIBLE": "You can't take this shift.",
     "FORBIDDEN": "You don't have access to do that.",
     "VALIDATION": "Some details aren't right. Check the form and try again.",
-    "BAD_REQUEST": "Some details aren't right. Check the form and try again."
+    "BAD_REQUEST": "Some details aren't right. Check the form and try again.",
+    "ALREADY_CLOCKED_IN": "You're already clocked in.",
+    "NOT_CLOCKED_IN": "You're not clocked in.",
+    "TIME_OFF_OVERLAPS": "You already asked for time off during part of these days.",
+    "ALREADY_STARTED": "This time off has started. Ask your supervisor to change it.",
+    "NOT_ACTIVE": "This request is already closed."
+  },
+  "timeclock": {
+    "title": "Timeclock",
+    "description": "Clock in when your shift starts and out when it ends. Your supervisor reviews punches before payroll.",
+    "onTheClock": "You're on the clock",
+    "since": "Since {{time}} at {{place}}",
+    "clockOut": "Clock out",
+    "clockIn": "Clock in",
+    "clockInFor": "Clock in · {{time}} · {{place}}",
+    "noShiftToday": "You have no shift today.",
+    "unscheduled": "Clock in without a scheduled shift",
+    "unscheduledTitle": "Clock in without a shift",
+    "unscheduledHelp": "For call-ins and cover. Your supervisor will review it.",
+    "facility": "Facility",
+    "position": "Working as",
+    "locationNote": "When you clock in we check, once, that you're at the facility. We don't track your location.",
+    "clockedOut": "Clocked out. Thanks!",
+    "recent": "Last two weeks",
+    "noPunches": "No punches in the last two weeks.",
+    "location": {
+      "VERIFIED": "Clocked in. Location confirmed.",
+      "OUTSIDE_RADIUS": "Clocked in. You seem to be away from the facility, so your supervisor will check this punch.",
+      "LOW_ACCURACY": "Clocked in. Your location was unclear, so your supervisor will check this punch.",
+      "NO_LOCATION": "Clocked in without location. Your supervisor will check this punch.",
+      "FACILITY_NOT_CONFIGURED": "Clocked in."
+    },
+    "status": {
+      "PENDING": "Waiting for review",
+      "APPROVED": "Approved",
+      "REJECTED": "Needs correcting"
+    }
+  },
+  "timeOff": {
+    "title": "Time off",
+    "description": "Ask for time away. If it's approved, your shifts in that time go to the board for others to cover.",
+    "request": "Request time off",
+    "emptyTitle": "No time-off requests",
+    "emptyBody": "Requests you send appear here with their answer.",
+    "type": "Reason",
+    "types": {
+      "VACATION": "Vacation",
+      "SICK": "Sick day",
+      "PROTECTED_LEAVE": "Protected leave (family, bereavement, jury duty…)",
+      "UNPAID_PERSONAL": "Unpaid personal day",
+      "OTHER": "Other"
+    },
+    "protectedHint": "You're entitled to this leave under employment standards. You don't need to share medical details.",
+    "partOfDay": "Only part of a day",
+    "date": "Date",
+    "from": "First day",
+    "to": "Last day",
+    "startTime": "From",
+    "endTime": "Until",
+    "note": "Note for your supervisor (optional)",
+    "noteHint": "Visible to supervisors only.",
+    "send": "Send request",
+    "cancel": "Withdraw",
+    "cancelled": "Request withdrawn.",
+    "endBeforeStart": "The end must be after the start.",
+    "status": {
+      "PENDING": "Waiting",
+      "APPROVED": "Approved",
+      "DENIED": "Declined",
+      "CANCELLED": "Withdrawn"
+    }
+  },
+  "availability": {
+    "title": "Availability",
+    "description": "When you can work each week. The scheduling assistant only offers you shifts inside these times.",
+    "unavailable": "Not available",
+    "from": "From",
+    "to": "Until",
+    "addWindow": "Add another time",
+    "remove": "Remove this time",
+    "effectiveFrom": "Starting",
+    "effectiveHint": "Earlier weeks keep your old availability.",
+    "saved": "Availability saved.",
+    "endBeforeStart": "Each time must end after it starts."
   }
 }
