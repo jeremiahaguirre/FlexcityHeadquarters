@@ -21,4 +21,5 @@ export function parseLogo(dataUrl: string): { contentType: string; bytes: Buffer
   return { contentType: m[1]!, bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 
-export const logoUrlFor = (sha256: string) => `/api/public/logo?v=${sha256.slice(0, 12)}`;
+/** By organization id (public), so a plain <img> works on any host; the hash busts caches. */
+export const logoUrlFor = (tenantId: string, sha256: string) => `/api/public/logo/${tenantId}?v=${sha256.slice(0, 12)}`;

@@ -25,7 +25,8 @@ export function createApp() {
   app.use(cookieParser());
 
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
-  app.use('/api', resolveTenant, authRouter, publicJobsRouter, publicLogoRouter);
+  app.use('/api', publicLogoRouter);
+  app.use('/api', resolveTenant, authRouter, publicJobsRouter);
   app.use('/api', api);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

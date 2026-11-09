@@ -268,7 +268,7 @@ citiesRouter.put(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const logo = parseLogo(z.object({ dataUrl: z.string().max(800_000) }).parse(req.body).dataUrl);
-    const logoUrl = logoUrlFor(logo.sha256);
+    const logoUrl = logoUrlFor(id, logo.sha256);
     await cityOr404(id, async (tx) => {
       await tx.tenantLogo.upsert({ where: { tenantId: id }, create: { tenantId: id, ...logo }, update: logo });
       await tx.tenant.update({ where: { id }, data: { logoUrl } });

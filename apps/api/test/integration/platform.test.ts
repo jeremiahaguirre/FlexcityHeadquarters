@@ -101,14 +101,15 @@ describe('cities', () => {
   it('uploads a logo that the city’s own pages can load, and refuses anything else', async () => {
     expect((await dev().put(`/api/platform/tenants/${id}/logo`, { dataUrl: 'data:image/svg+xml;base64,PHN2Zy8+' })).status).toBe(400);
     const up = await dev().put(`/api/platform/tenants/${id}/logo`, { dataUrl: PNG });
-    expect(up.body.logoUrl).toMatch(/^\/api\/public\/logo\?v=/);
+    expect(up.body.logoUrl).toMatch(new RegExp(`^/api/public/logo/${id}\\?v=`));
     const sub = (await dev().get(`/api/platform/tenants/${id}`)).body.organization.subdomain;
-    const pub = await request(server).get('/api/public/logo').set('x-tenant-subdomain', sub);
+    const pub = await request(server).get(up.body.logoUrl);
     expect(pub.status).toBe(200);
     expect(pub.headers['content-type']).toBe('image/png');
     expect((await request(server).get('/api/public/tenant').set('x-tenant-subdomain', sub)).body.logoUrl).toBe(up.body.logoUrl);
     await dev().delete(`/api/platform/tenants/${id}/logo`);
-    expect((await request(server).get('/api/public/logo').set('x-tenant-subdomain', sub)).status).toBe(404);
+    expect((await request(server).get(up.body.logoUrl)).status).toBe(404);
+    expect((await request(server).get('/api/public/logo/not-a-uuid')).status).toBe(404);
   });
 
   it('imports staff: preview first, then creates only the rows that passed', async () => {
