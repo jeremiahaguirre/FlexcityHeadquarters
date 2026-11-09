@@ -257,6 +257,8 @@ model Tenant {
   careSettings   Json @default("{}")
   /// Shares anonymous measures with other cities (and sees theirs).
   benchmarkOptIn Boolean @default(false)
+  /// Access levels that must sign in with a passkey as a second factor.
+  mfaRoles       AccessRole[] @default([])
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -393,6 +395,9 @@ model RefreshToken {
   /// When the person last proved who they are (password or passkey), carried
   /// through rotation. Sensitive actions need this to be recent.
   authenticatedAt DateTime @default(now()) @db.Timestamptz(3)
+  /// When this session proved a second factor (a passkey), carried through
+  /// rotation. Null = password only.
+  mfaAt     DateTime? @db.Timestamptz(3)
   expiresAt DateTime  @db.Timestamptz(3)
   revokedAt DateTime? @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
@@ -1265,6 +1270,8 @@ model PlatformSession {
   createdAt DateTime      @default(now()) @db.Timestamptz(3)
   expiresAt DateTime      @db.Timestamptz(3)
   revokedAt DateTime?     @db.Timestamptz(3)
+  /// When this session proved a second factor (a passkey). Null = password only.
+  mfaAt     DateTime?     @db.Timestamptz(3)
 
   @@index([adminId])
 }

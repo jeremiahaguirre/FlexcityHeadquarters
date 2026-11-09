@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { PLATFORM_COOKIE, endPlatformSession, platformCookieOpts, platformOf, requirePlatform, startPlatformSession } from '../../auth/platform.js';
+import { PLATFORM_COOKIE, endPlatformSession, platformCookieOpts, platformMfaRequired, platformOf, requirePlatformSession, startPlatformSession } from '../../auth/platform.js';
 import { allow } from '../../auth/rateLimit.js';
 import { verifyPassword } from '../../auth/tokens.js';
 import { db } from '../../lib/db.js';
@@ -32,7 +32,9 @@ platformAuthRouter.post(
     }
     await db().platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
     res.cookie(PLATFORM_COOKIE, await startPlatformSession(admin.id), platformCookieOpts());
-    res.json({ admin: { id: admin.id, email: admin.email, name: admin.name } });
+    const hasPasskey = (await db().platformPasskey.count({ where: { adminId: admin.id } })) > 0;
+    // A password alone isn't enough: the console asks for a passkey next (or to set one up).
+    res.json({ admin: { id: admin.id, email: admin.email, name: admin.name }, mfaRequired: platformMfaRequired(), hasPasskey });
   }),
 );
 
@@ -47,9 +49,10 @@ platformAuthRouter.post(
 
 platformAuthRouter.get(
   '/me',
-  requirePlatform,
+  requirePlatformSession,
   h(async (req, res) => {
     const p = platformOf(req);
-    res.json({ id: p.adminId, email: p.email, name: p.name });
+    const hasPasskey = (await db().platformPasskey.count({ where: { adminId: p.adminId } })) > 0;
+    res.json({ id: p.adminId, email: p.email, name: p.name, mfa: p.mfa, mfaRequired: platformMfaRequired() && !p.mfa, hasPasskey });
   }),
 );

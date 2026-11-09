@@ -14,7 +14,15 @@ export interface AuthContext {
   permissions: Set<Permission>;
   /** Last time the person proved who they are (password or passkey), if known. */
   authenticatedAt: Date | null;
+  /** This session proved a second factor (a passkey). */
+  mfa: boolean;
+  /** The city requires a second factor for one of this person's access levels, and this session hasn't given one. */
+  mfaPending: boolean;
 }
+
+/** What someone who still owes a second factor may reach: enough to give it, or set up a passkey. */
+const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/step-up(\/|$)/];
+const mfaExempt = (url: string) => MFA_EXEMPT.some((r) => r.test(url.split('?')[0]!));
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -36,12 +44,23 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const [{ features, overrides }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customPermissions(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
+    const [{ features, overrides, mfaRoles }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customPermissions(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
     // Terminated, deactivated or restricted people lose access at once, not when their token expires.
     if (!ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
     // Each role's permissions after the city's Dev console overrides, plus custom roles.
     const granted = new Set([...permissionsWithOverrides(claims.roles, overrides), ...custom]);
-    req.auth = { userId: claims.sub, tenantId: claims.tid, roles: claims.roles, permissions: withoutDisabled(granted, features), authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null };
+    const mfa = claims.mfa === true;
+    const mfaPending = !mfa && claims.roles.some((r) => mfaRoles.includes(r));
+    req.auth = {
+      userId: claims.sub,
+      tenantId: claims.tid,
+      roles: claims.roles,
+      permissions: withoutDisabled(granted, features),
+      authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null,
+      mfa,
+      mfaPending,
+    };
+    if (mfaPending && !mfaExempt(req.originalUrl)) throw new HttpError(403, 'MFA_REQUIRED', 'Your organization requires a passkey for this account. Confirm with your passkey to continue.');
     next();
   } catch (e) {
     next(e);

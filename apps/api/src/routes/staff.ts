@@ -67,6 +67,8 @@ staffRouter.get(
       employmentStatus: me.employmentStatus,
       positions: me.positions.map((p) => p.position),
       certifications: me.certifications.map(certView),
+      // The city requires a passkey for this access level and this session hasn't used one.
+      mfaRequired: a.mfaPending,
     });
   }),
 );

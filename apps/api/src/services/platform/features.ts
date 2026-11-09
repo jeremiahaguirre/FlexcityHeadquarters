@@ -1,3 +1,4 @@
+import type { AccessRole } from '@prisma/client';
 /**
  * Feature switches, set per organization from the FH Dev console.
  *
@@ -51,7 +52,7 @@ export function withoutDisabled<P extends string>(permissions: Set<P>, features:
   return out;
 }
 
-const cache = new Map<string, { at: number; features: FeatureSet; overrides: RoleOverrides }>();
+const cache = new Map<string, { at: number; features: FeatureSet; overrides: RoleOverrides; mfaRoles: AccessRole[] }>();
 const TTL_MS = 30_000;
 
 /** Cached per process; the Dev console clears it when switches change. */
@@ -60,11 +61,11 @@ export async function tenantFeatures(tenantId: string): Promise<FeatureSet> {
 }
 
 /** Feature switches and per-role overrides, cached together. */
-export async function tenantSettings(tenantId: string): Promise<{ features: FeatureSet; overrides: RoleOverrides }> {
+export async function tenantSettings(tenantId: string): Promise<{ features: FeatureSet; overrides: RoleOverrides; mfaRoles: AccessRole[] }> {
   const hit = cache.get(tenantId);
   if (hit && Date.now() - hit.at < TTL_MS) return hit;
-  const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true, roleOverrides: true } }));
-  const entry = { at: Date.now(), features: resolveFeatures(row?.features), overrides: parseOverrides(row?.roleOverrides) };
+  const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true, roleOverrides: true, mfaRoles: true } }));
+  const entry = { at: Date.now(), features: resolveFeatures(row?.features), overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [] };
   cache.set(tenantId, entry);
   return entry;
 }

@@ -95,7 +95,8 @@ citiesRouter.post(
     const id = randomUUID();
     try {
       await withTenant(id, async (tx) => {
-        await tx.tenant.create({ data: { id, name: body.name, subdomain: body.subdomain, defaultLocale: body.defaultLocale } });
+        // New organizations start with a passkey required for HR, who can see everyone's records.
+        await tx.tenant.create({ data: { id, name: body.name, subdomain: body.subdomain, defaultLocale: body.defaultLocale, mfaRoles: ['HR_ADMIN'] } });
         await tx.facility.create({ data: { ...body.facility, tenantId: id } });
         if (body.admin) {
           const u = await tx.user.create({
@@ -470,7 +471,7 @@ citiesRouter.post(
 // ---------------------------------------------------------------------------
 const ROLE_KEYS = Object.keys(ROLE_PERMISSIONS) as [AccessRole, ...AccessRole[]];
 
-function accessView(stored: unknown, features: ReturnType<typeof resolveFeatures>) {
+function accessView(stored: unknown, features: ReturnType<typeof resolveFeatures>, mfaRoles: AccessRole[]) {
   const overrides = parseOverrides(stored);
   const featureOf = (p: string) => (FEATURE_KEYS as string[]).find((k) => (FEATURES[k as keyof typeof FEATURES].permissions as readonly string[]).includes(p)) ?? null;
   return {
@@ -479,6 +480,7 @@ function accessView(stored: unknown, features: ReturnType<typeof resolveFeatures
       const hidden = overrides[role]?.hideMenu ?? [];
       return {
         role,
+        mfa: mfaRoles.includes(role),
         customized: !!overrides[role] && (overrides[role]!.grant.length + overrides[role]!.revoke.length + overrides[role]!.hideMenu.length > 0),
         permissions: [...effective].sort(),
         defaults: [...ROLE_PERMISSIONS[role]].sort(),
@@ -492,11 +494,11 @@ function accessView(stored: unknown, features: ReturnType<typeof resolveFeatures
 
 async function saveOverrides(id: string, adminId: string, action: string, detail: unknown, change: (o: RoleOverrides) => RoleOverrides) {
   const out = await cityOr404(id, async (tx) => {
-    const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true } });
+    const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true, mfaRoles: true } });
     const next = change(parseOverrides(t.roleOverrides));
     await tx.tenant.update({ where: { id }, data: { roleOverrides: next as Prisma.InputJsonValue } });
     await record(tx, adminId, id, action, detail);
-    return accessView(next, resolveFeatures(t.features));
+    return accessView(next, resolveFeatures(t.features), t.mfaRoles);
   });
   forgetFeatures(id);
   return out;
@@ -508,9 +510,28 @@ citiesRouter.get(
     platformOf(req);
     const id = uuid.parse(req.params.id);
     res.json(await cityOr404(id, async (tx) => {
-      const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true } });
-      return accessView(t.roleOverrides, resolveFeatures(t.features));
+      const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true, mfaRoles: true } });
+      return accessView(t.roleOverrides, resolveFeatures(t.features), t.mfaRoles);
     }));
+  }),
+);
+
+/** Require a passkey as a second factor for everyone with this access level. */
+citiesRouter.put(
+  '/tenants/:id/access/mfa',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = z.object({ role: z.enum(ROLE_KEYS), required: z.boolean() }).parse(req.body);
+    const out = await cityOr404(id, async (tx) => {
+      const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true, mfaRoles: true } });
+      const mfaRoles = body.required ? [...new Set([...t.mfaRoles, body.role])] : t.mfaRoles.filter((r) => r !== body.role);
+      await tx.tenant.update({ where: { id }, data: { mfaRoles } });
+      await record(tx, p.adminId, id, 'access.mfa', body);
+      return accessView(t.roleOverrides, resolveFeatures(t.features), mfaRoles);
+    });
+    forgetFeatures(id);
+    res.json(out);
   }),
 );
 

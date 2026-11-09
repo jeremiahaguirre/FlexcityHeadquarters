@@ -21,7 +21,7 @@ import { config } from '../../config.js';
 import { db } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';
 
-export type ChallengePurpose = 'register' | 'login' | 'step-up' | 'platform-register' | 'platform-login';
+export type ChallengePurpose = 'register' | 'login' | 'step-up' | 'platform-register' | 'platform-login' | 'platform-mfa';
 const CHALLENGE_MS = 5 * 60_000;
 
 export interface RelyingParty { rpID: string; origin: string; name: string }
@@ -81,7 +81,7 @@ export async function verifyRegistration(rp: RelyingParty, challengeId: string, 
   return { challenge: ch, credentialId: c.id, publicKey: Buffer.from(c.publicKey), counter: c.counter, transports: c.transports ?? [] };
 }
 
-export async function authenticationOptions(rp: RelyingParty, purpose: 'login' | 'step-up' | 'platform-login', allow: StoredPasskey[], ids: { tenantId?: string; userId?: string; adminId?: string }) {
+export async function authenticationOptions(rp: RelyingParty, purpose: 'login' | 'step-up' | 'platform-login' | 'platform-mfa', allow: StoredPasskey[], ids: { tenantId?: string; userId?: string; adminId?: string }) {
   const options = await generateAuthenticationOptions({
     rpID: rp.rpID,
     userVerification: 'required',
@@ -91,7 +91,7 @@ export async function authenticationOptions(rp: RelyingParty, purpose: 'login' |
 }
 
 /** Checks the signature against the stored public key; returns the new signature counter. */
-export async function verifyAuthentication(rp: RelyingParty, challengeId: string, purpose: 'login' | 'step-up' | 'platform-login', response: AuthenticationResponseJSON, passkey: StoredPasskey | null) {
+export async function verifyAuthentication(rp: RelyingParty, challengeId: string, purpose: 'login' | 'step-up' | 'platform-login' | 'platform-mfa', response: AuthenticationResponseJSON, passkey: StoredPasskey | null) {
   const ch = await takeChallenge(challengeId, purpose);
   if (!passkey) throw new HttpError(401, 'PASSKEY_UNKNOWN', 'This passkey isn’t registered here. Sign in with your password.');
   const v = await verifyAuthenticationResponse({

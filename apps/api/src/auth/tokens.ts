@@ -13,12 +13,14 @@ export interface AccessClaims {
   roles: AccessRole[];
   /** When the person last proved who they are (epoch seconds). Absent = unknown, never "recent". */
   aat?: number;
+  /** This session proved a second factor (a passkey). */
+  mfa?: boolean;
 }
 
 const secret = () => new TextEncoder().encode(config().JWT_SECRET);
 
 export async function signAccessToken(claims: AccessClaims): Promise<string> {
-  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}) })
+  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}), ...(claims.mfa ? { mfa: true } : {}) })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(claims.sub)
     .setIssuedAt()
@@ -31,7 +33,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
   if (typeof payload.sub !== 'string' || typeof payload.tid !== 'string' || !Array.isArray(payload.roles)) {
     throw new Error('Malformed token');
   }
-  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined };
+  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true };
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -43,6 +45,7 @@ export async function issueRefreshToken(
   userId: string,
   familyId: string = randomUUID(),
   authenticatedAt: Date = new Date(),
+  mfaAt: Date | null = null,
 ): Promise<string> {
   const raw = randomBytes(32).toString('base64url');
   await tx.refreshToken.create({
@@ -51,6 +54,7 @@ export async function issueRefreshToken(
       userId,
       familyId,
       authenticatedAt,
+      mfaAt,
       tokenHash: sha256(raw),
       expiresAt: new Date(Date.now() + config().REFRESH_TOKEN_TTL_DAYS * 86_400_000),
     },
@@ -65,7 +69,7 @@ export async function issueRefreshToken(
 export async function rotateRefreshToken(
   tx: Tx,
   raw: string,
-): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date } | null> {
+): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date; mfa: boolean } | null> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (!existing) return null;
   if (existing.revokedAt || existing.expiresAt < new Date()) {
@@ -76,8 +80,8 @@ export async function rotateRefreshToken(
   }
   await tx.refreshToken.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
   // Rotation keeps the original sign-in time: refreshing is not proving who you are.
-  const token = await issueRefreshToken(tx, existing.tenantId, existing.userId, existing.familyId, existing.authenticatedAt);
-  return { userId: existing.userId, tenantId: existing.tenantId, token, authenticatedAt: existing.authenticatedAt };
+  const token = await issueRefreshToken(tx, existing.tenantId, existing.userId, existing.familyId, existing.authenticatedAt, existing.mfaAt);
+  return { userId: existing.userId, tenantId: existing.tenantId, token, authenticatedAt: existing.authenticatedAt, mfa: !!existing.mfaAt };
 }
 
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {
@@ -103,8 +107,20 @@ export async function verifyPassword(password: string, stored: string): Promise<
 
 export const epochSeconds = (d: Date = new Date()) => Math.floor(d.getTime() / 1000);
 
-/** Marks the session behind this refresh token as just re-authenticated (step-up). */
-export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Date()): Promise<void> {
+/**
+ * Marks the session behind this refresh token as just re-authenticated (step-up).
+ * `mfa`: it was done with a passkey, so the session now has a second factor.
+ */
+export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Date(), mfa = false): Promise<void> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
-  if (existing) await tx.refreshToken.updateMany({ where: { familyId: existing.familyId, revokedAt: null }, data: { authenticatedAt: at } });
+  if (existing) {
+    await tx.refreshToken.updateMany({ where: { familyId: existing.familyId, revokedAt: null }, data: { authenticatedAt: at, ...(mfa ? { mfaAt: at } : {}) } });
+  }
+}
+
+/** Does the session behind this refresh token already have a second factor? */
+export async function sessionHasMfa(tx: Tx, raw: string | undefined): Promise<boolean> {
+  if (!raw) return false;
+  const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
+  return !!existing?.mfaAt && !existing.revokedAt;
 }

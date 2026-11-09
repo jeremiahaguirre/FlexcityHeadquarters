@@ -10,6 +10,8 @@ const schema = z.object({
   JWT_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().default(15 * 60),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(14),
+  /** Dev console second factor. Always required in production; tests switch it on where they need it. */
+  PLATFORM_MFA: z.enum(['required', 'off']).optional(),
   /** Root domain for tenant subdomains, e.g. "flexcity.ca" → kelowna.flexcity.ca */
   ROOT_DOMAIN: z.string().default('localhost'),
   /** Link template for emails; {subdomain} is replaced per organization. */
