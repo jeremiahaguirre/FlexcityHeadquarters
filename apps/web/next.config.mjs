@@ -4,10 +4,11 @@ const API_URL = process.env.API_URL ?? 'http://localhost:4000';
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  // In development the API runs separately; in production the load balancer
-  // routes /api/* to the API service on the same origin (cookies stay first-party).
+  // /api/* is proxied to the API so cookies stay first-party. In production the
+  // load balancer normally routes /api/* to the API service before it reaches
+  // Next; this rewrite keeps single-host deployments (and `next start`) working.
   async rewrites() {
-    return process.env.NODE_ENV === 'production' ? [] : [{ source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
+    return [{ source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
   },
   async headers() {
     return [
