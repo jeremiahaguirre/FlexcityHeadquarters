@@ -2,7 +2,7 @@
 
 import { ArrowRight, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
 import { ButtonLink } from '@/components/ui/Button';
@@ -18,7 +18,6 @@ interface OpenPunch { localClockIn: string; facility: { name: string } }
 interface Offer { id: string; status: string }
 interface Pool { id: string; name: string; status: 'OPEN' | 'CLOSURE_RECOMMENDED' | 'CLOSED' }
 
-const in14Days = () => new Date(Date.now() + 14 * 86_400_000).toISOString();
 
 function Tile({ href, icon, label, value, tone }: { href: string; icon: ReactNode; label: string; value: ReactNode; tone?: 'warn' | 'new' }) {
   return (
@@ -36,8 +35,13 @@ function Tile({ href, icon, label, value, tone }: { href: string; icon: ReactNod
 export default function TodayPage() {
   const { t, i18n } = useTranslation();
   const { me, can } = useSession();
-  const now = new Date().toISOString();
-  const shifts = useQuery<Array<ShiftLike & { id: string }>>(`/api/me/shifts?from=${encodeURIComponent(now.slice(0, 13) + ':00:00.000Z')}&to=${encodeURIComponent(in14Days())}`);
+  // Fixed once per visit: a range that changed every render would refetch forever.
+  const [range] = useState(() => {
+    const from = new Date();
+    from.setMinutes(0, 0, 0);
+    return { from: from.toISOString(), to: new Date(from.getTime() + 14 * 86_400_000).toISOString() };
+  });
+  const shifts = useQuery<Array<ShiftLike & { id: string }>>(`/api/me/shifts?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`);
   const punch = useQuery<OpenPunch | null>(can('timeclock.punch') ? '/api/me/punch/open' : null);
   const offers = useQuery<Offer[]>(can('shiftboard.claim') ? '/api/shiftboard/offers' : null);
   const claims = useQuery<unknown[]>(can('shiftboard.approve') ? '/api/offers/pending' : null);
