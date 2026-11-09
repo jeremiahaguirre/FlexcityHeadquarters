@@ -20,6 +20,11 @@ export function localDate(at: Date, timezone: string): string {
   return DateTime.fromJSDate(at, { zone: timezone }).toISODate()!;
 }
 
+/** Facility-local ISO timestamp with offset, e.g. "2026-11-13T07:00:00.000-07:00". */
+export function localIso(at: Date, timezone: string): string {
+  return DateTime.fromJSDate(at, { zone: timezone }).toISO()!;
+}
+
 /** Start instant of a local calendar date in a timezone (DST-safe). */
 export function startOfLocalDay(isoDate: string, timezone: string): Date {
   return DateTime.fromISO(isoDate, { zone: timezone }).startOf('day').toJSDate();

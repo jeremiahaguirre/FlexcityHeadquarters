@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, api } from '@/lib/api';
+import { formatLocal } from '@/lib/localTime';
 
 interface Offer {
   id: string;
@@ -13,6 +14,8 @@ interface Offer {
     version: number;
     startsAt: string;
     endsAt: string;
+    localStartsAt: string;
+    localEndsAt: string;
     facility: { name: string; timezone: string };
     position: { name: string; nameFr: string | null };
   };
@@ -66,8 +69,7 @@ export default function BoardPage() {
     }
   }
 
-  const fmt = (iso: string, tz: string, opts: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat(i18n.language, { timeZone: tz, ...opts }).format(new Date(iso));
+  const fmt = (localIso: string, opts: Intl.DateTimeFormatOptions) => formatLocal(localIso, i18n.language, opts);
 
   const tone = { ok: 'border-ok text-ok', warn: 'border-warn text-warn', error: 'border-danger text-danger' };
 
@@ -94,16 +96,15 @@ export default function BoardPage() {
       ) : (
         <ul className="space-y-3">
           {offers.map((o) => {
-            const tz = o.shift.facility.timezone;
             const position = i18n.language === 'fr-CA' && o.shift.position.nameFr ? o.shift.position.nameFr : o.shift.position.name;
             return (
               <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line p-4">
                 <div className="min-w-0">
                   <p className="font-medium">
-                    {fmt(o.shift.startsAt, tz, { weekday: 'long', month: 'long', day: 'numeric' })}
+                    {fmt(o.shift.localStartsAt, { weekday: 'long', month: 'long', day: 'numeric' })}
                   </p>
                   <p className="text-sm text-muted">
-                    {fmt(o.shift.startsAt, tz, { hour: 'numeric', minute: '2-digit' })}–{fmt(o.shift.endsAt, tz, { hour: 'numeric', minute: '2-digit' })} · {position} · {o.shift.facility.name}
+                    {fmt(o.shift.localStartsAt, { hour: 'numeric', minute: '2-digit' })}–{fmt(o.shift.localEndsAt, { hour: 'numeric', minute: '2-digit' })} · {position} · {o.shift.facility.name}
                   </p>
                 </div>
                 {o.status === 'PENDING_APPROVAL' ? (

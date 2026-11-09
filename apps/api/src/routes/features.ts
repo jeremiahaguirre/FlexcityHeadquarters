@@ -4,7 +4,7 @@ import { authOf, requireAuth, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 import { publish } from '../lib/events.js';
-import { localDate } from '../lib/time.js';
+import { localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
 import { createIncident, readIncident } from '../services/ops/incidents.js';
 import { decideClosure, recordReading } from '../services/ops/poolOps.js';
@@ -39,7 +39,18 @@ api.get(
         orderBy: { shift: { startsAt: 'asc' } },
       }),
     );
-    res.json(offers);
+    // Wall-clock times are computed here with the server's (updatable) tz database,
+    // so a browser with stale tz data can't show a different time.
+    res.json(
+      offers.map((o) => ({
+        ...o,
+        shift: {
+          ...o.shift,
+          localStartsAt: localIso(o.shift.startsAt, o.shift.facility.timezone),
+          localEndsAt: localIso(o.shift.endsAt, o.shift.facility.timezone),
+        },
+      })),
+    );
   }),
 );
 
