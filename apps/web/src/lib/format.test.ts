@@ -18,6 +18,8 @@ describe('format helpers (FH Typography doc examples)', () => {
     expect(formatDate(at, 'fr-CA')).toBe('sam. 14 nov.');
     expect(formatDate(at, 'en-CA', 'long')).toBe('Saturday, November 14');
     expect(formatDate(at, 'fr-CA', 'long')).toBe('samedi 14 novembre');
+    expect(formatDate(at, 'en-CA', 'dated')).toBe('Nov 14, 2026');
+    expect(formatDate(at, 'fr-CA', 'dated')).toBe('14 nov. 2026');
   });
   it('hours, money and numbers', () => {
     expect(formatHours(7.5, 'en-CA')).toBe(`7.5${NBSP}h`);

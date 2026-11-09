@@ -32,9 +32,18 @@ export function formatTimeRange(startIso: string, endIso: string, locale: Locale
   return `${glue(f.format(wallClock(startIso)))}–${glue(f.format(wallClock(endIso)))}`;
 }
 
-/** short: "Sat, Nov 14" · "sam. 14 nov."; long: "Saturday, November 14" · "samedi 14 novembre" */
-export function formatDate(localIso: string, locale: Locale, style: 'short' | 'long' = 'short'): string {
-  return fmt(locale, style === 'short' ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'long', month: 'long', day: 'numeric' }).format(wallClock(localIso));
+const DATE_STYLES = {
+  short: { weekday: 'short', month: 'short', day: 'numeric' },
+  long: { weekday: 'long', month: 'long', day: 'numeric' },
+  dated: { year: 'numeric', month: 'short', day: 'numeric' },
+} as const satisfies Record<string, Intl.DateTimeFormatOptions>;
+
+/**
+ * short: "Sat, Nov 14" · "sam. 14 nov."; long: "Saturday, November 14" · "samedi 14 novembre";
+ * dated (expiries, records, rates — anything that can be in another year): "Nov 14, 2026" · "14 nov. 2026"
+ */
+export function formatDate(localIso: string, locale: Locale, style: keyof typeof DATE_STYLES = 'short'): string {
+  return fmt(locale, DATE_STYLES[style]).format(wallClock(localIso));
 }
 
 /** schedule: "7.5 h" · "7,5 h"; payroll: "7.50 h" · "7,50 h" */

@@ -103,7 +103,7 @@ export default function ProfilePage() {
           <CardBody className="grid gap-3 pt-3">
             {unsigned.map((r) => (
               <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-warn-bg px-4 py-3">
-                <p className="text-small">{t('profile.recordFrom', { date: formatDate(r.issuedAt.slice(0, 10) + 'T12:00:00', lng, 'long') })}</p>
+                <p className="text-small">{t('profile.recordFrom', { date: formatDate(r.issuedAt.slice(0, 10) + 'T12:00:00', lng, 'dated') })}</p>
                 <Button size="sm" icon={<FileSignature className="h-4 w-4" aria-hidden="true" />} onClick={() => setSigning(r)}>
                   {t('profile.readAndSign')}
                 </Button>
@@ -127,7 +127,7 @@ export default function ProfilePage() {
                     <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                       <div className="min-w-0">
                         <p className="text-small font-semibold">{certName(c.certification)}</p>
-                        <p className="text-caption text-muted">{c.expiryDate ? t('profile.expires', { date: formatDate(`${c.expiryDate}T12:00:00`, lng, 'long') }) : t('profile.noExpiry')}</p>
+                        <p className="text-caption text-muted">{c.expiryDate ? t('profile.expires', { date: formatDate(`${c.expiryDate}T12:00:00`, lng, 'dated') }) : t('profile.noExpiry')}</p>
                       </div>
                       {expired ? (
                         <StatusPill tone="danger">{t('profile.expired')}</StatusPill>
@@ -243,7 +243,7 @@ export default function ProfilePage() {
         open={signing !== null}
         onClose={() => setSigning(null)}
         title={t('profile.recordTitle')}
-        description={signing ? t('profile.recordFrom', { date: formatDate(signing.issuedAt.slice(0, 10) + 'T12:00:00', lng, 'long') }) : ''}
+        description={signing ? t('profile.recordFrom', { date: formatDate(signing.issuedAt.slice(0, 10) + 'T12:00:00', lng, 'dated') }) : ''}
         closeLabel={t('common.close')}
         footer={
           <>

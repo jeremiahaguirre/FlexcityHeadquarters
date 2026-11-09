@@ -23,7 +23,7 @@ export default function CertificationsPage() {
   const expiring = useQuery<Cert[]>(`/api/certifications/expiring?days=${days}`);
   const { run, busy } = useAction();
   const name = (c: Cert['certification']) => (lng === 'fr-CA' && c.nameFr ? c.nameFr : c.name);
-  const date = (d: string) => formatDate(`${d}T12:00:00`, lng, 'long');
+  const date = (d: string) => formatDate(`${d}T12:00:00`, lng, 'dated');
   const daysLeft = (d: string) => Math.round((Date.parse(`${d}T00:00:00`) - Date.now()) / 86_400_000);
 
   return (
