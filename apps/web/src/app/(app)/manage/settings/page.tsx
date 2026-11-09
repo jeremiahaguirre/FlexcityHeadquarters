@@ -17,6 +17,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { PROVINCES, TIMEZONES } from '@/lib/regions';
 import { RoleEditor } from '@/components/roles/RoleEditor';
+import { DeckStations } from '@/components/pools/DeckStations';
 import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import type { CustomRole, RoleCatalog } from '@/lib/customRoles';
 import { useSession } from '@/lib/session';
@@ -24,7 +25,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
 
-interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null }
+interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null; rotationMinutes?: number; maxOnChairMinutes?: number }
 interface Override { id: string; province: string | null; ruleKey: string; value: unknown; effectiveFrom: string; effectiveTo: string | null; source: string }
 interface Period { kind: 'TERM' | 'BREAK'; name: string; startsOn: string; endsOn: string }
 interface Settings {
@@ -189,7 +190,7 @@ function Facilities({ s, reload }: Props) {
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const body = { name: str(f, 'name'), province: str(f, 'province'), timezone: str(f, 'tz'), latitude: num(f, 'lat'), longitude: num(f, 'lng'), geoRadiusM: num(f, 'radius'), costCenter: str(f, 'cc') };
+    const body = { name: str(f, 'name'), province: str(f, 'province'), timezone: str(f, 'tz'), latitude: num(f, 'lat'), longitude: num(f, 'lng'), geoRadiusM: num(f, 'radius'), costCenter: str(f, 'cc'), rotationMinutes: num(f, 'rotation') ?? undefined, maxOnChairMinutes: num(f, 'maxChair') ?? undefined };
     const r = await run('fac', () => (current ? api(`/api/settings/facilities/${current.id}`, { method: 'PATCH', body }) : api('/api/settings/facilities', { method: 'POST', body })), t('profile.saved'));
     if (r !== undefined) {
       setEditing(null);
@@ -251,6 +252,8 @@ function Facilities({ s, reload }: Props) {
             <Field label={t('settings.radius')} hint={t('settings.radiusHint')}>{(p) => <Input {...p} name="radius" type="number" min={25} max={2000} required defaultValue={current?.geoRadiusM ?? 150} />}</Field>
             <Field label={t('settings.latitude')}>{(p) => <Input {...p} name="lat" inputMode="decimal" defaultValue={current?.latitude ?? ''} placeholder="49.8880" />}</Field>
             <Field label={t('settings.longitude')}>{(p) => <Input {...p} name="lng" inputMode="decimal" defaultValue={current?.longitude ?? ''} placeholder="-119.4960" />}</Field>
+            <Field label={t('deck.rotationMinutes')} hint={t('deck.rotationMinutesHint')}>{(p) => <Input {...p} name="rotation" type="number" min={10} max={120} defaultValue={current?.rotationMinutes ?? 30} />}</Field>
+            <Field label={t('deck.maxOnChair')} hint={t('deck.maxOnChairHint')}>{(p) => <Input {...p} name="maxChair" type="number" min={30} max={480} defaultValue={current?.maxOnChairMinutes ?? 120} />}</Field>
           </div>
           <Button type="submit" loading={busy === 'fac'}>
             {t('common.save')}
@@ -304,6 +307,7 @@ function Pools() {
           )}
         />
       )}
+      {facilities.data?.length ? <DeckStations facilities={facilities.data} pools={(pools.data ?? []).map((p) => ({ id: p.id, name: p.name }))} /> : null}
       <Dialog open={!!editing} onClose={() => setEditing(null)} title={editing?.name ?? ''} description={t('settings.thresholdsHelp')} closeLabel={t('common.close')}>
         <form key={editing?.id} onSubmit={(e) => void save(e)} className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">

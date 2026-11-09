@@ -147,7 +147,8 @@
     "jobs": "Job postings",
     "headcount": "Headcount",
     "headcountShort": "Count",
-    "people": "People review"
+    "people": "People review",
+    "deck": "Rotation"
   },
   "navGroups": {
     "mine": "My work",
@@ -194,7 +195,8 @@
     "conduct_note_added": "A supervisor added a note to your file. You can read it on your profile.",
     "commendation_added": "You received a commendation. Nice work!",
     "review_needed": "{{name}} may need a conversation. See why on their file.",
-    "discipline_response": "An employee added their response to a record you issued."
+    "discipline_response": "An employee added their response to a record you issued.",
+    "rotation_overdue": "Rotation overdue at {{station}}. Move the guards along."
   },
   "today": {
     "morning": "Good morning",
@@ -1121,6 +1123,10 @@
       "emailNotifications": {
         "name": "Notification emails",
         "help": "Emails for schedule changes, approvals and expiring certifications. Invitations and password resets always send."
+      },
+      "rotations": {
+        "name": "Deck rotation",
+        "help": "Lifeguard chair plan, rotation timers, fatigue limits and the rotation log."
       }
     },
     "positions": "Positions",
@@ -1636,5 +1642,49 @@
       "Every time a manager opens your file, it's logged. You can ask HR to correct anything inaccurate, and you have a right to see the information held about you."
     ],
     "skipsSteps": "This skips steps in progressive discipline. Say in the summary why (for example, how serious the safety breach was), or choose an earlier step."
+  },
+  "deck": {
+    "title": "Rotation",
+    "description": "Who is on which chair, when they move, and who needs a break. Every move is logged.",
+    "rotationMinutes": "Rotation (minutes)",
+    "rotationMinutesHint": "How long a guard stays on one station before moving on. Often 20 to 30 minutes.",
+    "maxOnChair": "Break after (minutes on deck)",
+    "maxOnChairHint": "Continuous time on stations before a guard must come off for a break.",
+    "stations": "Deck stations",
+    "stationsHelp": "Chairs and positions, in the order the rotation moves through them.",
+    "addStation": "Add a station",
+    "noStations": "No stations yet",
+    "noStationsHelp": "A supervisor adds the chairs and positions in Settings, Pools.",
+    "anyPool": "Any pool",
+    "retired": "Retired",
+    "restore": "Restore",
+    "retire": "Retire",
+    "stationName": "Name",
+    "stationNameHint": "For example: Deep end chair, Slide tower, Roving.",
+    "pool": "Pool",
+    "order": "Order",
+    "orderHint": "Guards move from lower numbers to higher. The first station gets the most-rested guard.",
+    "rotated": "Rotated. Everyone has been moved along.",
+    "updated": "Updated.",
+    "closed": "Deck closed. The rotation log is complete.",
+    "overdue": "{{m}} min overdue",
+    "moveIn": "Move in {{m}} min",
+    "empty": "Unstaffed",
+    "onStation": "On station",
+    "nobody": "Nobody",
+    "next": "Next rotation",
+    "nextHelp": "Everyone moves one station along every {{m}} minutes; the most-rested guard comes on.",
+    "toBreak": "{{name}} goes on break",
+    "noRelief": "Needs a break but nobody is free to relieve them: {{names}}.",
+    "rotateNow": "Rotate now",
+    "close": "Close the deck",
+    "onDuty": "On duty",
+    "onDutyHelp": "Clocked in here. Anyone on deck {{m}} minutes in a row needs a break.",
+    "nobodyOnDuty": "Nobody is clocked in here.",
+    "onChairFor": "On deck {{m}} min",
+    "restedFor": "Rested {{m}} min",
+    "available": "Available",
+    "yourStation": "You're on {{station}}. Move at {{time}}.",
+    "onBreak": "You're on break from the chair."
   }
 }

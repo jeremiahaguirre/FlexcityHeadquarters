@@ -1,4 +1,4 @@
-import { Activity, BadgeCheck, Banknote, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, Clock, Droplets, GraduationCap, Home, Megaphone, Repeat, Settings, ShieldAlert, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
+import { Activity, Armchair, BadgeCheck, Banknote, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, Clock, Droplets, GraduationCap, Home, Megaphone, Repeat, Settings, ShieldAlert, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -23,6 +23,7 @@ export const NAV: NavItem[] = [
   { href: '/availability', key: 'availability', icon: CalendarRange, group: 'mine', permission: 'availability.self', ready: true },
   { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'lessons.teach', ready: true },
   { href: '/headcount', key: 'headcount', icon: Calculator, group: 'deck', permission: 'ops.headcount.record', tab: 3, ready: true },
+  { href: '/deck', key: 'deck', icon: Armchair, group: 'deck', permission: 'deck.rotate', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: true },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: true },

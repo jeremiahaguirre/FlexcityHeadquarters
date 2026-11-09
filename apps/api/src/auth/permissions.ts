@@ -44,6 +44,7 @@ export const PERMISSIONS = [
   'shifts.self', // works shifts: Today and My schedule
   'lessons.teach', // teaches swim lessons: class lists and attendance
   'ops.headcount.record', // bather counts on deck (the clicker)
+  'deck.rotate', // run the lifeguard rotation (chair plan)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -106,9 +107,11 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'users.scheduling',
     'ops.configure',
     'jobs.manage',
+    'deck.rotate',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
+    'deck.rotate',
     'schedule.write',
     'shiftboard.assign_emergency',
     'ops.chemical.signoff',

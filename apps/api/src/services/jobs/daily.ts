@@ -7,6 +7,7 @@ import { notify, usersWithRoles } from '../notifications/notifier.js';
 import { anonymizeUser } from '../privacy/erasure.js';
 import { computeReliability } from '../reliability/score.js';
 import { reviewList } from '../people/reviewList.js';
+import { overdueRotations } from '../ops/rotation.js';
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const dayStart = (iso: string) => new Date(`${iso}T00:00:00Z`);
@@ -80,6 +81,26 @@ export async function flagForReview(tx: Tx, now = new Date()): Promise<number> {
     }
   }
   return flagged;
+}
+
+/**
+ * Every minute: tell the head guards and supervisors on duty at that facility
+ * (or all supervisors if none is clocked in) when a rotation is overdue, and
+ * the guard on the chair. Once per rotation.
+ */
+export async function rotationAlerts(tx: Tx, now = new Date()): Promise<number> {
+  const due = await overdueRotations(tx, now);
+  for (const log of due) {
+    const leads = await tx.timePunch.findMany({
+      where: { facilityId: log.facilityId, clockOut: null, user: { roles: { hasSome: ['HEAD_LIFEGUARD', 'AQUATIC_SUPERVISOR'] } } },
+      select: { userId: true },
+    });
+    const to = leads.length ? leads.map((l) => l.userId) : await usersWithRoles(tx, ['AQUATIC_SUPERVISOR']);
+    const station = log.stationId ? await tx.deckStation.findUnique({ where: { id: log.stationId }, select: { name: true } }) : null;
+    await notify(tx, log.tenantId, [...new Set([...to, log.userId])].map((userId) => ({ userId, type: 'rotation_overdue', params: { station: station?.name ?? '' }, link: '/deck' })));
+    await tx.rotationLog.update({ where: { id: log.id }, data: { overdueNotifiedAt: now } });
+  }
+  return due.length;
 }
 
 export const REMINDER_DAYS = [90, 60, 30, 7] as const;

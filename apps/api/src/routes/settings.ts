@@ -94,6 +94,8 @@ export const facilityBody = z.object({
   longitude: z.number().min(-142).max(-52).nullable(),
   geoRadiusM: z.number().int().min(25).max(2000),
   costCenter: z.string().max(40).nullable(),
+  rotationMinutes: z.number().int().min(10).max(120).optional(),
+  maxOnChairMinutes: z.number().int().min(30).max(480).optional(),
 });
 
 settingsRouter.post(

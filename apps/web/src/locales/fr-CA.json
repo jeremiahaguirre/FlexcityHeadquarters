@@ -147,7 +147,8 @@
     "jobs": "Offres d'emploi",
     "headcount": "Dénombrement",
     "headcountShort": "Compter",
-    "people": "Suivi du personnel"
+    "people": "Suivi du personnel",
+    "deck": "Rotation"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -194,7 +195,8 @@
     "conduct_note_added": "Un superviseur a ajouté une note à votre dossier. Vous pouvez la lire dans votre profil.",
     "commendation_added": "Vous avez reçu une mention d’éloge. Bravo!",
     "review_needed": "Une discussion avec {{name}} pourrait être nécessaire. Voyez pourquoi dans son dossier.",
-    "discipline_response": "Un employé a ajouté sa réponse à un dossier que vous avez émis."
+    "discipline_response": "Un employé a ajouté sa réponse à un dossier que vous avez émis.",
+    "rotation_overdue": "Rotation en retard à {{station}}. Faites avancer les sauveteurs."
   },
   "today": {
     "morning": "Bonjour",
@@ -1121,6 +1123,10 @@
       "emailNotifications": {
         "name": "Courriels d'avis",
         "help": "Courriels pour les changements d'horaire, les approbations et les certifications qui expirent. Les invitations et réinitialisations de mot de passe partent toujours."
+      },
+      "rotations": {
+        "name": "Rotation sur la plage",
+        "help": "Plan des chaises des sauveteurs, minuteries de rotation, limites de fatigue et registre des rotations."
       }
     },
     "positions": "Postes",
@@ -1636,5 +1642,49 @@
       "Chaque consultation de votre dossier par un gestionnaire est consignée. Vous pouvez demander aux RH de corriger toute erreur, et vous avez le droit de consulter les renseignements détenus à votre sujet."
     ],
     "skipsSteps": "Ceci saute des étapes de la discipline progressive. Expliquez pourquoi dans le résumé (par exemple, la gravité du manquement à la sécurité), ou choisissez une étape antérieure."
+  },
+  "deck": {
+    "title": "Rotation",
+    "description": "Qui est à quelle chaise, quand changer, et qui a besoin d’une pause. Chaque changement est consigné.",
+    "rotationMinutes": "Rotation (minutes)",
+    "rotationMinutesHint": "Temps passé à un poste avant de changer. Souvent de 20 à 30 minutes.",
+    "maxOnChair": "Pause après (minutes en poste)",
+    "maxOnChairHint": "Temps continu aux postes avant qu’un sauveteur doive prendre une pause.",
+    "stations": "Postes de surveillance",
+    "stationsHelp": "Chaises et postes, dans l’ordre que suit la rotation.",
+    "addStation": "Ajouter un poste",
+    "noStations": "Aucun poste pour l’instant",
+    "noStationsHelp": "Un superviseur ajoute les chaises et postes dans Paramètres, Bassins.",
+    "anyPool": "Tout bassin",
+    "retired": "Retiré",
+    "restore": "Rétablir",
+    "retire": "Retirer",
+    "stationName": "Nom",
+    "stationNameHint": "Par exemple : Chaise du bassin profond, Tour du toboggan, Mobile.",
+    "pool": "Bassin",
+    "order": "Ordre",
+    "orderHint": "Les sauveteurs passent des petits numéros aux grands. Le premier poste reçoit le sauveteur le plus reposé.",
+    "rotated": "Rotation faite. Tout le monde a avancé d’un poste.",
+    "updated": "Mis à jour.",
+    "closed": "Surveillance terminée. Le registre de rotation est complet.",
+    "overdue": "En retard de {{m}} min",
+    "moveIn": "Changer dans {{m}} min",
+    "empty": "Non couvert",
+    "onStation": "Au poste",
+    "nobody": "Personne",
+    "next": "Prochaine rotation",
+    "nextHelp": "Tout le monde avance d’un poste toutes les {{m}} minutes; le sauveteur le plus reposé entre.",
+    "toBreak": "{{name}} prend sa pause",
+    "noRelief": "Besoin d’une pause, mais personne n’est libre pour la relève : {{names}}.",
+    "rotateNow": "Faire la rotation",
+    "close": "Terminer la surveillance",
+    "onDuty": "En service",
+    "onDutyHelp": "Pointés ici. Après {{m}} minutes en poste d’affilée, une pause est nécessaire.",
+    "nobodyOnDuty": "Personne n’est pointé ici.",
+    "onChairFor": "En poste {{m}} min",
+    "restedFor": "Au repos {{m}} min",
+    "available": "Disponible",
+    "yourStation": "Vous êtes à {{station}}. Changement à {{time}}.",
+    "onBreak": "Vous êtes en pause de la chaise."
   }
 }

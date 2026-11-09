@@ -231,6 +231,10 @@ model Facility {
   billingTier         Int?
   /// Overrides the tier price (cents per month) when set.
   billingMonthlyCents Int?
+  /// Deck rotation: minutes on one station before moving on.
+  rotationMinutes     Int      @default(30)
+  /// Fatigue limit: continuous minutes on stations (across rotations) before a break.
+  maxOnChairMinutes   Int      @default(120)
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
@@ -239,6 +243,7 @@ model Facility {
   poolBodies  PoolBody[]
   timePunches TimePunch[]
   incidents   IncidentReport[]
+  deckStations DeckStation[]
 
   @@index([tenantId])
 }
@@ -802,6 +807,38 @@ model IncidentReport {
   accessLog IncidentAccessLog[]
 
   @@index([tenantId, occurredAt])
+}
+
+/// A lifeguard station on deck (a chair, a roving position, the slide tower).
+model DeckStation {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  facilityId String    @db.Uuid
+  poolBodyId String?   @db.Uuid
+  name       String
+  sortOrder  Int       @default(0)
+  archivedAt DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+
+  @@index([facilityId])
+}
+
+/// Who was on which station, from when to when. stationId null = off the chair (break, other duties).
+model RotationLog {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @db.Uuid
+  facilityId        String    @db.Uuid
+  stationId         String?   @db.Uuid
+  userId            String    @db.Uuid
+  startedAt         DateTime  @db.Timestamptz(3)
+  endedAt           DateTime? @db.Timestamptz(3)
+  recordedById      String    @db.Uuid
+  overdueNotifiedAt DateTime? @db.Timestamptz(3)
+
+  @@index([facilityId, startedAt])
+  @@index([userId, startedAt])
 }
 
 /// A supervisor's factual note about someone's conduct or performance,

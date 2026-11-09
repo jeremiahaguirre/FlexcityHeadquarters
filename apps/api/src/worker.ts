@@ -6,7 +6,7 @@
 import pg from 'pg';
 import { config } from './config.js';
 import { db, tenantIds, withTenant } from './lib/db.js';
-import { anonymizeDue, certificationReminders, detectNoShows, flagForReview, forgottenClockOuts, recomputeReliability } from './services/jobs/daily.js';
+import { anonymizeDue, certificationReminders, detectNoShows, flagForReview, forgottenClockOuts, rotationAlerts, recomputeReliability } from './services/jobs/daily.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 
 const cfg = config();
@@ -34,7 +34,10 @@ async function perTenant(fn: (tx: Parameters<Parameters<typeof withTenant>[1]>[0
   return total;
 }
 
-const minutely = () => exclusive('email', () => deliverOutbox(db(), mailer));
+const minutely = async () => {
+  await exclusive('rotation-alerts', () => perTenant((tx) => rotationAlerts(tx)));
+  await exclusive('email', () => deliverOutbox(db(), mailer));
+};
 const hourly = async () => {
   await exclusive('clock-out', () => perTenant((tx) => forgottenClockOuts(tx)));
   await exclusive('cert-reminders', () => perTenant((tx) => certificationReminders(tx)));

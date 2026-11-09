@@ -1,5 +1,6 @@
 'use client';
 
+import { MyStation } from '@/components/punch/MyStation';
 import { ArrowRight, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
@@ -63,6 +64,7 @@ export default function TodayPage() {
           {greeting}, {me?.firstName}
         </h1>
       </header>
+      <MyStation />
 
       {can('timeclock.punch') ? (
         <section aria-label={t('timeclock.title')}>

@@ -178,3 +178,56 @@ describe('people review', () => {
     expect(requiredChecks('TERMINATION', true)).toContain('counselReviewed');
   });
 });
+
+import { chainMinutesFor, suggestRotation } from '../../src/services/ops/rotation.js';
+
+describe('deck rotation', () => {
+  const since = (m: number) => new Date(Date.parse('2026-11-10T12:00:00Z') - m * 60_000);
+
+  it('pushes everyone one station along; the most-rested guard comes on and the last goes on break', () => {
+    const s = suggestRotation(
+      [{ id: 's1', occupant: 'a' }, { id: 's2', occupant: 'b' }],
+      [{ userId: 'c', since: since(40) }, { userId: 'd', since: since(10) }],
+      new Map(),
+      120,
+    );
+    expect(s.assignments).toEqual([{ stationId: 's1', userId: 'c' }, { stationId: 's2', userId: 'a' }]);
+    expect(s.toBreak).toEqual(['b']);
+  });
+
+  it('takes a tired guard off instead of moving them on, and brings in the next rested guard', () => {
+    const s = suggestRotation(
+      [{ id: 's1', occupant: 'a' }, { id: 's2', occupant: 'b' }],
+      [{ userId: 'c', since: since(40) }, { userId: 'd', since: since(30) }],
+      new Map([['a', 130]]),
+      120,
+    );
+    expect(s.assignments).toEqual([{ stationId: 's1', userId: 'c' }, { stationId: 's2', userId: 'd' }]);
+    expect(s.toBreak).toEqual(['a', 'b']);
+  });
+
+  it('with nobody to relieve them, guards stay put and a tired one is flagged', () => {
+    const s = suggestRotation([{ id: 's1', occupant: 'a' }], [], new Map([['a', 150]]), 120);
+    expect(s.assignments).toEqual([{ stationId: 's1', userId: 'a' }]);
+    expect(s.stillNeedBreak).toEqual(['a']);
+  });
+
+  it('counts back-to-back stations as continuous chair time, and a break resets it', () => {
+    const now = since(0);
+    expect(chainMinutesFor([
+      { stationId: 's2', startedAt: since(30), endedAt: null },
+      { stationId: 's1', startedAt: since(60), endedAt: since(30) },
+      { stationId: null, startedAt: since(75), endedAt: since(60) },
+      { stationId: 's1', startedAt: since(120), endedAt: since(75) },
+    ], now)).toBe(60);
+  });
+});
+
+describe('deck rotation from an empty deck', () => {
+  it('fills every empty station with rested guards, longest-rested first', () => {
+    const at = (m: number) => new Date(Date.parse('2026-11-10T12:00:00Z') - m * 60_000);
+    const s = suggestRotation([{ id: 's1', occupant: null }, { id: 's2', occupant: null }], [{ userId: 'b', since: at(5) }, { userId: 'a', since: at(50) }, { userId: 'c', since: at(1) }], new Map(), 120);
+    expect(s.assignments).toEqual([{ stationId: 's1', userId: 'a' }, { stationId: 's2', userId: 'b' }]);
+    expect(s.toBreak).toEqual([]);
+  });
+});
