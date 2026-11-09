@@ -8,7 +8,7 @@ export function SiteFooter({ lang }: { lang: Lang }) {
   const col = 'grid content-start gap-2 text-small';
   return (
     <footer className="border-t border-line bg-panel">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-[2fr_1fr_1fr_1fr] md:px-6">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 md:grid-cols-[2fr_1fr_1fr_1fr] md:px-6">
         <div className="grid content-start gap-3">
           <Logo size={32} />
           <p className="max-w-xs text-small text-muted">{c.footer.tagline}</p>
@@ -38,7 +38,7 @@ export function SiteFooter({ lang }: { lang: Lang }) {
         </div>
       </div>
       <div className="border-t border-line">
-        <p className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2 px-4 py-5 text-caption text-muted md:px-6">
+        <p className="mx-auto flex max-w-7xl flex-wrap justify-between gap-2 px-4 py-5 text-caption text-muted md:px-6">
           <span>© {new Date().getFullYear()} FlexcityHeadquarters. {c.footer.rights}</span>
           <span>{c.footer.madeIn}</span>
         </p>

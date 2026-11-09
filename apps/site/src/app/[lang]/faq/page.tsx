@@ -12,7 +12,8 @@ export function generateMetadata({ params }: { params: { lang: Lang } }) {
 
 export default function Faq({ params }: { params: { lang: Lang } }) {
   const all = copy(params.lang);
-  const c = all.faq;
+  // The billing questions shown on the plans page also belong to the last group here (Plans and billing).
+  const c = { ...all.faq, groups: all.faq.groups.map((g, i, a) => (i === a.length - 1 ? { ...g, items: [...g.items, ...all.plans.faq] } : g)) };
   // FAQPage structured data helps search engines show answers.
   const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: c.groups.flatMap((g) => g.items.map((i) => ({ '@type': 'Question', name: i.q, acceptedAnswer: { '@type': 'Answer', text: i.a } }))) };
   return (

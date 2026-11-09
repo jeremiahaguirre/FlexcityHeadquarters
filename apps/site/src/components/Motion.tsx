@@ -73,3 +73,18 @@ export function CountUp({ value }: { value: string }) {
     </span>
   );
 }
+
+/**
+ * The countdown inside the working-alone picture. The server renders a fixed time; once
+ * the page is live it ticks down each second and starts over, unless motion is reduced.
+ */
+export function LoneTimer({ className }: { className?: string }) {
+  const START = 14 * 60 + 59;
+  const [s, setS] = useState(START);
+  useEffect(() => {
+    if (reduced()) return;
+    const id = window.setInterval(() => setS((x) => (x <= 0 ? START : x - 1)), 1000);
+    return () => window.clearInterval(id);
+  }, [START]);
+  return <span className={className}>{Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}</span>;
+}
