@@ -34,6 +34,11 @@ jobs:
           cache: npm
       - run: npm ci
         working-directory: .
+      # Known vulnerabilities in production dependencies (reported; Dependabot raises the fixes).
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+        working-directory: .
+        continue-on-error: true
       - run: npx prisma generate
       - run: npx prisma validate
       - run: npm run typecheck
