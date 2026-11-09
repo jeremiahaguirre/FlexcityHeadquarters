@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { NavLinks } from '@/components/NavLinks';
 import { Providers } from '@/components/Providers';
 import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
 import { currentTenant } from '@/lib/tenant';
@@ -34,6 +35,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <LanguageToggle />
             </div>
           </header>
+          {tenant ? <NavLinks /> : null}
           <main id="main" className="mx-auto max-w-4xl px-4 py-6">
             {tenant ? children : <p role="alert">{t('app.unknownOrg')}</p>}
           </main>
