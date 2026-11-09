@@ -2,31 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Neutral tokens. Brand tokens (--brand, --accent…) are injected per tenant in layout.tsx. */
+/*
+ * FH colour tokens (see /brand/README.md). RGB triplets so Tailwind can apply opacity.
+ * Brand tokens (--brand, --accent…) are injected per tenant in layout.tsx.
+ * Balance: soft neutrals ~70%, teal ~20%, accents < 10% and only with a meaning.
+ */
 :root {
-  --surface: 246 248 250;
-  --ink: 17 24 39;
-  --muted: 75 85 99;
-  --line: 209 213 219;
-  --ok: 21 128 61;
-  --warn: 180 83 9;
-  --danger: 185 28 28;
-  --page: 255 255 255;
-  --brand-text: 15 118 110; /* FH teal, for brand-coloured text */
+  --page: 243 247 246;        /* app background */
+  --panel: 255 255 255;       /* cards, sheets */
+  --surface: 234 241 239;     /* subtle fills: hover, table headers */
+  --ink: 11 31 34;
+  --muted: 86 105 107;        /* 5.4:1 on page */
+  --line: 217 227 225;
+  --brand-text: 15 118 110;   /* teal text */
+  --ok: 77 124 15;            /* chartreuse text: confirmed, open */
+  --ok-bg: 241 251 211;
+  --warn: 180 35 24;          /* vermilion text: needs attention */
+  --warn-bg: 253 231 228;
+  --danger: 159 18 57;        /* crimson: closed, errors that block */
+  --danger-bg: 255 228 230;
+  --new: 162 28 175;          /* magenta text: new, notifications */
+  --new-bg: 250 232 253;
+  --chartreuse: 197 242 58;   /* raw fill, always with ink text */
+  --overlay: 11 31 34;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --surface: 31 41 55;
-    --ink: 243 244 246;
-    --muted: 156 163 175;
-    --line: 55 65 81;
-    --ok: 74 222 128;
-    --warn: 251 191 36;
-    --danger: 248 113 113;
-    --page: 17 24 39;
-    --brand-text: 94 234 212; /* light teal */
+    --page: 11 20 22;
+    --panel: 18 32 31;
+    --surface: 24 42 43;
+    --ink: 234 242 240;
+    --muted: 154 176 173;
+    --line: 35 57 58;
+    --brand-text: 94 234 212;
+    --ok: 197 242 58;
+    --ok-bg: 38 51 13;
+    --warn: 255 138 122;
+    --warn-bg: 61 22 18;
+    --danger: 253 164 175;
+    --danger-bg: 76 5 25;
+    --new: 240 171 252;
+    --new-bg: 58 19 64;
+    --overlay: 0 0 0;
     color-scheme: dark;
   }
 }
@@ -50,4 +69,15 @@
 body {
   background: rgb(var(--page));
   color: rgb(var(--ink));
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* One focus style everywhere: visible, brand-coloured, never removed. */
+:focus-visible {
+  outline: 2px solid rgb(var(--brand));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
