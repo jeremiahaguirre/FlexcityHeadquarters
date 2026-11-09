@@ -16,7 +16,7 @@ import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { evaluateCandidate } from '../scheduling/eligibility.js';
-import { loadCandidate, loadCandidates, loadShiftBundle } from '../scheduling/eligibilityLoader.js';
+import { evalOpts, loadCandidate, loadCandidates, loadShiftBundle } from '../scheduling/eligibilityLoader.js';
 
 const LATE_DROP_HOURS = 24;
 
@@ -56,7 +56,7 @@ export async function postOffer(tx: Tx, actor: Actor, shiftId: string): Promise<
   const candidates = await loadCandidates(tx, bundle);
   const eligibleUserIds = candidates
     .filter((c) => c.userId !== actor.userId)
-    .map((c) => ({ c, e: evaluateCandidate(c, shift, bundle.position, { rules: bundle.rules, payWeekStartDay: bundle.payWeekStartDay, requireAvailability: false }) }))
+    .map((c) => ({ c, e: evaluateCandidate(c, shift, bundle.position, evalOpts(bundle)) }))
     .filter(({ e }) => e.eligible)
     .map(({ c }) => c.userId);
 
@@ -96,11 +96,7 @@ export async function claimOffer(
 
   const candidate = await loadCandidate(tx, bundle, actor.userId);
   if (!candidate) throw notFound('User');
-  const evaluation = evaluateCandidate(candidate, bundle.shift, bundle.position, {
-    rules: bundle.rules,
-    payWeekStartDay: bundle.payWeekStartDay,
-    requireAvailability: false,
-  });
+  const evaluation = evaluateCandidate(candidate, bundle.shift, bundle.position, evalOpts(bundle));
   if (!evaluation.eligible) {
     throw new HttpError(422, 'NOT_ELIGIBLE', 'You are not eligible for this shift.', { blocks: evaluation.blocks });
   }
@@ -169,11 +165,7 @@ export async function decideOffer(
   if (!bundle) throw notFound('Shift');
   const candidate = await loadCandidate(tx, bundle, claimantId);
   if (!candidate) throw notFound('User');
-  const evaluation = evaluateCandidate(candidate, bundle.shift, bundle.position, {
-    rules: bundle.rules,
-    payWeekStartDay: bundle.payWeekStartDay,
-    requireAvailability: false,
-  });
+  const evaluation = evaluateCandidate(candidate, bundle.shift, bundle.position, evalOpts(bundle));
   if (!evaluation.eligible) {
     throw new HttpError(422, 'NO_LONGER_ELIGIBLE', 'The claimant is no longer eligible for this shift.', { blocks: evaluation.blocks });
   }

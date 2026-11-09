@@ -9,7 +9,7 @@ import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { dec } from '../../lib/money.js';
 import { type Evaluation, evaluateCandidate } from './eligibility.js';
-import { loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
+import { evalOpts, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
 import { postOffer } from '../shiftboard/offers.js';
 import type { NotificationDraft } from '../notifications/notifier.js';
 
@@ -92,7 +92,7 @@ export async function updateShift(
   if (before.userId) {
     const bundle = (await loadShiftBundle(tx, shiftId))!;
     const c = await loadCandidate(tx, bundle, before.userId);
-    const e = c && evaluateCandidate(c, bundle.shift, bundle.position, { rules: bundle.rules, payWeekStartDay: bundle.payWeekStartDay, requireAvailability: false });
+    const e = c && evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle));
     if (e && !e.eligible) {
       throw new HttpError(422, 'ASSIGNEE_NOT_ELIGIBLE', 'The assigned person could not work this shift after the change. Unassign them first.', { blocks: e.blocks });
     }
@@ -134,7 +134,7 @@ export async function assignShift(
   if (userId) {
     const c = await loadCandidate(tx, bundle, userId);
     if (!c) throw notFound('Staff member');
-    evaluation = evaluateCandidate(c, bundle.shift, bundle.position, { rules: bundle.rules, payWeekStartDay: bundle.payWeekStartDay, requireAvailability: false });
+    evaluation = evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle));
     if (!evaluation.eligible) throw new HttpError(422, 'NOT_ELIGIBLE', 'This person cannot work this shift.', { blocks: evaluation.blocks });
     if (evaluation.overtimeHours.gt(0) && !acknowledgeOvertime) {
       throw conflict('OVERTIME_REQUIRES_ACK', `This adds ${evaluation.overtimeHours.toFixed(2)} h of overtime. Confirm to assign anyway.`, {
@@ -232,7 +232,7 @@ export async function rankCandidates(tx: Tx, shiftId: string) {
   for (const u of qualified) {
     const c = await loadCandidate(tx, bundle, u.id);
     if (!c) continue;
-    const e = evaluateCandidate(c, bundle.shift, bundle.position, { rules: bundle.rules, payWeekStartDay: bundle.payWeekStartDay, requireAvailability: false });
+    const e = evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle));
     out.push({
       user: u,
       eligible: e.eligible,

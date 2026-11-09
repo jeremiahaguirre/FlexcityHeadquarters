@@ -139,10 +139,12 @@ api.post(
       const proposal = proposeSchedule({
         shifts: bundles.map((b) => ({ shift: b.shift, position: b.position })),
         candidates,
-        rules: resolveRules(facility.province, localDate(body.from, facility.timezone)),
+        // Same rules (incl. collective-agreement overrides) and school calendar as every other check.
+        rules: bundles[0]?.rules ?? resolveRules(facility.province, localDate(body.from, facility.timezone)),
         payWeekStartDay: facility.tenant.payWeekStartDay,
         distributionMode: body.distributionMode,
         useShadowTiers: body.useShadowTiers,
+        schoolCalendar: bundles[0]?.schoolCalendar,
       });
       if (body.apply) {
         // Drafts only — a supervisor still publishes. Compare-and-set on version.

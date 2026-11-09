@@ -11,7 +11,8 @@ import { dec } from '../../lib/money.js';
 import type { Tx } from '../../lib/db.js';
 import { localDate } from '../../lib/time.js';
 import { type ProvinceRules, resolveRules } from '../compliance/provincialRules.js';
-import type { CandidateContext, PositionSpec, ShiftSpec } from './eligibility.js';
+import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
+import type { CandidateContext, EvaluateOptions, PositionSpec, SchoolCalendar, ShiftSpec } from './eligibility.js';
 
 const NEIGHBOURHOOD_MS = 8 * 86_400_000; // enough for rest + weekly checks
 
@@ -21,6 +22,12 @@ export interface ShiftBundle {
   province: Province;
   rules: ProvinceRules;
   payWeekStartDay: number;
+  schoolCalendar: SchoolCalendar;
+}
+
+/** Evaluation options for a shift — every caller uses this so none forgets a rule input. */
+export function evalOpts(bundle: ShiftBundle, requireAvailability = false): EvaluateOptions {
+  return { rules: bundle.rules, payWeekStartDay: bundle.payWeekStartDay, requireAvailability, schoolCalendar: bundle.schoolCalendar };
 }
 
 export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBundle | null> {
@@ -44,6 +51,10 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
       effectiveFrom: o.effectiveFrom.toISOString().slice(0, 10),
       effectiveTo: o.effectiveTo?.toISOString().slice(0, 10) ?? null,
     })),
+  );
+  const periods = await tx.schoolCalendarPeriod.findMany();
+  const schoolCalendar = buildSchoolCalendar(
+    periods.map((x) => ({ kind: x.kind, startsOn: x.startsOn.toISOString().slice(0, 10), endsOn: x.endsOn.toISOString().slice(0, 10) })),
   );
   const prerequisites = new Map<string, string[]>();
   for (const r of s.position.requirements) {
@@ -71,6 +82,7 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
     province: s.facility.province,
     rules,
     payWeekStartDay: s.facility.tenant.payWeekStartDay,
+    schoolCalendar,
   };
 }
 
