@@ -11,6 +11,10 @@ import { Dialog } from '@/components/ui/Dialog';
 import { cn } from '@/lib/cn';
 import { type NavItem, phoneTabs, visibleNav } from '@/lib/nav';
 import { useSession } from '@/lib/session';
+import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
+import { StepUpDialog } from '@/components/auth/StepUpDialog';
+import { api } from '@/lib/api';
+import { addPasskey } from '@/lib/passkeys';
 import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 
@@ -22,7 +26,7 @@ function isActive(pathname: string, href: string) {
 
 export function AppShell({ children, organization }: { children: ReactNode; organization: Organization }) {
   const { t } = useTranslation();
-  const { can } = useSession();
+  const { can, me } = useSession();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const items = visibleNav(can);
@@ -98,6 +102,9 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
           {children}
         </main>
       </div>
+
+      <StepUpDialog />
+      <PasskeyPrompt userId={me?.id} list={() => api<unknown[]>('/api/me/passkeys')} add={addPasskey} />
 
       {/* Phone tab bar */}
       <nav

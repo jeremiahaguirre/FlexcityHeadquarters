@@ -1,12 +1,14 @@
 'use client';
 
-import { Building2, LogOut, Terminal } from 'lucide-react';
+import { Building2, KeyRound, LogOut, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Logo } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
+import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
+import { platformAddPasskey } from '@/lib/passkeys';
 import { papi, usePlatformQuery } from '@/lib/platform';
 
 /** The FH Dev console frame: FH branding only, no organization. */
@@ -19,7 +21,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
 function SignedIn({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
-  const me = usePlatformQuery<{ name: string; email: string }>('/me');
+  const me = usePlatformQuery<{ id: string; name: string; email: string }>('/me');
   return (
     <div className="min-h-screen bg-page">
       <header className="sticky top-0 z-30 border-b border-line bg-panel/95 backdrop-blur">
@@ -35,6 +37,10 @@ function SignedIn({ children }: { children: ReactNode }) {
             <Link href="/platform" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
               <Building2 className="h-4 w-4" aria-hidden="true" />
               {t('platform.cities')}
+            </Link>
+            <Link href="/platform/account" className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-small font-semibold text-muted hover:bg-surface hover:text-ink" title={t('platform.account')}>
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">{t('platform.account')}</span>
             </Link>
             <AuthLanguageSwitch />
             <button
@@ -52,6 +58,7 @@ function SignedIn({ children }: { children: ReactNode }) {
       <main id="main" className="mx-auto max-w-6xl px-4 pb-16 pt-8 md:px-8">
         {me.data ? children : null}
       </main>
+      <PasskeyPrompt userId={me.data?.id} list={() => papi<unknown[]>('/passkeys')} add={platformAddPasskey} />
     </div>
   );
 }

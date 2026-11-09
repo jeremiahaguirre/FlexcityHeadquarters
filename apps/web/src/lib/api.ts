@@ -36,7 +36,7 @@ async function refresh(): Promise<boolean> {
   return refreshing;
 }
 
-export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}, retry = true): Promise<T> {
+export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}, retry = true, steppedUp = false): Promise<T> {
   if (DEMO) return demoApi<T>(path, init);
   if (!accessToken && retry && !path.startsWith('/api/auth/')) await refresh();
   const res = await fetch(path, {
@@ -49,14 +49,27 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
-  if (res.status === 401 && retry && !path.startsWith('/api/auth/')) {
-    if (await refresh()) return api<T>(path, init, false);
-  }
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { code?: string; message?: string; details?: unknown };
+    // Sensitive action, sign-in not recent: confirm with a passkey or password, then try once more.
+    if (body.code === 'STEP_UP_REQUIRED' && !steppedUp && stepUpHandler && (await stepUpHandler())) return api<T>(path, init, retry, true);
+    if (res.status === 401 && body.code !== 'STEP_UP_REQUIRED' && retry && !path.startsWith('/api/auth/')) {
+      if (await refresh()) return api<T>(path, init, false, steppedUp);
+    }
     throw new ApiError(res.status, body.code ?? 'ERROR', body.message ?? res.statusText, body.details);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+type StepUpHandler = () => Promise<boolean>;
+let stepUpHandler: StepUpHandler | null = null;
+/** The app registers the "Confirm it's you" dialog here. */
+export function setStepUpHandler(fn: StepUpHandler | null) {
+  stepUpHandler = fn;
+}
+/** After signing in with a passkey or confirming it's you. */
+export function setAccessToken(token: string) {
+  accessToken = token;
 }
 
 /**
@@ -68,8 +81,12 @@ export async function apiDownload(path: string, retry = true): Promise<{ ok: tru
   if (DEMO) return demoApi(path, { method: 'DOWNLOAD' });
   if (!accessToken && retry) await refresh();
   const res = await fetch(path, { credentials: 'include', headers: { ...tenantHeader(), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) } });
-  if (res.status === 401 && retry && (await refresh())) return apiDownload(path, false);
-  if (!res.ok) return { ok: false, status: res.status, error: (await res.json().catch(() => ({}))) as Record<string, unknown> };
+  if (!res.ok) {
+    const error = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (error.code === 'STEP_UP_REQUIRED' && retry && stepUpHandler && (await stepUpHandler())) return apiDownload(path, false);
+    if (res.status === 401 && error.code !== 'STEP_UP_REQUIRED' && retry && (await refresh())) return apiDownload(path, false);
+    return { ok: false, status: res.status, error };
+  }
   return { ok: true, blob: await res.blob(), headers: res.headers };
 }
 

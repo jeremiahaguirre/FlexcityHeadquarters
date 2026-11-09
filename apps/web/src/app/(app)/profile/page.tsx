@@ -15,6 +15,8 @@ import { formatDate } from '@/lib/format';
 import { LOCALE_COOKIE } from '@/lib/i18n';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { PasskeysCard } from '@/components/auth/PasskeysCard';
+import { addPasskey } from '@/lib/passkeys';
 
 interface Reliability {
   score: number;
@@ -114,6 +116,11 @@ export default function ProfilePage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <PasskeysCard
+          list={() => api('/api/me/passkeys')}
+          add={addPasskey}
+          remove={(id) => api(`/api/me/passkeys/${id}`, { method: 'DELETE' })}
+        />
         <Card>
           <CardHeader title={t('profile.certifications')} action={<Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAdding(true)}>{t('profile.addCert')}</Button>} />
           <CardBody className="pt-3">

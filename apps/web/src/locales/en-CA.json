@@ -248,7 +248,13 @@
     "ALREADY_ACKNOWLEDGED": "You already signed this record.",
     "OVERTIME_REQUIRES_ACK": "This would add overtime. Confirm to assign anyway.",
     "ASSIGNEE_NOT_ELIGIBLE": "The assigned person couldn't work it after this change. Unassign them first.",
-    "SHIFT_CANCELLED": "This shift was cancelled."
+    "SHIFT_CANCELLED": "This shift was cancelled.",
+    "STEP_UP_REQUIRED": "Confirm it's you to continue.",
+    "PASSKEY_FAILED": "That passkey didn't work. Try again or use your password.",
+    "PASSKEY_EXPIRED": "That took too long. Try again.",
+    "PASSKEY_UNKNOWN": "That passkey isn't set up here.",
+    "NO_PASSKEY": "No passkey on this account.",
+    "TOO_MANY_PASSKEYS": "Remove a passkey before adding another."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1147,6 +1153,32 @@
       },
       "help_one": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You'll see every row checked before anything is created. This city has {{count}} position to match against.",
       "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You'll see every row checked before anything is created. This city has {{count}} positions to match against."
-    }
+    },
+    "account": "Your account",
+    "accountHelp": "Passkeys for signing in to the Dev console. Adding or removing one needs a sign-in from the last 10 minutes."
+  },
+  "passkeys": {
+    "title": "Passkeys",
+    "help": "Sign in with your face, fingerprint or device PIN instead of a password: Face ID and Touch ID, Android fingerprint or face unlock, Windows Hello, or a security key. Your fingerprint or face never leaves your device.",
+    "add": "Add a passkey",
+    "added": "Passkey added. Next time, sign in with it.",
+    "none": "No passkeys yet.",
+    "unsupported": "This browser can't use passkeys. Try an up-to-date Chrome, Safari, Edge or Firefox.",
+    "addedOn": "Added {{date}}",
+    "lastUsed": "last used {{date}}",
+    "remove": "Remove",
+    "removeNamed": "Remove passkey {{name}}",
+    "removed": "Passkey removed",
+    "failed": "That didn't work. Try again, or use your password.",
+    "unknown": "That passkey isn't set up for this organization. Sign in with your password, then add it from your profile.",
+    "signIn": "Sign in with a passkey",
+    "offerTitle": "Sign in faster next time",
+    "offerHelp": "Use Face ID, your fingerprint or Windows Hello on this device instead of typing your password. It also confirms it's you for payroll and other sensitive changes.",
+    "setUp": "Set it up",
+    "notNow": "Not now",
+    "confirmTitle": "Confirm it's you",
+    "confirmHelp": "This change needs a recent sign-in. Use your passkey or password to continue; you won't be asked again for 10 minutes.",
+    "confirmWithPasskey": "Use Face ID, fingerprint or Windows Hello",
+    "confirmWithPassword": "Confirm with password"
   }
 }

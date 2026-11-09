@@ -3,12 +3,15 @@
 import { LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { type FormEvent, Suspense, useState } from 'react';
+import { type FormEvent, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { ApiError, login } from '@/lib/api';
 import { DEMO, DEMO_ACCOUNTS, DEMO_PASSWORD, DEMO_ROLES } from '@/lib/demo';
+import { OFFER_FLAG } from '@/components/auth/PasskeyPrompt';
+import { PasskeyIcon } from '@/components/auth/PasskeyIcon';
+import { cancelled, passkeysSupported, signInWithPasskey } from '@/lib/passkeys';
 
 function LoginForm() {
   const { t } = useTranslation();
@@ -16,6 +19,8 @@ function LoginForm() {
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [canPasskey, setCanPasskey] = useState(false);
+  useEffect(() => setCanPasskey(passkeysSupported()), []);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,11 +28,30 @@ function LoginForm() {
     await signIn(String(form.get('email')), String(form.get('password')));
   }
 
+  async function withPasskey() {
+    setBusy(true);
+    setError(null);
+    try {
+      await signInWithPasskey();
+      const next = params.get('next');
+      router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
+    } catch (err) {
+      if (!cancelled(err)) setError(err instanceof ApiError && err.code === 'PASSKEY_UNKNOWN' ? t('passkeys.unknown') : t('passkeys.failed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function signIn(email: string, password: string) {
     setBusy(true);
     setError(null);
     try {
       await login(email, password);
+      try {
+        sessionStorage.setItem(OFFER_FLAG, '1'); // offer Face ID / fingerprint / Windows Hello next
+      } catch {
+        /* storage blocked */
+      }
       const next = params.get('next');
       router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
     } catch (err) {
@@ -62,6 +86,11 @@ function LoginForm() {
         <Button type="submit" size="lg" block loading={busy} icon={<LogIn className="h-5 w-5" aria-hidden="true" />}>
           {busy ? t('login.submitting') : t('login.submit')}
         </Button>
+        {canPasskey ? (
+          <Button variant="secondary" size="lg" block disabled={busy} icon={<PasskeyIcon />} onClick={() => void withPasskey()}>
+            {t('passkeys.signIn')}
+          </Button>
+        ) : null}
         {DEMO ? null : (
           <Link href="/forgot" className="justify-self-center rounded-lg text-small font-semibold text-brand-text hover:underline">
             {t('login.forgot')}

@@ -248,7 +248,13 @@
     "ALREADY_ACKNOWLEDGED": "Vous avez déjà signé ce document.",
     "OVERTIME_REQUIRES_ACK": "Cela ajouterait des heures supplémentaires. Confirmez pour affecter quand même.",
     "ASSIGNEE_NOT_ELIGIBLE": "La personne affectée ne pourrait plus faire ce quart après ce changement. Désaffectez-la d'abord.",
-    "SHIFT_CANCELLED": "Ce quart a été annulé."
+    "SHIFT_CANCELLED": "Ce quart a été annulé.",
+    "STEP_UP_REQUIRED": "Confirmez votre identité pour continuer.",
+    "PASSKEY_FAILED": "Cette clé d'accès n'a pas fonctionné. Réessayez ou utilisez votre mot de passe.",
+    "PASSKEY_EXPIRED": "Le délai est écoulé. Réessayez.",
+    "PASSKEY_UNKNOWN": "Cette clé d'accès n'est pas configurée ici.",
+    "NO_PASSKEY": "Aucune clé d'accès sur ce compte.",
+    "TOO_MANY_PASSKEYS": "Retirez une clé d'accès avant d'en ajouter une autre."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1147,6 +1153,32 @@
       },
       "help_one": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} poste reconnu.",
       "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus."
-    }
+    },
+    "account": "Votre compte",
+    "accountHelp": "Clés d'accès pour la console Dev. Ajouter ou retirer une clé exige une connexion des 10 dernières minutes."
+  },
+  "passkeys": {
+    "title": "Clés d'accès",
+    "help": "Connectez-vous avec votre visage, votre empreinte ou le NIP de l'appareil au lieu d'un mot de passe : Face ID et Touch ID, empreinte ou déverrouillage facial Android, Windows Hello ou une clé de sécurité. Votre empreinte ou votre visage ne quittent jamais votre appareil.",
+    "add": "Ajouter une clé d'accès",
+    "added": "Clé d'accès ajoutée. La prochaine fois, connectez-vous avec elle.",
+    "none": "Aucune clé d'accès.",
+    "unsupported": "Ce navigateur ne prend pas en charge les clés d'accès. Essayez une version récente de Chrome, Safari, Edge ou Firefox.",
+    "addedOn": "Ajoutée le {{date}}",
+    "lastUsed": "utilisée le {{date}}",
+    "remove": "Retirer",
+    "removeNamed": "Retirer la clé d'accès {{name}}",
+    "removed": "Clé d'accès retirée",
+    "failed": "Ça n'a pas fonctionné. Réessayez ou utilisez votre mot de passe.",
+    "unknown": "Cette clé d'accès n'est pas configurée pour cette organisation. Connectez-vous avec votre mot de passe, puis ajoutez-la depuis votre profil.",
+    "signIn": "Se connecter avec une clé d'accès",
+    "offerTitle": "Connectez-vous plus vite la prochaine fois",
+    "offerHelp": "Utilisez Face ID, votre empreinte ou Windows Hello sur cet appareil au lieu de taper votre mot de passe. Elle confirme aussi votre identité pour la paie et les autres changements sensibles.",
+    "setUp": "Configurer",
+    "notNow": "Pas maintenant",
+    "confirmTitle": "Confirmez votre identité",
+    "confirmHelp": "Ce changement exige une connexion récente. Utilisez votre clé d'accès ou votre mot de passe pour continuer; on ne vous le redemandera pas pendant 10 minutes.",
+    "confirmWithPasskey": "Utiliser Face ID, l'empreinte ou Windows Hello",
+    "confirmWithPassword": "Confirmer avec le mot de passe"
   }
 }

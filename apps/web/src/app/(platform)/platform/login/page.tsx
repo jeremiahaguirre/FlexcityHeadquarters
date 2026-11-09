@@ -2,7 +2,7 @@
 
 import { LogIn, Terminal } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Logo } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
@@ -11,21 +11,44 @@ import { Field, Input } from '@/components/ui/Field';
 import { ApiError } from '@/lib/apiError';
 import { DEMO, DEMO_PASSWORD } from '@/lib/demo';
 import { papi } from '@/lib/platform';
+import { OFFER_FLAG } from '@/components/auth/PasskeyPrompt';
+import { PasskeyIcon } from '@/components/auth/PasskeyIcon';
+import { cancelled, passkeysSupported, platformSignInWithPasskey } from '@/lib/passkeys';
 
 export default function PlatformLogin() {
   const { t } = useTranslation();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [canPasskey, setCanPasskey] = useState(false);
+  useEffect(() => setCanPasskey(passkeysSupported()), []);
 
   async function signIn(email: string, password: string) {
     setBusy(true);
     setError(null);
     try {
       await papi('/auth/login', { method: 'POST', body: { email, password } });
+      try {
+        sessionStorage.setItem(OFFER_FLAG, '1');
+      } catch {
+        /* storage blocked */
+      }
       router.replace('/platform');
     } catch (e) {
       setError(e instanceof ApiError && e.status === 401 ? t('login.invalid') : e instanceof ApiError && e.status === 423 ? t('platform.locked') : e instanceof ApiError && e.status === 429 ? t('login.tooMany') : t('common.error'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function withPasskey() {
+    setBusy(true);
+    setError(null);
+    try {
+      await platformSignInWithPasskey();
+      router.replace('/platform');
+    } catch (e) {
+      if (!cancelled(e)) setError(e instanceof ApiError && e.code === 'PASSKEY_UNKNOWN' ? t('passkeys.unknown') : t('passkeys.failed'));
     } finally {
       setBusy(false);
     }
@@ -64,6 +87,11 @@ export default function PlatformLogin() {
           <Button type="submit" size="lg" block loading={busy} icon={<LogIn className="h-5 w-5" aria-hidden="true" />}>
             {t('login.submit')}
           </Button>
+          {canPasskey ? (
+            <Button variant="secondary" size="lg" block disabled={busy} icon={<PasskeyIcon />} onClick={() => void withPasskey()}>
+              {t('passkeys.signIn')}
+            </Button>
+          ) : null}
         </form>
       </main>
     </div>
