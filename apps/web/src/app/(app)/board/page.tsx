@@ -3,6 +3,7 @@
 import { HandHelping, Inbox } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PayPreview } from '@/components/PayPreview';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
@@ -71,9 +72,12 @@ export default function BoardPage() {
                 o.status === 'PENDING_APPROVAL' ? (
                   <StatusPill tone="warn">{t('board.pendingBadge')}</StatusPill>
                 ) : (
-                  <Button icon={<HandHelping className="h-5 w-5" aria-hidden="true" />} loading={busy === o.id} disabled={busy !== null} onClick={() => void claim(o)}>
-                    {t('board.claim')}
-                  </Button>
+                  <>
+                    <div className="mr-auto"><PayPreview offerId={o.id} /></div>
+                    <Button icon={<HandHelping className="h-5 w-5" aria-hidden="true" />} loading={busy === o.id} disabled={busy !== null} onClick={() => void claim(o)}>
+                      {t('board.claim')}
+                    </Button>
+                  </>
                 )
               }
             />

@@ -6,6 +6,8 @@ import { withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 import { publish } from '../lib/events.js';
 import { assignShift, cancelShift, createShift, publishShifts, rankCandidates, updateShift } from '../services/scheduling/shifts.js';
+import { previewShiftPay } from '../services/payroll/payPreview.js';
+import { notFound } from '../lib/errors.js';
 import { h } from './context.js';
 import { shiftInclude, shiftView } from './serializers.js';
 
@@ -195,3 +197,20 @@ schedulingRouter.get(
   }),
 );
 
+
+/** What an open shift would add to my pay (estimate, same engine as payroll). */
+schedulingRouter.get(
+  '/offers/:id/pay-preview',
+  requirePermission('shiftboard.claim'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const offer = await tx.shiftOffer.findUnique({ where: { id }, select: { shiftId: true } });
+      if (!offer) throw notFound('Offer');
+      return previewShiftPay(tx, a.userId, offer.shiftId);
+    });
+    if (!out) throw notFound('Shift');
+    res.json(out);
+  }),
+);

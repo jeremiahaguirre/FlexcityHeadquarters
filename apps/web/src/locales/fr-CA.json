@@ -34,7 +34,12 @@
     "emptyBody": "Dès qu'un quart que vous pouvez faire se libère, il s'affiche ici et vous recevez une notification.",
     "swap": "D'un collègue",
     "open": "Quart libre",
-    "notEligibleHelp": "Ces règles vous protègent, vous et les baigneurs."
+    "notEligibleHelp": "Ces règles vous protègent, vous et les baigneurs.",
+    "payAbout": "Environ {{amount}}",
+    "payOvertime": "dont {{h}} h supplémentaires",
+    "payStat": "taux de jour férié",
+    "payPremium": "avec prime",
+    "payHint": "Paie estimée pour ce quart, avant retenues, selon votre taux et vos heures de la semaine. La paie a le montant final."
   },
   "status": {
     "title": "État des bassins",

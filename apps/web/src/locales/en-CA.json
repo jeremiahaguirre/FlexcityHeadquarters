@@ -34,7 +34,12 @@
     "emptyBody": "When a shift opens up that you can work, it appears here and you get a notification.",
     "swap": "From a coworker",
     "open": "Open shift",
-    "notEligibleHelp": "These rules protect you and the people in the water."
+    "notEligibleHelp": "These rules protect you and the people in the water.",
+    "payAbout": "About {{amount}}",
+    "payOvertime": "incl. {{h}} h overtime",
+    "payStat": "stat holiday rate",
+    "payPremium": "with premium",
+    "payHint": "Estimated pay for this shift before deductions, using your rate and this week’s hours. Payroll has the final figure."
   },
   "status": {
     "title": "Pool Status",
