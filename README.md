@@ -1,4 +1,6 @@
-# Flexcity
+<img src="brand/fh-mark-512.png" alt="" width="72">
+
+# FlexcityHeadquarters (FH)
 
 Aquatic staff scheduling, timekeeping and operations for Canadian municipalities and private swim clubs.
 

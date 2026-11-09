@@ -10,7 +10,7 @@ Each issue from the original specification review, and where it was addressed.
 | Cascade deletes destroyed payroll history | Every payroll-bearing relation is `onDelete: Restrict`; the app role has no `DELETE` on those tables | `prisma/schema.prisma`, `db/rls.sql` |
 | "Right to be forgotten" vs retention | Erasure restricts processing immediately and anonymizes once records leave the CRA retention period | `services/privacy/erasure.ts` |
 | SIN stored as last 4 but full SIN needed; weak PDF password | SIN not stored at all; T4 generation dropped (payroll provider issues slips) | `services/payroll/export.ts` |
-| In-house payroll engine (CPP/EI/tax) | Dropped. Flexcity calculates gross wages and exports to the payroll system | `services/payroll/*` |
+| In-house payroll engine (CPP/EI/tax) | Dropped. FH calculates gross wages and exports to the payroll system | `services/payroll/*` |
 | T4 XML bugs | Moot — T4 generation removed | — |
 | Union "structural separation" not real | Separate schema and DB role the API can't use; per-local encryption keys; documented limits (not legal privilege) | `db/union_hub.sql`, `services/union/unionHub.ts` |
 | Reliability score and Law 25 / protected leave | Protected-leave events excluded automatically; advisory only; not used by the scheduler; employees can see their own breakdown | `services/reliability/score.ts` |

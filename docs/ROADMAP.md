@@ -30,5 +30,5 @@
 
 ## Deliberately out of scope
 
-- Calculating source deductions (CPP/QPP, EI, QPIP, income tax) and issuing T4/RL-1 slips. Flexcity exports gross wages; the payroll provider does the rest.
+- Calculating source deductions (CPP/QPP, EI, QPIP, income tax) and issuing T4/RL-1 slips. FH exports gross wages; the payroll provider does the rest.
 - Storing Social Insurance Numbers.

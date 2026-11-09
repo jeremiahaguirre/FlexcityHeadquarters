@@ -3,6 +3,7 @@ import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { DemoBanner } from '@/components/DemoBanner';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { Logo } from '@/components/Logo';
 import { NavLinks } from '@/components/NavLinks';
 import { Providers } from '@/components/Providers';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
@@ -11,7 +12,11 @@ import { currentTenant } from '@/lib/tenant';
 import { themeVars } from '@/lib/theme';
 import './globals.css';
 
-export const metadata: Metadata = { title: 'Flexcity', description: 'Aquatic staff scheduling and operations' };
+export const metadata: Metadata = {
+  title: { default: 'FlexcityHeadquarters', template: '%s · FH' },
+  description: 'Aquatic staff scheduling, timekeeping and operations',
+  applicationName: 'FlexcityHeadquarters',
+};
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -33,8 +38,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <header className="border-b border-line">
             <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
-                {tenant?.logoUrl ? <img src={tenant.logoUrl} alt="" className="h-8 w-auto" /> : null}
-                <span className="truncate font-semibold">{tenant?.name ?? t('app.name')}</span>
+                <Logo />
+                {tenant ? (
+                  <span className="hidden truncate border-l border-line pl-3 text-sm text-muted sm:inline">{tenant.name}</span>
+                ) : null}
               </div>
               <LanguageToggle />
             </div>

@@ -11,6 +11,7 @@ const config: Config = {
           DEFAULT: 'rgb(var(--brand) / <alpha-value>)',
           hover: 'rgb(var(--brand-hover) / <alpha-value>)',
           contrast: 'rgb(var(--brand-contrast) / <alpha-value>)',
+          text: 'rgb(var(--brand-text) / <alpha-value>)',
         },
         accent: 'rgb(var(--accent) / <alpha-value>)',
         surface: 'rgb(var(--surface) / <alpha-value>)',
