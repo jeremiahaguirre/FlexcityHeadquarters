@@ -52,7 +52,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', permission: 'jobs.manage', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: true },
   { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', permission: ['tenant.configure', 'ops.configure'], ready: true },
-  { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: false },
+  { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: true },
 ];
 
 export function visibleNav(can: (p: string) => boolean): NavItem[] {
