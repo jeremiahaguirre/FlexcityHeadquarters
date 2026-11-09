@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { DemoBanner } from '@/components/DemoBanner';
@@ -12,12 +12,9 @@ import { themeVars } from '@/lib/theme';
 import './globals.css';
 
 // Brand typeface (wordmark + UI). Self-hosted by Next at build time.
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ['latin', 'latin-ext'],
-  weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-sans',
-  display: 'swap',
-});
+// Self-hosted (SIL OFL, see src/fonts): builds never depend on Google Fonts being reachable.
+// The Latin file covers English and French, accents included.
+const jakarta = localFont({ src: '../fonts/plus-jakarta-sans-latin-wght-normal.woff2', weight: '200 800', variable: '--font-sans', display: 'swap' });
 
 export const metadata: Metadata = {
   title: { default: 'FlexcityHeadquarters', template: '%s · FH' },

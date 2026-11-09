@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 import { RevealObserver } from '@/components/Motion';
 import { REVEAL_BOOT } from '@/lib/reveal';
@@ -9,7 +9,9 @@ import { LANGS, type Lang, copy } from '@/content/copy';
 import { SITE_URL, pageMeta } from '@/lib/seo';
 import '../globals.css';
 
-const jakarta = Plus_Jakarta_Sans({ subsets: ['latin', 'latin-ext'], weight: ['400', '500', '600', '700', '800'], variable: '--font-sans', display: 'swap' });
+// Self-hosted (SIL OFL, see src/fonts): builds never depend on Google Fonts being reachable.
+// The Latin file covers English and French, accents included.
+const jakarta = localFont({ src: '../../fonts/plus-jakarta-sans-latin-wght-normal.woff2', weight: '200 800', variable: '--font-sans', display: 'swap' });
 
 export const generateStaticParams = () => LANGS.map((lang) => ({ lang }));
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0F766E' };
