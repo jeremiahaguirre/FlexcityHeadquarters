@@ -299,5 +299,22 @@
     "effectiveHint": "Les semaines précédentes gardent vos anciennes disponibilités.",
     "saved": "Disponibilités enregistrées.",
     "endBeforeStart": "Chaque plage doit finir après son début."
+  },
+  "lessons": {
+    "title": "Cours",
+    "description": "Prenez les présences au bord du bassin. Elles s'enregistrent d'abord sur votre téléphone, puis sont envoyées dès qu'il y a du réseau.",
+    "allSaved": "Tout est enregistré",
+    "waiting_one": "{{count}} présence en attente d'envoi",
+    "waiting_other": "{{count}} présences en attente d'envoi",
+    "offline": "Vous êtes hors ligne. Listes enregistrées à {{time}}. Vos présences seront envoyées à la reconnexion.",
+    "emptyTitle": "Aucun cours cette semaine",
+    "emptyBody": "Les cours s'affichent ici quand vous êtes à l'horaire comme moniteur.",
+    "marked": "{{marked}} sur {{total}} notés",
+    "attendanceFor": "Présence de {{name}}",
+    "status": {
+      "PRESENT": "Présent",
+      "ABSENT": "Absent",
+      "EXCUSED": "Motivé"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ServiceWorker } from '@/components/ServiceWorker';
 import { AppShell } from '@/components/shell/AppShell';
 import { ShellLoading } from '@/components/shell/ShellLoading';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
@@ -9,6 +10,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
   return (
     <SessionProvider fallback={<ShellLoading />}>
+      <ServiceWorker />
       <AppShell organization={tenant?.name ?? ''}>{children}</AppShell>
     </SessionProvider>
   );

@@ -40,7 +40,7 @@ export const NAV: NavItem[] = [
   { href: '/timeclock', key: 'timeclock', icon: Clock, group: 'mine', permission: 'timeclock.punch', tab: 4, ready: true },
   { href: '/time-off', key: 'timeOff', icon: CalendarClock, group: 'mine', permission: 'timeoff.self', ready: true },
   { href: '/availability', key: 'availability', icon: CalendarRange, group: 'mine', permission: 'availability.self', ready: true },
-  { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'schedule.read', ready: false },
+  { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'schedule.read', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 5, ready: true },
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: false },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: false },

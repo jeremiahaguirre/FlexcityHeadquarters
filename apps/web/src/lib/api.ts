@@ -72,6 +72,13 @@ export async function login(email: string, password: string) {
 export async function logout() {
   await api('/api/auth/logout', { method: 'POST' }, false).catch(() => undefined);
   accessToken = null;
+  // Shared deck phones: don't leave rosters (children's names) or cached pages behind.
+  try {
+    localStorage.removeItem('fh-lessons-cache');
+    if ('caches' in window) await caches.delete('fh-v1');
+  } catch {
+    /* nothing cached */
+  }
 }
 
 /**

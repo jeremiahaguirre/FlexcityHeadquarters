@@ -299,5 +299,22 @@
     "effectiveHint": "Earlier weeks keep your old availability.",
     "saved": "Availability saved.",
     "endBeforeStart": "Each time must end after it starts."
+  },
+  "lessons": {
+    "title": "Lessons",
+    "description": "Take attendance on the deck. It saves on your phone first and uploads when there's signal.",
+    "allSaved": "All saved",
+    "waiting_one": "{{count}} mark waiting to sync",
+    "waiting_other": "{{count}} marks waiting to sync",
+    "offline": "You're offline. Showing rosters saved at {{time}}. Your marks will upload when you reconnect.",
+    "emptyTitle": "No lessons in the next week",
+    "emptyBody": "Classes appear here when you're scheduled as the instructor.",
+    "marked": "{{marked}} of {{total}} marked",
+    "attendanceFor": "Attendance for {{name}}",
+    "status": {
+      "PRESENT": "Present",
+      "ABSENT": "Absent",
+      "EXCUSED": "Excused"
+    }
   }
 }
