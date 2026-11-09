@@ -1197,3 +1197,28 @@ model InvoiceCounter {
   year Int @id
   last Int @default(0)
 }
+
+/// Enquiries from the marketing website (sales, demo requests, support). Seen in the Dev console.
+model Lead {
+  id                String   @id @default(uuid()) @db.Uuid
+  /// SALES | DEMO | SUPPORT
+  kind              String
+  name              String
+  email             String
+  organization      String?
+  role              String?
+  province          String?
+  facilities        Int?
+  message           String
+  locale            String   @default("en-CA")
+  /// CASL: express consent to marketing email, recorded separately from the enquiry itself.
+  marketingConsent  Boolean  @default(false)
+  consentText       String?
+  /// NEW | CONTACTED | WON | CLOSED
+  status            String   @default("NEW")
+  notes             String?
+  createdAt         DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([status, createdAt])
+}

@@ -14,6 +14,8 @@ const schema = z.object({
   ROOT_DOMAIN: z.string().default('localhost'),
   /** Link template for emails; {subdomain} is replaced per organization. */
   PUBLIC_APP_URL: z.string().default('http://{subdomain}.localhost:3000'),
+  /** Marketing site origins allowed to post enquiries (comma-separated). */
+  MARKETING_ORIGINS: z.string().default('http://localhost:3100'),
   /** Shown on FH's invoices to organizations. */
   BILLING_LEGAL_NAME: z.string().default('FlexcityHeadquarters'),
   BILLING_ADDRESS: z.string().default(''),

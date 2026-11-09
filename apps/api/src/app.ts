@@ -7,6 +7,7 @@ import { publicJobsRouter } from './routes/jobs.js';
 import { resolveTenant } from './routes/context.js';
 import { api } from './routes/features.js';
 import { platformRouter } from './routes/platform/index.js';
+import { marketingRouter } from './routes/marketing.js';
 import { passkeyAuthRouter } from './routes/passkeys.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
 
@@ -20,6 +21,8 @@ export function createApp() {
     res.setHeader('Cache-Control', 'no-store');
     next();
   });
+  // The marketing site's enquiry form (no organization, its own CORS).
+  app.use('/api', marketingRouter);
   // Before the 100 kB body limit: the Dev console uploads logos and spreadsheets.
   app.use('/api/platform', platformRouter);
   app.use(express.json({ limit: '100kb' }));
