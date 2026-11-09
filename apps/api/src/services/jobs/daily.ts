@@ -103,6 +103,32 @@ export async function rotationAlerts(tx: Tx, now = new Date()): Promise<number> 
   return due.length;
 }
 
+/** Daily: onboarding checks and training expiring within 30 days, once per record, to the person and HR. */
+export async function onboardingReminders(tx: Tx, now = new Date()): Promise<number> {
+  const soon = new Date(now.getTime() + 30 * 86_400_000);
+  const due = await tx.onboardingRecord.findMany({
+    where: { status: 'COMPLETE', reminderSentAt: null, expiresOn: { not: null, lte: soon }, user: { status: 'ACTIVE', anonymizedAt: null } },
+    include: { item: { select: { name: true, archivedAt: true } }, user: { select: { firstName: true, lastName: true } } },
+    orderBy: { recordedAt: 'desc' },
+  });
+  // Only the latest record per person and item (an older one may already be renewed).
+  const seen = new Set<string>();
+  const hr = await usersWithRoles(tx, ['HR_ADMIN']);
+  let sent = 0;
+  for (const r of due) {
+    const k = `${r.userId}|${r.itemId}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const newer = await tx.onboardingRecord.findFirst({ where: { userId: r.userId, itemId: r.itemId, recordedAt: { gt: r.recordedAt } }, select: { id: true } });
+    if (newer || r.item.archivedAt) continue;
+    const params = { item: r.item.name, date: r.expiresOn!.toISOString().slice(0, 10), name: `${r.user.firstName} ${r.user.lastName}` };
+    await notify(tx, r.tenantId, [{ userId: r.userId, type: 'onboarding_expiring', params, link: '/profile' }, ...hr.map((userId) => ({ userId, type: 'staff_onboarding_expiring', params, link: `/manage/onboarding?user=${r.userId}` }))]);
+    await tx.onboardingRecord.update({ where: { id: r.id }, data: { reminderSentAt: now } });
+    sent++;
+  }
+  return sent;
+}
+
 export const REMINDER_DAYS = [90, 60, 30, 7] as const;
 
 /** Certification reminders at 90/60/30/7 days; supervisors hear at 30 and 7. */

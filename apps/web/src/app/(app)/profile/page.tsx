@@ -5,6 +5,7 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SignaturePad } from '@/components/SignaturePad';
 import { MyFile } from '@/components/people/MyFile';
+import { MyOnboarding } from '@/components/people/MyOnboarding';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -145,6 +146,7 @@ export default function ProfilePage() {
           </CardBody>
         </Card>
 
+        <MyOnboarding />
         <MyFile />
 
         <Card>

@@ -43,7 +43,8 @@ export type BlockCode =
   | 'UNDER_MINIMUM_AGE'
   | 'YOUNG_WORKER_LIMIT'
   | 'NOT_AVAILABLE'
-  | 'OVER_PERSONAL_WEEKLY_MAX';
+  | 'OVER_PERSONAL_WEEKLY_MAX'
+  | 'ONBOARDING_INCOMPLETE';
 
 export type FlagCode = 'OVERTIME' | 'PARENTAL_CONSENT_REQUIRED' | 'RULES_UNVERIFIED' | 'DATE_OF_BIRTH_MISSING';
 
@@ -63,6 +64,8 @@ export interface CandidateContext {
   /** Assigned, non-cancelled shifts near the target shift. */
   existingShifts: Array<Interval & { positionId: string }>;
   approvedTimeOff: Interval[];
+  /** Onboarding itemId → expiry of the latest completion (null = no expiry, or waived). */
+  onboardingValid?: ReadonlyMap<string, string | null>;
   availability: Array<{
     dayOfWeek: number;
     startMinute: number;
@@ -84,6 +87,8 @@ export interface PositionSpec {
   requiredCertIds: string[];
   /** certificationId → certification ids it depends on */
   prerequisites: ReadonlyMap<string, string[]>;
+  /** Onboarding items that must be done (and unexpired) before working this position. */
+  blockingOnboarding?: Array<{ id: string; name: string }>;
 }
 
 export interface SchoolCalendar {
@@ -146,6 +151,11 @@ export function evaluateCandidate(
     const exp = c.certExpiry.get(certId) ?? null;
     return exp === null || exp >= shiftEndDate;
   };
+  for (const item of position.blockingOnboarding ?? []) {
+    const exp = c.onboardingValid?.get(item.id);
+    if (exp === undefined) blocks.push({ code: 'ONBOARDING_INCOMPLETE', message: `Onboarding not done: ${item.name}.` });
+    else if (exp !== null && exp < shiftEndDate) blocks.push({ code: 'ONBOARDING_INCOMPLETE', message: `Onboarding expires before the shift: ${item.name}.` });
+  }
   for (const certId of position.requiredCertIds) {
     if (!c.certExpiry.has(certId)) {
       blocks.push({ code: 'MISSING_CERTIFICATION', message: `Missing required certification ${certId}.` });

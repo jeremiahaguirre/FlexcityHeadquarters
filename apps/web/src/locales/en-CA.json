@@ -70,7 +70,8 @@
     "UNDER_MINIMUM_AGE": "You're under the minimum age for this position.",
     "YOUNG_WORKER_LIMIT": "This would exceed young-worker hour limits.",
     "NOT_AVAILABLE": "This is outside your availability.",
-    "OVER_PERSONAL_WEEKLY_MAX": "This would exceed your weekly hour cap."
+    "OVER_PERSONAL_WEEKLY_MAX": "This would exceed your weekly hour cap.",
+    "ONBOARDING_INCOMPLETE": "Onboarding isn't finished for this position (for example a criminal record check or required training)."
   },
   "demo": {
     "banner": "Demo with sample data — nothing you do here is saved.",
@@ -149,7 +150,8 @@
     "headcountShort": "Count",
     "people": "People review",
     "deck": "Rotation",
-    "compliance": "Compliance"
+    "compliance": "Compliance",
+    "onboarding": "Onboarding"
   },
   "navGroups": {
     "mine": "My work",
@@ -197,7 +199,9 @@
     "commendation_added": "You received a commendation. Nice work!",
     "review_needed": "{{name}} may need a conversation. See why on their file.",
     "discipline_response": "An employee added their response to a record you issued.",
-    "rotation_overdue": "Rotation overdue at {{station}}. Move the guards along."
+    "rotation_overdue": "Rotation overdue at {{station}}. Move the guards along.",
+    "onboarding_expiring": "{{item}} expires on {{date}}. Renew it to keep getting shifts.",
+    "staff_onboarding_expiring": "{{name}}'s {{item}} expires on {{date}}."
   },
   "today": {
     "morning": "Good morning",
@@ -1129,6 +1133,10 @@
       "rotations": {
         "name": "Deck rotation",
         "help": "Lifeguard chair plan, rotation timers, fatigue limits and the rotation log."
+      },
+      "onboarding": {
+        "name": "Onboarding",
+        "help": "Checklists for HR, supervisors and new staff; per-position checks and training such as criminal record checks and child protection."
       }
     },
     "positions": "Positions",
@@ -1761,5 +1769,96 @@
     "showAdvanced": "Show",
     "hideAdvanced": "Hide",
     "sensitive": "Sensitive"
+  },
+  "onboarding": {
+    "title": "Onboarding",
+    "description": "Everything a new person needs before and after their first shift, split between HR, their supervisor and themselves. Checks and training can be required per position.",
+    "people": "People",
+    "requirements": "Requirements",
+    "needsAction": "Needs action ({{count}})",
+    "everyone": "Everyone",
+    "allDone": "Everyone's onboarding is up to date",
+    "allDoneHelp": "New people appear here with what HR, their supervisor and they still need to do.",
+    "cantSchedule": "Can't be scheduled yet",
+    "outstanding_one": "{{count}} to do",
+    "outstanding_other": "{{count}} to do",
+    "expiringCount_one": "{{count}} renewal soon",
+    "expiringCount_other": "{{count}} renewals soon",
+    "owner": {
+      "HR": "HR",
+      "SUPERVISOR": "Supervisor",
+      "EMPLOYEE": "Employee"
+    },
+    "whoDoes": {
+      "HR": "HR completes this",
+      "SUPERVISOR": "Your supervisor completes this",
+      "EMPLOYEE": "You complete this"
+    },
+    "kind": {
+      "CHECK": "Background check",
+      "TRAINING": "Training",
+      "ACKNOWLEDGEMENT": "Policy to acknowledge",
+      "DOCUMENT": "Document",
+      "TASK": "Task"
+    },
+    "state": {
+      "DONE": "Done",
+      "WAIVED": "Waived",
+      "EXPIRING": "Renew soon",
+      "EXPIRED": "Expired",
+      "PENDING": "To do"
+    },
+    "checklistHelp": "Items with a lock must be done before this person can be scheduled for that position.",
+    "blocks": "Required before scheduling",
+    "doneOn": "done {{date}}",
+    "waivedOn": "waived {{date}}",
+    "expires": "expires {{date}}",
+    "markDone": "Mark done",
+    "renew": "Record renewal",
+    "waive": "Waive",
+    "waiveHelp": "Only HR can waive an item. The reason stays on file.",
+    "checkHelp": "Record the date you saw the check and that it met the position's standard. Do not record the result or keep a copy here.",
+    "dateSeen": "Date seen",
+    "dateDone": "Date completed",
+    "reason": "Reason",
+    "note": "Note (optional)",
+    "noteHint": "Facts only, for example \"certificate seen\". Never the check result, a SIN or banking details.",
+    "saved": "Saved.",
+    "privacy": "For background checks and identity documents, the app keeps only that they were seen, when, by whom and when they expire. Results, copies, SINs and banking details stay out of it.",
+    "minorsTitle": "Works with children or vulnerable people",
+    "minorsHelp": "Switch on for positions such as swim instructors, camp staff and program leaders. It requires a vulnerable sector check, child protection training and HIGH FIVE.",
+    "minorsSwitch": "Children or vulnerable people: {{position}}",
+    "byPosition": "Requirements by position",
+    "byPositionHelp": "Switch each item on for the positions that need it. Items marked for everyone apply to all staff. A lock means the item must be done before scheduling.",
+    "everyoneCol": "Everyone",
+    "itemSwitch": "{{item}} for {{position}}",
+    "addItem": "Add an item",
+    "renewEvery_one": "renew every {{count}} month",
+    "renewEvery_other": "renew every {{count}} months",
+    "itemName": "Name",
+    "itemDescription": "Description",
+    "whoCompletes": "Who completes it",
+    "type": "Type",
+    "validity": "Renew every (months)",
+    "validityHint": "Leave blank if it never expires.",
+    "policyText": "Policy text",
+    "policyTextHint": "For policies: what the employee reads before acknowledging.",
+    "allStaffLabel": "Required for everyone",
+    "blocksLabel": "Must be done before the person can be scheduled",
+    "restore": "Restore",
+    "retire": "Retire",
+    "legend": "Built in: offer letter, TD1, direct deposit, identity, emergency contact, criminal record and vulnerable sector checks, child protection, HIGH FIVE, WHMIS, health and safety awareness, accessible customer service, policies, orientation, emergency plan, equipment, shadow shifts and skills check. Add your own.",
+    "mine": "My onboarding",
+    "mineHelp": "{{done}} of {{total}} done.",
+    "readAndSign": "Read and sign",
+    "readHelp": "Read the policy, then type your name to confirm you read it.",
+    "typeName": "Type your full name",
+    "typeNameHint": "This records that you read the policy, with today's date.",
+    "acknowledge": "I've read it",
+    "acknowledged": "Thanks. It's on your file.",
+    "affected_one": "{{count}} person in this position can’t be scheduled until HR records it.",
+    "affected_other": "{{count}} people in this position can’t be scheduled until HR records it.",
+    "othersOpen_one": "HR or your supervisor has {{count}} more item to finish.",
+    "othersOpen_other": "HR or your supervisor have {{count}} more items to finish."
   }
 }

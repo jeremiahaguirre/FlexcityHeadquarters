@@ -46,6 +46,9 @@ export const PERMISSIONS = [
   'ops.headcount.record', // bather counts on deck (the clicker)
   'deck.rotate', // run the lifeguard rotation (chair plan)
   'compliance.report', // rebuild who/what/where at any past minute
+  'onboarding.hr', // HR onboarding items: checks, forms, training; waive items
+  'onboarding.lead', // supervisor onboarding items: orientation, equipment, shadow shifts
+  'onboarding.configure', // the catalogue and which positions need which items
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -80,6 +83,8 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'reliability.read',
     'reliability.write',
     'compliance.report',
+    'onboarding.hr',
+    'onboarding.configure',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -111,6 +116,8 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'jobs.manage',
     'deck.rotate',
     'compliance.report',
+    'onboarding.lead',
+    'onboarding.configure',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,

@@ -12,6 +12,7 @@ import type { Tx } from '../../lib/db.js';
 import { localDate } from '../../lib/time.js';
 import { type ProvinceRules, resolveRules } from '../compliance/provincialRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
+import { blockingItemsForPosition } from '../people/onboarding.js';
 import type { CandidateContext, EvaluateOptions, PositionSpec, SchoolCalendar, ShiftSpec } from './eligibility.js';
 
 const NEIGHBOURHOOD_MS = 8 * 86_400_000; // enough for rest + weekly checks
@@ -78,6 +79,7 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
       minimumAge: s.position.minimumAge,
       requiredCertIds: s.position.requirements.map((r) => r.certificationId),
       prerequisites,
+      blockingOnboarding: await blockingItemsForPosition(tx, s.positionId),
     },
     province: s.facility.province,
     rules,
@@ -118,6 +120,7 @@ export async function loadCandidates(
     include: {
       positions: true,
       certifications: true,
+      onboarding: { orderBy: { recordedAt: 'desc' } },
       availability: true,
       shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from } } },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: to }, endsAt: { gt: from } } },
@@ -135,6 +138,7 @@ export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string)
     include: {
       positions: true,
       certifications: true,
+      onboarding: { orderBy: { recordedAt: 'desc' } },
       availability: true,
       shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { not: bundle.shift.id } } },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: to }, endsAt: { gt: from } } },
@@ -144,7 +148,7 @@ export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string)
 }
 
 type LoadedUser = Prisma.UserGetPayload<{
-  include: { positions: true; certifications: true; availability: true; shifts: true; timeOffRequests: true };
+  include: { positions: true; certifications: true; availability: true; shifts: true; timeOffRequests: true; onboarding: true };
 }>;
 
 const isoDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -160,9 +164,15 @@ function toCandidateContext(u: LoadedUser): CandidateContext {
       certExpiry.set(c.certificationId, exp);
     }
   }
+  // Latest record per onboarding item: waived = no expiry.
+  const onboardingValid = new Map<string, string | null>();
+  for (const r of [...u.onboarding].sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime())) {
+    if (!onboardingValid.has(r.itemId)) onboardingValid.set(r.itemId, r.status === 'WAIVED' ? null : isoDate(r.expiresOn));
+  }
   return {
     userId: u.id,
     status: u.status,
+    onboardingValid,
     dateOfBirth: isoDate(u.dateOfBirth),
     weeklyMaxHours: u.weeklyMaxHours ? dec(u.weeklyMaxHours) : null,
     qualifiedPositionIds: new Set(u.positions.map((p) => p.positionId)),
@@ -188,6 +198,7 @@ export async function loadAssistantCandidates(tx: Tx, from: Date, to: Date) {
     include: {
       positions: true,
       certifications: true,
+      onboarding: { orderBy: { recordedAt: 'desc' } },
       availability: true,
       shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: hi }, endsAt: { gt: lo } } },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: hi }, endsAt: { gt: lo } } },

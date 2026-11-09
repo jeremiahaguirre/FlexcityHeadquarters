@@ -1,6 +1,7 @@
 'use client';
 
 import { MyStation } from '@/components/punch/MyStation';
+import { MyOnboarding } from '@/components/people/MyOnboarding';
 import { ArrowRight, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
@@ -65,6 +66,7 @@ export default function TodayPage() {
         </h1>
       </header>
       <MyStation />
+      <MyOnboarding compact />
 
       {can('timeclock.punch') ? (
         <section aria-label={t('timeclock.title')}>

@@ -70,7 +70,8 @@
     "UNDER_MINIMUM_AGE": "Vous n'avez pas l'âge minimum pour ce poste.",
     "YOUNG_WORKER_LIMIT": "Cela dépasserait les limites d'heures pour les jeunes travailleurs.",
     "NOT_AVAILABLE": "Ce quart est en dehors de vos disponibilités.",
-    "OVER_PERSONAL_WEEKLY_MAX": "Cela dépasserait votre plafond d'heures hebdomadaire."
+    "OVER_PERSONAL_WEEKLY_MAX": "Cela dépasserait votre plafond d'heures hebdomadaire.",
+    "ONBOARDING_INCOMPLETE": "L’intégration n’est pas terminée pour ce poste (par exemple une vérification du casier judiciaire ou une formation requise)."
   },
   "demo": {
     "banner": "Démonstration avec des données fictives — rien n'est enregistré.",
@@ -149,7 +150,8 @@
     "headcountShort": "Compter",
     "people": "Suivi du personnel",
     "deck": "Rotation",
-    "compliance": "Conformité"
+    "compliance": "Conformité",
+    "onboarding": "Intégration"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -197,7 +199,9 @@
     "commendation_added": "Vous avez reçu une mention d’éloge. Bravo!",
     "review_needed": "Une discussion avec {{name}} pourrait être nécessaire. Voyez pourquoi dans son dossier.",
     "discipline_response": "Un employé a ajouté sa réponse à un dossier que vous avez émis.",
-    "rotation_overdue": "Rotation en retard à {{station}}. Faites avancer les sauveteurs."
+    "rotation_overdue": "Rotation en retard à {{station}}. Faites avancer les sauveteurs.",
+    "onboarding_expiring": "{{item}} expire le {{date}}. Renouvelez-le pour continuer à recevoir des quarts.",
+    "staff_onboarding_expiring": "{{item}} de {{name}} expire le {{date}}."
   },
   "today": {
     "morning": "Bonjour",
@@ -1129,6 +1133,10 @@
       "rotations": {
         "name": "Rotation sur la plage",
         "help": "Plan des chaises des sauveteurs, minuteries de rotation, limites de fatigue et registre des rotations."
+      },
+      "onboarding": {
+        "name": "Intégration",
+        "help": "Listes pour les RH, les superviseurs et le nouveau personnel; vérifications et formations par poste, comme le casier judiciaire et la protection de l’enfance."
       }
     },
     "positions": "Postes",
@@ -1761,5 +1769,96 @@
     "showAdvanced": "Afficher",
     "hideAdvanced": "Masquer",
     "sensitive": "Sensible"
+  },
+  "onboarding": {
+    "title": "Intégration",
+    "description": "Tout ce dont une nouvelle personne a besoin avant et après son premier quart, réparti entre les RH, son superviseur et elle-même. Les vérifications et formations peuvent être exigées par poste.",
+    "people": "Personnes",
+    "requirements": "Exigences",
+    "needsAction": "À traiter ({{count}})",
+    "everyone": "Tout le monde",
+    "allDone": "L’intégration de tout le monde est à jour",
+    "allDoneHelp": "Les nouvelles personnes apparaissent ici avec ce qui reste à faire pour les RH, leur superviseur et elles-mêmes.",
+    "cantSchedule": "Ne peut pas encore être à l’horaire",
+    "outstanding_one": "{{count}} à faire",
+    "outstanding_other": "{{count}} à faire",
+    "expiringCount_one": "{{count}} renouvellement bientôt",
+    "expiringCount_other": "{{count}} renouvellements bientôt",
+    "owner": {
+      "HR": "RH",
+      "SUPERVISOR": "Superviseur",
+      "EMPLOYEE": "Employé"
+    },
+    "whoDoes": {
+      "HR": "Les RH s’en occupent",
+      "SUPERVISOR": "Votre superviseur s’en occupe",
+      "EMPLOYEE": "Vous vous en occupez"
+    },
+    "kind": {
+      "CHECK": "Vérification des antécédents",
+      "TRAINING": "Formation",
+      "ACKNOWLEDGEMENT": "Politique à confirmer",
+      "DOCUMENT": "Document",
+      "TASK": "Tâche"
+    },
+    "state": {
+      "DONE": "Fait",
+      "WAIVED": "Dispensé",
+      "EXPIRING": "À renouveler bientôt",
+      "EXPIRED": "Échu",
+      "PENDING": "À faire"
+    },
+    "checklistHelp": "Les éléments avec un cadenas doivent être faits avant que la personne soit à l’horaire pour ce poste.",
+    "blocks": "Requis avant l’horaire",
+    "doneOn": "fait le {{date}}",
+    "waivedOn": "dispensé le {{date}}",
+    "expires": "expire le {{date}}",
+    "markDone": "Marquer comme fait",
+    "renew": "Consigner le renouvellement",
+    "waive": "Dispenser",
+    "waiveHelp": "Seules les RH peuvent dispenser un élément. La raison reste au dossier.",
+    "checkHelp": "Inscrivez la date de consultation et sa conformité à la norme du poste. N’inscrivez pas le résultat et n’en conservez pas de copie ici.",
+    "dateSeen": "Date de consultation",
+    "dateDone": "Date de réalisation",
+    "reason": "Raison",
+    "note": "Note (facultative)",
+    "noteHint": "Des faits seulement, par exemple « certificat vu ». Jamais le résultat d’une vérification, un NAS ni des coordonnées bancaires.",
+    "saved": "Enregistré.",
+    "privacy": "Pour les vérifications des antécédents et les pièces d’identité, l’application conserve seulement qu’elles ont été vues, quand, par qui et leur échéance. Les résultats, copies, NAS et coordonnées bancaires n’y sont pas.",
+    "minorsTitle": "Travail auprès d’enfants ou de personnes vulnérables",
+    "minorsHelp": "À activer pour des postes comme moniteur de natation, personnel de camp et animateur de programmes. Exige la vérification pour le secteur vulnérable, la formation sur la protection de l’enfance et HIGH FIVE.",
+    "minorsSwitch": "Enfants ou personnes vulnérables : {{position}}",
+    "byPosition": "Exigences par poste",
+    "byPositionHelp": "Activez chaque élément pour les postes qui en ont besoin. Les éléments pour tout le monde s’appliquent à tout le personnel. Un cadenas indique un élément requis avant l’horaire.",
+    "everyoneCol": "Tout le monde",
+    "itemSwitch": "{{item}} pour {{position}}",
+    "addItem": "Ajouter un élément",
+    "renewEvery_one": "à renouveler tous les {{count}} mois",
+    "renewEvery_other": "à renouveler tous les {{count}} mois",
+    "itemName": "Nom",
+    "itemDescription": "Description",
+    "whoCompletes": "Qui s’en occupe",
+    "type": "Type",
+    "validity": "Renouveler tous les (mois)",
+    "validityHint": "Laissez vide s’il n’expire jamais.",
+    "policyText": "Texte de la politique",
+    "policyTextHint": "Pour les politiques : ce que l’employé lit avant de confirmer.",
+    "allStaffLabel": "Requis pour tout le monde",
+    "blocksLabel": "Doit être fait avant que la personne soit à l’horaire",
+    "restore": "Rétablir",
+    "retire": "Retirer",
+    "legend": "Inclus : lettre d’offre, TD1, dépôt direct, identité, personne à joindre, vérifications du casier judiciaire et du secteur vulnérable, protection de l’enfance, HIGH FIVE, SIMDUT, sensibilisation à la santé et sécurité, service à la clientèle accessible, politiques, accueil, plan d’urgence, équipement, quarts d’observation et vérification des compétences. Ajoutez les vôtres.",
+    "mine": "Mon intégration",
+    "mineHelp": "{{done}} sur {{total}} terminés.",
+    "readAndSign": "Lire et signer",
+    "readHelp": "Lisez la politique, puis tapez votre nom pour confirmer votre lecture.",
+    "typeName": "Tapez votre nom complet",
+    "typeNameHint": "Cela consigne votre lecture de la politique, avec la date d’aujourd’hui.",
+    "acknowledge": "Je l’ai lue",
+    "acknowledged": "Merci. C’est à votre dossier.",
+    "affected_one": "{{count}} personne de ce poste ne peut pas être à l’horaire tant que les RH ne l’ont pas consigné.",
+    "affected_other": "{{count}} personnes de ce poste ne peuvent pas être à l’horaire tant que les RH ne l’ont pas consigné.",
+    "othersOpen_one": "Les RH ou votre superviseur ont encore {{count}} élément à terminer.",
+    "othersOpen_other": "Les RH ou votre superviseur ont encore {{count}} éléments à terminer."
   }
 }

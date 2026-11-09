@@ -81,6 +81,25 @@ enum ShiftType {
 }
 
 /// Lifecycle only. Claim/swap state lives on ShiftOffer, not here.
+enum OnboardingOwner {
+  HR
+  SUPERVISOR
+  EMPLOYEE
+}
+
+enum OnboardingKind {
+  CHECK
+  TRAINING
+  ACKNOWLEDGEMENT
+  DOCUMENT
+  TASK
+}
+
+enum OnboardingStatus {
+  COMPLETE
+  WAIVED
+}
+
 enum DisciplineLevel {
   COACHING
   VERBAL_WARNING
@@ -329,6 +348,7 @@ model User {
   offersClaimed    ShiftOffer[]     @relation("OfferClaimedBy")
   reliabilityEvents ReliabilityEvent[]
   conductNotes      ConductNote[]
+  onboarding        OnboardingRecord[]
   refreshTokens    RefreshToken[]
   authTokens       AuthToken[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
@@ -398,8 +418,76 @@ model Position {
   payRates        PayRate[]
   shifts          Shift[]
   payCodeMappings PayCodeMapping[]
+  onboarding      PositionOnboarding[]
 
   @@unique([tenantId, name])
+}
+
+/// One onboarding requirement in a city's catalogue: a check, training, policy
+/// to acknowledge, document to collect or task to do, and who completes it.
+/// Sensitive results (police checks, SIN) are never stored: only that they
+/// were seen, when, and by whom.
+model OnboardingItem {
+  id               String          @id @default(uuid()) @db.Uuid
+  tenantId         String          @db.Uuid
+  /// Stable key for the built-in catalogue (null for city-made items).
+  key              String?
+  name             String
+  nameFr           String?
+  description      String?
+  descriptionFr    String?
+  owner            OnboardingOwner
+  kind             OnboardingKind
+  /// Required for everyone, whatever their position.
+  allStaff         Boolean         @default(false)
+  /// Must be done (and not expired) before the person can be scheduled.
+  blocksScheduling Boolean         @default(false)
+  /// Renewal period; null = never expires.
+  validityMonths   Int?
+  /// Text the employee reads before acknowledging (policies).
+  policyText       String?
+  sortOrder        Int             @default(0)
+  archivedAt       DateTime?       @db.Timestamptz(3)
+  createdAt        DateTime        @default(now()) @db.Timestamptz(3)
+
+  positions PositionOnboarding[]
+  records   OnboardingRecord[]
+
+  @@unique([tenantId, key])
+}
+
+/// Which items a position requires (the per-position switches).
+model PositionOnboarding {
+  tenantId   String @db.Uuid
+  positionId String @db.Uuid
+  itemId     String @db.Uuid
+
+  position Position       @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  item     OnboardingItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([positionId, itemId])
+}
+
+/// A completed or waived item for a person. Renewals add a new record.
+model OnboardingRecord {
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @db.Uuid
+  userId         String           @db.Uuid
+  itemId         String           @db.Uuid
+  status         OnboardingStatus
+  completedOn    DateTime         @db.Date
+  expiresOn      DateTime?        @db.Date
+  recordedById   String           @db.Uuid
+  recordedAt     DateTime         @default(now()) @db.Timestamptz(3)
+  /// Factual and non-sensitive (e.g. "Seen: clear, ref. on file with RCMP"); never the result itself.
+  note           String?
+  waivedReason   String?
+  reminderSentAt DateTime?        @db.Timestamptz(3)
+
+  item OnboardingItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  user User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, itemId])
 }
 
 model PositionCertRequirement {
