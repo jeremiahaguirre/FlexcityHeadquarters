@@ -77,6 +77,8 @@ function City() {
           <RoleEditor
             roles={c.customRoles}
             catalog={c.roleCatalog}
+            positions={c.positions}
+            facilities={c.facilities}
             save={(body, roleId) => (roleId ? papi(`/tenants/${id}/roles/${roleId}`, { method: 'PUT', body }) : papi(`/tenants/${id}/roles`, { method: 'POST', body }))}
             remove={(roleId) => papi(`/tenants/${id}/roles/${roleId}`, { method: 'DELETE' })}
             reload={city.reload}

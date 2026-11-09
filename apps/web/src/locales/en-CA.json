@@ -164,7 +164,8 @@
     "benchmarks": "Benchmarks",
     "loneWork": "Working alone",
     "loneWorkMonitor": "Lone workers",
-    "billing": "Billing"
+    "billing": "Billing",
+    "roles": "Roles"
   },
   "navGroups": {
     "mine": "My work",
@@ -304,7 +305,9 @@
     "ACCOUNT_SUSPENDED": "Your organization's account is read-only until the overdue balance is paid.",
     "ONLINE_PAYMENTS_OFF": "Online payment isn't set up. Pay by EFT or cheque.",
     "PAYMENT_PROVIDER": "The payment page couldn't be opened. Try again shortly.",
-    "NOT_PAYABLE": "This invoice has nothing left to pay."
+    "NOT_PAYABLE": "This invoice has nothing left to pay.",
+    "UNKNOWN_POSITION": "One of those positions no longer exists.",
+    "UNKNOWN_FACILITY": "One of those facilities no longer exists."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1297,15 +1300,15 @@
     "confirmWithPassword": "Confirm with password"
   },
   "customRoles": {
-    "title": "City roles",
-    "help": "Roles for your other city jobs, like water works, maintenance or parks. People with these roles see their own schedule, time and requests; never the pool deck.",
+    "title": "Roles",
+    "help": "Any role your organization needs: workers, crew leads, supervisors and managers in any department. Limit a role to a department and its leads see and manage only their own crew.",
     "add": "Add a role",
     "none": "No city roles yet",
     "noneHelp": "Add one for each kind of non-aquatic job, e.g. Water Works Operator or Maintenance Worker.",
     "members_one": "{{count}} person",
     "members_other": "{{count}} people",
     "noPool": "Pool status, water chemistry, headcounts, incidents and lessons are never part of a city role. Aquatic staff use the built-in aquatic roles.",
-    "formHelp": "Choose what people in this role can do. Only non-aquatic capabilities are offered.",
+    "formHelp": "Choose what people in this role can do, and optionally limit it to a department.",
     "name": "Role name",
     "nameFr": "Role name in French",
     "description": "Description",
@@ -1318,12 +1321,20 @@
     "groups": {
       "everyday": "Their own work",
       "shiftBoard": "Shift board",
-      "lead": "Leading a team"
+      "lead": "Leading a team",
+      "safety": "Safety",
+      "aquatics": "Aquatics and pool deck",
+      "manager": "Managing people",
+      "admin": "Organization administration"
     },
     "groupHelp": {
       "everyday": "What almost every employee needs.",
       "shiftBoard": "Pick up and give away shifts with coworkers.",
-      "lead": "For crew leads and foremen: their team's schedule and approvals."
+      "lead": "For crew leads and foremen: their team's schedule and approvals.",
+      "safety": "Report incidents and count bathers.",
+      "aquatics": "Pool deck duties: water chemistry, closures, rotations, lessons.",
+      "manager": "Files, discipline, payroll, positions, job postings, and making roles for their team.",
+      "admin": "HR-level access across the organization. Give it sparingly."
     },
     "perms": {
       "schedule.read": "See the schedule",
@@ -1339,8 +1350,57 @@
       "shiftboard.approve": "Approve overtime claims",
       "timeoff.approve": "Approve time off",
       "timeclock.review": "Review punches",
-      "certs.verify": "Verify certifications"
-    }
+      "certs.verify": "Verify certifications",
+      "lonework.self": "Work alone with check-ins",
+      "lonework.monitor": "Watch lone workers",
+      "incidents.create": "Report incidents",
+      "incidents.read": "Read incident reports",
+      "ops.headcount.record": "Count bathers",
+      "lessons.teach": "Teach lessons",
+      "ops.chemical.record": "Record water chemistry",
+      "ops.chemical.signoff": "Sign off water chemistry",
+      "ops.pool.close": "Close and reopen pools",
+      "ops.status.read": "See pool status",
+      "ops.page_head_guard": "Page the person in charge",
+      "deck.rotate": "Run deck rotations",
+      "ops.configure": "Set up pools",
+      "schedule.assist": "Use the scheduling assistant",
+      "shiftboard.assign_emergency": "Fill shifts in an emergency",
+      "onboarding.lead": "Supervisor onboarding items",
+      "overtime.manage": "Offer overtime fairly",
+      "reliability.read": "See people review",
+      "reliability.write": "Record attendance and conduct notes",
+      "discipline.read": "See discipline records",
+      "discipline.write": "Record discipline",
+      "care.manage": "Follow up after critical incidents",
+      "compliance.report": "Compliance at any minute",
+      "payroll.export": "Export payroll",
+      "positions.manage": "Define positions",
+      "jobs.manage": "Post jobs",
+      "roles.manage": "Make roles and give them to people",
+      "users.write": "Edit staff records and pay rates",
+      "users.privacy": "Handle privacy requests",
+      "audit.read": "Read the audit log",
+      "onboarding.hr": "HR onboarding items",
+      "onboarding.configure": "Set up onboarding",
+      "accommodation.manage": "Accommodation cases",
+      "tenant.configure": "Organization settings",
+      "billing.manage": "Billing"
+    },
+    "limits": "You can give a role only what you can do yourself, within your own department.",
+    "anything": "Supervisory capabilities follow a role's department: people holding its positions, and shifts at its facilities. The union hub isn't offered; it follows union membership.",
+    "beyondYou": "This role has capabilities or a department beyond yours, so you can't change it.",
+    "startFrom": "Start from",
+    "templates": {
+      "worker": "Worker",
+      "lead": "Crew lead",
+      "supervisor": "Supervisor",
+      "manager": "Manager"
+    },
+    "department": "Department (optional)",
+    "departmentHelp": "Leave empty for the whole organization. Otherwise, this role's lead and manager capabilities reach only people in these positions, and shifts at these facilities.",
+    "scopePositions": "Positions",
+    "scopeFacilities": "Facilities"
   },
   "headcount": {
     "title": "Headcount",
@@ -2240,5 +2300,18 @@
     "suspendedPay": "Your account is read-only because of an overdue balance. Safety records, clocking in and out, and paying still work. Pay now to restore everything.",
     "suspendedStaff": "Your organization's account is read-only for now. Safety records and clocking in and out still work. HR has been told how to restore it.",
     "payNow": "Pay now"
+  },
+  "rolesPage": {
+    "title": "Roles",
+    "description": "Make roles for any job or department, and give them to people. Managers can do this for their own crew.",
+    "people": "Who has which role",
+    "peopleHelp": "Built-in access levels are set by HR on each person's record.",
+    "nobody": "No one to show",
+    "nobodyHelp": "People in your department appear here.",
+    "noRoles": "No roles yet",
+    "change": "Change roles",
+    "rolesFor": "Roles for {{name}}",
+    "rolesForHelp": "Only roles you can give are listed; others they hold stay as they are.",
+    "assigned": "Roles updated"
   }
 }

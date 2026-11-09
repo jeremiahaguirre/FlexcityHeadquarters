@@ -14,6 +14,7 @@ import { MENU } from '../auth/menu.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
 import { forgetActive, setUserCustomRoles } from '../services/people/customRoles.js';
+import { actorOf, assertUserInScope, peopleWhere } from '../services/people/scope.js';
 
 export const staffRouter = Router();
 const uuid = z.string().uuid();
@@ -165,6 +166,7 @@ staffRouter.post(
       const row = await tx.userCertification.findUnique({ where: { id } });
       if (!row) throw notFound('Certification');
       if (row.userId === a.userId) throw forbidden('You cannot verify your own certification.');
+      await assertUserInScope(tx, a, row.userId);
       const updated = await tx.userCertification.update({ where: { id }, data: { verifiedById: a.userId, verifiedAt: new Date() }, include: certInclude });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cert.verify', entity: 'UserCertification', entityId: id });
       await tx.notification.create({ data: { tenantId: a.tenantId, userId: row.userId, type: 'cert_verified', params: { name: updated.certification.name }, link: '/profile' } });
@@ -182,7 +184,7 @@ staffRouter.get(
     const a = authOf(req);
     const rows = await withTenant(a.tenantId, (tx) =>
       tx.userCertification.findMany({
-        where: { verifiedAt: null, user: { status: 'ACTIVE', anonymizedAt: null }, userId: { not: a.userId } },
+        where: { verifiedAt: null, user: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) }, userId: { not: a.userId } },
         include: { ...certInclude, user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { issueDate: 'desc' },
       }),
@@ -200,7 +202,7 @@ staffRouter.get(
     const limit = new Date(Date.now() + days * 86_400_000);
     const rows = await withTenant(a.tenantId, (tx) =>
       tx.userCertification.findMany({
-        where: { expiryDate: { not: null, lte: limit }, user: { status: 'ACTIVE', anonymizedAt: null } },
+        where: { expiryDate: { not: null, lte: limit }, user: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) } },
         include: { ...certInclude, user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { expiryDate: 'asc' },
       }),
@@ -262,6 +264,8 @@ staffRouter.get(
     const q = z.object({ status: z.enum(['ACTIVE', 'INACTIVE', 'TERMINATED']).optional(), q: z.string().max(80).optional() }).parse(req.query);
     const where: Prisma.UserWhereInput = {
       anonymizedAt: null,
+      // A department supervisor sees their own crew.
+      ...peopleWhere(a.scope),
       ...(q.status ? { status: q.status } : { status: { not: 'TERMINATED' } }),
       ...(q.q ? { OR: [{ firstName: { contains: q.q, mode: 'insensitive' } }, { lastName: { contains: q.q, mode: 'insensitive' } }, { email: { contains: q.q, mode: 'insensitive' } }] } : {}),
     };
@@ -308,8 +312,8 @@ staffRouter.get(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const u = await withTenant(a.tenantId, (tx) =>
-      tx.user.findUnique({
-        where: { id },
+      tx.user.findFirst({
+        where: { id, ...peopleWhere(a.scope) },
         include: {
           positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } },
           certifications: { include: certInclude, orderBy: { expiryDate: 'asc' } },
@@ -396,7 +400,7 @@ staffRouter.post(
       if (body.positionIds.length) {
         await tx.userPosition.createMany({ data: body.positionIds.map((positionId) => ({ tenantId: a.tenantId, userId: created.id, positionId })) });
       }
-      if (body.customRoleIds.length) await setUserCustomRoles(tx, a.tenantId, created.id, body.customRoleIds);
+      if (body.customRoleIds.length) await setUserCustomRoles(tx, a.tenantId, created.id, body.customRoleIds, actorOf(a));
       const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
       const token = await issueAuthToken(tx, a.tenantId, created.id, 'INVITE');
       await tx.emailOutbox.create({
@@ -466,7 +470,7 @@ staffRouter.patch(
         dateOfBirth: d(body.dateOfBirth),
       };
       await tx.user.update({ where: { id }, data });
-      if (customRoleIds) await setUserCustomRoles(tx, a.tenantId, id, customRoleIds);
+      if (customRoleIds) await setUserCustomRoles(tx, a.tenantId, id, customRoleIds, actorOf(a));
       if (body.status && body.status !== 'ACTIVE') {
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
         forgetActive(id);
@@ -491,10 +495,14 @@ staffRouter.patch(
       .parse(req.body);
     if (body.weeklyMinHours && body.weeklyMaxHours && Number(body.weeklyMinHours) > Number(body.weeklyMaxHours)) throw badRequest('Weekly minimum cannot exceed the maximum.');
     await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
       const { positionIds, ...rest } = body;
       await tx.user.update({ where: { id }, data: rest });
       if (positionIds) {
-        await tx.userPosition.deleteMany({ where: { userId: id, positionId: { notIn: positionIds } } });
+        // A department supervisor approves positions in their department only; others are left as they are.
+        const mine = a.scope?.positionIds.length ? a.scope.positionIds : null;
+        if (mine && positionIds.some((p) => !mine.includes(p))) throw forbidden('You can only approve positions in your department.');
+        await tx.userPosition.deleteMany({ where: { userId: id, positionId: { notIn: positionIds, ...(mine ? { in: mine } : {}) } } });
         for (const positionId of positionIds) {
           await tx.userPosition.upsert({ where: { userId_positionId: { userId: id, positionId } }, update: {}, create: { tenantId: a.tenantId, userId: id, positionId } });
         }
@@ -538,8 +546,8 @@ staffRouter.post(
     const userId = uuid.parse(req.params.id);
     if (userId === a.userId) throw forbidden('Add your own certifications from your profile; another supervisor verifies them.');
     const body = z.object({ certificationId: uuid, issueDate: isoDate, expiryDate: isoDate.nullable(), documentUrl: z.string().url().nullable().optional() }).parse(req.body);
-    const c = await withTenant(a.tenantId, (tx) =>
-      tx.userCertification.create({
+    const c = await withTenant(a.tenantId, async (tx) =>
+      (await assertUserInScope(tx, a, userId), tx).userCertification.create({
         data: {
           tenantId: a.tenantId,
           userId,

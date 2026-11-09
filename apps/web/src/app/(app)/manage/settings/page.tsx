@@ -16,10 +16,8 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { PROVINCES, TIMEZONES } from '@/lib/regions';
-import { RoleEditor } from '@/components/roles/RoleEditor';
 import { DeckStations } from '@/components/pools/DeckStations';
 import { PoolsEditor } from '@/components/pools/PoolsEditor';
-import type { CustomRole, RoleCatalog } from '@/lib/customRoles';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
@@ -51,7 +49,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'facilities' | 'pools' | 'roles' | 'pay' | 'calendar' | 'rules';
+type Tab = 'org' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -68,7 +66,7 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const { can } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['roles', 'pay', 'calendar', 'rules'] as const) : [])];
+  const tabs: Tab[] = [...(org ? (['org', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
   const settings = useQuery<Settings>(org ? '/api/settings' : null);
 
@@ -82,10 +80,6 @@ export default function SettingsPage() {
       ) : null}
       {tab === 'pools' ? (
         <Pools />
-      ) : tab === 'roles' ? (
-        <div className="max-w-4xl">
-          <CityRoles />
-        </div>
       ) : settings.error ? (
         <ErrorNotice onRetry={settings.reload} />
       ) : !settings.data ? (
@@ -513,16 +507,3 @@ function Rules({ s, reload }: Props) {
   );
 }
 
-function CityRoles() {
-  const roles = useQuery<{ roles: CustomRole[]; catalog: RoleCatalog }>('/api/roles');
-  if (!roles.data) return <ListSkeleton rows={3} />;
-  return (
-    <RoleEditor
-      roles={roles.data.roles}
-      catalog={roles.data.catalog}
-      save={(body, id) => (id ? api(`/api/roles/${id}`, { method: 'PUT', body }) : api('/api/roles', { method: 'POST', body }))}
-      remove={(id) => api(`/api/roles/${id}`, { method: 'DELETE' })}
-      reload={roles.reload}
-    />
-  );
-}

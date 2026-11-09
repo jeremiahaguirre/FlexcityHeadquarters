@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';
 import { verifyAccessToken } from './tokens.js';
-import { customPermissions, stillActive } from '../services/people/customRoles.js';
+import { type Scope, customAccess, scopeOf, stillActive } from '../services/people/customRoles.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { allowedWhileSuspended } from '../services/billing/entitlements.js';
@@ -19,6 +19,8 @@ export interface AuthContext {
   mfa: boolean;
   /** The city requires a second factor for one of this person's access levels, and this session hasn't given one. */
   mfaPending: boolean;
+  /** Where supervisory capabilities reach: null = the whole organization, else a department. */
+  scope: Scope;
 }
 
 /** What someone who still owes a second factor may reach: enough to give it, or set up a passkey. */
@@ -45,11 +47,12 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const [{ features, overrides, mfaRoles, billing }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customPermissions(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
+    const [{ features, overrides, mfaRoles, billing }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customAccess(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
     // Terminated, deactivated or restricted people lose access at once, not when their token expires.
     if (!ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
     // Each role's permissions after the city's Dev console overrides, plus custom roles.
-    const granted = new Set([...permissionsWithOverrides(claims.roles, overrides), ...custom]);
+    const builtIn = permissionsWithOverrides(claims.roles, overrides);
+    const granted = new Set([...builtIn, ...custom.perms]);
     const mfa = claims.mfa === true;
     const mfaPending = !mfa && claims.roles.some((r) => mfaRoles.includes(r));
     req.auth = {
@@ -60,6 +63,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null,
       mfa,
       mfaPending,
+      scope: scopeOf(builtIn, custom),
     };
     // Unpaid past the grace period: read-only, except safety work, clocking and paying.
     if (billing.stage === 'suspended' && !allowedWhileSuspended(req.method, req.originalUrl)) {

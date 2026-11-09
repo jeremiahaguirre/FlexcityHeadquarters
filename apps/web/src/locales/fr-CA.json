@@ -164,7 +164,8 @@
     "benchmarks": "Comparaisons",
     "loneWork": "Travail seul",
     "loneWorkMonitor": "Travailleurs isolés",
-    "billing": "Facturation"
+    "billing": "Facturation",
+    "roles": "Rôles"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -304,7 +305,9 @@
     "ACCOUNT_SUSPENDED": "Le compte de votre organisation est en lecture seule jusqu'au paiement du solde en retard.",
     "ONLINE_PAYMENTS_OFF": "Le paiement en ligne n'est pas configuré. Payez par TEF ou par chèque.",
     "PAYMENT_PROVIDER": "La page de paiement n'a pas pu s'ouvrir. Réessayez sous peu.",
-    "NOT_PAYABLE": "Il ne reste rien à payer sur cette facture."
+    "NOT_PAYABLE": "Il ne reste rien à payer sur cette facture.",
+    "UNKNOWN_POSITION": "Un de ces postes n'existe plus.",
+    "UNKNOWN_FACILITY": "Une de ces installations n'existe plus."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1297,15 +1300,15 @@
     "confirmWithPassword": "Confirmer avec le mot de passe"
   },
   "customRoles": {
-    "title": "Rôles municipaux",
-    "help": "Des rôles pour vos autres emplois municipaux, comme l'aqueduc, l'entretien ou les parcs. Ces personnes voient leur horaire, leur temps et leurs demandes, jamais le bord de la piscine.",
+    "title": "Rôles",
+    "help": "Tous les rôles dont votre organisation a besoin : employés, chefs d'équipe, superviseurs et gestionnaires, dans n'importe quel service. Limitez un rôle à un service et ses responsables ne voient et ne gèrent que leur propre équipe.",
     "add": "Ajouter un rôle",
     "none": "Aucun rôle municipal",
     "noneHelp": "Ajoutez-en un pour chaque type d'emploi hors aquatique, p. ex. Opérateur d'aqueduc ou Préposé à l'entretien.",
     "members_one": "{{count}} personne",
     "members_other": "{{count}} personnes",
     "noPool": "L'état des bassins, la chimie de l'eau, le dénombrement des baigneurs, les incidents et les cours ne font jamais partie d'un rôle municipal. Le personnel aquatique utilise les rôles aquatiques intégrés.",
-    "formHelp": "Choisissez ce que les personnes ayant ce rôle peuvent faire. Seules les fonctions hors aquatique sont offertes.",
+    "formHelp": "Choisissez ce que les personnes ayant ce rôle peuvent faire et, au besoin, limitez-le à un service.",
     "name": "Nom du rôle",
     "nameFr": "Nom du rôle en français",
     "description": "Description",
@@ -1318,12 +1321,20 @@
     "groups": {
       "everyday": "Son propre travail",
       "shiftBoard": "Babillard des quarts",
-      "lead": "Diriger une équipe"
+      "lead": "Diriger une équipe",
+      "safety": "Sécurité",
+      "aquatics": "Aquatique et bord de piscine",
+      "manager": "Gestion du personnel",
+      "admin": "Administration de l'organisation"
     },
     "groupHelp": {
       "everyday": "Ce dont presque tout employé a besoin.",
       "shiftBoard": "Prendre et céder des quarts avec des collègues.",
-      "lead": "Pour les chefs d'équipe et contremaîtres : l'horaire et les approbations de l'équipe."
+      "lead": "Pour les chefs d'équipe et contremaîtres : l'horaire et les approbations de l'équipe.",
+      "safety": "Signaler des incidents et compter les baigneurs.",
+      "aquatics": "Tâches au bord de la piscine : chimie de l'eau, fermetures, rotations, cours.",
+      "manager": "Dossiers, discipline, paie, postes, offres d'emploi, et création de rôles pour leur équipe.",
+      "admin": "Accès de niveau RH à toute l'organisation. À accorder avec parcimonie."
     },
     "perms": {
       "schedule.read": "Voir l'horaire",
@@ -1339,8 +1350,57 @@
       "shiftboard.approve": "Approuver les heures supplémentaires",
       "timeoff.approve": "Approuver les congés",
       "timeclock.review": "Réviser les pointages",
-      "certs.verify": "Vérifier les certifications"
-    }
+      "certs.verify": "Vérifier les certifications",
+      "lonework.self": "Travailler seul avec vérifications",
+      "lonework.monitor": "Surveiller les travailleurs isolés",
+      "incidents.create": "Signaler des incidents",
+      "incidents.read": "Lire les rapports d'incident",
+      "ops.headcount.record": "Compter les baigneurs",
+      "lessons.teach": "Donner des cours",
+      "ops.chemical.record": "Consigner la chimie de l'eau",
+      "ops.chemical.signoff": "Approuver la chimie de l'eau",
+      "ops.pool.close": "Fermer et rouvrir les bassins",
+      "ops.status.read": "Voir l'état des bassins",
+      "ops.page_head_guard": "Appeler le responsable",
+      "deck.rotate": "Gérer les rotations",
+      "ops.configure": "Configurer les bassins",
+      "schedule.assist": "Utiliser l'assistant de planification",
+      "shiftboard.assign_emergency": "Combler des quarts en urgence",
+      "onboarding.lead": "Éléments d'intégration du superviseur",
+      "overtime.manage": "Offrir les heures supplémentaires équitablement",
+      "reliability.read": "Voir l'examen du personnel",
+      "reliability.write": "Consigner l'assiduité et les notes de conduite",
+      "discipline.read": "Voir les dossiers disciplinaires",
+      "discipline.write": "Consigner des mesures disciplinaires",
+      "care.manage": "Faire le suivi après un incident grave",
+      "compliance.report": "Conformité à tout moment",
+      "payroll.export": "Exporter la paie",
+      "positions.manage": "Définir les postes",
+      "jobs.manage": "Publier des offres d'emploi",
+      "roles.manage": "Créer des rôles et les attribuer",
+      "users.write": "Modifier les dossiers et les taux de salaire",
+      "users.privacy": "Traiter les demandes de confidentialité",
+      "audit.read": "Lire le journal d'audit",
+      "onboarding.hr": "Éléments d'intégration RH",
+      "onboarding.configure": "Configurer l'intégration",
+      "accommodation.manage": "Dossiers d'accommodement",
+      "tenant.configure": "Paramètres de l'organisation",
+      "billing.manage": "Facturation"
+    },
+    "limits": "Vous pouvez seulement donner à un rôle ce que vous pouvez faire vous-même, dans votre propre service.",
+    "anything": "Les capacités de supervision suivent le service du rôle : les personnes qui occupent ses postes et les quarts dans ses installations. L'espace syndical n'est pas offert; il suit l'adhésion syndicale.",
+    "beyondYou": "Ce rôle a des capacités ou un service qui dépassent les vôtres; vous ne pouvez pas le modifier.",
+    "startFrom": "Partir de",
+    "templates": {
+      "worker": "Employé",
+      "lead": "Chef d'équipe",
+      "supervisor": "Superviseur",
+      "manager": "Gestionnaire"
+    },
+    "department": "Service (facultatif)",
+    "departmentHelp": "Laissez vide pour toute l'organisation. Sinon, les capacités de responsable et de gestionnaire de ce rôle ne s'appliquent qu'aux personnes de ces postes et aux quarts de ces installations.",
+    "scopePositions": "Postes",
+    "scopeFacilities": "Installations"
   },
   "headcount": {
     "title": "Dénombrement",
@@ -2240,5 +2300,18 @@
     "suspendedPay": "Votre compte est en lecture seule en raison d'un solde en retard. Les dossiers de sécurité, l'horodateur et le paiement fonctionnent toujours. Payez maintenant pour tout rétablir.",
     "suspendedStaff": "Le compte de votre organisation est en lecture seule pour l'instant. Les dossiers de sécurité et l'horodateur fonctionnent toujours. Les RH savent comment le rétablir.",
     "payNow": "Payer maintenant"
+  },
+  "rolesPage": {
+    "title": "Rôles",
+    "description": "Créez des rôles pour n'importe quel emploi ou service et attribuez-les. Les gestionnaires peuvent le faire pour leur propre équipe.",
+    "people": "Qui a quel rôle",
+    "peopleHelp": "Les niveaux d'accès intégrés sont définis par les RH dans le dossier de chaque personne.",
+    "nobody": "Personne à afficher",
+    "nobodyHelp": "Les personnes de votre service apparaissent ici.",
+    "noRoles": "Aucun rôle pour l'instant",
+    "change": "Modifier les rôles",
+    "rolesFor": "Rôles de {{name}}",
+    "rolesForHelp": "Seuls les rôles que vous pouvez attribuer sont listés; les autres restent tels quels.",
+    "assigned": "Rôles mis à jour"
   }
 }

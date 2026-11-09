@@ -35,6 +35,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/certifications', key: 'certifications', group: 'manage', permissions: ['certs.verify'] },
   { href: '/manage/jobs', key: 'jobs', group: 'manage', permissions: ['jobs.manage'] },
   { href: '/manage/payroll', key: 'payroll', group: 'manage', permissions: ['payroll.export'] },
+  { href: '/manage/roles', key: 'roles', group: 'manage', permissions: ['roles.manage'] },
   { href: '/manage/billing', key: 'billing', group: 'manage', permissions: ['billing.manage'] },
   { href: '/manage/settings', key: 'settings', group: 'manage', permissions: ['tenant.configure', 'ops.configure'] },
   { href: '/union', key: 'union', group: 'union', permissions: ['union.hub'] },

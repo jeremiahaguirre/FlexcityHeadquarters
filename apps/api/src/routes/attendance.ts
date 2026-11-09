@@ -1,8 +1,9 @@
 import { Router } from 'express';
+import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { badRequest } from '../lib/errors.js';
+import { badRequest, forbidden } from '../lib/errors.js';
 import { publish } from '../lib/events.js';
 import { localIso } from '../lib/time.js';
 import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
@@ -48,8 +49,8 @@ attendanceRouter.get(
     const a = authOf(req);
     const today = new Date(new Date().toISOString().slice(0, 10));
     res.json(
-      await withTenant(a.tenantId, (tx) =>
-        tx.availability.findMany({
+      await withTenant(a.tenantId, async (tx) =>
+        (await assertUserInScope(tx, a, uuid.parse(req.params.id)), tx).availability.findMany({
           where: { userId: uuid.parse(req.params.id), OR: [{ effectiveTo: null }, { effectiveTo: { gte: today } }] },
           orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }],
         }),
@@ -97,7 +98,7 @@ attendanceRouter.get(
     const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'DENIED', 'CANCELLED']).default('PENDING') }).parse(req.query);
     const rows = await withTenant(a.tenantId, async (tx) => {
       const list = await tx.timeOffRequest.findMany({
-        where: { status: q.status },
+        where: { status: q.status, user: peopleWhere(a.scope) },
         include: { user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { startsAt: 'asc' },
         take: 200,
@@ -120,7 +121,11 @@ attendanceRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ decision: z.enum(['APPROVE', 'DENY']), note: z.string().max(500).nullable().optional() }).parse(req.body);
-    const out = await withTenant(a.tenantId, (tx) => decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, uuid.parse(req.params.id), body.decision, body.note));
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const r = await tx.timeOffRequest.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { userId: true } });
+      if (r) await assertUserInScope(tx, a, r.userId);
+      return decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, uuid.parse(req.params.id), body.decision, body.note);
+    });
     publish(out.events);
     res.json({ status: out.status, reopenedShifts: out.reopenedShifts });
   }),
@@ -173,7 +178,7 @@ attendanceRouter.get(
     const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'), facilityId: uuid.optional() }).parse(req.query);
     const rows = await withTenant(a.tenantId, (tx) =>
       tx.timePunch.findMany({
-        where: { status: q.status, ...(q.facilityId ? { facilityId: q.facilityId } : {}) },
+        where: { status: q.status, ...(q.facilityId ? { facilityId: q.facilityId } : {}), user: peopleWhere(a.scope), ...(a.scope?.facilityIds.length ? { facilityId: { in: a.scope.facilityIds } } : {}) },
         include: { ...punchInclude, user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { clockIn: 'asc' },
         take: 300,
@@ -209,7 +214,16 @@ attendanceRouter.post(
     const a = authOf(req);
     const body = z.object({ ids: z.array(uuid).min(1).max(300), decision: z.enum(['APPROVE', 'REJECT']), note: z.string().max(500).nullable().optional() }).parse(req.body);
     if (new Set(body.ids).size !== body.ids.length) throw badRequest('Duplicate punch ids.');
-    const out = await withTenant(a.tenantId, (tx) => decidePunches(tx, { userId: a.userId, tenantId: a.tenantId }, body.ids, body.decision, body.note));
+    const out = await withTenant(a.tenantId, async (tx) => {
+      if (a.scope) {
+        const ps = await tx.timePunch.findMany({ where: { id: { in: body.ids } }, select: { userId: true, facilityId: true } });
+        for (const p of ps) {
+          await assertUserInScope(tx, a, p.userId);
+          if (a.scope.facilityIds.length && !a.scope.facilityIds.includes(p.facilityId)) throw forbidden('This punch isn’t in your department.');
+        }
+      }
+      return decidePunches(tx, { userId: a.userId, tenantId: a.tenantId }, body.ids, body.decision, body.note);
+    });
     if (out.rejectedUserIds.length) {
       publish({
         type: 'notify',

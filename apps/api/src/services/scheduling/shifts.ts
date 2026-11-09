@@ -194,8 +194,9 @@ export async function cancelShift(tx: Tx, actor: Actor, shiftId: string, reason:
  * Publish drafts in a window. Assigned people are told once each; unassigned
  * shifts go straight onto the Shift Board for eligible staff.
  */
-export async function publishShifts(tx: Tx, actor: Actor, facilityId: string, from: Date, to: Date) {
-  const drafts = await tx.shift.findMany({ where: { facilityId, status: 'DRAFT', startsAt: { gte: from, lt: to } } });
+/** `only`: a department supervisor publishes their own department's drafts, nobody else's. */
+export async function publishShifts(tx: Tx, actor: Actor, facilityId: string, from: Date, to: Date, only: Prisma.ShiftWhereInput = {}) {
+  const drafts = await tx.shift.findMany({ where: { ...only, facilityId, status: 'DRAFT', startsAt: { gte: from, lt: to } } });
   if (drafts.length === 0) return { published: 0, posted: 0, events: [] as DomainEvent[] };
   await tx.shift.updateMany({ where: { id: { in: drafts.map((d) => d.id) } }, data: { status: 'PUBLISHED', version: { increment: 1 } } });
 

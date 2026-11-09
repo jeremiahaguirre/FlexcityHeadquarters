@@ -38,10 +38,10 @@ describe('general employees and the city’s own roles', () => {
     expect((await call(worker.token).get('/api/ops/pools')).status).toBe(403);
   });
 
-  it('HR defines a role; pool permissions are refused whatever is sent', async () => {
-    const bad = await call(hr).post('/api/roles', { name: 'Sneaky', permissions: ['shifts.self', 'ops.chemical.record', 'payroll.export'] });
+  it('HR defines a role; the union hub and unknown capabilities are refused whatever is sent', async () => {
+    const bad = await call(hr).post('/api/roles', { name: 'Sneaky', permissions: ['shifts.self', 'union.hub', 'everything.please'] });
     expect(bad.status).toBe(400);
-    expect(bad.body.details.permissions).toEqual(['ops.chemical.record', 'payroll.export']);
+    expect(bad.body.details.permissions).toEqual(['union.hub', 'everything.please']);
     const r = await call(hr).post('/api/roles', { name: 'Maintenance Lead', nameFr: 'Chef d’entretien', permissions: ['shifts.self', 'shiftboard.claim', 'timeoff.approve', 'timeclock.review'] });
     expect(r.status).toBe(201);
     expect((await call(hr).post('/api/roles', { name: 'maintenance lead', permissions: ['shifts.self'] })).body.code).toBe('ROLE_EXISTS');
@@ -73,7 +73,7 @@ describe('general employees and the city’s own roles', () => {
     const cookie = String(login.headers['set-cookie']).split(';')[0]!;
     const dev = (m: 'get' | 'post', p: string, b?: object) => request(server)[m](`/api/platform${p}`).set('x-fh-platform', '1').set('Cookie', cookie).send(b);
     expect((await dev('post', `/tenants/${t.tenant.id}/roles`, { name: 'Water Works Operator', nameFr: 'Opérateur, réseau d’aqueduc', permissions: ['schedule.read', 'shifts.self', 'timeclock.punch'] })).status).toBe(201);
-    expect((await dev('post', `/tenants/${t.tenant.id}/roles`, { name: 'Bad', permissions: ['ops.pool.close'] })).status).toBe(400);
+    expect((await dev('post', `/tenants/${t.tenant.id}/roles`, { name: 'Bad', permissions: ['union.hub'] })).status).toBe(400);
     const city = await dev('get', `/tenants/${t.tenant.id}`);
     expect(city.body.customRoles.map((r: { name: string }) => r.name)).toEqual(['Water Works Operator']);
 

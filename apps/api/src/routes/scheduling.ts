@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { assertShiftInScope, assertUserInScope, shiftsWhere } from '../services/people/scope.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
@@ -10,6 +11,11 @@ import { previewShiftPay } from '../services/payroll/payPreview.js';
 import { notFound } from '../lib/errors.js';
 import { h } from './context.js';
 import { shiftInclude, shiftView } from './serializers.js';
+
+async function shiftScoped(tx: Parameters<Parameters<typeof withTenant>[1]>[0], a: ReturnType<typeof authOf>, id: string) {
+  const s = await tx.shift.findUnique({ where: { id }, select: { positionId: true, facilityId: true } });
+  if (s) assertShiftInScope(a, s);
+}
 
 export const schedulingRouter = Router();
 const uuid = z.string().uuid();
@@ -57,6 +63,8 @@ schedulingRouter.get(
       startsAt: { gte: q.from, lt: q.to },
       ...(q.facilityId ? { facilityId: q.facilityId } : {}),
       ...(manager ? { status: { not: 'CANCELLED' } } : { status: 'PUBLISHED' }),
+      // A department supervisor builds their own department's schedule.
+      ...(manager ? shiftsWhere(a.scope) : {}),
     };
     const shifts = await withTenant(a.tenantId, (tx) => tx.shift.findMany({ where, include: shiftInclude, orderBy: { startsAt: 'asc' } }));
     res.json(shifts.map((s) => shiftView(s, { fullNames: manager })));
@@ -95,6 +103,7 @@ schedulingRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = shiftBody.parse(req.body);
+    assertShiftInScope(a, body);
     const s = await withTenant(a.tenantId, async (tx) => {
       const created = await createShift(tx, actor(req), body);
       return tx.shift.findUniqueOrThrow({ where: { id: created.id }, include: shiftInclude });
@@ -111,6 +120,8 @@ schedulingRouter.patch(
     const body = shiftBody.omit({ facilityId: true }).partial().extend({ expectedVersion: z.number().int() }).parse(req.body);
     const { expectedVersion, ...patch } = body;
     const out = await withTenant(a.tenantId, async (tx) => {
+      await shiftScoped(tx, a, uuid.parse(req.params.id));
+      if (patch.positionId) assertShiftInScope(a, { positionId: patch.positionId, facilityId: (await tx.shift.findUniqueOrThrow({ where: { id: uuid.parse(req.params.id) } })).facilityId });
       const r = await updateShift(tx, actor(req), uuid.parse(req.params.id), expectedVersion, patch);
       return { shift: await tx.shift.findUniqueOrThrow({ where: { id: r.shift.id }, include: shiftInclude }), events: r.events };
     });
@@ -126,6 +137,8 @@ schedulingRouter.post(
     if (!a.permissions.has('schedule.write') && !a.permissions.has('shiftboard.assign_emergency')) throw forbidden();
     const body = z.object({ userId: uuid.nullable(), expectedVersion: z.number().int(), acknowledgeOvertime: z.boolean().default(false) }).parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
+      await shiftScoped(tx, a, uuid.parse(req.params.id));
+      if (body.userId) await assertUserInScope(tx, a, body.userId);
       const r = await assignShift(tx, actor(req), uuid.parse(req.params.id), body.userId, body.expectedVersion, body.acknowledgeOvertime);
       return { shift: await tx.shift.findUniqueOrThrow({ where: { id: r.shift.id }, include: shiftInclude }), events: r.events, evaluation: r.evaluation };
     });
@@ -140,7 +153,10 @@ schedulingRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const { reason } = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
-    const out = await withTenant(a.tenantId, (tx) => cancelShift(tx, actor(req), uuid.parse(req.params.id), reason));
+    const out = await withTenant(a.tenantId, async (tx) => {
+      await shiftScoped(tx, a, uuid.parse(req.params.id));
+      return cancelShift(tx, actor(req), uuid.parse(req.params.id), reason);
+    });
     publish(out.events);
     res.json({ ok: true });
   }),
@@ -152,7 +168,8 @@ schedulingRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ facilityId: uuid, from: z.coerce.date(), to: z.coerce.date() }).parse(req.body);
-    const out = await withTenant(a.tenantId, (tx) => publishShifts(tx, actor(req), body.facilityId, body.from, body.to));
+    if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
+    const out = await withTenant(a.tenantId, (tx) => publishShifts(tx, actor(req), body.facilityId, body.from, body.to, shiftsWhere(a.scope)));
     publish(out.events);
     res.json({ published: out.published, postedToBoard: out.posted });
   }),
@@ -163,7 +180,12 @@ schedulingRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     if (!a.permissions.has('schedule.write') && !a.permissions.has('shiftboard.assign_emergency')) throw forbidden();
-    res.json(await withTenant(a.tenantId, (tx) => rankCandidates(tx, uuid.parse(req.params.id))));
+    res.json(
+      await withTenant(a.tenantId, async (tx) => {
+        await shiftScoped(tx, a, uuid.parse(req.params.id));
+        return rankCandidates(tx, uuid.parse(req.params.id));
+      }),
+    );
   }),
 );
 
@@ -174,7 +196,7 @@ schedulingRouter.get(
     const a = authOf(req);
     const offers = await withTenant(a.tenantId, (tx) =>
       tx.shiftOffer.findMany({
-        where: { status: 'PENDING_APPROVAL' },
+        where: { status: 'PENDING_APPROVAL', shift: shiftsWhere(a.scope) },
         include: {
           shift: { include: shiftInclude },
           claimedBy: { select: { id: true, firstName: true, lastName: true } },

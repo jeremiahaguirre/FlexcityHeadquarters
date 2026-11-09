@@ -143,7 +143,7 @@ loneWorkRouter.get(
     const a = authOf(req);
     const rows = await withTenant(a.tenantId, async (tx) => {
       const list = await tx.loneWorkSession.findMany({
-        where: { OR: [{ status: { in: [...OPEN] } }, { endedAt: { gte: new Date(Date.now() - 86_400_000) } }] },
+        where: { OR: [{ status: { in: [...OPEN] } }, { endedAt: { gte: new Date(Date.now() - 86_400_000) } }], ...(a.scope?.positionIds.length ? { userId: { in: (await tx.userPosition.findMany({ where: { positionId: { in: a.scope.positionIds } }, select: { userId: true } })).map((u) => u.userId) } } : {}) },
         orderBy: { nextDueAt: 'asc' },
         take: 200,
       });

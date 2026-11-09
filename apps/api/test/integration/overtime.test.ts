@@ -30,7 +30,9 @@ beforeAll(async () => {
   steward = await signAccessToken({ sub: st.id, tid: t.tenant.id, roles: ['UNION_STEWARD'] });
   guard = await signAccessToken({ sub: id(A), tid: t.tenant.id, roles: ['STAFF'] });
   // A 10-hour shift: 2 hours of daily overtime in BC for anyone.
-  const start = new Date(Math.floor((Date.now() + 4 * 86_400_000) / 3_600_000) * 3_600_000);
+  // 8 a.m. Vancouver, four days out, so the whole shift falls on one local day whatever time the test runs.
+  const day = new Date(Date.now() + 4 * 86_400_000);
+  const start = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), 16));
   const shift = await owner.shift.create({ data: { tenantId: t.tenant.id, facilityId: t.facility.id, positionId: t.position.id, startsAt: start, endsAt: new Date(start.getTime() + 10 * 3_600_000), status: 'PUBLISHED' } });
   shiftId = shift.id;
 });

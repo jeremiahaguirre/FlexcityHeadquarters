@@ -1344,6 +1344,11 @@ model CustomRole {
   nameFr      String?
   description String?
   permissions String[]
+  /// Department scope: lead and manager capabilities reach only people who hold
+  /// one of these positions (empty = every position)…
+  scopePositionIds String[] @default([]) @db.Uuid
+  /// …and only shifts at these facilities (empty = every facility).
+  scopeFacilityIds String[] @default([]) @db.Uuid
   createdAt   DateTime         @default(now()) @db.Timestamptz(3)
   members     UserCustomRole[]
 

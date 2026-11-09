@@ -1,4 +1,5 @@
 import { exportPersonRecords } from '../services/privacy/recordsExport.js';
+import { assertShiftInScope } from '../services/people/scope.js';
 import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
@@ -129,7 +130,12 @@ api.post(
   h(async (req, res) => {
     const actor = actorOf(req);
     const { decision } = z.object({ decision: z.enum(['APPROVE', 'DENY']) }).parse(req.body);
-    const events = await withTenant(actor.tenantId, (tx) => decideOffer(tx, actor, uuid.parse(req.params.id), decision));
+    const a = authOf(req);
+    const events = await withTenant(actor.tenantId, async (tx) => {
+      const offer = await tx.shiftOffer.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { shift: { select: { positionId: true, facilityId: true } } } });
+      if (offer) assertShiftInScope(a, offer.shift);
+      return decideOffer(tx, actor, uuid.parse(req.params.id), decision);
+    });
     publish(events);
     res.json({ ok: true });
   }),

@@ -55,6 +55,7 @@ export const PERMISSIONS = [
   'lonework.self', // working alone: start a session, check in, ask for help
   'lonework.monitor', // watch people working alone and respond to missed check-ins
   'billing.manage', // the organization's plan, invoices and payments
+  'roles.manage', // create roles and give them to people (only capabilities you hold, in your department)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -97,6 +98,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'accommodation.manage',
     'lonework.monitor',
     'billing.manage',
+    'roles.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
