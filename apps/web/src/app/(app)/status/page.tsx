@@ -90,7 +90,11 @@ export default function StatusPage() {
                       <Users className="h-3.5 w-3.5" aria-hidden="true" />
                       {t('status.bathers')}
                     </dt>
-                    <dd className="text-body-strong tabular-nums">{p.lastReading?.batherCount ?? '—'}</dd>
+                    {/* The latest deck headcount, against capacity when one is set. */}
+                    <dd className={`text-body-strong tabular-nums ${p.lastHeadcount?.overCapacity ? 'text-danger' : ''}`}>
+                      {p.lastHeadcount?.count ?? p.lastReading?.batherCount ?? '—'}
+                      {p.maxCapacity ? <span className="text-caption font-normal text-muted">/{p.maxCapacity}</span> : null}
+                    </dd>
                   </div>
                 </dl>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-caption text-muted">
