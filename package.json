@@ -11,6 +11,13 @@
     "build": "npm run build --workspaces --if-present"
   },
   "engines": {
-    "node": ">=22.9"
+    "node": ">=26"
+  },
+  "allowScripts": {
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "prisma@5.22.0": true,
+    "esbuild@0.23.1": true,
+    "esbuild@0.21.5": true
   }
 }

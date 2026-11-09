@@ -29,7 +29,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for what is not built yet.
 
 ## Getting started
 
-Requirements: Node 22.9+, PostgreSQL 16.
+Requirements: Node 26 (current LTS; see `.nvmrc`), PostgreSQL 16.
 
 ```bash
 npm install
