@@ -540,5 +540,81 @@
     "cancelHint": "La personne affectée le verra.",
     "confirmCancel": "Annuler ce quart",
     "cancelled": "Quart annulé."
+  },
+  "approvals": {
+    "title": "Approbations",
+    "description": "Tout ce qui attend un superviseur, au même endroit.",
+    "tabs": {
+      "claims": "Demandes de quarts",
+      "timeoff": "Congés",
+      "punches": "Pointages"
+    },
+    "allClear": "Rien en attente",
+    "claimsEmpty": "Les demandes qui ajouteraient des heures supplémentaires s'affichent ici.",
+    "timeOffEmpty": "Les nouvelles demandes de congé s'affichent ici.",
+    "punchesEmpty": "Les pointages terminés s'affichent ici pour révision avant la paie.",
+    "overtime": "+{{hours}} h supplémentaires",
+    "wantsShift": "veut ce quart.",
+    "decline": "Refuser",
+    "approve": "Approuver",
+    "approveOvertime": "Approuver les heures supp.",
+    "approveAndPost": "Approuver et afficher les quarts",
+    "claim": {
+      "APPROVE": "Approuvé. Le quart lui est attribué.",
+      "DENY": "Refusé. Le quart reste au tableau."
+    },
+    "affects_one": "Touche {{count}} quart",
+    "affects_other": "Touche {{count}} quarts",
+    "noShifts": "Aucun quart touché",
+    "protectedNote": "Il s'agit d'un congé prévu par la loi. Il ne peut généralement pas être refusé; un refus exige un motif consigné.",
+    "selectAll": "Tout sélectionner, pointages terminés ({{count}})",
+    "selectPunch": "Sélectionner le pointage de {{name}}",
+    "approveSelected_one": "Approuver {{count}}",
+    "approveSelected_other": "Approuver {{count}}",
+    "reject": "Renvoyer",
+    "punched": "Pointé",
+    "scheduled": "Prévu",
+    "attention": {
+      "UNSCHEDULED": "Non prévu",
+      "LATE_START": "En retard",
+      "LEFT_EARLY": "Parti tôt",
+      "STAYED_LATE": "Resté plus tard",
+      "NO_CLOCK_OUT": "Sortie non pointée",
+      "OUTSIDE_GEOFENCE": "Loin de l'installation",
+      "LOCATION_UNVERIFIED": "Position imprécise"
+    },
+    "punch": {
+      "APPROVE_one": "{{count}} pointage approuvé.",
+      "APPROVE_other": "{{count}} pointages approuvés.",
+      "REJECT_one": "{{count}} pointage renvoyé.",
+      "REJECT_other": "{{count}} pointages renvoyés."
+    },
+    "rejectPunches_one": "Renvoyer {{count}} pointage",
+    "rejectPunches_other": "Renvoyer {{count}} pointages",
+    "declineTimeOff": "Refuser le congé",
+    "reasonHelp": "L'employé verra ce motif.",
+    "protectedDecline": "Les congés de maladie et protégés prévus par la loi ne peuvent généralement pas être refusés. Indiquez pourquoi; c'est consigné.",
+    "reason": "Motif",
+    "timeOffDone": {
+      "APPROVE": "Approuvé. Ses quarts pendant cette période sont au tableau.",
+      "DENY": "Refusé. L'employé voit votre motif."
+    }
+  },
+  "certs": {
+    "title": "Certifications",
+    "description": "Vérifiez les cartes ajoutées par le personnel et voyez qui doit renouveler. Une certification expirée ou non vérifiée ne compte jamais pour les quarts.",
+    "toVerify": "En attente de vérification",
+    "toVerifyHelp": "Vérifiez la carte ou une photo avant d'approuver.",
+    "noneToVerify": "Rien à vérifier.",
+    "verify": "Vérifier",
+    "verified": "Vérifiée pour {{name}}.",
+    "expiring": "Expirent bientôt",
+    "window": "Afficher les certifications qui expirent d'ici",
+    "within_one": "D'ici {{count}} jour",
+    "within_other": "D'ici {{count}} jours",
+    "noneExpiring": "Aucune dans cette période.",
+    "expiredBlocks": "Expirée : ne peut travailler",
+    "daysLeft_one": "{{count}} jour restant",
+    "daysLeft_other": "{{count}} jours restants"
   }
 }

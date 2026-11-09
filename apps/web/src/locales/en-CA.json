@@ -540,5 +540,81 @@
     "cancelHint": "The assigned person sees this.",
     "confirmCancel": "Cancel this shift",
     "cancelled": "Shift cancelled."
+  },
+  "approvals": {
+    "title": "Approvals",
+    "description": "Everything waiting for a supervisor, in one place.",
+    "tabs": {
+      "claims": "Shift claims",
+      "timeoff": "Time off",
+      "punches": "Punches"
+    },
+    "allClear": "Nothing waiting",
+    "claimsEmpty": "Claims that would add overtime appear here.",
+    "timeOffEmpty": "New time-off requests appear here.",
+    "punchesEmpty": "Finished punches appear here for review before payroll.",
+    "overtime": "+{{hours}} h overtime",
+    "wantsShift": "wants this shift.",
+    "decline": "Decline",
+    "approve": "Approve",
+    "approveOvertime": "Approve overtime",
+    "approveAndPost": "Approve and post shifts",
+    "claim": {
+      "APPROVE": "Approved. The shift moved to them.",
+      "DENY": "Declined. The shift stays on the board."
+    },
+    "affects_one": "Affects {{count}} shift",
+    "affects_other": "Affects {{count}} shifts",
+    "noShifts": "No shifts affected",
+    "protectedNote": "This is statutory leave. It usually can't be refused; declining asks for a reason that's recorded.",
+    "selectAll": "Select all finished ({{count}})",
+    "selectPunch": "Select punch for {{name}}",
+    "approveSelected_one": "Approve {{count}}",
+    "approveSelected_other": "Approve {{count}}",
+    "reject": "Send back",
+    "punched": "Punched",
+    "scheduled": "Scheduled",
+    "attention": {
+      "UNSCHEDULED": "Unscheduled",
+      "LATE_START": "Late",
+      "LEFT_EARLY": "Left early",
+      "STAYED_LATE": "Stayed late",
+      "NO_CLOCK_OUT": "No clock-out",
+      "OUTSIDE_GEOFENCE": "Away from facility",
+      "LOCATION_UNVERIFIED": "Location unclear"
+    },
+    "punch": {
+      "APPROVE_one": "{{count}} punch approved.",
+      "APPROVE_other": "{{count}} punches approved.",
+      "REJECT_one": "{{count}} punch sent back.",
+      "REJECT_other": "{{count}} punches sent back."
+    },
+    "rejectPunches_one": "Send back {{count}} punch",
+    "rejectPunches_other": "Send back {{count}} punches",
+    "declineTimeOff": "Decline time off",
+    "reasonHelp": "The staff member sees this reason.",
+    "protectedDecline": "Statutory sick days and protected leave usually can't be refused. Record why; it's audited.",
+    "reason": "Reason",
+    "timeOffDone": {
+      "APPROVE": "Approved. Their shifts in that time went to the board.",
+      "DENY": "Declined. They can see your reason."
+    }
+  },
+  "certs": {
+    "title": "Certifications",
+    "description": "Verify cards staff added and see who needs to renew. Expired or unverified certifications never count for shifts.",
+    "toVerify": "Waiting for verification",
+    "toVerifyHelp": "Check the physical card or a photo before verifying.",
+    "noneToVerify": "Nothing waiting to be verified.",
+    "verify": "Verify",
+    "verified": "Verified for {{name}}.",
+    "expiring": "Expiring soon",
+    "window": "Show certifications expiring within",
+    "within_one": "Within {{count}} day",
+    "within_other": "Within {{count}} days",
+    "noneExpiring": "None in this window.",
+    "expiredBlocks": "Expired: can't work",
+    "daysLeft_one": "{{count}} day left",
+    "daysLeft_other": "{{count}} days left"
   }
 }
