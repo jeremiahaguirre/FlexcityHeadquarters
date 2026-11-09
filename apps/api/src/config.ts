@@ -12,6 +12,8 @@ const schema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(14),
   /** Root domain for tenant subdomains, e.g. "flexcity.ca" → kelowna.flexcity.ca */
   ROOT_DOMAIN: z.string().default('localhost'),
+  /** Link template for emails; {subdomain} is replaced per organization. */
+  PUBLIC_APP_URL: z.string().default('http://{subdomain}.localhost:3000'),
   /** Local/dev key-encryption key. Production uses AWS KMS (KMS_KEY_ARN). */
   LOCAL_KEK_BASE64: z.string().optional(),
   KMS_KEY_ARN: z.string().optional(),

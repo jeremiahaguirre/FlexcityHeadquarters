@@ -1,12 +1,23 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword } from '../auth/tokens.js';
+import { appUrl, consumeAuthToken, issueAuthToken } from '../auth/authTokens.js';
+import { allow } from '../auth/rateLimit.js';
+import { hashPassword, signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword } from '../auth/tokens.js';
 import { config } from '../config.js';
 import { withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
+import { notify } from '../services/notifications/notifier.js';
 import { h, lookupTenant, subdomainOf } from './context.js';
 
 const COOKIE = 'fc_refresh';
+const LOCKOUT_AFTER = 5;
+const LOCKOUT_MS = 15 * 60_000;
+
+export const passwordRule = z
+  .string()
+  .min(10, 'Use at least 10 characters.')
+  .max(200)
+  .refine((p) => /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p), 'Mix letters with numbers or symbols.');
 
 const cookieOpts = () => ({
   httpOnly: true,
@@ -35,16 +46,35 @@ authRouter.post(
   h(async (req, res) => {
     const { email, password } = loginBody.parse(req.body);
     const tenantId = req.tenantId!;
-    const result = await withTenant(tenantId, async (tx) => {
+    if (!allow(`login:${req.ip}:${tenantId}`, 20, 10 * 60_000)) {
+      throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
+    }
+    // The transaction returns its outcome instead of throwing, so the failed-attempt
+    // counter is committed even when the sign-in is refused.
+    const outcome = await withTenant(tenantId, async (tx) => {
       const user = await tx.user.findUnique({ where: { tenantId_email: { tenantId, email: email.toLowerCase() } } });
       // Same error and similar timing whether or not the account exists.
       const ok = user?.passwordHash ? await verifyPassword(password, user.passwordHash) : await verifyPassword(password, 'scrypt$AAAA$AAAA').then(() => false);
+      if (user?.lockedUntil && user.lockedUntil > new Date()) return { kind: 'locked' as const };
       if (!user || !ok || user.status !== 'ACTIVE' || user.processingRestrictedAt) {
-        throw new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+        if (user && !ok) {
+          const failed = user.failedLoginCount + 1;
+          await tx.user.update({
+            where: { id: user.id },
+            data: failed >= LOCKOUT_AFTER ? { failedLoginCount: 0, lockedUntil: new Date(Date.now() + LOCKOUT_MS) } : { failedLoginCount: failed },
+          });
+        }
+        return { kind: 'invalid' as const };
       }
+      if (user.failedLoginCount || user.lockedUntil) await tx.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null } });
       const refresh = await issueRefreshToken(tx, tenantId, user.id);
-      return { user, refresh };
+      return { kind: 'ok' as const, user, refresh };
     });
+    if (outcome.kind === 'locked') {
+      throw new HttpError(423, 'ACCOUNT_LOCKED', 'This account is locked for 15 minutes after too many attempts. Reset your password to unlock it now.');
+    }
+    if (outcome.kind === 'invalid') throw new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+    const result = outcome;
     const accessToken = await signAccessToken({ sub: result.user.id, tid: tenantId, roles: result.user.roles });
     res.cookie(COOKIE, result.refresh, cookieOpts());
     res.json({
@@ -83,5 +113,47 @@ authRouter.post(
     if (raw) await withTenant(req.tenantId!, (tx) => revokeRefreshFamily(tx, raw));
     res.clearCookie(COOKIE, { path: '/api/auth' });
     res.status(204).end();
+  }),
+);
+
+/** Always answers 202 so it can't be used to discover which emails have accounts. */
+authRouter.post(
+  '/auth/forgot',
+  h(async (req, res) => {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    const tenantId = req.tenantId!;
+    const sub = subdomainOf(req)!;
+    if (allow(`forgot:${req.ip}:${tenantId}`, 5, 15 * 60_000) && allow(`forgot:${email.toLowerCase()}:${tenantId}`, 3, 60 * 60_000)) {
+      await withTenant(tenantId, async (tx) => {
+        const user = await tx.user.findUnique({ where: { tenantId_email: { tenantId, email: email.toLowerCase() } } });
+        if (!user || user.status !== 'ACTIVE' || user.processingRestrictedAt) return;
+        const token = await issueAuthToken(tx, tenantId, user.id, 'RESET');
+        await tx.emailOutbox.create({
+          data: { tenantId, toEmail: user.email, template: 'password_reset', locale: user.locale, params: { url: appUrl(sub, `/reset?token=${token}`) } },
+        });
+      });
+    }
+    res.status(202).json({ ok: true });
+  }),
+);
+
+/** Completes both password resets and invitations. */
+authRouter.post(
+  '/auth/reset',
+  h(async (req, res) => {
+    const body = z.object({ token: z.string().min(20).max(100), password: passwordRule }).parse(req.body);
+    const tenantId = req.tenantId!;
+    if (!allow(`reset:${req.ip}:${tenantId}`, 10, 15 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    const passwordHash = await hashPassword(body.password);
+    const done = await withTenant(tenantId, async (tx) => {
+      const t = await consumeAuthToken(tx, body.token);
+      if (!t) return false;
+      await tx.user.update({ where: { id: t.userId }, data: { passwordHash, failedLoginCount: 0, lockedUntil: null } });
+      await tx.refreshToken.updateMany({ where: { userId: t.userId, revokedAt: null }, data: { revokedAt: new Date() } });
+      await notify(tx, tenantId, [{ userId: t.userId, type: t.purpose === 'INVITE' ? 'welcome' : 'password_changed', link: '/profile' }]);
+      return true;
+    });
+    if (!done) throw new HttpError(400, 'LINK_EXPIRED', 'This link has expired or was already used. Ask for a new one.');
+    res.json({ ok: true });
   }),
 );
