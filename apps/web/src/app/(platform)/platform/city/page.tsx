@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CityBrand } from '@/components/CoBrand';
+import { BillingPanel } from '@/components/platform/BillingPanel';
 import { FacilitiesPanel } from '@/components/platform/FacilitiesPanel';
 import { FeaturesPanel } from '@/components/platform/FeaturesPanel';
 import { ImportPanel } from '@/components/platform/ImportPanel';
@@ -18,14 +19,15 @@ import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { RoleEditor } from '@/components/roles/RoleEditor';
 import { type CityDetail, papi, usePlatformQuery } from '@/lib/platform';
 
-type Tab = 'org' | 'features' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import';
-const TABS: Tab[] = ['org', 'features', 'facilities', 'pools', 'positions', 'roles', 'import'];
+type Tab = 'org' | 'features' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing';
+const TABS: Tab[] = ['org', 'features', 'facilities', 'pools', 'positions', 'roles', 'import', 'billing'];
 
 function City() {
   const { t } = useTranslation();
-  const id = useSearchParams().get('id') ?? '';
+  const params = useSearchParams();
+  const id = params.get('id') ?? '';
   const city = usePlatformQuery<CityDetail>(id ? `/tenants/${id}` : null);
-  const [tab, setTab] = useState<Tab>('org');
+  const [tab, setTab] = useState<Tab>(() => (TABS.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'org'));
   if (city.error) return <ErrorNotice onRetry={city.reload} />;
   if (!city.data) return <Skeleton className="h-96" />;
   const c = city.data;
@@ -79,6 +81,7 @@ function City() {
           />
         ) : null}
         {tab === 'import' ? <ImportPanel {...props} /> : null}
+        {tab === 'billing' ? <BillingPanel {...props} /> : null}
       </div>
     </div>
   );

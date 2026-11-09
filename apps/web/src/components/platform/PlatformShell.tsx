@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, KeyRound, LogOut, Terminal } from 'lucide-react';
+import { Building2, KeyRound, LogOut, Receipt, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -24,7 +24,7 @@ function SignedIn({ children }: { children: ReactNode }) {
   const me = usePlatformQuery<{ id: string; name: string; email: string }>('/me');
   return (
     <div className="min-h-screen bg-page">
-      <header className="sticky top-0 z-30 border-b border-line bg-panel/95 backdrop-blur">
+      <header className="sticky top-0 z-30 border-b border-line bg-panel/95 backdrop-blur print:hidden">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 md:px-8">
           <Link href="/platform" className="flex min-w-0 items-center gap-3 rounded-xl" aria-label={t('platform.home')}>
             <Logo size={32} />
@@ -37,6 +37,10 @@ function SignedIn({ children }: { children: ReactNode }) {
             <Link href="/platform" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
               <Building2 className="h-4 w-4" aria-hidden="true" />
               {t('platform.cities')}
+            </Link>
+            <Link href="/platform/billing" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
+              <Receipt className="h-4 w-4" aria-hidden="true" />
+              {t('billing.title')}
             </Link>
             <Link href="/platform/account" className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-small font-semibold text-muted hover:bg-surface hover:text-ink" title={t('platform.account')}>
               <KeyRound className="h-4 w-4" aria-hidden="true" />
@@ -55,7 +59,7 @@ function SignedIn({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main id="main" className="mx-auto max-w-6xl px-4 pb-16 pt-8 md:px-8">
+      <main id="main" className="mx-auto max-w-6xl px-4 pb-16 pt-8 md:px-8 print:max-w-none print:p-0">
         {me.data ? children : null}
       </main>
       <PasskeyPrompt userId={me.data?.id} list={() => papi<unknown[]>('/passkeys')} add={platformAddPasskey} />
