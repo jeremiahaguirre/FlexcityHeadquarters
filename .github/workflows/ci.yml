@@ -44,3 +44,20 @@ jobs:
           npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma \
             --shadow-database-url postgresql://postgres:postgres@localhost:5432/flexcity_shadow --exit-code
       - run: npm run test:integration
+
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/site
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --workspace apps/site --include-workspace-root
+        working-directory: .
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
