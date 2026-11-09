@@ -177,7 +177,11 @@
     "closure_recommended": "Fermeture recommandée : une mesure chimique est hors norme.",
     "front_desk_page": "Accueil : {{message}}",
     "welcome": "Bienvenue sur FlexcityHeadquarters.",
-    "password_changed": "Votre mot de passe a été modifié."
+    "password_changed": "Votre mot de passe a été modifié.",
+    "discipline_issued": "Un document a été ajouté à votre dossier. Veuillez le lire et le signer.",
+    "cert_expiring": "Votre certification {{certification}} expire dans {{days}} jours. Renouvelez-la pour continuer à obtenir des quarts.",
+    "staff_cert_expiring": "La certification {{certification}} de {{name}} expire dans {{days}} jours.",
+    "forgot_clock_out": "Vous êtes toujours pointé. Pointez votre départ ou demandez à un superviseur de corriger l'heure."
   },
   "today": {
     "morning": "Bonjour",
