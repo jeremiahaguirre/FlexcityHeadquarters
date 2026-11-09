@@ -1,0 +1,304 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { authOf, requireAuth, requirePermission } from '../auth/middleware.js';
+import { withTenant } from '../lib/db.js';
+import { badRequest, forbidden } from '../lib/errors.js';
+import { publish } from '../lib/events.js';
+import { localDate } from '../lib/time.js';
+import { resolveRules } from '../services/compliance/provincialRules.js';
+import { createIncident, readIncident } from '../services/ops/incidents.js';
+import { decideClosure, recordReading } from '../services/ops/poolOps.js';
+import { runPayroll } from '../services/payroll/payrollRun.js';
+import { requestErasure } from '../services/privacy/erasure.js';
+import { computeReliability } from '../services/reliability/score.js';
+import { proposeSchedule } from '../services/scheduling/assistant.js';
+import { loadAssistantCandidates, loadShiftBundle } from '../services/scheduling/eligibilityLoader.js';
+import { cancelOffer, claimOffer, decideOffer, postOffer } from '../services/shiftboard/offers.js';
+import { clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
+import { h, keys, tenantKekId } from './context.js';
+
+export const api = Router();
+api.use(requireAuth);
+
+const uuid = z.string().uuid();
+const actorOf = (req: Parameters<typeof authOf>[0]) => {
+  const a = authOf(req);
+  return { userId: a.userId, tenantId: a.tenantId, canPostOpenShifts: a.permissions.has('shiftboard.assign_emergency') };
+};
+
+// ---------------------------------------------------------------- Shift Board
+api.get(
+  '/shiftboard/offers',
+  requirePermission('shiftboard.claim'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const offers = await withTenant(a.tenantId, (tx) =>
+      tx.shiftOffer.findMany({
+        where: { status: { in: ['OPEN', 'PENDING_APPROVAL'] }, shift: { startsAt: { gt: new Date() } } },
+        include: { shift: { include: { facility: { select: { name: true, timezone: true } }, position: { select: { name: true, nameFr: true } } } } },
+        orderBy: { shift: { startsAt: 'asc' } },
+      }),
+    );
+    res.json(offers);
+  }),
+);
+
+api.post(
+  '/shifts/:id/offer',
+  requirePermission('shiftboard.post'),
+  h(async (req, res) => {
+    const actor = actorOf(req);
+    const out = await withTenant(actor.tenantId, (tx) => postOffer(tx, actor, uuid.parse(req.params.id)));
+    publish(out.events);
+    res.status(201).json({ offerId: out.offerId });
+  }),
+);
+
+api.post(
+  '/offers/:id/claim',
+  requirePermission('shiftboard.claim'),
+  h(async (req, res) => {
+    const actor = actorOf(req);
+    const body = z.object({ expectedShiftVersion: z.number().int().optional() }).parse(req.body ?? {});
+    const out = await withTenant(actor.tenantId, (tx) => claimOffer(tx, actor, uuid.parse(req.params.id), body.expectedShiftVersion));
+    publish(out.events);
+    res.json(out.outcome === 'ASSIGNED' ? { outcome: out.outcome } : { outcome: out.outcome, overtimeHours: out.overtimeHours });
+  }),
+);
+
+api.post(
+  '/offers/:id/decision',
+  requirePermission('shiftboard.approve'),
+  h(async (req, res) => {
+    const actor = actorOf(req);
+    const { decision } = z.object({ decision: z.enum(['APPROVE', 'DENY']) }).parse(req.body);
+    const events = await withTenant(actor.tenantId, (tx) => decideOffer(tx, actor, uuid.parse(req.params.id), decision));
+    publish(events);
+    res.json({ ok: true });
+  }),
+);
+
+api.delete(
+  '/offers/:id',
+  requirePermission('shiftboard.post'),
+  h(async (req, res) => {
+    const actor = actorOf(req);
+    await withTenant(actor.tenantId, (tx) => cancelOffer(tx, actor, uuid.parse(req.params.id)));
+    res.status(204).end();
+  }),
+);
+
+// ------------------------------------------------------- Scheduling assistant
+api.post(
+  '/schedule/assist',
+  requirePermission('schedule.assist'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z
+      .object({
+        facilityId: uuid,
+        from: z.coerce.date(),
+        to: z.coerce.date(),
+        distributionMode: z.enum(['SENIORITY', 'EGALITARIAN']),
+        useShadowTiers: z.boolean().default(false),
+        apply: z.boolean().default(false),
+      })
+      .parse(req.body);
+    if (body.to <= body.from) throw badRequest('`to` must be after `from`');
+
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const facility = await tx.facility.findUniqueOrThrow({ where: { id: body.facilityId }, include: { tenant: true } });
+      const open = await tx.shift.findMany({
+        where: { facilityId: body.facilityId, userId: null, status: { in: ['DRAFT', 'PUBLISHED'] }, startsAt: { gte: body.from, lt: body.to } },
+      });
+      const bundles = (await Promise.all(open.map((s) => loadShiftBundle(tx, s.id)))).filter((b) => b !== null);
+      const candidates = await loadAssistantCandidates(tx, body.from, body.to);
+      const proposal = proposeSchedule({
+        shifts: bundles.map((b) => ({ shift: b.shift, position: b.position })),
+        candidates,
+        rules: resolveRules(facility.province, localDate(body.from, facility.timezone)),
+        payWeekStartDay: facility.tenant.payWeekStartDay,
+        distributionMode: body.distributionMode,
+        useShadowTiers: body.useShadowTiers,
+      });
+      if (body.apply) {
+        // Drafts only — a supervisor still publishes. Compare-and-set on version.
+        for (const asg of proposal.assignments) {
+          const v = bundles.find((b) => b.shift.id === asg.shiftId)!.shift.version;
+          await tx.shift.updateMany({ where: { id: asg.shiftId, version: v, userId: null }, data: { userId: asg.userId, version: { increment: 1 }, conflictReason: null } });
+        }
+        for (const u of proposal.unfilled) await tx.shift.update({ where: { id: u.shiftId }, data: { conflictReason: u.reason } });
+      }
+      return proposal;
+    });
+    res.json(out);
+  }),
+);
+
+// ----------------------------------------------------------------- Timeclock
+const location = z.object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180), accuracyM: z.number().nonnegative().nullable() }).nullable();
+
+api.post(
+  '/timeclock/in',
+  requirePermission('timeclock.punch'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ facilityId: uuid, shiftId: uuid.optional(), positionId: uuid.optional(), location }).parse(req.body);
+    const punch = await withTenant(a.tenantId, (tx) => clockIn(tx, { ...body, tenantId: a.tenantId, userId: a.userId, ip: req.ip ?? null }));
+    res.status(201).json({ id: punch.id, locationStatus: punch.locationStatus });
+  }),
+);
+
+api.post(
+  '/timeclock/out',
+  requirePermission('timeclock.punch'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const punch = await withTenant(a.tenantId, (tx) => clockOut(tx, a.userId));
+    res.json({ id: punch.id });
+  }),
+);
+
+api.patch(
+  '/punches/:id',
+  requirePermission('timeclock.review'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ clockIn: z.coerce.date().optional(), clockOut: z.coerce.date().optional(), reason: z.string().min(3) }).parse(req.body);
+    const p = await withTenant(a.tenantId, (tx) => editPunch(tx, { ...body, tenantId: a.tenantId, actorId: a.userId, punchId: uuid.parse(req.params.id) }));
+    res.json({ id: p.id });
+  }),
+);
+
+// ---------------------------------------------------------------- Operations
+const decimalString = z.string().regex(/^\d+(\.\d+)?$/);
+
+api.post(
+  '/ops/readings',
+  requirePermission('ops.chemical.record'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z
+      .object({
+        poolBodyId: uuid,
+        freeChlorinePpm: decimalString.nullable().optional(),
+        totalChlorinePpm: decimalString.nullable().optional(),
+        ph: decimalString.nullable().optional(),
+        waterTempC: decimalString.nullable().optional(),
+        batherCount: z.number().int().nonnegative().nullable().optional(),
+      })
+      .parse(req.body);
+    const out = await withTenant(a.tenantId, (tx) => recordReading(tx, a.tenantId, a.userId, body));
+    publish(out.events);
+    res.status(201).json({ id: out.reading.id, outOfRange: out.outOfRange, reasons: out.reasons });
+  }),
+);
+
+api.post(
+  '/ops/pools/:id/closure',
+  requirePermission('ops.pool.close'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ action: z.enum(['CONFIRM', 'DISMISS', 'REOPEN']), note: z.string().optional() }).parse(req.body);
+    const events = await withTenant(a.tenantId, (tx) => decideClosure(tx, a.tenantId, a.userId, uuid.parse(req.params.id), body.action, body.note));
+    publish(events);
+    res.json({ ok: true });
+  }),
+);
+
+api.get(
+  '/ops/status',
+  requirePermission('ops.status.read'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const pools = await withTenant(a.tenantId, (tx) =>
+      tx.poolBody.findMany({ select: { id: true, name: true, kind: true, status: true, facility: { select: { id: true, name: true } } }, orderBy: { name: 'asc' } }),
+    );
+    res.json(pools);
+  }),
+);
+
+api.post(
+  '/ops/page-head-guard',
+  requirePermission('ops.page_head_guard'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ facilityId: uuid, message: z.string().min(1).max(280) }).parse(req.body);
+    publish({ type: 'frontdesk.page', tenantId: a.tenantId, facilityId: body.facilityId, fromUserId: a.userId, message: body.message });
+    res.status(202).json({ ok: true });
+  }),
+);
+
+api.post(
+  '/incidents',
+  requirePermission('incidents.create'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z
+      .object({
+        facilityId: uuid,
+        occurredAt: z.coerce.date(),
+        category: z.enum(['FIRST_AID', 'RESCUE', 'EMS_CALLED', 'INJURY', 'BEHAVIOUR', 'FACILITY', 'OTHER']),
+        narrative: z.object({ summary: z.string().min(1), peopleInvolved: z.string(), actionsTaken: z.string(), emsCalled: z.boolean(), witnesses: z.string().optional() }),
+      })
+      .parse(req.body);
+    const out = await withTenant(a.tenantId, (tx) => createIncident(tx, keys(), tenantKekId(a.tenantId), { ...body, tenantId: a.tenantId, reportedById: a.userId }));
+    res.status(201).json(out);
+  }),
+);
+
+api.get(
+  '/incidents/:id',
+  requirePermission('incidents.read'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const purpose = z.string().min(3).parse(req.query.purpose);
+    const out = await withTenant(a.tenantId, (tx) => readIncident(tx, keys(), a.tenantId, a.userId, uuid.parse(req.params.id), purpose));
+    res.json(out);
+  }),
+);
+
+// ------------------------------------------------------------- Payroll / HR
+api.get(
+  '/payroll/export',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5) }).parse(req.query);
+    const out = await withTenant(a.tenantId, (tx) => runPayroll(tx, a.tenantId, q.periodStart, q.weeks));
+    if (!out.csv.ok) {
+      res.status(422).json({ code: 'EXPORT_INVALID', problems: out.csv.problems, warnings: out.warnings });
+      return;
+    }
+    if (out.warnings.length) res.setHeader('X-Flexcity-Warnings', encodeURIComponent(out.warnings.join(' | ')));
+    res.type('text/csv').attachment(`payroll-${q.periodStart}.csv`).send(out.csv.csv);
+  }),
+);
+
+api.get(
+  '/users/:id/reliability',
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.id);
+    // Staff can always see their own breakdown; managers need the permission.
+    if (userId !== a.userId && !a.permissions.has('reliability.read')) throw forbidden();
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const [events, leave] = await Promise.all([
+        tx.reliabilityEvent.findMany({ where: { userId } }),
+        tx.timeOffRequest.findMany({ where: { userId } }),
+      ]);
+      return computeReliability(events, leave, new Date());
+    });
+    res.json({ ...out, notice: 'Advisory only. Not used for automated scheduling or discipline decisions.' });
+  }),
+);
+
+api.post(
+  '/users/:id/erasure',
+  requirePermission('users.privacy'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const out = await withTenant(a.tenantId, (tx) => requestErasure(tx, a.tenantId, a.userId, uuid.parse(req.params.id)));
+    res.json(out);
+  }),
+);
