@@ -229,7 +229,7 @@ export interface RuleOverrideInput {
   effectiveTo: string | null;
 }
 
-const ALLOWED_OVERRIDE_KEYS = new Set([
+export const ALLOWED_OVERRIDE_KEYS = new Set([
   'overtime.dailyHours',
   'overtime.dailyDoubleTimeHours',
   'overtime.weeklyHours',
