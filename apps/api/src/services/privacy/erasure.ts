@@ -1,3 +1,4 @@
+import { forgetActive } from '../people/customRoles.js';
 /**
  * Retention-aware erasure ("right to be forgotten").
  *
@@ -36,6 +37,7 @@ export async function requestErasure(tx: Tx, tenantId: string, actorId: string, 
     where: { id: userId },
     data: { processingRestrictedAt: now, erasureDueAt: due, status: 'TERMINATED' },
   });
+  forgetActive(userId);
   // Remove from future work immediately.
   await tx.shift.updateMany({ where: { userId, startsAt: { gt: now } }, data: { userId: null, conflictReason: 'Staff member left' } });
   await tx.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } });

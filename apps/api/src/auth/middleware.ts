@@ -3,7 +3,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';
 import { verifyAccessToken } from './tokens.js';
-import { customPermissions } from '../services/people/customRoles.js';
+import { customPermissions, stillActive } from '../services/people/customRoles.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 
@@ -36,7 +36,9 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const [{ features, overrides }, custom] = await Promise.all([tenantSettings(claims.tid), customPermissions(claims.tid, claims.sub)]);
+    const [{ features, overrides }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customPermissions(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
+    // Terminated, deactivated or restricted people lose access at once, not when their token expires.
+    if (!ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
     // Each role's permissions after the city's Dev console overrides, plus custom roles.
     const granted = new Set([...permissionsWithOverrides(claims.roles, overrides), ...custom]);
     req.auth = { userId: claims.sub, tenantId: claims.tid, roles: claims.roles, permissions: withoutDisabled(granted, features), authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null };

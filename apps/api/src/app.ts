@@ -19,6 +19,11 @@ export function createApp() {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');
     res.setHeader('Cache-Control', 'no-store');
+    // JSON API: never framed, never rendered as a page, HTTPS only once deployed.
+    res.setHeader('X-Frame-Options', 'DENY');
+    if (!res.getHeader('Content-Security-Policy')) res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+    if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     next();
   });
   // The marketing site's enquiry form (no organization, its own CORS).

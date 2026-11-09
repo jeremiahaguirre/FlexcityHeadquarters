@@ -11,7 +11,7 @@ import { passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
 import { resolveFeatures } from '../services/platform/features.js';
 import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
-import { setUserCustomRoles } from '../services/people/customRoles.js';
+import { forgetActive, setUserCustomRoles } from '../services/people/customRoles.js';
 
 export const staffRouter = Router();
 const uuid = z.string().uuid();
@@ -453,6 +453,7 @@ staffRouter.patch(
       if (customRoleIds) await setUserCustomRoles(tx, a.tenantId, id, customRoleIds);
       if (body.status && body.status !== 'ACTIVE') {
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+        forgetActive(id);
       }
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status }, after: { ...body, customRoleIds } });
     });

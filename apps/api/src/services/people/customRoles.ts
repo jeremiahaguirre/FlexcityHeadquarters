@@ -83,3 +83,18 @@ export async function setUserCustomRoles(tx: Tx, tenantId: string, userId: strin
   if (unique.length) await tx.userCustomRole.createMany({ data: unique.map((customRoleId) => ({ tenantId, userId, customRoleId })) });
   forgetCustomPermissions(tenantId);
 }
+
+/** Whether a person may still use the app (active, not restricted). Cached 30 s; HR changes clear it. */
+const active = new Map<string, { at: number; ok: boolean }>();
+export async function stillActive(tenantId: string, userId: string): Promise<boolean> {
+  const hit = active.get(userId);
+  if (hit && Date.now() - hit.at < 30_000) return hit.ok;
+  const u = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { id: userId }, select: { status: true, processingRestrictedAt: true, anonymizedAt: true } }));
+  const ok = !!u && u.status === 'ACTIVE' && !u.processingRestrictedAt && !u.anonymizedAt;
+  active.set(userId, { at: Date.now(), ok });
+  return ok;
+}
+export function forgetActive(userId?: string): void {
+  if (userId) active.delete(userId);
+  else active.clear();
+}
