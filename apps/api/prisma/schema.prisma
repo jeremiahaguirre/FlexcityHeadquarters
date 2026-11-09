@@ -454,6 +454,8 @@ model TimeOffRequest {
   startsAt     DateTime      @db.Timestamptz(3)
   endsAt       DateTime      @db.Timestamptz(3)
   status       RequestStatus @default(PENDING)
+  note         String?
+  decisionNote String?
   decidedById  String?       @db.Uuid
   decidedAt    DateTime?     @db.Timestamptz(3)
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
@@ -555,6 +557,8 @@ model TimePunch {
   locationStatus PunchLocationStatus @default(NO_LOCATION)
   status         PunchStatus         @default(PENDING)
   varianceReason String?
+  reviewedById   String?             @db.Uuid
+  reviewedAt     DateTime?           @db.Timestamptz(3)
   createdAt      DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
 

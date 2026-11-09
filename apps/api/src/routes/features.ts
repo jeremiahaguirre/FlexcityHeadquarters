@@ -18,11 +18,13 @@ import { clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
 import { h, keys, tenantKekId } from './context.js';
 import { notificationsRouter } from './notifications.js';
 import { schedulingRouter } from './scheduling.js';
+import { attendanceRouter } from './attendance.js';
 
 export const api = Router();
 api.use(requireAuth);
 api.use(notificationsRouter);
 api.use(schedulingRouter);
+api.use(attendanceRouter);
 
 const uuid = z.string().uuid();
 const actorOf = (req: Parameters<typeof authOf>[0]) => {
