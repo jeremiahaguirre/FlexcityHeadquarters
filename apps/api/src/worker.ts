@@ -8,6 +8,7 @@ import { computeBenchmarks } from './services/platform/benchmarks.js';
 import { config } from './config.js';
 import { db, tenantIds, withTenant } from './lib/db.js';
 import { anonymizeDue, certificationReminders, accommodationReviews, detectNoShows, flagForReview, forgottenClockOuts, onboardingReminders, rotationAlerts, recomputeReliability } from './services/jobs/daily.js';
+import { loneWorkChecks } from './services/safety/loneWork.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 
 const cfg = config();
@@ -36,6 +37,7 @@ async function perTenant(fn: (tx: Parameters<Parameters<typeof withTenant>[1]>[0
 }
 
 const minutely = async () => {
+  await exclusive('lone-work', () => perTenant((tx) => loneWorkChecks(tx)));
   await exclusive('rotation-alerts', () => perTenant((tx) => rotationAlerts(tx)));
   await exclusive('email', () => deliverOutbox(db(), mailer));
 };

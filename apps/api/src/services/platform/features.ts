@@ -31,6 +31,7 @@ export const FEATURES = {
   benchmarks: { default: true, permissions: [] },
   accommodation: { default: true, permissions: ['accommodation.manage'] },
   care: { default: true, permissions: ['care.manage'] },
+  loneWork: { default: true, permissions: ['lonework.self', 'lonework.monitor'] },
   overtime: { default: true, permissions: ['overtime.manage'] },
   onboarding: { default: true, permissions: ['onboarding.hr', 'onboarding.lead', 'onboarding.configure'] },
   emailNotifications: { default: true, permissions: [] },

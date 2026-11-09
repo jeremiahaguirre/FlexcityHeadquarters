@@ -31,6 +31,26 @@ type Template = (p: Params) => { subject: string; text: string };
 const APP_URL = () => process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
+  lonework_escalated: {
+    'en-CA': (p) => ({
+      subject: `URGENT: ${p.name} hasn't checked in while working alone`,
+      text: `${p.name} missed a check-in at ${p.location} and still hasn't answered. Call them now, and send someone if you can't reach them.\n${APP_URL()}/manage/lone-work`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `URGENT : ${p.name} ne s'est pas manifesté en travaillant seul`,
+      text: `${p.name} a manqué une vérification à ${p.location} et ne répond toujours pas. Appelez cette personne maintenant et envoyez quelqu'un si vous ne la joignez pas.\n${APP_URL()}/manage/lone-work`,
+    }),
+  },
+  lonework_help: {
+    'en-CA': (p) => ({
+      subject: `URGENT: ${p.name} asked for help while working alone`,
+      text: `${p.name} pressed "I need help" at ${p.location}.${p.note ? ` Note: ${p.note}` : ''} Respond now; call 911 if anyone may be hurt.\n${APP_URL()}/manage/lone-work`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `URGENT : ${p.name} demande de l'aide en travaillant seul`,
+      text: `${p.name} a appuyé sur « J'ai besoin d'aide » à ${p.location}.${p.note ? ` Note : ${p.note}` : ''} Intervenez maintenant; composez le 911 si quelqu'un pourrait être blessé.\n${APP_URL()}/manage/lone-work`,
+    }),
+  },
   password_reset: {
     'en-CA': (p) => ({
       subject: 'Reset your FlexcityHeadquarters password',

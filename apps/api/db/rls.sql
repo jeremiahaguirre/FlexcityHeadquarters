@@ -32,7 +32,7 @@ DECLARE
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
     'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
-    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase'
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP

@@ -52,6 +52,8 @@ export const PERMISSIONS = [
   'overtime.manage', // overtime equalization: standings, call-outs, policy
   'care.manage', // follow up after critical incidents
   'accommodation.manage', // work restrictions (accommodation, return to work): HR only
+  'lonework.self', // working alone: start a session, check in, ask for help
+  'lonework.monitor', // watch people working alone and respond to missed check-ins
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -68,6 +70,7 @@ const STAFF_BASE: Permission[] = [
   'ops.chemical.record',
   'ops.headcount.record',
   'incidents.create',
+  'lonework.self',
 ];
 
 export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
@@ -91,6 +94,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'overtime.manage',
     'care.manage',
     'accommodation.manage',
+    'lonework.monitor',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -126,6 +130,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'onboarding.configure',
     'overtime.manage',
     'care.manage',
+    'lonework.monitor',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
@@ -140,7 +145,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {

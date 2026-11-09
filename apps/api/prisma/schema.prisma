@@ -1530,3 +1530,43 @@ model RateLimitHit {
 
   @@index([key, at])
 }
+
+enum LoneWorkStatus {
+  ACTIVE
+  /// Missed a check-in: the worker and their monitors were told.
+  OVERDUE
+  /// Still no answer after the grace period: supervisors and HR were told.
+  ESCALATED
+  /// The worker pressed "I need help".
+  HELP
+  ENDED
+}
+
+/// Someone working alone (a pump station, an arena at night, a park patrol)
+/// checks in on a timer. A missed check-in alerts their monitors, then escalates.
+model LoneWorkSession {
+  id              String         @id @default(uuid()) @db.Uuid
+  tenantId        String         @db.Uuid
+  userId          String         @db.Uuid
+  facilityId      String?        @db.Uuid
+  location        String
+  task            String?
+  intervalMinutes Int
+  status          LoneWorkStatus @default(ACTIVE)
+  startedAt       DateTime       @default(now()) @db.Timestamptz(3)
+  lastCheckInAt   DateTime       @default(now()) @db.Timestamptz(3)
+  nextDueAt       DateTime       @db.Timestamptz(3)
+  overdueAt       DateTime?      @db.Timestamptz(3)
+  escalatedAt     DateTime?      @db.Timestamptz(3)
+  helpAt          DateTime?      @db.Timestamptz(3)
+  helpNote        String?
+  /// Last position the worker's device shared, if any.
+  latitude        Decimal?       @db.Decimal(9, 6)
+  longitude       Decimal?       @db.Decimal(9, 6)
+  respondingId    String?        @db.Uuid
+  respondingAt    DateTime?      @db.Timestamptz(3)
+  endedAt         DateTime?      @db.Timestamptz(3)
+
+  @@index([tenantId, status, nextDueAt])
+  @@index([userId, startedAt])
+}

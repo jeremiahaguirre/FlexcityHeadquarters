@@ -8,7 +8,9 @@
 import type { AccessRole, Prisma, PrismaClient } from '@prisma/client';
 import { type Tx, withTenant } from '../../lib/db.js';
 import type { DomainEvent } from '../../lib/events.js';
+import { type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
 import { resolveFeatures } from '../platform/features.js';
+import { parseOverrides, rolePermissions } from '../platform/roleOverrides.js';
 
 export const NOTIFY_CHANNEL = 'fh_notifications';
 
@@ -56,6 +58,27 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
 export async function usersWithRoles(tx: Tx, roles: AccessRole[], exclude: string[] = []): Promise<string[]> {
   const users = await tx.user.findMany({
     where: { roles: { hasSome: roles }, status: 'ACTIVE', anonymizedAt: null, id: { notIn: exclude } },
+    select: { id: true },
+  });
+  return users.map((u) => u.id);
+}
+
+/**
+ * Everyone active who holds a permission: through a built-in role (after the
+ * organization's Dev console overrides) or a custom role.
+ */
+export async function usersWithPermission(tx: Tx, tenantId: string, permission: Permission, exclude: string[] = []): Promise<string[]> {
+  const t = await tx.tenant.findUnique({ where: { id: tenantId }, select: { roleOverrides: true } });
+  const overrides = parseOverrides(t?.roleOverrides);
+  const roles = (Object.keys(ROLE_PERMISSIONS) as AccessRole[]).filter((r) => rolePermissions(r, overrides).has(permission));
+  const custom = await tx.userCustomRole.findMany({ where: { customRole: { permissions: { has: permission } } }, select: { userId: true } });
+  const users = await tx.user.findMany({
+    where: {
+      status: 'ACTIVE',
+      anonymizedAt: null,
+      id: { notIn: exclude },
+      OR: [{ roles: { hasSome: roles } }, { id: { in: custom.map((c) => c.userId) } }],
+    },
     select: { id: true },
   });
   return users.map((u) => u.id);

@@ -10,9 +10,9 @@ import { type Tx, withTenant } from '../../lib/db.js';
 import { HttpError, conflict, notFound } from '../../lib/errors.js';
 
 export const CUSTOM_ROLE_PERMISSIONS = {
-  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self'],
+  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self'],
   shiftBoard: ['shiftboard.claim', 'shiftboard.post'],
-  lead: ['users.read', 'users.scheduling', 'schedule.write', 'shiftboard.approve', 'timeoff.approve', 'timeclock.review', 'certs.verify'],
+  lead: ['users.read', 'users.scheduling', 'schedule.write', 'shiftboard.approve', 'timeoff.approve', 'timeclock.review', 'certs.verify', 'lonework.monitor'],
 } as const satisfies Record<string, readonly Permission[]>;
 
 export const ALLOWED_CUSTOM_PERMISSIONS: ReadonlySet<Permission> = new Set(Object.values(CUSTOM_ROLE_PERMISSIONS).flat());

@@ -1,4 +1,4 @@
-import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, TrendingUp, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
+import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -22,6 +22,7 @@ export const NAV: NavItem[] = [
   { href: '/time-off', key: 'timeOff', icon: CalendarClock, group: 'mine', permission: 'timeoff.self', ready: true },
   { href: '/availability', key: 'availability', icon: CalendarRange, group: 'mine', permission: 'availability.self', ready: true },
   { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'lessons.teach', ready: true },
+  { href: '/alone', key: 'loneWork', icon: ShieldCheck, group: 'mine', permission: 'lonework.self', ready: true },
   { href: '/headcount', key: 'headcount', icon: Calculator, group: 'deck', permission: 'ops.headcount.record', tab: 3, ready: true },
   { href: '/deck', key: 'deck', icon: Armchair, group: 'deck', permission: 'deck.rotate', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
@@ -34,6 +35,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', permission: 'overtime.manage', ready: true },
   { href: '/manage/onboarding', key: 'onboarding', icon: ClipboardList, group: 'manage', permission: ['onboarding.hr', 'onboarding.lead'], ready: true },
   { href: '/manage/care', key: 'care', icon: HeartHandshake, group: 'manage', permission: 'care.manage', ready: true },
+  { href: '/manage/lone-work', key: 'loneWorkMonitor', icon: Radio, group: 'manage', permission: 'lonework.monitor', ready: true },
   { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', permission: 'reliability.read', ready: true },
   { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', permission: 'compliance.report', ready: true },
   { href: '/manage/benchmarks', key: 'benchmarks', icon: BarChart3, group: 'manage', permission: ['tenant.configure', 'reliability.read'], ready: true },
