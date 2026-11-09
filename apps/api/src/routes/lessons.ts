@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { badRequest, conflict, notFound } from '../lib/errors.js';
 import { listSessions, recordAttendance } from '../services/lessons/lessons.js';
 import { h } from './context.js';
 
 export const lessonsRouter = Router();
+lessonsRouter.use(['/lessons', '/me/lessons'], requireFeature('lessons'));
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const range = z.object({ from: isoDate, to: isoDate }).refine((r) => r.to >= r.from, 'to must be on or after from');

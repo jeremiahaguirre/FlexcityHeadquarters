@@ -183,7 +183,9 @@ model Tenant {
   /// Years to keep payroll records after the end of the tax year they relate to.
   /// CRA requires 6; default adds a year of margin.
   payrollRetentionYears Int       @default(7)
-  unionEnabled    Boolean         @default(false)
+  /// Feature switches set from the FH Dev console: { featureKey: boolean }.
+  /// Missing keys use the defaults in src/services/platform/features.ts.
+  features        Json            @default("{}")
   createdAt       DateTime        @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
 
@@ -935,4 +937,53 @@ model JobPosting {
   updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
 
   @@index([tenantId, published, closesOn])
+}
+
+/// An organization's uploaded logo, served at /api/public/logo.
+model TenantLogo {
+  tenantId    String   @id @db.Uuid
+  contentType String
+  bytes       Bytes
+  sha256      String
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// FlexcityHeadquarters staff who set up and support organizations (the Dev console).
+/// Not tied to any tenant; never accepted by tenant routes.
+model PlatformAdmin {
+  id           String            @id @default(uuid()) @db.Uuid
+  email        String            @unique
+  name         String
+  passwordHash String
+  failedLogins Int               @default(0)
+  lockedUntil  DateTime?         @db.Timestamptz(3)
+  lastLoginAt  DateTime?         @db.Timestamptz(3)
+  disabledAt   DateTime?         @db.Timestamptz(3)
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  sessions     PlatformSession[]
+}
+
+/// Opaque, revocable Dev console sessions (HTTP-only cookie). Only the hash is stored.
+model PlatformSession {
+  id        String        @id @default(uuid()) @db.Uuid
+  adminId   String        @db.Uuid
+  admin     PlatformAdmin @relation(fields: [adminId], references: [id])
+  tokenHash String        @unique
+  createdAt DateTime      @default(now()) @db.Timestamptz(3)
+  expiresAt DateTime      @db.Timestamptz(3)
+  revokedAt DateTime?     @db.Timestamptz(3)
+
+  @@index([adminId])
+}
+
+/// Everything done from the Dev console, across organizations.
+model PlatformAudit {
+  id       String   @id @default(uuid()) @db.Uuid
+  adminId  String   @db.Uuid
+  tenantId String?  @db.Uuid
+  action   String
+  detail   Json?
+  at       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, at])
 }

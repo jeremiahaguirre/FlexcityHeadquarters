@@ -4,6 +4,7 @@ import { createApp } from '../../src/app.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
 import { hashPassword, signAccessToken } from '../../src/auth/tokens.js';
 import { app as appDb, owner, seedOpenOffer, seedTenant } from './fixtures.js';
+import { forgetFeatures } from '../../src/services/platform/features.js';
 
 const server = createApp();
 const SUB = 'iota';
@@ -95,12 +96,14 @@ describe('invitations and passwords', () => {
     const id = t.users[0]!.id;
     const token = await signAccessToken({ sub: id, tid: t.tenant.id, roles: ['STAFF'] });
     const perms = async () => (await call(token).get('/api/me')).body.permissions as string[];
-    await owner.tenant.update({ where: { id: t.tenant.id }, data: { unionEnabled: true } });
+    await owner.tenant.update({ where: { id: t.tenant.id }, data: { features: { union: true } } });
+    forgetFeatures();
     await owner.user.update({ where: { id }, data: { unionMember: false } });
     expect(await perms()).not.toContain('union.hub');
     await owner.user.update({ where: { id }, data: { unionMember: true } });
     expect(await perms()).toContain('union.hub');
-    await owner.tenant.update({ where: { id: t.tenant.id }, data: { unionEnabled: false } });
+    await owner.tenant.update({ where: { id: t.tenant.id }, data: { features: { union: false } } });
+    forgetFeatures();
     expect(await perms()).not.toContain('union.hub');
   });
 

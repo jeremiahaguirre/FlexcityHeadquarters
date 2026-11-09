@@ -1,7 +1,7 @@
 import type { JobPosting } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { h } from './context.js';
@@ -42,6 +42,7 @@ const view = (j: JobPosting & { facility?: { name: string } | null }) => ({
 export const publicJobsRouter = Router();
 publicJobsRouter.get(
   '/public/jobs',
+  requireFeature('jobs'),
   h(async (req, res) => {
     const jobs = await withTenant(req.tenantId!, async (tx) => {
       const rows = await tx.jobPosting.findMany({ where: { published: true, closesOn: { gte: today() } }, orderBy: { closesOn: 'asc' } });

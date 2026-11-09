@@ -26,7 +26,7 @@ interface Facility { id: string; name: string; province: string; timezone: strin
 interface Override { id: string; province: string | null; ruleKey: string; value: unknown; effectiveFrom: string; effectiveTo: string | null; source: string }
 interface Period { kind: 'TERM' | 'BREAK'; name: string; startsOn: string; endsOn: string }
 interface Settings {
-  organization: { name: string; subdomain: string; logoUrl: string | null; themeColors: { primary?: string } | null; defaultLocale: string; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number; unionEnabled: boolean };
+  organization: { name: string; subdomain: string; logoUrl: string | null; themeColors: { primary?: string } | null; defaultLocale: string; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number };
   facilities: Facility[];
   payCodes: Array<{ key: string; positionId: string | null; code: string }>;
   ruleOverrides: Override[];
@@ -111,7 +111,6 @@ function Organization({ s, reload }: Props) {
             payWeekStartDay: num(f, 'payWeek'),
             vacationPayMode: str(f, 'vacation'),
             payrollRetentionYears: num(f, 'retention'),
-            unionEnabled: f.get('union') === 'on',
           },
         }),
       t('profile.saved'),
@@ -161,10 +160,6 @@ function Organization({ s, reload }: Props) {
           </Field>
         </div>
         <Field label={t('settings.logoUrl')} hint={t('settings.logoUrlHint')}>{(p) => <Input {...p} name="logoUrl" type="url" placeholder="https://" defaultValue={o.logoUrl ?? ''} />}</Field>
-        <label className="flex items-center gap-2 text-small font-semibold">
-          <input type="checkbox" name="union" defaultChecked={o.unionEnabled} className="h-5 w-5 accent-[rgb(var(--brand))]" />
-          {t('settings.unionEnabled')}
-        </label>
         <Button type="submit" className="justify-self-start" loading={busy === 'org'}>
           {t('common.save')}
         </Button>

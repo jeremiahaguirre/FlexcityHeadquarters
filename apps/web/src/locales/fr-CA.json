@@ -763,7 +763,6 @@
     "brandColourHint": "Utilisée pour les boutons et les accents.",
     "logoUrl": "Adresse du logo",
     "logoUrlHint": "Un lien sécurisé (https) vers un PNG ou un SVG.",
-    "unionEnabled": "Activer l'espace syndical pour le personnel",
     "days": {
       "0": "dimanche",
       "1": "lundi",

@@ -8,6 +8,7 @@
 import type { AccessRole, Prisma, PrismaClient } from '@prisma/client';
 import { type Tx, withTenant } from '../../lib/db.js';
 import type { DomainEvent } from '../../lib/events.js';
+import { resolveFeatures } from '../platform/features.js';
 
 export const NOTIFY_CHANNEL = 'fh_notifications';
 
@@ -23,7 +24,10 @@ export interface NotificationDraft {
 export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft[]): Promise<number> {
   const unique = dedupe(drafts);
   if (unique.length === 0) return 0;
-  const emailUsers = unique.filter((d) => d.email).map((d) => d.userId);
+  const wantEmail = unique.some((d) => d.email);
+  // Notification emails (not invites or password resets) follow the organization's switch.
+  const emailOn = wantEmail && resolveFeatures((await tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true } }))?.features).emailNotifications;
+  const emailUsers = emailOn ? unique.filter((d) => d.email).map((d) => d.userId) : [];
   const people = emailUsers.length
     ? await tx.user.findMany({ where: { id: { in: emailUsers }, status: 'ACTIVE', anonymizedAt: null }, select: { id: true, email: true, locale: true } })
     : [];
@@ -33,7 +37,7 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
       data: { tenantId, userId: d.userId, type: d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, link: d.link ?? null },
     });
     await tx.$executeRaw`SELECT pg_notify(${NOTIFY_CHANNEL}, ${JSON.stringify({ tenantId, userId: d.userId, id: n.id })})`;
-    const person = d.email ? people.find((p) => p.id === d.userId) : undefined;
+    const person = d.email && emailOn ? people.find((p) => p.id === d.userId) : undefined;
     if (person) {
       await tx.emailOutbox.create({
         data: {

@@ -763,7 +763,6 @@
     "brandColourHint": "Used for buttons and highlights.",
     "logoUrl": "Logo address",
     "logoUrlHint": "A secure (https) link to a PNG or SVG.",
-    "unionEnabled": "Turn on the Union hub for staff",
     "days": {
       "0": "Sunday",
       "1": "Monday",

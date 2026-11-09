@@ -3,13 +3,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
 import { authOf, requirePermission } from '../auth/middleware.js';
-import { permissionsFor } from '../auth/permissions.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
 import { passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
+import { resolveFeatures } from '../services/platform/features.js';
 
 export const staffRouter = Router();
 const uuid = z.string().uuid();
@@ -40,14 +40,14 @@ staffRouter.get(
           where: { id: a.userId },
           include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { include: certInclude } },
         }),
-        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { unionEnabled: true } }),
+        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true } }),
       ]),
     );
-    // The Union Hub follows membership, not employer roles: members see it too,
-    // and nobody does while the organization has it switched off.
-    const permissions = permissionsFor(me.roles);
-    if (tenant.unionEnabled && me.unionMember) permissions.add('union.hub');
-    if (!tenant.unionEnabled) permissions.delete('union.hub');
+    const features = resolveFeatures(tenant.features);
+    // Switched-off features are already gone from a.permissions. The Union Hub
+    // follows membership, not employer roles: members see it too.
+    const permissions = new Set(a.permissions);
+    if (features.union && me.unionMember) permissions.add('union.hub');
     res.json({
       id: me.id,
       firstName: me.firstName,
@@ -57,6 +57,7 @@ staffRouter.get(
       locale: me.locale,
       roles: me.roles,
       permissions: [...permissions].sort(),
+      features,
       employmentStatus: me.employmentStatus,
       positions: me.positions.map((p) => p.position),
       certifications: me.certifications.map(certView),

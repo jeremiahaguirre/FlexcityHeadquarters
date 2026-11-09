@@ -30,7 +30,7 @@ DECLARE
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
     'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
-    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting'
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP

@@ -25,7 +25,9 @@ const call = (token: string, sub = SUB) => ({
 
 beforeAll(async () => {
   t = await seedTenant(SUB, 2);
+  await owner.tenant.update({ where: { id: t.tenant.id }, data: { features: { union: true } } });
   other = await seedTenant('omicron', 1);
+  await owner.tenant.update({ where: { id: other.tenant.id }, data: { features: { union: true } } });
   const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
   await db.connect();
   localId = (await db.query("INSERT INTO union_hub.local (tenant_id, name, kek_id) VALUES ($1, 'CUPE Local 338', 'local:cupe338') RETURNING id", [t.tenant.id])).rows[0].id;

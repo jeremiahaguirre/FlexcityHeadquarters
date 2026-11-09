@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf } from '../auth/middleware.js';
+import { authOf, requireFeature } from '../auth/middleware.js';
 import { config } from '../config.js';
 import { HttpError } from '../lib/errors.js';
 import { UnionHub } from '../services/union/unionHub.js';
@@ -12,6 +12,7 @@ import { h, keys } from './context.js';
  * Mounted only when UNION_DATABASE_URL is configured.
  */
 export const unionRouter = Router();
+unionRouter.use('/union', requireFeature('union'));
 const uuid = z.string().uuid();
 let hub: UnionHub | undefined;
 const getHub = () => {

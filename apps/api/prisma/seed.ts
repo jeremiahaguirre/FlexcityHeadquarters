@@ -49,7 +49,7 @@ async function main() {
       name: 'City of Kelowna (demo)',
       subdomain: 'kelowna',
       themeColors: { primary: '#0f766e', primaryHover: '#115e59', primaryContrast: '#ffffff', accent: '#c026d3' },
-      unionEnabled: true,
+      features: { union: true },
     },
   });
   const facility = await prisma.facility.create({
