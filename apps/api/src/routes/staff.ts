@@ -143,6 +143,23 @@ staffRouter.post(
   }),
 );
 
+/** Certifications staff entered themselves, waiting for a supervisor to check the card. */
+staffRouter.get(
+  '/certifications/unverified',
+  requirePermission('certs.verify'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const rows = await withTenant(a.tenantId, (tx) =>
+      tx.userCertification.findMany({
+        where: { verifiedAt: null, user: { status: 'ACTIVE', anonymizedAt: null }, userId: { not: a.userId } },
+        include: { ...certInclude, user: { select: { id: true, firstName: true, lastName: true } } },
+        orderBy: { issueDate: 'desc' },
+      }),
+    );
+    res.json(rows.map((c) => ({ ...certView(c), user: { id: c.user.id, name: `${c.user.firstName} ${c.user.lastName}` } })));
+  }),
+);
+
 staffRouter.get(
   '/certifications/expiring',
   requirePermission('certs.verify'),

@@ -108,6 +108,8 @@ describe('certifications', () => {
     expect(blocked.status).toBe(422);
     expect(blocked.body.details.blocks.map((b: { code: string }) => b.code)).toContain('MISSING_CERTIFICATION');
 
+    const queue = await call(sup).get('/api/certifications/unverified');
+    expect(queue.body.map((c: { id: string }) => c.id)).toContain(added.body.id);
     expect((await call(leeToken).post(`/api/user-certifications/${added.body.id}/verify`)).status).toBe(403);
     const v = await call(sup).post(`/api/user-certifications/${added.body.id}/verify`);
     expect(v.body.verified).toBe(true);
