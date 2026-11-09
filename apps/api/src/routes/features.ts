@@ -21,6 +21,7 @@ import { schedulingRouter } from './scheduling.js';
 import { attendanceRouter } from './attendance.js';
 import { staffRouter } from './staff.js';
 import { opsRouter } from './ops.js';
+import { disciplineRouter } from './discipline.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -29,6 +30,7 @@ api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);
 api.use(opsRouter);
+api.use(disciplineRouter);
 
 const uuid = z.string().uuid();
 const actorOf = (req: Parameters<typeof authOf>[0]) => {
