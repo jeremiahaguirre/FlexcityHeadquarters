@@ -3,7 +3,8 @@
  * every screen against a running local stack (seeded "kelowna" tenant). The
  * static GitHub Pages demo replays them in the browser (src/lib/demoApi.ts).
  *
- *   npm run build && npm start            (web on :3000, API on :4000)
+ *   npm run build && npm start            (web on :3000; API on :4000 with PLATFORM_MFA=off,
+ *                                         since the script signs in to the Dev console with a password)
  *   node scripts/capture-demo.cjs
  *
  * Names are swapped for the fictional demo organization before saving.

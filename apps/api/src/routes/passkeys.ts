@@ -86,8 +86,6 @@ passkeyAuthRouter.post(
     const body = z.union([z.object({ challengeId: uuid, response: credential }), z.object({ password: z.string().min(1) })]).parse(req.body);
     if (!await allow(`stepup:${a.userId}`, 10, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     if ('password' in body) {
-      // A password can't give the second factor it's missing.
-      if (a.mfaPending) throw new HttpError(403, 'MFA_REQUIRED', 'Your organization requires a passkey for this account.');
       const user = await withTenant(a.tenantId, (tx) => tx.user.findUniqueOrThrow({ where: { id: a.userId } }));
       if (!user.passwordHash || !(await verifyPassword(body.password, user.passwordHash))) throw new HttpError(401, 'WRONG_PASSWORD', 'That password isn’t right.');
     } else {

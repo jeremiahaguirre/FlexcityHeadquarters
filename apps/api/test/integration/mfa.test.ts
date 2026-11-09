@@ -48,8 +48,10 @@ describe('cities: a passkey required for chosen access levels', () => {
     expect(me.body.mfaRequired).toBe(true);
     // No passkey yet: they may set up their first one.
     expect((await as(token).post('/api/me/passkeys/options')).status).toBe(200);
-    // A password can't stand in for the missing factor.
-    expect((await as(token).post('/api/auth/step-up', { password: PASSWORD })).body.code).toBe('MFA_REQUIRED');
+    // Confirming with the password renews the sign-in time but isn't a second factor.
+    const up = await as(token).post('/api/auth/step-up', { password: PASSWORD });
+    expect(up.status).toBe(200);
+    expect((await as(up.body.accessToken).get('/api/users')).body.code).toBe('MFA_REQUIRED');
   });
 
   it('once a passkey exists, a password-only session can’t add or remove passkeys', async () => {

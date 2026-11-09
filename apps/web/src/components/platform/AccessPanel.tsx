@@ -12,7 +12,7 @@ import { useAction } from '@/lib/useQuery';
 import type { PanelProps } from './types';
 
 interface Access {
-  roles: Array<{ role: string; customized: boolean; permissions: string[]; defaults: string[]; menu: Array<{ href: string; shown: boolean }> }>;
+  roles: Array<{ role: string; mfa: boolean; customized: boolean; permissions: string[]; defaults: string[]; menu: Array<{ href: string; shown: boolean }> }>;
   menu: Array<{ href: string; key: string; group: string; permissions: string[]; feature: string | null; featureOn: boolean }>;
   permissions: Array<{ key: string; feature: string | null }>;
 }
@@ -82,6 +82,34 @@ export function AccessPanel({ id }: PanelProps) {
   return (
     <div className="grid gap-6">
       <p className="text-small text-muted">{t('access.help')}</p>
+      <Card>
+        <CardHeader title={t('access.mfaTitle')} />
+        <CardBody className="pt-1">
+          <p className="mb-3 text-small text-muted">{t('access.mfaHelp')}</p>
+          {table(
+            <tr>
+              <th scope="row" className="sticky left-0 z-10 bg-panel py-2 pr-4 text-left font-semibold">
+                {t('access.mfaRow')}
+              </th>
+              {a.roles.map((r) => {
+                const key = `mfa${r.role}`;
+                return (
+                  <td key={r.role} className="px-2 py-2 text-center">
+                    <span className="inline-flex justify-center">
+                      <Switch
+                        on={r.mfa}
+                        disabled={busy === key}
+                        label={t('access.mfaSwitch', { role: roleName(r.role) })}
+                        onChange={() => void change(key, () => papi<Access>(`/tenants/${id}/access/mfa`, { method: 'PUT', body: { role: r.role, required: !r.mfa } }), t(r.mfa ? 'access.mfaOff' : 'access.mfaOn', { role: roleName(r.role) }))}
+                      />
+                    </span>
+                  </td>
+                );
+              })}
+            </tr>,
+          )}
+        </CardBody>
+      </Card>
       {GROUPS.map((g) => {
         const items = a.menu.filter((m) => m.group === g);
         return (

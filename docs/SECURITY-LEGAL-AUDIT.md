@@ -49,10 +49,10 @@ Severity reflects risk to cities and their staff if the product launched today.
 
 | # | Finding | Recommendation |
 | --- | --- | --- |
-| H1 | **Multi-factor sign-in is offered (passkeys) but not required**, including for HR, supervisors and the Dev console, which can reach every city. | Require a passkey or second factor for the Dev console now, and for HR and payroll roles by default (a city setting). Add SSO (SAML / Entra ID), which most cities will require anyway. |
+| H1 | **Fixed (except SSO).** Multi-factor sign-in was offered (passkeys) but not required. Now the Dev console always needs a passkey after the password in production. Each city chooses which access levels need one (Dev console, Access tab), and new cities start with HR. A password-only session can reach only enough to give the passkey or set up a first one, and can't add or remove passkeys once one exists. | Still to do: SSO (SAML / Entra ID), which most cities will require anyway. Make sure each Dev console admin sets up a passkey on their first sign-in. |
 | H2 | **Next.js 14.2.15 has a critical advisory** (Server Actions denial of service; dev-server information exposure). Exposure is low: the app uses no Server Actions and the dev server is never deployed. | Upgrade the web app and the site to a patched Next.js major (15 or 16) and re-test. |
 | H3 | **Zod 3 has a high advisory** (memory exhaustion on oversized constrained collections). Mitigated: request bodies are capped at 100 KB and lists have maximum lengths. | Upgrade to Zod 4 when the validation code is next reworked. |
-| H4 | **Sign-in rate limiting is in memory per server.** With more than one API instance, the limit multiplies, and it resets on restart. | Move the limiter to a shared store (Redis or the database) or enforce it at the load balancer or WAF. |
+| H4 | **Fixed.** Sign-in rate limiting was in memory per server. In production it's now kept in the database and shared by every API instance, so restarts don't reset it. | Keep the WAF rate rules as a second layer. |
 | H5 | **No production hosting, backups or monitoring exist yet.** The app is ready for `ca-central-1` and refuses non-Canadian regions, but nothing is deployed. | Follow [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md): encrypted, immutable backups with tested restores, centralised logs and alerts, WAF. |
 | H6 | **Employment-standards rule values are unreviewed** (`verified: false` everywhere; payroll shows a warning). | Have Canadian employment counsel review `provincialRules.ts` against [COMPLIANCE.md](COMPLIANCE.md) before any production payroll. |
 
@@ -94,7 +94,7 @@ Status values:
 | --- | --- | --- |
 | Patch management (48 hours for critical CVEs) | App + Ops | Dependabot, CI audit; target windows in the runbook. Open items: H2, H3. |
 | Who has administrative privileges | App | Permissions are role-based and checked on every request. The Dev console shows and toggles each role's access per city, and every change is audited. Run a quarterly access review (runbook). |
-| MFA enforced globally | **Open (H1)** | Passkeys available; not yet required. |
+| MFA enforced globally | App (fixed, H1) | Passkey required for the Dev console; per access level for each city (HR by default). SSO still to do. |
 | Terminated employees de-provisioned instantly | App (fixed, F1) | Status change revokes refresh tokens and blocks the next request. Dev console admins: remove in `PlatformAdmin`; their sessions are server-side and end immediately. |
 | Cloud configuration drift (exposed buckets, open security groups, over-privileged accounts) | Ops | No buckets are needed; logos are stored in the database. Use AWS Config / Security Hub with the CIS benchmark; the database is private-subnet only; the app role has no DDL rights and can't edit audit logs. |
 | Network perimeter (firewall, IPS, API gateway) | Ops | Load balancer with WAF (AWS managed rules + rate rules), TLS 1.2+, the Dev console behind an IP allow-list (M6). The API already refuses cross-site requests: strict same-site cookies and CORS limited to the marketing site's address for the enquiry form. |

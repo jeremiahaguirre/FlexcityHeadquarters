@@ -34,7 +34,10 @@ export async function signInWithPasskey() {
 export async function addPasskey() {
   const o = await api<RegOptions>('/api/me/passkeys/options', { method: 'POST', body: {} });
   const response = await startRegistration({ optionsJSON: o.options });
-  return api<{ id: string; name: string }>('/api/me/passkeys', { method: 'POST', body: { challengeId: o.challengeId, response } });
+  const r = await api<{ id: string; name: string; accessToken?: string }>('/api/me/passkeys', { method: 'POST', body: { challengeId: o.challengeId, response } });
+  // Setting up a first passkey when the organization requires one completes the second factor.
+  if (r.accessToken) setAccessToken(r.accessToken);
+  return r;
 }
 
 /** "Confirm it's you" with a passkey. Throws ApiError NO_PASSKEY if the account has none. */
@@ -55,6 +58,13 @@ export async function platformSignInWithPasskey() {
   const o = await papi<Options>('/auth/passkey/options', { method: 'POST', body: {} });
   const response = await startAuthentication({ optionsJSON: o.options });
   return papi('/auth/passkey', { method: 'POST', body: { challengeId: o.challengeId, response } });
+}
+
+/** Second factor after a Dev console password sign-in. */
+export async function platformConfirmWithPasskey() {
+  const o = await papi<Options>('/auth/mfa/options', { method: 'POST', body: {} });
+  const response = await startAuthentication({ optionsJSON: o.options });
+  return papi('/auth/mfa', { method: 'POST', body: { challengeId: o.challengeId, response } });
 }
 
 export async function platformAddPasskey() {

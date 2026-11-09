@@ -18,6 +18,8 @@ export interface Me {
   permissions: string[];
   /** Menu items the city hid for this person's roles (Dev console). */
   hiddenMenu?: string[];
+  /** The organization requires a passkey for this account and this session hasn't used one. */
+  mfaRequired?: boolean;
   employmentStatus: string;
   positions: Array<{ id: string; name: string; nameFr: string | null }>;
   certifications: Array<{ id: string; certification: { id: string; name: string; nameFr: string | null }; issueDate: string; expiryDate: string | null; verified: boolean }>;

@@ -53,6 +53,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     const body = (await res.json().catch(() => ({}))) as { code?: string; message?: string; details?: unknown };
     // Sensitive action, sign-in not recent: confirm with a passkey or password, then try once more.
     if (body.code === 'STEP_UP_REQUIRED' && !steppedUp && stepUpHandler && (await stepUpHandler())) return api<T>(path, init, retry, true);
+    // The organization needs a passkey for this account: give it (or set one up), then try once more.
+    if (body.code === 'MFA_REQUIRED' && !steppedUp && (await secondFactor())) return api<T>(path, init, retry, true);
     if (res.status === 401 && body.code !== 'STEP_UP_REQUIRED' && retry && !path.startsWith('/api/auth/')) {
       if (await refresh()) return api<T>(path, init, false, steppedUp);
     }
@@ -66,6 +68,21 @@ let stepUpHandler: StepUpHandler | null = null;
 /** The app registers the "Confirm it's you" dialog here. */
 export function setStepUpHandler(fn: StepUpHandler | null) {
   stepUpHandler = fn;
+}
+type MfaHandler = () => Promise<boolean>;
+let mfaHandler: MfaHandler | null = null;
+let mfaPending: Promise<boolean> | null = null;
+/** The app registers the "Confirm with your passkey" dialog here. */
+export function setMfaHandler(fn: MfaHandler | null) {
+  mfaHandler = fn;
+}
+/** Several screens can hit the requirement at once: they all wait on one prompt. */
+function secondFactor(): Promise<boolean> {
+  if (!mfaHandler) return Promise.resolve(false);
+  mfaPending ??= mfaHandler().finally(() => {
+    mfaPending = null;
+  });
+  return mfaPending;
 }
 /** After signing in with a passkey or confirming it's you. */
 export function setAccessToken(token: string) {
@@ -84,6 +101,7 @@ export async function apiDownload(path: string, retry = true): Promise<{ ok: tru
   if (!res.ok) {
     const error = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (error.code === 'STEP_UP_REQUIRED' && retry && stepUpHandler && (await stepUpHandler())) return apiDownload(path, false);
+    if (error.code === 'MFA_REQUIRED' && retry && (await secondFactor())) return apiDownload(path, false);
     if (res.status === 401 && error.code !== 'STEP_UP_REQUIRED' && retry && (await refresh())) return apiDownload(path, false);
     return { ok: false, status: res.status, error };
   }

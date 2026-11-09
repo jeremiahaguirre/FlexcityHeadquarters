@@ -44,6 +44,8 @@ export function usePlatformQuery<T>(path: string | null) {
       }
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) router.replace('/platform/login');
+      // Signed in with a password only: the passkey step comes next.
+      if (e instanceof ApiError && e.code === 'MFA_REQUIRED') router.replace('/platform/login?step=passkey');
       setError(e instanceof ApiError ? e : new ApiError(0, 'NETWORK', String(e)));
     } finally {
       setLoading(false);

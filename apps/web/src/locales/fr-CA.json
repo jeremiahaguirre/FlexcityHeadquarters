@@ -288,7 +288,8 @@
     "PASSKEY_EXPIRED": "Le délai est écoulé. Réessayez.",
     "PASSKEY_UNKNOWN": "Cette clé d'accès n'est pas configurée ici.",
     "NO_PASSKEY": "Aucune clé d'accès sur ce compte.",
-    "TOO_MANY_PASSKEYS": "Retirez une clé d'accès avant d'en ajouter une autre."
+    "TOO_MANY_PASSKEYS": "Retirez une clé d'accès avant d'en ajouter une autre.",
+    "MFA_REQUIRED": "Votre organisation exige une clé d'accès pour ce compte."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1246,7 +1247,15 @@
       "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus."
     },
     "account": "Votre compte",
-    "accountHelp": "Clés d'accès pour la console Dev. Ajouter ou retirer une clé exige une connexion des 10 dernières minutes."
+    "accountHelp": "Clés d'accès pour la console Dev. Ajouter ou retirer une clé exige une connexion des 10 dernières minutes.",
+    "mfaTitle": "Confirmez avec votre clé d'accès",
+    "mfaHelp": "La console Dev exige une deuxième étape après votre mot de passe. Utilisez la clé d'accès de cet appareil ou votre clé de sécurité.",
+    "mfaSetUpTitle": "Configurez votre clé d'accès",
+    "mfaSetUpHelp": "La console Dev exige une clé d'accès en plus de votre mot de passe. Configurez-en une maintenant avec Face ID, empreinte digitale, Windows Hello ou une clé de sécurité. Vous l'utiliserez à chaque connexion.",
+    "mfaUse": "Utiliser ma clé d'accès",
+    "mfaSetUp": "Configurer une clé d'accès",
+    "mfaBack": "Utiliser un autre compte",
+    "mfaExpired": "Votre connexion a expiré. Utilisez un autre compte pour recommencer."
   },
   "passkeys": {
     "title": "Clés d'accès",
@@ -1801,7 +1810,13 @@
     "advancedHelp": "Contrôle détaillé de ce que chaque niveau d’accès peut faire. Les cellules ombrées diffèrent du standard. Les permissions sensibles touchent la paie, les dossiers personnels, la discipline ou la configuration de la ville.",
     "showAdvanced": "Afficher",
     "hideAdvanced": "Masquer",
-    "sensitive": "Sensible"
+    "sensitive": "Sensible",
+    "mfaTitle": "Connexion multifacteur",
+    "mfaHelp": "Toute personne ayant un niveau d'accès activé doit utiliser une clé d'accès après son mot de passe. Les personnes qui n'en ont pas en configurent une à leur prochaine connexion. Se connecter avec une clé d'accès seule compte aussi.",
+    "mfaRow": "Exiger une clé d'accès",
+    "mfaSwitch": "Exiger une clé d'accès pour {{role}}",
+    "mfaOn": "{{role}} doit maintenant utiliser une clé d'accès pour se connecter",
+    "mfaOff": "{{role}} n'a plus besoin de clé d'accès"
   },
   "onboarding": {
     "title": "Intégration",
@@ -2042,5 +2057,14 @@
     "notEnough": "Pas encore assez de villes qui partagent ({{n}} requises).",
     "joinToSee": "Partagez pour voir comment les autres villes se comparent.",
     "legend": "Marque foncée : votre ville. Bande ombrée : la moitié centrale des villes qui partagent; ligne fine : la ville type."
+  },
+  "mfa": {
+    "title": "Confirmez avec votre clé d'accès",
+    "help": "Votre organisation exige une clé d'accès pour votre compte, en plus de votre mot de passe. C'est le verrouillage que vous utilisez déjà sur cet appareil : Face ID, empreinte digitale, Windows Hello ou NIP.",
+    "setUpHelp": "Vous n'avez pas encore de clé d'accès. Configurez-en une sur cet appareil maintenant; vous l'utiliserez ensuite à chaque connexion.",
+    "use": "Utiliser ma clé d'accès",
+    "setUp": "Configurer une clé d'accès sur cet appareil",
+    "signOut": "Se déconnecter",
+    "unsupported": "Ce navigateur ne prend pas en charge les clés d'accès. Connectez-vous à partir d'un téléphone ou d'un ordinateur avec Face ID, empreinte digitale ou Windows Hello, ou demandez de l'aide à votre équipe RH."
   }
 }

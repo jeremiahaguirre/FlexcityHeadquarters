@@ -12,6 +12,7 @@ import { cn } from '@/lib/cn';
 import { type NavItem, phoneTabs, visibleNav } from '@/lib/nav';
 import { useSession } from '@/lib/session';
 import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
+import { MfaDialog } from '@/components/auth/MfaDialog';
 import { StepUpDialog } from '@/components/auth/StepUpDialog';
 import { api } from '@/lib/api';
 import { addPasskey } from '@/lib/passkeys';
@@ -108,7 +109,8 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
       </div>
 
       <StepUpDialog />
-      <PasskeyPrompt userId={me?.id} list={() => api<unknown[]>('/api/me/passkeys')} add={addPasskey} />
+      <MfaDialog />
+      <PasskeyPrompt userId={me?.id} skip={me?.mfaRequired} list={() => api<unknown[]>('/api/me/passkeys')} add={addPasskey} />
 
       {/* Phone tab bar */}
       <nav

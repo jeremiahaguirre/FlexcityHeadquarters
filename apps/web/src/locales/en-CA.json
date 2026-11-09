@@ -288,7 +288,8 @@
     "PASSKEY_EXPIRED": "That took too long. Try again.",
     "PASSKEY_UNKNOWN": "That passkey isn't set up here.",
     "NO_PASSKEY": "No passkey on this account.",
-    "TOO_MANY_PASSKEYS": "Remove a passkey before adding another."
+    "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
+    "MFA_REQUIRED": "Your organization requires a passkey for this account."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1246,7 +1247,15 @@
       "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You'll see every row checked before anything is created. This city has {{count}} positions to match against."
     },
     "account": "Your account",
-    "accountHelp": "Passkeys for signing in to the Dev console. Adding or removing one needs a sign-in from the last 10 minutes."
+    "accountHelp": "Passkeys for signing in to the Dev console. Adding or removing one needs a sign-in from the last 10 minutes.",
+    "mfaTitle": "Confirm with your passkey",
+    "mfaHelp": "The Dev console needs a second step after your password. Use the passkey on this device or your security key.",
+    "mfaSetUpTitle": "Set up your passkey",
+    "mfaSetUpHelp": "The Dev console needs a passkey on top of your password. Set one up now with Face ID, fingerprint, Windows Hello or a security key. You'll use it every time you sign in.",
+    "mfaUse": "Use my passkey",
+    "mfaSetUp": "Set up a passkey",
+    "mfaBack": "Use a different account",
+    "mfaExpired": "Your sign-in timed out. Use a different account to start again."
   },
   "passkeys": {
     "title": "Passkeys",
@@ -1801,7 +1810,13 @@
     "advancedHelp": "Fine-grained control over what each access level can do. Shaded cells differ from the standard. Sensitive permissions reach pay, personal records, discipline or city setup.",
     "showAdvanced": "Show",
     "hideAdvanced": "Hide",
-    "sensitive": "Sensitive"
+    "sensitive": "Sensitive",
+    "mfaTitle": "Multi-factor sign-in",
+    "mfaHelp": "Everyone with a switched-on access level must use a passkey after their password. People without one set it up the next time they sign in. Signing in with a passkey alone counts.",
+    "mfaRow": "Require a passkey",
+    "mfaSwitch": "Require a passkey for {{role}}",
+    "mfaOn": "{{role}} now needs a passkey to sign in",
+    "mfaOff": "{{role}} no longer needs a passkey"
   },
   "onboarding": {
     "title": "Onboarding",
@@ -2042,5 +2057,14 @@
     "notEnough": "Not enough cities share yet ({{n}} needed).",
     "joinToSee": "Share to see how other cities compare.",
     "legend": "Dark mark: your city. Shaded band: the middle half of sharing cities; thin line: the typical city."
+  },
+  "mfa": {
+    "title": "Confirm with your passkey",
+    "help": "Your organization requires a passkey for your account, on top of your password. It's the lock you already use on this device: Face ID, fingerprint, Windows Hello or a PIN.",
+    "setUpHelp": "You don't have a passkey yet. Set one up on this device now; from then on, you'll use it each time you sign in.",
+    "use": "Use my passkey",
+    "setUp": "Set up a passkey on this device",
+    "signOut": "Sign out",
+    "unsupported": "This browser can't use passkeys. Sign in from a phone or computer with Face ID, fingerprint or Windows Hello, or ask your HR team for help."
   }
 }

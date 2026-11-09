@@ -231,15 +231,16 @@ export async function demoPlatformApi<T>(path: string, init: { method?: string; 
     return { created: result.summary.create, exists: 0, errors: result.summary.error, invited: 0 } as T;
   }
   // Menus and access: flip switches in the browser so the demo console feels real (nothing is saved).
-  const access = /^\/tenants\/([^/]+)\/access\/(menu|permission|reset)$/.exec(path);
+  const access = /^\/tenants\/([^/]+)\/access\/(menu|permission|reset|mfa)$/.exec(path);
   if (access) {
     const key = `/tenants/${access[1]}/access`;
-    const current = (demoAccess.get(key) ?? data.get(key)) as { roles: Array<{ role: string; customized: boolean; permissions: string[]; defaults: string[]; menu: Array<{ href: string; shown: boolean }> }> } | undefined;
+    const current = (demoAccess.get(key) ?? data.get(key)) as { roles: Array<{ role: string; mfa?: boolean; customized: boolean; permissions: string[]; defaults: string[]; menu: Array<{ href: string; shown: boolean }> }> } | undefined;
     if (!current) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
-    const b = (init.body ?? {}) as { role: string; href?: string; shown?: boolean; permission?: string; on?: boolean };
+    const b = (init.body ?? {}) as { role: string; href?: string; shown?: boolean; permission?: string; on?: boolean; required?: boolean };
     const next = structuredClone(current);
     const r = next.roles.find((x) => x.role === b.role);
-    if (r) {
+    if (r && access[2] === 'mfa') r.mfa = !!b.required;
+    else if (r) {
       if (access[2] === 'menu') r.menu = r.menu.map((m) => (m.href === b.href ? { ...m, shown: !!b.shown } : m));
       if (access[2] === 'permission') r.permissions = b.on ? [...new Set([...r.permissions, b.permission!])] : r.permissions.filter((p) => p !== b.permission);
       r.customized = true;

@@ -12,7 +12,8 @@ export const OFFER_FLAG = 'fh-offer-passkey';
 const dismissedKey = (id: string) => `fh-passkey-dismissed:${id}`;
 
 /** Right after a password sign-in, offer this device's Face ID / fingerprint / Windows Hello. Once per person per device. */
-export function PasskeyPrompt({ userId, list, add }: { userId: string | undefined; list: () => Promise<unknown[]>; add: () => Promise<unknown> }) {
+/** `skip`: the required-passkey prompt is handling it instead. */
+export function PasskeyPrompt({ userId, list, add, skip }: { userId: string | undefined; list: () => Promise<unknown[]>; add: () => Promise<unknown>; skip?: boolean }) {
   const { t } = useTranslation();
   const toast = useToast();
   const me = userId ? { id: userId } : null;
@@ -20,7 +21,7 @@ export function PasskeyPrompt({ userId, list, add }: { userId: string | undefine
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!me) return;
+    if (!me || skip) return;
     let offer = false;
     try {
       offer = sessionStorage.getItem(OFFER_FLAG) === '1' && localStorage.getItem(dismissedKey(me.id)) !== '1';
