@@ -58,6 +58,7 @@ describe('union hub', () => {
     expect((await call(member).post(`/api/union/locals/${localId}/threads/${threadId}/messages`, { body: 'Agreed, the 6–10 / 4–8 split is hard.' })).status).toBe(201);
     const thread = await call(member).get(`/api/union/locals/${localId}/threads/${threadId}`);
     expect(thread.body.map((m: { body: string }) => m.body)).toEqual(['Post concerns about split shifts here.', 'Agreed, the 6–10 / 4–8 split is hard.']);
+    expect(thread.body.map((m: { authorName: string }) => m.authorName)).toEqual(['Guard0 xi', 'Guard1 xi']);
     const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
     await db.connect();
     const raw = await db.query('SELECT ciphertext FROM union_hub.message');
@@ -75,6 +76,13 @@ describe('union hub', () => {
   it('only stewards add members, and only from their own organization', async () => {
     expect((await call(member).post(`/api/union/locals/${localId}/members`, { userId: t.users[1]!.id })).status).toBe(403);
     expect((await call(steward).post(`/api/union/locals/${localId}/members`, { userId: other.users[0]!.id })).status).toBe(403);
+  });
+
+  it('gives stewards, and only stewards, their organization’s staff to pick from', async () => {
+    const dir = await call(steward).get(`/api/union/locals/${localId}/directory`);
+    expect(dir.body.find((p: { id: string }) => p.id === t.users[1]!.id)).toMatchObject({ member: true, isSteward: false });
+    expect(dir.body.some((p: { id: string }) => p.id === other.users[0]!.id)).toBe(false);
+    expect((await call(member).get(`/api/union/locals/${localId}/directory`)).status).toBe(403);
   });
 
   it('shows the seniority roster to members', async () => {

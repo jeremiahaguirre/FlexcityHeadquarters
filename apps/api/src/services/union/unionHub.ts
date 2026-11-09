@@ -68,6 +68,21 @@ export class UnionHub {
     }, tenantId);
   }
 
+  /** Stewards pick people to add from their organization's staff. */
+  async directory(tenantId: string, localId: string, stewardId: string) {
+    return this.withLocal(localId, stewardId, async function directory(c) {
+      const me = await c.query('SELECT is_steward FROM union_hub.member_access WHERE local_id = $1 AND user_id = $2', [localId, stewardId]);
+      if (!me.rows[0]?.is_steward) throw forbidden('Only stewards can see the staff directory.');
+      const r = await c.query<{ id: string; first_name: string; last_name: string; member: boolean; is_steward: boolean | null }>(
+        `SELECT d.id, d.first_name, d.last_name, m.user_id IS NOT NULL AS member, m.is_steward
+           FROM union_hub.staff_directory d LEFT JOIN union_hub.member_access m ON m.user_id = d.id AND m.local_id = $1
+          ORDER BY d.last_name, d.first_name`,
+        [localId],
+      );
+      return r.rows.map((x) => ({ id: x.id, name: `${x.first_name} ${x.last_name}`, member: x.member, isSteward: !!x.is_steward }));
+    }, tenantId);
+  }
+
   private async withLocal<T>(
     localId: string,
     userId: string,
@@ -119,16 +134,23 @@ export class UnionHub {
       const rows = await c.query<{
         id: string;
         author_user_id: string;
+        author_name: string | null;
         created_at: Date;
         ciphertext: Buffer;
         iv: Buffer;
         auth_tag: Buffer;
         wrapped_data_key: Buffer;
-      }>('SELECT * FROM union_hub.message WHERE local_id = $1 AND thread_id = $2 ORDER BY created_at', [localId, threadId]);
+      }>(
+        `SELECT m.*, d.first_name || ' ' || d.last_name AS author_name
+           FROM union_hub.message m LEFT JOIN union_hub.staff_directory d ON d.id = m.author_user_id
+          WHERE m.local_id = $1 AND m.thread_id = $2 ORDER BY m.created_at`,
+        [localId, threadId],
+      );
       return Promise.all(
         rows.rows.map(async (r) => ({
           id: r.id,
           authorUserId: r.author_user_id,
+          authorName: r.author_name,
           createdAt: r.created_at,
           body: await open(
             keys,

@@ -73,6 +73,14 @@ unionRouter.get(
   }),
 );
 
+unionRouter.get(
+  '/union/locals/:local/directory',
+  h(async (req, res) => {
+    const a = authOf(req);
+    res.json(await getHub().directory(a.tenantId, uuid.parse(req.params.local), a.userId));
+  }),
+);
+
 unionRouter.post(
   '/union/locals/:local/members',
   h(async (req, res) => {
