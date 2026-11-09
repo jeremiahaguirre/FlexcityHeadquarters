@@ -17,10 +17,12 @@ import { cancelOffer, claimOffer, decideOffer, postOffer } from '../services/shi
 import { clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
 import { h, keys, tenantKekId } from './context.js';
 import { notificationsRouter } from './notifications.js';
+import { schedulingRouter } from './scheduling.js';
 
 export const api = Router();
 api.use(requireAuth);
 api.use(notificationsRouter);
+api.use(schedulingRouter);
 
 const uuid = z.string().uuid();
 const actorOf = (req: Parameters<typeof authOf>[0]) => {
