@@ -5,11 +5,7 @@
     "language": "English",
     "languageLabel": "Switch to English",
     "unknownOrg": "Nous n'avons pas trouvé cette organisation. Vérifiez l'adresse web qui vous a été fournie.",
-    "nav": {
-      "board": "Tableau des quarts",
-      "status": "État des bassins",
-      "signOut": "Se déconnecter"
-    }
+    "languageCode": "en-CA"
   },
   "login": {
     "title": "Connexion",
@@ -17,7 +13,11 @@
     "password": "Mot de passe",
     "submit": "Se connecter",
     "submitting": "Connexion…",
-    "invalid": "Le courriel ou le mot de passe est incorrect."
+    "invalid": "Le courriel ou le mot de passe est incorrect.",
+    "subtitle": "Utilisez le courriel que votre organisation a à son dossier.",
+    "locked": "Trop de tentatives. Ce compte est verrouillé pendant 15 minutes; réinitialisez votre mot de passe pour le débloquer tout de suite.",
+    "tooMany": "Trop de tentatives de connexion depuis cet appareil. Patientez quelques minutes.",
+    "forgot": "Mot de passe oublié?"
   },
   "board": {
     "title": "Tableau des quarts",
@@ -56,5 +56,105 @@
   "demo": {
     "banner": "Démonstration avec des données fictives — rien n'est enregistré.",
     "hint": "Comptes de démonstration : {{accounts}} — mot de passe {{password}}"
+  },
+  "common": {
+    "close": "Fermer",
+    "dismiss": "Masquer",
+    "error": "Une erreur s'est produite. Vérifiez votre connexion et réessayez.",
+    "retry": "Réessayer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "loading": "Chargement"
+  },
+  "forgot": {
+    "title": "Réinitialiser votre mot de passe",
+    "subtitle": "Entrez votre courriel et nous vous enverrons un lien pour choisir un nouveau mot de passe.",
+    "submit": "Envoyer le lien",
+    "sentTitle": "Consultez vos courriels",
+    "sentBody": "Si un compte utilise ce courriel, un lien de réinitialisation s'en vient. Il est valide pendant une heure.",
+    "back": "Retour à la connexion"
+  },
+  "reset": {
+    "title": "Choisissez un nouveau mot de passe",
+    "inviteTitle": "Bienvenue! Choisissez votre mot de passe",
+    "rule": "Utilisez au moins 10 caractères, en mêlant lettres et chiffres ou symboles.",
+    "password": "Nouveau mot de passe",
+    "confirm": "Confirmez le mot de passe",
+    "submit": "Enregistrer le mot de passe",
+    "inviteSubmit": "Définir le mot de passe",
+    "mismatch": "Les deux mots de passe ne correspondent pas.",
+    "weak": "Utilisez au moins 10 caractères, en mêlant lettres et chiffres ou symboles.",
+    "expired": "Ce lien est expiré ou a déjà servi. Demandez-en un nouveau à la page de connexion.",
+    "doneTitle": "Votre mot de passe est enregistré"
+  },
+  "shell": {
+    "mainNav": "Principal",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications, {{count}} non lues",
+    "markAllRead": "Tout marquer comme lu",
+    "noNotifications": "Vous êtes à jour.",
+    "profile": "Mon profil",
+    "signOut": "Se déconnecter",
+    "accountMenu": "Menu du compte de {{name}}"
+  },
+  "nav": {
+    "today": "Aujourd'hui",
+    "schedule": "Mon horaire",
+    "scheduleShort": "Horaire",
+    "board": "Tableau des quarts",
+    "boardShort": "Tableau",
+    "timeclock": "Horodateur",
+    "timeclockShort": "Pointage",
+    "timeOff": "Congés",
+    "availability": "Disponibilités",
+    "lessons": "Cours",
+    "status": "État des bassins",
+    "statusShort": "Bassins",
+    "ops": "Registre du bassin",
+    "incidents": "Incidents",
+    "manageSchedule": "Création d'horaires",
+    "approvals": "Approbations",
+    "staff": "Personnel",
+    "certifications": "Certifications",
+    "payroll": "Paie",
+    "settings": "Paramètres",
+    "union": "Espace syndical",
+    "more": "Plus"
+  },
+  "navGroups": {
+    "mine": "Mon travail",
+    "deck": "Bord du bassin",
+    "manage": "Gestion",
+    "union": "Syndicat"
+  },
+  "roles": {
+    "HR_ADMIN": "Administration RH",
+    "AQUATIC_SUPERVISOR": "Superviseur aquatique",
+    "HEAD_LIFEGUARD": "Sauveteur en chef",
+    "STAFF": "Sauveteur / moniteur",
+    "FRONT_DESK": "Accueil",
+    "UNION_STEWARD": "Délégué syndical"
+  },
+  "notifications": {
+    "generic": "Vous avez une nouvelle mise à jour.",
+    "shift_available": "Un quart que vous pouvez prendre a été affiché au tableau.",
+    "shift_assigned": "Un quart a été ajouté à votre horaire.",
+    "shift_covered": "Votre quart a été repris par un collègue.",
+    "shift_unassigned": "Vous avez été retiré d'un quart.",
+    "shift_changed": "L'heure d'un de vos quarts a changé.",
+    "shift_cancelled": "Un de vos quarts a été annulé.",
+    "schedule_published": "Votre nouvel horaire est publié : {{count}} quarts.",
+    "claim_needs_approval": "Une demande de quart attend votre approbation ({{overtimeHours}} h supplémentaires).",
+    "claim_pending": "Votre demande a été transmise à un superviseur, car elle ajoute {{overtimeHours}} h supplémentaires.",
+    "claim_denied": "Votre demande de quart a été refusée.",
+    "time_off_requested": "Une demande de congé vous attend.",
+    "time_off_decided": "Votre demande de congé a reçu une réponse.",
+    "punch_rejected": "Un de vos pointages doit être corrigé.",
+    "cert_to_verify": "Une certification attend d'être vérifiée.",
+    "cert_verified": "Votre certification {{name}} a été vérifiée.",
+    "closure_recommended": "Fermeture recommandée : une mesure chimique est hors norme.",
+    "front_desk_page": "Accueil : {{message}}",
+    "welcome": "Bienvenue sur FlexcityHeadquarters.",
+    "password_changed": "Votre mot de passe a été modifié."
   }
 }

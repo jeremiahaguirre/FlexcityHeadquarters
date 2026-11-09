@@ -38,8 +38,29 @@ const POOLS = [
   { id: 'p3', name: 'Hot Tub', kind: 'HOT_TUB', status: 'CLOSURE_RECOMMENDED', facility: { id: 'f1', name: FACILITY.name } },
 ];
 
+const STAFF_PERMS = ['schedule.read', 'shiftboard.claim', 'shiftboard.post', 'availability.self', 'timeoff.self', 'timeclock.punch', 'ops.chemical.record', 'incidents.create'];
+const PEOPLE: Record<string, { firstName: string; lastName: string; roles: string[]; permissions: string[] }> = {
+  'guard@demo.flexcity': { firstName: 'Jordan', lastName: 'Singh', roles: ['STAFF'], permissions: STAFF_PERMS },
+  'supervisor@demo.flexcity': {
+    firstName: 'Sam',
+    lastName: 'Okafor',
+    roles: ['AQUATIC_SUPERVISOR'],
+    permissions: [...STAFF_PERMS, 'users.read', 'certs.verify', 'schedule.write', 'schedule.assist', 'shiftboard.approve', 'shiftboard.assign_emergency', 'timeoff.approve', 'timeclock.review', 'payroll.export', 'ops.chemical.signoff', 'ops.pool.close', 'ops.status.read', 'incidents.read', 'positions.manage', 'users.scheduling'],
+  },
+  'frontdesk@demo.flexcity': { firstName: 'Casey', lastName: 'Martin', roles: ['FRONT_DESK'], permissions: ['schedule.read', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch'] },
+};
+
+const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+const NOTES = [
+  { id: 'n1', type: 'shift_available', params: {}, link: '/board', readAt: null, createdAt: minutesAgo(12) },
+  { id: 'n2', type: 'schedule_published', params: { count: 4 }, link: '/board', readAt: null, createdAt: minutesAgo(95) },
+  { id: 'n3', type: 'cert_verified', params: { name: 'National Lifeguard' }, link: null, readAt: minutesAgo(60), createdAt: minutesAgo(60 * 26) },
+];
+
 interface State {
   signedIn: boolean;
+  account?: string;
+  read?: boolean;
   claimed: string[]; // offer ids assigned to the demo user
   pending: string[]; // offer ids awaiting supervisor approval
 }
@@ -104,8 +125,9 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
     if (!DEMO_ACCOUNTS.includes(String(email).toLowerCase() as (typeof DEMO_ACCOUNTS)[number]) || password !== DEMO_PASSWORD) {
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     }
-    save({ ...state, signedIn: true });
-    return { accessToken: 'demo', user: { id: 'demo-user', firstName: 'Demo', roles: ['STAFF'], locale: 'en-CA' } } as T;
+    const who = PEOPLE[String(email).toLowerCase()]!;
+    save({ ...state, signedIn: true, account: String(email).toLowerCase() });
+    return { accessToken: 'demo', user: { id: 'demo-user', firstName: who.firstName, roles: who.roles, locale: 'en-CA' } } as T;
   }
   if (path === '/api/auth/logout') {
     save({ signedIn: false, claimed: [], pending: [] });
@@ -113,6 +135,30 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
   }
 
   if (!state.signedIn) throw new ApiError(401, 'UNAUTHENTICATED', 'Not signed in');
+
+  if (path === '/api/me') {
+    const email = state.account ?? 'guard@demo.flexcity';
+    const who = PEOPLE[email] ?? PEOPLE['guard@demo.flexcity']!;
+    return {
+      id: 'demo-user',
+      ...who,
+      email,
+      phone: null,
+      locale: 'en-CA',
+      employmentStatus: 'PART_TIME',
+      positions: [{ id: 'p1', ...LIFEGUARD }],
+      certifications: [],
+    } as T;
+  }
+
+  if (path.startsWith('/api/notifications/read')) {
+    save({ ...state, read: true });
+    return { updated: 2 } as T;
+  }
+  if (path.startsWith('/api/notifications')) {
+    const items = NOTES.map((n) => (state.read ? { ...n, readAt: n.readAt ?? minutesAgo(1) } : n));
+    return { items, unreadCount: items.filter((n) => !n.readAt).length } as T;
+  }
 
   if (path === '/api/shiftboard/offers') {
     return SHIFTS.filter((s) => !state.claimed.includes(s.offerId)).map((s) => toOffer(s, state)) as T;

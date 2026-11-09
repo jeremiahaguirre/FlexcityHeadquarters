@@ -5,11 +5,7 @@
     "language": "Français",
     "languageLabel": "Passer au français",
     "unknownOrg": "We couldn't find this organization. Check the web address you were given.",
-    "nav": {
-      "board": "Shift Board",
-      "status": "Pool Status",
-      "signOut": "Sign out"
-    }
+    "languageCode": "fr-CA"
   },
   "login": {
     "title": "Sign in",
@@ -17,7 +13,11 @@
     "password": "Password",
     "submit": "Sign in",
     "submitting": "Signing in…",
-    "invalid": "Email or password is incorrect."
+    "invalid": "Email or password is incorrect.",
+    "subtitle": "Use the email your organization has on file.",
+    "locked": "Too many attempts. This account is locked for 15 minutes; reset your password to unlock it now.",
+    "tooMany": "Too many sign-in attempts from this device. Wait a few minutes.",
+    "forgot": "Forgot your password?"
   },
   "board": {
     "title": "Shift Board",
@@ -56,5 +56,105 @@
   "demo": {
     "banner": "Demo with sample data — nothing you do here is saved.",
     "hint": "Demo accounts: {{accounts}} — password {{password}}"
+  },
+  "common": {
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "error": "Something went wrong. Check your connection and try again.",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading"
+  },
+  "forgot": {
+    "title": "Reset your password",
+    "subtitle": "Enter your email and we'll send you a link to choose a new password.",
+    "submit": "Send reset link",
+    "sentTitle": "Check your email",
+    "sentBody": "If an account uses that email, a reset link is on its way. It works for one hour.",
+    "back": "Back to sign in"
+  },
+  "reset": {
+    "title": "Choose a new password",
+    "inviteTitle": "Welcome! Set your password",
+    "rule": "Use at least 10 characters, mixing letters with numbers or symbols.",
+    "password": "New password",
+    "confirm": "Confirm password",
+    "submit": "Save password",
+    "inviteSubmit": "Set password",
+    "mismatch": "The two passwords don't match.",
+    "weak": "Use at least 10 characters, mixing letters with numbers or symbols.",
+    "expired": "This link has expired or was already used. Ask for a new one from the sign-in page.",
+    "doneTitle": "Your password is saved"
+  },
+  "shell": {
+    "mainNav": "Main",
+    "notifications": "Notifications",
+    "notificationsUnread": "Notifications, {{count}} unread",
+    "markAllRead": "Mark all read",
+    "noNotifications": "You're all caught up.",
+    "profile": "My profile",
+    "signOut": "Sign out",
+    "accountMenu": "Account menu for {{name}}"
+  },
+  "nav": {
+    "today": "Today",
+    "schedule": "My schedule",
+    "scheduleShort": "Schedule",
+    "board": "Shift board",
+    "boardShort": "Board",
+    "timeclock": "Timeclock",
+    "timeclockShort": "Clock",
+    "timeOff": "Time off",
+    "availability": "Availability",
+    "lessons": "Lessons",
+    "status": "Pool status",
+    "statusShort": "Pools",
+    "ops": "Pool log",
+    "incidents": "Incidents",
+    "manageSchedule": "Schedule builder",
+    "approvals": "Approvals",
+    "staff": "Staff",
+    "certifications": "Certifications",
+    "payroll": "Payroll",
+    "settings": "Settings",
+    "union": "Union hub",
+    "more": "More"
+  },
+  "navGroups": {
+    "mine": "My work",
+    "deck": "Pool deck",
+    "manage": "Manage",
+    "union": "Union"
+  },
+  "roles": {
+    "HR_ADMIN": "HR administrator",
+    "AQUATIC_SUPERVISOR": "Aquatic supervisor",
+    "HEAD_LIFEGUARD": "Head lifeguard",
+    "STAFF": "Lifeguard / instructor",
+    "FRONT_DESK": "Front desk",
+    "UNION_STEWARD": "Union steward"
+  },
+  "notifications": {
+    "generic": "You have a new update.",
+    "shift_available": "A shift you can take was posted to the board.",
+    "shift_assigned": "A shift was added to your schedule.",
+    "shift_covered": "Your shift was covered by a coworker.",
+    "shift_unassigned": "You were taken off a shift.",
+    "shift_changed": "One of your shifts changed time.",
+    "shift_cancelled": "One of your shifts was cancelled.",
+    "schedule_published": "Your new schedule is out: {{count}} shifts.",
+    "claim_needs_approval": "A shift claim needs your approval ({{overtimeHours}} h overtime).",
+    "claim_pending": "Your claim was sent to a supervisor because it adds {{overtimeHours}} h of overtime.",
+    "claim_denied": "Your shift claim was declined.",
+    "time_off_requested": "A time-off request is waiting for you.",
+    "time_off_decided": "Your time-off request was answered.",
+    "punch_rejected": "A punch of yours needs correcting.",
+    "cert_to_verify": "A certification is waiting to be verified.",
+    "cert_verified": "Your {{name}} certification was verified.",
+    "closure_recommended": "Closure recommended: a chemical reading is out of range.",
+    "front_desk_page": "Front desk: {{message}}",
+    "welcome": "Welcome to FlexcityHeadquarters.",
+    "password_changed": "Your password was changed."
   }
 }

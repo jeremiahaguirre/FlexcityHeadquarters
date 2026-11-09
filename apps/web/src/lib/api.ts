@@ -73,3 +73,50 @@ export async function logout() {
   await api('/api/auth/logout', { method: 'POST' }, false).catch(() => undefined);
   accessToken = null;
 }
+
+/**
+ * Live notification signals over Server-Sent Events, read with fetch() so the
+ * Bearer token can be sent. Reconnects with backoff; returns a stop function.
+ */
+export function streamNotifications(onSignal: () => void): () => void {
+  if (DEMO) return () => undefined;
+  let stopped = false;
+  let controller: AbortController | null = null;
+  let delay = 2000;
+  const run = async () => {
+    while (!stopped) {
+      try {
+        if (!accessToken) await refresh();
+        controller = new AbortController();
+        const res = await fetch('/api/notifications/stream', {
+          headers: { ...tenantHeader(), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
+          signal: controller.signal,
+        });
+        if (res.status === 401) await refresh();
+        if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
+        delay = 2000;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const events = buf.split('\n\n');
+          buf = events.pop() ?? '';
+          if (events.some((e) => e.includes('event: notification'))) onSignal();
+        }
+      } catch {
+        /* fall through to retry */
+      }
+      if (stopped) break;
+      await new Promise((r) => setTimeout(r, delay));
+      delay = Math.min(delay * 2, 60_000);
+    }
+  };
+  void run();
+  return () => {
+    stopped = true;
+    controller?.abort();
+  };
+}

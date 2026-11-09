@@ -16,4 +16,4 @@ export const DEMO_TENANT: PublicTenant = {
 };
 
 export const DEMO_PASSWORD = 'flexcity-dev';
-export const DEMO_ACCOUNTS = ['guard@demo.flexcity', 'frontdesk@demo.flexcity'] as const;
+export const DEMO_ACCOUNTS = ['guard@demo.flexcity', 'supervisor@demo.flexcity', 'frontdesk@demo.flexcity'] as const;

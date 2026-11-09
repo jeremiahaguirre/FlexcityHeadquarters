@@ -3,10 +3,9 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { DemoBanner } from '@/components/DemoBanner';
-import { LanguageToggle } from '@/components/LanguageToggle';
 import { Logo } from '@/components/Logo';
-import { NavLinks } from '@/components/NavLinks';
 import { Providers } from '@/components/Providers';
+import { ToastProvider } from '@/components/ui/Toast';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
 import { currentTenant } from '@/lib/tenant';
@@ -38,27 +37,26 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang={locale} className={jakarta.variable} style={themeVars(tenant?.themeColors) as CSSProperties}>
-      <body className="min-h-screen font-sans antialiased">
+      <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <Providers locale={locale}>
-          <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:rounded focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
+          <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
             {t('app.skipToContent')}
           </a>
           {DEMO ? <DemoBanner /> : null}
-          <header className="border-b border-line">
-            <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <Logo />
-                {tenant ? (
-                  <span className="hidden truncate border-l border-line pl-3 text-sm text-muted sm:inline">{tenant.name}</span>
-                ) : null}
-              </div>
-              <LanguageToggle />
-            </div>
-          </header>
-          {tenant ? <NavLinks /> : null}
-          <main id="main" className="mx-auto max-w-4xl px-4 py-6">
-            {tenant ? children : <p role="alert">{t('app.unknownOrg')}</p>}
-          </main>
+          <ToastProvider dismissLabel={t('common.dismiss')}>
+            {tenant ? (
+              children
+            ) : (
+              <main id="main" className="mx-auto grid min-h-screen max-w-md place-items-center px-6 text-center">
+                <div>
+                  <Logo variant="stacked" size={96} />
+                  <p role="alert" className="mt-8 text-body text-muted">
+                    {t('app.unknownOrg')}
+                  </p>
+                </div>
+              </main>
+            )}
+          </ToastProvider>
         </Providers>
       </body>
     </html>
