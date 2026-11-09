@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { BrandMotto } from '@/components/BrandMotto';
 import { CityBrand } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
@@ -36,8 +37,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
           <circle cx="77" cy="86" r="22" fill="#fff" />
         </svg>
         <div className="absolute inset-x-12 bottom-14 max-w-md text-white">
-          <p className="text-label uppercase tracking-[0.18em] text-[#C5F23A]">FlexcityHeadquarters</p>
-          <p className="mt-3 text-title text-white">Every shift covered, every guard certified, every pool ready.</p>
+          <BrandMotto />
         </div>
       </div>
     </div>
