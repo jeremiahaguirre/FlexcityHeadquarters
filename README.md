@@ -5,6 +5,8 @@ Aquatic staff scheduling, timekeeping and operations for Canadian municipalities
 - **apps/api** — Node.js, Express, TypeScript, Prisma, PostgreSQL (row-level security)
 - **apps/web** — Next.js, Tailwind, i18next (English / Canadian French)
 
+**Live demo:** https://jeremiahaguirre.github.io/FlexcityHeadquarters/ — a static build with sample data and no server (sign in as `guard@demo.flexcity` or `frontdesk@demo.flexcity`, password `flexcity-dev`). Build it locally with `npm run build:demo --workspace apps/web`.
+
 ## What works today
 
 | Area | Status |
