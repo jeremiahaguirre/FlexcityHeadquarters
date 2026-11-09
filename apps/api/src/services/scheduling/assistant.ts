@@ -159,7 +159,7 @@ function explain(evals: Array<ReturnType<typeof evaluateCandidate>>): string {
     const label = BLOCK_LABEL[e.blocks[0]!.code] ?? e.blocks[0]!.code.toLowerCase();
     counts.set(label, (counts.get(label) ?? 0) + 1);
   }
-  const parts = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${v} ${k}`);
+  const parts = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k, v]) => `${v} ${k}`);
   if (overtimeOnly) parts.push(`${overtimeOnly} would go into overtime`);
   return `${evals.length} candidate${evals.length === 1 ? '' : 's'}: ${parts.join(', ')}.`;
 }
