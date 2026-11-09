@@ -1343,7 +1343,17 @@
     "onSince": "Since {{time}} at {{place}} · {{elapsed}}",
     "forShift": "Your shift: {{time}} at {{place}}",
     "noShiftNow": "No shift right now. You can still clock in and say where.",
-    "nextShift": "Your next shift is at {{time}} at {{place}}."
+    "nextShift": "Your next shift is at {{time}} at {{place}}.",
+    "slideIn": "Slide to clock in",
+    "slideOut": "Slide to clock out",
+    "readyTitle": "Ready for your shift?",
+    "noShiftTitle": "Clock in",
+    "since": "Since {{time}} at {{place}}",
+    "toGo": "{{time}} to go",
+    "overtimeNow": "past your scheduled end",
+    "worked": "worked",
+    "wrappedTitle": "Shift wrapped. Nice work, {{name}}!",
+    "wrappedBody": "{{time}} on the clock. Your supervisor reviews punches before payroll."
   },
   "billing": {
     "title": "Billing",

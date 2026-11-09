@@ -1343,7 +1343,17 @@
     "onSince": "Depuis {{time}} à {{place}} · {{elapsed}}",
     "forShift": "Votre quart : {{time}} à {{place}}",
     "noShiftNow": "Aucun quart en ce moment. Vous pouvez quand même pointer et indiquer où.",
-    "nextShift": "Votre prochain quart est à {{time}} à {{place}}."
+    "nextShift": "Votre prochain quart est à {{time}} à {{place}}.",
+    "slideIn": "Glisser pour pointer",
+    "slideOut": "Glisser pour pointer la sortie",
+    "readyTitle": "Prêt pour votre quart?",
+    "noShiftTitle": "Pointer",
+    "since": "Depuis {{time}} à {{place}}",
+    "toGo": "encore {{time}}",
+    "overtimeNow": "au-delà de la fin prévue",
+    "worked": "travaillé",
+    "wrappedTitle": "Quart terminé. Beau travail, {{name}}!",
+    "wrappedBody": "{{time}} au travail. Votre superviseur révise les pointages avant la paie."
   },
   "billing": {
     "title": "Facturation",

@@ -102,7 +102,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
           </div>
         </header>
 
-        <main id="main" className="mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:px-8 md:pb-12 md:pt-8">
+        <main id="main" key={pathname} className="animate-page-in mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:px-8 md:pb-12 md:pt-8">
           {children}
         </main>
       </div>

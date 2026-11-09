@@ -38,7 +38,7 @@ export function ToastProvider({ children, dismissLabel = 'Dismiss' }: { children
               key={t.id}
               role="status"
               className={cn(
-                'pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border border-line bg-panel px-4 py-3 text-small font-medium text-ink shadow-lift',
+                'animate-toast-in pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-2xl border border-line bg-panel px-4 py-3 text-small font-medium text-ink shadow-lift',
               )}
             >
               <Icon className={cn('mt-0.5 h-5 w-5 shrink-0', t.tone === 'ok' ? 'text-ok' : t.tone === 'warn' ? 'text-warn' : 'text-brand-text')} aria-hidden="true" />

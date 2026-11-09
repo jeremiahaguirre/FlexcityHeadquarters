@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn';
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-lg bg-surface', className)} aria-hidden="true" />;
+  return <div className={cn('fh-shimmer rounded-lg', className)} aria-hidden="true" />;
 }
 
 /** A few card-shaped placeholders while a list loads. */

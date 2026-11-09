@@ -40,11 +40,12 @@ export function Dialog({
         if (e.target === ref.current) onClose();
       }}
       className={cn(
-        'm-0 mt-auto w-full max-w-none rounded-t-3xl border border-line bg-panel p-0 text-ink shadow-lift backdrop:bg-overlay/50',
+        'fh-dialog m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-3xl border border-line bg-panel p-0 text-ink shadow-lift backdrop:bg-overlay/50 backdrop:backdrop-blur-[2px]',
         'sm:m-auto sm:max-w-lg sm:rounded-3xl',
       )}
     >
-      <div className="flex items-start justify-between gap-4 px-6 pt-6">
+      <div aria-hidden="true" className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-line sm:hidden" />
+      <div className="flex items-start justify-between gap-4 px-6 pt-4 sm:pt-6">
         <div>
           <h2 className="text-heading">{title}</h2>
           {description ? <p className="mt-1 text-small text-muted">{description}</p> : null}
