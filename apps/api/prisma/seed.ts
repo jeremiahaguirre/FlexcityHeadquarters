@@ -25,6 +25,13 @@ const BC_STAT_HOLIDAYS_2026: Array<[string, string, string]> = [
 ];
 
 async function main() {
+  // FH Dev console account (dev only). Production accounts: npm run platform:admin.
+  await prisma.platformAdmin.upsert({
+    where: { email: 'dev@flexcity.dev' },
+    update: {},
+    create: { email: 'dev@flexcity.dev', name: 'FH Dev', passwordHash: await hashPassword('flexcity-dev') },
+  });
+
   const existing = await prisma.tenant.findUnique({ where: { subdomain: 'kelowna' } });
   if (existing) {
     console.log('Seed data already present (tenant "kelowna"). Skipping.');

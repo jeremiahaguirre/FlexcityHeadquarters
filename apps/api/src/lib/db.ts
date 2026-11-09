@@ -21,7 +21,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function withTenant<T>(
   tenantId: string,
   fn: (tx: Tx) => Promise<T>,
-  opts: { isolationLevel?: Prisma.TransactionIsolationLevel; prisma?: PrismaClient } = {},
+  opts: { isolationLevel?: Prisma.TransactionIsolationLevel; prisma?: PrismaClient; timeoutMs?: number } = {},
 ): Promise<T> {
   if (!UUID.test(tenantId)) throw new Error('Invalid tenant id');
   const prisma = opts.prisma ?? db();
@@ -30,7 +30,7 @@ export async function withTenant<T>(
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       return fn(tx);
     },
-    { isolationLevel: opts.isolationLevel, timeout: 15_000 },
+    { isolationLevel: opts.isolationLevel, timeout: opts.timeoutMs ?? 15_000 },
   );
 }
 

@@ -188,7 +188,7 @@ staffRouter.get(
 );
 
 // -------------------------------------------------------------- Positions
-const positionBody = z.object({
+export const positionBody = z.object({
   name: z.string().min(2).max(80),
   nameFr: z.string().max(80).nullable().optional(),
   minimumAge: z.number().int().min(12).max(25).nullable().optional(),

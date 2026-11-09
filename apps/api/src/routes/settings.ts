@@ -86,7 +86,7 @@ settingsRouter.patch(
   }),
 );
 
-const facilityBody = z.object({
+export const facilityBody = z.object({
   name: z.string().min(2).max(120),
   province,
   timezone,

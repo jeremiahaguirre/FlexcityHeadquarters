@@ -24,6 +24,11 @@ export async function lookupTenant(subdomain: string): Promise<PublicTenant | nu
   return tenant;
 }
 
+/** Branding changed (e.g. from the Dev console): look it up again next time. */
+export function forgetTenantLookup(): void {
+  cache.clear();
+}
+
 /** Resolves the tenant from the Host subdomain (kelowna.flexcity.ca → "kelowna"). */
 export function subdomainOf(req: Request): string | null {
   const devHeader = config().NODE_ENV !== 'production' ? req.header('x-tenant-subdomain') : undefined;
