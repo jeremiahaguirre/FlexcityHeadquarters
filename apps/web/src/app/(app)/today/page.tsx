@@ -13,8 +13,8 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { formatDate, formatTime } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import { useQuery } from '@/lib/useQuery';
+import { PunchControl } from '@/components/punch/PunchControl';
 
-interface OpenPunch { localClockIn: string; facility: { name: string } }
 interface Offer { id: string; status: string }
 interface Pool { id: string; name: string; status: 'OPEN' | 'CLOSURE_RECOMMENDED' | 'CLOSED' }
 
@@ -42,7 +42,6 @@ export default function TodayPage() {
     return { from: from.toISOString(), to: new Date(from.getTime() + 14 * 86_400_000).toISOString() };
   });
   const shifts = useQuery<Array<ShiftLike & { id: string }>>(`/api/me/shifts?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`);
-  const punch = useQuery<OpenPunch | null>(can('timeclock.punch') ? '/api/me/punch/open' : null);
   const offers = useQuery<Offer[]>(can('shiftboard.claim') ? '/api/shiftboard/offers' : null);
   const claims = useQuery<unknown[]>(can('shiftboard.approve') ? '/api/offers/pending' : null);
   const timeOff = useQuery<unknown[]>(can('timeoff.approve') ? '/api/time-off' : null);
@@ -65,6 +64,11 @@ export default function TodayPage() {
         </h1>
       </header>
 
+      {can('timeclock.punch') ? (
+        <section aria-label={t('timeclock.title')}>
+          <PunchControl variant="large" />
+        </section>
+      ) : null}
       <section aria-labelledby="next-h" className="grid gap-3">
         <h2 id="next-h" className="text-heading">
           {t('today.nextShift')}
@@ -94,14 +98,6 @@ export default function TodayPage() {
       </section>
 
       <section aria-label={t('today.atAGlance')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {can('timeclock.punch') ? (
-          <Tile
-            href="/timeclock"
-            icon={<Clock className="h-5 w-5" aria-hidden="true" />}
-            value={punch.data ? t('today.clockedIn') : t('today.notClockedIn')}
-            label={punch.data ? t('today.since', { time: formatTime(punch.data.localClockIn, i18n.language), place: punch.data.facility.name }) : t('today.clockHint')}
-          />
-        ) : null}
         {can('shiftboard.claim') ? (
           <Tile href="/board" icon={<Repeat className="h-5 w-5" aria-hidden="true" />} value={openCount} label={t('today.openShifts', { count: openCount })} tone={openCount ? 'new' : undefined} />
         ) : null}

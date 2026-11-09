@@ -1333,5 +1333,15 @@
       "WAVE_POOL": "Wave pool",
       "SPLASH_PAD": "Splash pad"
     }
+  },
+  "punch": {
+    "in": "Clock in",
+    "clocking": "Clocking in…",
+    "onAria": "On the clock for {{elapsed}}. Clock out",
+    "confirmOut": "Clock out at {{time}}?",
+    "onSince": "Since {{time}} at {{place}} · {{elapsed}}",
+    "forShift": "Your shift: {{time}} at {{place}}",
+    "noShiftNow": "No shift right now. You can still clock in and say where.",
+    "nextShift": "Your next shift is at {{time}} at {{place}}."
   }
 }

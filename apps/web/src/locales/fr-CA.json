@@ -1333,5 +1333,15 @@
       "WAVE_POOL": "Piscine à vagues",
       "SPLASH_PAD": "Jeux d'eau"
     }
+  },
+  "punch": {
+    "in": "Pointer",
+    "clocking": "Pointage…",
+    "onAria": "Au travail depuis {{elapsed}}. Pointer la sortie",
+    "confirmOut": "Pointer la sortie à {{time}}?",
+    "onSince": "Depuis {{time}} à {{place}} · {{elapsed}}",
+    "forShift": "Votre quart : {{time}} à {{place}}",
+    "noShiftNow": "Aucun quart en ce moment. Vous pouvez quand même pointer et indiquer où.",
+    "nextShift": "Votre prochain quart est à {{time}} à {{place}}."
   }
 }

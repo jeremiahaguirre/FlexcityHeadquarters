@@ -15,6 +15,8 @@ import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
 import { StepUpDialog } from '@/components/auth/StepUpDialog';
 import { api } from '@/lib/api';
 import { addPasskey } from '@/lib/passkeys';
+import { PunchControl } from '@/components/punch/PunchControl';
+import { PunchProvider } from '@/components/punch/PunchProvider';
 import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 
@@ -52,6 +54,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   };
 
   return (
+    <PunchProvider>
     <div className="min-h-screen md:grid md:grid-cols-[17rem_minmax(0,1fr)]">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-line bg-panel md:flex">
@@ -89,7 +92,8 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
               <CoBrand org={organization} logoSize={30} citySize="sm" />
             </Link>
             <span className="hidden md:block" />
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <PunchControl />
               <NotificationBell />
               <div className="md:hidden">
                 <UserMenu compact />
@@ -145,5 +149,6 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         <div className="grid gap-0.5 pb-2">{more.map((n) => link(n, () => setMoreOpen(false)))}</div>
       </Dialog>
     </div>
+    </PunchProvider>
   );
 }
