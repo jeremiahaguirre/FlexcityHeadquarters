@@ -32,6 +32,14 @@ CREATE TABLE IF NOT EXISTS union_hub.member_access (
   PRIMARY KEY (local_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS union_hub.thread (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_id    uuid NOT NULL REFERENCES union_hub.local(id),
+  title       text NOT NULL,
+  created_by  uuid NOT NULL,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS union_hub.message (
   id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   local_id         uuid NOT NULL REFERENCES union_hub.local(id),

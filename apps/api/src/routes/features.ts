@@ -24,6 +24,7 @@ import { opsRouter } from './ops.js';
 import { disciplineRouter } from './discipline.js';
 import { settingsRouter } from './settings.js';
 import { lessonsRouter } from './lessons.js';
+import { unionRouter } from './union.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -35,6 +36,7 @@ api.use(opsRouter);
 api.use(disciplineRouter);
 api.use(settingsRouter);
 api.use(lessonsRouter);
+api.use(unionRouter);
 
 const uuid = z.string().uuid();
 const actorOf = (req: Parameters<typeof authOf>[0]) => {
