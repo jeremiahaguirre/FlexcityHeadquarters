@@ -237,7 +237,9 @@
     "NOT_ACTIVE": "This request is already closed.",
     "THRESHOLDS_NOT_CONFIGURED": "This pool's limits aren't set yet. A supervisor sets them in Settings.",
     "NO_RECOMMENDATION": "There's no closure waiting for a decision.",
-    "NOT_CLOSED": "This pool isn't closed."
+    "NOT_CLOSED": "This pool isn't closed.",
+    "WRONG_PASSWORD": "Your current password is incorrect.",
+    "ALREADY_ACKNOWLEDGED": "You already signed this record."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -419,5 +421,60 @@
     },
     "yes": "Yes",
     "no": "No"
+  },
+  "signature": {
+    "how": "How to sign",
+    "draw": "Draw",
+    "type": "Type my name",
+    "typeLabel": "Your full name",
+    "drawArea": "Signature area: draw with your finger, stylus or mouse",
+    "preview": "Signature preview",
+    "clear": "Clear"
+  },
+  "profile": {
+    "saved": "Saved.",
+    "passwordChanged": "Password changed.",
+    "certAdded": "Added. A supervisor will verify it before it counts for shifts.",
+    "signed": "Thanks. Your acknowledgement is saved.",
+    "toSign": "A record needs your signature",
+    "toSignHelp": "Signing confirms you received it. It doesn't mean you agree.",
+    "recordFrom": "Record from {{date}}",
+    "readAndSign": "Read and sign",
+    "recordTitle": "Record of discussion",
+    "signMeaning": "By signing you confirm you received this record. You can ask for a union steward and add your own comments through HR.",
+    "confirmReceipt": "Confirm I received it",
+    "certifications": "My certifications",
+    "addCert": "Add a certification",
+    "addCertHelp": "Enter it as shown on your card. Bring the card to a supervisor to have it verified.",
+    "certification": "Certification",
+    "issued": "Issued",
+    "expiry": "Expires",
+    "expiryHint": "Leave empty if it doesn't expire.",
+    "noCerts": "No certifications on file yet.",
+    "expires": "Expires {{date}}",
+    "noExpiry": "Doesn't expire",
+    "expired": "Expired",
+    "verified": "Verified",
+    "awaiting": "Awaiting verification",
+    "reliability": "Reliability",
+    "reliabilityHelp": "Advisory only: never used to schedule or discipline automatically. Sick days and protected leave never count.",
+    "outOf100": "out of 100",
+    "noEvents": "Nothing recorded in the last 90 days.",
+    "excluded_one": "{{count}} event excluded (protected leave or excused).",
+    "excluded_other": "{{count}} events excluded (protected leave or excused).",
+    "events": {
+      "LATE_PUNCH": "Late clock-in",
+      "NO_SHOW": "Missed shift",
+      "MISSED_IN_SERVICE": "Missed in-service",
+      "LATE_DROP": "Gave away a shift with under 24 h notice",
+      "PICKED_UP_SHIFT": "Picked up a shift"
+    },
+    "contact": "Contact and language",
+    "phone": "Mobile phone",
+    "language": "Language",
+    "languageHint": "Used for the app, emails and notifications.",
+    "password": "Password",
+    "currentPassword": "Current password",
+    "changePassword": "Change password"
   }
 }

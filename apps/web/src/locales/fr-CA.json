@@ -237,7 +237,9 @@
     "NOT_ACTIVE": "Cette demande est déjà fermée.",
     "THRESHOLDS_NOT_CONFIGURED": "Les limites de ce bassin ne sont pas encore définies. Un superviseur les définit dans Paramètres.",
     "NO_RECOMMENDATION": "Aucune fermeture n'attend de décision.",
-    "NOT_CLOSED": "Ce bassin n'est pas fermé."
+    "NOT_CLOSED": "Ce bassin n'est pas fermé.",
+    "WRONG_PASSWORD": "Votre mot de passe actuel est incorrect.",
+    "ALREADY_ACKNOWLEDGED": "Vous avez déjà signé ce document."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -419,5 +421,60 @@
     },
     "yes": "Oui",
     "no": "Non"
+  },
+  "signature": {
+    "how": "Façon de signer",
+    "draw": "Dessiner",
+    "type": "Taper mon nom",
+    "typeLabel": "Votre nom complet",
+    "drawArea": "Zone de signature : dessinez avec le doigt, un stylet ou la souris",
+    "preview": "Aperçu de la signature",
+    "clear": "Effacer"
+  },
+  "profile": {
+    "saved": "Enregistré.",
+    "passwordChanged": "Mot de passe modifié.",
+    "certAdded": "Ajoutée. Un superviseur la vérifiera avant qu'elle compte pour les quarts.",
+    "signed": "Merci. Votre accusé de réception est enregistré.",
+    "toSign": "Un document attend votre signature",
+    "toSignHelp": "Signer confirme que vous l'avez reçu. Cela ne veut pas dire que vous êtes d'accord.",
+    "recordFrom": "Document du {{date}}",
+    "readAndSign": "Lire et signer",
+    "recordTitle": "Compte rendu de rencontre",
+    "signMeaning": "En signant, vous confirmez avoir reçu ce document. Vous pouvez demander la présence d'un délégué syndical et ajouter vos commentaires auprès des RH.",
+    "confirmReceipt": "Confirmer la réception",
+    "certifications": "Mes certifications",
+    "addCert": "Ajouter une certification",
+    "addCertHelp": "Inscrivez-la comme sur votre carte. Montrez la carte à un superviseur pour la faire vérifier.",
+    "certification": "Certification",
+    "issued": "Délivrée le",
+    "expiry": "Expire le",
+    "expiryHint": "Laissez vide si elle n'expire pas.",
+    "noCerts": "Aucune certification au dossier.",
+    "expires": "Expire le {{date}}",
+    "noExpiry": "N'expire pas",
+    "expired": "Expirée",
+    "verified": "Vérifiée",
+    "awaiting": "En attente de vérification",
+    "reliability": "Fiabilité",
+    "reliabilityHelp": "À titre indicatif seulement : jamais utilisée pour planifier ou sanctionner automatiquement. Les congés de maladie et protégés ne comptent jamais.",
+    "outOf100": "sur 100",
+    "noEvents": "Rien d'inscrit dans les 90 derniers jours.",
+    "excluded_one": "{{count}} événement exclu (congé protégé ou motivé).",
+    "excluded_other": "{{count}} événements exclus (congé protégé ou motivé).",
+    "events": {
+      "LATE_PUNCH": "Arrivée pointée en retard",
+      "NO_SHOW": "Quart manqué",
+      "MISSED_IN_SERVICE": "Formation manquée",
+      "LATE_DROP": "Quart cédé moins de 24 h à l'avance",
+      "PICKED_UP_SHIFT": "Quart repris"
+    },
+    "contact": "Coordonnées et langue",
+    "phone": "Téléphone mobile",
+    "language": "Langue",
+    "languageHint": "Utilisée pour l'application, les courriels et les notifications.",
+    "password": "Mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "changePassword": "Changer le mot de passe"
   }
 }
