@@ -4,6 +4,7 @@ import { BadgeCheck, Clock3, FileSignature, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SignaturePad } from '@/components/SignaturePad';
+import { MyFile } from '@/components/people/MyFile';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -18,11 +19,6 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { PasskeysCard } from '@/components/auth/PasskeysCard';
 import { addPasskey } from '@/lib/passkeys';
 
-interface Reliability {
-  score: number;
-  counted: Array<{ id: string; type: string; points: number; occurredAt: string }>;
-  excluded: Array<{ id: string; type: string; reason: string }>;
-}
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
 
 export default function ProfilePage() {
@@ -31,7 +27,6 @@ export default function ProfilePage() {
   const { me, reload } = useSession();
   const { run, busy } = useAction();
   const catalog = useQuery<Array<{ id: string; name: string; nameFr: string | null; issuingBody: string }>>('/api/certifications');
-  const reliability = useQuery<Reliability>(me ? `/api/users/${me.id}/reliability` : null);
   const records = useQuery<Record[]>('/api/me/discipline');
   const [adding, setAdding] = useState(false);
   const [signing, setSigning] = useState<Record | null>(null);
@@ -85,7 +80,6 @@ export default function ProfilePage() {
     }
   }
 
-  const scoreTone = (reliability.data?.score ?? 100) >= 85 ? 'ok' : (reliability.data?.score ?? 100) >= 70 ? 'neutral' : 'warn';
 
   return (
     <div className="grid gap-6">
@@ -151,36 +145,7 @@ export default function ProfilePage() {
           </CardBody>
         </Card>
 
-        <Card>
-          <CardHeader title={t('profile.reliability')} description={t('profile.reliabilityHelp')} />
-          <CardBody className="pt-3">
-            {reliability.data ? (
-              <>
-                <div className="flex items-end gap-3">
-                  <p className="text-stat tabular-nums">{reliability.data.score}</p>
-                  <StatusPill tone={scoreTone} className="mb-2">
-                    {t('profile.outOf100')}
-                  </StatusPill>
-                </div>
-                {reliability.data.counted.length ? (
-                  <ul className="mt-3 grid gap-1.5 text-small">
-                    {reliability.data.counted.map((e) => (
-                      <li key={e.id} className="flex justify-between gap-2">
-                        <span>
-                          {t(`profile.events.${e.type}`)} · <span className="text-muted">{formatDate(e.occurredAt, lng)}</span>
-                        </span>
-                        <span className={`tabular-nums font-semibold ${e.points < 0 ? 'text-warn' : 'text-ok'}`}>{e.points > 0 ? `+${e.points}` : e.points}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-small text-muted">{t('profile.noEvents')}</p>
-                )}
-                {reliability.data.excluded.length ? <p className="mt-3 text-caption text-muted">{t('profile.excluded', { count: reliability.data.excluded.length })}</p> : null}
-              </>
-            ) : null}
-          </CardBody>
-        </Card>
+        <MyFile />
 
         <Card>
           <CardHeader title={t('profile.contact')} />

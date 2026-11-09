@@ -27,13 +27,18 @@ describe('menus per role', () => {
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/approvals', '/manage/staff', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/settings'],
+      items: ['/manage/approvals', '/manage/staff', '/manage/people', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/settings'],
       home: '/manage/approvals',
     });
   });
 
   it('general employee (water works, maintenance…): their own work, no pool screens at all', () => {
     expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability'], home: '/today' });
+  });
+
+  it('people review is for HR and supervisors only', () => {
+    expect(menu('AQUATIC_SUPERVISOR').items).toContain('/manage/people');
+    for (const r of ['STAFF', 'HEAD_LIFEGUARD', 'FRONT_DESK', 'UNION_STEWARD', 'EMPLOYEE'] as const) expect(menu(r).items).not.toContain('/manage/people');
   });
 
   it('a steward who is also a lifeguard gets both', () => {
@@ -46,7 +51,7 @@ describe('menus per role', () => {
       return phoneTabs(visibleNav((p) => perms.has(p as never))).tabs.map((n) => n.href);
     };
     expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/headcount', '/board']);
-    expect(tabsFor('HR_ADMIN')).toEqual(['/manage/approvals', '/manage/staff', '/manage/certifications', '/manage/jobs']);
+    expect(tabsFor('HR_ADMIN')).toEqual(['/manage/approvals', '/manage/staff', '/manage/people', '/manage/certifications']);
     expect(tabsFor('UNION_STEWARD')).toEqual(['/union']);
   });
 });

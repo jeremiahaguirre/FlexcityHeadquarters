@@ -11,6 +11,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { CaseFilePanel } from '@/components/people/CaseFilePanel';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
@@ -284,7 +285,9 @@ function Person() {
           </Section>
         ) : null}
 
-        {can('discipline.read') ? (
+        {can('reliability.read') ? <CaseFilePanel userId={p.id} name={name} unionMember={p.unionMember} /> : null}
+
+        {can('discipline.read') && !can('reliability.read') ? (
           <Section title={t('staff.records')} description={t('staff.recordsHelp')} action={can('discipline.write') && p.id !== me?.id ? <Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setDialog('record')}>{t('staff.newRecord')}</Button> : undefined}>
             {!records.data?.length ? (
               <p className="text-small text-muted">{t('staff.noRecords')}</p>

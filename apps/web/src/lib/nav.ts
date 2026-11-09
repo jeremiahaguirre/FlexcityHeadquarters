@@ -1,25 +1,4 @@
-import {
-  Activity,
-  BadgeCheck,
-  Banknote,
-  Briefcase,
-  CalendarClock,
-  CalendarDays,
-  CalendarRange,
-  Calculator,
-  ClipboardCheck,
-  Clock,
-  Droplets,
-  GraduationCap,
-  Home,
-  type LucideIcon,
-  Megaphone,
-  Repeat,
-  Settings,
-  ShieldAlert,
-  Users,
-  Waves,
-} from 'lucide-react';
+import { Activity, BadgeCheck, Banknote, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, Clock, Droplets, GraduationCap, Home, Megaphone, Repeat, Settings, ShieldAlert, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -50,6 +29,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/schedule', key: 'manageSchedule', icon: Activity, group: 'manage', permission: 'schedule.write', ready: true },
   { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', permission: 'timeclock.review', ready: true },
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', permission: 'users.read', ready: true },
+  { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', permission: 'reliability.read', ready: true },
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', permission: 'certs.verify', ready: true },
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', permission: 'jobs.manage', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: true },
