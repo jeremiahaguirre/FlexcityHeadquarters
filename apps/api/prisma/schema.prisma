@@ -841,3 +841,72 @@ model EmailOutbox {
 
   @@index([sentAt, createdAt])
 }
+
+// ------------------------------------------------------------------
+// LESSONS
+// ------------------------------------------------------------------
+
+/// A weekly class (e.g. "Swimmer 3, Tuesdays 4:30 p.m.") between two dates.
+model LessonClass {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  facilityId  String   @db.Uuid
+  positionId  String   @db.Uuid // the instructor position whose shift covers it
+  name        String
+  level       String?
+  dayOfWeek   Int // 0 = Sunday, facility local time
+  startMinute Int
+  endMinute   Int
+  startsOn    DateTime @db.Date
+  endsOn      DateTime @db.Date
+  maxSwimmers Int      @default(8)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  enrollments LessonEnrollment[]
+  attendance  LessonAttendance[]
+
+  @@index([tenantId, facilityId, dayOfWeek])
+}
+
+/// Swimmers are often children: keep only what the instructor needs on deck.
+model LessonEnrollment {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  classId      String   @db.Uuid
+  swimmerName  String
+  /// Short safety note visible to the instructor (e.g. "Asthma: inhaler in bag").
+  safetyNote   String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  lessonClass LessonClass        @relation(fields: [classId], references: [id], onDelete: Restrict)
+  attendance  LessonAttendance[]
+
+  @@index([classId])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+model LessonAttendance {
+  id           String           @id @default(uuid()) @db.Uuid
+  tenantId     String           @db.Uuid
+  classId      String           @db.Uuid
+  enrollmentId String           @db.Uuid
+  sessionDate  DateTime         @db.Date
+  status       AttendanceStatus
+  recordedById String           @db.Uuid
+  /// When the instructor tapped it on the deck (may be before upload when offline).
+  recordedAt   DateTime         @db.Timestamptz(3)
+  /// Client-generated id, so a retried offline upload never double-counts.
+  clientId     String           @unique
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
+
+  lessonClass LessonClass      @relation(fields: [classId], references: [id], onDelete: Restrict)
+  enrollment  LessonEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Restrict)
+
+  @@unique([enrollmentId, sessionDate])
+}

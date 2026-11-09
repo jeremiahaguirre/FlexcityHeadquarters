@@ -29,7 +29,8 @@ DECLARE
     'Availability', 'TimeOffRequest', 'Shift', 'ShiftOffer', 'TimePunch',
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
-    'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod'
+    'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP
