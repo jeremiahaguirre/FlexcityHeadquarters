@@ -87,7 +87,8 @@
     "cancel": "Cancel",
     "loading": "Loading",
     "ok": "OK",
-    "choose": "Choose…"
+    "choose": "Choose…",
+    "optional": "Optional."
   },
   "forgot": {
     "title": "Reset your password",
@@ -133,7 +134,7 @@
     "lessons": "Lessons",
     "status": "Pool status",
     "statusShort": "Pools",
-    "ops": "Pool log",
+    "ops": "Water chemistry",
     "incidents": "Incidents",
     "manageSchedule": "Schedule builder",
     "approvals": "Approvals",
@@ -143,7 +144,9 @@
     "settings": "Settings",
     "union": "Union hub",
     "more": "More",
-    "jobs": "Job postings"
+    "jobs": "Job postings",
+    "headcount": "Headcount",
+    "headcountShort": "Count"
   },
   "navGroups": {
     "mine": "My work",
@@ -355,8 +358,8 @@
     }
   },
   "ops": {
-    "title": "Pool log",
-    "description": "Record chemistry and bather counts. Readings outside the permit limits recommend a closure for the head lifeguard to confirm.",
+    "title": "Water chemistry",
+    "description": "Record water tests. Out-of-range readings recommend a closure for a head guard to confirm.",
     "record": "Record a reading",
     "recordHelp": "Values in ppm. Leave blank what you didn't test.",
     "pool": "Pool",
@@ -387,7 +390,33 @@
     "check": "Sign-off",
     "signOff": "Sign off",
     "signed": "Reading signed off.",
-    "unsigned": "Not signed off"
+    "unsigned": "Not signed off",
+    "section": "Section",
+    "tabs": {
+      "record": "Record",
+      "report": "Report"
+    },
+    "fullReport": "Full report",
+    "seeReport": "Showing a filtered report. Open Report to see it.",
+    "reportTitle": "Water chemistry report",
+    "reportHelp": "Every reading with its limits check and sign-off, for inspections and your records.",
+    "downloadCsv": "Download CSV",
+    "range": "Period",
+    "ranges": {
+      "today": "Today",
+      "week": "7 days",
+      "month": "30 days"
+    },
+    "allPools": "All pools",
+    "readingsCount_one": "{{count}} reading",
+    "readingsCount_other": "{{count}} readings",
+    "outOfRangeCount_one": "{{count}} out of range",
+    "outOfRangeCount_other": "{{count}} out of range",
+    "unsignedCount_one": "{{count}} not signed off",
+    "unsignedCount_other": "{{count}} not signed off",
+    "noReadingsRange": "No readings in this period.",
+    "fclShort": "Free Cl",
+    "tclShort": "Total Cl"
   },
   "incidents": {
     "title": "Incidents",
@@ -994,7 +1023,8 @@
       "facilities": "Facilities",
       "positions": "Positions",
       "import": "Import staff",
-      "roles": "Roles"
+      "roles": "Roles",
+      "pools": "Pools"
     },
     "logo": "City logo",
     "logoHelp": "Shown beside the FlexcityHeadquarters logo on the sign-in page, in the app and on the careers page. It never replaces the FH logo.",
@@ -1230,6 +1260,78 @@
       "timeoff.approve": "Approve time off",
       "timeclock.review": "Review punches",
       "certs.verify": "Verify certifications"
+    }
+  },
+  "headcount": {
+    "title": "Headcount",
+    "description": "Count bathers on your rotation. Tap + and −, then save. The next person picks up from your count.",
+    "tabs": {
+      "count": "Count",
+      "report": "Report"
+    },
+    "noPools": "No pools set up yet",
+    "noPoolsHelp": "A supervisor adds pools and their capacity in Settings → Pools.",
+    "lastShort": "last {{count}}",
+    "noCountYet": "no count yet",
+    "unsaved": "Not saved yet",
+    "ofCapacity": "of {{max}} allowed",
+    "noCapacity": "No maximum set for this pool",
+    "capacityMeter": "Share of capacity",
+    "over": "Over capacity by {{over}}. Stop entry and tell the head guard.",
+    "minusOne": "One fewer",
+    "plusOne": "One more",
+    "save": "Save count: {{count}}",
+    "savedShort": "Saved",
+    "saved": "{{pool}}: {{count}} saved",
+    "savedOver": "{{pool}}: {{count}} saved. Over capacity, the head guard has been alerted.",
+    "reset": "Undo changes (back to {{count}})",
+    "lastSaved": "Last saved: {{count}} by {{by}} at {{time}}, {{date}}",
+    "firstCount": "No count saved for this pool yet.",
+    "reportTitle": "Headcount report",
+    "reportHelp": "Every count taken on deck, with capacity and the lifeguards needed.",
+    "countsTaken_one": "{{count}} count",
+    "countsTaken_other": "{{count}} counts",
+    "peak": "Peak {{count}} · {{pool}} at {{time}}",
+    "overCount_one": "{{count}} over capacity",
+    "overCount_other": "{{count}} over capacity",
+    "noCounts": "No counts in this period.",
+    "count": "Count",
+    "guards": "Guards needed",
+    "by": "Counted by"
+  },
+  "pools": {
+    "title": "Pools",
+    "help": "Each pool in your aquatic centres, with its maximum capacity. Headcounts over capacity alert the head guard and supervisors.",
+    "add": "Add a pool",
+    "none": "No pools yet",
+    "noneHelp": "Add each tank, leisure pool, hot tub and splash pad you open to the public.",
+    "saved": "Pool saved",
+    "formHelp": "Take the maximum capacity from your operating permit or occupant-load sign.",
+    "name": "Name",
+    "kind": "Type",
+    "facility": "Aquatic centre",
+    "capacity": "Maximum capacity (bathers)",
+    "capacityHint": "From the permit or occupant-load sign.",
+    "ratioHint": "Sets how many lifeguards a headcount needs.",
+    "depthMin": "Shallowest depth (m)",
+    "depthMax": "Deepest depth (m)",
+    "volume": "Volume (litres)",
+    "notes": "Notes",
+    "notesPlaceholder": "e.g. 25 m, 6 lanes, ramp entry",
+    "retire": "Retired (hidden from deck screens, history kept)",
+    "retired": "Retired",
+    "retiredList_one": "{{count}} retired pool",
+    "retiredList_other": "{{count}} retired pools",
+    "capacityShort": "max {{count}}",
+    "noCapacity": "no maximum set",
+    "limits": "Permit limits",
+    "kinds": {
+      "POOL": "Pool / main tank",
+      "LEISURE_POOL": "Leisure pool",
+      "HOT_TUB": "Hot tub",
+      "WADING_POOL": "Wading pool",
+      "WAVE_POOL": "Wave pool",
+      "SPLASH_PAD": "Splash pad"
     }
   }
 }

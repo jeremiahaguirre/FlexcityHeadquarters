@@ -87,7 +87,8 @@
     "cancel": "Annuler",
     "loading": "Chargement",
     "ok": "OK",
-    "choose": "Choisir…"
+    "choose": "Choisir…",
+    "optional": "Facultatif."
   },
   "forgot": {
     "title": "Réinitialiser votre mot de passe",
@@ -133,7 +134,7 @@
     "lessons": "Cours",
     "status": "État des bassins",
     "statusShort": "Bassins",
-    "ops": "Registre du bassin",
+    "ops": "Chimie de l'eau",
     "incidents": "Incidents",
     "manageSchedule": "Création d'horaires",
     "approvals": "Approbations",
@@ -143,7 +144,9 @@
     "settings": "Paramètres",
     "union": "Espace syndical",
     "more": "Plus",
-    "jobs": "Offres d'emploi"
+    "jobs": "Offres d'emploi",
+    "headcount": "Dénombrement",
+    "headcountShort": "Compter"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -355,8 +358,8 @@
     }
   },
   "ops": {
-    "title": "Registre du bassin",
-    "description": "Inscrivez la chimie et le nombre de baigneurs. Une mesure hors des limites du permis recommande une fermeture que le sauveteur en chef confirme.",
+    "title": "Chimie de l'eau",
+    "description": "Inscrivez les analyses de l'eau. Une lecture hors limites recommande une fermeture que le sauveteur en chef confirme.",
     "record": "Inscrire une mesure",
     "recordHelp": "Valeurs en ppm. Laissez vide ce que vous n'avez pas testé.",
     "pool": "Bassin",
@@ -387,7 +390,33 @@
     "check": "Signature",
     "signOff": "Signer",
     "signed": "Mesure signée.",
-    "unsigned": "Non signée"
+    "unsigned": "Non signée",
+    "section": "Section",
+    "tabs": {
+      "record": "Inscrire",
+      "report": "Rapport"
+    },
+    "fullReport": "Rapport complet",
+    "seeReport": "Un rapport filtré est affiché. Ouvrez Rapport pour le voir.",
+    "reportTitle": "Rapport de chimie de l'eau",
+    "reportHelp": "Chaque lecture avec la vérification des limites et l'approbation, pour les inspections et vos dossiers.",
+    "downloadCsv": "Télécharger le CSV",
+    "range": "Période",
+    "ranges": {
+      "today": "Aujourd'hui",
+      "week": "7 jours",
+      "month": "30 jours"
+    },
+    "allPools": "Tous les bassins",
+    "readingsCount_one": "{{count}} lecture",
+    "readingsCount_other": "{{count}} lectures",
+    "outOfRangeCount_one": "{{count}} hors limites",
+    "outOfRangeCount_other": "{{count}} hors limites",
+    "unsignedCount_one": "{{count}} non approuvée",
+    "unsignedCount_other": "{{count}} non approuvées",
+    "noReadingsRange": "Aucune lecture pour cette période.",
+    "fclShort": "Cl libre",
+    "tclShort": "Cl total"
   },
   "incidents": {
     "title": "Incidents",
@@ -994,7 +1023,8 @@
       "facilities": "Installations",
       "positions": "Postes",
       "import": "Importer le personnel",
-      "roles": "Rôles"
+      "roles": "Rôles",
+      "pools": "Bassins"
     },
     "logo": "Logo de la ville",
     "logoHelp": "Affiché à côté du logo FlexcityHeadquarters sur la page de connexion, dans l'application et sur la page carrières. Il ne remplace jamais le logo FH.",
@@ -1230,6 +1260,78 @@
       "timeoff.approve": "Approuver les congés",
       "timeclock.review": "Réviser les pointages",
       "certs.verify": "Vérifier les certifications"
+    }
+  },
+  "headcount": {
+    "title": "Dénombrement",
+    "description": "Comptez les baigneurs pendant votre rotation. Touchez + et −, puis enregistrez. La personne suivante reprend à partir de votre compte.",
+    "tabs": {
+      "count": "Compter",
+      "report": "Rapport"
+    },
+    "noPools": "Aucun bassin configuré",
+    "noPoolsHelp": "Un superviseur ajoute les bassins et leur capacité dans Paramètres → Bassins.",
+    "lastShort": "dernier : {{count}}",
+    "noCountYet": "aucun compte",
+    "unsaved": "Pas encore enregistré",
+    "ofCapacity": "sur {{max}} permis",
+    "noCapacity": "Aucun maximum pour ce bassin",
+    "capacityMeter": "Part de la capacité",
+    "over": "Capacité dépassée de {{over}}. Arrêtez les entrées et avisez le sauveteur en chef.",
+    "minusOne": "Un de moins",
+    "plusOne": "Un de plus",
+    "save": "Enregistrer : {{count}}",
+    "savedShort": "Enregistré",
+    "saved": "{{pool}} : {{count}} enregistré",
+    "savedOver": "{{pool}} : {{count}} enregistré. Capacité dépassée; le sauveteur en chef a été avisé.",
+    "reset": "Annuler les changements (retour à {{count}})",
+    "lastSaved": "Dernier compte : {{count}} par {{by}} à {{time}}, {{date}}",
+    "firstCount": "Aucun compte enregistré pour ce bassin.",
+    "reportTitle": "Rapport de dénombrement",
+    "reportHelp": "Chaque compte pris au bord de la piscine, avec la capacité et le nombre de sauveteurs requis.",
+    "countsTaken_one": "{{count}} compte",
+    "countsTaken_other": "{{count}} comptes",
+    "peak": "Pointe {{count}} · {{pool}} à {{time}}",
+    "overCount_one": "{{count}} au-delà de la capacité",
+    "overCount_other": "{{count}} au-delà de la capacité",
+    "noCounts": "Aucun compte pour cette période.",
+    "count": "Compte",
+    "guards": "Sauveteurs requis",
+    "by": "Compté par"
+  },
+  "pools": {
+    "title": "Bassins",
+    "help": "Chaque bassin de vos centres aquatiques, avec sa capacité maximale. Un dénombrement au-delà de la capacité avise le sauveteur en chef et les superviseurs.",
+    "add": "Ajouter un bassin",
+    "none": "Aucun bassin",
+    "noneHelp": "Ajoutez chaque bassin, bassin récréatif, spa et jeu d'eau ouvert au public.",
+    "saved": "Bassin enregistré",
+    "formHelp": "Prenez la capacité maximale indiquée sur votre permis d'exploitation ou l'affiche de charge d'occupation.",
+    "name": "Nom",
+    "kind": "Type",
+    "facility": "Centre aquatique",
+    "capacity": "Capacité maximale (baigneurs)",
+    "capacityHint": "Selon le permis ou l'affiche de charge d'occupation.",
+    "ratioHint": "Détermine le nombre de sauveteurs requis selon le dénombrement.",
+    "depthMin": "Profondeur minimale (m)",
+    "depthMax": "Profondeur maximale (m)",
+    "volume": "Volume (litres)",
+    "notes": "Notes",
+    "notesPlaceholder": "p. ex. 25 m, 6 couloirs, rampe d'accès",
+    "retire": "Retiré (caché des écrans du bord de piscine, historique conservé)",
+    "retired": "Retiré",
+    "retiredList_one": "{{count}} bassin retiré",
+    "retiredList_other": "{{count}} bassins retirés",
+    "capacityShort": "max. {{count}}",
+    "noCapacity": "aucun maximum",
+    "limits": "Limites du permis",
+    "kinds": {
+      "POOL": "Bassin principal",
+      "LEISURE_POOL": "Bassin récréatif",
+      "HOT_TUB": "Spa",
+      "WADING_POOL": "Pataugeoire",
+      "WAVE_POOL": "Piscine à vagues",
+      "SPLASH_PAD": "Jeux d'eau"
     }
   }
 }

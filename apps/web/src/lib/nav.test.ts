@@ -16,7 +16,7 @@ describe('menus per role', () => {
 
   it('lifeguard / instructor: their own work and the pool deck tasks', () => {
     expect(menu('STAFF')).toEqual({
-      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/lessons', '/ops', '/incidents'],
+      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/lessons', '/headcount', '/ops', '/incidents'],
       home: '/today',
     });
   });
@@ -45,7 +45,7 @@ describe('menus per role', () => {
       const perms = new Set(ROLE_PERMISSIONS[role]);
       return phoneTabs(visibleNav((p) => perms.has(p as never))).tabs.map((n) => n.href);
     };
-    expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/board', '/timeclock']);
+    expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/headcount', '/board']);
     expect(tabsFor('HR_ADMIN')).toEqual(['/manage/approvals', '/manage/staff', '/manage/certifications', '/manage/jobs']);
     expect(tabsFor('UNION_STEWARD')).toEqual(['/union']);
   });

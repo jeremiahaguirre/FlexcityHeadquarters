@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, FlaskConical, PenLine } from 'lucide-react';
+import { CheckCircle2, Download, FlaskConical, PenLine } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -12,22 +12,31 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatTime } from '@/lib/format';
 import { POOL_TONE, type PoolView } from '@/lib/pools';
+import { type DeckPool, type ReportRange, csv, rangeBounds } from '@/lib/deck';
+import { Segmented } from '@/components/ui/Segmented';
+import { saveBlob } from '@/lib/api';
+import { formatDate } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
-interface Reading { id: string; pool: { id: string; name: string }; localRecordedAt: string; freeChlorinePpm: string | null; ph: string | null; batherCount: number | null; outOfRange: boolean; reasons: string[]; recordedBy: string | null; signedOffBy: string | null }
+interface Reading { id: string; pool: { id: string; name: string }; localRecordedAt: string; freeChlorinePpm: string | null; totalChlorinePpm: string | null; ph: string | null; waterTempC: string | null; outOfRange: boolean; reasons: string[]; recordedBy: string | null; signedOffBy: string | null }
 
 export default function OpsPage() {
   const { t, i18n } = useTranslation();
   const { can } = useSession();
   const lng = i18n.language;
+  // Leads see closure decisions; everyone on deck picks from the deck's own pool list.
   const pools = useQuery<PoolView[]>(can('ops.status.read') ? '/api/ops/pools' : null);
-  const [day] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return { from: d.toISOString(), to: new Date(d.getTime() + 86_400_000).toISOString() };
-  });
-  const readings = useQuery<Reading[]>(`/api/ops/readings?from=${encodeURIComponent(day.from)}&to=${encodeURIComponent(day.to)}`);
+  const deckPools = useQuery<DeckPool[]>('/api/ops/headcounts/current');
+  const [tab, setTab] = useState<'record' | 'report'>('record');
+  const [range, setRange] = useState<ReportRange>('today');
+  const [poolFilter, setPoolFilter] = useState('');
+  const [bounds, setBounds] = useState(() => rangeBounds('today'));
+  const readings = useQuery<Reading[]>(`/api/ops/readings?from=${encodeURIComponent(bounds.from)}&to=${encodeURIComponent(bounds.to)}${poolFilter ? `&poolBodyId=${poolFilter}` : ''}`);
+  const pickRange = (r: ReportRange) => {
+    setRange(r);
+    setBounds(rangeBounds(r));
+  };
   const { run, busy } = useAction();
   const [result, setResult] = useState<{ outOfRange: boolean; reasons: string[] } | null>(null);
   const [dismissFor, setDismissFor] = useState<string | null>(null);
@@ -39,13 +48,13 @@ export default function OpsPage() {
     const r = await run('record', () =>
       api<{ outOfRange: boolean; reasons: string[] }>('/api/ops/readings', {
         method: 'POST',
-        body: { poolBodyId: v('pool'), freeChlorinePpm: v('fcl'), totalChlorinePpm: v('tcl'), ph: v('ph'), waterTempC: v('temp'), batherCount: v('bathers') ? Number(v('bathers')) : null },
+        body: { poolBodyId: v('pool'), freeChlorinePpm: v('fcl'), totalChlorinePpm: v('tcl'), ph: v('ph'), waterTempC: v('temp') },
       }),
     );
     if (r) {
       setResult(r);
       e.currentTarget.reset();
-      await Promise.all([readings.reload(), pools.reload()]);
+      await Promise.all([readings.reload(), pools.reload(), deckPools.reload()]);
     }
   }
 
@@ -61,6 +70,30 @@ export default function OpsPage() {
   return (
     <>
       <PageHeader title={t('ops.title')} description={t('ops.description')} />
+      <div className="mb-6">
+        <Segmented
+          label={t('ops.section')}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'record' as const, label: t('ops.tabs.record') },
+            { value: 'report' as const, label: t('ops.tabs.report') },
+          ]}
+        />
+      </div>
+      {tab === 'report' ? (
+        <ChemistryReport
+          readings={readings.data}
+          loading={readings.loading}
+          pools={deckPools.data ?? []}
+          range={range}
+          onRange={pickRange}
+          pool={poolFilter}
+          onPool={setPoolFilter}
+          signOff={can('ops.chemical.signoff') ? (id) => run(`sign-${id}`, () => api(`/api/ops/readings/${id}/signoff`, { method: 'POST' }), t('ops.signed')).then(() => readings.reload()) : null}
+          busy={busy}
+        />
+      ) : (
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <Card>
           <CardHeader title={t('ops.record')} description={t('ops.recordHelp')} />
@@ -70,10 +103,10 @@ export default function OpsPage() {
                 {(p) => (
                   <Select {...p} name="pool" required>
                     <option value="">{t('common.choose')}</option>
-                    {pools.data?.map((x) => (
-                      <option key={x.id} value={x.id} disabled={!x.configured}>
+                    {deckPools.data?.map((x) => (
+                      <option key={x.id} value={x.id} disabled={!x.limitsSet}>
                         {x.name} · {x.facility.name}
-                        {x.configured ? '' : ` (${t('ops.notConfigured')})`}
+                        {x.limitsSet ? '' : ` (${t('ops.notConfigured')})`}
                       </option>
                     ))}
                   </Select>
@@ -85,9 +118,6 @@ export default function OpsPage() {
                 <Field label="pH">{(p) => <Input {...p} {...decimal} name="ph" placeholder="7.4" />}</Field>
                 <Field label={t('ops.temp')}>{(p) => <Input {...p} {...decimal} name="temp" placeholder="27.5" />}</Field>
               </div>
-              <Field label={t('ops.bathers')} hint={t('ops.bathersHint')}>
-                {(p) => <Input {...p} inputMode="numeric" pattern="[0-9]*" name="bathers" />}
-              </Field>
               <Button type="submit" size="lg" block loading={busy === 'record'} icon={<FlaskConical className="h-5 w-5" aria-hidden="true" />}>
                 {t('ops.save')}
               </Button>
@@ -165,57 +195,152 @@ export default function OpsPage() {
           ) : null}
 
           <Card>
-            <CardHeader title={t('ops.today')} />
+            <CardHeader title={t('ops.today')} action={<Button size="sm" variant="ghost" onClick={() => setTab('report')}>{t('ops.fullReport')}</Button>} />
             <CardBody className="pt-3">
-              {readings.loading ? (
-                <Skeleton className="h-32" />
+              {range !== 'today' || poolFilter ? (
+                <p className="text-small text-muted">{t('ops.seeReport')}</p>
               ) : !readings.data?.length ? (
                 <p className="text-small text-muted">{t('ops.noReadings')}</p>
               ) : (
-                <div className="-mx-5 overflow-x-auto">
-                  <table className="w-full min-w-[34rem] text-small">
-                    <thead>
-                      <tr className="text-left text-label uppercase text-muted">
-                        <th className="px-5 py-2 font-semibold">{t('ops.time')}</th>
-                        <th className="py-2 font-semibold">{t('ops.pool')}</th>
-                        <th className="py-2 text-right font-semibold">{t('status.chlorine')}</th>
-                        <th className="py-2 text-right font-semibold">pH</th>
-                        <th className="py-2 text-right font-semibold">{t('status.bathers')}</th>
-                        <th className="px-5 py-2 text-right font-semibold">{t('ops.check')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {readings.data.map((r) => (
-                        <tr key={r.id}>
-                          <td className="px-5 py-2.5 tabular-nums">{formatTime(r.localRecordedAt, lng)}</td>
-                          <td className="py-2.5">
-                            {r.pool.name}
-                            <span className="block text-caption text-muted">{r.recordedBy}</span>
-                          </td>
-                          <td className={`py-2.5 text-right tabular-nums ${r.outOfRange ? 'font-semibold text-warn' : ''}`}>{r.freeChlorinePpm ?? '—'}</td>
-                          <td className="py-2.5 text-right tabular-nums">{r.ph ?? '—'}</td>
-                          <td className="py-2.5 text-right tabular-nums">{r.batherCount ?? '—'}</td>
-                          <td className="px-5 py-2.5 text-right">
-                            {r.signedOffBy ? (
-                              <StatusPill tone="ok">{r.signedOffBy}</StatusPill>
-                            ) : can('ops.chemical.signoff') ? (
-                              <Button size="sm" variant="secondary" icon={<PenLine className="h-4 w-4" aria-hidden="true" />} loading={busy === `sign-${r.id}`} onClick={() => void run(`sign-${r.id}`, () => api(`/api/ops/readings/${r.id}/signoff`, { method: 'POST' }), t('ops.signed')).then(() => readings.reload())}>
-                                {t('ops.signOff')}
-                              </Button>
-                            ) : (
-                              <StatusPill tone="neutral">{t('ops.unsigned')}</StatusPill>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ul className="divide-y divide-line">
+                  {readings.data.slice(0, 6).map((r) => (
+                    <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-small">
+                      <span>
+                        <span className="font-semibold tabular-nums">{formatTime(r.localRecordedAt, lng)}</span> · {r.pool.name}
+                      </span>
+                      <span className={`tabular-nums ${r.outOfRange ? 'font-semibold text-warn' : 'text-muted'}`}>
+                        FCl {r.freeChlorinePpm ?? '—'} · pH {r.ph ?? '—'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </CardBody>
           </Card>
         </div>
       </div>
+      )}
     </>
+  );
+}
+
+function ChemistryReport({
+  readings,
+  loading,
+  pools,
+  range,
+  onRange,
+  pool,
+  onPool,
+  signOff,
+  busy,
+}: {
+  readings: Reading[] | null;
+  loading: boolean;
+  pools: DeckPool[];
+  range: ReportRange;
+  onRange: (r: ReportRange) => void;
+  pool: string;
+  onPool: (id: string) => void;
+  signOff: ((id: string) => Promise<unknown>) | null;
+  busy: string | null;
+}) {
+  const { t, i18n } = useTranslation();
+  const lng = i18n.language;
+  const rows = readings ?? [];
+  const outOfRange = rows.filter((r) => r.outOfRange).length;
+  const unsigned = rows.filter((r) => !r.signedOffBy).length;
+  const download = () =>
+    saveBlob(
+      csv([
+        ['date', 'time', 'pool', 'free_chlorine_ppm', 'total_chlorine_ppm', 'ph', 'water_temp_c', 'in_range', 'issues', 'recorded_by', 'signed_off_by'],
+        ...rows.map((r) => [r.localRecordedAt.slice(0, 10), r.localRecordedAt.slice(11, 16), r.pool.name, r.freeChlorinePpm, r.totalChlorinePpm, r.ph, r.waterTempC, r.outOfRange ? 'no' : 'yes', r.reasons.join('; '), r.recordedBy, r.signedOffBy]),
+      ]),
+      `water-chemistry-${new Date().toISOString().slice(0, 10)}.csv`,
+    );
+  return (
+    <Card>
+      <CardHeader title={t('ops.reportTitle')} description={t('ops.reportHelp')} action={<Button size="sm" variant="secondary" icon={<Download className="h-4 w-4" aria-hidden="true" />} disabled={!rows.length} onClick={download}>{t('ops.downloadCsv')}</Button>} />
+      <CardBody className="grid gap-4 pt-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Segmented
+            label={t('ops.range')}
+            value={range}
+            onChange={onRange}
+            options={[
+              { value: 'today' as const, label: t('ops.ranges.today') },
+              { value: 'week' as const, label: t('ops.ranges.week') },
+              { value: 'month' as const, label: t('ops.ranges.month') },
+            ]}
+          />
+          <div className="w-56">
+            <Select aria-label={t('ops.pool')} value={pool} onChange={(e) => onPool(e.target.value)}>
+              <option value="">{t('ops.allPools')}</option>
+              {pools.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <StatusPill tone="neutral">{t('ops.readingsCount', { count: rows.length })}</StatusPill>
+          <StatusPill tone={outOfRange ? 'warn' : 'ok'}>{t('ops.outOfRangeCount', { count: outOfRange })}</StatusPill>
+          <StatusPill tone={unsigned ? 'new' : 'ok'}>{t('ops.unsignedCount', { count: unsigned })}</StatusPill>
+        </div>
+        {loading && !readings ? (
+          <Skeleton className="h-32" />
+        ) : !rows.length ? (
+          <p className="text-small text-muted">{t('ops.noReadingsRange')}</p>
+        ) : (
+          <div className="-mx-5 overflow-x-auto">
+            <table className="w-full min-w-[44rem] text-small">
+              <thead>
+                <tr className="text-left text-label uppercase text-muted">
+                  <th className="px-5 py-2 font-semibold">{t('ops.time')}</th>
+                  <th className="py-2 font-semibold">{t('ops.pool')}</th>
+                  <th className="py-2 text-right font-semibold">{t('ops.fclShort')}</th>
+                  <th className="py-2 text-right font-semibold">{t('ops.tclShort')}</th>
+                  <th className="py-2 text-right font-semibold">pH</th>
+                  <th className="py-2 text-right font-semibold">°C</th>
+                  <th className="px-5 py-2 text-right font-semibold">{t('ops.check')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {rows.map((r) => (
+                  <tr key={r.id} className={r.outOfRange ? 'bg-warn-bg/40' : undefined}>
+                    <td className="px-5 py-2.5 tabular-nums">
+                      {range === 'today' ? null : <span className="block text-caption text-muted">{formatDate(r.localRecordedAt, lng)}</span>}
+                      {formatTime(r.localRecordedAt, lng)}
+                    </td>
+                    <td className="py-2.5">
+                      {r.pool.name}
+                      <span className="block text-caption text-muted">{r.recordedBy}</span>
+                      {r.outOfRange && r.reasons.length ? <span className="block text-caption text-warn">{r.reasons.join(' · ')}</span> : null}
+                    </td>
+                    <td className={`py-2.5 text-right tabular-nums ${r.outOfRange ? 'font-semibold text-warn' : ''}`}>{r.freeChlorinePpm ?? '—'}</td>
+                    <td className="py-2.5 text-right tabular-nums">{r.totalChlorinePpm ?? '—'}</td>
+                    <td className="py-2.5 text-right tabular-nums">{r.ph ?? '—'}</td>
+                    <td className="py-2.5 text-right tabular-nums">{r.waterTempC ?? '—'}</td>
+                    <td className="px-5 py-2.5 text-right">
+                      {r.signedOffBy ? (
+                        <StatusPill tone="ok">{r.signedOffBy}</StatusPill>
+                      ) : signOff ? (
+                        <Button size="sm" variant="secondary" icon={<PenLine className="h-4 w-4" aria-hidden="true" />} loading={busy === `sign-${r.id}`} onClick={() => void signOff(r.id)}>
+                          {t('ops.signOff')}
+                        </Button>
+                      ) : (
+                        <StatusPill tone="neutral">{t('ops.unsigned')}</StatusPill>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardBody>
+    </Card>
   );
 }
