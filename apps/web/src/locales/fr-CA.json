@@ -2585,7 +2585,7 @@
     "classList": "Liste",
     "level": "Niveau",
     "noLevel": "Aucun niveau (p. ex. club, patinage libre, aquaforme)",
-    "noLevelsHint": "Ajoutez les niveaux Croix-Rouge ou Société de sauvetage dans l'onglet Niveaux.",
+    "noLevelsHint": "Chargez les niveaux de la Société de sauvetage, du YMCA ou de Patinage Plus dans l'onglet Niveaux.",
     "setName": "Nom du groupe",
     "setNameHint": "Facultatif; sinon le nom du niveau.",
     "pattern": "Jours",
@@ -2616,10 +2616,8 @@
     "waitlisted": "Liste d'attente",
     "levels": "Niveaux",
     "levelsHelp": "Niveaux avec les âges admis, pour la natation, le patinage ou vos propres programmes. L'âge est vérifié lors des inscriptions.",
-    "addRedCross": "Niveaux Natation Croix-Rouge",
-    "addLifesaving": "Niveaux Nager pour la vie (Société de sauvetage)",
     "levelsAdded": "Niveaux ajoutés",
-    "levelsNote": "Les âges et ratios sont des points de départ tirés des normes publiées de chaque programme; vérifiez-les avec le matériel actuel. La Croix-Rouge canadienne a mis fin à son programme de natation en 2022; beaucoup de villes enseignent maintenant Nager pour la vie. Ajoutez vos propres niveaux pour tout le reste.",
+    "levelsNote": "Les âges et ratios sont des points de départ tirés des normes publiées de chaque programme; vérifiez-les avec le matériel actuel. Les programmes YMCA varient d'un Y à l'autre : vérifiez auprès du vôtre. Ajoutez vos propres niveaux pour tout le reste.",
     "noLevels": "Aucun niveau pour l'instant",
     "noLevelsHelp": "Ajoutez les niveaux d'un programme d'un seul clic ci-dessus.",
     "ratio": "1:{{n}}",
@@ -2632,7 +2630,16 @@
     "allAges": "Tous âges",
     "agePlus": "{{min}} et plus",
     "ageBetween": "{{min}} à {{max}}",
-    "addCanSkate": "Niveaux Patinage Plus de Patinage Canada"
+    "loadLevels": "Charger les niveaux de",
+    "load": "Ajouter ces niveaux",
+    "presetCount_one": "{{count}} niveau",
+    "presetCount_other": "{{count}} niveaux",
+    "includeAdvanced": "Inclure les brevets de sauvetage avancés",
+    "preset": {
+      "LIFESAVING": "Société de sauvetage : Nager pour la vie",
+      "YMCA": "Cours de natation YMCA",
+      "CANSKATE": "Patinage Canada : Patinage Plus"
+    }
   },
   "members": {
     "title": "Services aux membres",

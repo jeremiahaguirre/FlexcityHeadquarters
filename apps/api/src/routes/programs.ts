@@ -1,6 +1,6 @@
 /**
  * Program planning for any facility (pool, arena, community centre): planners
- * keep the levels (swimming, skating or the city's own), build a campaign (a
+ * keep the levels (Lifesaving Society, YMCA, CanSkate or the city's own), build a campaign (a
  * season of lessons, a club session, a camp) out of sets on any pattern, and
  * publish it for member services.
  */
@@ -45,14 +45,14 @@ programsRouter.get(
   }),
 );
 
-/** Adds a program's levels (Red Cross or Lifesaving Society), skipping ones already there. */
+/** Adds a program's levels (Lifesaving Society, YMCA or CanSkate), skipping ones already there. */
 programsRouter.post(
   '/swim-levels/presets',
   requirePermission('lessons.plan'),
   h(async (req, res) => {
     const a = authOf(req);
-    const { preset } = z.object({ preset: z.enum(['RED_CROSS', 'LIFESAVING', 'CANSKATE']) }).parse(req.body);
-    const p = PRESETS[preset];
+    const { preset, advanced } = z.object({ preset: z.enum(['LIFESAVING', 'YMCA', 'CANSKATE']), advanced: z.boolean().default(false) }).parse(req.body);
+    const p = { ...PRESETS[preset], levels: PRESETS[preset].levels.filter((l) => advanced || !l.advanced) };
     const added = await withTenant(a.tenantId, async (tx) => {
       const existing = await tx.swimLevel.count({ where: { program: p.program } });
       const r = await tx.swimLevel.createMany({
@@ -62,6 +62,22 @@ programsRouter.post(
       return r.count;
     });
     res.status(201).json({ added });
+  }),
+);
+
+/** The level ladders a planner can load, with how many levels each adds. */
+programsRouter.get(
+  '/swim-levels/presets',
+  requirePermission('lessons.plan'),
+  h(async (_req, res) => {
+    res.json(
+      (['LIFESAVING', 'YMCA', 'CANSKATE'] as const).map((key) => ({
+        key,
+        program: PRESETS[key].program,
+        levels: PRESETS[key].levels.filter((l) => !l.advanced).length,
+        advanced: PRESETS[key].levels.filter((l) => l.advanced).map((l) => ({ name: l.name, note: l.note ?? null })),
+      })),
+    );
   }),
 );
 

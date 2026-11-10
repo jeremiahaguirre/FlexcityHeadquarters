@@ -61,16 +61,25 @@ describe('planning and registration', () => {
   let kid: string;
   let toddler: string;
 
+  it('Lifesaving Society: Parent & Tot to Swim Patrol, then the Bronze awards and National Lifeguard if asked', async () => {
+    expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'LIFESAVING' })).body.added).toBe(18);
+    expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'LIFESAVING', advanced: true })).body.added).toBe(4);
+    const nl = (await call(tok.head).get('/api/swim-levels')).body.find((l: { name: string }) => l.name === 'National Lifeguard');
+    expect(nl).toMatchObject({ minAgeMonths: 192 });
+    const presets = (await call(tok.head).get('/api/swim-levels/presets')).body;
+    expect(presets.map((p: { key: string }) => p.key)).toEqual(['LIFESAVING', 'YMCA', 'CANSKATE']);
+    expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'YMCA' })).body.added).toBe(13);
+  });
+
   it('arenas load Skate Canada CanSkate levels too', async () => {
     expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'CANSKATE' })).body.added).toBe(8);
   });
 
-  it('head guards load Red Cross levels with their ages', async () => {
-    expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'RED_CROSS' })).body.added).toBe(19);
-    expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'RED_CROSS' })).body.added).toBe(0);
+  it('levels come with their ages; staff without planning rights can’t load them', async () => {
     const levels = (await call(tok.head).get('/api/swim-levels')).body;
-    expect(levels.find((l: { name: string }) => l.name === 'Parent & Tot 1')).toMatchObject({ minAgeMonths: 4, maxAgeMonths: 12, parentInWater: true });
+    expect(levels.find((l: { name: string; program: string }) => l.name === 'Parent & Tot 1' && l.program.startsWith('Lifesaving'))).toMatchObject({ minAgeMonths: 4, maxAgeMonths: 12, parentInWater: true });
     expect(levels.find((l: { name: string }) => l.name === 'Preschool 2')).toMatchObject({ minAgeMonths: 36, maxAgeMonths: 72, ratio: 5 });
+    expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'RED_CROSS' })).status).toBe(400);
     expect((await call(tok.guard).post('/api/swim-levels/presets', { preset: 'LIFESAVING' })).status).toBe(403);
   });
 
@@ -82,7 +91,7 @@ describe('planning and registration', () => {
     campaignId = c.body.id;
     const base = { facilityId: t.facility.id, positionId: t.position.id, startMinute: 17 * 60, endMinute: 17 * 60 + 30, priceCents: 9500, memberPriceCents: 8000 };
     weekly = (await call(tok.head).post(`/api/campaigns/${campaignId}/sets`, { ...base, levelId: id('Preschool 2'), daysOfWeek: [1], startsOn: monday, endsOn: plus(monday, 49) })).body.id;
-    block = (await call(tok.head).post(`/api/campaigns/${campaignId}/sets`, { ...base, levelId: id('Swim Kids 3'), daysOfWeek: [1, 2, 3, 4, 5], startsOn: monday, endsOn: plus(monday, 11), capacity: 1 })).body.id;
+    block = (await call(tok.head).post(`/api/campaigns/${campaignId}/sets`, { ...base, levelId: id('Swimmer 3'), daysOfWeek: [1, 2, 3, 4, 5], startsOn: monday, endsOn: plus(monday, 11), capacity: 1 })).body.id;
     const detail = (await call(tok.head).get(`/api/campaigns/${campaignId}`)).body;
     const w = detail.sets.find((s: { id: string }) => s.id === weekly);
     expect(w).toMatchObject({ daysOfWeek: [1], sessions: 7, capacity: 5, minAgeMonths: 36, maxAgeMonths: 72 }); // 8 Mondays minus the holiday

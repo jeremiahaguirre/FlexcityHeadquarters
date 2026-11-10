@@ -251,17 +251,32 @@ function CampaignDetail({ id }: { id: string }) {
 function Levels() {
   const { t, i18n } = useTranslation();
   const q = useQuery<SwimLevel[]>('/api/swim-levels');
+  const presets = useQuery<Array<{ key: string; program: string; levels: number; advanced: Array<{ name: string; note: string | null }> }>>('/api/swim-levels/presets');
   const { run, busy } = useAction();
-  const preset = (p: 'RED_CROSS' | 'LIFESAVING' | 'CANSKATE') => void run(p, () => api<{ added: number }>('/api/swim-levels/presets', { method: 'POST', body: { preset: p } }), t('programs.levelsAdded')).then(() => q.reload());
+  const [pick, setPick] = useState('LIFESAVING');
+  const [advanced, setAdvanced] = useState(true);
+  const chosen = presets.data?.find((p) => p.key === pick);
+  const load = () => void run('preset', () => api<{ added: number }>('/api/swim-levels/presets', { method: 'POST', body: { preset: pick, advanced } }), t('programs.levelsAdded')).then(() => q.reload());
   const programs = [...new Set((q.data ?? []).map((l) => l.program))];
   return (
     <Card>
       <CardHeader title={t('programs.levels')} description={t('programs.levelsHelp')} />
       <CardBody className="grid gap-4 pt-2">
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" loading={busy === 'RED_CROSS'} onClick={() => preset('RED_CROSS')}>{t('programs.addRedCross')}</Button>
-          <Button size="sm" variant="secondary" loading={busy === 'LIFESAVING'} onClick={() => preset('LIFESAVING')}>{t('programs.addLifesaving')}</Button>
-          <Button size="sm" variant="secondary" loading={busy === 'CANSKATE'} onClick={() => preset('CANSKATE')}>{t('programs.addCanSkate')}</Button>
+        <div className="grid gap-3 rounded-xl border border-line p-4 sm:grid-cols-[1fr_auto] sm:items-end">
+          <Field label={t('programs.loadLevels')} hint={chosen ? t('programs.presetCount', { count: chosen.levels }) : undefined}>
+            {(p) => (
+              <Select {...p} value={pick} onChange={(e) => setPick(e.target.value)}>
+                {(presets.data ?? []).map((x) => <option key={x.key} value={x.key}>{t(`programs.preset.${x.key}`, { defaultValue: x.program })}</option>)}
+              </Select>
+            )}
+          </Field>
+          <Button loading={busy === 'preset'} disabled={!presets.data} onClick={load}>{t('programs.load')}</Button>
+          {chosen?.advanced.length ? (
+            <label className="flex items-start gap-2 text-small sm:col-span-2">
+              <input type="checkbox" className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} />
+              <span><span className="font-semibold">{t('programs.includeAdvanced')}</span><span className="block text-caption text-muted">{chosen.advanced.map((a) => (a.note ? `${a.name} (${a.note})` : a.name)).join(' · ')}</span></span>
+            </label>
+          ) : null}
         </div>
         <p className="rounded-xl bg-surface px-4 py-3 text-caption text-muted">{t('programs.levelsNote')}</p>
         {!q.data ? <Skeleton className="h-32" /> : !q.data.length ? <EmptyState icon={Layers} title={t('programs.noLevels')}>{t('programs.noLevelsHelp')}</EmptyState> : programs.map((p) => (

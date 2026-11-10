@@ -2585,7 +2585,7 @@
     "classList": "Class list",
     "level": "Level",
     "noLevel": "No level (e.g. club, public skate, aquafit)",
-    "noLevelsHint": "Add Red Cross or Lifesaving Society levels on the Levels tab.",
+    "noLevelsHint": "Load Lifesaving Society, YMCA or CanSkate levels on the Levels tab.",
     "setName": "Set name",
     "setNameHint": "Optional; the level's name is used otherwise.",
     "pattern": "Days",
@@ -2616,10 +2616,8 @@
     "waitlisted": "Waitlist",
     "levels": "Levels",
     "levelsHelp": "Levels with the ages each one takes, for swimming, skating or your own programs. Ages are checked when member services register someone.",
-    "addRedCross": "Red Cross Swim levels",
-    "addLifesaving": "Lifesaving Society Swim for Life levels",
     "levelsAdded": "Levels added",
-    "levelsNote": "Ages and ratios are starting points from each program's published standards; confirm them against the current materials you teach. The Canadian Red Cross ended its swim program in 2022; many cities now teach the Lifesaving Society's Swim for Life. Add your own levels for anything else.",
+    "levelsNote": "Ages and ratios are starting points from each program's published standards; confirm them against the current materials you teach. YMCA programs vary by Y, so check with yours. Add your own levels for anything else.",
     "noLevels": "No levels yet",
     "noLevelsHelp": "Add a program's levels with one tap above.",
     "ratio": "1:{{n}}",
@@ -2632,7 +2630,16 @@
     "allAges": "All ages",
     "agePlus": "{{min}} and up",
     "ageBetween": "{{min}} to {{max}}",
-    "addCanSkate": "Skate Canada CanSkate levels"
+    "loadLevels": "Load levels from",
+    "load": "Add these levels",
+    "presetCount_one": "{{count}} level",
+    "presetCount_other": "{{count}} levels",
+    "includeAdvanced": "Include the advanced lifesaving awards",
+    "preset": {
+      "LIFESAVING": "Lifesaving Society: Swim for Life",
+      "YMCA": "YMCA swim lessons",
+      "CANSKATE": "Skate Canada: CanSkate"
+    }
   },
   "members": {
     "title": "Member services",
