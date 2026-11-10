@@ -5635,5 +5635,10 @@
       "claims": "Claims",
       "km": "Km"
     }
+  },
+  "noAccess": {
+    "title": "This screen isn’t part of your access",
+    "body": "Your role doesn’t include it, or your organization has turned it off. Ask your supervisor or HR if you think you need it.",
+    "back": "Back to Today"
   }
 }

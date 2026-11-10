@@ -23,6 +23,7 @@ import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 import { CommandMenu, type Destination } from './CommandMenu';
 import { SideNav } from './SideNav';
+import { NoAccess } from './NoAccess';
 import { ConsentGate } from '@/components/privacy/ConsentGate';
 import { Copyright } from '@/components/Copyright';
 
@@ -41,6 +42,9 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
     if (me?.closed) window.location.replace('/export');
   }, [me?.closed]);
   const items = visibleNav(can, me?.hiddenMenu ?? []);
+  // A menu screen opened by its address without access: say so, instead of an empty or broken page.
+  const path = pathname.replace(/\/$/, '') || '/';
+  const noAccess = !!me && NAV.some((n) => n.href === path) && !items.some((n) => n.href === path) && !(me.lockedMenu ?? []).some((l) => l.href === path);
   const { tabs, more } = phoneTabs(items);
   const destinations: Destination[] = [
     ...items.map((n) => ({ href: n.href, label: t(`nav.${n.key}`), group: n.section ? t(`navSections.${n.section}`) : t(`navGroups.${n.group}`), icon: n.icon })),
@@ -143,7 +147,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
             </div>
           ) : null}
           <BillingBanner />
-          {children}
+          {noAccess ? <NoAccess /> : children}
         </main>
       </div>
 

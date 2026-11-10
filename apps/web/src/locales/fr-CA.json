@@ -5635,5 +5635,10 @@
       "claims": "Demandes",
       "km": "Km"
     }
+  },
+  "noAccess": {
+    "title": "Cet écran ne fait pas partie de vos accès",
+    "body": "Votre rôle ne le comprend pas, ou votre organisation l’a désactivé. Parlez-en à votre superviseur ou aux RH si vous pensez en avoir besoin.",
+    "back": "Retour à Aujourd’hui"
   }
 }
