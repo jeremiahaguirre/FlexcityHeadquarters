@@ -384,7 +384,15 @@
     "NO_DEPOSITS": "Nobody in this pay run has a verified direct deposit account.",
     "CANNOT_VOID": "A paid pay run can't be voided; correct it in the next run.",
     "INVALID_SIN": "That isn't a valid Social Insurance Number.",
-    "UNKNOWN_DEPARTMENT": "Unknown department."
+    "UNKNOWN_DEPARTMENT": "Unknown department.",
+    "BANK_NOT_CONNECTED": "Connect your bank in payroll settings first, or download the deposit file.",
+    "ALREADY_SENT": "This pay run was already sent to the bank. Sending it again could pay people twice.",
+    "BANK_HOST_MISMATCH": "The bank’s server didn’t match the fingerprint on file, so nothing was sent. Confirm the fingerprint with your bank.",
+    "BANK_UNREACHABLE": "Couldn’t connect to the bank.",
+    "BANK_FOLDER": "Connected, but the payroll folder couldn’t be opened.",
+    "BANK_UPLOAD": "The bank didn’t accept the file.",
+    "BAD_PGP_KEY": "That isn’t a PGP public key.",
+    "BANK_CREDENTIAL": "Enter the password or private key your bank gave you."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1055,7 +1063,43 @@
     "twoPerson": "A second person approves every pay run",
     "twoPersonHelp": "The person who prepared a run can't approve it. Strongly recommended.",
     "passkey": "Releasing pay needs a passkey",
-    "passkeyHelp": "Approving runs, downloading deposit files and seeing full SINs need a passkey sign-in (Face ID, fingerprint or Windows Hello)."
+    "passkeyHelp": "Approving runs, downloading deposit files and seeing full SINs need a passkey sign-in (Face ID, fingerprint or Windows Hello).",
+    "bank": {
+      "title": "Bank connection",
+      "help": "Send approved pay runs straight to your bank, with no download or upload. Your bank sets this up as a host-to-host (SFTP) payroll file service and gives you the details below.",
+      "connected": "Connected to {{host}}, folder {{dir}}.",
+      "encrypted": "Files are encrypted with your bank’s PGP key.",
+      "host": "Bank server",
+      "port": "Port",
+      "username": "Username",
+      "folder": "Folder for payroll files",
+      "fingerprint": "Server fingerprint",
+      "fingerprintHint": "From your bank, e.g. SHA256:… The app refuses to send to any server that doesn’t match it.",
+      "secret": "Password or private key",
+      "secretReplace": "New password or private key (leave blank to keep the one on file)",
+      "secretHint": "Encrypted with your city’s key. It’s never shown again.",
+      "pgp": "Bank’s PGP public key (if your bank asks for encrypted files)",
+      "pgpHint": "Paste the whole key, including the BEGIN and END lines.",
+      "pgpOnFile": "Key on file ending {{fingerprint}}. Paste a new one to replace it.",
+      "autoSend": "Send automatically when a pay run is approved",
+      "autoSendHelp": "Otherwise the approver presses Send to bank. Either way a run is only ever sent once.",
+      "connect": "Connect",
+      "test": "Test connection",
+      "testOk_one": "Connected. The folder has {{count}} file.",
+      "testOk_other": "Connected. The folder has {{count}} files.",
+      "disconnect": "Disconnect",
+      "removed": "Bank connection removed.",
+      "saved": "Bank connection saved.",
+      "send": "Send to bank",
+      "sent": "Sent to the bank.",
+      "sentLate": "Sent to the bank, but the pay date is less than two business days away. Check with your bank that it will arrive on time.",
+      "autoFailed": "Approved, but sending to the bank failed: {{error}} Use Send to bank to try again.",
+      "pgpShort": "PGP encrypted",
+      "status": {
+        "SENT": "Sent",
+        "FAILED": "Failed"
+      }
+    }
   },
   "settings": {
     "title": "Settings",

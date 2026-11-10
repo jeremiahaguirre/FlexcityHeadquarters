@@ -384,7 +384,15 @@
     "NO_DEPOSITS": "Personne dans cette paie n’a de compte de dépôt direct vérifié.",
     "CANNOT_VOID": "Une paie versée ne peut pas être annulée; corrigez-la dans la paie suivante.",
     "INVALID_SIN": "Ce numéro d’assurance sociale n’est pas valide.",
-    "UNKNOWN_DEPARTMENT": "Service inconnu."
+    "UNKNOWN_DEPARTMENT": "Service inconnu.",
+    "BANK_NOT_CONNECTED": "Connectez d’abord votre banque dans les paramètres de paie, ou téléchargez le fichier de dépôt.",
+    "ALREADY_SENT": "Cette paie a déjà été envoyée à la banque. La renvoyer pourrait payer les gens deux fois.",
+    "BANK_HOST_MISMATCH": "Le serveur de la banque ne correspond pas à l’empreinte au dossier; rien n’a été envoyé. Confirmez l’empreinte avec votre banque.",
+    "BANK_UNREACHABLE": "Impossible de se connecter à la banque.",
+    "BANK_FOLDER": "Connecté, mais le dossier de paie n’a pas pu être ouvert.",
+    "BANK_UPLOAD": "La banque n’a pas accepté le fichier.",
+    "BAD_PGP_KEY": "Ce n’est pas une clé publique PGP.",
+    "BANK_CREDENTIAL": "Entrez le mot de passe ou la clé privée fournis par votre banque."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1055,7 +1063,43 @@
     "twoPerson": "Une deuxième personne approuve chaque paie",
     "twoPersonHelp": "La personne qui a préparé une paie ne peut pas l’approuver. Fortement recommandé.",
     "passkey": "Verser la paie exige une clé d’accès",
-    "passkeyHelp": "Approuver une paie, télécharger un fichier de dépôt et afficher un NAS complet exigent une connexion par clé d’accès (Face ID, empreinte digitale ou Windows Hello)."
+    "passkeyHelp": "Approuver une paie, télécharger un fichier de dépôt et afficher un NAS complet exigent une connexion par clé d’accès (Face ID, empreinte digitale ou Windows Hello).",
+    "bank": {
+      "title": "Connexion bancaire",
+      "help": "Envoyez les paies approuvées directement à votre banque, sans téléchargement ni téléversement. Votre banque met en place un service de fichiers de paie d’hôte à hôte (SFTP) et vous fournit les renseignements ci-dessous.",
+      "connected": "Connecté à {{host}}, dossier {{dir}}.",
+      "encrypted": "Les fichiers sont chiffrés avec la clé PGP de votre banque.",
+      "host": "Serveur de la banque",
+      "port": "Port",
+      "username": "Nom d’utilisateur",
+      "folder": "Dossier des fichiers de paie",
+      "fingerprint": "Empreinte du serveur",
+      "fingerprintHint": "Fournie par votre banque, p. ex. SHA256:… L’application refuse d’envoyer à tout serveur qui ne correspond pas.",
+      "secret": "Mot de passe ou clé privée",
+      "secretReplace": "Nouveau mot de passe ou nouvelle clé privée (laissez vide pour conserver celui au dossier)",
+      "secretHint": "Chiffré avec la clé de votre ville. Il n’est plus jamais affiché.",
+      "pgp": "Clé publique PGP de la banque (si votre banque exige des fichiers chiffrés)",
+      "pgpHint": "Collez la clé entière, y compris les lignes BEGIN et END.",
+      "pgpOnFile": "Clé au dossier se terminant par {{fingerprint}}. Collez-en une nouvelle pour la remplacer.",
+      "autoSend": "Envoyer automatiquement dès qu’une paie est approuvée",
+      "autoSendHelp": "Sinon, la personne qui approuve appuie sur Envoyer à la banque. Dans les deux cas, une paie n’est envoyée qu’une seule fois.",
+      "connect": "Connecter",
+      "test": "Tester la connexion",
+      "testOk_one": "Connecté. Le dossier contient {{count}} fichier.",
+      "testOk_other": "Connecté. Le dossier contient {{count}} fichiers.",
+      "disconnect": "Déconnecter",
+      "removed": "Connexion bancaire retirée.",
+      "saved": "Connexion bancaire enregistrée.",
+      "send": "Envoyer à la banque",
+      "sent": "Envoyé à la banque.",
+      "sentLate": "Envoyé à la banque, mais la date de paie est dans moins de deux jours ouvrables. Vérifiez auprès de votre banque que le dépôt arrivera à temps.",
+      "autoFailed": "Approuvée, mais l’envoi à la banque a échoué : {{error}} Utilisez Envoyer à la banque pour réessayer.",
+      "pgpShort": "chiffré PGP",
+      "status": {
+        "SENT": "Envoyé",
+        "FAILED": "Échec"
+      }
+    }
   },
   "settings": {
     "title": "Paramètres",

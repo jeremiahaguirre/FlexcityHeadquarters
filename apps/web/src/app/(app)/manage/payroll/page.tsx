@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { PayDocuments } from '@/components/payroll/PayDocuments';
 import { PayPeople } from '@/components/payroll/PayPeople';
 import { PayRuns } from '@/components/payroll/PayRuns';
-import { PaySettings } from '@/components/payroll/PaySettings';
+import { BankConnection, PaySettings } from '@/components/payroll/PaySettings';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -176,7 +176,12 @@ function PayrollTabs() {
       {tab === 'runs' ? <PayRuns /> : null}
       {tab === 'people' ? <PayPeople /> : null}
       {tab === 'documents' ? <PayDocuments /> : null}
-      {tab === 'settings' ? <PaySettings /> : null}
+      {tab === 'settings' ? (
+        <div className="grid gap-6">
+          <BankConnection />
+          <PaySettings />
+        </div>
+      ) : null}
       {tab === 'export' ? <ProviderExport /> : null}
     </>
   );

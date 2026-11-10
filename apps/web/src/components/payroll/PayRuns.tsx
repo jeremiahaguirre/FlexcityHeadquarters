@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Plus, RefreshCw, ShieldCheck, Wallet } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Plus, RefreshCw, Send, ShieldCheck, Wallet } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatementView } from '@/components/payroll/StatementView';
@@ -12,7 +12,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
-import { api, apiDownload, saveBlob } from '@/lib/api';
+import { ApiError, api, apiDownload, saveBlob } from '@/lib/api';
 import type { Departments } from '@/lib/departments';
 import { formatDate, formatMoney } from '@/lib/format';
 import { type Run, STATUS_TONE, type Statement } from '@/lib/payroll';
@@ -21,6 +21,7 @@ import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 
 interface RunDetail {
   run: Run;
+  transmissions: Array<{ id: string; at: string; fileName: string; status: 'SENT' | 'FAILED'; error: string | null; encrypted: boolean }>;
   departments: Array<{ id: string; name: string; nameFr: string | null }>;
   byDepartment: Array<{ departmentId: string | null; people: number; gross: number; net: number; employerCost: number }>;
   statements: Array<{ id: string; name: string; employeeNumber: string | null; province: string; hours: number; gross: number; totalDeductions: number; net: number; deposit: string | null; deductions: { cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number } }>;
@@ -76,11 +77,11 @@ export function PayRuns() {
   );
 }
 
-/** Monday two weeks before last Monday: the most recent full two-week period. */
-function lastPeriodStart() {
+/** The most recent full two-week period, starting on the city's pay-week day (0 = Sunday). */
+function lastPeriodStart(weekStart: number) {
   const today = todayIso();
-  const dow = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
-  return plusDays(today, -dow - 14);
+  const back = (new Date(`${today}T12:00:00Z`).getUTCDay() - weekStart + 7) % 7;
+  return plusDays(today, -back - 14);
 }
 
 function NewRun({ departments, onClose, onCreated }: { departments: Departments | null; onClose: () => void; onCreated: (id: string) => Promise<void> }) {
@@ -92,10 +93,11 @@ function NewRun({ departments, onClose, onCreated }: { departments: Departments 
     const r = await run('new', () => api<Run>('/api/payroll/runs', { method: 'POST', body: { departmentId: String(f.get('department')) || null, periodStart: String(f.get('start')), weeks: Number(f.get('weeks')), payDate: String(f.get('payDate')) } }), t('payroll.runCreated'));
     if (r) await onCreated(r.id);
   }
-  const start = lastPeriodStart();
+  const weekStart = useQuery<{ payWeekStartDay: number }>('/api/payroll/settings').data?.payWeekStartDay ?? 0;
+  const start = lastPeriodStart(weekStart);
   return (
     <Dialog open onClose={onClose} title={t('payroll.newRun')} description={t('payroll.newRunHelp')}>
-      <form onSubmit={(e) => void submit(e)} className="grid gap-4">
+      <form key={weekStart} onSubmit={(e) => void submit(e)} className="grid gap-4">
         <Field label={t('payroll.department')}>
           {(p) => (
             <Select {...p} name="department" defaultValue="">
@@ -129,7 +131,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
   const toast = useToast();
   const { run, busy } = useAction();
   const data = useQuery<RunDetail>(`/api/payroll/runs/${id}`);
-  const settings = useQuery<{ twoPersonApproval: boolean }>('/api/payroll/settings');
+  const settings = useQuery<{ twoPersonApproval: boolean; bank: { configured: boolean; autoSend?: boolean } }>('/api/payroll/settings');
   const [statement, setStatement] = useState<string | null>(null);
   const [voiding, setVoiding] = useState(false);
   const st = useQuery<Statement>(statement ? `/api/payroll/statements/${statement}` : null);
@@ -139,9 +141,19 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
     await onChanged();
   };
   async function act(key: string, path: string, success: string, body?: object) {
-    const r = await run(key, () => api(path, { method: 'POST', body }), success);
+    const r = await run(key, () => api<{ transmission?: { status: string; error?: string } | null }>(path, { method: 'POST', body }), success);
+    if (r?.transmission) toast(r.transmission.status === 'SENT' ? t('payroll.bank.sent') : t('payroll.bank.autoFailed', { error: r.transmission.error ?? '' }), r.transmission.status === 'SENT' ? 'ok' : 'warn');
     if (r !== undefined) await refresh();
     return r;
+  }
+  async function sendToBank() {
+    try {
+      const r = await api<{ status: string; late?: boolean }>(`/api/payroll/runs/${id}/send`, { method: 'POST' });
+      toast(r.late ? t('payroll.bank.sentLate') : t('payroll.bank.sent'), r.late ? 'warn' : 'ok');
+    } catch (e) {
+      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+    }
+    await refresh();
   }
   async function download(path: string, fallback: string, key: string) {
     const r = await apiDownload(path);
@@ -188,12 +200,26 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
                 {t('payroll.approve')}
               </Button>
             ) : null}
-            {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') ? <Button size="sm" icon={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/deposit-file`, 'deposit.txt', 'deposit')}>{t('payroll.depositFile')}</Button> : null}
+            {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') && settings.data?.bank.configured && !d.transmissions.some((x) => x.status === 'SENT') ? (
+              <Button size="sm" icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={busy === 'send'} onClick={() => void sendToBank()}>{t('payroll.bank.send')}</Button>
+            ) : null}
+            {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') ? <Button size="sm" variant={settings.data?.bank.configured ? 'secondary' : 'primary'} icon={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/deposit-file`, 'deposit.txt', 'deposit')}>{t('payroll.depositFile')}</Button> : null}
             <Button size="sm" variant="secondary" icon={<FileSpreadsheet className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/register.csv`, 'payroll-register.csv', 'register')}>{t('payroll.register')}</Button>
             {d.run.status === 'APPROVED' && can('payroll.approve') ? <Button size="sm" variant="secondary" icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} loading={busy === 'paid'} onClick={() => void act('paid', `/api/payroll/runs/${id}/paid`, t('payroll.markedPaid'))}>{t('payroll.markPaid')}</Button> : null}
             {d.run.status === 'DRAFT' || d.run.status === 'APPROVED' ? <Button size="sm" variant="ghost" onClick={() => setVoiding(true)}>{t('payroll.void')}</Button> : null}
           </div>
           {d.run.status === 'DRAFT' && d.run.preparedById === me?.id && settings.data?.twoPersonApproval !== false ? <p className="text-caption text-muted">{t('payroll.secondPerson')}</p> : null}
+          {d.transmissions.length ? (
+            <ul className="grid gap-1 text-small">
+              {d.transmissions.map((x) => (
+                <li key={x.id} className="flex flex-wrap items-center gap-2">
+                  <StatusPill tone={x.status === 'SENT' ? 'ok' : 'danger'}>{t(`payroll.bank.status.${x.status}`)}</StatusPill>
+                  <span className="text-muted">{new Date(x.at).toLocaleString(lng)} · {x.fileName}{x.encrypted ? ` · ${t('payroll.bank.pgpShort')}` : ''}</span>
+                  {x.error ? <span className="basis-full text-caption text-danger">{x.error}</span> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
           {d.run.depositFileSha256 ? <p className="break-all text-caption text-muted">{t('payroll.fileRecord', { number: String(d.run.fileCreationNumber).padStart(4, '0'), hash: d.run.depositFileSha256.slice(0, 16) })}</p> : null}
           {voiding ? (
             <form
