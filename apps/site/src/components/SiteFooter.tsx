@@ -18,8 +18,8 @@ export function SiteFooter({ lang }: { lang: Lang }) {
         </div>
         <div className={col}>
           <p className="text-label uppercase text-muted">{c.footer.product}</p>
-          <Link href={`/${lang}/#product`} className="hover:underline">{c.nav.product}</Link>
-          <Link href={`/${lang}/#why`} className="hover:underline">{c.nav.why}</Link>
+          <Link href={`/${lang}/product/`} className="hover:underline">{c.nav.product}</Link>
+          <Link href={`/${lang}/why/`} className="hover:underline">{c.nav.why}</Link>
           <Link href={`/${lang}/private-sector/`} className="hover:underline">{c.nav.privateSector}</Link>
           <Link href={`/${lang}/plans/`} className="hover:underline">{c.nav.plans}</Link>
           <a href={demoLink('STAFF', lang)} className="hover:underline">{c.nav.demo}</a>

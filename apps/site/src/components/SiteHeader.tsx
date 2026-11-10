@@ -16,8 +16,8 @@ export function SiteHeader({ lang }: { lang: Lang }) {
   const other: Lang = lang === 'en' ? 'fr' : 'en';
   const switchHref = pathname.replace(/^\/(en|fr)(?=\/|$)/, `/${other}`);
   const links = [
-    { href: `/${lang}/#product`, label: c.nav.product },
-    { href: `/${lang}/#why`, label: c.nav.why },
+    { href: `/${lang}/product/`, label: c.nav.product },
+    { href: `/${lang}/why/`, label: c.nav.why },
     { href: `/${lang}/private-sector/`, label: c.nav.privateSector },
     { href: `/${lang}/plans/`, label: c.nav.plans },
     { href: `/${lang}/demo/`, label: c.nav.demo },
