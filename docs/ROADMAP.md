@@ -3,21 +3,19 @@
 ## Before the first customer
 
 - [ ] **Legal review of provincial rules** (see `COMPLIANCE.md` checklist); flip `verified` per province.
-- [ ] Push notifications (web push / FCM). In-app notifications (live over SSE) and email already work.
-- [ ] Subprocessor list and data-residency assessment.
-- [ ] Union Hub as its own deployment. Today the API mounts its routes when `UNION_DATABASE_URL` is set; the database role and per-local keys already keep employers out.
+- [ ] **Legal review of the first-sign-in agreement** (`apps/api/src/services/privacy/consent.ts`, EN/FR) and the website's privacy page and terms.
+- [ ] **Payroll provider API access**: each city gets API credentials from ADP (Marketplace, with its mutual-TLS certificate), Dayforce or Wagepoint, and FH confirms each provider's import endpoint and layout against the first real send (they're pre-filled from the providers' published addresses).
+- [ ] **Revenu Québec**: FH's RL-1 software authorization number for the year, and the first RL-1 XML run through Revenu Québec's test service.
 
 ## Next
 
-- [ ] Demand generation from facility hours, lesson registrations and bather-load history.
+- [ ] Weather and special events in the forecast (it uses headcounts, opening hours and lesson registrations today).
 
 ## Later
 
 - [ ] Constraint-solver scheduling (OR-Tools CP-SAT) behind the existing `proposeSchedule` types, if large multi-facility terms outgrow the hardest-first planner with its repair pass.
-- [ ] Direct API connections to payroll providers (exports in ADP, Dayforce and Wagepoint import layouts ship today).
 - [ ] FH books: verify the chart of accounts, sales tax treatment and the PAD transaction code with FH's accountant and bank before the first live debit.
 - [ ] Payroll: FH verifies each year's tax tables against CRA's T4127 (all 13 provinces and territories and the federal table ship as unverified starting values); the basic personal amount phase-outs in Manitoba and Yukon.
-- [ ] Quebec: RL-1 in Revenu Québec's XML format; tracking eligible training spending against the workforce skills contribution.
 
 ## Done
 
@@ -52,6 +50,15 @@
 - Payroll problems and warnings in English and French; printable PDF of a person's records; encrypted employee document uploads; fingerprints of what was signed on discipline records.
 - Scheduling assistant across several facilities: hardest-to-fill shifts first, repair pass, travel time between sites, each shift under its own province's rules.
 - Job postings server-rendered with JobPosting structured data, robots.txt and sitemap per city; a nonce-based script policy (CSP) on every page.
+
+- Push notifications on phones and computers (web push), installable app, location only at clock-in and during working-alone sessions you start.
+- Subprocessor list and data-residency assessment (`SUBPROCESSORS.md`).
+- First-sign-in information and consent agreement: separate notification and location choices, a typed name and signature, stored with fingerprints of the text and signature; the API refuses other requests until it's signed; the Dev console lists, exports and certifies each one.
+- Demand forecast from bather-load history, facility opening hours (with a minimum on deck) and lesson registrations, with draft open shifts for the gaps.
+- Quebec: RL-1 slips as Revenu Québec XML; workforce skills training spending log, reducing the WSDRF owed.
+- Payroll in the app, or with ADP, Dayforce or Wagepoint over their API (sealed credentials, connection test, send and history), with the file download kept as the fallback.
+- Union Hub as its own service (`UNION_HUB_MODE=separate`): the main API then holds no union credentials.
+- Copyright notices in the app and on the website.
 
 ## Deliberately out of scope
 
