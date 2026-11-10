@@ -110,3 +110,38 @@ END $$;
 -- The full data export reads whole tables, so the cap allows a couple of minutes.
 ALTER ROLE flexcity_app SET statement_timeout = '120s';
 ALTER ROLE flexcity_app SET idle_in_transaction_session_timeout = '3min';
+
+-- FH's own records about each city (billing, debits, support visits, sign-in challenges, the Dev
+-- console log) are read across cities by FH's billing and the Dev console, which run with no city
+-- chosen. Inside a city's transaction they show that city's rows only, so a city's request can
+-- never reach another city's invoices or support visits, even through a coding mistake.
+DO $$
+DECLARE
+  t text;
+  fh_tables text[] := ARRAY['BillingAccount', 'Invoice', 'PadAgreement', 'PadDebit', 'SupportSession', 'WebAuthnChallenge', 'PlatformAudit'];
+BEGIN
+  FOREACH t IN ARRAY fh_tables LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS city_or_fh ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY city_or_fh ON %I TO flexcity_app
+         USING (app_current_tenant() IS NULL OR "tenantId" = app_current_tenant())
+         WITH CHECK (app_current_tenant() IS NULL OR "tenantId" = app_current_tenant())', t);
+  END LOOP;
+END
+$$;
+-- Invoice lines and payments follow their invoice.
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['InvoiceLine', 'InvoicePayment'] LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS city_or_fh ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY city_or_fh ON %I TO flexcity_app
+         USING (app_current_tenant() IS NULL OR EXISTS (SELECT 1 FROM "Invoice" i WHERE i.id = "invoiceId" AND i."tenantId" = app_current_tenant()))
+         WITH CHECK (app_current_tenant() IS NULL OR EXISTS (SELECT 1 FROM "Invoice" i WHERE i.id = "invoiceId" AND i."tenantId" = app_current_tenant()))', t);
+  END LOOP;
+END
+$$;

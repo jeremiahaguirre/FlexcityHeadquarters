@@ -43,3 +43,21 @@ Layered, so no single slip opens the database:
 5. **Attack tests** (`apps/api/test/integration/sqlInjection.test.ts`) throw the classic payloads at
    sign-in, the organization header, path parameters, search and the enquiry form, and check the
    database role's limits directly.
+
+## One city never sees another
+
+- **Row-level security** on every table that holds a city's rows: inside a city's request the
+  database returns and accepts that city's rows only, and with no city chosen, none. FH's own
+  billing and Dev console tables (invoices, debits, support visits) show a city only its own rows
+  too; only FH's billing and console, which run with no city chosen, read across cities.
+- **Every request** carries a sign-in bound to one city; using it at another city's address is
+  refused. Live notifications are matched on both the person and the city and carry only an id.
+- **Checked in CI** (`apps/api/test/integration/crossCity.test.ts`): every table with a city's rows
+  must have row-level security and a policy; every API route is called as one city's HR
+  administrator and lifeguard with the other city's record ids, and fails if anything of the other
+  city comes back or changes.
+- **The only thing shared is anonymous:** benchmarks (`/manage/benchmarks`) compare a city with
+  others only when it opts in, from cities that opted in, as quartiles, and only when at least five
+  cities contribute; no city, person or count of people is identifiable. A city that opts out
+  neither contributes nor sees them.
+
