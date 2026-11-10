@@ -1334,7 +1334,8 @@
         "SENT": "Envoyée",
         "FAILED": "Refusée"
       },
-      "demo": "Les connexions aux fournisseurs ne sont pas offertes dans la démo."
+      "demo": "Les connexions aux fournisseurs ne sont pas offertes dans la démo.",
+      "privateKeyPlaceholder": "Collez la clé privée PEM"
     },
     "runKind": "Type de paie",
     "runKindHint": "Hors cycle : seulement les paiements ponctuels que vous ajoutez (une paie de primes, la paie finale, une correction), à côté de la paie régulière.",

@@ -1334,7 +1334,8 @@
         "SENT": "Sent",
         "FAILED": "Refused"
       },
-      "demo": "Provider connections aren’t available in the demo."
+      "demo": "Provider connections aren’t available in the demo.",
+      "privateKeyPlaceholder": "Paste the PEM private key"
     },
     "runKind": "Kind of run",
     "runKindHint": "Off-cycle: only the one-time payments you add (a bonus run, final pay, a correction), beside the regular run.",

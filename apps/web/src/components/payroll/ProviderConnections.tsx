@@ -190,7 +190,7 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
                     <Field label={t('payroll.provider.adpBatchId')}>{(p) => <Input {...p} name="batchId" maxLength={10} defaultValue={view.adp?.batchId ?? ''} />}</Field>
                   </div>
                   <Field label={t('payroll.connect.certificate')} hint={secretHint ?? t('payroll.connect.certificateHint')}>{(p) => <Textarea {...p} name="certificate" rows={3} required={!conn} placeholder="-----BEGIN CERTIFICATE-----" className="font-mono text-caption" />}</Field>
-                  <Field label={t('payroll.connect.privateKey')} hint={secretHint}>{(p) => <Textarea {...p} name="privateKey" rows={3} required={!conn} placeholder="-----BEGIN PRIVATE KEY-----" className="font-mono text-caption" />}</Field>
+                  <Field label={t('payroll.connect.privateKey')} hint={secretHint}>{(p) => <Textarea {...p} name="privateKey" rows={3} required={!conn} placeholder={t('payroll.connect.privateKeyPlaceholder')} className="font-mono text-caption" />}</Field>
                 </>
               ) : provider === 'dayforce' ? (
                 <div className="grid gap-4 sm:grid-cols-2">
