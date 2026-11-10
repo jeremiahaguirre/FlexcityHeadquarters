@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
@@ -12,6 +12,9 @@ import { SignedXml } from 'xml-crypto';
 import { createApp } from '../../src/app.js';
 import { hashPassword, signAccessToken, verifyAccessToken } from '../../src/auth/tokens.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
+
+// The OIDC client secret is sealed with the city's key.
+process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
 
 const server = createApp();
 const SUB = 'ssocity';
