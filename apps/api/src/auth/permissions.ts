@@ -78,6 +78,7 @@ export const PERMISSIONS = [
   'injury.manage', // workers' injuries and reports to the compensation board
   'expenses.self', // claim expenses and mileage
   'expenses.approve', // approve expense and mileage claims (their department)
+  'policies.manage', // publish policies staff read and sign, and see who has
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -139,6 +140,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'fleet.manage',
     'injury.manage',
     'expenses.approve',
+    'policies.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',

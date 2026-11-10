@@ -29,6 +29,7 @@ import { CalendarFeedCard } from '@/components/device/CalendarFeedCard';
 import { KioskPinCard } from '@/components/kiosk/KioskCards';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
 import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
+import { MyPolicies } from '@/components/hr/Policies';
 
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
 
@@ -189,6 +190,7 @@ export default function ProfilePage() {
         </Card>
 
         <EmergencyContactsCard path="/api/me/emergency-contacts" own />
+        <MyPolicies />
 
         <Card>
           <CardHeader title={t('profile.password')} />

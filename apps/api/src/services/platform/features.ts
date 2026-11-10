@@ -25,7 +25,7 @@ export const FEATURES = {
   incidents: { default: true, permissions: ['incidents.create', 'incidents.read'] },
   discipline: { default: true, permissions: ['discipline.read', 'discipline.write'] },
   /** Leave balances, performance reviews, training records and grievances. */
-  hrSuite: { default: true, permissions: ['leave.manage', 'performance.manage', 'training.manage', 'grievances.manage'] },
+  hrSuite: { default: true, permissions: ['leave.manage', 'performance.manage', 'training.manage', 'grievances.manage', 'policies.manage'] },
   reliability: { default: true, permissions: ['reliability.read', 'reliability.write'] },
   payroll: { default: true, permissions: ['payroll.export', 'payroll.approve', 'benefits.manage', 'accounting.manage'] },
   jobs: { default: true, permissions: ['jobs.manage'] },

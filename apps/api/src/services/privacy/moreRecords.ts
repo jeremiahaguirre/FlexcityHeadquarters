@@ -3,10 +3,11 @@ import type { Tx } from '../../lib/db.js';
 
 export async function moreRecords(tx: Tx, userId: string) {
   const w = { where: { userId } };
-  const [emergencyContacts, lieuAdjustments, expenseClaims] = await Promise.all([
+  const [emergencyContacts, lieuAdjustments, expenseClaims, policiesSigned] = await Promise.all([
     tx.emergencyContact.findMany({ ...w, select: { name: true, relationship: true, phone: true, altPhone: true, priority: true, updatedAt: true } }),
     tx.lieuAdjustment.findMany({ ...w, select: { hours: true, note: true, createdAt: true } }),
     tx.expenseClaim.findMany({ ...w, select: { title: true, status: true, total: true, submittedAt: true, decidedAt: true, decisionNote: true, items: { select: { date: true, category: true, description: true, amount: true, km: true } } } }),
+    tx.policyAck.findMany({ ...w, select: { signedName: true, signedAt: true, textSha256: true, policy: { select: { title: true, version: true } } } }),
   ]);
-  return { emergencyContacts, timeInLieuCorrections: lieuAdjustments, expenseClaims };
+  return { emergencyContacts, timeInLieuCorrections: lieuAdjustments, expenseClaims, policiesSigned };
 }

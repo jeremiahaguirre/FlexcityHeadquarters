@@ -1,12 +1,13 @@
 'use client';
 
-import { Banknote, Bandage, Briefcase, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, DoorOpen, GraduationCap, HeartPulse, type LucideIcon, Scale, UserCheck, Users } from 'lucide-react';
+import { FileSignature, Banknote, Bandage, Briefcase, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, DoorOpen, GraduationCap, HeartPulse, type LucideIcon, Scale, UserCheck, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GrievancesPanel } from '@/components/hr/Grievances';
 import { LeavePanel } from '@/components/hr/LeaveBalances';
+import { PoliciesPanel } from '@/components/hr/Policies';
 import { LieuBalances } from '@/components/payroll/BankedTime';
 import { OffboardingPanel } from '@/components/hr/Offboarding';
 import { ReviewsPanel } from '@/components/hr/Reviews';
@@ -19,7 +20,7 @@ import type { HrOverview } from '@/lib/hr';
 import { useSession } from '@/lib/session';
 import { useQuery } from '@/lib/useQuery';
 
-const TABS = ['overview', 'leave', 'reviews', 'labour', 'offboarding'] as const;
+const TABS = ['overview', 'leave', 'reviews', 'policies', 'labour', 'offboarding'] as const;
 type Tab = (typeof TABS)[number];
 
 export default function HrPage() {
@@ -42,7 +43,7 @@ function HrInner() {
     <div className="grid gap-6">
       {tab !== 'overview' ? <PageHeader title={t('hr.title')} description={t('hr.description')} /> : null}
       {tab !== 'overview' ? tabs : null}
-      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <div className="grid gap-6"><LeavePanel canEdit /><LieuBalances /></div> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
+      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <div className="grid gap-6"><LeavePanel canEdit /><LieuBalances /></div> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'policies' ? <PoliciesPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
     </div>
   );
 }
@@ -66,6 +67,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
     { key: 'benefits', icon: HeartPulse, href: '/manage/benefits', show: can('benefits.manage') },
     { key: 'leave', icon: CalendarClock, tab: 'leave', show: can('leave.manage') },
     { key: 'performance', icon: ClipboardCheck, tab: 'reviews', show: can('performance.manage'), todo: d.reviewsLate ? t('hr.stat.reviewsLate', { count: d.reviewsLate }) : null },
+    { key: 'policies', icon: FileSignature, tab: 'policies', show: can('policies.manage') },
     { key: 'training', icon: GraduationCap, href: '/manage/training', show: can('training.manage'), todo: d.trainingDue ? t('hr.stat.trainingDue', { count: d.trainingDue }) : null },
     { key: 'health', icon: Bandage, href: '/manage/injuries', show: can('injury.manage'), todo: d.openClaims ? t('hr.stat.openClaims', { count: d.openClaims }) : null },
     { key: 'labour', icon: Scale, tab: 'labour', show: can('grievances.manage'), todo: d.openGrievances ? t('hr.stat.grievances', { count: d.openGrievances }) : null },

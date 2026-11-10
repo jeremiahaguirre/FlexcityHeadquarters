@@ -304,7 +304,8 @@
     "trade_denied": "Your shift trade wasn't approved.",
     "expense_submitted": "{{name}} submitted an expense claim.",
     "expense_approved": "Your expense claim “{{title}}” was approved. It'll be paid on your next pay.",
-    "expense_rejected": "Your expense claim “{{title}}” wasn't approved."
+    "expense_rejected": "Your expense claim “{{title}}” wasn't approved.",
+    "policy_to_sign": "Please read and sign: {{title}}."
   },
   "today": {
     "morning": "Good morning",
@@ -4053,7 +4054,8 @@
       "leave": "Leave",
       "reviews": "Performance",
       "labour": "Labour relations",
-      "offboarding": "Offboarding"
+      "offboarding": "Offboarding",
+      "policies": "Policies"
     },
     "areas": {
       "records": "Employee records",
@@ -4066,7 +4068,8 @@
       "health": "Health and safety",
       "labour": "Labour relations",
       "relations": "Employee relations",
-      "offboarding": "Offboarding"
+      "offboarding": "Offboarding",
+      "policies": "Policies to read and sign"
     },
     "stat": {
       "staff_one": "{{count}} active employee",
@@ -5320,5 +5323,49 @@
     "rateAfter": "Rate after it (¢/km)",
     "tier": "Yearly threshold (km)",
     "receiptOver": "Receipt needed above ($)"
+  },
+  "policies": {
+    "banner_one": "You have a policy to read and sign.",
+    "banner_other": "You have {{count}} policies to read and sign.",
+    "title": "Policies",
+    "help": "Policies your employer asks you to read and sign. Your signature records your name and the exact text you read.",
+    "version": "version {{n}}",
+    "dueBy": "Due {{date}}",
+    "readSign": "Read and sign",
+    "signedOn": "Signed {{date}}",
+    "typeName": "Type your full name to sign",
+    "typeNameHint": "By signing you confirm you've read and understood this policy.",
+    "sign": "Sign",
+    "signedOk": "Signed. Thank you.",
+    "hrHelp": "Publish a policy for everyone or for some positions. Each person reads and signs it; you see who hasn't. A revision is a new version everyone signs again.",
+    "new": "New policy",
+    "noneTitle": "No policies yet",
+    "noneBody": "Publish your safety plan, code of conduct or respectful-workplace policy for staff to read and sign.",
+    "forPositions_one": "{{count}} position",
+    "forPositions_other": "{{count}} positions",
+    "forEveryone": "Everyone",
+    "progress": "{{signed}} of {{of}} signed",
+    "whoSigned": "Who has signed",
+    "revise": "Revise",
+    "retire": "Retire",
+    "retired": "Policy retired",
+    "reviseTitle": "Revise policy",
+    "reviseHelp": "Publishing a revision retires this version; everyone it's for signs the new one.",
+    "titleField": "Title",
+    "text": "Policy text",
+    "textHint": "Paste the full text. It's shown exactly as written.",
+    "who": "Who signs it",
+    "everyone": "Everyone",
+    "dueDays": "Days to sign",
+    "dueDaysHint": "From publishing, or from their start date for people hired later.",
+    "publish": "Publish",
+    "publishRevision": "Publish revision",
+    "published": "Policy published; people were notified",
+    "revised": "New version published",
+    "waiting_one": "{{count}} still to sign",
+    "waiting_other": "{{count}} still to sign",
+    "signedCount_one": "{{count}} signed",
+    "signedCount_other": "{{count}} signed",
+    "overdue": "Overdue"
   }
 }

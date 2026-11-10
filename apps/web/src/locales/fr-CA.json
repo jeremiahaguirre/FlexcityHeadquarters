@@ -304,7 +304,8 @@
     "trade_denied": "Votre échange de quarts n’a pas été approuvé.",
     "expense_submitted": "{{name}} a soumis une demande de remboursement.",
     "expense_approved": "Votre demande « {{title}} » est approuvée. Elle sera payée sur votre prochaine paie.",
-    "expense_rejected": "Votre demande « {{title}} » n’a pas été approuvée."
+    "expense_rejected": "Votre demande « {{title}} » n’a pas été approuvée.",
+    "policy_to_sign": "À lire et à signer : {{title}}."
   },
   "today": {
     "morning": "Bonjour",
@@ -4053,7 +4054,8 @@
       "leave": "Congés",
       "reviews": "Rendement",
       "labour": "Relations de travail",
-      "offboarding": "Départs"
+      "offboarding": "Départs",
+      "policies": "Politiques"
     },
     "areas": {
       "records": "Dossiers des employés",
@@ -4066,7 +4068,8 @@
       "health": "Santé et sécurité",
       "labour": "Relations de travail",
       "relations": "Relations avec les employés",
-      "offboarding": "Départs"
+      "offboarding": "Départs",
+      "policies": "Politiques à lire et signer"
     },
     "stat": {
       "staff_one": "{{count}} employé actif",
@@ -5320,5 +5323,49 @@
     "rateAfter": "Taux ensuite (¢/km)",
     "tier": "Seuil annuel (km)",
     "receiptOver": "Reçu exigé au-delà de ($)"
+  },
+  "policies": {
+    "banner_one": "Vous avez une politique à lire et à signer.",
+    "banner_other": "Vous avez {{count}} politiques à lire et à signer.",
+    "title": "Politiques",
+    "help": "Les politiques que votre employeur vous demande de lire et de signer. Votre signature consigne votre nom et le texte exact que vous avez lu.",
+    "version": "version {{n}}",
+    "dueBy": "À signer d’ici le {{date}}",
+    "readSign": "Lire et signer",
+    "signedOn": "Signée le {{date}}",
+    "typeName": "Tapez votre nom complet pour signer",
+    "typeNameHint": "En signant, vous confirmez avoir lu et compris cette politique.",
+    "sign": "Signer",
+    "signedOk": "Signée. Merci.",
+    "hrHelp": "Publiez une politique pour tout le monde ou pour certains postes. Chaque personne la lit et la signe; vous voyez qui ne l’a pas fait. Une révision est une nouvelle version que tout le monde signe de nouveau.",
+    "new": "Nouvelle politique",
+    "noneTitle": "Aucune politique pour l’instant",
+    "noneBody": "Publiez votre plan de sécurité, votre code de conduite ou votre politique sur le respect en milieu de travail pour que le personnel les lise et les signe.",
+    "forPositions_one": "{{count}} poste",
+    "forPositions_other": "{{count}} postes",
+    "forEveryone": "Tout le monde",
+    "progress": "{{signed}} sur {{of}} ont signé",
+    "whoSigned": "Qui a signé",
+    "revise": "Réviser",
+    "retire": "Retirer",
+    "retired": "Politique retirée",
+    "reviseTitle": "Réviser la politique",
+    "reviseHelp": "Publier une révision retire cette version; toutes les personnes visées signent la nouvelle.",
+    "titleField": "Titre",
+    "text": "Texte de la politique",
+    "textHint": "Collez le texte complet. Il est affiché tel quel.",
+    "who": "Qui la signe",
+    "everyone": "Tout le monde",
+    "dueDays": "Jours pour signer",
+    "dueDaysHint": "À partir de la publication, ou de l’entrée en poste pour les personnes embauchées plus tard.",
+    "publish": "Publier",
+    "publishRevision": "Publier la révision",
+    "published": "Politique publiée; les personnes ont été avisées",
+    "revised": "Nouvelle version publiée",
+    "waiting_one": "{{count}} doit encore signer",
+    "waiting_other": "{{count}} doivent encore signer",
+    "signedCount_one": "{{count}} a signé",
+    "signedCount_other": "{{count}} ont signé",
+    "overdue": "En retard"
   }
 }
