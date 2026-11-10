@@ -15,7 +15,8 @@ import { type AuthContext, authOf, requireFeature, requirePermission, requireRec
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
-import { type BankLink, checkPgpKey, linkView, normalizeFingerprint, sealCredential, testBankLink } from '../services/payroll/bankLink.js';
+import { linkView, testBankLink } from '../services/payroll/bankLink.js';
+import { bankLinkBody, buildBankLink } from '../services/payroll/setup.js';
 import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
@@ -250,36 +251,12 @@ payrollRouter.put(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    const b = z
-      .object({
-        host: z.string().trim().min(3).max(253).regex(/^[A-Za-z0-9.-]+$/, 'Enter the bank’s server name, e.g. sftp.yourbank.com.'),
-        port: z.number().int().min(1).max(65535).default(22),
-        username: z.string().trim().min(1).max(100),
-        remoteDir: z.string().trim().min(1).max(200).startsWith('/'),
-        hostKeySha256: z.string().trim().regex(/^(SHA256:)?[A-Za-z0-9+/]{43}=?$/, 'Paste the server’s SHA256 fingerprint from your bank, e.g. SHA256:abc…'),
-        pgpPublicKey: z.string().trim().max(20_000).nullable().optional(),
-        autoSend: z.boolean().default(false),
-        password: z.string().min(1).max(200).optional(),
-        privateKey: z.string().min(50).max(20_000).optional(),
-      })
-      .parse(req.body);
+    const b = bankLinkBody.parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
       requirePasskey(a, settings);
-      const prev = settings.bank;
-      const secret = b.privateKey ?? b.password;
-      if (!secret && !prev) throw new HttpError(400, 'BANK_CREDENTIAL', 'Enter the password or private key your bank gave you.');
-      const link: BankLink = {
-        host: b.host,
-        port: b.port,
-        username: b.username,
-        remoteDir: b.remoteDir,
-        hostKeySha256: normalizeFingerprint(b.hostKeySha256),
-        autoSend: b.autoSend,
-        ...(b.pgpPublicKey ? { pgpPublicKey: b.pgpPublicKey, pgpFingerprint: await checkPgpKey(b.pgpPublicKey) } : {}),
-        credentialKind: secret ? (b.privateKey ? 'privateKey' : 'password') : prev!.credentialKind,
-        credential: secret ? await sealCredential(a.tenantId, secret) : prev!.credential,
-      };
+      const { link, credentialChanged } = await buildBankLink(a.tenantId, b, settings.bank);
+      const secret = credentialChanged;
       await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify({ ...settings, bank: link })) } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank_connection', entity: 'Tenant', entityId: a.tenantId, after: { ...linkView(link), credentialChanged: !!secret } });
       return link;
