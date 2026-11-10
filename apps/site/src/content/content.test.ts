@@ -3,6 +3,7 @@ import { demoLink } from '../lib/site';
 import { copy } from './copy';
 import { ARTICLES } from './help';
 import { legalDoc } from './legal';
+import { LEVELS, PRIVATE, PRIVATE_MODULES, PUBLIC, SIZE, UNION_EXTRA } from './pricing';
 
 /** Same keys and array lengths in both languages, and no empty strings. */
 function shape(v: unknown, path = ''): string[] {
@@ -40,5 +41,23 @@ describe('site content', () => {
     const known = ['STAFF', 'EMPLOYEE', 'AQUATIC_SUPERVISOR', 'HR_ADMIN', 'FRONT_DESK', 'UNION_STEWARD'];
     // The Dev console is FH's own tool: never on the public website or demo.
     for (const r of copy('en').demo.roles) expect(known).toContain(r.id);
+  });
+});
+
+describe('prices', () => {
+  it('match the app’s plan catalogue', async () => {
+    const path = '../../../api/src/services/billing/catalog.ts';
+    const app = (await import(/* @vite-ignore */ path)) as { catalog: () => { public: Record<string, { listCents: number; quoted: boolean; staffPerFacility: number | null; extraStaffCents: number; modules: string[] }>; modules: Record<string, { privateCents: number }>; private: { coreCents: number; includedUsers: number; userCents: number }; sizePercent: Record<string, number>; publicExtras: Record<string, number> } };
+    const cat = app.catalog();
+    for (const l of LEVELS) {
+      expect(cat.public[l], l).toMatchObject({ listCents: PUBLIC[l].price * 100, quoted: PUBLIC[l].quoted, staffPerFacility: PUBLIC[l].staff, extraStaffCents: PUBLIC[l].extraStaff * 100 });
+      expect([...cat.public[l]!.modules].sort(), l).toEqual([...PUBLIC[l].modules].sort());
+    }
+    for (const [m, price] of Object.entries(PRIVATE_MODULES)) expect(cat.modules[m]!.privateCents, m).toBe(price * 100);
+    expect(cat.private).toEqual({ coreCents: PRIVATE.core * 100, includedUsers: PRIVATE.includedUsers, userCents: PRIVATE.perUser * 100 });
+    expect(cat.sizePercent).toEqual({ 1: SIZE.seasonal, 2: SIZE.standard, 3: SIZE.major });
+    expect(cat.publicExtras.union).toBe(UNION_EXTRA * 100);
+    // Every module listed on the page, in both languages.
+    for (const lang of ['en', 'fr'] as const) expect(copy(lang).plans.modules.map((m) => m.key).sort()).toEqual(Object.keys(PRIVATE_MODULES).sort());
   });
 });

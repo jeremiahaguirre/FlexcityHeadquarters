@@ -42,7 +42,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
       description: c.meta.description,
       inLanguage: ['en-CA', 'fr-CA'],
       url: `${SITE_URL}/${params.lang}/`,
-      offers: { '@type': 'AggregateOffer', priceCurrency: 'CAD', lowPrice: 99, highPrice: 5000, offerCount: 4, url: `${SITE_URL}/${params.lang}/plans/` },
+      offers: { '@type': 'AggregateOffer', priceCurrency: 'CAD', lowPrice: 99, highPrice: 4500, offerCount: 5, url: `${SITE_URL}/${params.lang}/plans/` },
     },
   ];
   return (

@@ -6,6 +6,20 @@ import { type Lang, copy } from '@/content/copy';
 import { cn } from '@/lib/cn';
 import { reveal } from '@/lib/reveal';
 import { pageMeta } from '@/lib/seo';
+import { LEVELS, type Module, PRIVATE, PRIVATE_MODULES, PUBLIC, UNION_EXTRA, has } from '@/content/pricing';
+
+const Yes = ({ label }: { label: string }) => (
+  <span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-ok-bg text-ok">
+    <Check className="h-4 w-4" aria-hidden="true" />
+    <span className="sr-only">{label}</span>
+  </span>
+);
+const No = ({ label }: { label: string }) => (
+  <span className="text-line">
+    <Minus className="mx-auto h-4 w-4" aria-hidden="true" />
+    <span className="sr-only">{label}</span>
+  </span>
+);
 
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
@@ -54,30 +68,38 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
         </div>
       </section>
 
-      {/* Plans */}
+      {/* Public-sector plans */}
       <Section className="wash">
-        <SectionHead n="01" eyebrow={c.plansKicker} title={c.municipalTitle} lead={c.municipalLead} />
-        <div className="grid gap-5 lg:grid-cols-3">
-          {c.tiers.map((t, i) => {
-            const featured = 'featured' in t && t.featured;
+        <SectionHead n="01" eyebrow={c.plansKicker} title={c.publicTitle} lead={c.publicLead} />
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          {LEVELS.map((key, i) => {
+            const t = c.levels[i]!;
+            const p = PUBLIC[key];
+            const featured = key === 'BUSINESS';
             return (
-              <article key={t.name} {...reveal(i)} className={cn('lift relative flex flex-col rounded-3xl border bg-panel p-7 shadow-card md:p-8', featured ? 'card-glow border-transparent shadow-lift' : 'border-line')}>
-                <h3 className="text-heading">{t.name}</h3>
+              <article key={key} {...reveal(i)} className={cn('lift relative flex flex-col rounded-3xl border bg-panel p-7 shadow-card', featured ? 'card-glow border-transparent shadow-lift' : 'border-line')}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-heading">{t.name}</h3>
+                  {featured ? <span className="rounded-full bg-brand px-2.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-wide text-brand-contrast">{c.popular}</span> : null}
+                  {p.quoted ? <span className="rounded-full bg-new-bg px-2.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-wide text-new">{c.quoted}</span> : null}
+                </div>
                 <p className="mt-2 min-h-[3rem] text-small leading-6 text-muted">{t.desc}</p>
-                <p className="mt-6 text-label uppercase tracking-[0.14em] text-muted">{c.startingAt}</p>
+                <p className="mt-5 text-label uppercase tracking-[0.14em] text-muted">{p.quoted ? c.from : '\u00a0'}</p>
                 <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-display text-[3rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums md:text-[3.5rem]">{money(t.price)}</span>
+                  <span className="font-display text-[2.75rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums">{money(p.price)}</span>
                   <span className="text-small text-muted">{c.perFacility}</span>
                 </p>
-                <ul className="mt-7 grid gap-3 border-t border-line pt-6 text-small">
-                  {c.tierIncludes.map((p) => (
-                    <li key={p} className="flex gap-2.5">
+                <p className="mt-4 text-small font-semibold">{p.staff === null ? c.staffUnlimited : c.staffIncluded.replace('{n}', String(p.staff))}</p>
+                <p className="text-caption text-muted">{p.staff === null ? c.noExtra : c.extraStaff.replace('{price}', money(p.extraStaff))}</p>
+                <ul className="mt-6 grid gap-3 border-t border-line pt-5 text-small">
+                  {t.highlights.map((h) => (
+                    <li key={h} className="flex gap-2.5">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
-                      {p}
+                      {h}
                     </li>
                   ))}
                 </ul>
-                <Link href={quote} className={cn('mt-8', featured ? btnBrand : btnLine)}>
+                <Link href={`${quote}&plan=${key}`} className={cn('mt-auto', featured ? btnBrand : btnLine)} style={{ marginTop: '2rem' }}>
                   {c.cta}
                   <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
                 </Link>
@@ -85,29 +107,30 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
             );
           })}
         </div>
-        <p className="mt-5 text-small text-muted">{c.municipalNote}</p>
+        <div className="mt-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-line bg-panel/70 p-6">
+            <h3 className="text-subheading">{c.sizeTitle}</h3>
+            <p className="mt-2 text-small leading-6 text-muted">{c.sizeBody}</p>
+          </div>
+          <div className="rounded-2xl border border-line bg-panel/70 p-6">
+            <h3 className="text-subheading">{c.staffTitle}</h3>
+            <p className="mt-2 text-small leading-6 text-muted">{c.staffBody}</p>
+          </div>
+        </div>
+        <p className="mt-5 text-small text-muted">{c.quotedNote}</p>
 
         {/* Private sector */}
-        <article {...reveal()} className="mt-12 grid gap-8 rounded-3xl border border-line bg-panel p-7 shadow-card md:p-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+        <article {...reveal()} className="mt-12 grid gap-8 rounded-3xl border border-line bg-panel p-7 shadow-card md:p-10 lg:grid-cols-[1fr_1.3fr]">
           <div>
-            <Kicker n="02">{c.privateTitle}</Kicker>
-            <p className="max-w-lg text-body text-muted">{c.privateLead}</p>
+            <Kicker n="02">{c.privateKicker}</Kicker>
+            <h3 className="text-heading [text-wrap:balance]">{c.privateTitle}</h3>
+            <p className="mt-3 max-w-lg text-body text-muted">{c.privateLead}</p>
             <p className="mt-6 flex flex-wrap items-baseline gap-x-2">
-              <span className="font-display text-[3rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums md:text-[3.5rem]">{c.privatePrice}</span>
+              <span className="font-display text-[3rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums">{c.privatePrice}</span>
               <span className="text-small text-muted">{c.perMonth}</span>
             </p>
             <p className="mt-2 text-body-strong">{c.privateIncl}</p>
             <p className="text-body text-muted">{c.privateExtra}</p>
-          </div>
-          <div>
-            <ul className="grid gap-3 text-small">
-              {c.privatePoints.map((p) => (
-                <li key={p} className="flex gap-2.5">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
-                  {p}
-                </li>
-              ))}
-            </ul>
             <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
               <Link href={quote} className={btnBrand}>
                 {c.cta}
@@ -118,11 +141,26 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
               </Link>
             </div>
           </div>
+          <div>
+            <h4 className="text-subheading">{c.privateModulesTitle}</h4>
+            <p className="mt-1 text-small text-muted">{c.privateModulesLead}</p>
+            <ul className="mt-4 divide-y divide-line rounded-2xl border border-line">
+              {c.modules.map((m) => (
+                <li key={m.key} className="flex items-start justify-between gap-4 px-4 py-3">
+                  <span className="min-w-0">
+                    <span className="block text-small font-semibold">{m.name}</span>
+                    <span className="block text-caption text-muted">{m.body}</span>
+                  </span>
+                  <span className="shrink-0 text-small font-semibold tabular-nums">+{money(PRIVATE_MODULES[m.key as keyof typeof PRIVATE_MODULES])}<span className="font-normal text-muted"> {c.perMonth}</span></span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </article>
       </Section>
 
-      {/* What every plan includes */}
-      <Section id="included" tone="panel">
+      {/* The core, in every plan */}
+      <Section tone="panel">
         <SectionHead n="03" eyebrow={c.baseKicker} title={c.baseTitle} lead={c.baseLead} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {c.base.map((g, i) => (
@@ -149,106 +187,80 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
         </div>
       </Section>
 
-      {/* Add-ons */}
-      <Section tone="night">
-        <SectionHead n="04" eyebrow={c.addOnsKicker} title={c.addOnsTitle} lead={c.addOnsLead} dark />
-        <div className="grid gap-5 lg:grid-cols-3">
-          {c.addOns.map((a, i) => (
-            <article key={a.name} {...reveal(i)} className="glass flex flex-col rounded-3xl p-7 md:p-8">
-              <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-[#5EEAD4]">
-                <Icon name={a.icon} className="h-5 w-5" />
-              </span>
-              <h3 className="mt-5 text-heading text-white">{a.name}</h3>
-              <p className="mt-2 flex flex-wrap items-baseline gap-x-2">
-                <span className="text-dawn font-display text-[2.5rem] font-extrabold leading-none tracking-[-0.03em] tabular-nums">{a.price}</span>
-                <span className="text-small text-white/75">{a.unit}</span>
-              </p>
-              <p className="mt-4 text-small leading-6 text-white/80">{a.body}</p>
-              <ul className="mt-5 grid gap-3 border-t border-white/15 pt-5 text-small text-white/90">
-                {a.items.map((it) => (
-                  <li key={it} className="flex gap-2.5">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#C5F23A]" aria-hidden="true" />
-                    {it}
-                  </li>
-                ))}
-              </ul>
-              <Link href={quote} className={cn(btn, 'mt-auto border border-white/30 bg-white/5 text-white hover:bg-white/15')} style={{ marginTop: '2rem' }}>
-                {c.cta}
-                <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
-              </Link>
-            </article>
-          ))}
-        </div>
-      </Section>
-
-      {/* Comparison: a real table on wide screens, a labelled list on phones */}
-      <Section>
-        <SectionHead n="05" eyebrow={c.compareKicker} title={c.compareTitle} lead={c.compareLead} />
-        <div className="hidden overflow-hidden rounded-3xl border border-line bg-panel shadow-card md:block">
-          <table className="w-full border-collapse text-left text-small">
+      {/* Comparison: a real table, scrolling sideways on phones */}
+      <Section id="included">
+        <SectionHead n="04" eyebrow={c.compareKicker} title={c.compareTitle} lead={c.compareLead} />
+        <div className="relative overflow-x-auto rounded-3xl border border-line bg-panel shadow-card">
+          <table className="w-full min-w-[46rem] border-collapse text-left text-small">
             <caption className="sr-only">{c.compareTitle}</caption>
             <thead>
               <tr className="bg-surface">
-                <th scope="col" className="px-7 py-5 text-label uppercase text-muted">{c.compareFeature}</th>
+                <th scope="col" className="px-6 py-5 text-label uppercase text-muted">{c.compareFeature}</th>
                 {c.compareCols.map((col, i) => (
-                  <th key={col} scope="col" className="w-[15%] px-3 py-5 text-center align-bottom">
-                    <span className={cn('block text-body-strong', i === 0 && 'text-brand-text')}>{col}</span>
-                    <span className="mt-0.5 block text-caption font-medium text-muted">{c.compareColNotes[i]}</span>
-                  </th>
+                  <th key={col} scope="col" className={cn('w-[13%] px-3 py-5 text-center align-bottom text-body-strong', i === 1 && 'text-brand-text', i === 4 && 'border-l border-line')}>{col}</th>
                 ))}
               </tr>
             </thead>
+            <tbody>
+              <tr className="border-t border-line">
+                <th scope="row" className="px-6 py-3.5 font-medium">{c.priceRow}</th>
+                {LEVELS.map((l) => <td key={l} className="px-3 py-3.5 text-center font-semibold tabular-nums">{PUBLIC[l].quoted ? `${c.from} ` : ''}{money(PUBLIC[l].price)}</td>)}
+                <td className="border-l border-line px-3 py-3.5 text-center font-semibold tabular-nums">{money(PRIVATE.core)}</td>
+              </tr>
+              <tr className="border-t border-line">
+                <th scope="row" className="px-6 py-3.5 font-medium">{c.staffRow}</th>
+                {LEVELS.map((l) => <td key={l} className="px-3 py-3.5 text-center tabular-nums">{PUBLIC[l].staff ?? c.unlimited}</td>)}
+                <td className="border-l border-line px-3 py-3.5 text-center tabular-nums">{PRIVATE.includedUsers}</td>
+              </tr>
+              <tr className="border-t border-line">
+                <th scope="row" className="px-6 py-3.5 font-medium">{c.extraRow}</th>
+                {LEVELS.map((l) => <td key={l} className="px-3 py-3.5 text-center tabular-nums">{PUBLIC[l].staff === null ? '—' : money(PUBLIC[l].extraStaff)}</td>)}
+                <td className="border-l border-line px-3 py-3.5 text-center tabular-nums">{money(PRIVATE.perUser)}</td>
+              </tr>
+            </tbody>
             {c.compare.map((g) => (
               <tbody key={g.name}>
                 <tr>
-                  <th scope="colgroup" colSpan={5} className="border-t border-line bg-page/70 px-7 py-3 text-label uppercase tracking-[0.12em] text-brand-text">{g.name}</th>
+                  <th scope="colgroup" colSpan={6} className="border-t border-line bg-page/70 px-6 py-3 text-label uppercase tracking-[0.12em] text-brand-text">{g.name}</th>
                 </tr>
-                {g.rows.map((r) => (
-                  <tr key={r.f} className="border-t border-line hover:bg-surface/50">
-                    <th scope="row" className="px-7 py-3.5 font-medium text-ink">{r.f}</th>
-                    {c.compareCols.map((col, i) => (
-                      <td key={col} className={cn('px-3 py-3.5 text-center', i === 0 && 'bg-brand/[0.04]')}>
-                        {r.col === i ? (
-                          <span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-ok-bg text-ok">
-                            <Check className="h-4 w-4" aria-hidden="true" />
-                            <span className="sr-only">{c.included}</span>
-                          </span>
-                        ) : (
-                          <span className="text-line">
-                            <Minus className="mx-auto h-4 w-4" aria-hidden="true" />
-                            <span className="sr-only">{c.notIncluded}</span>
-                          </span>
-                        )}
+                {g.rows.map((r) => {
+                  const m = r.m as Module;
+                  return (
+                    <tr key={r.f} className="border-t border-line hover:bg-surface/50">
+                      <th scope="row" className="px-6 py-3.5 font-medium text-ink">{r.f}</th>
+                      {LEVELS.map((l) => (
+                        <td key={l} className="px-3 py-3.5 text-center">
+                          {has(l, m) ? <Yes label={c.included} /> : m === 'union' ? <span className="text-caption font-semibold tabular-nums">{c.unionExtra.replace('{price}', money(UNION_EXTRA))}</span> : <No label={c.notIncluded} />}
+                        </td>
+                      ))}
+                      <td className="border-l border-line px-3 py-3.5 text-center">
+                        {m === 'core' ? <Yes label={c.privateCore} /> : <span className="text-caption font-semibold tabular-nums">+{money(PRIVATE_MODULES[m])}</span>}
                       </td>
-                    ))}
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             ))}
+            <tbody>
+              <tr>
+                <th scope="colgroup" colSpan={6} className="border-t border-line bg-page/70 px-6 py-3 text-label uppercase tracking-[0.12em] text-brand-text">{c.serviceTitle}</th>
+              </tr>
+              {c.service.map((r) => (
+                <tr key={r.f} className="border-t border-line hover:bg-surface/50">
+                  <th scope="row" className="px-6 py-3.5 font-medium text-ink">{r.f}</th>
+                  {r.on.map((on, i) => (
+                    <td key={i} className={cn('px-3 py-3.5 text-center', i === 4 && 'border-l border-line')}>{on ? <Yes label={c.included} /> : <No label={c.notIncluded} />}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
           </table>
-        </div>
-        <div className="grid gap-5 md:hidden">
-          {c.compare.map((g) => (
-            <section key={g.name} className="overflow-hidden rounded-2xl border border-line bg-panel shadow-card">
-              <h3 className="bg-surface px-5 py-3 text-label uppercase tracking-[0.12em] text-brand-text">{g.name}</h3>
-              <ul className="divide-y divide-line">
-                {g.rows.map((r) => (
-                  <li key={r.f} className="flex items-center justify-between gap-3 px-5 py-3.5">
-                    <span className="text-small font-medium">{r.f}</span>
-                    <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-bold', r.col === 0 ? 'bg-ok-bg text-ok' : r.col === 3 ? 'bg-surface text-ink' : 'bg-new-bg text-new')}>
-                      {c.compareCols[r.col]}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
         </div>
       </Section>
 
       {/* Billing and payment */}
       <Section id="billing" tone="panel">
-        <SectionHead n="06" eyebrow={c.billingKicker} title={c.billingTitle} lead={c.billingLead} />
+        <SectionHead n="05" eyebrow={c.billingKicker} title={c.billingTitle} lead={c.billingLead} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {c.billing.map((b, i) => (
             <article key={b.title} {...reveal(i)} className="rounded-3xl border border-line bg-page/60 p-7">
@@ -291,7 +303,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
       <Section>
         <div className="grid gap-8 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
           <div>
-            <Kicker n="07">{c.billingKicker}</Kicker>
+            <Kicker n="06">{c.billingKicker}</Kicker>
             <h2 className="text-title [text-wrap:balance]">{c.faqTitle}</h2>
             <Link href={`/${params.lang}/faq/`} className="mt-5 inline-flex items-center gap-1.5 text-body font-semibold text-brand-text hover:underline">
               {copy(params.lang).faq.title}
