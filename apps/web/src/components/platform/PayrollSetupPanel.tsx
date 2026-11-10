@@ -98,7 +98,7 @@ export function PayrollSetupPanel({ id }: { id: string }) {
             {field('returnsInstitution', t('payroll.returnsInstitution'), { inputMode: 'numeric', maxLength: 3 })}
             {field('returnsTransit', t('payroll.returnsTransit'), { inputMode: 'numeric', maxLength: 5 })}
             {field('returnsAccount', t('payroll.returnsAccount'), { inputMode: 'numeric', maxLength: 12, autoComplete: 'off' })}
-            <div className="sm:col-span-2"><Button type="submit" loading={busy === 'deposit'}>{t('payrollSetup.saveDeposit')}</Button></div>
+            <div className="sm:col-span-2"><Button type="submit" loading={busy === 'deposit'} className="h-auto min-h-11 whitespace-normal py-2 text-center">{t('payrollSetup.saveDeposit')}</Button></div>
           </form>
         </CardBody>
       </Card>

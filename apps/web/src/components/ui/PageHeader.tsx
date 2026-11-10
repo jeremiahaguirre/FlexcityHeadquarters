@@ -8,7 +8,7 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: Re
         <h1 className="text-title text-ink [text-wrap:balance]">{title}</h1>
         {description ? <p className="mt-2 text-body text-muted">{description}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
   );
 }

@@ -45,6 +45,7 @@ const schema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   BILLING_REMITTANCE: z.string().default('Pay by EFT or cheque. Banking details are on file with your accounts payable team; quote the invoice number.'),
+  BILLING_REMITTANCE_FR: z.string().default('Payez par TEF ou par chèque. Les coordonnées bancaires sont au dossier de votre service des comptes fournisseurs; indiquez le numéro de facture.'),
   /** Local/dev key-encryption key. Production uses AWS KMS (KMS_KEY_ARN). */
   LOCAL_KEK_BASE64: z.string().optional(),
   KMS_KEY_ARN: z.string().optional(),

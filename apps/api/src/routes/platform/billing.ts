@@ -19,6 +19,7 @@ import {
   sendInvoice,
   updateDraft,
   voidInvoice,
+  remittanceFor,
 } from '../../services/billing/invoices.js';
 import { TAX_RATES_AS_OF, TAX_RATES_VERIFIED } from '../../services/billing/tax.js';
 import { billingState } from '../../services/billing/entitlements.js';
@@ -33,7 +34,7 @@ const iso = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
 async function names() {
   const ids = await tenantIds();
-  const rows = await Promise.all(ids.map((id) => withTenant(id, (tx) => tx.tenant.findUnique({ where: { id }, select: { id: true, name: true, subdomain: true } }))));
+  const rows = await Promise.all(ids.map((id) => withTenant(id, (tx) => tx.tenant.findUnique({ where: { id }, select: { id: true, name: true, subdomain: true, defaultLocale: true } }))));
   return new Map(rows.filter(Boolean).map((r) => [r!.id, r!]));
 }
 
@@ -176,7 +177,7 @@ billingRouter.get(
     const orgs = await names();
     res.json({
       ...invoiceView(inv, orgs.get(inv.tenantId)),
-      issuer: { legalName: config().BILLING_LEGAL_NAME, address: config().BILLING_ADDRESS, email: config().BILLING_EMAIL, gstNumber: config().BILLING_GST_NUMBER, qstNumber: config().BILLING_QST_NUMBER, remittance: config().BILLING_REMITTANCE },
+      issuer: { legalName: config().BILLING_LEGAL_NAME, address: config().BILLING_ADDRESS, email: config().BILLING_EMAIL, gstNumber: config().BILLING_GST_NUMBER, qstNumber: config().BILLING_QST_NUMBER, remittance: remittanceFor(orgs.get(inv.tenantId)?.defaultLocale) },
     });
   }),
 );

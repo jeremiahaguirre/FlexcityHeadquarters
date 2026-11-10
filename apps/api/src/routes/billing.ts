@@ -9,7 +9,7 @@ import { config } from '../config.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { catalog, itemStates } from '../services/billing/catalog.js';
 import { planRate } from '../services/billing/pricing.js';
-import { ONLINE_PAYMENT_ACTOR, displayStatus, estimate, recordPayment } from '../services/billing/invoices.js';
+import { ONLINE_PAYMENT_ACTOR, displayStatus, estimate, recordPayment, remittanceFor } from '../services/billing/invoices.js';
 import { createCheckout, onlinePaymentsEnabled, verifyWebhook } from '../services/billing/stripe.js';
 import { activeAgreement, agreementBody, agreementTerms, agreementView, cancelAgreement, createAgreement } from '../services/billing/pad.js';
 import { audit, db, withTenant } from '../lib/db.js';
@@ -60,7 +60,7 @@ billingRouter.get(
         paidCents: i.paidCents,
         balanceCents: i.status === 'SENT' ? i.totalCents - i.paidCents : 0,
       })),
-      payment: { online: onlinePaymentsEnabled(), remittance: config().BILLING_REMITTANCE, payee: config().BILLING_LEGAL_NAME, contact: config().BILLING_EMAIL },
+      payment: { online: onlinePaymentsEnabled(), remittance: remittanceFor(String(req.query.lang ?? 'en-CA')), payee: config().BILLING_LEGAL_NAME, contact: config().BILLING_EMAIL },
       pad: { agreement: pad ? agreementView(pad) : null, terms: agreementTerms(String(req.query.lang ?? 'en-CA')) },
     });
   }),

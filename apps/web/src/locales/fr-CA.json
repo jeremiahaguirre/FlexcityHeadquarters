@@ -1706,7 +1706,10 @@
       "time": "Temps et paie",
       "deck": "Bord de la piscine",
       "people": "Personnel",
-      "communication": "Communication"
+      "communication": "Communication",
+      "programs": "Programmes et inscriptions",
+      "safety": "Sécurité et travail sur le terrain",
+      "other": "Autres"
     },
     "features": {
       "shiftBoard": {
@@ -1792,6 +1795,42 @@
       "benchmarks": {
         "name": "Comparaisons",
         "help": "Comparez des indicateurs anonymes avec les autres villes qui choisissent de partager."
+      },
+      "headcounts": {
+        "name": "Dénombrements",
+        "help": "Nombre de baigneurs sur la plage, utilisé pour les rotations et la prévision."
+      },
+      "hrSuite": {
+        "name": "Suite RH",
+        "help": "Soldes de congés, évaluations du rendement, formation et registre des griefs."
+      },
+      "registration": {
+        "name": "Inscriptions et membres",
+        "help": "Campagnes de cours, ménages, tarifs et réservations d’installations, avec inscription publique."
+      },
+      "coverage": {
+        "name": "Couverture obligatoire",
+        "help": "Des règles comme un opérateur en réfrigération de service à l’aréna, avec un avertissement quand un quart laisse un trou."
+      },
+      "fleet": {
+        "name": "Parc de véhicules",
+        "help": "Permis de conduire, heures de service et inspections avant départ."
+      },
+      "injuryClaims": {
+        "name": "Déclarations de lésions",
+        "help": "Déclarations d’accidents du travail avec l’échéance de chaque commission."
+      },
+      "loneWork": {
+        "name": "Travail isolé",
+        "help": "Vérifications avec escalade, et partage de la position seulement pendant une séance."
+      },
+      "callOuts": {
+        "name": "Rappels d’hiver",
+        "help": "Listes de rappel classées pour les épisodes de neige et de verglas."
+      },
+      "patrols": {
+        "name": "Patrouilles",
+        "help": "Circuits et registres de patrouille pour les normes des routes et trottoirs."
       }
     },
     "positions": "Postes",
@@ -2878,7 +2917,7 @@
       "close": "Terminé",
       "help": "Quand l’installation est ouverte, et le moins de sauveteurs sur la plage à toute heure d’ouverture, quel que soit le nombre de baigneurs. Ajoutez une deuxième plage pour des heures coupées.",
       "closed": "Fermé",
-      "open": "Ouvert ce jour-là",
+      "open": "Ouvrir ce jour",
       "addBlock": "Ajouter des heures",
       "opens": "Ouverture le {{day}}",
       "closes": "Fermeture le {{day}}",
@@ -3964,7 +4003,10 @@
       "benefitsPayable": "Primes d’avantages sociaux à payer",
       "netPayClearing": "Compte de passage de la paie nette (banque)",
       "employerQpip": "Charge RQAP de l’employeur",
-      "quebecPayable": "Revenu Québec à payer (RRQ, RQAP, impôt du Québec)"
+      "quebecPayable": "Revenu Québec à payer (RRQ, RQAP, impôt du Québec)",
+      "ordersPayable": "Ordonnances (tribunal et ARC) à payer",
+      "reimbursements": "Charges de remboursement",
+      "recoveries": "Sommes à recouvrer du personnel"
     }
   },
   "hr": {

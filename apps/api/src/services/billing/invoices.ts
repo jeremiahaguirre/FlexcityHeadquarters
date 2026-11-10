@@ -256,7 +256,7 @@ export async function sendInvoice(id: string) {
           dueDate: isoDay(sent.dueDate!),
           period: `${isoDay(sent.periodStart)} – ${isoDay(sent.periodEnd)}`,
           from: config().BILLING_LEGAL_NAME,
-          remittance: config().BILLING_REMITTANCE,
+          remittance: remittanceFor(tenant.defaultLocale),
           contact: config().BILLING_EMAIL,
           url: appUrl(tenant.subdomain, ''),
           ...(pad ? { padAccount: `${pad.institution}-${pad.transit} •••${pad.accountLast4}` } : {}),
@@ -314,3 +314,6 @@ export function displayStatus(inv: { status: string; dueDate: Date | null; paidC
   if (inv.dueDate && isoDay(inv.dueDate) < isoDay(today)) return 'OVERDUE';
   return inv.paidCents > 0 ? 'PARTIAL' : 'SENT';
 }
+
+/** How to pay by EFT or cheque, in the reader's language. */
+export const remittanceFor = (locale: string | null | undefined) => (locale?.startsWith('fr') ? config().BILLING_REMITTANCE_FR : config().BILLING_REMITTANCE);

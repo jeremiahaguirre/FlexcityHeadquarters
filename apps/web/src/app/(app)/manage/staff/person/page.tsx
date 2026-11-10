@@ -317,6 +317,7 @@ function Person() {
             <div className="flex flex-wrap gap-2">
             <Button
               variant="secondary"
+              className="h-auto min-h-11 whitespace-normal py-2 text-center"
               icon={<FileDown className="h-4 w-4" aria-hidden="true" />}
               loading={busy === 'export'}
               onClick={() =>

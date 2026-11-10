@@ -1706,7 +1706,10 @@
       "time": "Time and pay",
       "deck": "Pool deck",
       "people": "People",
-      "communication": "Communication"
+      "communication": "Communication",
+      "programs": "Programs and registration",
+      "safety": "Safety and field work",
+      "other": "Other"
     },
     "features": {
       "shiftBoard": {
@@ -1792,6 +1795,42 @@
       "benchmarks": {
         "name": "Benchmarks",
         "help": "Compare anonymous measures with other cities that choose to share."
+      },
+      "headcounts": {
+        "name": "Headcounts",
+        "help": "Bather counts on deck, used for rotations and the forecast."
+      },
+      "hrSuite": {
+        "name": "HR suite",
+        "help": "Leave balances, performance reviews, training and the grievance log."
+      },
+      "registration": {
+        "name": "Registration and members",
+        "help": "Lesson campaigns, households, fees and facility bookings, with public sign-up."
+      },
+      "coverage": {
+        "name": "Required coverage",
+        "help": "Rules such as a refrigeration operator on duty at the arena, with warnings when a shift leaves a gap."
+      },
+      "fleet": {
+        "name": "Fleet",
+        "help": "Driver licences, hours of service and pre-trip inspections."
+      },
+      "injuryClaims": {
+        "name": "Injury claims",
+        "help": "Workplace injury reports with each board’s deadline."
+      },
+      "loneWork": {
+        "name": "Working alone",
+        "help": "Check-ins with escalation, and location sharing only while a session runs."
+      },
+      "callOuts": {
+        "name": "Winter call-outs",
+        "help": "Ranked call-out lists for snow and ice events."
+      },
+      "patrols": {
+        "name": "Patrols",
+        "help": "Patrol routes and records for road and sidewalk standards."
       }
     },
     "positions": "Positions",
@@ -3964,7 +4003,10 @@
       "benefitsPayable": "Benefit premiums payable",
       "netPayClearing": "Net pay clearing (bank)",
       "employerQpip": "Employer QPIP expense",
-      "quebecPayable": "Revenu Québec payable (QPP, QPIP, Quebec tax)"
+      "quebecPayable": "Revenu Québec payable (QPP, QPIP, Quebec tax)",
+      "ordersPayable": "Court and CRA orders payable",
+      "reimbursements": "Reimbursements expense",
+      "recoveries": "Amounts recoverable from staff"
     }
   },
   "hr": {

@@ -4,6 +4,7 @@ import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { DemoBanner } from '@/components/DemoBanner';
 import { Providers } from '@/components/Providers';
+import { SkipLink } from '@/components/SkipLink';
 import { ToastProvider } from '@/components/ui/Toast';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
@@ -42,9 +43,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <Providers locale={locale}>
-          <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
-            {t('app.skipToContent')}
-          </a>
+          <SkipLink />
           {DEMO ? <DemoBanner /> : null}
           <ToastProvider dismissLabel={t('common.dismiss')}>
             {children}
