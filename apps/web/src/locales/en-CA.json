@@ -4042,5 +4042,13 @@
     "title": "Jump to",
     "none": "No screen matches that.",
     "profile": "My profile"
+  },
+  "scheme": {
+    "label": "Appearance",
+    "title": "Appearance",
+    "help": "Light, dark, or match your device. Saved on this device.",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "Device"
   }
 }

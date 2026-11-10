@@ -4042,5 +4042,13 @@
     "title": "Aller à",
     "none": "Aucun écran ne correspond.",
     "profile": "Mon profil"
+  },
+  "scheme": {
+    "label": "Apparence",
+    "title": "Apparence",
+    "help": "Clair, sombre, ou comme votre appareil. Enregistré sur cet appareil.",
+    "light": "Clair",
+    "dark": "Sombre",
+    "system": "Appareil"
   }
 }

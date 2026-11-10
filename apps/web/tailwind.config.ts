@@ -4,6 +4,8 @@ import type { Config } from 'tailwindcss';
 // white-labelling needs no rebuild: Tailwind classes resolve to the variables.
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
+  // dark: follows the device unless the person chose light or dark (data-theme on <html>).
+  darkMode: ['variant', ['@media (prefers-color-scheme: dark) { &:not(:where([data-theme=light], [data-theme=light] *)) }', '&:where([data-theme=dark], [data-theme=dark] *)']],
   theme: {
     extend: {
       // Named type styles (FH Typography doc). Use these, never one-off sizes.

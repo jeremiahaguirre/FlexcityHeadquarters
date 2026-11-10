@@ -10,6 +10,7 @@ import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
 import { currentTenant } from '@/lib/tenant';
 import { themeVars } from '@/lib/theme';
 import './globals.css';
+import { SCHEME_SCRIPT } from '@/lib/colorScheme';
 
 // Brand typeface (wordmark + UI). Self-hosted by Next at build time.
 // Self-hosted (SIL OFL, see src/fonts): builds never depend on Google Fonts being reachable.
@@ -32,7 +33,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const t = createI18n(locale).t;
 
   return (
-    <html lang={locale} className={jakarta.variable} style={themeVars(tenant?.themeColors) as CSSProperties}>
+    <html lang={locale} className={jakarta.variable} style={themeVars(tenant?.themeColors) as CSSProperties} suppressHydrationWarning>
+      <head>
+        {/* eslint-disable-next-line react/no-danger */}
+        <script dangerouslySetInnerHTML={{ __html: SCHEME_SCRIPT }} />
+      </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <Providers locale={locale}>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">

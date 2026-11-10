@@ -2,6 +2,7 @@
 
 import { BookOpen, Building2, KeyRound, Landmark, LogOut, Receipt, Scale, Terminal } from 'lucide-react';
 import { CommandMenu, type Destination } from '@/components/shell/CommandMenu';
+import { SchemePicker } from '@/components/shell/SchemePicker';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -68,6 +69,7 @@ function SignedIn({ children }: { children: ReactNode }) {
             <LogOut className="h-5 w-5" aria-hidden="true" />
             {t('platform.signOut')}
           </button>
+          <SchemePicker className="mt-1" />
           <div className="px-1 pt-1"><AuthLanguageSwitch /></div>
         </div>
       </aside>

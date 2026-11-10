@@ -22,6 +22,7 @@ import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { PasskeysCard } from '@/components/auth/PasskeysCard';
 import { addPasskey } from '@/lib/passkeys';
+import { AppearanceCard } from '@/components/shell/AppearanceCard';
 
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
 
@@ -114,6 +115,7 @@ export default function ProfilePage() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
+        <AppearanceCard />
         <PasskeysCard
           list={() => api('/api/me/passkeys')}
           add={addPasskey}

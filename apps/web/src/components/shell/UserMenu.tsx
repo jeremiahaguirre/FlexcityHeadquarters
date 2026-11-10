@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '@/components/ui/Avatar';
 import { cn } from '@/lib/cn';
+import { SchemePicker } from './SchemePicker';
 import { LOCALE_COOKIE } from '@/lib/i18n';
 import { useSession } from '@/lib/session';
 import { roleName } from '@/lib/customRoles';
@@ -74,7 +75,7 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
       {open ? (
         <div
           className={cn(
-            'absolute z-40 w-64 rounded-2xl border border-line bg-panel p-1.5 shadow-lift',
+            'absolute z-40 w-72 rounded-2xl border border-line bg-panel p-1.5 shadow-lift',
             placement === 'up' ? 'bottom-full left-0 mb-2' : 'right-0 top-full mt-2',
           )}
         >
@@ -90,6 +91,7 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
             <Languages className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('app.language')}
           </button>
+          <div className="px-1.5 py-1.5"><SchemePicker /></div>
           <button type="button" className={item} onClick={() => void signOut()}>
             <LogOut className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('shell.signOut')}
