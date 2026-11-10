@@ -10,7 +10,8 @@ export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, pa
   const plant = await prisma.facility.create({
     data: { tenantId, name: 'Water Treatment Plant', province: 'BC', timezone: 'America/Vancouver', latitude: 49.9, longitude: -119.48, costCenter: 'CC-610-WATER' },
   });
-  const operator = await prisma.position.create({ data: { tenantId, name: 'Water Works Operator', nameFr: 'Opérateur, aqueduc' } });
+  const waterWorks = await prisma.department.create({ data: { tenantId, name: 'Water Works', nameFr: 'Aqueduc' } });
+  const operator = await prisma.position.create({ data: { tenantId, name: 'Water Works Operator', nameFr: 'Opérateur, aqueduc', departmentId: waterWorks.id } });
   const crew = await prisma.customRole.create({
     data: {
       tenantId,
@@ -27,6 +28,8 @@ export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, pa
       nameFr: 'Chef d’équipe, entretien',
       description: 'Leads the facilities maintenance crew',
       permissions: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'users.read', 'schedule.write', 'timeoff.approve', 'timeclock.review'],
+      // Manages the Water Works department only.
+      scopeDepartmentIds: [waterWorks.id],
     },
   });
   for (const p of [

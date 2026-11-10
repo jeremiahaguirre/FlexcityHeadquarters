@@ -163,7 +163,7 @@ complianceRouter.get(
     const out = await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.facility.findUnique({ where: { id: q.facilityId } }))) throw notFound('Facility');
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'compliance.snapshot', entity: 'Facility', entityId: q.facilityId, after: { at: q.at.toISOString() } });
-      return complianceSnapshot(tx, q.facilityId, q.at);
+      return complianceSnapshot(tx, q.facilityId, q.at, a.scope?.positionIds.length ? a.scope.positionIds : null);
     });
     res.json(out);
   }),

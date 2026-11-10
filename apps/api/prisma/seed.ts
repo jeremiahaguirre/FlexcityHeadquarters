@@ -72,6 +72,9 @@ async function main() {
 
   const guard = await prisma.position.create({ data: { tenantId: tenant.id, name: 'Lifeguard', nameFr: 'Sauveteur', minimumAge: 16 } });
   const instructor = await prisma.position.create({ data: { tenantId: tenant.id, name: 'Swim Instructor', nameFr: 'Moniteur de natation', minimumAge: 15 } });
+  // Aquatic supervisors and head lifeguards manage the Aquatics department only.
+  const aquatics = await prisma.department.create({ data: { tenantId: tenant.id, name: 'Aquatics', nameFr: 'Aquatique', aquatic: true } });
+  await prisma.position.updateMany({ where: { id: { in: [guard.id, instructor.id] } }, data: { departmentId: aquatics.id } });
   await prisma.positionCertRequirement.createMany({
     data: [
       { tenantId: tenant.id, positionId: guard.id, certificationId: nls.id },

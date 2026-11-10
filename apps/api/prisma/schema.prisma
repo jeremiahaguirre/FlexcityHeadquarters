@@ -249,6 +249,7 @@ model Tenant {
   facilities      Facility[]
   users           User[]
   positions       Position[]
+  departments     Department[]
   ruleOverrides   RuleOverride[]
   payCodeMappings PayCodeMapping[]
   /// Dev console per-role customization: { ROLE: { grant: [], revoke: [], hideMenu: [] } }.
@@ -450,14 +451,33 @@ model Position {
   /// Driving limits for this position: { maxDailyHours, minRestHours, maxHoursIn7Days }.
   /// Empty = no limits beyond the province's rules.
   hoursOfService Json?
+  /// The department this position belongs to (Aquatics, Water Works…). Null = none yet.
+  departmentId String? @db.Uuid
 
   tenant          Tenant                    @relation(fields: [tenantId], references: [id])
+  department      Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   requirements    PositionCertRequirement[]
   qualifiedUsers  UserPosition[]
   payRates        PayRate[]
   shifts          Shift[]
   payCodeMappings PayCodeMapping[]
   onboarding      PositionOnboarding[]
+
+  @@unique([tenantId, name])
+}
+
+/// A part of the city's workforce: Aquatics, Water Works, Parks… Supervisors and
+/// managers see only their departments; HR sees every department.
+model Department {
+  id        String     @id @default(uuid()) @db.Uuid
+  tenantId  String     @db.Uuid
+  name      String
+  nameFr    String?
+  /// The built-in aquatic roles (supervisor, head lifeguard) manage this department.
+  aquatic   Boolean    @default(false)
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  positions Position[]
 
   @@unique([tenantId, name])
 }
@@ -1382,6 +1402,8 @@ model CustomRole {
   scopePositionIds String[] @default([]) @db.Uuid
   /// …and only shifts at these facilities (empty = every facility).
   scopeFacilityIds String[] @default([]) @db.Uuid
+  /// …or every position in these departments, including ones added later.
+  scopeDepartmentIds String[] @default([]) @db.Uuid
   createdAt   DateTime         @default(now()) @db.Timestamptz(3)
   members     UserCustomRole[]
 

@@ -13,7 +13,9 @@ export const actorOf = (a: AuthContext): RoleActor => ({ permissions: a.permissi
 
 /** Prisma filter: people in scope. */
 export function peopleWhere(s: Scope): Prisma.UserWhereInput {
-  return !s || !s.positionIds.length ? {} : { positions: { some: { positionId: { in: s.positionIds } } } };
+  if (!s || !s.positionIds.length) return {};
+  const byRole: Prisma.UserWhereInput[] = s.accessRoles?.length ? [{ roles: { hasSome: s.accessRoles as never[] } }] : [];
+  return { AND: [{ OR: [{ positions: { some: { positionId: { in: s.positionIds } } } }, ...byRole] }] };
 }
 
 /** Filter for anything placed at a facility for a position (lesson classes, …). */
@@ -37,7 +39,7 @@ export function shiftInScope(s: Scope, shift: { positionId: string; facilityId: 
 
 export async function userInScope(tx: Tx, s: Scope, userId: string): Promise<boolean> {
   if (!s || !s.positionIds.length) return true;
-  return (await tx.userPosition.count({ where: { userId, positionId: { in: s.positionIds } } })) > 0;
+  return (await tx.user.count({ where: { id: userId, ...peopleWhere(s) } })) > 0;
 }
 
 export async function assertUserInScope(tx: Tx, a: AuthContext, userId: string) {
@@ -51,7 +53,7 @@ export function assertShiftInScope(a: AuthContext, shift: { positionId: string; 
 /** The people a lead limited to some positions may see, or null for everyone. */
 export async function peopleInScope(tx: Tx, s: Scope): Promise<Set<string> | null> {
   if (!s || !s.positionIds.length) return null;
-  return new Set((await tx.userPosition.findMany({ where: { positionId: { in: s.positionIds } }, select: { userId: true } })).map((u) => u.userId));
+  return new Set((await tx.user.findMany({ where: peopleWhere(s), select: { id: true } })).map((u) => u.id));
 }
 
 /** Incidents a limited lead may see: at their facilities, reported by people in their department. */

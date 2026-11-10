@@ -25,21 +25,23 @@ export function certStatusAt(certs: Array<{ issueDate: Date; expiryDate: Date | 
   return 'EXPIRED';
 }
 
-export async function complianceSnapshot(tx: Tx, facilityId: string, at: Date) {
+/** `positionIds`: a department supervisor's positions; null = every position. */
+export async function complianceSnapshot(tx: Tx, facilityId: string, at: Date, positionIds: string[] | null = null) {
+  const onlyPositions = positionIds ? { positionId: { in: positionIds } } : {};
   const facility = await tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { id: true, name: true, timezone: true, province: true } });
   const [shifts, punches, rotations, pools, incidents] = await Promise.all([
-    tx.shift.findMany({ where: { facilityId, status: 'PUBLISHED', userId: { not: null }, startsAt: { lte: at }, endsAt: { gt: at } }, select: { id: true, userId: true, positionId: true, startsAt: true, endsAt: true } }),
-    tx.timePunch.findMany({ where: { facilityId, clockIn: { lte: at }, OR: [{ clockOut: null }, { clockOut: { gt: at } }] }, select: { userId: true, positionId: true, clockIn: true, clockOut: true, locationStatus: true } }),
+    tx.shift.findMany({ where: { facilityId, status: 'PUBLISHED', userId: { not: null }, startsAt: { lte: at }, endsAt: { gt: at }, ...onlyPositions }, select: { id: true, userId: true, positionId: true, startsAt: true, endsAt: true } }),
+    tx.timePunch.findMany({ where: { facilityId, clockIn: { lte: at }, OR: [{ clockOut: null }, { clockOut: { gt: at } }], ...onlyPositions }, select: { userId: true, positionId: true, clockIn: true, clockOut: true, locationStatus: true } }),
     tx.rotationLog.findMany({ where: { facilityId, startedAt: { lte: at }, OR: [{ endedAt: null }, { endedAt: { gt: at } }] } }),
     tx.poolBody.findMany({ where: { facilityId }, select: { id: true, name: true, maxCapacity: true, bathersPerLifeguard: true } }),
     tx.incidentReport.findMany({ where: { facilityId, occurredAt: { gte: new Date(at.getTime() - 2 * H), lte: new Date(at.getTime() + 2 * H) } }, select: { id: true, category: true, occurredAt: true } }),
   ]);
   const userIds = [...new Set([...shifts.map((s) => s.userId!), ...punches.map((p) => p.userId)])];
-  const positionIds = [...new Set([...shifts.map((s) => s.positionId), ...punches.map((p) => p.positionId)])];
+  const onDuty = [...new Set([...shifts.map((s) => s.positionId), ...punches.map((p) => p.positionId)])];
   const [users, positions, reqs, certs, stations] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true } }),
-    tx.position.findMany({ where: { id: { in: positionIds } }, select: { id: true, name: true } }),
-    tx.positionCertRequirement.findMany({ where: { positionId: { in: positionIds } }, include: { certification: { select: { id: true, name: true } } } }),
+    tx.position.findMany({ where: { id: { in: onDuty } }, select: { id: true, name: true } }),
+    tx.positionCertRequirement.findMany({ where: { positionId: { in: onDuty } }, include: { certification: { select: { id: true, name: true } } } }),
     tx.userCertification.findMany({ where: { userId: { in: userIds } } }),
     tx.deckStation.findMany({ where: { facilityId }, select: { id: true, name: true, poolBodyId: true } }),
   ]);

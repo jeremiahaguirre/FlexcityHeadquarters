@@ -7,6 +7,7 @@ import { conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { INTERVALS, position, raiseHelp, view } from '../services/safety/loneWork.js';
 import { h } from './context.js';
+import { peopleInScope } from '../services/people/scope.js';
 
 export const loneWorkRouter = Router();
 loneWorkRouter.use(['/lone-work', '/me/lone-work'], requireFeature('loneWork'));
@@ -142,8 +143,9 @@ loneWorkRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const rows = await withTenant(a.tenantId, async (tx) => {
+      const inScope = await peopleInScope(tx, a.scope);
       const list = await tx.loneWorkSession.findMany({
-        where: { OR: [{ status: { in: [...OPEN] } }, { endedAt: { gte: new Date(Date.now() - 86_400_000) } }], ...(a.scope?.positionIds.length ? { userId: { in: (await tx.userPosition.findMany({ where: { positionId: { in: a.scope.positionIds } }, select: { userId: true } })).map((u) => u.userId) } } : {}) },
+        where: { OR: [{ status: { in: [...OPEN] } }, { endedAt: { gte: new Date(Date.now() - 86_400_000) } }], ...(inScope ? { userId: { in: [...inScope] } } : {}) },
         orderBy: { nextDueAt: 'asc' },
         take: 200,
       });

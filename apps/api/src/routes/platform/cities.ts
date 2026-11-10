@@ -23,6 +23,7 @@ import { PERMISSIONS, type Permission, ROLE_PERMISSIONS } from '../../auth/permi
 import { parseOverrides, rolePermissions, setMenu, setPermission, type RoleOverrides } from '../../services/platform/roleOverrides.js';
 import { facilityBody } from '../settings.js';
 import { positionBody } from '../staff.js';
+import { assertDepartment, departmentBody, deleteDepartment, forget as forgetDepartmentScope, listDepartments, saveDepartment } from '../../services/people/departmentAdmin.js';
 
 export const citiesRouter = Router();
 const uuid = z.string().uuid();
@@ -122,7 +123,7 @@ citiesRouter.get(
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
     const out = await cityOr404(id, async (tx) => {
-      const [t, facilities, positions, certifications, staff, admins, customRoles, pools] = await Promise.all([
+      const [t, facilities, positions, certifications, staff, admins, customRoles, pools, departments] = await Promise.all([
         tx.tenant.findUniqueOrThrow({ where: { id } }),
         tx.facility.findMany({ orderBy: { name: 'asc' } }),
         tx.position.findMany({ include: { requirements: true, _count: { select: { qualifiedUsers: true } } }, orderBy: { name: 'asc' } }),
@@ -131,6 +132,7 @@ citiesRouter.get(
         tx.user.findMany({ where: { roles: { has: 'HR_ADMIN' }, anonymizedAt: null }, select: { id: true, firstName: true, lastName: true, email: true, passwordHash: true } }),
         listCustomRoles(tx),
         tx.poolBody.findMany({ orderBy: [{ archivedAt: { sort: 'desc', nulls: 'first' } }, { name: 'asc' }] }),
+        listDepartments(tx),
       ]);
       return {
         organization: {
@@ -150,7 +152,9 @@ citiesRouter.get(
         features: resolveFeatures(t.features),
         featureDefaults: Object.fromEntries(FEATURE_KEYS.map((k) => [k, FEATURES[k].default])),
         facilities: facilities.map((f) => ({ ...f, latitude: f.latitude?.toNumber() ?? null, longitude: f.longitude?.toNumber() ?? null })),
-        positions: positions.map((p) => ({ id: p.id, name: p.name, nameFr: p.nameFr, minimumAge: p.minimumAge, hoursOfService: p.hoursOfService, requiredCertificationIds: p.requirements.map((r) => r.certificationId), staff: p._count.qualifiedUsers })),
+        positions: positions.map((p) => ({ id: p.id, name: p.name, nameFr: p.nameFr, minimumAge: p.minimumAge, hoursOfService: p.hoursOfService, departmentId: p.departmentId, requiredCertificationIds: p.requirements.map((r) => r.certificationId), staff: p._count.qualifiedUsers })),
+        departments: departments.departments.map(({ positions: _p, ...d }) => d),
+        departmentSetup: { ...departments, limited: false },
         certifications,
         staff,
         admins: admins.map((a) => ({ id: a.id, name: `${a.firstName} ${a.lastName}`, email: a.email, invited: !a.passwordHash })),
@@ -234,14 +238,61 @@ citiesRouter.patch(
 async function savePosition(tx: Tx, tenantId: string, positionId: string | null, body: z.infer<typeof positionBody>) {
   const visible = await tx.certification.count({ where: { id: { in: body.requiredCertificationIds } } });
   if (visible !== new Set(body.requiredCertificationIds).size) throw badRequest('Unknown certification.');
-  const data = { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) };
+  await assertDepartment(tx, body.departmentId);
+  const data = { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.departmentId !== undefined ? { departmentId: body.departmentId } : {}), ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) };
   const pos = positionId ? await tx.position.update({ where: { id: positionId }, data }) : await tx.position.create({ data: { ...data, tenantId } });
   await tx.positionCertRequirement.deleteMany({ where: { positionId: pos.id } });
   if (body.requiredCertificationIds.length) {
     await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId, positionId: pos.id, certificationId })) });
   }
+  forgetDepartmentScope(tenantId);
   return pos;
 }
+
+// Departments, set up from the Dev console when a city is first configured.
+citiesRouter.post(
+  '/tenants/:id/departments',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = departmentBody.parse(req.body);
+    const d = await cityOr404(id, async (tx) => {
+      const created = await saveDepartment(tx, id, null, body);
+      await record(tx, p.adminId, id, 'department.create', body);
+      return created;
+    });
+    res.status(201).json({ id: d.id });
+  }),
+);
+
+citiesRouter.put(
+  '/tenants/:id/departments/:departmentId',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const departmentId = uuid.parse(req.params.departmentId);
+    const body = departmentBody.parse(req.body);
+    await cityOr404(id, async (tx) => {
+      await saveDepartment(tx, id, departmentId, body);
+      await record(tx, p.adminId, id, 'department.update', { departmentId, ...body });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+citiesRouter.delete(
+  '/tenants/:id/departments/:departmentId',
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const departmentId = uuid.parse(req.params.departmentId);
+    await cityOr404(id, async (tx) => {
+      await deleteDepartment(tx, id, departmentId);
+      await record(tx, p.adminId, id, 'department.delete', { departmentId });
+    });
+    res.status(204).end();
+  }),
+);
 
 citiesRouter.post(
   '/tenants/:id/positions',

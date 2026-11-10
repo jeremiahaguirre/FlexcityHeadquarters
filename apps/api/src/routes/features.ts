@@ -1,5 +1,5 @@
 import { exportPersonRecords } from '../services/privacy/recordsExport.js';
-import { assertShiftInScope, incidentsWhere, userInScope } from '../services/people/scope.js';
+import { assertShiftInScope, incidentsWhere, peopleInScope, userInScope } from '../services/people/scope.js';
 import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
@@ -48,6 +48,7 @@ import { unionRouter } from './union.js';
 import { jobsRouter } from './jobs.js';
 import { myPasskeysRouter } from './passkeys.js';
 import { rolesRouter } from './roles.js';
+import { departmentsRouter } from './departments.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -67,6 +68,7 @@ api.use((req, _res, next) => {
 api.use(notificationsRouter);
 api.use(myPasskeysRouter);
 api.use(rolesRouter);
+api.use(departmentsRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);
@@ -369,7 +371,8 @@ api.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5) }).parse(req.query);
-    const out = await withTenant(a.tenantId, (tx) => runPayroll(tx, a.tenantId, q.periodStart, q.weeks));
+    // A supervisor limited to a department exports only their department's hours.
+    const out = await withTenant(a.tenantId, async (tx) => runPayroll(tx, a.tenantId, q.periodStart, q.weeks, await peopleInScope(tx, a.scope)));
     if (!out.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', problems: out.csv.problems, warnings: out.warnings });
       return;

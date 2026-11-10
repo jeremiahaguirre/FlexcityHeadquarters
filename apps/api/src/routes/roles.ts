@@ -19,7 +19,7 @@ rolesRouter.get(
     const actor = a.permissions.has('roles.manage') ? actorOf(a) : null;
     res.json({
       // Each role says whether this person may change it or give it to someone.
-      roles: roles.map((r) => ({ ...r, canManage: !!actor && covers(actor, { permissions: r.permissions, scopePositionIds: r.scopePositionIds, scopeFacilityIds: r.scopeFacilityIds }) })),
+      roles: roles.map((r) => ({ ...r, canManage: !!actor && covers(actor, r.reach) })),
       catalog: CUSTOM_ROLE_PERMISSIONS,
       // What this person may put in a role: only capabilities they hold, inside their department.
       // null = anything (the organization's own administrators).

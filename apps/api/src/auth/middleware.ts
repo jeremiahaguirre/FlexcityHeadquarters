@@ -4,6 +4,7 @@ import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';
 import { verifyAccessToken } from './tokens.js';
 import { type Scope, customAccess, scopeOf, stillActive } from '../services/people/customRoles.js';
+import { aquaticPositions } from '../services/people/departments.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { allowedWhileSuspended } from '../services/billing/entitlements.js';
@@ -47,7 +48,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const [{ features, overrides, mfaRoles, billing }, custom, ok] = await Promise.all([tenantSettings(claims.tid), customAccess(claims.tid, claims.sub), stillActive(claims.tid, claims.sub)]);
+    const [{ features, overrides, mfaRoles, billing }, custom, ok, aquatic] = await Promise.all([tenantSettings(claims.tid), customAccess(claims.tid, claims.sub), stillActive(claims.tid, claims.sub), aquaticPositions(claims.tid)]);
     // Terminated, deactivated or restricted people lose access at once, not when their token expires.
     if (!ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
     // Each role's permissions after the city's Dev console overrides, plus custom roles.
@@ -63,7 +64,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null,
       mfa,
       mfaPending,
-      scope: scopeOf(builtIn, custom),
+      scope: scopeOf(builtIn, custom, { roles: claims.roles, aquaticPositions: aquatic }),
     };
     // Unpaid past the grace period: read-only, except safety work, clocking and paying.
     if (billing.stage === 'suspended' && !allowedWhileSuspended(req.method, req.originalUrl)) {

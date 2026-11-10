@@ -15,6 +15,7 @@ import { permissionsWithOverrides } from '../services/platform/roleOverrides.js'
 import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
 import { forgetActive, setUserCustomRoles } from '../services/people/customRoles.js';
 import { actorOf, assertUserInScope, peopleWhere } from '../services/people/scope.js';
+import { allOf, assertDepartment, departmentFilter, departmentQuery, forget as forgetDepartmentScope } from '../services/people/departmentAdmin.js';
 
 export const staffRouter = Router();
 const uuid = z.string().uuid();
@@ -218,6 +219,8 @@ export const positionBody = z.object({
   nameFr: z.string().max(80).nullable().optional(),
   minimumAge: z.number().int().min(12).max(25).nullable().optional(),
   requiredCertificationIds: z.array(uuid).max(10),
+  /** The department this position belongs to; null = none. Omit to leave it as it is. */
+  departmentId: uuid.nullable().optional(),
   /** Driving limits; omit or null for none. */
   hoursOfService: z
     .object({ maxDailyHours: z.number().min(1).max(24).nullable().optional(), minRestHours: z.number().min(1).max(24).nullable().optional(), maxHoursIn7Days: z.number().min(1).max(168).nullable().optional() })
@@ -232,12 +235,14 @@ staffRouter.post(
     const a = authOf(req);
     const body = positionBody.parse(req.body);
     const p = await withTenant(a.tenantId, async (tx) => {
-      const pos = await tx.position.create({ data: { tenantId: a.tenantId, name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, hoursOfService: body.hoursOfService ?? Prisma.DbNull } });
+      await assertDepartment(tx, body.departmentId);
+      const pos = await tx.position.create({ data: { tenantId: a.tenantId, name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, hoursOfService: body.hoursOfService ?? Prisma.DbNull, departmentId: body.departmentId ?? null } });
       if (body.requiredCertificationIds.length) {
         await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId: a.tenantId, positionId: pos.id, certificationId })) });
       }
       return pos;
     });
+    forgetDepartmentScope(a.tenantId);
     res.status(201).json(p);
   }),
 );
@@ -250,13 +255,15 @@ staffRouter.put(
     const id = uuid.parse(req.params.id);
     const body = positionBody.parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      await tx.position.update({ where: { id }, data: { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) } });
+      await assertDepartment(tx, body.departmentId);
+      await tx.position.update({ where: { id }, data: { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.departmentId !== undefined ? { departmentId: body.departmentId } : {}), ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) } });
       await tx.positionCertRequirement.deleteMany({ where: { positionId: id } });
       if (body.requiredCertificationIds.length) {
         await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId: a.tenantId, positionId: id, certificationId })) });
       }
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'position.update', entity: 'Position', entityId: id, after: body });
     });
+    forgetDepartmentScope(a.tenantId);
     res.json({ ok: true });
   }),
 );
@@ -267,11 +274,11 @@ staffRouter.get(
   requirePermission('users.read'),
   h(async (req, res) => {
     const a = authOf(req);
-    const q = z.object({ status: z.enum(['ACTIVE', 'INACTIVE', 'TERMINATED']).optional(), q: z.string().max(80).optional() }).parse(req.query);
+    const q = z.object({ status: z.enum(['ACTIVE', 'INACTIVE', 'TERMINATED']).optional(), q: z.string().max(80).optional(), department: departmentQuery }).parse(req.query);
     const where: Prisma.UserWhereInput = {
       anonymizedAt: null,
-      // A department supervisor sees their own crew.
-      ...peopleWhere(a.scope),
+      // A department supervisor sees their own crew; HR can pick one department at a time.
+      ...allOf(peopleWhere(a.scope), departmentFilter(q.department)),
       ...(q.status ? { status: q.status } : { status: { not: 'TERMINATED' } }),
       ...(q.q ? { OR: [{ firstName: { contains: q.q, mode: 'insensitive' } }, { lastName: { contains: q.q, mode: 'insensitive' } }, { email: { contains: q.q, mode: 'insensitive' } }] } : {}),
     };
@@ -279,7 +286,7 @@ staffRouter.get(
       Promise.all([
         tx.user.findMany({
           where,
-          include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { select: { expiryDate: true, verifiedAt: true } } },
+          include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true, departmentId: true } } } }, certifications: { select: { expiryDate: true, verifiedAt: true } } },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
         }),
         tx.userCustomRole.findMany({ include: { customRole: { select: { id: true, name: true, nameFr: true } } } }),
