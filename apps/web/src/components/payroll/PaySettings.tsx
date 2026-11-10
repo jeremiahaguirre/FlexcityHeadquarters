@@ -9,9 +9,10 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { AddressFields, type MailingAddress, readAddress } from './AddressFields';
 
 interface BankLinkView { configured: boolean; host?: string; port?: number; username?: string; remoteDir?: string; hostKeySha256?: string; pgpFingerprint?: string | null; autoSend?: boolean; credentialKind?: 'password' | 'privateKey' }
-interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean }
+interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean }
 
 /** CRA payroll account and the direct deposit details the city's bank provides. */
 export function PaySettings() {
@@ -35,6 +36,9 @@ export function PaySettings() {
           body: {
             businessNumber: v('businessNumber'),
             quebecNumber: v('quebecNumber'),
+            transmitterNumber: v('transmitterNumber'),
+            ...(v('contactName') || v('contactPhone') ? { filingContact: { name: v('contactName') ?? '', phone: v('contactPhone') ?? '', email: v('contactEmail') } } : {}),
+            ...(readAddress(f, 'emp_') ? { employerMailing: readAddress(f, 'emp_') } : {}),
             employerAddress: v('employerAddress'),
             originatorId: v('originatorId'),
             originatorShortName: v('originatorShortName'),
@@ -62,6 +66,18 @@ export function PaySettings() {
           {field('businessNumber', t('payroll.businessNumber'), { placeholder: '123456789RP0001' })}
           {field('quebecNumber', t('payroll.quebecNumber'), { placeholder: '1234567890RS0001' })}
           {field('employerAddress', t('payroll.employerAddress'))}
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader title={t('payroll.filingTitle')} description={t('payroll.filingHelp')} />
+        <CardBody className="grid gap-4 pt-2">
+          <AddressFields prefix="emp_" value={s.employerMailing} disabled={!editable} />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label={t('payroll.contactName')}>{(p) => <Input {...p} name="contactName" defaultValue={s.filingContact?.name ?? ''} disabled={!editable} />}</Field>
+            <Field label={t('payroll.contactPhone')}>{(p) => <Input {...p} name="contactPhone" type="tel" defaultValue={s.filingContact?.phone ?? ''} disabled={!editable} />}</Field>
+            <Field label={t('payroll.contactEmail')}>{(p) => <Input {...p} name="contactEmail" type="email" defaultValue={s.filingContact?.email ?? ''} disabled={!editable} />}</Field>
+          </div>
+          <div className="sm:max-w-xs">{field('transmitterNumber', t('payroll.transmitterNumber'), { placeholder: 'MM123456' })}</div>
         </CardBody>
       </Card>
       <Card>

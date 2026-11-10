@@ -35,6 +35,12 @@ export interface PayrollSettings {
   /** Sealed returns account: base64 parts. */
   returnsAccount?: { c: string; iv: string; t: string; k: string; kek: string; last4: string };
   employerAddress?: string;
+  /** Structured employer address for electronic filing (T4 XML, ROE). */
+  employerMailing?: import('./bank.js').MailingAddress;
+  /** Who CRA and Service Canada contact about a filing. */
+  filingContact?: { name: string; phone: string; email?: string | null };
+  /** CRA transmitter number (MM123456), when a service files for the city; otherwise the business number is used. */
+  transmitterNumber?: string;
   /** A second person approves every run (default on). */
   twoPersonApproval?: boolean;
   /** Approving and downloading deposit files needs a passkey sign-in (default on). */

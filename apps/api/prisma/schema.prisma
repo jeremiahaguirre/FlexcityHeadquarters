@@ -2154,6 +2154,8 @@ model PayProfile {
   federalClaim      Decimal?  @db.Decimal(12, 2)
   provincialClaim   Decimal?  @db.Decimal(12, 2)
   extraTaxPerPeriod Decimal   @default(0) @db.Decimal(10, 2)
+  /// Home mailing address for tax slips (T4, RL-1) and the ROE: { line1, line2, city, province, postalCode }.
+  mailingAddress    Json?
   cppExempt         Boolean   @default(false)
   eiExempt          Boolean   @default(false)
   sinCiphertext     Bytes?

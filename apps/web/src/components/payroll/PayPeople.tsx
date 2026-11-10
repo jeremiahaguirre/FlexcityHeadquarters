@@ -12,6 +12,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import type { BankAccount, PayProfile } from '@/lib/payroll';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { AddressFields, readAddress } from './AddressFields';
 
 interface Person { id: string; name: string; employeeNumber: string | null; departmentIds: string[]; profile: PayProfile; bankAccounts: BankAccount[] }
 const PROVINCES = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'];
@@ -106,7 +107,7 @@ function EditPerson({ person, onClose, onSaved }: { person: Person; onClose: () 
       () =>
         api(`/api/users/${person.id}/pay-profile`, {
           method: 'PUT',
-          body: { province: String(f.get('province')) || null, federalClaim: num('federal'), provincialClaim: num('provincial'), extraTaxPerPeriod: num('extra') ?? 0, cppExempt: f.get('cpp') === 'on', eiExempt: f.get('ei') === 'on', ...(sin ? { sin } : {}) },
+          body: { province: String(f.get('province')) || null, federalClaim: num('federal'), provincialClaim: num('provincial'), extraTaxPerPeriod: num('extra') ?? 0, cppExempt: f.get('cpp') === 'on', eiExempt: f.get('ei') === 'on', ...(sin ? { sin } : {}), ...(readAddress(f) ? { mailingAddress: readAddress(f) } : {}) },
         }),
       t('profile.saved'),
     );
@@ -140,6 +141,10 @@ function EditPerson({ person, onClose, onSaved }: { person: Person; onClose: () 
           <label className="flex items-center gap-2 text-small"><input type="checkbox" name="cpp" defaultChecked={p.cppExempt} className="h-5 w-5 accent-[rgb(var(--brand))]" />{t('payroll.cppExempt')}</label>
           <label className="flex items-center gap-2 text-small"><input type="checkbox" name="ei" defaultChecked={p.eiExempt} className="h-5 w-5 accent-[rgb(var(--brand))]" />{t('payroll.eiExempt')}</label>
           <Field label={p.sin ? t('payroll.replaceSin', { sin: p.sin }) : t('myPay.sin')}>{(f) => <Input {...f} name="sin" inputMode="numeric" maxLength={11} autoComplete="off" />}</Field>
+          <fieldset className="grid gap-2 sm:col-span-2">
+            <legend className="mb-1 text-small font-semibold">{t('myPay.mailingAddress')}</legend>
+            <AddressFields value={p.mailingAddress} />
+          </fieldset>
           <div><Button type="submit" size="sm" loading={busy === 'profile'}>{t('common.save')}</Button></div>
         </form>
         <form onSubmit={(e) => void saveBank(e)} className="grid gap-3 border-t border-line pt-5">

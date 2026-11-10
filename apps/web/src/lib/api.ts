@@ -105,15 +105,19 @@ export function setAccessToken(token: string) {
  * headers; a JSON error body is returned as `error` instead of thrown so the
  * screen can show its details (like payroll problems).
  */
-export async function apiDownload(path: string, retry = true): Promise<{ ok: true; blob: Blob; headers: Headers } | { ok: false; status: number; error: Record<string, unknown> }> {
+export async function apiDownload(path: string, retry = true, body?: unknown): Promise<{ ok: true; blob: Blob; headers: Headers } | { ok: false; status: number; error: Record<string, unknown> }> {
   if (DEMO) return demoApi(path, { method: 'DOWNLOAD' });
   if (!accessToken && retry) await refresh();
-  const res = await fetch(path, { credentials: 'include', headers: { ...tenantHeader(), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) } });
+  const res = await fetch(path, {
+    credentials: 'include',
+    ...(body !== undefined ? { method: 'POST', body: JSON.stringify(body) } : {}),
+    headers: { ...tenantHeader(), ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
+  });
   if (!res.ok) {
     const error = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-    if (error.code === 'STEP_UP_REQUIRED' && retry && stepUpHandler && (await stepUpHandler())) return apiDownload(path, false);
-    if (error.code === 'MFA_REQUIRED' && retry && (await secondFactor())) return apiDownload(path, false);
-    if (res.status === 401 && error.code !== 'STEP_UP_REQUIRED' && retry && (await refresh())) return apiDownload(path, false);
+    if (error.code === 'STEP_UP_REQUIRED' && retry && stepUpHandler && (await stepUpHandler())) return apiDownload(path, false, body);
+    if (error.code === 'MFA_REQUIRED' && retry && (await secondFactor())) return apiDownload(path, false, body);
+    if (res.status === 401 && error.code !== 'STEP_UP_REQUIRED' && retry && (await refresh())) return apiDownload(path, false, body);
     return { ok: false, status: res.status, error };
   }
   return { ok: true, blob: await res.blob(), headers: res.headers };

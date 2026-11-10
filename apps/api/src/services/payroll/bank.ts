@@ -9,6 +9,7 @@
  *   redirecting pay).
  * - The employee is told about every change to where their pay goes.
  */
+import { Prisma } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
 import { HttpError, badRequest, forbidden, notFound } from '../../lib/errors.js';
 import { keys, tenantKekId } from '../../routes/context.js';
@@ -117,7 +118,10 @@ export interface ProfileInput {
   cppExempt?: boolean;
   eiExempt?: boolean;
   sin?: string | null;
+  mailingAddress?: MailingAddress | null;
 }
+
+export interface MailingAddress { line1: string; line2?: string | null; city: string; province: string; postalCode: string }
 
 export async function savePayProfile(tx: Tx, tenantId: string, userId: string, input: ProfileInput, byEmployee: boolean) {
   const data: Record<string, unknown> = {};
@@ -125,6 +129,7 @@ export async function savePayProfile(tx: Tx, tenantId: string, userId: string, i
   if (input.federalClaim !== undefined) data.federalClaim = input.federalClaim;
   if (input.provincialClaim !== undefined) data.provincialClaim = input.provincialClaim;
   if (input.extraTaxPerPeriod !== undefined) data.extraTaxPerPeriod = input.extraTaxPerPeriod;
+  if (input.mailingAddress !== undefined) data.mailingAddress = input.mailingAddress === null ? Prisma.DbNull : { ...input.mailingAddress, postalCode: input.mailingAddress.postalCode.toUpperCase().replace(/\s+/g, '').replace(/^(.{3})/, '$1 ') };
   // Exemptions are an employer decision (e.g. CPP for people over 70), never self-declared.
   if (!byEmployee && input.cppExempt !== undefined) data.cppExempt = input.cppExempt;
   if (!byEmployee && input.eiExempt !== undefined) data.eiExempt = input.eiExempt;
@@ -143,7 +148,8 @@ export async function revealSin(tenantId: string, p: { userId: string; sinCipher
   return open(keys(), { ciphertext: Buffer.from(p.sinCiphertext), iv: Buffer.from(p.sinIv), authTag: Buffer.from(p.sinAuthTag), wrappedDataKey: Buffer.from(p.sinWrappedKey), kekId: p.sinKekId }, aad('sin', tenantId, p.userId));
 }
 
-export const profileView = (p: { province: string | null; federalClaim: unknown; provincialClaim: unknown; extraTaxPerPeriod: unknown; cppExempt: boolean; eiExempt: boolean; sinLast3: string | null; td1SignedAt: Date | null } | null) => ({
+export const profileView = (p: { province: string | null; federalClaim: unknown; provincialClaim: unknown; extraTaxPerPeriod: unknown; cppExempt: boolean; eiExempt: boolean; sinLast3: string | null; td1SignedAt: Date | null; mailingAddress?: unknown } | null) => ({
+  mailingAddress: (p?.mailingAddress as MailingAddress | null | undefined) ?? null,
   province: p?.province ?? null,
   federalClaim: p?.federalClaim != null ? Number(p.federalClaim) : null,
   provincialClaim: p?.provincialClaim != null ? Number(p.provincialClaim) : null,

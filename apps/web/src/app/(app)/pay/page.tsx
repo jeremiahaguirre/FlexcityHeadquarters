@@ -18,6 +18,7 @@ import { api } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { MyPay, Statement } from '@/lib/payroll';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { AddressFields, readAddress } from '@/components/payroll/AddressFields';
 
 export default function MyPayPage() {
   return (
@@ -155,7 +156,7 @@ function TaxCredits({ data, reload }: { data: MyPay; reload: () => Promise<void>
     const sin = String(f.get('sin') ?? '').trim();
     const r = await run(
       'td1',
-      () => api('/api/me/pay-profile', { method: 'PUT', body: { federalClaim: num('federal'), provincialClaim: num('provincial'), extraTaxPerPeriod: num('extra') ?? 0, ...(sin ? { sin } : {}) } }),
+      () => api('/api/me/pay-profile', { method: 'PUT', body: { federalClaim: num('federal'), provincialClaim: num('provincial'), extraTaxPerPeriod: num('extra') ?? 0, ...(sin ? { sin } : {}), ...(readAddress(f) ? { mailingAddress: readAddress(f) } : {}) } }),
       t('myPay.td1Saved'),
     );
     if (r !== undefined) await reload();
@@ -176,6 +177,11 @@ function TaxCredits({ data, reload }: { data: MyPay; reload: () => Promise<void>
           ) : (
             <Field label={t('myPay.sin')} hint={t('myPay.sinHint')}>{(f) => <Input {...f} name="sin" inputMode="numeric" maxLength={11} autoComplete="off" />}</Field>
           )}
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-small font-semibold">{t('myPay.mailingAddress')}</legend>
+            <p className="text-caption text-muted">{t('myPay.mailingAddressHint')}</p>
+            <AddressFields value={p.mailingAddress} />
+          </fieldset>
           {p.td1SignedAt ? <p className="text-caption text-muted">{t('myPay.td1Signed', { date: formatDate(p.td1SignedAt.slice(0, 10), i18n.language, 'dated') })}</p> : null}
           <div><Button type="submit" size="sm" icon={<Banknote className="h-4 w-4" aria-hidden="true" />} loading={busy === 'td1'}>{t('common.save')}</Button></div>
         </form>

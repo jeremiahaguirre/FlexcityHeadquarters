@@ -24,7 +24,7 @@ export interface Statement {
   status?: string;
 }
 export interface BankAccount { id: string; holderName: string; institution: string; transit: string; account: string; status: 'PENDING' | 'ACTIVE'; createdAt: string; verifiedAt: string | null; enteredById: string }
-export interface PayProfile { province: string | null; federalClaim: number | null; provincialClaim: number | null; extraTaxPerPeriod: number; cppExempt: boolean; eiExempt: boolean; sin: string | null; td1SignedAt: string | null }
+export interface PayProfile { mailingAddress?: { line1: string; line2?: string | null; city: string; province: string; postalCode: string } | null; province: string | null; federalClaim: number | null; provincialClaim: number | null; extraTaxPerPeriod: number; cppExempt: boolean; eiExempt: boolean; sin: string | null; td1SignedAt: string | null }
 export interface MyPay { statements: Statement[]; profile: PayProfile; bankAccounts: BankAccount[]; consent: string }
 export interface Run {
   id: string;

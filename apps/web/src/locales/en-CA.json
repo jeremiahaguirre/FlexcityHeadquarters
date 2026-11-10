@@ -1155,6 +1155,55 @@
       "help": "For staff employed in Quebec. File with Revenu Québec and give each person their slip by the end of February.",
       "noNumber": "Add your Revenu Québec identification number in Payroll settings before filing.",
       "summary": "{{slips}} slips · employment income {{income}} · QPP {{qpp}} (both shares) · QPIP {{qpip}} (both shares) · Quebec tax {{tax}}"
+    },
+    "filingTitle": "Electronic filing",
+    "filingHelp": "Used in the T4 file for CRA and Record of Employment files for Service Canada.",
+    "contactName": "Filing contact",
+    "contactPhone": "Contact phone",
+    "contactEmail": "Contact email",
+    "transmitterNumber": "CRA transmitter number (only if a service files for you)",
+    "roeReasons": {
+      "A": "Shortage of work / end of contract or season",
+      "B": "Strike or lockout",
+      "D": "Illness or injury",
+      "E": "Quit",
+      "F": "Maternity",
+      "G": "Retirement",
+      "H": "Work-sharing",
+      "J": "Apprentice training",
+      "K": "Other",
+      "M": "Dismissal",
+      "N": "Leave of absence",
+      "P": "Parental",
+      "Z": "Compassionate care / family caregiver"
+    },
+    "filing": {
+      "t4Xml": "T4 file for CRA (XML)",
+      "t4Amended": "Amended T4 file",
+      "t4Hint": "Upload with CRA’s Internet File Transfer. Run your first file through CRA’s validator.",
+      "roeTitle": "Record of Employment file",
+      "reason": "Reason for issuing",
+      "lastDay": "Last day for which paid",
+      "lastDayHint": "Leave blank to use the offboarding date or last pay.",
+      "recall": "Expected to return?",
+      "recallU": "Unknown",
+      "recallY": "Yes, on a date",
+      "recallN": "Not returning",
+      "recallDate": "Expected date of recall",
+      "occupation": "Occupation",
+      "comments": "Comments (block 18)",
+      "roeXml": "ROE file (XML)",
+      "roeHint": "Upload to ROE Web within 5 calendar days after the pay period with the interruption of earnings ends.",
+      "saved": "File downloaded. It contains Social Insurance Numbers: keep it safe and delete it after uploading.",
+      "missing": "Add these before the file can be made:",
+      "demo": "Filing files aren’t available in the demo.",
+      "problems": {
+        "NO_BN": "Your payroll account number (123456789RP0001) in Payroll settings",
+        "NO_EMPLOYER_ADDRESS": "The employer mailing address in Payroll settings",
+        "NO_CONTACT": "A filing contact name and 10-digit phone in Payroll settings",
+        "NO_SIN": "{{name}}: Social Insurance Number",
+        "NO_ADDRESS": "{{name}}: home mailing address"
+      }
     }
   },
   "settings": {
@@ -3486,7 +3535,9 @@
     "benefits": "My benefits",
     "benefitsHelp": "Plans you're enrolled in. Your share comes off each pay.",
     "youPay": "You pay {{amount}} a pay",
-    "cityPays": "city pays {{amount}}"
+    "cityPays": "city pays {{amount}}",
+    "mailingAddress": "Home mailing address",
+    "mailingAddressHint": "Printed on your T4 (and RL-1 in Quebec) and your Record of Employment. Only payroll staff can see it."
   },
   "payTax": {
     "nav": "Payroll tables",
@@ -4311,5 +4362,12 @@
     "saved": "Single sign-on saved",
     "lastUsed": "Last used {{time}}",
     "safety": "Each account is linked to its directory account the first time it’s used. Every sign-in and refusal is in the audit log."
+  },
+  "address": {
+    "line1": "Street address",
+    "line2": "Apartment, unit (optional)",
+    "city": "City",
+    "province": "Province",
+    "postalCode": "Postal code"
   }
 }

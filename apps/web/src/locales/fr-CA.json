@@ -1155,6 +1155,55 @@
       "help": "Pour le personnel employé au Québec. Produisez-les auprès de Revenu Québec et remettez à chaque personne son relevé avant la fin de février.",
       "noNumber": "Ajoutez votre numéro d’identification de Revenu Québec dans les paramètres de paie avant de produire.",
       "summary": "{{slips}} relevés · revenus d’emploi {{income}} · RRQ {{qpp}} (deux parts) · RQAP {{qpip}} (deux parts) · impôt du Québec {{tax}}"
+    },
+    "filingTitle": "Transmission électronique",
+    "filingHelp": "Utilisé dans le fichier T4 pour l’ARC et les fichiers de relevé d’emploi pour Service Canada.",
+    "contactName": "Personne-ressource",
+    "contactPhone": "Téléphone",
+    "contactEmail": "Courriel",
+    "transmitterNumber": "Numéro de transmetteur de l’ARC (seulement si un service produit pour vous)",
+    "roeReasons": {
+      "A": "Manque de travail / fin de contrat ou de saison",
+      "B": "Grève ou lock-out",
+      "D": "Maladie ou blessure",
+      "E": "Départ volontaire",
+      "F": "Maternité",
+      "G": "Retraite",
+      "H": "Travail partagé",
+      "J": "Formation d’apprenti",
+      "K": "Autre",
+      "M": "Congédiement",
+      "N": "Congé autorisé",
+      "P": "Parental",
+      "Z": "Soins de compassion / proche aidant"
+    },
+    "filing": {
+      "t4Xml": "Fichier T4 pour l’ARC (XML)",
+      "t4Amended": "Fichier T4 modifié",
+      "t4Hint": "Transmettez-le avec le Transfert de fichiers par Internet de l’ARC. Validez votre premier fichier avec le validateur de l’ARC.",
+      "roeTitle": "Fichier de relevé d’emploi",
+      "reason": "Raison de l’émission",
+      "lastDay": "Dernier jour payé",
+      "lastDayHint": "Laissez vide pour utiliser la date de départ ou la dernière paie.",
+      "recall": "Retour prévu?",
+      "recallU": "Inconnu",
+      "recallY": "Oui, à une date",
+      "recallN": "Pas de retour",
+      "recallDate": "Date de rappel prévue",
+      "occupation": "Profession",
+      "comments": "Commentaires (case 18)",
+      "roeXml": "Fichier RE (XML)",
+      "roeHint": "Transmettez-le à RE Web dans les 5 jours civils suivant la fin de la période de paie de l’arrêt de rémunération.",
+      "saved": "Fichier téléchargé. Il contient des numéros d’assurance sociale : protégez-le et supprimez-le après l’envoi.",
+      "missing": "Ajoutez ceci avant de pouvoir créer le fichier :",
+      "demo": "Les fichiers de transmission ne sont pas offerts dans la démo.",
+      "problems": {
+        "NO_BN": "Votre numéro de compte de retenues (123456789RP0001) dans les paramètres de paie",
+        "NO_EMPLOYER_ADDRESS": "L’adresse postale de l’employeur dans les paramètres de paie",
+        "NO_CONTACT": "Le nom et le téléphone à 10 chiffres d’une personne-ressource dans les paramètres de paie",
+        "NO_SIN": "{{name}} : numéro d’assurance sociale",
+        "NO_ADDRESS": "{{name}} : adresse postale à domicile"
+      }
     }
   },
   "settings": {
@@ -3486,7 +3535,9 @@
     "benefits": "Mes avantages sociaux",
     "benefitsHelp": "Les régimes auxquels vous êtes inscrit. Votre part est retenue sur chaque paie.",
     "youPay": "Vous payez {{amount}} par paie",
-    "cityPays": "la ville paie {{amount}}"
+    "cityPays": "la ville paie {{amount}}",
+    "mailingAddress": "Adresse postale à domicile",
+    "mailingAddressHint": "Imprimée sur votre T4 (et votre relevé 1 au Québec) et votre relevé d’emploi. Seul le personnel de la paie peut la voir."
   },
   "payTax": {
     "nav": "Tables de paie",
@@ -4311,5 +4362,12 @@
     "saved": "Authentification unique enregistrée",
     "lastUsed": "Dernière utilisation : {{time}}",
     "safety": "Chaque compte est lié à son compte d’annuaire à la première utilisation. Chaque connexion et chaque refus figurent dans le journal d’audit."
+  },
+  "address": {
+    "line1": "Adresse",
+    "line2": "Appartement, unité (facultatif)",
+    "city": "Ville",
+    "province": "Province",
+    "postalCode": "Code postal"
   }
 }

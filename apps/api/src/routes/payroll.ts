@@ -12,12 +12,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
 import { type BankLink, checkPgpKey, linkView, normalizeFingerprint, sealCredential, testBankLink } from '../services/payroll/bankLink.js';
 import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
+import { type Person, ROE_REASONS, type RoeReason, payPeriodType, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
+import type { MailingAddress } from '../services/payroll/bank.js';
 import { h } from './context.js';
 
 export const payrollRouter = Router();
@@ -411,6 +413,16 @@ const profileBody = z.object({
   cppExempt: z.boolean().optional(),
   eiExempt: z.boolean().optional(),
   sin: z.string().max(15).nullable().optional(),
+  mailingAddress: z
+    .object({
+      line1: z.string().trim().min(3).max(60),
+      line2: z.string().trim().max(60).nullable().optional(),
+      city: z.string().trim().min(2).max(40),
+      province: z.enum(PROVINCES),
+      postalCode: z.string().trim().regex(/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/, 'A postal code looks like A1A 1A1.'),
+    })
+    .nullable()
+    .optional(),
 });
 
 payrollRouter.put(
@@ -540,6 +552,111 @@ payrollRouter.get(
   }),
 );
 
+/** Each person's details for a filing file, with the full SIN (unsealed only here, for the file). */
+async function filingPeople(tx: Parameters<Parameters<typeof withTenant>[1]>[0], tenantId: string, userIds: string[]) {
+  const users = await tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: true } });
+  const out = new Map<string, Person | null>();
+  for (const u of users) {
+    const p = u.payProfile;
+    const sin = p ? await revealSin(tenantId, p) : null;
+    out.set(u.id, sin ? { firstName: u.firstName, lastName: u.lastName, sin, employeeNumber: u.employeeNumber, address: (p?.mailingAddress as MailingAddress | null) ?? null, cppExempt: p?.cppExempt ?? false, eiExempt: p?.eiExempt ?? false } : null);
+  }
+  return out;
+}
+
+function filingEmployer(name: string, s: PayrollSettings) {
+  return { name, businessNumber: s.businessNumber ?? '', address: s.employerMailing ?? null, contact: s.filingContact ?? { name: '', phone: '' } };
+}
+
+/** The T4 return as CRA XML, ready for Internet File Transfer. Contains full SINs: passkey and audit. */
+payrollRouter.get(
+  '/payroll/t4.xml',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
+    const reportType = z.enum(['O', 'A']).default('O').parse(req.query.type);
+    if (a.scope) throw forbidden('T4s cover the whole city and are for HR.');
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const settings = await settingsOf(tx);
+      requirePasskey(a, settings);
+      const r = await t4s(tx, year);
+      if (!r.slips.length) throw badRequest('Nobody was paid in that year.');
+      const tenant = await tx.tenant.findFirstOrThrow({ select: { name: true } });
+      const employer = filingEmployer(tenant.name, settings);
+      const people = await filingPeople(tx, a.tenantId, r.slips.map((s) => s.userId));
+      const problems = t4Problems(employer, people, r.slips);
+      if (problems.length) throw new HttpError(400, 'FILING_INCOMPLETE', 'Some details are missing before this file can be made.', { problems });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.t4.xml', entity: 'Tenant', entityId: a.tenantId, after: { year, reportType, slips: r.slips.length } });
+      const submissionRef = `T4${String(year).slice(2)}${Date.now().toString(36).slice(-4)}`.toUpperCase().slice(0, 8);
+      return t4Xml({ year, employer, transmitterNumber: settings.transmitterNumber, reportType, submissionRef, slips: r.slips, people: people as Map<string, Person>, summary: r.summary });
+    });
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="T4-${year}.xml"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(out);
+  }),
+);
+
+/** A Record of Employment as ROE Web XML, for uploading to ROE Web. Contains the full SIN: passkey and audit. */
+payrollRouter.post(
+  '/payroll/roe/:userId/xml',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.userId);
+    if (a.scope) throw forbidden('Records of Employment are for HR.');
+    const b = z
+      .object({
+        reason: z.enum(Object.keys(ROE_REASONS) as [RoeReason, ...RoeReason[]]),
+        recall: z.enum(['Y', 'N', 'U']),
+        recallDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+        lastDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+        occupation: z.string().trim().max(40).nullable().optional(),
+        comments: z.string().trim().max(160).nullable().optional(),
+        vacationPay: z.number().min(0).max(1_000_000).optional(),
+      })
+      .refine((x) => x.recall !== 'Y' || !!x.recallDate, { message: 'Give the recall date.', path: ['recallDate'] })
+      .parse(req.body);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const settings = await settingsOf(tx);
+      requirePasskey(a, settings);
+      const f = await roeFigures(tx, userId);
+      if (!f.periods.length) throw badRequest('This person has no approved pay in the last 53 weeks.');
+      const tenant = await tx.tenant.findFirstOrThrow({ select: { name: true } });
+      const employer = filingEmployer(tenant.name, settings);
+      const person = (await filingPeople(tx, a.tenantId, [userId])).get(userId) ?? null;
+      const name = await tx.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, hireDate: true } });
+      const problems = t4Problems(employer, new Map([[userId, person]]), [{ userId, name: `${name?.firstName} ${name?.lastName}` }]);
+      if (problems.length) throw new HttpError(400, 'FILING_INCOMPLETE', 'Some details are missing before this file can be made.', { problems });
+      const off = await tx.offboarding.findUnique({ where: { userId } });
+      const first = f.periods.at(-1)!;
+      const days = Math.round((Date.parse(first.periodEnd) - Date.parse(first.periodStart)) / 86_400_000) + 1;
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.roe.xml', entity: 'User', entityId: userId, after: { reason: b.reason, recall: b.recall } });
+      return roeXml({
+        employer,
+        person: person!,
+        payrollReference: person!.employeeNumber ?? userId.slice(0, 8),
+        payPeriodType: payPeriodType(Math.round(days / 7)),
+        firstDay: name?.hireDate ? name.hireDate.toISOString().slice(0, 10) : f.firstDay!,
+        lastDayPaid: b.lastDay ?? off?.lastDay.toISOString().slice(0, 10) ?? f.lastPaidDay!,
+        finalPeriodEnd: f.periods[0]!.periodEnd,
+        occupation: b.occupation ?? null,
+        recall: { code: b.recall, date: b.recallDate ?? null },
+        totalInsurableHours: f.totalInsurableHours,
+        periods: f.periods,
+        reason: b.reason,
+        comments: b.comments ?? null,
+        vacationPay: b.vacationPay,
+      });
+    });
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="ROE-${userId.slice(0, 8)}.xml"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(out);
+  }),
+);
+
 payrollRouter.get(
   '/payroll/roe/:userId',
   requirePermission('payroll.export'),
@@ -572,6 +689,9 @@ payrollRouter.put(
     const b = z
       .object({
         businessNumber: z.string().trim().regex(/^\d{9}RP\d{4}$/, 'A payroll account number looks like 123456789RP0001.').nullable().optional(),
+        transmitterNumber: z.string().trim().regex(/^MM\d{6}$/, 'A transmitter number looks like MM123456.').nullable().optional(),
+        filingContact: z.object({ name: z.string().trim().min(2).max(60), phone: z.string().trim().regex(/^\D*(\d\D*){10}$/, 'Use a 10-digit phone number.'), email: z.string().trim().email().nullable().optional() }).nullable().optional(),
+        employerMailing: z.object({ line1: z.string().trim().min(3).max(60), line2: z.string().trim().max(60).nullable().optional(), city: z.string().trim().min(2).max(40), province: z.enum(PROVINCES), postalCode: z.string().trim().regex(/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/, 'A postal code looks like A1A 1A1.') }).nullable().optional(),
         quebecNumber: z.string().trim().regex(/^\d{10}RS\d{4}$/, 'A Revenu Québec identification number looks like 1234567890RS0001.').nullable().optional(),
         originatorId: z.string().trim().regex(/^[A-Za-z0-9]{1,10}$/).nullable().optional(),
         originatorShortName: z.string().trim().max(15).nullable().optional(),
@@ -685,7 +805,7 @@ payrollRouter.put(
   h(async (req, res) => {
     const a = authOf(req);
     // People fill in their own TD1 claims and SIN; province and exemptions are set by payroll.
-    const body = profileBody.pick({ federalClaim: true, provincialClaim: true, extraTaxPerPeriod: true, sin: true }).parse(req.body);
+    const body = profileBody.pick({ federalClaim: true, provincialClaim: true, extraTaxPerPeriod: true, sin: true, mailingAddress: true }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
       const existing = await tx.payProfile.findUnique({ where: { userId: a.userId }, select: { sinLast3: true } });
       // Once on file, a SIN is changed by payroll (they check the card), not in the app.
