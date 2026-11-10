@@ -980,7 +980,8 @@
       "people": "People",
       "documents": "Remittance and year-end",
       "settings": "Settings",
-      "export": "Payroll provider"
+      "export": "Payroll provider",
+      "contractors": "Contractors (T4A)"
     },
     "runs": "Pay runs",
     "runsHelp": "Each run takes approved hours for a period, works out pay and deductions, and is approved by a second person before anyone is paid.",
@@ -5479,5 +5480,49 @@
     "pin": "Pin it to the top",
     "post": "Post",
     "posted": "Announcement posted; staff were notified"
+  },
+  "t4a": {
+    "title": "T4A slips for {{year}}",
+    "help": "People paid who aren't employees: contract instructors, honoraria for committee or council members. A T4A is needed when someone is paid more than $500 in a year, or tax was withheld.",
+    "year": "Year",
+    "slips_one": "{{count}} T4A slip",
+    "slips_other": "{{count}} T4A slips",
+    "under_one": "{{count}} payee under $500",
+    "under_other": "{{count}} payees under $500",
+    "xml": "T4A file for CRA (XML)",
+    "addPerson": "Add a person",
+    "addBusiness": "Add a business",
+    "noneTitle": "No contractors yet",
+    "noneBody": "Add contract instructors and people you pay honoraria to, then record what you pay them.",
+    "sinOnFile": "SIN {{sin}}",
+    "noSin": "No SIN on file yet",
+    "bn": "Business number {{bn}}",
+    "noBn": "No business number yet",
+    "addPayment": "Record a payment",
+    "payeeAdded": "Payee added",
+    "paymentAdded": "Payment recorded",
+    "businessName": "Business name",
+    "businessNumber": "Business number",
+    "businessNumberHint": "9 digits, or with the account (123456789RT0001).",
+    "sin": "Social Insurance Number",
+    "sinHint": "Needed on their T4A. Kept encrypted; shown only as the last 3 digits.",
+    "paymentTo": "Payment to {{name}}",
+    "paidOn": "Paid on",
+    "box": "T4A box",
+    "amount": "Amount ($)",
+    "tax": "Tax withheld ($, optional)",
+    "description": "What it was for",
+    "boxes": {
+      "048": "Box 048: fees for services",
+      "028": "Box 028: other income (honoraria)",
+      "020": "Box 020: self-employed commissions"
+    },
+    "problems": {
+      "NO_BN": "Your CRA payroll account number (Payroll › Settings).",
+      "NO_EMPLOYER_ADDRESS": "Your organization's mailing address (Payroll › Settings).",
+      "NO_CONTACT": "A filing contact name and phone (Payroll › Settings).",
+      "NO_TAX_ID": "{{name}}: a SIN (people) or business number (businesses).",
+      "NO_ADDRESS": "{{name}}: a mailing address."
+    }
   }
 }

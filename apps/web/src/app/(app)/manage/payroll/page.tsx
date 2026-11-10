@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Download, Settings, Users } from 'lucide-r
 import { type FormEvent, Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { PayDocuments } from '@/components/payroll/PayDocuments';
+import { Contractors } from '@/components/payroll/Contractors';
 import { PayPeople } from '@/components/payroll/PayPeople';
 import { PayRuns } from '@/components/payroll/PayRuns';
 import { BankConnection, PaySettings } from '@/components/payroll/PaySettings';
@@ -183,7 +184,7 @@ function ProviderExport() {
   );
 }
 
-type Tab = 'runs' | 'people' | 'documents' | 'settings' | 'export';
+type Tab = 'runs' | 'people' | 'documents' | 'contractors' | 'settings' | 'export';
 
 export default function PayrollPage() {
   return (
@@ -199,7 +200,7 @@ function PayrollTabs() {
   const params = useSearchParams();
   const { me } = useSession();
   // Remittances, year-end slips, settings and the provider cover the whole organization: not for people limited to a department.
-  const tabs: Tab[] = me?.scoped ? ['runs', 'people'] : ['runs', 'people', 'documents', 'settings', 'export'];
+  const tabs: Tab[] = me?.scoped ? ['runs', 'people'] : ['runs', 'people', 'documents', 'contractors', 'settings', 'export'];
   const [tab, setTab] = useState<Tab>(() => (tabs.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'runs'));
   return (
     <>
@@ -210,6 +211,7 @@ function PayrollTabs() {
       {tab === 'runs' ? <PayRuns /> : null}
       {tab === 'people' ? <PayPeople /> : null}
       {tab === 'documents' ? <PayDocuments /> : null}
+      {tab === 'contractors' ? <Contractors /> : null}
       {tab === 'settings' ? (
         <div className="grid gap-6">
           <BankConnection />

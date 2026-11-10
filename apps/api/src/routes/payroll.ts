@@ -23,6 +23,7 @@ import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.j
 import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, assignRl1Numbers, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
 import type { MailingAddress } from '../services/payroll/bank.js';
 import { h } from './context.js';
+import { recipients as t4aRecipients, t4aProblems, t4aSlips, t4aXml } from '../services/payroll/t4a.js';
 import { csvCell } from '../services/payroll/export.js';
 
 /** Building or approving a pay run works through every statement: it gets two minutes, not the usual 15 s. */
@@ -679,6 +680,36 @@ payrollRouter.get(
     });
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="T4-${year}.xml"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(out);
+  }),
+);
+
+/** T4A return as CRA XML (contractors, honoraria). Contains full SINs: passkey and audit. */
+payrollRouter.get(
+  '/payroll/t4a.xml',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
+    const reportType = z.enum(['O', 'A']).default('O').parse(req.query.type);
+    if (a.scope) throw forbidden('T4As cover the whole organization and are for HR.');
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const settings = await settingsOf(tx);
+      requirePasskey(a, settings);
+      const { slips } = await t4aSlips(tx, year);
+      if (!slips.length) throw badRequest('No payee was paid enough in that year to need a T4A.');
+      const tenant = await tx.tenant.findFirstOrThrow({ select: { name: true } });
+      const employer = filingEmployer(tenant.name, settings);
+      const people = await t4aRecipients(tx, a.tenantId, slips.map((s) => s.payeeId));
+      const problems = t4aProblems(employer, people, slips);
+      if (problems.length) throw new HttpError(400, 'FILING_INCOMPLETE', 'Some details are missing before this file can be made.', { problems });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.t4a.xml', entity: 'Tenant', entityId: a.tenantId, after: { year, reportType, slips: slips.length } });
+      const submissionRef = `TA${String(year).slice(2)}${Date.now().toString(36).slice(-4)}`.toUpperCase().slice(0, 8);
+      return t4aXml({ year, employer, transmitterNumber: settings.transmitterNumber, reportType, submissionRef, slips, people });
+    });
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="T4A-${year}.xml"`);
     res.setHeader('Cache-Control', 'no-store');
     res.send(out);
   }),

@@ -3258,3 +3258,53 @@ model JobApplication {
 
   @@index([tenantId, postingId, status])
 }
+
+enum PayeeKind {
+  PERSON
+  BUSINESS
+}
+
+/// Someone paid who isn't an employee: a contract instructor, a committee or council member's honorarium. Reported on a T4A.
+model Payee {
+  id             String         @id @default(uuid()) @db.Uuid
+  tenantId       String         @db.Uuid
+  kind           PayeeKind      @default(PERSON)
+  firstName      String?
+  lastName       String?
+  businessName   String?
+  /// Their CRA business number (9 digits, or with RT/RP and the account), for a business.
+  businessNumber String?
+  /// SIN, sealed with the organization's key like employees' (people only).
+  sinLast3       String?
+  sinCiphertext  Bytes?
+  sinIv          Bytes?
+  sinAuthTag     Bytes?
+  sinWrappedKey  Bytes?
+  sinKekId       String?
+  address        Json?
+  email          String?
+  notes          String?
+  createdAt      DateTime       @default(now()) @db.Timestamptz(3)
+  archivedAt     DateTime?      @db.Timestamptz(3)
+  payments       PayeePayment[]
+
+  @@index([tenantId])
+}
+
+/// A payment to a payee, by T4A box: 048 fees for services, 028 other income (e.g. honoraria), 020 self-employed commissions.
+model PayeePayment {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  payeeId     String   @db.Uuid
+  payee       Payee    @relation(fields: [payeeId], references: [id])
+  paidOn      DateTime @db.Date
+  box         String
+  amount      Decimal  @db.Decimal(12, 2)
+  /// Income tax withheld (box 022), if any.
+  taxWithheld Decimal  @default(0) @db.Decimal(12, 2)
+  description String
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, paidOn])
+}

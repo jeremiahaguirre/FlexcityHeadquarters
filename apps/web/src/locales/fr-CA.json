@@ -980,7 +980,8 @@
       "people": "Personnes",
       "documents": "Versements et fin d’année",
       "settings": "Paramètres",
-      "export": "Fournisseur de paie"
+      "export": "Fournisseur de paie",
+      "contractors": "Contractuels (T4A)"
     },
     "runs": "Paies",
     "runsHelp": "Chaque paie prend les heures approuvées d’une période, calcule la paie et les retenues, et est approuvée par une deuxième personne avant que quiconque soit payé.",
@@ -5479,5 +5480,49 @@
     "pin": "L’épingler en haut",
     "post": "Publier",
     "posted": "Annonce publiée; le personnel a été avisé"
+  },
+  "t4a": {
+    "title": "Feuillets T4A de {{year}}",
+    "help": "Les personnes payées qui ne sont pas des employés : moniteurs contractuels, jetons de présence des membres de comités ou du conseil. Un T4A est nécessaire au-delà de 500 $ payés dans l’année, ou si de l’impôt a été retenu.",
+    "year": "Année",
+    "slips_one": "{{count}} feuillet T4A",
+    "slips_other": "{{count}} feuillets T4A",
+    "under_one": "{{count}} bénéficiaire sous 500 $",
+    "under_other": "{{count}} bénéficiaires sous 500 $",
+    "xml": "Fichier T4A pour l’ARC (XML)",
+    "addPerson": "Ajouter une personne",
+    "addBusiness": "Ajouter une entreprise",
+    "noneTitle": "Aucun contractuel pour l’instant",
+    "noneBody": "Ajoutez les moniteurs contractuels et les personnes à qui vous versez des jetons de présence, puis consignez ce que vous leur payez.",
+    "sinOnFile": "NAS {{sin}}",
+    "noSin": "Aucun NAS au dossier",
+    "bn": "Numéro d’entreprise {{bn}}",
+    "noBn": "Aucun numéro d’entreprise",
+    "addPayment": "Consigner un paiement",
+    "payeeAdded": "Bénéficiaire ajouté",
+    "paymentAdded": "Paiement consigné",
+    "businessName": "Nom de l’entreprise",
+    "businessNumber": "Numéro d’entreprise",
+    "businessNumberHint": "9 chiffres, ou avec le compte (123456789RT0001).",
+    "sin": "Numéro d’assurance sociale",
+    "sinHint": "Requis sur le T4A. Conservé chiffré; seuls les 3 derniers chiffres s’affichent.",
+    "paymentTo": "Paiement à {{name}}",
+    "paidOn": "Payé le",
+    "box": "Case du T4A",
+    "amount": "Montant ($)",
+    "tax": "Impôt retenu ($, facultatif)",
+    "description": "Objet",
+    "boxes": {
+      "048": "Case 048 : honoraires ou autres sommes pour services",
+      "028": "Case 028 : autres revenus (jetons de présence)",
+      "020": "Case 020 : commissions d’un travail indépendant"
+    },
+    "problems": {
+      "NO_BN": "Le numéro de compte de retenues de l’ARC (Paie › Paramètres).",
+      "NO_EMPLOYER_ADDRESS": "L’adresse postale de votre organisation (Paie › Paramètres).",
+      "NO_CONTACT": "Le nom et le téléphone d’une personne-ressource (Paie › Paramètres).",
+      "NO_TAX_ID": "{{name}} : un NAS (personne) ou un numéro d’entreprise (entreprise).",
+      "NO_ADDRESS": "{{name}} : une adresse postale."
+    }
   }
 }
