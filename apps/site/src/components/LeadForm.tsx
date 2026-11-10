@@ -73,10 +73,10 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
         </select>
       ))}
       <div className="grid gap-4 sm:grid-cols-2">
-        {field('name', c.name, <input id="name" name="name" required minLength={2} autoComplete="name" className={input} />)}
-        {field('email', c.email, <input id="email" name="email" type="email" required autoComplete="email" className={input} />)}
-        {field('organization', c.organization, <input id="organization" name="organization" autoComplete="organization" className={input} />)}
-        {field('role', c.role, <input id="role" name="role" autoComplete="organization-title" className={input} />)}
+        {field('name', c.name, <input id="name" name="name" required minLength={2} maxLength={120} autoComplete="name" className={input} />)}
+        {field('email', c.email, <input id="email" name="email" type="email" required maxLength={160} autoComplete="email" className={input} />)}
+        {field('organization', c.organization, <input id="organization" name="organization" maxLength={160} autoComplete="organization" className={input} />)}
+        {field('role', c.role, <input id="role" name="role" maxLength={120} autoComplete="organization-title" className={input} />)}
         {field('province', c.province, (
           <select id="province" name="province" defaultValue="" className={`${input} pr-9`}>
             <option value="">{c.choose}</option>
