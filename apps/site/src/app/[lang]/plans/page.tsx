@@ -43,7 +43,28 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       {/* Hero */}
-      <PageHero eyebrow={c.title} title={c.hero} lead={c.lead}>
+      <PageHero
+        eyebrow={c.title}
+        title={c.hero}
+        lead={c.lead}
+        aside={
+          <figure className="relative mx-auto max-w-md">
+            <div aria-hidden="true" className="absolute -inset-10 rounded-full bg-[radial-gradient(closest-side,rgb(var(--brand)/0.4),transparent)] blur-2xl" />
+            <div className="bob relative overflow-hidden rounded-3xl border border-white/15 bg-[#0e1a1c] shadow-lift">
+              <div className="flex items-center gap-1.5 border-b border-white/10 px-4 py-2.5" aria-hidden="true">
+                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
+              </div>
+              <div className="relative max-h-[26rem] overflow-hidden">
+                <img src={`/screens/billing-plan-${params.lang}-dark.png`} alt={c.shotAlt} width={836} height={1520} className="block w-full" />
+                <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0e1a1c] to-transparent" />
+              </div>
+            </div>
+            <figcaption className="mt-4 text-center text-caption text-white/70">{c.shotCaption}</figcaption>
+          </figure>
+        }
+      >
         <ul className="mt-7 flex flex-wrap gap-2">
           {c.chips.map((chip) => (
             <li key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-small font-semibold text-white">
@@ -192,7 +213,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
       <Section id="included">
         <SectionHead n="04" eyebrow={c.compareKicker} title={c.compareTitle} lead={c.compareLead} />
         <p className="-mt-6 mb-6 text-small text-muted">{c.addHint}</p>
-        <div className="relative overflow-x-auto rounded-3xl border border-line bg-panel shadow-card">
+        <div role="region" aria-label={c.compareTitle} tabIndex={0} className="relative overflow-x-auto rounded-3xl border border-line bg-panel shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
           <table className="w-full min-w-[46rem] border-collapse text-left text-small">
             <caption className="sr-only">{c.compareTitle}</caption>
             <thead>
