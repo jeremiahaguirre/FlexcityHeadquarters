@@ -4,6 +4,7 @@ import { authOf, requireFeature, requirePermission } from '../auth/middleware.js
 import { audit, withTenant } from '../lib/db.js';
 import { badRequest, conflict, notFound } from '../lib/errors.js';
 import { listSessions, recordAttendance } from '../services/lessons/lessons.js';
+import { assertShiftInScope, placeWhere, shiftInScope } from '../services/people/scope.js';
 import { h } from './context.js';
 
 export const lessonsRouter = Router();
@@ -32,7 +33,7 @@ lessonsRouter.get(
     const a = authOf(req);
     const q = range.parse(req.query);
     if (days(q) > MAX_DAYS) throw badRequest(`Choose up to ${MAX_DAYS} days.`);
-    res.json(await withTenant(a.tenantId, (tx) => listSessions(tx, q.from, q.to)));
+    res.json(await withTenant(a.tenantId, (tx) => listSessions(tx, q.from, q.to, undefined, a.scope)));
   }),
 );
 
@@ -53,7 +54,7 @@ lessonsRouter.post(
       .min(1)
       .max(300)
       .parse(req.body);
-    const out = await withTenant(a.tenantId, (tx) => recordAttendance(tx, { userId: a.userId, tenantId: a.tenantId, canManage: a.permissions.has('schedule.write') }, records));
+    const out = await withTenant(a.tenantId, (tx) => recordAttendance(tx, { userId: a.userId, tenantId: a.tenantId, canManage: a.permissions.has('schedule.write'), scope: a.scope }, records));
     res.json({ results: out });
   }),
 );
@@ -64,7 +65,7 @@ lessonsRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const rows = await withTenant(a.tenantId, (tx) =>
-      tx.lessonClass.findMany({ include: { _count: { select: { enrollments: { where: { active: true } } } } }, orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }] }),
+      tx.lessonClass.findMany({ where: placeWhere(a.scope), include: { _count: { select: { enrollments: { where: { active: true } } } } }, orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }] }),
     );
     res.json(rows.map((c) => ({ ...c, startsOn: c.startsOn.toISOString().slice(0, 10), endsOn: c.endsOn.toISOString().slice(0, 10), enrolled: c._count.enrollments })));
   }),
@@ -89,6 +90,7 @@ lessonsRouter.post(
         maxSwimmers: z.number().int().min(1).max(40).default(8),
       })
       .parse(req.body);
+    assertShiftInScope(a, body);
     if (body.endMinute <= body.startMinute) throw badRequest('A class must end after it starts.');
     if (body.endsOn < body.startsOn) throw badRequest('The last date must be after the first.');
     const c = await withTenant(a.tenantId, (tx) =>
@@ -107,7 +109,7 @@ lessonsRouter.post(
     const body = z.object({ swimmerName: z.string().trim().min(2).max(80), safetyNote: z.string().max(200).nullable().optional() }).parse(req.body);
     const e = await withTenant(a.tenantId, async (tx) => {
       const cls = await tx.lessonClass.findUnique({ where: { id: classId }, include: { _count: { select: { enrollments: { where: { active: true } } } } } });
-      if (!cls) throw notFound('Class');
+      if (!cls || !shiftInScope(a.scope, cls)) throw notFound('Class');
       if (cls._count.enrollments >= cls.maxSwimmers) throw conflict('CLASS_FULL', `This class is full (${cls.maxSwimmers} swimmers).`);
       const created = await tx.lessonEnrollment.create({ data: { tenantId: a.tenantId, classId, swimmerName: body.swimmerName, safetyNote: body.safetyNote ?? null } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'lesson.enroll', entity: 'LessonEnrollment', entityId: created.id });

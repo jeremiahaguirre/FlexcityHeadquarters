@@ -6,7 +6,7 @@
 import type { Prisma } from '@prisma/client';
 import type { AuthContext } from '../../auth/middleware.js';
 import type { Tx } from '../../lib/db.js';
-import { forbidden } from '../../lib/errors.js';
+import { forbidden, notFound } from '../../lib/errors.js';
 import type { RoleActor, Scope } from './customRoles.js';
 
 export const actorOf = (a: AuthContext): RoleActor => ({ permissions: a.permissions, scope: a.scope });
@@ -15,6 +15,15 @@ export const actorOf = (a: AuthContext): RoleActor => ({ permissions: a.permissi
 export function peopleWhere(s: Scope): Prisma.UserWhereInput {
   return !s || !s.positionIds.length ? {} : { positions: { some: { positionId: { in: s.positionIds } } } };
 }
+
+/** Filter for anything placed at a facility for a position (lesson classes, …). */
+export function placeWhere(s: Scope): { positionId?: { in: string[] }; facilityId?: { in: string[] } } {
+  if (!s) return {};
+  return { ...(s.positionIds.length ? { positionId: { in: s.positionIds } } : {}), ...(s.facilityIds.length ? { facilityId: { in: s.facilityIds } } : {}) };
+}
+
+/** Facilities a lead is limited to, or null for every facility. */
+export const facilitiesOf = (s: Scope): string[] | null => (s && s.facilityIds.length ? s.facilityIds : null);
 
 /** Prisma filter: shifts in scope. */
 export function shiftsWhere(s: Scope): Prisma.ShiftWhereInput {
@@ -37,4 +46,21 @@ export async function assertUserInScope(tx: Tx, a: AuthContext, userId: string) 
 
 export function assertShiftInScope(a: AuthContext, shift: { positionId: string; facilityId: string }) {
   if (!shiftInScope(a.scope, shift)) throw forbidden('This shift isn’t in your department.');
+}
+
+/** The people a lead limited to some positions may see, or null for everyone. */
+export async function peopleInScope(tx: Tx, s: Scope): Promise<Set<string> | null> {
+  if (!s || !s.positionIds.length) return null;
+  return new Set((await tx.userPosition.findMany({ where: { positionId: { in: s.positionIds } }, select: { userId: true } })).map((u) => u.userId));
+}
+
+/** Incidents a limited lead may see: at their facilities, reported by people in their department. */
+export async function incidentsWhere(tx: Tx, s: Scope): Promise<{ facilityId?: { in: string[] }; reportedById?: { in: string[] } }> {
+  const people = await peopleInScope(tx, s);
+  return { ...(s && s.facilityIds.length ? { facilityId: { in: s.facilityIds } } : {}), ...(people ? { reportedById: { in: [...people] } } : {}) };
+}
+
+/** A position outside a limited lead's department reads as not found. */
+export function assertPositionInScope(a: AuthContext, positionId: string) {
+  if (a.scope && a.scope.positionIds.length && !a.scope.positionIds.includes(positionId)) throw notFound('Position');
 }

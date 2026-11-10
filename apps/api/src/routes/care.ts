@@ -8,6 +8,7 @@ import { conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithRoles } from '../services/notifications/notifier.js';
 import { parseCare } from '../services/people/care.js';
 import { h } from './context.js';
+import { peopleInScope } from '../services/people/scope.js';
 
 export const careRouter = Router();
 careRouter.use(['/care', '/me/care'], requireFeature('care'));
@@ -20,7 +21,8 @@ careRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const rows = await withTenant(a.tenantId, async (tx) => {
-      const list = await tx.careCheckIn.findMany({ where: { OR: [{ status: 'OFFERED' }, { completedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }] }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }] });
+      const people = await peopleInScope(tx, a.scope);
+      const list = await tx.careCheckIn.findMany({ where: { OR: [{ status: 'OFFERED' }, { completedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }], ...(people ? { userId: { in: [...people] } } : {}) }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }] });
       const [users, incidents] = await Promise.all([
         tx.user.findMany({ where: { id: { in: [...new Set(list.map((c) => c.userId))] } }, select: { id: true, firstName: true, lastName: true } }),
         tx.incidentReport.findMany({ where: { id: { in: [...new Set(list.map((c) => c.incidentId))] } }, select: { id: true, category: true, occurredAt: true, facility: { select: { name: true } } } }),

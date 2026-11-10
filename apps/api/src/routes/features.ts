@@ -1,12 +1,12 @@
 import { exportPersonRecords } from '../services/privacy/recordsExport.js';
-import { assertShiftInScope } from '../services/people/scope.js';
+import { assertShiftInScope, incidentsWhere, userInScope } from '../services/people/scope.js';
 import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, forbidden } from '../lib/errors.js';
+import { badRequest, forbidden, notFound } from '../lib/errors.js';
 import { publish } from '../lib/events.js';
 import { localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
@@ -51,6 +51,19 @@ import { rolesRouter } from './roles.js';
 
 export const api = Router();
 api.use(requireAuth);
+/**
+ * A lead whose role is limited to a department can't open anyone outside it,
+ * on any /users/:id/… or onboarding route; the person reads as not found.
+ */
+const PERSON_PATH = /^\/(?:users|onboarding\/people)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i;
+api.use((req, _res, next) => {
+  const a = authOf(req);
+  const id = PERSON_PATH.exec(req.path)?.[1];
+  if (!a.scope || !id || id === a.userId) return next();
+  withTenant(a.tenantId, (tx) => userInScope(tx, a.scope, id))
+    .then((ok) => next(ok ? undefined : notFound('Person')))
+    .catch(next);
+});
 api.use(notificationsRouter);
 api.use(myPasskeysRouter);
 api.use(rolesRouter);
@@ -339,7 +352,11 @@ api.get(
   h(async (req, res) => {
     const a = authOf(req);
     const purpose = z.string().min(3).parse(req.query.purpose);
-    const out = await withTenant(a.tenantId, (tx) => readIncident(tx, keys(), a.tenantId, a.userId, uuid.parse(req.params.id), purpose));
+    const id = uuid.parse(req.params.id);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      if (a.scope && !(await tx.incidentReport.count({ where: { id, ...(await incidentsWhere(tx, a.scope)) } }))) throw notFound('Incident');
+      return readIncident(tx, keys(), a.tenantId, a.userId, id, purpose);
+    });
     res.json(out);
   }),
 );

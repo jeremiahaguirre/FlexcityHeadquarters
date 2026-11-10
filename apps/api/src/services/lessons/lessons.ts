@@ -10,6 +10,8 @@
 import type { AttendanceStatus, LessonClass } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
 import { addDays, dayOfWeek, localIso, startOfLocalDay } from '../../lib/time.js';
+import type { Scope } from '../people/customRoles.js';
+import { placeWhere, shiftInScope } from '../people/scope.js';
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -43,9 +45,9 @@ export interface SessionView {
 }
 
 /** Sessions in [from, to] (facility-local dates), optionally only those `userId` is teaching. */
-export async function listSessions(tx: Tx, from: string, to: string, userId?: string): Promise<SessionView[]> {
+export async function listSessions(tx: Tx, from: string, to: string, userId?: string, scope: Scope = null): Promise<SessionView[]> {
   const classes = await tx.lessonClass.findMany({
-    where: { startsOn: { lte: new Date(to) }, endsOn: { gte: new Date(from) }, published: true },
+    where: { startsOn: { lte: new Date(to) }, endsOn: { gte: new Date(from) }, published: true, ...placeWhere(scope) },
     include: { enrollments: { where: { active: true }, orderBy: { swimmerName: 'asc' } } },
   });
   if (!classes.length) return [];
@@ -99,7 +101,7 @@ export type AttendanceOutcome = 'saved' | 'duplicate' | 'superseded' | 'not_your
 
 export async function recordAttendance(
   tx: Tx,
-  actor: { userId: string; tenantId: string; canManage: boolean },
+  actor: { userId: string; tenantId: string; canManage: boolean; scope?: Scope },
   records: AttendanceInput[],
 ): Promise<Array<{ clientId: string; outcome: AttendanceOutcome }>> {
   const results: Array<{ clientId: string; outcome: AttendanceOutcome }> = [];
@@ -116,7 +118,7 @@ export async function recordAttendance(
       results.push({ clientId: r.clientId, outcome: 'invalid' });
       continue;
     }
-    if (mine && !mine.some((s) => s.classId === enrollment.classId && s.sessionDate === r.sessionDate)) {
+    if ((mine && !mine.some((s) => s.classId === enrollment.classId && s.sessionDate === r.sessionDate)) || (!mine && !shiftInScope(actor.scope ?? null, enrollment.lessonClass))) {
       results.push({ clientId: r.clientId, outcome: 'not_your_session' });
       continue;
     }

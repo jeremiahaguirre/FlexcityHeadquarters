@@ -6,7 +6,7 @@ import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { BOARDS, reportDue, reportRequired } from '../services/injury/boards.js';
-import { assertUserInScope } from '../services/people/scope.js';
+import { assertUserInScope, peopleInScope } from '../services/people/scope.js';
 import { h } from './context.js';
 
 export const injuryRouter = Router();
@@ -19,7 +19,8 @@ injuryRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
-      const list = await tx.injuryClaim.findMany({ where: { OR: [{ status: 'OPEN' }, { createdAt: { gte: new Date(Date.now() - 365 * 86_400_000) } }] }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], take: 300 });
+      const inScope = await peopleInScope(tx, a.scope);
+      const list = await tx.injuryClaim.findMany({ where: { OR: [{ status: 'OPEN' }, { createdAt: { gte: new Date(Date.now() - 365 * 86_400_000) } }], ...(inScope ? { userId: { in: [...inScope] } } : {}) }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], take: 300 });
       const people = await tx.user.findMany({ where: { id: { in: [...new Set(list.map((c) => c.userId))] } }, select: { id: true, firstName: true, lastName: true } });
       return list.map((c) => {
         const p = people.find((x) => x.id === c.userId);

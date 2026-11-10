@@ -5,6 +5,7 @@ import { authOf, requireFeature, requirePermission } from '../auth/middleware.js
 import { audit, withTenant } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { coverageGaps } from '../services/coverage/gaps.js';
+import { facilitiesOf } from '../services/people/scope.js';
 import { h } from './context.js';
 
 export const coverageRouter = Router();
@@ -31,7 +32,8 @@ coverageRouter.get(
   canSee,
   h(async (req, res) => {
     const a = authOf(req);
-    res.json(await withTenant(a.tenantId, (tx) => tx.coverageRule.findMany({ orderBy: [{ facilityId: 'asc' }, { name: 'asc' }] })));
+    const only = facilitiesOf(a.scope);
+    res.json(await withTenant(a.tenantId, (tx) => tx.coverageRule.findMany({ where: only ? { facilityId: { in: only } } : {}, orderBy: [{ facilityId: 'asc' }, { name: 'asc' }] })));
   }),
 );
 
@@ -90,6 +92,9 @@ coverageRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = z.object({ from: isoDate, days: z.coerce.number().int().min(1).max(31).default(7), facilityId: uuid.optional() }).parse(req.query);
-    res.json(await withTenant(a.tenantId, (tx) => coverageGaps(tx, q.from, q.days, q.facilityId)));
+    const only = facilitiesOf(a.scope);
+    const gaps = await withTenant(a.tenantId, (tx) => coverageGaps(tx, q.from, q.days, q.facilityId));
+    // A lead limited to some facilities sees only their gaps.
+    res.json(only ? gaps.filter((g) => only.includes(g.facilityId)) : gaps);
   }),
 );

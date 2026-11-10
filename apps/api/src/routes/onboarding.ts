@@ -6,6 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { MINORS_SET, checklist, ensureDefaults, recordItem } from '../services/people/onboarding.js';
 import { h } from './context.js';
+import { peopleWhere } from '../services/people/scope.js';
 
 export const onboardingRouter = Router();
 onboardingRouter.use(['/onboarding', '/me/onboarding'], requireFeature('onboarding'));
@@ -124,7 +125,7 @@ onboardingRouter.get(
     if (!a.permissions.has('onboarding.hr') && !a.permissions.has('onboarding.lead')) throw forbidden();
     const rows = await withTenant(a.tenantId, async (tx) => {
       await ensureDefaults(tx, a.tenantId);
-      const users = await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true, firstName: true, lastName: true, roles: true, hireDate: true, createdAt: true }, orderBy: [{ lastName: 'asc' }] });
+      const users = await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) }, select: { id: true, firstName: true, lastName: true, roles: true, hireDate: true, createdAt: true }, orderBy: [{ lastName: 'asc' }] });
       const out = [];
       for (const u of users) {
         const list = await checklist(tx, u.id);

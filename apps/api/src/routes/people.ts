@@ -12,6 +12,7 @@ import { notify } from '../services/notifications/notifier.js';
 import { loadCaseFile } from '../services/people/caseFile.js';
 import { reviewList } from '../services/people/reviewList.js';
 import { h } from './context.js';
+import { peopleInScope } from '../services/people/scope.js';
 
 export const peopleRouter = Router();
 const uuid = z.string().uuid();
@@ -51,7 +52,8 @@ peopleRouter.get(
     const a = authOf(req);
     const rows = await withTenant(a.tenantId, async (tx) => {
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'people.review.view', entity: 'Tenant', entityId: a.tenantId });
-      return reviewList(tx);
+      const [rows, people] = await Promise.all([reviewList(tx), peopleInScope(tx, a.scope)]);
+      return people ? rows.filter((r) => people.has(r.id)) : rows;
     });
     res.json(rows);
   }),

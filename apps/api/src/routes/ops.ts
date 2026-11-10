@@ -7,6 +7,7 @@ import { localIso } from '../lib/time.js';
 import { lifeguardsRequired } from '../services/ops/chemistry.js';
 import { createPool, headcountBoard, headcountReport, poolDetailsBody, poolDetailsView, recordHeadcount, updatePool } from '../services/ops/pools.js';
 import { h } from './context.js';
+import { incidentsWhere } from '../services/people/scope.js';
 
 export const opsRouter = Router();
 const uuid = z.string().uuid();
@@ -242,9 +243,9 @@ opsRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = z.object({ from: z.coerce.date(), to: z.coerce.date() }).parse(req.query);
-    const rows = await withTenant(a.tenantId, (tx) =>
+    const rows = await withTenant(a.tenantId, async (tx) =>
       tx.incidentReport.findMany({
-        where: { occurredAt: { gte: q.from, lt: q.to } },
+        where: { occurredAt: { gte: q.from, lt: q.to }, ...(await incidentsWhere(tx, a.scope)) },
         select: { id: true, category: true, occurredAt: true, reportedById: true, facility: { select: { id: true, name: true, timezone: true } }, _count: { select: { accessLog: true } } },
         orderBy: { occurredAt: 'desc' },
       }),

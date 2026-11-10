@@ -7,6 +7,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { fairnessCheck, parsePolicy, standings } from '../services/scheduling/overtime.js';
 import { h } from './context.js';
+import { assertPositionInScope, shiftInScope } from '../services/people/scope.js';
 
 export const overtimeRouter = Router();
 overtimeRouter.use('/overtime', requireFeature('overtime'));
@@ -19,6 +20,7 @@ overtimeRouter.get(
     const a = authOf(req);
     if (!a.permissions.has('overtime.manage') && !a.permissions.has('seniority.read')) throw forbidden();
     const positionId = uuid.parse(req.query.positionId);
+    assertPositionInScope(a, positionId);
     res.json(await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.position.findUnique({ where: { id: positionId } }))) throw notFound('Position');
       return standings(tx, positionId);
@@ -34,6 +36,7 @@ overtimeRouter.post(
     const a = authOf(req);
     const body = z.object({ userId: uuid, positionId: uuid, kind: z.enum(['ACCEPTED', 'REFUSED', 'NO_ANSWER']), hours: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/), occurredAt: z.string().datetime({ offset: true }), note: z.string().trim().max(300).nullable().default(null) }).parse(req.body);
     const id = await withTenant(a.tenantId, async (tx) => {
+      assertPositionInScope(a, body.positionId);
       if (!(await tx.userPosition.findFirst({ where: { userId: body.userId, positionId: body.positionId } }))) throw notFound('Person in this position');
       const e = await tx.overtimeEntry.create({ data: { tenantId: a.tenantId, userId: body.userId, positionId: body.positionId, kind: body.kind, hours: body.hours, occurredAt: new Date(body.occurredAt), recordedById: a.userId, note: body.note } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'overtime.entry', entity: 'OvertimeEntry', entityId: e.id, after: body });
@@ -50,7 +53,10 @@ overtimeRouter.get(
     const a = authOf(req);
     if (!a.permissions.has('overtime.manage') && !a.permissions.has('shiftboard.approve')) throw forbidden();
     const q = z.object({ shiftId: uuid, userId: uuid }).parse(req.query);
-    const out = await withTenant(a.tenantId, (tx) => fairnessCheck(tx, q.shiftId, q.userId));
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const shift = await tx.shift.findUnique({ where: { id: q.shiftId }, select: { positionId: true, facilityId: true } });
+      return shift && shiftInScope(a.scope, shift) ? fairnessCheck(tx, q.shiftId, q.userId) : null;
+    });
     if (!out) throw notFound('Shift');
     res.json(out);
   }),

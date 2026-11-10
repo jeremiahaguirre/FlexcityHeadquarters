@@ -8,9 +8,16 @@ import { applyRotation, loadPlan } from '../services/ops/rotation.js';
 import { complianceSnapshot } from '../services/ops/compliance.js';
 import { forecastWeek } from '../services/ops/forecast.js';
 import { h } from './context.js';
+import { facilitiesOf } from '../services/people/scope.js';
 
 export const deckRouter = Router();
 deckRouter.use(['/deck', '/me/deck'], requireFeature('rotations'));
+// A lead limited to some facilities can't see or change other pools' decks.
+deckRouter.use('/deck', (req, _res, next) => {
+  const only = facilitiesOf(authOf(req).scope);
+  const facilityId = (req.query.facilityId ?? (req.body as { facilityId?: unknown } | undefined)?.facilityId) as string | undefined;
+  next(only && facilityId && !only.includes(facilityId) ? notFound('Facility') : undefined);
+});
 const uuid = z.string().uuid();
 
 deckRouter.get(

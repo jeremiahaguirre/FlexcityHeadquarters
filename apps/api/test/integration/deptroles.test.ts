@@ -78,11 +78,38 @@ describe('department supervisors and managers', () => {
     expect((await call(tok.sup).post('/api/roles', { name: 'Payroll Lead', permissions: ['payroll.export'], scopePositionIds: [water] })).status).toBe(403);
     // They can give it to their crew, not to other departments.
     expect((await call(tok.sup).put(`/api/users/${ids.w1}/roles`, { customRoleIds: [lead.body.id] })).status).toBe(200);
-    expect((await call(tok.sup).put(`/api/users/${ids.m1}/roles`, { customRoleIds: [lead.body.id] })).status).toBe(403);
+    expect((await call(tok.sup).put(`/api/users/${ids.m1}/roles`, { customRoleIds: [lead.body.id] })).status).toBe(404);
     // …and can't change roles beyond theirs, like the supervisor role HR made.
     const roles = (await call(tok.sup).get('/api/roles')).body.roles;
     expect(roles.find((r: { name: string }) => r.name === 'Water Lead').canManage).toBe(true);
     expect(roles.find((r: { name: string }) => r.name === 'Aquatics Coordinator').canManage).toBe(false);
     expect((await call(tok.sup).put(`/api/roles/${supRole}`, { name: 'Water Works Supervisor', permissions: [...LEAD, 'payroll.export'], scopePositionIds: [water] })).status).toBe(403);
+  });
+
+  it('a department manager cannot open records or lists of people outside their department', async () => {
+    const role = await call(tok.hr).post('/api/roles', {
+      name: 'Water Works Manager',
+      permissions: ['schedule.read', 'users.read', 'schedule.write', 'discipline.read', 'reliability.read', 'onboarding.lead', 'incidents.read', 'injury.manage', 'care.manage'],
+      scopePositionIds: [water],
+    });
+    expect(role.status).toBe(201);
+    const mgr = (await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'mona', lastName: 'X', email: 'mona@depts.test' } })).id;
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: mgr, customRoleId: role.body.id } });
+    const m = await signAccessToken({ sub: mgr, tid: t.tenant.id, roles: ['EMPLOYEE'], aat: Math.floor(Date.now() / 1000) });
+    for (const path of ['discipline', 'reliability', 'case-file', 'records-export']) {
+      const out = await call(m).get(`/api/users/${ids.m1}/${path}`);
+      expect(out.status, path).toBe(404);
+      expect((await call(m).get(`/api/users/${ids.w1}/${path}`)).body.message ?? '', path).not.toMatch(/Person not found/);
+    }
+    expect((await call(m).get(`/api/onboarding/people/${ids.m1}`)).status).toBe(404);
+    const review = await call(m).get('/api/people/review');
+    if (review.status === 200) expect(review.body.map((r: { id: string }) => r.id)).toEqual([ids.w1]);
+    const onboarding = await call(m).get('/api/onboarding/people');
+    if (onboarding.status === 200) expect(JSON.stringify(onboarding.body)).not.toContain(ids.m1);
+    // An incident reported by someone in another department stays out of their list.
+    await owner.incidentReport.create({ data: { tenantId: t.tenant.id, facilityId: t.facility.id, reportedById: ids.m1, occurredAt: new Date(), category: 'FIRST_AID', ciphertext: Buffer.from('x'), iv: Buffer.from('x'), authTag: Buffer.from('x'), wrappedDataKey: Buffer.from('x'), kekId: 'test' } });
+    const inc = await call(m).get(`/api/incidents?from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 86_400_000).toISOString()}`);
+    if (inc.status === 200) expect(inc.body).toEqual([]);
+    expect((await call(tok.hr).get(`/api/incidents?from=${new Date(Date.now() - 86_400_000).toISOString()}&to=${new Date(Date.now() + 86_400_000).toISOString()}`)).body).toHaveLength(1);
   });
 });
