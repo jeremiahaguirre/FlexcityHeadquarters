@@ -33,20 +33,21 @@ function ItemsTable({ items }: { items: Item[] }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-small">
-        <tbody className="divide-y divide-line">
-          {items.map((i) => (
-            <tr key={i.id}>
-              <td className="py-1.5 pr-3 whitespace-nowrap text-muted">{formatDate(`${i.date}T12:00:00`, lng)}</td>
-              <td className="py-1.5 pr-3">{t(`expenses.categories.${i.category}`)} · {i.description}{i.km ? <span className="text-muted"> · {t('expenses.kmAt', { km: i.km, cents: i.centsPerKm })}</span> : null}</td>
-              <td className="py-1.5 pr-3">{i.receiptId ? <button type="button" onClick={() => void receipt(i.receiptId!)} className="inline-flex items-center gap-1 font-semibold text-brand-text hover:underline"><Paperclip className="h-3.5 w-3.5" aria-hidden="true" />{t('expenses.receipt')}</button> : null}</td>
-              <td className="py-1.5 text-right tabular-nums">{formatMoney(i.amount, lng)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ul className="divide-y divide-line text-small">
+      {items.map((i) => (
+        <li key={i.id} className="flex items-start justify-between gap-3 py-2">
+          <div className="min-w-0">
+            <p className="text-ink">{t(`expenses.categories.${i.category}`)} · {i.description}</p>
+            <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-caption text-muted">
+              <span>{formatDate(`${i.date}T12:00:00`, lng)}</span>
+              {i.km ? <span>· {t('expenses.kmAt', { km: i.km, cents: i.centsPerKm })}</span> : null}
+              {i.receiptId ? <button type="button" onClick={() => void receipt(i.receiptId!)} className="inline-flex min-h-8 items-center gap-1 font-semibold text-brand-text hover:underline"><Paperclip className="h-3.5 w-3.5" aria-hidden="true" />{t('expenses.receipt')}</button> : null}
+            </p>
+          </div>
+          <span className="shrink-0 tabular-nums text-ink">{formatMoney(i.amount, lng)}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
