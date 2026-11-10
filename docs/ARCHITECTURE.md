@@ -4,8 +4,8 @@
 
 | Layer | Choice | Notes |
 | --- | --- | --- |
-| Web | Next.js 14 (App Router), Tailwind, i18next | Tenant brand colours injected as CSS variables at request time |
-| API | Node 22, Express, TypeScript (strict), Zod | Permission-based route guards |
+| Web | Next.js 15 (App Router), Tailwind, i18next | Tenant brand colours injected as CSS variables at request time |
+| API | Node 26, Express, TypeScript (strict), Zod | Permission-based route guards |
 | Data | PostgreSQL 16 via Prisma | Row-level security on every tenant table |
 | Hosting | AWS `ca-central-1` | Config refuses non-Canadian regions in production |
 | Keys | AWS KMS | One KEK per tenant; one per union local |
@@ -23,7 +23,7 @@ Every tenant-scoped table has a `tenantId` column. Postgres row-level security (
 
 The original single `role` field conflated *what you may do in the app* with *what you may work*:
 
-- **AccessRole** (many per user): HR_ADMIN, AQUATIC_SUPERVISOR, HEAD_LIFEGUARD, STAFF, FRONT_DESK, UNION_STEWARD. These map to permissions in `src/auth/permissions.ts`; routes check permissions, never role names.
+- **AccessRole** (many per user): HR_ADMIN, AQUATIC_SUPERVISOR, HEAD_LIFEGUARD, STAFF, FRONT_DESK, UNION_STEWARD, EMPLOYEE (general city staff: water works, parks…). These map to permissions in `src/auth/permissions.ts`; routes check permissions, never role names.
 - **Position** (tenant-defined: Lifeguard, Swim Instructor…): what a shift requires. Positions require certifications, and certifications can require others (National Lifeguard requires current first aid). A manager approves each user for each position.
 
 ## Time
@@ -112,7 +112,7 @@ Locally: `npm run dev:union --workspace apps/api` beside `npm run dev`.
 
 ## Feature switches
 
-Each organization has fifteen switches (`src/services/platform/features.ts`), set only from the Dev console. A switched-off feature removes its permissions for everyone in that organization when the access token is checked, so menus hide it and permission checks refuse it; features without their own permission (lessons, union hub, public job page) also have a route guard. Notification emails follow their own switch; invitations and password resets always send.
+Each organization has a switch per feature (thirty today) (`src/services/platform/features.ts`), set only from the Dev console. A switched-off feature removes its permissions for everyone in that organization when the access token is checked, so menus hide it and permission checks refuse it; features without their own permission (lessons, union hub, public job page) also have a route guard. Notification emails follow their own switch; invitations and password resets always send.
 
 ## Menus per role
 

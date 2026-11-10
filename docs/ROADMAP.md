@@ -36,7 +36,7 @@
 - Union Hub: discussions, seniority list, membership managed by stewards.
 - Job postings and a public careers page.
 - Menus tailored to each role (a union steward sees only the Union hub; HR doesn't see personal shift screens).
-- FH Dev console: create cities, fifteen feature switches, facilities, positions, city logo upload, CSV staff import with preview.
+- FH Dev console: create cities, a switch per feature, facilities, positions, city logo upload, CSV staff import with preview.
 - City logo beside the FH logo on sign-in, in the app and on the careers page.
 - Passkeys (Windows Hello, Face ID / Touch ID, Android biometrics) for sign-in and a "confirm it's you" step before sensitive changes.
 - Single sign-on: Microsoft Entra ID (OpenID Connect) and SAML 2.0, existing accounts only, bound to the directory identity; can be made the only way in.

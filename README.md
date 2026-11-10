@@ -8,7 +8,7 @@ Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and 
 - **apps/web** — Next.js, Tailwind, i18next (English / Canadian French)
 - **apps/site** — the marketing website (static Next.js export, English and French), deployed on Vercel
 
-**Live demo:** https://jeremiahaguirre.github.io/FlexcityHeadquarters/ — a static build with sample data and no server (pick a role on the sign-in page: lifeguard, supervisor, HR, front desk or union steward). Build it locally with `npm run build:demo --workspace apps/web`. Its sample data is recorded from a seeded local stack by `apps/web/scripts/capture-demo.cjs`; rerun it after changing what a screen loads.
+**Live demo:** https://jeremiahaguirre.github.io/FlexcityHeadquarters/ — a static build with sample data and no server (pick a role on the sign-in page: lifeguard, supervisor, HR, front desk, union steward or a water works employee). Build it locally with `npm run build:demo --workspace apps/web`. Its sample data is recorded from a seeded local stack by `apps/web/scripts/capture-demo.cjs`; rerun it after changing what a screen loads.
 
 ## What works today
 
