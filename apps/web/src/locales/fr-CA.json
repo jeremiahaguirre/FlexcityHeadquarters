@@ -3759,9 +3759,9 @@
   },
   "leave": {
     "title": "Soldes de congés",
-    "help": "Ce qui reste à chaque personne cette année : les congés approuvés sont comptés comme utilisés, les demandes en attente comme en attente. Sans droit établi, on suppose deux semaines de vacances (trois après cinq ans) et cinq jours de maladie. Inscrivez les montants de votre convention collective.",
+    "help": "Ce qui reste à chaque personne cette année : les congés approuvés sont comptés comme utilisés, les demandes en attente comme en attente. Sans droit établi, on suppose deux semaines de vacances (trois après cinq ans) et cinq jours de maladie. Inscrivez les montants de votre convention collective. Les congés sont comptés selon les heures des quarts dont la personne est libérée (fins de semaine comprises); sans horaire, 8 heures par jour de semaine.",
     "myTitle": "Mes soldes pour {{year}}",
-    "myHelp": "Les congés approuvés sont déduits; les demandes en attente de décision sont indiquées comme en attente.",
+    "myHelp": "Les congés approuvés sont déduits selon les heures des quarts prévus à votre horaire (8 heures par jour de semaine sans horaire); les demandes en attente de décision sont indiquées comme en attente.",
     "hoursLeft": "{{hours}} restantes",
     "hoursUsed": "{{hours}} utilisées",
     "breakdown": "{{entitled}} + {{carry}} reportées · {{used}} utilisées · {{pending}} en attente",

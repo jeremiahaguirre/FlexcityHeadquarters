@@ -791,6 +791,10 @@ model TimeOffRequest {
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, startsAt, endsAt])
+  /// Leave hours this request used, measured at approval from the person's scheduled shifts in it
+  /// (their shifts are released when it's approved); weekdays × 8 h when nothing was scheduled.
+  chargedHours     Decimal?  @db.Decimal(8, 2)
+  chargedBasis     String?
 }
 
 // ------------------------------------------------------------------

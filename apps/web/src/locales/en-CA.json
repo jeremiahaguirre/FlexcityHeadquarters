@@ -3759,9 +3759,9 @@
   },
   "leave": {
     "title": "Leave balances",
-    "help": "What each person has left this year: approved time off counts as used, requests waiting for a decision as pending. Without an entitlement, two weeks' vacation (three after five years) and five sick days are assumed. Set your collective agreement's amounts.",
+    "help": "What each person has left this year: approved time off counts as used, requests waiting for a decision as pending. Without an entitlement, two weeks' vacation (three after five years) and five sick days are assumed. Set your collective agreement's amounts. Time off is counted in the hours of the shifts it takes the person off (weekends included); when nothing was scheduled, 8 hours per weekday.",
     "myTitle": "My balances for {{year}}",
-    "myHelp": "Approved time off is taken off; requests waiting for a decision show as pending.",
+    "myHelp": "Approved time off is taken off, in the hours of the shifts you were scheduled for (8 hours a weekday when nothing was scheduled); requests waiting for a decision show as pending.",
     "hoursLeft": "{{hours}} left",
     "hoursUsed": "{{hours}} used",
     "breakdown": "{{entitled}} + {{carry}} carried over · {{used}} used · {{pending}} pending",

@@ -17,6 +17,7 @@ import { notify } from '../services/notifications/notifier.js';
 import { forgetActive } from '../services/people/customRoles.js';
 import { peopleInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { h } from './context.js';
+import { leaveHoursFrom, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
 
 export const hrRouter = Router();
 hrRouter.use(['/leave', '/me/leave', '/reviews', '/me/reviews', '/training', '/me/training', '/grievances'], requireFeature('hrSuite'));
@@ -25,23 +26,11 @@ const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const LEAVE_TYPES = ['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER'] as const;
 const r2 = (n: number) => Math.round(n * 100) / 100;
-const HOURS_PER_DAY = 8;
 
 // ------------------------------------------------------------- Leave balances
 
-/** Hours of leave a request uses: a working day per weekday it spans, or its length if shorter than a day. */
-export function leaveHours(startsAt: Date, endsAt: Date): number {
-  const ms = endsAt.getTime() - startsAt.getTime();
-  if (ms <= 0) return 0;
-  if (ms < 86_400_000) return r2(Math.min(HOURS_PER_DAY, ms / 3_600_000));
-  // Whole days (rounded, so a daylight-saving change doesn't add or drop one), weekends not counted.
-  let days = 0;
-  for (let i = 0; i < Math.round(ms / 86_400_000); i += 1) {
-    const dow = new Date(startsAt.getTime() + i * 86_400_000 + 43_200_000).getUTCDay();
-    if (dow !== 0 && dow !== 6) days += 1;
-  }
-  return days * HOURS_PER_DAY;
-}
+/** Kept for callers that measure a period with no schedule at hand. */
+export const leaveHours = weekdayLeaveHours;
 
 /** Minimums when no entitlement is set: two weeks' vacation (three after five years) and five sick days. Set your agreement's amounts per person. */
 function defaultHours(type: TimeOffType, hireDate: Date | null, year: number): number | null {
@@ -53,11 +42,19 @@ function defaultHours(type: TimeOffType, hireDate: Date | null, year: number): n
 async function balances(tx: Tx, userIds: string[], year: number) {
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
-  const [users, ents, requests] = await Promise.all([
+  const [users, ents, requests, shifts] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, hireDate: true } }),
     tx.leaveEntitlement.findMany({ where: { userId: { in: userIds }, year } }),
     tx.timeOffRequest.findMany({ where: { userId: { in: userIds }, startsAt: { lt: end }, endsAt: { gt: start }, status: { in: ['APPROVED', 'PENDING'] } } }),
+    scheduledShifts(tx, userIds, start, end),
   ]);
+  // Approved: what was charged at approval (older requests: the weekday count). Pending: their schedule as it stands.
+  const hoursOf = (r: (typeof requests)[number]) =>
+    r.status === 'APPROVED'
+      ? r.chargedHours != null
+        ? Number(r.chargedHours)
+        : weekdayLeaveHours(r.startsAt, r.endsAt)
+      : leaveHoursFrom(r, shifts.filter((s) => s.userId === r.userId)).hours;
   return users.map((u) => ({
     userId: u.id,
     name: `${u.firstName} ${u.lastName}`,
@@ -66,8 +63,8 @@ async function balances(tx: Tx, userIds: string[], year: number) {
       const entitled = e ? Number(e.hours) : defaultHours(type, u.hireDate, year);
       const carryover = e ? Number(e.carryover) : 0;
       const mine = requests.filter((r) => r.userId === u.id && r.type === type);
-      const used = r2(mine.filter((r) => r.status === 'APPROVED').reduce((s, r) => s + leaveHours(r.startsAt, r.endsAt), 0));
-      const pending = r2(mine.filter((r) => r.status === 'PENDING').reduce((s, r) => s + leaveHours(r.startsAt, r.endsAt), 0));
+      const used = r2(mine.filter((r) => r.status === 'APPROVED').reduce((s, r) => s + hoursOf(r), 0));
+      const pending = r2(mine.filter((r) => r.status === 'PENDING').reduce((s, r) => s + hoursOf(r), 0));
       return { type, entitled, carryover, used, pending, remaining: entitled == null ? null : r2(entitled + carryover - used), set: !!e, note: e?.note ?? null };
     }),
   }));

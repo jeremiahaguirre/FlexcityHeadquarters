@@ -53,6 +53,31 @@ describe('leave balances', () => {
     expect(mine.types.find((x: { type: string }) => x.type === 'SICK')).toMatchObject({ entitled: 40, used: 0 });
   });
 
+  it('counts the hours of the shifts the person is taken off, weekends included', async () => {
+    const u = t.users[1]!.id;
+    const shift = (start: string, hours: number) =>
+      owner.shift.create({ data: { tenantId: t.tenant.id, facilityId: t.facility.id, positionId: t.position.id, userId: u, startsAt: new Date(start), endsAt: new Date(new Date(start).getTime() + hours * 3_600_000), status: 'PUBLISHED' } });
+    // Saturday 10 h and Monday 6 h; Sunday off. By weekdays this would be 8 h (just the Monday).
+    await shift('2027-01-09T15:00:00Z', 10);
+    await shift('2027-01-11T16:00:00Z', 6);
+    const req = await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: u, type: 'VACATION', startsAt: new Date('2027-01-09T08:00:00Z'), endsAt: new Date('2027-01-12T08:00:00Z') } });
+    const vac = async () => (await call(tok.emp2).get('/api/me/leave?year=2027')).body.types.find((x: { type: string }) => x.type === 'VACATION');
+    expect(await vac()).toMatchObject({ pending: 16, used: 0 });
+    // Approving takes them off those shifts; the 16 hours are kept on the request.
+    expect((await call(tok.sup).post(`/api/time-off/${req.id}/decision`, { decision: 'APPROVE' })).status).toBe(200);
+    expect(await owner.shift.count({ where: { userId: u, startsAt: { gte: new Date('2027-01-01') } } })).toBe(0);
+    expect(await owner.timeOffRequest.findUniqueOrThrow({ where: { id: req.id } })).toMatchObject({ chargedBasis: 'SHIFTS' });
+    expect(await vac()).toMatchObject({ pending: 0, used: 16 });
+  });
+
+  it('falls back to working days when nothing is scheduled', async () => {
+    const u = t.users[1]!.id;
+    const req = await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: u, type: 'SICK', startsAt: new Date('2027-02-01T08:00:00Z'), endsAt: new Date('2027-02-03T08:00:00Z') } });
+    expect((await call(tok.sup).post(`/api/time-off/${req.id}/decision`, { decision: 'APPROVE' })).status).toBe(200);
+    expect(await owner.timeOffRequest.findUniqueOrThrow({ where: { id: req.id } })).toMatchObject({ chargedBasis: 'WEEKDAYS' });
+    expect((await call(tok.emp2).get('/api/me/leave?year=2027')).body.types.find((x: { type: string }) => x.type === 'SICK')).toMatchObject({ used: 16 });
+  });
+
   it('shows a supervisor only their department', async () => {
     const b = (await call(tok.sup).get('/api/leave/balances?year=2026')).body;
     expect(b.people.map((p: { userId: string }) => p.userId)).not.toContain(ids.other);

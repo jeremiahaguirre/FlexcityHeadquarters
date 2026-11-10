@@ -372,3 +372,14 @@ describe('benchmark quartiles', () => {
     expect(quartiles([1, 2, 3, 4, 5])).toEqual({ p25: 2, p50: 3, p75: 4 });
   });
 });
+
+describe('leave hours', () => {
+  it('counts overlap with shifts, else working days', async () => {
+    const { leaveHoursFrom } = await import('../../src/services/people/leaveHours.js');
+    const req = { startsAt: new Date('2027-01-09T08:00:00Z'), endsAt: new Date('2027-01-12T08:00:00Z') };
+    expect(leaveHoursFrom(req, [{ startsAt: new Date('2027-01-09T15:00:00Z'), endsAt: new Date('2027-01-10T01:00:00Z') }])).toEqual({ hours: 10, basis: 'SHIFTS' });
+    // A shift that starts before the request: only the part inside counts.
+    expect(leaveHoursFrom(req, [{ startsAt: new Date('2027-01-09T06:00:00Z'), endsAt: new Date('2027-01-09T10:00:00Z') }])).toEqual({ hours: 2, basis: 'SHIFTS' });
+    expect(leaveHoursFrom(req, [])).toEqual({ hours: 8, basis: 'WEEKDAYS' }); // Sat, Sun, Mon → one weekday
+  });
+});

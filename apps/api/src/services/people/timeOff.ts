@@ -15,6 +15,7 @@ import type { DomainEvent } from '../../lib/events.js';
 import { addDays } from '../../lib/time.js';
 import { usersWithRoles } from '../notifications/notifier.js';
 import { postOffer } from '../shiftboard/offers.js';
+import { leaveHoursFrom, scheduledShifts } from './leaveHours.js';
 
 export interface AvailabilityWindow {
   dayOfWeek: number;
@@ -105,7 +106,12 @@ export async function decideTimeOff(
   }
 
   const status = decision === 'APPROVE' ? 'APPROVED' : 'DENIED';
-  await tx.timeOffRequest.update({ where: { id }, data: { status, decisionNote: note ?? null, decidedById: actor.userId, decidedAt: new Date() } });
+  // Measured now, from the shifts it takes them off, before those shifts are released below.
+  const charged = status === 'APPROVED' ? leaveHoursFrom(r, await scheduledShifts(tx, [r.userId], r.startsAt, r.endsAt)) : null;
+  await tx.timeOffRequest.update({
+    where: { id },
+    data: { status, decisionNote: note ?? null, decidedById: actor.userId, decidedAt: new Date(), ...(charged ? { chargedHours: charged.hours, chargedBasis: charged.basis } : {}) },
+  });
 
   const events: DomainEvent[] = [];
   let reopened = 0;
@@ -128,6 +134,6 @@ export async function decideTimeOff(
     tenantId: actor.tenantId,
     drafts: [{ userId: r.userId, type: 'time_off_decided', params: { requestId: id, status, note: note ?? null }, link: '/time-off', email: 'time_off_decided' }],
   });
-  await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: `timeoff.${decision.toLowerCase()}`, entity: 'TimeOffRequest', entityId: id, after: { note, reopenedShifts: reopened } });
+  await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: `timeoff.${decision.toLowerCase()}`, entity: 'TimeOffRequest', entityId: id, after: { note, reopenedShifts: reopened, ...(charged ? { leaveHours: charged.hours, basis: charged.basis } : {}) } });
   return { status, reopenedShifts: reopened, events };
 }
