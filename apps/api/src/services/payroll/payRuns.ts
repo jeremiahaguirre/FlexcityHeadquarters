@@ -53,6 +53,8 @@ export interface PayrollSettings {
   twoPersonApproval?: boolean;
   /** Approving and downloading deposit files needs a passkey sign-in (default on). */
   requirePasskey?: boolean;
+  /** In the app, or with ADP, Dayforce or Wagepoint over their API (providers.ts). */
+  payrollProvider?: import('./providers.js').ProviderSettings;
   /** Host-to-host connection to the city's bank. */
   bank?: BankLink;
 }

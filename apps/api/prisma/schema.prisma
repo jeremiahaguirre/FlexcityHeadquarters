@@ -2846,3 +2846,24 @@ enum TrainingSpendKind {
   OTHER
 }
 
+/// Each pay period sent to a payroll provider (ADP, Dayforce, Wagepoint) over its API.
+model PayrollSync {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  provider     String
+  periodStart  DateTime @db.Date
+  periodEnd    DateTime @db.Date
+  /// SENT or FAILED.
+  status       String
+  rows         Int
+  /// SHA-256 of the file sent, to match it with the provider's copy.
+  fileSha256   String
+  httpStatus   Int?
+  reference    String?
+  message      String?
+  sentById     String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, createdAt])
+}
+
