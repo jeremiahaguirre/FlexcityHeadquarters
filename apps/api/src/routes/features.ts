@@ -385,7 +385,8 @@ api.get(
       res.status(422).json({ code: 'EXPORT_INVALID', problems: out.csv.problems, warnings: out.warnings });
       return;
     }
-    if (out.warnings.length) res.setHeader('X-Flexcity-Warnings', encodeURIComponent(out.warnings.join(' | ')));
+    // Codes and details (JSON), so the screen shows them in the reader's language.
+    if (out.warnings.length) res.setHeader('X-Flexcity-Warnings', encodeURIComponent(JSON.stringify(out.warnings)));
     res.type('text/csv').attachment(`payroll-${q.periodStart}.csv`).send(out.csv.csv);
   }),
 );

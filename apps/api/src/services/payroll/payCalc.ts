@@ -17,6 +17,7 @@ import type { PayCodeKey } from '@prisma/client';
 import { Decimal, ZERO, cents, hoursDec } from '../../lib/money.js';
 import { addDays, dayOfWeek, payWeekStart, splitByLocalDay, startOfLocalDay } from '../../lib/time.js';
 import { type ProvinceRules, vacationPercent } from '../compliance/provincialRules.js';
+import { type Issue, issue } from './issues.js';
 
 export interface WorkedInterval {
   start: Date;
@@ -62,7 +63,7 @@ export interface PayResult {
   dailyWages: Map<string, Decimal>;
   /** Hours worked per local date. */
   dailyHours: Map<string, Decimal>;
-  warnings: string[];
+  warnings: Issue[];
 }
 
 type Bucket = 'REG' | 'OT15' | 'OT20';
@@ -79,14 +80,14 @@ interface Portion {
 
 export function calculatePay(input: PayCalcInput): PayResult {
   const { rules, timezone } = input;
-  const warnings: string[] = [];
+  const warnings: Issue[] = [];
 
   if (dayOfWeek(input.periodStart) !== input.payWeekStartDay) {
     throw new Error(`Period start ${input.periodStart} is not a pay-week start (day ${input.payWeekStartDay})`);
   }
   if (!Number.isInteger(input.weeks) || input.weeks < 1) throw new Error('weeks must be a positive integer');
   if (!rules.verified) {
-    warnings.push(`${rules.province} rules have not been verified by employment counsel.`);
+    warnings.push(issue('RULES_UNVERIFIED', { province: rules.province }));
   }
 
   const periodEndDate = addDays(input.periodStart, input.weeks * 7);
@@ -158,7 +159,7 @@ export function calculatePay(input: PayCalcInput): PayResult {
     }
   }
   if (finalPortions.some((p) => input.statHolidays.has(p.localDate)) && rules.statutoryHoliday.holidayPayFormula === null) {
-    warnings.push(`Statutory holiday pay entitlement for ${rules.province} is not automated; calculate manually.`);
+    warnings.push(issue('STAT_PAY_MANUAL', { province: rules.province }));
   }
 
   const lines = [...lineMap.values()].map((l) => ({ ...l, amount: cents(l.hours.mul(l.rate).mul(l.multiplier)) }));

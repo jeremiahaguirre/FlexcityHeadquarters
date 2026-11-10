@@ -10,6 +10,7 @@
  */
 import type { PayCodeKey } from '@prisma/client';
 import type { PayLine } from './payCalc.js';
+import { type Issue, issue } from './issues.js';
 
 export interface ExportEmployee {
   userId: string;
@@ -24,21 +25,21 @@ export interface PayCodeLookup {
   resolve(key: PayCodeKey, positionId: string | null): string | null;
 }
 
-export type ExportResult = { ok: true; csv: string; rowCount: number } | { ok: false; problems: string[] };
+export type ExportResult = { ok: true; csv: string; rowCount: number } | { ok: false; problems: Issue[] };
 
 const HEADER = ['Employee_ID', 'Pay_Code', 'Hours', 'Rate', 'Amount', 'Cost_Center', 'Period_Start', 'Period_End'];
 
 export function buildPayrollCsv(employees: ExportEmployee[], codes: PayCodeLookup, period: { start: string; end: string }): ExportResult {
-  const problems: string[] = [];
+  const problems: Issue[] = [];
   const rows: string[][] = [];
 
   for (const e of employees) {
-    if (!e.employeeNumber) problems.push(`${e.displayName}: missing employer employee number.`);
-    if (!e.costCenter) problems.push(`${e.displayName}: facility has no cost centre.`);
+    if (!e.employeeNumber) problems.push(issue('NO_EMPLOYEE_NUMBER', { name: e.displayName }));
+    if (!e.costCenter) problems.push(issue('NO_COST_CENTRE', { name: e.displayName }));
     for (const l of e.lines) {
       const code = codes.resolve(l.code, l.positionId);
       if (!code) {
-        problems.push(`${e.displayName}: no pay code mapped for ${l.code}${l.positionId ? ` (position ${l.positionId})` : ''}.`);
+        problems.push(issue('NO_PAY_CODE', { name: e.displayName, code: l.code }));
         continue;
       }
       rows.push([

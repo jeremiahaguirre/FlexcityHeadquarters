@@ -17,10 +17,11 @@ import { useToast } from '@/components/ui/Toast';
 import { apiDownload, saveBlob } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { plusDays, todayIso } from '@/lib/useQuery';
+import { type Issue, issueKey, issueLabel } from '@/lib/payrollIssues';
 
 type Result =
-  | { kind: 'done'; file: string; rows: number; warnings: string[] }
-  | { kind: 'problems'; problems: string[]; warnings: string[] };
+  | { kind: 'done'; file: string; rows: number; warnings: Array<Issue | string> }
+  | { kind: 'problems'; problems: Array<Issue | string>; warnings: Array<Issue | string> };
 
 /** The Sunday two weeks before the most recent Sunday: the last full two-week period. */
 function lastPeriodStart(): string {
@@ -48,13 +49,13 @@ function ProviderExport() {
       const r = await apiDownload(`/api/payroll/export?periodStart=${start}&weeks=${weeks}`);
       if (r.ok) {
         const header = r.headers.get('X-Flexcity-Warnings');
-        const warnings = header ? decodeURIComponent(header).split(' | ') : [];
+        const warnings = header ? (JSON.parse(decodeURIComponent(header)) as Issue[]) : [];
         const text = await r.blob.text();
         const file = `payroll-${start}.csv`;
         saveBlob(r.blob, file);
         setResult({ kind: 'done', file, rows: Math.max(0, text.trim().split(/\r?\n/).length - 1), warnings });
       } else if (r.error.code === 'EXPORT_INVALID') {
-        setResult({ kind: 'problems', problems: (r.error.problems as string[]) ?? [], warnings: (r.error.warnings as string[]) ?? [] });
+        setResult({ kind: 'problems', problems: (r.error.problems as Issue[]) ?? [], warnings: (r.error.warnings as Issue[]) ?? [] });
       } else {
         toast(t(`errors.${String(r.error.code)}`, { defaultValue: String(r.error.message ?? t('common.error')) }), 'warn');
       }
@@ -116,9 +117,9 @@ function ProviderExport() {
             <CardBody className="grid gap-4 pt-3">
               <ul className="grid gap-2">
                 {result.problems.map((p) => (
-                  <li key={p} className="flex gap-2 text-small">
+                  <li key={issueKey(p)} className="flex gap-2 text-small">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" aria-hidden="true" />
-                    {p}
+                    {issueLabel(t, p)}
                   </li>
                 ))}
               </ul>
@@ -140,7 +141,7 @@ function ProviderExport() {
             <CardBody className="pt-3">
               <ul className="grid list-disc gap-1.5 pl-5 text-small">
                 {result.warnings.map((w) => (
-                  <li key={w}>{w}</li>
+                  <li key={issueKey(w)}>{issueLabel(t, w)}</li>
                 ))}
               </ul>
             </CardBody>

@@ -11,6 +11,7 @@ import { resolveRules } from '../compliance/provincialRules.js';
 import { type ExportEmployee, buildPayrollCsv } from './export.js';
 import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
 import { type PayResult, calculatePay } from './payCalc.js';
+import { IssueSet, issue } from './issues.js';
 
 /** `onlyUsers`: a department supervisor's people; null = everyone (HR). */
 /** `positionIds`: one department's positions; null = every position. */
@@ -33,9 +34,9 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
 
   const employees: ExportEmployee[] = [];
   const results: Array<{ userId: string; facilityId: string; result: PayResult }> = [];
-  const warnings = new Set<string>();
-  if (unapproved) warnings.add(`${unapproved} punch(es) in or near this period are still pending approval and were excluded.`);
-  if (openPunches) warnings.add(`${openPunches} punch(es) have no clock-out and were excluded.`);
+  const warnings = new IssueSet();
+  if (unapproved) warnings.add(issue('PUNCHES_PENDING', { count: unapproved }));
+  if (openPunches) warnings.add(issue('PUNCHES_OPEN', { count: openPunches }));
 
   for (const f of facilities) {
     const holidays = await tx.statutoryHoliday.findMany({
@@ -46,7 +47,7 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
     const rules = resolveRules(f.province, periodStart, overrides);
     const formula = rules.statutoryHoliday.holidayPayFormula;
     if (statDates.length && formula === null) {
-      warnings.add(`Statutory holiday pay for ${f.province} (${statDates.join(', ')}) is not automated; add it manually.`);
+      warnings.add(issue('STAT_PAY_DATES', { province: f.province, dates: statDates.join(', ') }));
     }
 
     // Holiday-pay formulas look back 30 days (4 weeks), so load enough history.
@@ -90,7 +91,7 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
       if (statDates.length && formula) {
         const history = calculatePay({ ...common, periodStart: lookbackStart, weeks: Math.round((Date.parse(periodEnd) - Date.parse(lookbackStart)) / (7 * 86_400_000)) });
         const days: DailyEarnings[] = [...history.dailyWages].map(([localDate, wages]) => ({ localDate, wages, hoursWorked: history.dailyHours.get(localDate) ?? ZERO }));
-        if (!user.hireDate) warnings.add(`${user.firstName} ${user.lastName} has no hire date; holiday pay eligibility assumed.`);
+        if (!user.hireDate) warnings.add(issue('NO_HIRE_DATE', { name: `${user.firstName} ${user.lastName}` }));
         for (const h of statDates) {
           const hp = statutoryHolidayPay(formula, h, user.hireDate?.toISOString().slice(0, 10) ?? '1900-01-01', days);
           if (hp.eligible && hp.amount.gt(0)) {
@@ -127,5 +128,5 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
     null;
 
   const csv = buildPayrollCsv(employees, { resolve }, { start: periodStart, end: addDays(periodEnd, -1) });
-  return { csv, results, warnings: [...warnings] };
+  return { csv, results, warnings: warnings.list() };
 }

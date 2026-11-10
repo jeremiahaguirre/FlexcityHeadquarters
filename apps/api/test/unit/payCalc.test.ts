@@ -115,7 +115,7 @@ describe('calculatePay — BC', () => {
   });
 
   it('warns that rules are unverified', () => {
-    expect(calculatePay(base({})).warnings[0]).toMatch(/not been verified/);
+    expect(calculatePay(base({})).warnings[0]).toMatchObject({ code: 'RULES_UNVERIFIED' });
   });
 });
 
@@ -146,5 +146,13 @@ describe('calculatePay — other provinces', () => {
     ]);
     const r = calculatePay(base({ rules, intervals: [iv('2026-07-06 08:00', '2026-07-06 16:00')] }));
     expect(hours(r, 'OVERTIME_1_5')).toBe(0.5);
+  });
+});
+
+describe('payroll issues', () => {
+  it('every code has English text, and plain strings from older pay runs pass through', async () => {
+    const { ISSUE_CODES, issueText } = await import('../../src/services/payroll/issues.js');
+    for (const code of ISSUE_CODES) expect(issueText({ code, params: { name: 'A', province: 'BC', year: 2026, count: 2, code: 'REG', dates: '2026-07-01' } })).not.toBe(code);
+    expect(issueText('Old message.')).toBe('Old message.');
   });
 });

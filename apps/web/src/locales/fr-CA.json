@@ -4086,5 +4086,27 @@
     "statusLabel": "Statut",
     "saved": "Enregistré",
     "replyHint": "Répondez depuis votre propre courriel; copiez l’adresse ci-dessus."
+  },
+  "payrollIssues": {
+    "RULES_UNVERIFIED": "Les règles de {{province}} n’ont pas encore été vérifiées par un avocat en droit du travail.",
+    "STAT_PAY_MANUAL": "L’indemnité de jour férié pour {{province}} n’est pas automatisée; calculez-la à la main.",
+    "STAT_PAY_DATES": "L’indemnité de jour férié pour {{province}} ({{dates}}) n’est pas automatisée; ajoutez-la à la main.",
+    "NO_EMPLOYEE_NUMBER": "{{name}} : numéro d’employé de l’employeur manquant.",
+    "NO_COST_CENTRE": "{{name}} : l’installation n’a pas de centre de coûts.",
+    "NO_PAY_CODE": "{{name}} : aucun code de paie associé à {{code}}.",
+    "NO_FEDERAL_TABLE": "Il n’y a pas de table de paie fédérale pour {{year}}. Demandez au soutien FH de l’ajouter.",
+    "FEDERAL_UNVERIFIED": "La table de paie fédérale {{year}} (RPC, AE, impôt) n’a pas encore été vérifiée par rapport au T4127 de l’ARC.",
+    "QUEBEC": "{{name}} travaille au Québec : les retenues du RRQ, du RQAP et de Revenu Québec ne sont pas calculées ici. Payez le personnel du Québec par votre fournisseur de paie.",
+    "QUEBEC_TABLES": "Il n’y a pas de table de paie du Québec (RRQ, RQAP, impôt du Québec) pour {{year}}. Demandez au soutien FH de l’ajouter.",
+    "QUEBEC_UNVERIFIED": "La table de paie du Québec {{year}} n’a pas encore été vérifiée par rapport au TP-1015.F de Revenu Québec.",
+    "NO_PROVINCE_TABLE": "Il n’y a pas de table de paie pour {{province}} en {{year}}. Demandez au soutien FH de l’ajouter.",
+    "PROVINCE_UNVERIFIED": "La table de paie {{province}} {{year}} n’a pas encore été vérifiée par rapport au T4127 de l’ARC.",
+    "NEGATIVE_NET": "Les retenues de {{name}} dépassent sa paie. Vérifiez l’impôt supplémentaire de son TD1.",
+    "NO_BANK": "{{name}} n’a pas de compte de dépôt direct vérifié et recevra un chèque.",
+    "NO_SIN": "{{name}} n’a pas de NAS au dossier; il est requis pour son T4.",
+    "PUNCHES_PENDING": "{{count}} pointage(s) de cette période ou à proximité attendent encore l’approbation et ont été exclus.",
+    "PUNCHES_OPEN": "{{count}} pointage(s) sans heure de sortie ont été exclus.",
+    "NO_HIRE_DATE": "{{name}} n’a pas de date d’embauche; l’admissibilité à l’indemnité de jour férié a été présumée.",
+    "NO_HOURS": "Aucune heure approuvée pour cette période. Approuvez d’abord les pointages, puis recalculez."
   }
 }

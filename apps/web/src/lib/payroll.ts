@@ -1,3 +1,4 @@
+import type { Issue } from './payrollIssues';
 export interface Earning { code: string; positionId: string | null; hours: number; rate: number; amount: number }
 export interface BenefitLine { planId: string; name: string; nameFr: string | null; kind: string; employee: number; employer: number; taxable: number }
 export interface Deductions { cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number; extraTax: number; total: number; employerCpp?: number; employerEi?: number; benefits?: BenefitLine[]; rpp?: number; unionDues?: number; afterTax?: number; taxableBenefit?: number; employerBenefits?: number }
@@ -33,8 +34,8 @@ export interface Run {
   payDate: string;
   status: 'DRAFT' | 'APPROVED' | 'PAID' | 'VOID';
   totals: { gross?: number; deductions?: number; net?: number; employerCpp?: number; employerEi?: number; people?: number; deposits?: number; cheques?: number };
-  blockers: string[];
-  warnings: string[];
+  blockers: Array<Issue | string>;
+  warnings: Array<Issue | string>;
   preparedById: string;
   approvedById: string | null;
   fileCreationNumber: number | null;

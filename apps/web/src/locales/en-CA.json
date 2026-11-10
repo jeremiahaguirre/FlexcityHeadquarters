@@ -4086,5 +4086,27 @@
     "statusLabel": "Status",
     "saved": "Saved",
     "replyHint": "Reply from your own email; copy the address above."
+  },
+  "payrollIssues": {
+    "RULES_UNVERIFIED": "{{province}} rules have not been verified by employment counsel.",
+    "STAT_PAY_MANUAL": "Statutory holiday pay for {{province}} is not automated; calculate it manually.",
+    "STAT_PAY_DATES": "Statutory holiday pay for {{province}} ({{dates}}) is not automated; add it manually.",
+    "NO_EMPLOYEE_NUMBER": "{{name}}: missing employer employee number.",
+    "NO_COST_CENTRE": "{{name}}: facility has no cost centre.",
+    "NO_PAY_CODE": "{{name}}: no pay code mapped for {{code}}.",
+    "NO_FEDERAL_TABLE": "There is no federal payroll table for {{year}}. Ask FH support to add it.",
+    "FEDERAL_UNVERIFIED": "The federal {{year}} payroll table (CPP, EI, tax) hasn’t been verified against CRA’s T4127 yet.",
+    "QUEBEC": "{{name}} works in Quebec: QPP, QPIP and Revenu Québec withholding aren’t calculated here. Pay Quebec staff through your payroll provider.",
+    "QUEBEC_TABLES": "There is no Quebec payroll table (QPP, QPIP, Quebec tax) for {{year}}. Ask FH support to add it.",
+    "QUEBEC_UNVERIFIED": "The Quebec {{year}} payroll table hasn’t been verified against Revenu Québec’s TP-1015.F yet.",
+    "NO_PROVINCE_TABLE": "There is no {{province}} payroll table for {{year}}. Ask FH support to add it.",
+    "PROVINCE_UNVERIFIED": "The {{province}} {{year}} payroll table hasn’t been verified against CRA’s T4127 yet.",
+    "NEGATIVE_NET": "{{name}}’s deductions are more than their pay. Check their TD1 extra tax.",
+    "NO_BANK": "{{name}} has no verified direct deposit account and will need a cheque.",
+    "NO_SIN": "{{name}} has no SIN on file; it’s needed for their T4.",
+    "PUNCHES_PENDING": "{{count}} punch(es) in or near this period are still waiting for approval and were left out.",
+    "PUNCHES_OPEN": "{{count}} punch(es) have no clock-out and were left out.",
+    "NO_HIRE_DATE": "{{name}} has no hire date; holiday pay eligibility was assumed.",
+    "NO_HOURS": "No approved hours in this period. Approve punches first, then recalculate."
   }
 }

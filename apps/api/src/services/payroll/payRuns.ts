@@ -20,6 +20,7 @@ import { type Payment, buildCpa005 } from './cpa005.js';
 import { runPayroll } from './payrollRun.js';
 import { type Deductions, type YearToDate, calculateDeductions } from './tax.js';
 import { loadTaxTables } from './taxTables.js';
+import { type Issue, IssueSet, issue } from './issues.js';
 
 export interface PayrollSettings {
   businessNumber?: string;
@@ -109,10 +110,10 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   const year = Number(input.payDate.slice(0, 4));
   const P = periodsPerYear(input.weeks);
   const tables = await loadTaxTables(tx, year);
-  const blockers = new Set<string>();
-  const warnings = new Set<string>(calcWarnings);
-  if (!tables.federal) blockers.add(`There is no federal payroll table for ${year}. Ask FH support to add it.`);
-  else if (!tables.federal.verified) blockers.add(`The federal ${year} payroll table (CPP, EI, tax) hasn’t been verified against CRA’s T4127 yet.`);
+  const blockers = new IssueSet();
+  const warnings = new IssueSet(calcWarnings);
+  if (!tables.federal) blockers.add(issue('NO_FEDERAL_TABLE', { year }));
+  else if (!tables.federal.verified) blockers.add(issue('FEDERAL_UNVERIFIED', { year }));
 
   const runUsers = [...new Set(results.map((r) => r.userId))];
   const enrollments = await tx.benefitEnrollment.findMany({
@@ -144,10 +145,10 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     const main = [...rs].sort((a, b) => Number(b.result.grossWages) - Number(a.result.grossWages))[0]!;
     const profile = profiles.find((p) => p.userId === userId);
     const province = (profile?.province ?? facilities.find((f) => f.id === main.facilityId)?.province ?? 'ON') as Province;
-    if (province === 'QC') blockers.add(`${name(userId)} works in Quebec: QPP, QPIP and Revenu Québec withholding aren’t calculated here. Pay Quebec staff through your payroll provider.`);
+    if (province === 'QC') blockers.add(issue('QUEBEC', { name: name(userId) }));
     const prov = tables.provincial.get(province);
-    if (!prov) blockers.add(`There is no ${province} payroll table for ${year}. Ask FH support to add it.`);
-    else if (!prov.verified) blockers.add(`The ${province} ${year} payroll table hasn’t been verified against CRA’s T4127 yet.`);
+    if (!prov) blockers.add(issue('NO_PROVINCE_TABLE', { province, year }));
+    else if (!prov.verified) blockers.add(issue('PROVINCE_UNVERIFIED', { province, year }));
     const ytd = await yearToDate(tx, userId, year, runId);
     // Benefits and deductions: each plan's employee and employer share for this pay.
     const benefits = enrollments
@@ -185,10 +186,10 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     const benefitDeductions = r2(rpp + unionDues + afterTax);
     const totalDeductions = r2(d.total + benefitDeductions);
     const net = r2(gross - totalDeductions);
-    if (net < 0) blockers.add(`${name(userId)}’s deductions are more than their pay. Check their TD1 extra tax.`);
+    if (net < 0) blockers.add(issue('NEGATIVE_NET', { name: name(userId) }));
     const bank = banks.find((b) => b.userId === userId);
-    if (!bank) warnings.add(`${name(userId)} has no verified direct deposit account and will need a cheque.`);
-    if (!profile?.sinLast3) warnings.add(`${name(userId)} has no SIN on file; it’s needed for their T4.`);
+    if (!bank) warnings.add(issue('NO_BANK', { name: name(userId) }));
+    if (!profile?.sinLast3) warnings.add(issue('NO_SIN', { name: name(userId) }));
     const lineDept = (positionId: string | null) => departments.find((p) => p.id === positionId)?.departmentId ?? null;
     statements.push({
       tenantId,
@@ -235,7 +236,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     else totals.cheques += 1;
   }
   for (const k of Object.keys(totals) as Array<keyof typeof totals>) totals[k] = r2(totals[k]);
-  if (!statements.length) warnings.add('No approved hours in this period. Approve punches first, then recalculate.');
+  if (!statements.length) warnings.add(issue('NO_HOURS'));
 
   const data = {
     departmentId: input.departmentId,
@@ -244,8 +245,8 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     payDate: new Date(input.payDate),
     periodsPerYear: P,
     totals,
-    blockers: [...blockers],
-    warnings: [...warnings],
+    blockers: blockers.list() as unknown as Prisma.InputJsonValue,
+    warnings: warnings.list() as unknown as Prisma.InputJsonValue,
   };
   const run = runId ? await tx.payRun.update({ where: { id: runId }, data }) : await tx.payRun.create({ data: { ...data, tenantId, preparedById } });
   await tx.payStatement.deleteMany({ where: { payRunId: run.id } });
@@ -266,7 +267,7 @@ export async function approveRun(tx: Tx, tenantId: string, runId: string, approv
   if (run.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be approved.');
   if (settings.twoPersonApproval !== false && run.preparedById === approverId) throw forbidden('Someone other than the person who prepared this pay run has to approve it.');
   const fresh = await buildRun(tx, tenantId, run.preparedById, runInput(run), run.id);
-  const blockers = fresh.blockers as string[];
+  const blockers = fresh.blockers as unknown as Array<Issue | string>;
   if (blockers.length) throw new HttpError(409, 'RUN_BLOCKED', 'This pay run can’t be approved yet.', { blockers });
   const approved = await tx.payRun.update({ where: { id: runId }, data: { status: 'APPROVED', approvedById: approverId, approvedAt: new Date() } });
   const people = await tx.payStatement.findMany({ where: { payRunId: runId }, select: { id: true, userId: true, net: true } });

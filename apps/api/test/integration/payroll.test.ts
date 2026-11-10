@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { ensureTaxTables } from '../../src/services/payroll/taxTables.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
+import { issueText } from '../../src/services/payroll/issues.js';
 
 // Banking and SINs are sealed: a throwaway key for the test run.
 process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
@@ -102,7 +103,7 @@ describe('pay runs', () => {
     expect(r.status).toBe(201);
     runId = r.body.id;
     expect(r.body.status).toBe('DRAFT');
-    expect(r.body.blockers.join(' ')).toMatch(/hasn’t been verified/);
+    expect(r.body.blockers.map(issueText).join(' ')).toMatch(/hasn’t been verified/);
     const detail = (await call(tok.prep).get(`/api/payroll/runs/${runId}`)).body;
     expect(detail.statements).toHaveLength(2);
     for (const s of detail.statements) {

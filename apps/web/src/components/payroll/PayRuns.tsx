@@ -18,6 +18,7 @@ import { formatDate, formatMoney } from '@/lib/format';
 import { type Run, STATUS_TONE, type Statement } from '@/lib/payroll';
 import { useSession } from '@/lib/session';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
+import { issueKey, issueLabel } from '@/lib/payrollIssues';
 
 interface RunDetail {
   run: Run;
@@ -184,13 +185,13 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
           {d.run.status === 'DRAFT' && d.run.blockers.length ? (
             <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">
               <p className="mb-2 flex items-center gap-2 text-body-strong"><AlertTriangle className="h-5 w-5 text-danger" aria-hidden="true" />{t('payroll.blockers')}</p>
-              <ul className="list-disc space-y-1 pl-5 text-small">{d.run.blockers.map((b) => <li key={b}>{b}</li>)}</ul>
+              <ul className="list-disc space-y-1 pl-5 text-small">{d.run.blockers.map((b) => <li key={issueKey(b)}>{issueLabel(t, b)}</li>)}</ul>
             </div>
           ) : null}
           {d.run.warnings.length ? (
             <details className="rounded-2xl border border-line p-4 text-small">
               <summary className="cursor-pointer font-semibold">{t('payroll.warningsCount', { count: d.run.warnings.length })}</summary>
-              <ul className="mt-2 list-disc space-y-1 pl-5">{d.run.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
+              <ul className="mt-2 list-disc space-y-1 pl-5">{d.run.warnings.map((w) => <li key={issueKey(w)}>{issueLabel(t, w)}</li>)}</ul>
             </details>
           ) : null}
           <div className="flex flex-wrap gap-2">
