@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 import { RevealObserver } from '@/components/Motion';
 import { REVEAL_BOOT } from '@/lib/reveal';
+import { DemoReturn } from '@/components/DemoReturn';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { LANGS, type Lang, copy } from '@/content/copy';
@@ -39,6 +40,7 @@ export default async function LangLayout(props: { children: ReactNode; params: P
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <script dangerouslySetInnerHTML={{ __html: REVEAL_BOOT }} />
         <RevealObserver />
+        <DemoReturn />
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
           {params.lang === 'fr' ? 'Aller au contenu' : 'Skip to content'}
         </a>
