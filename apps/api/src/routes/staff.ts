@@ -1,6 +1,7 @@
 import { type AccessRole, Prisma } from '@prisma/client';
 import { permissionsFor } from '../auth/permissions.js';
 import { Router } from 'express';
+import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
 import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
@@ -68,6 +69,7 @@ staffRouter.get(
       ]),
     );
     const { features, billing } = await tenantSettings(a.tenantId);
+    const mustSign = a.support ? false : await withTenant(a.tenantId, (tx) => consentRequired(tx, a.userId));
     // For whoever handles billing: screens their roles would have if the plan included them.
     const lockedMenu = a.permissions.has('billing.manage')
       ? MENU.flatMap((m) => {
@@ -107,6 +109,7 @@ staffRouter.get(
       certifications: me.certifications.map(certView),
       // The city requires a passkey for this access level and this session hasn't used one.
       mfaRequired: a.mfaPending,
+      consentRequired: mustSign,
       lockedMenu,
       billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: a.permissions.has('billing.manage') },
       // Offboarded: the app shows only the data export.

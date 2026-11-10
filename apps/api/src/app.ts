@@ -37,10 +37,13 @@ export function createApp() {
   app.use('/api/platform', platformRouter);
   // Stripe signs the raw body, so this comes before JSON parsing.
   app.use('/api', stripeWebhookRouter);
-  // Small bodies everywhere, except document uploads (up to 10 MB, sent as base64).
+  // Small bodies everywhere, except document uploads (up to 10 MB, sent as base64) and signed agreements (a drawn signature).
   const smallJson = express.json({ limit: '100kb' });
   const uploadJson = express.json({ limit: '14mb' });
-  app.use((req, res, next) => (req.method === 'POST' && /^\/api\/(me|users\/[0-9a-f-]{36})\/documents$/.test(req.path) ? uploadJson : smallJson)(req, res, next));
+  const signatureJson = express.json({ limit: '400kb' });
+  app.use((req, res, next) =>
+    (req.method === 'POST' && /^\/api\/(me|users\/[0-9a-f-]{36})\/documents$/.test(req.path) ? uploadJson : req.method === 'POST' && req.path === '/api/me/consent' ? signatureJson : smallJson)(req, res, next),
+  );
   app.use(cookieParser());
 
   app.get('/healthz', (_req, res) => res.json({ ok: true }));

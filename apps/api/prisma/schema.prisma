@@ -2775,3 +2775,27 @@ model PushSubscription {
 
   @@index([tenantId, userId])
 }
+
+/// A person's signed information and consent agreement (services/privacy/consent.ts): evidence of
+/// exactly what they were shown and agreed to. Never edited; a new version is a new row.
+model ConsentRecord {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  userId          String   @db.Uuid
+  version         String
+  locale          String
+  /// SHA-256 of the agreement text exactly as shown.
+  textSha256      String
+  signedName      String
+  /// PNG from the signature pad, and its SHA-256.
+  signature       Bytes
+  signatureSha256 String
+  /// { notifications, location }: granted, denied, skipped or unsupported.
+  choices         Json
+  ipAddress       String?
+  userAgent       String?
+  signedAt        DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, signedAt])
+  @@index([userId, version])
+}
