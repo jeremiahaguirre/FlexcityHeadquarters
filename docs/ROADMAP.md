@@ -16,7 +16,7 @@
 - [ ] Constraint-solver scheduling (OR-Tools CP-SAT) behind the existing `proposeSchedule` types, if large multi-facility terms outgrow the hardest-first planner with its repair pass.
 - [ ] Direct API connections to payroll providers (exports in ADP, Dayforce and Wagepoint import layouts ship today).
 - [ ] FH books: verify the chart of accounts, sales tax treatment and the PAD transaction code with FH's accountant and bank before the first live debit.
-- [ ] Payroll: tax tables for MB, NB, NL, NS, NT, NU, PE, SK and YT (federal, AB, BC, ON and QC ship as unverified starting values); Ontario's low-income tax reduction.
+- [ ] Payroll: FH verifies each year's tax tables against CRA's T4127 (all 13 provinces and territories and the federal table ship as unverified starting values); the basic personal amount phase-outs in Manitoba and Yukon.
 - [ ] Quebec: RL-1 in Revenu Québec's XML format, and the employer-only contributions (Health Services Fund, CNT, workforce skills) worked out from annual payroll.
 
 ## Done

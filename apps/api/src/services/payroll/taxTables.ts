@@ -52,6 +52,7 @@ export const STARTING_VALUES: Record<number, Record<string, FederalTable | Provi
         { threshold: 5818, rate: 0.2 },
         { threshold: 7446, rate: 0.36 },
       ],
+      ontarioReduction: { basic: 300 },
       healthPremium: [
         { over: 20000, base: 0, rate: 0.06, max: 300 },
         { over: 36000, base: 300, rate: 0.06, max: 450 },
@@ -70,6 +71,93 @@ export const STARTING_VALUES: Record<number, Record<string, FederalTable | Provi
         { upTo: null, rate: 0.15 },
       ],
       basicPersonal: 22769,
+    } satisfies ProvincialTable,
+    MB: {
+      brackets: [
+        { upTo: 47000, rate: 0.108 },
+        { upTo: 100000, rate: 0.1275 },
+        { upTo: null, rate: 0.174 },
+      ],
+      basicPersonal: 15780,
+    } satisfies ProvincialTable,
+    SK: {
+      brackets: [
+        { upTo: 54532, rate: 0.105 },
+        { upTo: 155805, rate: 0.125 },
+        { upTo: null, rate: 0.145 },
+      ],
+      basicPersonal: 19866,
+    } satisfies ProvincialTable,
+    NB: {
+      brackets: [
+        { upTo: 52333, rate: 0.094 },
+        { upTo: 104666, rate: 0.14 },
+        { upTo: 193861, rate: 0.16 },
+        { upTo: null, rate: 0.195 },
+      ],
+      basicPersonal: 13664,
+      reduction: { amount: 833, rate: 0.03, threshold: 22805 },
+    } satisfies ProvincialTable,
+    NS: {
+      brackets: [
+        { upTo: 31117, rate: 0.0879 },
+        { upTo: 62235, rate: 0.1495 },
+        { upTo: 97801, rate: 0.1667 },
+        { upTo: 157743, rate: 0.175 },
+        { upTo: null, rate: 0.21 },
+      ],
+      basicPersonal: 11979,
+    } satisfies ProvincialTable,
+    PE: {
+      brackets: [
+        { upTo: 33928, rate: 0.095 },
+        { upTo: 65820, rate: 0.1347 },
+        { upTo: 106890, rate: 0.166 },
+        { upTo: 142520, rate: 0.1762 },
+        { upTo: null, rate: 0.19 },
+      ],
+      basicPersonal: 14650,
+    } satisfies ProvincialTable,
+    NL: {
+      brackets: [
+        { upTo: 45076, rate: 0.087 },
+        { upTo: 90150, rate: 0.145 },
+        { upTo: 160948, rate: 0.158 },
+        { upTo: 225328, rate: 0.178 },
+        { upTo: 287858, rate: 0.198 },
+        { upTo: 575718, rate: 0.208 },
+        { upTo: 1151435, rate: 0.213 },
+        { upTo: null, rate: 0.218 },
+      ],
+      basicPersonal: 11288,
+    } satisfies ProvincialTable,
+    YT: {
+      brackets: [
+        { upTo: 58523, rate: 0.064 },
+        { upTo: 117045, rate: 0.09 },
+        { upTo: 181440, rate: 0.109 },
+        { upTo: 500000, rate: 0.128 },
+        { upTo: null, rate: 0.15 },
+      ],
+      basicPersonal: 16452,
+    } satisfies ProvincialTable,
+    NT: {
+      brackets: [
+        { upTo: 53003, rate: 0.059 },
+        { upTo: 106009, rate: 0.086 },
+        { upTo: 172346, rate: 0.122 },
+        { upTo: null, rate: 0.1405 },
+      ],
+      basicPersonal: 18198,
+    } satisfies ProvincialTable,
+    NU: {
+      brackets: [
+        { upTo: 55801, rate: 0.04 },
+        { upTo: 111602, rate: 0.07 },
+        { upTo: 181439, rate: 0.09 },
+        { upTo: null, rate: 0.115 },
+      ],
+      basicPersonal: 19659,
     } satisfies ProvincialTable,
     // Compare with Revenu Québec's TP-1015.F and the QPP / QPIP rate notices for the year.
     QC: {
@@ -90,7 +178,7 @@ export const STARTING_VALUES: Record<number, Record<string, FederalTable | Provi
   },
 };
 
-export const STARTING_NOTE = 'Unverified starting values. Compare every number with CRA’s T4127 for this year before verifying. Ontario’s low-income tax reduction is not applied (slight over-withholding for low earners).';
+export const STARTING_NOTE = 'Unverified starting values. Compare every number with CRA’s T4127 for this year before verifying (and TP-1015.F for Quebec). Not modelled: Manitoba’s and Yukon’s phase-out of the basic personal amount for high earners, and provincial credits for dependants beyond the TD1 claim amount.';
 
 /** Adds this year's starting tables (unverified) if they aren't there yet. */
 export async function ensureTaxTables(tx: Tx, year: number) {

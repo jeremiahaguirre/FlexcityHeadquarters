@@ -35,8 +35,10 @@ export interface ProvincialTable {
   surtax?: Array<{ threshold: number; rate: number }>;
   /** Ontario Health Premium by annual taxable income: base + rate × (income − over), capped at max. */
   healthPremium?: Array<{ over: number; base: number; rate: number; max: number }>;
-  /** Low-income reduction (BC, Ontario): max(0, amount − rate × (income − threshold)). */
+  /** Low-income reduction (BC, New Brunswick): max(0, amount − rate × (income − threshold)). */
   reduction?: { amount: number; rate: number; threshold: number };
+  /** Ontario tax reduction (T4127 factor S): the lesser of the tax and 2 × basic − tax, never below zero. */
+  ontarioReduction?: { basic: number };
 }
 
 export interface YearToDate {
@@ -180,7 +182,11 @@ export function calculateDeductions(p: PayInput): Deductions {
   const surtax = (pv.surtax ?? []).reduce((s, t) => s + t.rate * pos(T4 - t.threshold), 0);
   let premium = 0;
   for (const h of pv.healthPremium ?? []) if (A > h.over) premium = Math.min(h.max, h.base + h.rate * (A - h.over));
-  const reduction = pv.reduction ? Math.min(T4 + surtax, pos(pv.reduction.amount - pv.reduction.rate * pos(A - pv.reduction.threshold))) : 0;
+  const reduction = pv.reduction
+    ? Math.min(T4 + surtax, pos(pv.reduction.amount - pv.reduction.rate * pos(A - pv.reduction.threshold)))
+    : pv.ontarioReduction
+      ? pos(Math.min(T4 + surtax, 2 * pv.ontarioReduction.basic - (T4 + surtax)))
+      : 0;
   const T2 = pos(T4 + surtax - reduction) + premium;
 
   const federalTax = r2(T1 / P);

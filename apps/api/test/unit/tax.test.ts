@@ -126,3 +126,20 @@ describe('Quebec deductions', () => {
     expect(d.qpip).toBe(10);
   });
 });
+
+describe('Ontario tax reduction (T4127 factor S)', () => {
+  const on: ProvincialTable = { brackets: [{ upTo: null, rate: 0.05 }], basicPersonal: 10000, ontarioReduction: { basic: 300 } };
+  const tax = (gross: number, t: ProvincialTable) => calculateDeductions({ ...base, gross, provincial: t }).provincialTax;
+  it('takes the whole tax away when it is small, less as it grows, nothing past twice the basic amount', () => {
+    const without = { ...on, ontarioReduction: undefined };
+    // Small tax: wiped out entirely.
+    expect(tax(500, on)).toBe(0);
+    expect(tax(500, without)).toBeGreaterThan(0);
+    // Middle: reduced by (2 × 300 − tax), so between zero and the full amount.
+    const mid = tax(750, on);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(tax(750, without));
+    // High: no reduction.
+    expect(tax(3000, on)).toBe(tax(3000, without));
+  });
+});

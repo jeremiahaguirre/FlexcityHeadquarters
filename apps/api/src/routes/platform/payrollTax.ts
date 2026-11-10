@@ -30,6 +30,7 @@ const provincial = z.object({
   surtax: z.array(z.object({ threshold: money, rate })).max(5).optional(),
   healthPremium: z.array(z.object({ over: money, base: money, rate, max: money })).max(10).optional(),
   reduction: z.object({ amount: money, rate, threshold: money }).optional(),
+  ontarioReduction: z.object({ basic: money }).optional(),
 });
 const quebec = z.object({
   qpp: z.object({ rate, basicExemption: money, ympe: money, baseRate: rate }),
