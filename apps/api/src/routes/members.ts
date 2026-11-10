@@ -86,6 +86,8 @@ membersRouter.get(
     const out = await withTenant(a.tenantId, async (tx) => {
       const hh = await tx.household.findUnique({ where: { id }, include: { members: { orderBy: [{ role: 'asc' }, { firstName: 'asc' }] } } });
       if (!hh) throw notFound('Family');
+      // Children's details and health notes: every opening of a family's file is on record.
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'household.view', entity: 'Household', entityId: id });
       const [enrollments, sales] = await Promise.all([
         tx.lessonEnrollment.findMany({ where: { householdId: id }, include: { lessonClass: true }, orderBy: { createdAt: 'desc' } }),
         tx.sale.findMany({ where: { householdId: id }, orderBy: { createdAt: 'desc' }, take: 100 }),

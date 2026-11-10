@@ -442,7 +442,7 @@
     "unscheduledHelp": "For call-ins and cover. Your supervisor will review it.",
     "facility": "Facility",
     "position": "Working as",
-    "locationNote": "When you clock in we check, once, that you're at the facility. We don't track your location.",
+    "locationNote": "When you clock in we check, once, that you're at the facility. We keep only whether you were on site and how far away, never where you were or your device's address. We don't track your location.",
     "clockedOut": "Clocked out. Thanks!",
     "recent": "Last two weeks",
     "noPunches": "No punches in the last two weeks.",
@@ -4438,7 +4438,11 @@
     "notifications": "In-app notifications (days)",
     "emailLog": "Email log (days)",
     "range": "Between {{min}} and {{max}} days.",
-    "fixed": "Ended sign-in sessions and used links are removed after 30 days. Staff records, pay, incidents and the audit log follow their own legal retention and aren’t affected here.",
-    "saved": "Retention periods saved"
+    "fixed": "Families: names, birth dates, contacts and safety notes are removed; payment records stay. Working-alone locations are removed 30 days after the session, ended sign-in sessions and used links after 30 days. Staff records, pay, incidents and the audit log follow their own legal retention.",
+    "saved": "Retention periods saved",
+    "notificationsDays": "In-app notifications (days)",
+    "emailLogDays": "Email log (days)",
+    "familiesInactiveDays": "Families with no registration or purchase (days)",
+    "bookingsDays": "Facility booking contact details, after the booking (days)"
   }
 }

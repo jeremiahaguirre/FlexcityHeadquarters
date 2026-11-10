@@ -138,3 +138,47 @@ describe('the Dev console can’t take over a city', () => {
     expect((await dev('put', `/tenants/${t.tenant.id}/access/mfa`, { role: 'HR_ADMIN', required: false })).status).toBe(403);
   });
 });
+
+describe('need to know', () => {
+  it('a supervisor never sees medical notes, even in a city with no departments', async () => {
+    const pdf = `data:application/pdf;base64,${Buffer.from('%PDF-1.4\n%%EOF\n').toString('base64')}`;
+    const up = await call(tok.hr).post(`/api/users/${t.users[0]!.id}/documents`, { kind: 'MEDICAL_NOTE', title: 'Doctor’s note', fileName: 'note.pdf', data: pdf });
+    expect(up.status).toBe(201);
+    const seen = await call(tok.sup).get(`/api/users/${t.users[0]!.id}/documents`);
+    expect(JSON.stringify(seen.body)).not.toContain('Doctor’s note');
+    expect((await call(tok.sup).get(`/api/documents/${up.body.id}/file`)).status).toBe(404);
+  });
+
+  it('a role limited to one facility reaches only the people who work there', async () => {
+    const arena = await owner.facility.create({ data: { tenantId: t.tenant.id, name: 'Arena', province: 'BC', timezone: 'America/Vancouver', latitude: 49.9, longitude: -119.4 } });
+    const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Arena lead', permissions: ['users.read', 'timeoff.approve'], scopeFacilityIds: [arena.id] } });
+    const lead = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'FULL_TIME', firstName: 'Arena', lastName: 'Lead', email: `arena@${SUB}.test` } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: lead.id, customRoleId: role.id } });
+    forgetCustomPermissions(t.tenant.id);
+    // Guard1 works at the arena; Guard0 never has.
+    await owner.shift.create({ data: { tenantId: t.tenant.id, facilityId: arena.id, positionId: t.position.id, userId: t.users[1]!.id, startsAt: new Date('2027-02-01T15:00:00Z'), endsAt: new Date('2027-02-01T23:00:00Z'), status: 'PUBLISHED' } });
+    const token = await signAccessToken({ sub: lead.id, tid: t.tenant.id, roles: ['STAFF'], aat: now() });
+    expect((await call(token).get(`/api/users/${t.users[1]!.id}`)).status).toBe(200);
+    expect([403, 404]).toContain((await call(token).get(`/api/users/${t.users[0]!.id}`)).status);
+  });
+
+  it('clocking in keeps whether you were on site, never where you were or your IP', async () => {
+    const r = await call(tok.staff).post('/api/timeclock/in', { facilityId: t.facility.id, positionId: t.position.id, location: { lat: 49.8801, lon: -119.4436, accuracyM: 10 } });
+    expect(r.status).toBe(201);
+    const p = await owner.timePunch.findUniqueOrThrow({ where: { id: r.body.id } });
+    expect([p.latitude, p.longitude, p.ipAddress]).toEqual([null, null, null]);
+    expect(p.locationStatus).toBeTruthy();
+  });
+
+  it('families inactive past the retention period lose their personal details; payments stay', async () => {
+    const { withTenant } = await import('../../src/lib/db.js');
+    const { applyRetention } = await import('../../src/services/privacy/retention.js');
+    const old = new Date(Date.now() - 4 * 365 * 86_400_000);
+    const hh = await owner.household.create({ data: { tenantId: t.tenant.id, name: 'Nguyen family', address: '1 Lake Rd', emergencyPhone: '250-555-0101', createdAt: old } });
+    await owner.member.create({ data: { tenantId: t.tenant.id, householdId: hh.id, role: 'CHILD', firstName: 'Mai', lastName: 'Nguyen', dateOfBirth: new Date('2018-04-01'), safetyNote: 'Asthma: inhaler in bag', createdAt: old } });
+    await withTenant(t.tenant.id, (tx) => applyRetention(tx));
+    const after = await owner.household.findUniqueOrThrow({ where: { id: hh.id }, include: { members: true } });
+    expect(after).toMatchObject({ name: 'Former family', address: null, emergencyPhone: null });
+    expect(after.members[0]).toMatchObject({ firstName: 'Former', dateOfBirth: null, safetyNote: null });
+  });
+});

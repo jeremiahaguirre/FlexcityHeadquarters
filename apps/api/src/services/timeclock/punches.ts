@@ -46,9 +46,10 @@ export async function clockIn(
       shiftId: input.shiftId ?? null,
       positionId,
       clockIn: now,
-      ipAddress: input.ip,
-      latitude: input.location?.lat,
-      longitude: input.location?.lon,
+      // Only whether they were at the facility (and how far off) is kept: never where they were, or their IP.
+      ipAddress: null,
+      latitude: null,
+      longitude: null,
       accuracyM: input.location?.accuracyM ?? null,
       distanceM: loc.distanceM,
       locationStatus: loc.status,

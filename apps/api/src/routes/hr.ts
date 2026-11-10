@@ -138,7 +138,7 @@ hrRouter.get(
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
       // HR sees every review (in their scope); anyone else, the reviews they conduct.
-      const where: Prisma.PerformanceReviewWhereInput = a.permissions.has('performance.manage') && !a.scope ? {} : { reviewerId: a.userId };
+      const where: Prisma.PerformanceReviewWhereInput = a.permissions.has('performance.manage') && a.roles.includes('HR_ADMIN') ? {} : { reviewerId: a.userId };
       const rows = await tx.performanceReview.findMany({ where, orderBy: [{ dueOn: 'asc' }] });
       const names = await nameMap(tx, rows.flatMap((r) => [r.userId, r.reviewerId]));
       return rows.map((r) => ({ ...reviewView(r, names), mine: r.userId === a.userId, reviewing: r.reviewerId === a.userId }));

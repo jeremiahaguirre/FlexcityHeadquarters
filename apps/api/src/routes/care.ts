@@ -96,7 +96,7 @@ careRouter.get(
   }),
 );
 
-/** Ask for time away from the chair: the leads on duty (or all supervisors) are told right away. */
+/** Ask for time away from the chair: the leads on duty at that facility (or the supervisors) are told right away. */
 careRouter.post(
   '/me/care/:id/break',
   h(async (req, res) => {
@@ -107,7 +107,14 @@ careRouter.post(
       if (!c || c.userId !== a.userId) throw notFound('Check-in');
       await tx.careCheckIn.update({ where: { id }, data: { breakAskedAt: new Date() } });
       const me = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { firstName: true, lastName: true } });
-      const leads = await usersWithRoles(tx, ['AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD'], [a.userId]);
+      // A support request after a hard call is private: the leads working at that facility right now,
+      // or, if none is on, the supervisors. Never every lead in the city.
+      const incident = await tx.incidentReport.findUnique({ where: { id: c.incidentId }, select: { facilityId: true } });
+      const now = new Date();
+      const onDuty = incident
+        ? await tx.shift.findMany({ where: { facilityId: incident.facilityId, status: 'PUBLISHED', startsAt: { lte: now }, endsAt: { gt: now }, user: { roles: { hasSome: ['AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD'] } }, userId: { not: a.userId } }, select: { userId: true } })
+        : [];
+      const leads = onDuty.length ? [...new Set(onDuty.map((s) => s.userId!))] : await usersWithRoles(tx, ['AQUATIC_SUPERVISOR'], [a.userId]);
       await notify(tx, a.tenantId, leads.map((userId) => ({ userId, type: 'care_break_requested', params: { name: `${me.firstName} ${me.lastName}` }, link: '/manage/care' })));
     });
     res.json({ ok: true });

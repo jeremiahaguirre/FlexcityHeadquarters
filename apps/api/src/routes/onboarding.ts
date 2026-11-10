@@ -157,7 +157,8 @@ onboardingRouter.get(
       if (!u || u.anonymizedAt) throw notFound('Staff member');
       await ensureDefaults(tx, a.tenantId);
       const p = perms(a);
-      const items = (await checklist(tx, userId)).map((i) => ({ ...i, canComplete: p.hr || (i.owner === 'SUPERVISOR' && p.lead), canWaive: p.hr }));
+      // HR's own items (police checks…) show supervisors only whether they're done, never HR's notes.
+      const items = (await checklist(tx, userId)).map((i) => ({ ...i, ...(!p.hr && i.owner === 'HR' ? { note: null, waivedReason: null } : {}), canComplete: p.hr || (i.owner === 'SUPERVISOR' && p.lead), canWaive: p.hr }));
       return { user: { id: u.id, name: `${u.firstName} ${u.lastName}` }, items };
     });
     res.json(out);

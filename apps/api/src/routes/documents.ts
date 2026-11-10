@@ -47,7 +47,9 @@ const body = z.object({
 /** Everything but the encrypted contents. */
 const LIST = { id: true, userId: true, uploadedById: true, kind: true, visibility: true, title: true, fileName: true, contentType: true, size: true, sha256: true, createdAt: true } as const;
 const aad = (tenantId: string, id: string) => `doc:${tenantId}:${id}`;
-const isHr = (a: AuthContext) => a.permissions.has('documents.manage') && !a.scope;
+// HR is a role, not the absence of a department limit: in a city without departments every
+// supervisor is unscoped, and must still never see medical notes.
+const isHr = (a: AuthContext) => a.permissions.has('documents.manage') && a.roles.includes('HR_ADMIN');
 
 async function store(tx: Tx, a: AuthContext, userId: string, b: z.infer<typeof body>) {
   const file = Buffer.from(b.data.slice(b.data.indexOf(',') + 1), 'base64');

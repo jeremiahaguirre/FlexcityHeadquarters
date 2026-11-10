@@ -442,7 +442,7 @@
     "unscheduledHelp": "Pour les rappels et les remplacements. Votre superviseur le révisera.",
     "facility": "Installation",
     "position": "Poste occupé",
-    "locationNote": "Au pointage, nous vérifions une seule fois que vous êtes à l'installation. Nous ne suivons pas votre position.",
+    "locationNote": "Au pointage, nous vérifions une seule fois que vous êtes à l'installation. Nous gardons seulement si vous étiez sur place et à quelle distance, jamais l'endroit où vous étiez ni l'adresse de votre appareil. Nous ne suivons pas votre position.",
     "clockedOut": "Sortie pointée. Merci!",
     "recent": "Deux dernières semaines",
     "noPunches": "Aucun pointage dans les deux dernières semaines.",
@@ -4438,7 +4438,11 @@
     "notifications": "Notifications dans l’application (jours)",
     "emailLog": "Journal des courriels (jours)",
     "range": "Entre {{min}} et {{max}} jours.",
-    "fixed": "Les sessions de connexion terminées et les liens utilisés sont supprimés après 30 jours. Les dossiers du personnel, la paie, les incidents et le journal d’audit suivent leur propre conservation légale et ne sont pas touchés ici.",
-    "saved": "Durées de conservation enregistrées"
+    "fixed": "Familles : noms, dates de naissance, coordonnées et notes de sécurité sont supprimés; les dossiers de paiement restent. Les positions du travail seul sont supprimées 30 jours après la session, les sessions terminées et les liens utilisés après 30 jours. Les dossiers du personnel, la paie, les incidents et le journal d’audit suivent leur propre conservation légale.",
+    "saved": "Durées de conservation enregistrées",
+    "notificationsDays": "Notifications dans l’application (jours)",
+    "emailLogDays": "Journal des courriels (jours)",
+    "familiesInactiveDays": "Familles sans inscription ni achat (jours)",
+    "bookingsDays": "Coordonnées des réservations d’installations, après la réservation (jours)"
   }
 }

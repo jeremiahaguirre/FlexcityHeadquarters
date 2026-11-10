@@ -265,6 +265,42 @@ These are meant to be reliable and retrievable under the provincial electronic c
 
 ---
 
+## 5A. Who sees what (role review, November 2026)
+
+An adversarial security review and a role-by-role privacy review were run against the code. Every
+finding below was fixed and has a regression test (`apps/api/test/integration/hardening.test.ts`).
+
+| Role | Personal information | Reach |
+| --- | --- | --- |
+| Staff, lifeguards, instructors, employees | Their own file (profile, pay, documents, discipline, accommodations); published shifts (first name, last initial); class lists for classes they teach (child's name, safety note) | Own record; schedule as published |
+| Head lifeguard | Staff view, deck rotation, lesson registrations | Facility work |
+| Front desk | Families: contacts, children's ages and safety notes, purchases. Every opening of a family's file is logged | City-wide (they serve every facility) |
+| Supervisor / department lead | Their people's profiles, time off, punches, availability, leave; only the discipline, notes, accommodations and injury claims they recorded; department-shared documents. Never medical notes, police-check results or HR's notes on them; union membership only if they write discipline records (to offer a steward) | Their department (a facility-limited role reaches only people who work there) |
+| Payroll | Tax profiles, masked bank and SIN, pay statements; full SIN only in a filing file, with a passkey, logged | Department scope; whole-city documents (T4, remittance) for HR |
+| HR administrator | Everything except the union hub | Whole organization |
+| Union steward | Published shifts, overtime standings, the union hub (membership-gated) | City-wide |
+| FH Dev console | Setup, counts, HR's work contacts. Can switch access off or back to defaults, never widen it; can't add HR administrators once a city has one | Any city |
+| FH support visit (with the city's consent) | Setup screens and schedules, read-only, every page logged. Never individual records: documents, incident narratives, health and HR files, families, SINs, payroll details, anyone's own pages | City-wide, time-limited |
+| Public sign-up | Nothing about others | — |
+
+**Fixed in this review**
+
+- Escalation: nobody changes their own roles or gives a role beyond their own access; only whole-organization HR gives HR administrator; a changed sign-in email ends sessions and tells the old address.
+- Self-dealing: no editing your own punches (an edited approved punch needs approval again), approving your own overtime claim or bank account, excusing your own attendance, retracting notes about yourself, or setting your own leave.
+- SSO: changes need a fresh two-factor sign-in; a new provider unbinds all accounts and alerts every HR administrator. City-entered servers (SSO, bank SFTP) must be on the public internet (no SSRF into FH's network).
+- Need to know: medical notes and full performance-review lists are HR's by role, not by "no department limit"; facility-limited roles no longer reach the whole city; payroll people list, ROE figures and bank verification follow department scope; police-check notes and union membership hidden from those who don't need them; care-break requests go to the leads on duty at that facility.
+- Logging: families' files, the injury-claim list and the payroll people list are now logged when viewed.
+- Minimisation: clock-in keeps only on-site status and distance, never coordinates or IP (existing values cleared); working-alone locations removed 30 days after the session.
+- Retention: inactive families (3 years by default) lose names, birth dates, contacts and safety notes (payments stay); booking contact details after 2 years.
+- Second factor follows HR-level powers in custom roles; passkey sign-in respects SSO-only and closed organizations; SSO-only and closed answers no longer confirm a correct password.
+- Formula-safe CSV in every export; settings audit entries record only changed fields.
+
+**Accepted, by design**
+
+- Staff see every published shift with first name and last initial, so they can swap and pick up shifts across facilities. A city that wants narrower visibility can hide the schedule for an access level in the Dev console.
+- Front desk reaches every family, because families use every facility; access is logged instead.
+- [counsel] Electronic monitoring: what the product collects is listed in [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) for cities' written policies (Ontario ESA Part XI.1).
+
 ## 6. For counsel
 
 1. Review the employment-standards rule values (H6) and the overtime-equalization defaults.

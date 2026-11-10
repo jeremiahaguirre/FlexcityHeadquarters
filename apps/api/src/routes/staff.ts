@@ -378,9 +378,11 @@ staffRouter.get(
       seniorityHours: u.seniorityHours.toString(),
       weeklyMinHours: u.weeklyMinHours?.toString() ?? null,
       weeklyMaxHours: u.weeklyMaxHours?.toString() ?? null,
-      vscClearedDate: iso(u.vscClearedDate),
+      // Police-check date and union membership: HR only (the steward rule is applied server-side).
+      vscClearedDate: canSeePay ? iso(u.vscClearedDate) : null,
       dateOfBirth: canSeePay ? iso(u.dateOfBirth) : undefined,
-      unionMember: u.unionMember,
+      // Union membership: HR, and those who write discipline records (a steward must be offered).
+      unionMember: canSeePay || a.permissions.has('discipline.write') ? u.unionMember : null,
       customRoles: customRoles.map((r) => r.customRole),
       invited: !u.passwordHash,
       positions: u.positions.map((p) => p.position),

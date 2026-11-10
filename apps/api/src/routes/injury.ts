@@ -25,6 +25,8 @@ injuryRouter.get(
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
       const inScope = await peopleInScope(tx, a.scope);
+      // Compensation-board claims are health information: every viewing of the list is on record.
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'injury.list.view', entity: 'Tenant', entityId: a.tenantId });
       const list = await tx.injuryClaim.findMany({ where: { OR: [{ status: 'OPEN' }, { createdAt: { gte: new Date(Date.now() - 365 * 86_400_000) } }], ...(inScope ? { userId: { in: [...inScope] } } : {}), AND: [involvedClaim(a)] }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], take: 300 });
       const people = await tx.user.findMany({ where: { id: { in: [...new Set(list.map((c) => c.userId))] } }, select: { id: true, firstName: true, lastName: true } });
       return list.map((c) => {
