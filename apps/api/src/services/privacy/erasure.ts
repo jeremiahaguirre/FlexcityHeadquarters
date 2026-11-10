@@ -62,6 +62,7 @@ export async function anonymizeUser(tx: Tx, tenantId: string, actorId: string | 
       phone: null,
       smsPhone: null,
       smsVerifiedAt: null,
+      kioskPinHash: null,
       dateOfBirth: null,
       passwordHash: null,
       anonymizedAt: new Date(),

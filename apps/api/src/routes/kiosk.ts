@@ -11,7 +11,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { allow } from '../auth/rateLimit.js';
+import { allow, reached, record } from '../auth/rateLimit.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { config } from '../config.js';
 import type { Tx } from '../lib/db.js';
@@ -152,8 +152,12 @@ kioskRouter.post(
     const out = await withKiosk(req, async (tx, k) => {
       const u = await tx.user.findFirst({ where: { employeeNumber: b.employeeNumber, status: 'ACTIVE', anonymizedAt: null }, select: { id: true, firstName: true, kioskPinHash: true, locale: true } });
       const key = `kiosk-pin:${k.tenantId}:${b.employeeNumber}`;
-      if (!(await allow(key, 5, 15 * 60_000))) return { error: new HttpError(429, 'KIOSK_LOCKED', 'Too many wrong PINs. Try again in 15 minutes, or punch on your phone.') };
-      if (!u || !u.kioskPinHash || !(await verifyPassword(`kiosk:${b.pin}`, u.kioskPinHash))) return { error: new HttpError(401, 'KIOSK_WRONG', 'That number and PIN don’t match.') };
+      // Only wrong PINs count toward the lock: someone punching in and out all day is never locked out.
+      if (await reached(key, 5, 15 * 60_000)) return { error: new HttpError(429, 'KIOSK_LOCKED', 'Too many wrong PINs. Try again in 15 minutes, or punch on your phone.') };
+      if (!u || !u.kioskPinHash || !(await verifyPassword(`kiosk:${b.pin}`, u.kioskPinHash))) {
+        await record(key);
+        return { error: new HttpError(401, 'KIOSK_WRONG', 'That number and PIN don’t match.') };
+      }
       const open = await tx.timePunch.findFirst({ where: { userId: u.id, clockOut: null } });
       if (open) {
         const p = await clockOut(tx, u.id);

@@ -67,7 +67,9 @@ describe('facility kiosk', () => {
   it('a wrong PIN or number doesn’t say which; five wrong tries lock the number', async () => {
     expect((await tablet().punch('E100', '9999')).body.code).toBe('KIOSK_WRONG');
     expect((await tablet().punch('NOPE', '4826')).body.code).toBe('KIOSK_WRONG');
-    for (let i = 0; i < 3; i++) await tablet().punch('E100', '9999');
+    // Correct punches don't count toward the lock.
+    for (let i = 0; i < 4; i++) expect((await tablet().punch('E100', '4826')).body.action).toBeDefined();
+    for (let i = 0; i < 4; i++) await tablet().punch('E100', '9999');
     expect((await tablet().punch('E100', '4826')).body.code).toBe('KIOSK_LOCKED');
   });
 

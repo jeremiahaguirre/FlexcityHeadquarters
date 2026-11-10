@@ -46,3 +46,16 @@ export async function allow(key: string, limit: number, windowMs: number): Promi
 export function resetLimits(): void {
   hits.clear();
 }
+
+/** Whether a key already reached its limit, without counting this look (e.g. only wrong PINs count). */
+export async function reached(key: string, limit: number, windowMs: number): Promise<boolean> {
+  const now = Date.now();
+  if (shared()) return (await db().rateLimitHit.count({ where: { key, at: { gt: new Date(now - windowMs) } } })) >= limit;
+  return (hits.get(key) ?? []).filter((t) => now - t < windowMs).length >= limit;
+}
+
+/** Counts one hit against a key (a failure), whatever the limit. */
+export async function record(key: string): Promise<void> {
+  if (shared()) await db().rateLimitHit.create({ data: { key, at: new Date() } });
+  else hits.set(key, [...(hits.get(key) ?? []), Date.now()]);
+}
