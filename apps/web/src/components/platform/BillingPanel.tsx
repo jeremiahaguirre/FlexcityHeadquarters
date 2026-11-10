@@ -338,17 +338,18 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
                       <p className="bg-surface px-4 py-2 text-caption font-semibold uppercase tracking-wide text-muted">{t(`plans.group.${g}`)}</p>
                       <ul className="divide-y divide-line">
                         {list.map((r) => (
-                          <li key={r.k} className={cn('grid items-center gap-3 px-4 py-3 sm:grid-cols-[auto_1fr_8.5rem_7rem]', !r.on && 'bg-page/40')}>
+                          <li key={r.k} className={cn('grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-4 py-3 sm:grid-cols-[auto_minmax(0,1fr)_8.5rem_7rem]', !r.on && 'bg-page/40')}>
                             <Switch on={r.on} onChange={() => setOn(r.k, !r.on)} label={t(`plans.item.${r.k}`)} />
                             <div className="min-w-0">
                               <p className="flex flex-wrap items-center gap-2 text-small">
                                 <span className={cn('font-semibold', !r.on && 'text-muted')}>{t(`plans.item.${r.k}`)}</span>
                                 {r.standard ? <StatusPill tone="neutral">{t('billing.inPlan')}</StatusPill> : null}
-                                {r.changes ? <StatusPill tone="warn">{r.on ? t('billing.willTurnOn') : t('billing.willTurnOff')}</StatusPill> : r.liveOn ? <StatusPill tone="ok">{t('billing.liveNow')}</StatusPill> : null}
+                                {r.changes ? <StatusPill tone="warn">{r.on ? t('billing.willTurnOn') : t('billing.willTurnOff')}</StatusPill> : null}
                               </p>
                               <p className="text-caption text-muted">{t(`plans.itemIncludes.${r.k}`)}</p>
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="col-start-2 flex items-center justify-between gap-3 sm:contents">
+                            <div className="flex w-36 items-center gap-1 sm:w-auto">
                               <span className="text-small text-muted">$</span>
                               <Input
                                 aria-label={t('billing.itemPrice', { name: t(`plans.item.${r.k}`) })}
@@ -366,6 +367,7 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
                             <p className={cn('text-right text-small font-semibold tabular-nums', p === 'CLUB' ? (r.on ? '' : 'text-muted') : r.effect > 0 ? 'text-brand-text' : r.effect < 0 ? 'text-ok' : 'text-muted')}>
                               {p === 'CLUB' ? (r.on ? `+${money(r.price)}` : '—') : r.effect > 0 ? `+${money(r.effect)}` : r.effect < 0 ? `−${money(-r.effect)}` : r.on ? t('billing.included') : '—'}
                             </p>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -464,7 +466,7 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
             <Field label={t('billing.internalNotes')} hint={t('billing.internalNotesHint')}>{(fp) => <Textarea {...fp} name="notes" defaultValue={a?.notes ?? ''} />}</Field>
             </Part>
 
-            <div className="sticky bottom-0 z-10 -mx-5 -mb-5 flex flex-wrap items-center justify-between gap-3 rounded-b-xl2 border-t border-line bg-panel/95 px-5 py-3 backdrop-blur">
+            <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-5 -mb-5 flex md:bottom-0 flex-wrap items-center justify-between gap-3 rounded-b-xl2 border-t border-line bg-panel/95 px-5 py-3 backdrop-blur">
               <div className="text-small">
                 <span className="text-muted">{t('billing.liveEstimate')}</span>{' '}
                 <span className="text-body-strong tabular-nums">{money(monthly)}</span>

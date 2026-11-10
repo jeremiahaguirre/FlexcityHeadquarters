@@ -54,8 +54,8 @@ function City() {
             <CityBrand org={c.organization} size="md" />
           </div>
         ) : null}
-        <div className="min-w-0 flex-1">
-          <h1 className="text-title">{c.organization.name}</h1>
+        <div className="min-w-[14rem] flex-1">
+          <h1 className="text-title [text-wrap:balance]">{c.organization.name}</h1>
           <p className="text-body text-muted">
             {t('platform.staffCount', { count: c.staff })} · {t('platform.facilityCount', { count: c.facilities.length })} · {t('platform.positionCount', { count: c.positions.length })}
           </p>
