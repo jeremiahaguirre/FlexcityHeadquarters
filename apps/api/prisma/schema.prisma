@@ -2938,3 +2938,20 @@ model PayDeductionOrder {
   @@index([tenantId, userId])
 }
 
+
+/// Who to call for a person in an emergency. Seen by the person, HR, and whoever responds when their working-alone session escalates.
+model EmergencyContact {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  userId       String   @db.Uuid
+  name         String
+  relationship String?
+  phone        String
+  altPhone     String?
+  /// 1 = call first.
+  priority     Int      @default(1)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, userId])
+}

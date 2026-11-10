@@ -5022,5 +5022,24 @@
     "test": "Tester la connexion",
     "bankOk": "Le serveur de la banque a répondu.",
     "disconnect": "Déconnecter"
+  },
+  "emergency": {
+    "title": "Personnes à joindre en cas d’urgence",
+    "helpOwn": "Qui appeler s’il vous arrive quelque chose au travail. Seuls les RH les voient, et la personne qui intervient si votre séance de travail isolé est escaladée.",
+    "helpHr": "Seuls les RH les voient, et la personne qui intervient si la séance de travail isolé de cette personne est escaladée. Chaque consultation est consignée.",
+    "none": "Aucune personne à joindre pour l’instant.",
+    "add": "Ajouter des personnes",
+    "another": "Ajouter une autre personne",
+    "order": "Personne {{n}}",
+    "name": "Nom",
+    "relationship": "Lien",
+    "relationshipHint": "p. ex. conjoint, parent",
+    "phone": "Téléphone",
+    "altPhone": "Autre téléphone (facultatif)",
+    "callFirst": "Appeler en premier",
+    "remove": "Retirer",
+    "saved": "Personnes à joindre enregistrées",
+    "forPerson": "Personnes à joindre pour {{name}}",
+    "monitorHelp": "Dans l’ordre où elle souhaite qu’on les appelle. Cette consultation est consignée."
   }
 }

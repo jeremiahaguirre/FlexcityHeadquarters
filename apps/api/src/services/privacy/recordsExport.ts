@@ -9,6 +9,7 @@
  * severing). The employer decides what to release; this gathers it.
  */
 import type { Tx } from '../../lib/db.js';
+import { moreRecords } from './moreRecords.js';
 
 export async function exportPersonRecords(tx: Tx, userId: string) {
   const user = await tx.user.findUniqueOrThrow({
@@ -39,6 +40,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     tx.auditLog.findMany({ where: { OR: [{ entityId: userId }, { actorId: userId }] }, select: { action: true, entity: true, entityId: true, actorId: true, at: true }, orderBy: { at: 'asc' } }),
     tx.employeeDocument.findMany({ where: { userId, deletedAt: null }, select: { title: true, kind: true, fileName: true, size: true, sha256: true, createdAt: true } }),
   ]);
+  const more = await moreRecords(tx, userId);
   return {
     generatedAt: new Date().toISOString(),
     about: 'All records FlexcityHeadquarters holds about this person for the organization. Review before release; severing may be required for third-party information.',
@@ -67,5 +69,6 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     incidentReportsFiled: incidentsReported,
     documents,
     auditTrail: auditAbout,
+    ...more,
   };
 }

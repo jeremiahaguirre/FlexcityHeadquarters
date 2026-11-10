@@ -25,6 +25,7 @@ import { addPasskey } from '@/lib/passkeys';
 import { AppearanceCard } from '@/components/shell/AppearanceCard';
 import { PushCard } from '@/components/device/PushCard';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
+import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
 
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
 
@@ -180,6 +181,8 @@ export default function ProfilePage() {
             </form>
           </CardBody>
         </Card>
+
+        <EmergencyContactsCard path="/api/me/emergency-contacts" own />
 
         <Card>
           <CardHeader title={t('profile.password')} />

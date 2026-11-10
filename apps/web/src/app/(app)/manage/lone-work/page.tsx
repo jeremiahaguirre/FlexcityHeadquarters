@@ -1,6 +1,7 @@
 'use client';
 
-import { MapPin, Phone, ShieldCheck, UserRound } from 'lucide-react';
+import { MapPin, Phone, ShieldCheck, Siren, UserRound } from 'lucide-react';
+import { type Contact, ContactList } from '@/components/people/EmergencyContacts';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +25,7 @@ export default function LoneWorkMonitor() {
   const q = useQuery<LoneSession[]>('/api/lone-work');
   const { run, busy } = useAction();
   const [closing, setClosing] = useState<LoneSession | null>(null);
+  const [contacts, setContacts] = useState<{ person: string; list: Contact[] } | null>(null);
   useEffect(() => {
     const id = setInterval(() => void q.reload(), 20_000);
     return () => clearInterval(id);
@@ -71,6 +73,11 @@ export default function LoneWorkMonitor() {
                         {t('loneWork.respond')}
                       </Button>
                     ) : null}
+                    {s.status === 'ESCALATED' || s.status === 'HELP' ? (
+                      <Button size="sm" variant="secondary" loading={busy === `c${s.id}`} icon={<Siren className="h-4 w-4" aria-hidden="true" />} onClick={() => void run(`c${s.id}`, () => api<Contact[]>(`/api/lone-work/${s.id}/emergency-contacts`)).then((list) => list && setContacts({ person: s.person ?? "", list }))}>
+                        {t('emergency.title')}
+                      </Button>
+                    ) : null}
                     <Button size="sm" variant="ghost" onClick={() => setClosing(s)}>{t('loneWork.close')}</Button>
                   </div>
                 </li>
@@ -81,6 +88,9 @@ export default function LoneWorkMonitor() {
         </CardBody>
       </Card>
       <p className="text-caption text-muted">{t('loneWork.monitorFoot')}</p>
+      <Dialog open={!!contacts} onClose={() => setContacts(null)} title={t('emergency.forPerson', { name: contacts?.person ?? '' })} description={t('emergency.monitorHelp')} closeLabel={t('common.close')}>
+        {contacts ? <ContactList contacts={contacts.list} /> : null}
+      </Dialog>
       <Dialog open={!!closing} onClose={() => setClosing(null)} title={t('loneWork.closeTitle', { name: closing?.person ?? '' })} closeLabel={t('common.cancel')}>
         <form
           className="grid gap-4"

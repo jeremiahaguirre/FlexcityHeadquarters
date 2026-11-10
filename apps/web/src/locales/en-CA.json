@@ -5022,5 +5022,24 @@
     "test": "Test connection",
     "bankOk": "The bank’s server answered.",
     "disconnect": "Disconnect"
+  },
+  "emergency": {
+    "title": "Emergency contacts",
+    "helpOwn": "Who to call if something happens to you at work. Only HR sees them, and whoever responds if your working-alone session escalates.",
+    "helpHr": "Only HR sees these, and whoever responds if this person's working-alone session escalates. Each look is recorded.",
+    "none": "No emergency contacts yet.",
+    "add": "Add contacts",
+    "another": "Add another",
+    "order": "Contact {{n}}",
+    "name": "Name",
+    "relationship": "Relationship",
+    "relationshipHint": "e.g. partner, parent",
+    "phone": "Phone",
+    "altPhone": "Other phone (optional)",
+    "callFirst": "Call first",
+    "remove": "Remove",
+    "saved": "Emergency contacts saved",
+    "forPerson": "Emergency contacts for {{name}}",
+    "monitorHelp": "In the order they asked to be called. This look is recorded."
   }
 }

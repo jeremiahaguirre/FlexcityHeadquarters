@@ -41,6 +41,8 @@ export async function requestErasure(tx: Tx, tenantId: string, actorId: string, 
   // Remove from future work immediately.
   await tx.shift.updateMany({ where: { userId, startsAt: { gt: now } }, data: { userId: null, conflictReason: 'Staff member left' } });
   await tx.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } });
+  // Other people's details, kept only for emergencies: no reason to keep them.
+  await tx.emergencyContact.deleteMany({ where: { userId } });
   await audit(tx, { tenantId, actorId, action: 'privacy.erasure_requested', entity: 'User', entityId: userId, after: { erasureDueAt: due } });
 
   if (due <= now) await anonymizeUser(tx, tenantId, actorId, userId);

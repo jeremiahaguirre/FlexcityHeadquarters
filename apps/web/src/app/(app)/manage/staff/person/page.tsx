@@ -22,6 +22,7 @@ import type { CustomRole } from '@/lib/customRoles';
 import { EMPLOYMENT, type Position, ROLES, TIERS } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
+import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
 
 interface Detail {
   id: string;
@@ -287,6 +288,7 @@ function Person() {
           </Section>
         ) : null}
 
+        {can('users.write') ? <EmergencyContactsCard path={`/api/users/${p.id}/emergency-contacts`} own={false} /> : null}
         {can('accommodation.manage') ? <AccommodationPanel userId={p.id} positions={(positions.data ?? []).map((x) => ({ id: x.id, name: posName(x) }))} /> : null}
 
         {can('reliability.read') ? <CaseFilePanel userId={p.id} name={name} unionMember={p.unionMember} /> : null}
