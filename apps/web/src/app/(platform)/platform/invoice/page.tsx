@@ -180,7 +180,7 @@ function Invoice() {
           </tbody>
         </table>
         {i.status === 'DRAFT' ? (
-          <button type="button" onClick={() => setLines((ls) => [...(ls ?? []), { description: '', quantity: '1', unit: '0.00' }])} className="mt-2 flex items-center gap-1.5 text-small font-semibold text-[#0F766E] print:hidden">
+          <button type="button" onClick={() => setLines((ls) => [...(ls ?? []), { description: '', quantity: '1', unit: '0.00' }])} className="mt-2 flex items-center gap-1.5 text-small font-semibold text-[#0D5F59] print:hidden">
             <Plus className="h-4 w-4" aria-hidden="true" />
             {t('billing.addLine')}
           </button>

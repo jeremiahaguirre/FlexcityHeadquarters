@@ -14,7 +14,7 @@ import '../globals.css';
 const jakarta = localFont({ src: '../../fonts/plus-jakarta-sans-latin-wght-normal.woff2', weight: '200 800', variable: '--font-sans', display: 'swap' });
 
 export const generateStaticParams = () => LANGS.map((lang) => ({ lang }));
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0F766E' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0D5F59' };
 
 export async function generateMetadata(props: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   // Only en and fr are generated (generateStaticParams).

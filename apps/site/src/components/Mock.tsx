@@ -106,7 +106,7 @@ export function SlideMock({ m, className }: { m: M; className?: string }) {
           {m.clocked}
         </span>
         <span className="slide-knob-rail absolute inset-y-1 left-1 right-11">
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#0F766E] shadow-lg">
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#0D5F59] shadow-lg">
             <ChevronsRight className="h-5 w-5" />
           </span>
         </span>

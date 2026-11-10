@@ -173,7 +173,7 @@ function Organization({ s, reload }: Props) {
           <Field label={t('settings.brandColour')} hint={t('settings.brandColourHint')}>
             {(p) => (
               <div className="w-24">
-                <Input {...p} name="primary" type="color" defaultValue={o.themeColors?.primary ?? '#0f766e'} className="h-12 cursor-pointer p-1" />
+                <Input {...p} name="primary" type="color" defaultValue={o.themeColors?.primary ?? '#0d5f59'} className="h-12 cursor-pointer p-1" />
               </div>
             )}
           </Field>

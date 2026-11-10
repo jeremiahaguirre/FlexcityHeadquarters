@@ -12,7 +12,7 @@ export const DEMO_TENANT: PublicTenant = {
   id: '00000000-0000-4000-8000-000000000001',
   name: 'City of Lakeview (demo)',
   logoUrl: DEMO_LOGO,
-  themeColors: { primary: '#0f766e', primaryHover: '#115e59', primaryContrast: '#ffffff', accent: '#c026d3' },
+  themeColors: { primary: '#0d5f59', primaryHover: '#0a4a45', primaryContrast: '#ffffff', accent: '#4c4596' },
   defaultLocale: 'en-CA',
 };
 

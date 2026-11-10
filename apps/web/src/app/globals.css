@@ -15,16 +15,16 @@
   --ink: 11 31 34;
   --muted: 74 92 94;          /* 5.2:1 on page, 4.8:1 on surface */
   --line: 201 213 210;
-  --brand-text: 12 106 99;    /* teal text: 5.0:1 on page */
-  --ok: 77 124 15;            /* chartreuse text: confirmed, open */
-  --ok-bg: 241 251 211;
-  --warn: 180 35 24;          /* vermilion text: needs attention */
-  --warn-bg: 253 231 228;
-  --danger: 159 18 57;        /* crimson: closed, errors that block */
-  --danger-bg: 255 228 230;
-  --new: 162 28 175;          /* magenta text: new, notifications */
-  --new-bg: 250 232 253;
-  --chartreuse: 197 242 58;   /* raw fill, always with ink text */
+  --brand-text: 10 90 84;     /* pine text: 6.5:1 on page */
+  --ok: 36 96 48;             /* forest: done, open, confirmed */
+  --ok-bg: 219 235 220;
+  --warn: 140 68 10;          /* amber: needs attention (calm, not alarming) */
+  --warn-bg: 248 232 210;
+  --danger: 152 30 50;        /* deep red: closed, errors that block */
+  --danger-bg: 247 222 225;
+  --new: 68 60 145;           /* indigo: new, notifications */
+  --new-bg: 229 228 245;
+  --chartreuse: 190 214 120;  /* muted lime: raw fill, always with ink text */
   --overlay: 11 31 34;
   color-scheme: light;
 }

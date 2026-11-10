@@ -9,12 +9,12 @@ export interface ThemeColors {
   accent?: string;
 }
 
-/** FH default palette: teal primary, magenta accent (see /brand/README.md). */
+/** FH default palette: deep pine primary, indigo accent: calm and confident (see /brand/README.md). */
 const DEFAULTS: Required<ThemeColors> = {
-  primary: '#0f766e',
-  primaryHover: '#115e59',
+  primary: '#0d5f59',
+  primaryHover: '#0a4a45',
   primaryContrast: '#ffffff',
-  accent: '#c026d3',
+  accent: '#4c4596',
 };
 
 const HEX = /^#([0-9a-f]{6})$/i;

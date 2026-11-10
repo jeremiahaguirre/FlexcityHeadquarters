@@ -56,7 +56,7 @@ async function main() {
     data: {
       name: 'City of Kelowna (demo)',
       subdomain: 'kelowna',
-      themeColors: { primary: '#0f766e', primaryHover: '#115e59', primaryContrast: '#ffffff', accent: '#c026d3' },
+      themeColors: { primary: '#0d5f59', primaryHover: '#0a4a45', primaryContrast: '#ffffff', accent: '#4c4596' },
       features: { union: true },
     },
   });

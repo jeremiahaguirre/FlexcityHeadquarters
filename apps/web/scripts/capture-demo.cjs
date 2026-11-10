@@ -288,6 +288,14 @@ async function capture(browser, role) {
     }
   };
 
+  // Long menus fold into groups and sections: open them all so every screen is reached.
+  for (let pass = 0; pass < 3; pass++) {
+    const closed = page.locator('aside nav button[aria-expanded="false"]');
+    const n = await closed.count();
+    if (!n) break;
+    for (let i = n - 1; i >= 0; i--) await closed.nth(i).click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
   const hrefs = await page.$$eval('nav a[href^="/"]', (as) => [...new Set(as.map((a) => a.getAttribute('href')))]);
   for (const href of [...hrefs, '/profile']) {
     await visit(href);
