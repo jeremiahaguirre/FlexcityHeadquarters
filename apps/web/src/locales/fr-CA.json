@@ -180,7 +180,8 @@
     "pretrip": "Inspection avant départ",
     "fleet": "Parc de véhicules",
     "injuries": "Déclarations de lésion",
-    "myPay": "Ma paie"
+    "myPay": "Ma paie",
+    "benefits": "Avantages sociaux"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -392,7 +393,9 @@
     "BANK_FOLDER": "Connecté, mais le dossier de paie n’a pas pu être ouvert.",
     "BANK_UPLOAD": "La banque n’a pas accepté le fichier.",
     "BAD_PGP_KEY": "Ce n’est pas une clé publique PGP.",
-    "BANK_CREDENTIAL": "Entrez le mot de passe ou la clé privée fournis par votre banque."
+    "BANK_CREDENTIAL": "Entrez le mot de passe ou la clé privée fournis par votre banque.",
+    "ALREADY_ENROLLED": "Cette personne est déjà inscrite à ce régime. Terminez d’abord cette inscription.",
+    "PLAN_EXISTS": "Il existe déjà un régime de ce nom."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1099,7 +1102,9 @@
         "SENT": "Envoyé",
         "FAILED": "Échec"
       }
-    }
+    },
+    "employerPaid": "Payé par votre employeur : {{list}}",
+    "taxableBenefit": "avantage imposable"
   },
   "settings": {
     "title": "Paramètres",
@@ -3394,7 +3399,11 @@
     "sinHint": "Requis pour votre feuillet T4. Conservé chiffré.",
     "sinOnFile": "NAS au dossier : {{sin}}. Pour le changer, communiquez avec la paie.",
     "td1Signed": "Mis à jour le {{date}}",
-    "td1Saved": "Crédits d’impôt enregistrés."
+    "td1Saved": "Crédits d’impôt enregistrés.",
+    "benefits": "Mes avantages sociaux",
+    "benefitsHelp": "Les régimes auxquels vous êtes inscrit. Votre part est retenue sur chaque paie.",
+    "youPay": "Vous payez {{amount}} par paie",
+    "cityPays": "la ville paie {{amount}}"
   },
   "payTax": {
     "nav": "Tables de paie",
@@ -3417,5 +3426,51 @@
     "verify": "Marquer comme vérifiée",
     "verifiedDone": "Vérifiée. Les paies peuvent maintenant l’utiliser.",
     "verifiedBy": "Vérifiée par {{who}} le {{when}}."
+  },
+  "benefits": {
+    "title": "Avantages sociaux",
+    "description": "Retraite, santé, dentaire, vie, invalidité et cotisations syndicales : les régimes offerts par votre ville et qui y est inscrit. Les paies retiennent automatiquement la part de chacun, avec le bon traitement fiscal.",
+    "addPlan": "Ajouter un régime",
+    "none": "Aucun régime pour l’instant",
+    "noneHelp": "Ajoutez votre régime de retraite, vos assurances collectives et les cotisations syndicales. Les paies les appliqueront dès lors.",
+    "inactive": "Inactif",
+    "shares": "Employé {{employee}} · employeur {{employer}} par paie",
+    "taxableShort": "la part de l’employeur est un avantage imposable",
+    "enroll": "Inscrire quelqu’un",
+    "nobody": "Personne n’est inscrit pour l’instant.",
+    "since": "depuis le {{date}}",
+    "end": "Terminer aujourd’hui",
+    "ended": "Inscription terminée.",
+    "saved": "Régime enregistré.",
+    "enrolled": "Inscrit. S’applique à partir de la prochaine paie.",
+    "enrollIn": "Inscrire à {{plan}}",
+    "name": "Nom",
+    "nameFr": "Nom en français",
+    "kind": "Type",
+    "kindHint": "Les cotisations de retraite et syndicales réduisent le revenu imposable; les autres parts de l’employé sont retenues après impôt.",
+    "provider": "Fournisseur",
+    "perPay": "À chaque paie",
+    "employeePercent": "Employé : % du brut",
+    "employeeAmount": "Employé : montant",
+    "employerPercent": "Employeur : % du brut",
+    "employerAmount": "Employeur : montant",
+    "taxable": "La part de l’employeur est un avantage imposable",
+    "taxableHelp": "Par exemple l’assurance vie collective payée par l’employeur. Elle s’ajoute au revenu imposable et figure au T4 (case 40), sans être versée en argent.",
+    "active": "Actif",
+    "startsOn": "Début",
+    "coverage": "Protection",
+    "coverageHint": "p. ex. Individuelle, Familiale",
+    "overrideAmount": "Son montant par paie (facultatif)",
+    "overrideHint": "Laissez vide pour utiliser le taux du régime.",
+    "kinds": {
+      "PENSION": "Retraite (RPA)",
+      "HEALTH": "Santé",
+      "DENTAL": "Dentaire",
+      "LIFE": "Assurance vie",
+      "DISABILITY": "Invalidité",
+      "UNION_DUES": "Cotisations syndicales",
+      "EAP": "Aide aux employés",
+      "OTHER": "Autre"
+    }
   }
 }

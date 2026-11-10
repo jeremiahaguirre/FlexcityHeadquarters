@@ -26,6 +26,7 @@ export function StatementView({ s }: { s: Statement }) {
     [t('payroll.d.ei'), d.ei, s.ytd?.ei],
     [t('payroll.d.federalTax'), d.federalTax + (d.extraTax ?? 0), s.ytd?.federalTax],
     [t('payroll.d.provincialTax', { province: s.province }), d.provincialTax, s.ytd?.provincialTax],
+    ...(d.benefits ?? []).filter((b) => b.employee).map((b) => [lng === 'fr-CA' && b.nameFr ? b.nameFr : b.name, b.employee, undefined] as [string, number, number | undefined]),
   ];
   return (
     <article className="statement grid grid-cols-[minmax(0,1fr)] gap-5 text-small">
@@ -77,6 +78,9 @@ export function StatementView({ s }: { s: Statement }) {
           </tbody>
         </table>
       </div>
+      {(d.benefits ?? []).some((b) => b.employer) ? (
+        <p className="text-caption text-muted">{t('payroll.employerPaid', { list: (d.benefits ?? []).filter((b) => b.employer).map((b) => `${lng === 'fr-CA' && b.nameFr ? b.nameFr : b.name} ${money(b.employer)}${b.taxable ? ` (${t('payroll.taxableBenefit')})` : ''}`).join(' · ') })}</p>
+      ) : null}
       <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl bg-surface p-4">
         <div>
           <p className="text-caption text-muted">{t('payroll.netPay')}</p>

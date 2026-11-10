@@ -1,5 +1,6 @@
 export interface Earning { code: string; positionId: string | null; hours: number; rate: number; amount: number }
-export interface Deductions { cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number; extraTax: number; total: number; employerCpp?: number; employerEi?: number }
+export interface BenefitLine { planId: string; name: string; nameFr: string | null; kind: string; employee: number; employer: number; taxable: number }
+export interface Deductions { cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number; extraTax: number; total: number; employerCpp?: number; employerEi?: number; benefits?: BenefitLine[]; rpp?: number; unionDues?: number; afterTax?: number; taxableBenefit?: number; employerBenefits?: number }
 export interface Ytd { gross: number; cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number; net: number }
 export interface Statement {
   id: string;

@@ -69,6 +69,7 @@ function MyPayInner() {
         </Card>
         <div className="grid content-start gap-6">
           <DirectDeposit data={d} reload={data.reload} />
+          <MyBenefits />
           <TaxCredits data={d} reload={data.reload} />
         </div>
       </div>
@@ -178,6 +179,30 @@ function TaxCredits({ data, reload }: { data: MyPay; reload: () => Promise<void>
           {p.td1SignedAt ? <p className="text-caption text-muted">{t('myPay.td1Signed', { date: formatDate(p.td1SignedAt.slice(0, 10), i18n.language, 'dated') })}</p> : null}
           <div><Button type="submit" size="sm" icon={<Banknote className="h-4 w-4" aria-hidden="true" />} loading={busy === 'td1'}>{t('common.save')}</Button></div>
         </form>
+      </CardBody>
+    </Card>
+  );
+}
+
+/** What I'm enrolled in and what each costs me per pay. */
+function MyBenefits() {
+  const { t, i18n } = useTranslation();
+  const lng = i18n.language;
+  const data = useQuery<Array<{ id: string; plan: { name: string; nameFr: string | null; kind: string; employeePercent: number; employeeAmount: number; employerPercent: number; employerAmount: number }; coverage: string | null; employeeAmount: number | null }>>('/api/me/benefits');
+  if (!data.data?.length) return null;
+  const share = (pct: number, amt: number) => [pct ? `${pct}%` : '', amt ? formatMoney(amt, lng) : ''].filter(Boolean).join(' + ') || formatMoney(0, lng);
+  return (
+    <Card>
+      <CardHeader title={t('myPay.benefits')} description={t('myPay.benefitsHelp')} />
+      <CardBody className="pt-2">
+        <ul className="divide-y divide-line text-small">
+          {data.data.map((e) => (
+            <li key={e.id} className="flex flex-wrap justify-between gap-2 py-2">
+              <span className="font-semibold">{lng === 'fr-CA' && e.plan.nameFr ? e.plan.nameFr : e.plan.name}{e.coverage ? <span className="font-normal text-muted"> · {e.coverage}</span> : null}</span>
+              <span className="text-muted">{t('myPay.youPay', { amount: e.employeeAmount != null ? formatMoney(e.employeeAmount, lng) : share(e.plan.employeePercent, e.plan.employeeAmount) })}{e.plan.employerPercent || e.plan.employerAmount ? ` · ${t('myPay.cityPays', { amount: share(e.plan.employerPercent, e.plan.employerAmount) })}` : ''}</span>
+            </li>
+          ))}
+        </ul>
       </CardBody>
     </Card>
   );

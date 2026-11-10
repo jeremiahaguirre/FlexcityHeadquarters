@@ -180,7 +180,8 @@
     "pretrip": "Pre-trip inspection",
     "fleet": "Fleet",
     "injuries": "Injury reports",
-    "myPay": "My pay"
+    "myPay": "My pay",
+    "benefits": "Benefits"
   },
   "navGroups": {
     "mine": "My work",
@@ -392,7 +393,9 @@
     "BANK_FOLDER": "Connected, but the payroll folder couldn’t be opened.",
     "BANK_UPLOAD": "The bank didn’t accept the file.",
     "BAD_PGP_KEY": "That isn’t a PGP public key.",
-    "BANK_CREDENTIAL": "Enter the password or private key your bank gave you."
+    "BANK_CREDENTIAL": "Enter the password or private key your bank gave you.",
+    "ALREADY_ENROLLED": "This person is already enrolled in this plan. End that enrollment first.",
+    "PLAN_EXISTS": "There is already a plan with that name."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1099,7 +1102,9 @@
         "SENT": "Sent",
         "FAILED": "Failed"
       }
-    }
+    },
+    "employerPaid": "Paid by your employer: {{list}}",
+    "taxableBenefit": "taxable benefit"
   },
   "settings": {
     "title": "Settings",
@@ -3394,7 +3399,11 @@
     "sinHint": "Needed for your T4 slip. Stored encrypted.",
     "sinOnFile": "SIN on file: {{sin}}. To change it, ask payroll.",
     "td1Signed": "Last updated {{date}}",
-    "td1Saved": "Tax credits saved."
+    "td1Saved": "Tax credits saved.",
+    "benefits": "My benefits",
+    "benefitsHelp": "Plans you're enrolled in. Your share comes off each pay.",
+    "youPay": "You pay {{amount}} a pay",
+    "cityPays": "city pays {{amount}}"
   },
   "payTax": {
     "nav": "Payroll tables",
@@ -3417,5 +3426,51 @@
     "verify": "Mark verified",
     "verifiedDone": "Verified. Pay runs can now use it.",
     "verifiedBy": "Verified by {{who}} on {{when}}."
+  },
+  "benefits": {
+    "title": "Benefits",
+    "description": "Pension, health, dental, life, disability and union dues: the plans your city offers and who is enrolled. Pay runs take each person's share automatically, with the right tax treatment.",
+    "addPlan": "Add plan",
+    "none": "No plans yet",
+    "noneHelp": "Add your pension plan, group benefits and union dues. Pay runs apply them from then on.",
+    "inactive": "Not active",
+    "shares": "Employee {{employee}} · employer {{employer}} per pay",
+    "taxableShort": "employer share is a taxable benefit",
+    "enroll": "Enroll someone",
+    "nobody": "Nobody enrolled yet.",
+    "since": "since {{date}}",
+    "end": "End today",
+    "ended": "Enrollment ended.",
+    "saved": "Plan saved.",
+    "enrolled": "Enrolled. It applies from the next pay run.",
+    "enrollIn": "Enroll in {{plan}}",
+    "name": "Name",
+    "nameFr": "French name",
+    "kind": "Type",
+    "kindHint": "Pension and union dues come off taxable income; other employee shares come off after tax.",
+    "provider": "Provider",
+    "perPay": "Each pay",
+    "employeePercent": "Employee % of gross",
+    "employeeAmount": "Employee amount",
+    "employerPercent": "Employer % of gross",
+    "employerAmount": "Employer amount",
+    "taxable": "The employer's share is a taxable benefit",
+    "taxableHelp": "For example employer-paid group life insurance. It's added to taxable income and shown on the T4 (box 40), but not paid in cash.",
+    "active": "Active",
+    "startsOn": "Starts",
+    "coverage": "Coverage",
+    "coverageHint": "e.g. Single, Family",
+    "overrideAmount": "Their amount each pay (optional)",
+    "overrideHint": "Leave blank to use the plan's rate.",
+    "kinds": {
+      "PENSION": "Pension (RPP)",
+      "HEALTH": "Health",
+      "DENTAL": "Dental",
+      "LIFE": "Life insurance",
+      "DISABILITY": "Disability",
+      "UNION_DUES": "Union dues",
+      "EAP": "Employee assistance",
+      "OTHER": "Other"
+    }
   }
 }
