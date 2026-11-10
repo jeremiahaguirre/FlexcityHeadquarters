@@ -16,6 +16,8 @@ export async function remittance(tx: Tx, month: string) {
   const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
   const rows = await tx.payStatement.findMany({ where: { payDate: { gte: start, lt: end }, payRun: PAID } });
   const t = { grossPayroll: 0, cppEmployee: 0, cppEmployer: 0, eiEmployee: 0, eiEmployer: 0, incomeTax: 0, total: 0 };
+  // Amounts owed to each benefit provider (pension plan, insurer, union) for the month.
+  const plans = new Map<string, { planId: string; name: string; kind: string; employee: number; employer: number }>();
   for (const s of rows) {
     const d = s.deductions as unknown as Deductions;
     t.grossPayroll += Number(s.gross);
@@ -24,13 +26,19 @@ export async function remittance(tx: Tx, month: string) {
     t.eiEmployee += d.ei;
     t.eiEmployer += Number(s.employerEi);
     t.incomeTax += d.federalTax + d.provincialTax + (d.extraTax ?? 0);
+    for (const b of (d as unknown as { benefits?: Array<{ planId: string; name: string; kind: string; employee: number; employer: number }> }).benefits ?? []) {
+      const row = plans.get(b.planId) ?? { planId: b.planId, name: b.name, kind: b.kind, employee: 0, employer: 0 };
+      row.employee = r2(row.employee + b.employee);
+      row.employer = r2(row.employer + b.employer);
+      plans.set(b.planId, row);
+    }
   }
   t.total = t.cppEmployee + t.cppEmployer + t.eiEmployee + t.eiEmployer + t.incomeTax;
   for (const k of Object.keys(t) as Array<keyof typeof t>) t[k] = r2(t[k]);
   const lastPay = rows.reduce<Date | null>((m, s) => (!m || s.payDate > m ? s.payDate : m), null);
   const employeesLastPay = lastPay ? new Set(rows.filter((s) => s.payDate.getTime() === lastPay.getTime()).map((s) => s.userId)).size : 0;
   const due = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 15)).toISOString().slice(0, 10);
-  return { month, due, statements: rows.length, employeesLastPay, ...t };
+  return { month, due, statements: rows.length, employeesLastPay, ...t, benefitsByPlan: [...plans.values()] };
 }
 
 export interface T4Slip {
@@ -46,6 +54,9 @@ export interface T4Slip {
   box22IncomeTax: number;
   box24EiInsurable: number;
   box26CppPensionable: number;
+  box20Rpp: number;
+  box40TaxableBenefits: number;
+  box44UnionDues: number;
 }
 
 /** T4 slips for everyone paid in the year, and the T4 Summary totals. */
@@ -73,9 +84,17 @@ export async function t4s(tx: Tx, year: number) {
         box22IncomeTax: 0,
         box24EiInsurable: 0,
         box26CppPensionable: 0,
+        box20Rpp: 0,
+        box40TaxableBenefits: 0,
+        box44UnionDues: 0,
       } satisfies T4Slip);
     slip.province = s.province; // province of employment at year end
-    slip.box14EmploymentIncome += Number(s.gross);
+    const b = d as unknown as { rpp?: number; unionDues?: number; taxableBenefit?: number };
+    // Box 14 includes taxable benefits (box 40) as well as cash pay.
+    slip.box14EmploymentIncome += Number(s.gross) + (b.taxableBenefit ?? 0);
+    slip.box20Rpp += b.rpp ?? 0;
+    slip.box40TaxableBenefits += b.taxableBenefit ?? 0;
+    slip.box44UnionDues += b.unionDues ?? 0;
     slip.box16Cpp += d.cpp;
     slip.box16aCpp2 += d.cpp2;
     slip.box18Ei += d.ei;
@@ -95,6 +114,9 @@ export async function t4s(tx: Tx, year: number) {
     box22IncomeTax: r2(s.box22IncomeTax),
     box24EiInsurable: r2(s.box24EiInsurable),
     box26CppPensionable: r2(s.box26CppPensionable),
+    box20Rpp: r2(s.box20Rpp),
+    box40TaxableBenefits: r2(s.box40TaxableBenefits),
+    box44UnionDues: r2(s.box44UnionDues),
   }));
   const sum = (k: keyof T4Slip) => r2(list.reduce((a, s) => a + (s[k] as number), 0));
   return {
@@ -109,6 +131,8 @@ export async function t4s(tx: Tx, year: number) {
       box19EmployerEi: r2(employerEi),
       box22: sum('box22IncomeTax'),
       box27EmployerCpp: r2(employerCpp),
+      box20: sum('box20Rpp'),
+      box44: sum('box44UnionDues'),
       missingSin: list.filter((s) => !s.sin).map((s) => s.name),
     },
   };

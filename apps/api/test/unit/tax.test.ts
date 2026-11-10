@@ -65,4 +65,16 @@ describe('payroll deductions', () => {
     const reduced = calculateDeductions({ ...base, gross: 800, provincial: { ...prov, reduction: { amount: 500, rate: 0.03, threshold: 20000 } } });
     expect(reduced.provincialTax).toBeLessThanOrEqual(calculateDeductions({ ...base, gross: 800 }).provincialTax);
   });
+
+  it('takes pension and union dues off taxable income, and taxes employer-paid benefits', () => {
+    const plain = calculateDeductions({ ...base, gross: 2500 });
+    const withRpp = calculateDeductions({ ...base, gross: 2500, rpp: 200, unionDues: 30 });
+    expect(withRpp.federalTax).toBeLessThan(plain.federalTax);
+    expect(withRpp.cpp).toBe(plain.cpp); // CPP and EI aren't reduced by pension or dues
+    expect(withRpp.ei).toBe(plain.ei);
+    const withBenefit = calculateDeductions({ ...base, gross: 2500, taxableBenefit: 40 });
+    expect(withBenefit.federalTax).toBeGreaterThan(plain.federalTax);
+    expect(withBenefit.cpp).toBeGreaterThan(plain.cpp);
+    expect(withBenefit.ei).toBe(plain.ei);
+  });
 });

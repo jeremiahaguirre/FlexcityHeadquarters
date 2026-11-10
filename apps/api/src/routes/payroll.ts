@@ -126,7 +126,7 @@ payrollRouter.get(
         row.people += 1;
         row.gross += Number(s.gross);
         row.net += Number(s.net);
-        row.employerCost += Number(s.gross) + Number(s.employerCpp) + Number(s.employerEi);
+        row.employerCost += Number(s.gross) + Number(s.employerCpp) + Number(s.employerEi) + ((s.deductions as { employerBenefits?: number }).employerBenefits ?? 0);
         byDepartment.set(k, row);
       }
       return {
@@ -362,11 +362,12 @@ payrollRouter.get(
       const users = await tx.user.findMany({ where: { id: { in: rows.map((s) => s.userId) } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true } });
       const depts = await tx.department.findMany({ select: { id: true, name: true } });
       const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-      const head = ['Employee number', 'Name', 'Department', 'Province', 'Hours', 'Gross', 'CPP', 'CPP2', 'EI', 'Federal tax', 'Provincial tax', 'Extra tax', 'Total deductions', 'Net', 'Employer CPP', 'Employer EI', 'Paid by'];
+      const head = ['Employee number', 'Name', 'Department', 'Province', 'Hours', 'Gross', 'CPP', 'CPP2', 'EI', 'Federal tax', 'Provincial tax', 'Extra tax', 'Pension', 'Union dues', 'Other benefits', 'Total deductions', 'Net', 'Employer CPP', 'Employer EI', 'Employer benefits', 'Paid by'];
       const lines = rows.map((s) => {
         const u = users.find((x) => x.id === s.userId);
         const d = s.deductions as unknown as Deductions;
-        return [u?.employeeNumber, u ? `${u.lastName}, ${u.firstName}` : '', depts.find((x) => x.id === s.departmentId)?.name ?? '', s.province, s.hours, s.gross, d.cpp, d.cpp2, d.ei, d.federalTax, d.provincialTax, d.extraTax, s.totalDeductions, s.net, s.employerCpp, s.employerEi, s.depositLast4 ? `Deposit ••••${s.depositLast4}` : 'Cheque']
+        const b = s.deductions as { rpp?: number; unionDues?: number; afterTax?: number; employerBenefits?: number };
+        return [u?.employeeNumber, u ? `${u.lastName}, ${u.firstName}` : '', depts.find((x) => x.id === s.departmentId)?.name ?? '', s.province, s.hours, s.gross, d.cpp, d.cpp2, d.ei, d.federalTax, d.provincialTax, d.extraTax, b.rpp ?? 0, b.unionDues ?? 0, b.afterTax ?? 0, s.totalDeductions, s.net, s.employerCpp, s.employerEi, b.employerBenefits ?? 0, s.depositLast4 ? `Deposit ••••${s.depositLast4}` : 'Cheque']
           .map(q)
           .join(',');
       });

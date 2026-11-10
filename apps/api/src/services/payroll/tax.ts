@@ -59,6 +59,12 @@ export interface PayInput {
   extraTax: number;
   cppExempt: boolean;
   eiExempt: boolean;
+  /** Registered pension plan contributions this pay: deducted from income before tax. */
+  rpp?: number;
+  /** Union dues this pay: deducted from income before tax. */
+  unionDues?: number;
+  /** Employer-paid taxable benefits this pay (e.g. group life): taxed and pensionable, not insurable, not paid in cash. */
+  taxableBenefit?: number;
 }
 
 export interface Deductions {
@@ -102,16 +108,21 @@ export function calculateDeductions(p: PayInput): Deductions {
   const P = p.periodsPerYear;
   const f = p.federal;
   const gross = pos(p.gross);
+  const benefit = pos(p.taxableBenefit ?? 0);
+  const rpp = pos(p.rpp ?? 0);
+  const dues = pos(p.unionDues ?? 0);
+  // CPP is on cash pay plus taxable benefits; EI only on cash pay.
+  const cppEarnings = gross + benefit;
 
   // CPP: contributions on pensionable earnings above the prorated basic exemption, up to the YMPE.
   const cppMax = r2((f.cpp.ympe - f.cpp.basicExemption) * f.cpp.rate);
   const pensionableRoom = pos(f.cpp.ympe - p.ytd.pensionable);
-  const pensionable = Math.min(gross, pensionableRoom);
+  const pensionable = Math.min(cppEarnings, pensionableRoom);
   // The rate applies to the period's full pay; the yearly maximum does the capping.
-  const cpp = p.cppExempt ? 0 : r2(Math.min(pos(cppMax - p.ytd.cpp), pos((gross - f.cpp.basicExemption / P) * f.cpp.rate)));
+  const cpp = p.cppExempt ? 0 : r2(Math.min(pos(cppMax - p.ytd.cpp), pos((cppEarnings - f.cpp.basicExemption / P) * f.cpp.rate)));
   // CPP2: on earnings between the YMPE and the YAMPE.
   const cpp2Max = r2((f.cpp2.yampe - f.cpp.ympe) * f.cpp2.rate);
-  const totalAfter = p.ytd.gross + gross;
+  const totalAfter = p.ytd.gross + cppEarnings;
   const cpp2Base = pos(Math.min(totalAfter, f.cpp2.yampe) - Math.max(p.ytd.gross, f.cpp.ympe));
   const cpp2 = p.cppExempt ? 0 : r2(Math.min(pos(cpp2Max - p.ytd.cpp2), cpp2Base * f.cpp2.rate));
   // EI: premiums on insurable earnings up to the yearly maximum.
@@ -122,7 +133,7 @@ export function calculateDeductions(p: PayInput): Deductions {
   // The enhanced part of CPP and all of CPP2 are deducted from income; the base part is a credit.
   const cppBase = f.cpp.rate ? cpp * (f.cpp.baseRate / f.cpp.rate) : 0;
   const cppEnhanced = cpp - cppBase;
-  const A = pos(P * (gross - cppEnhanced - cpp2));
+  const A = pos(P * (gross + benefit - rpp - dues - cppEnhanced - cpp2));
 
   // Credits at the lowest rate: personal amount, base CPP and EI (annualized, capped), employment amount.
   const baseCppMax = (f.cpp.ympe - f.cpp.basicExemption) * f.cpp.baseRate;

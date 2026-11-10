@@ -114,6 +114,11 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   if (!tables.federal) blockers.add(`There is no federal payroll table for ${year}. Ask FH support to add it.`);
   else if (!tables.federal.verified) blockers.add(`The federal ${year} payroll table (CPP, EI, tax) hasn’t been verified against CRA’s T4127 yet.`);
 
+  const runUsers = [...new Set(results.map((r) => r.userId))];
+  const enrollments = await tx.benefitEnrollment.findMany({
+    where: { userId: { in: runUsers }, startsOn: { lte: new Date(periodEnd) }, OR: [{ endsOn: null }, { endsOn: { gte: new Date(input.periodStart) } }], plan: { active: true } },
+    include: { plan: true },
+  });
   const [facilities, people, profiles, banks, departments] = await Promise.all([
     tx.facility.findMany({ select: { id: true, province: true } }),
     tx.user.findMany({ where: { id: { in: [...new Set(results.map((r) => r.userId))] } }, select: { id: true, firstName: true, lastName: true } }),
@@ -130,7 +135,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   for (const r of results) byUser.set(r.userId, [...(byUser.get(r.userId) ?? []), r]);
 
   const statements: Prisma.PayStatementCreateManyInput[] = [];
-  const totals = { gross: 0, deductions: 0, net: 0, employerCpp: 0, employerEi: 0, people: 0, deposits: 0, cheques: 0, cpp: 0, cpp2: 0, ei: 0, tax: 0 };
+  const totals = { gross: 0, deductions: 0, net: 0, employerCpp: 0, employerEi: 0, people: 0, deposits: 0, cheques: 0, cpp: 0, cpp2: 0, ei: 0, tax: 0, benefits: 0, employerBenefits: 0 };
   for (const [userId, rs] of byUser) {
     const lines = rs.flatMap((r) => r.result.lines.map((l) => ({ code: l.code, positionId: l.positionId, hours: Number(l.hours), rate: Number(l.rate), amount: Number(l.amount) })));
     const gross = r2(lines.reduce((s, l) => s + l.amount, 0));
@@ -144,6 +149,21 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     if (!prov) blockers.add(`There is no ${province} payroll table for ${year}. Ask FH support to add it.`);
     else if (!prov.verified) blockers.add(`The ${province} ${year} payroll table hasn’t been verified against CRA’s T4127 yet.`);
     const ytd = await yearToDate(tx, userId, year, runId);
+    // Benefits and deductions: each plan's employee and employer share for this pay.
+    const benefits = enrollments
+      .filter((e) => e.userId === userId)
+      .map((e) => {
+        const pl = e.plan;
+        const employee = e.employeeAmount != null ? Number(e.employeeAmount) : r2((gross * Number(pl.employeePercent)) / 100 + Number(pl.employeeAmount));
+        const employer = r2((gross * Number(pl.employerPercent)) / 100 + Number(pl.employerAmount));
+        return { planId: pl.id, name: pl.name, nameFr: pl.nameFr, kind: pl.kind, employee, employer, taxable: pl.employerTaxable ? employer : 0 };
+      });
+    const sumOf = (pick: (b: (typeof benefits)[number]) => number) => r2(benefits.reduce((s, b) => s + pick(b), 0));
+    const rpp = sumOf((b) => (b.kind === 'PENSION' ? b.employee : 0));
+    const unionDues = sumOf((b) => (b.kind === 'UNION_DUES' ? b.employee : 0));
+    const afterTax = sumOf((b) => (b.kind !== 'PENSION' && b.kind !== 'UNION_DUES' ? b.employee : 0));
+    const taxableBenefit = sumOf((b) => b.taxable);
+    const employerBenefits = sumOf((b) => b.employer);
     const d =
       tables.federal && prov && province !== 'QC'
         ? calculateDeductions({
@@ -157,9 +177,14 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
             extraTax: profile ? Number(profile.extraTaxPerPeriod) : 0,
             cppExempt: profile?.cppExempt ?? false,
             eiExempt: profile?.eiExempt ?? false,
+            rpp,
+            unionDues,
+            taxableBenefit,
           })
         : ZERO_D;
-    const net = r2(gross - d.total);
+    const benefitDeductions = r2(rpp + unionDues + afterTax);
+    const totalDeductions = r2(d.total + benefitDeductions);
+    const net = r2(gross - totalDeductions);
     if (net < 0) blockers.add(`${name(userId)}’s deductions are more than their pay. Check their TD1 extra tax.`);
     const bank = banks.find((b) => b.userId === userId);
     if (!bank) warnings.add(`${name(userId)} has no verified direct deposit account and will need a cheque.`);
@@ -175,9 +200,9 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       payDate: new Date(input.payDate),
       hours,
       earnings: lines,
-      deductions: d as unknown as Prisma.InputJsonValue,
+      deductions: { ...d, benefits, rpp, unionDues, afterTax, taxableBenefit, employerBenefits } as unknown as Prisma.InputJsonValue,
       gross,
-      totalDeductions: d.total,
+      totalDeductions,
       net,
       employerCpp: d.employerCpp,
       employerEi: d.employerEi,
@@ -196,7 +221,9 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       depositLast4: bank?.last4 ?? null,
     });
     totals.gross += gross;
-    totals.deductions += d.total;
+    totals.deductions += totalDeductions;
+    totals.benefits += benefitDeductions;
+    totals.employerBenefits += employerBenefits;
     totals.net += net;
     totals.employerCpp += d.employerCpp;
     totals.employerEi += d.employerEi;

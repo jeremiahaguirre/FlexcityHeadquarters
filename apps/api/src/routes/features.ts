@@ -50,6 +50,7 @@ import { myPasskeysRouter } from './passkeys.js';
 import { rolesRouter } from './roles.js';
 import { departmentsRouter } from './departments.js';
 import { payrollRouter } from './payroll.js';
+import { benefitsRouter } from './benefits.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -71,6 +72,7 @@ api.use(myPasskeysRouter);
 api.use(rolesRouter);
 api.use(departmentsRouter);
 api.use(payrollRouter);
+api.use(benefitsRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);

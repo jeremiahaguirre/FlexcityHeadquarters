@@ -392,6 +392,7 @@ model User {
   payProfile          PayProfile?
   bankAccounts        BankAccount[]
   payStatements       PayStatement[]
+  benefitEnrollments  BenefitEnrollment[]
   authTokens          AuthToken[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
 
@@ -2265,4 +2266,61 @@ model PayTransmission {
   payRun     PayRun             @relation(fields: [payRunId], references: [id], onDelete: Cascade)
 
   @@index([payRunId])
+}
+
+// ------------------------------------------------------------------ Benefits
+
+enum BenefitKind {
+  /// Registered pension plan (OMERS, MEPP, LAPP…): employee contributions come off taxable income.
+  PENSION
+  HEALTH
+  DENTAL
+  LIFE
+  DISABILITY
+  /// Union dues: deducted from pay and from taxable income.
+  UNION_DUES
+  EAP
+  OTHER
+}
+
+/// A benefit plan or payroll deduction the city offers, with the employee and employer shares per pay.
+model BenefitPlan {
+  id              String              @id @default(uuid()) @db.Uuid
+  tenantId        String              @db.Uuid
+  name            String
+  nameFr          String?
+  kind            BenefitKind
+  provider        String?
+  /// Employee share each pay: a percent of gross pay plus a fixed amount.
+  employeePercent Decimal             @default(0) @db.Decimal(6, 3)
+  employeeAmount  Decimal             @default(0) @db.Decimal(10, 2)
+  /// Employer share each pay, the same way.
+  employerPercent Decimal             @default(0) @db.Decimal(6, 3)
+  employerAmount  Decimal             @default(0) @db.Decimal(10, 2)
+  /// The employer's share is a taxable benefit to the employee (e.g. employer-paid group life insurance).
+  employerTaxable Boolean             @default(false)
+  active          Boolean             @default(true)
+  createdAt       DateTime            @default(now()) @db.Timestamptz(3)
+  enrollments     BenefitEnrollment[]
+
+  @@unique([tenantId, name])
+}
+
+model BenefitEnrollment {
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String      @db.Uuid
+  planId         String      @db.Uuid
+  userId         String      @db.Uuid
+  startsOn       DateTime    @db.Date
+  endsOn         DateTime?   @db.Date
+  /// e.g. "Single", "Family".
+  coverage       String?
+  /// Overrides the plan's employee share per pay (e.g. family coverage).
+  employeeAmount Decimal?    @db.Decimal(10, 2)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  plan           BenefitPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  user           User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([planId])
 }
