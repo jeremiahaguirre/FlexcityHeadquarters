@@ -63,6 +63,7 @@ export const PERMISSIONS = [
   'lessons.plan', // swim levels, lesson and swim club campaigns, sets; publish them
   'members.manage', // member services: families on file, registrations, memberships and drop-ins
   'fees.manage', // the facility price list
+  'bookings.manage', // public sign-up settings, bookable facility services, booking requests
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -110,6 +111,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'winter.callout',
     'winter.records',
     'fees.manage',
+    'bookings.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -149,6 +151,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'lessons.plan',
     'members.manage',
     'fees.manage',
+    'bookings.manage',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
@@ -162,7 +165,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   ],
   STAFF: STAFF_BASE,
   // Front desk is member services: families, registrations, memberships and drop-ins.
-  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage'],
+  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
   EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol'],

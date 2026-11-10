@@ -262,6 +262,8 @@ model Tenant {
   /// Winter operations, set by the city's managers: { season: { start: "11-01", end: "04-15" },
   /// callOuts: { responseMinutes, minRestHours }, patrols: { maxShiftHours } }.
   winterSettings Json @default("{}")
+  /// Public sign-up portal: { enabled, terms, termsFr, payment, paymentFr, privacyContact }.
+  signupSettings Json @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -1199,6 +1201,10 @@ model LessonEnrollment {
   registeredById String? @db.Uuid
   /// Age check skipped by staff, and why.
   ageOverride  String?
+  /// STAFF (member services) or ONLINE (the public sign-up page).
+  source       String   @default("STAFF")
+  /// Reference given to the family, e.g. R-7F3K2Q.
+  reference    String?  @unique
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
   lessonClass LessonClass        @relation(fields: [classId], references: [id], onDelete: Restrict)
@@ -1785,6 +1791,8 @@ model Household {
   emergencyName  String?
   emergencyPhone String?
   notes      String?
+  /// STAFF or ONLINE; online families may duplicate one already on file.
+  source     String   @default("STAFF")
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
   members    Member[]
 
@@ -1876,4 +1884,59 @@ model Sale {
 
   @@index([tenantId, createdAt])
   @@index([householdId])
+}
+
+/// Something the public can book at a facility: a party room, a lane, ice time.
+model BookableService {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  facilityId      String   @db.Uuid
+  name            String
+  nameFr          String?
+  description     String?
+  descriptionFr   String?
+  durationMinutes Int
+  priceCents      Int
+  /// Bookings that can run at the same time (e.g. 2 party rooms).
+  capacity        Int      @default(1)
+  maxPartySize    Int?
+  daysOfWeek      Int[]
+  openMinute      Int
+  closeMinute     Int
+  /// Booked at least this many days ahead.
+  leadDays        Int      @default(2)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, active])
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  DECLINED
+  CANCELLED
+}
+
+model BookingRequest {
+  id           String        @id @default(uuid()) @db.Uuid
+  tenantId     String        @db.Uuid
+  serviceId    String        @db.Uuid
+  startsAt     DateTime      @db.Timestamptz(3)
+  endsAt       DateTime      @db.Timestamptz(3)
+  partySize    Int?
+  name         String
+  email        String
+  phone        String
+  organization String?
+  notes        String?
+  status       BookingStatus @default(REQUESTED)
+  reference    String        @unique
+  decidedById  String?       @db.Uuid
+  decidedAt    DateTime?     @db.Timestamptz(3)
+  decisionNote String?
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, serviceId, startsAt])
+  @@index([tenantId, status])
 }

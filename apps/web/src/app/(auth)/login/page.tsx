@@ -107,6 +107,10 @@ function LoginForm() {
           </Link>
         )}
       </form>
+      <p className="mt-8 border-t border-line pt-5 text-center text-small text-muted">
+        {t('login.notStaff')}{' '}
+        <Link href="/signup" className="font-semibold text-brand-text hover:underline">{t('login.signupLink')}</Link>
+      </p>
     </>
   );
 }

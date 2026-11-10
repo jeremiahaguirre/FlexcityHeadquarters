@@ -31,6 +31,24 @@ type Template = (p: Params) => { subject: string; text: string };
 const APP_URL = () => process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
+  signup_confirmation: {
+    'en-CA': (p) => ({
+      subject: `${p.status === 'WAITLISTED' ? 'Waitlist' : 'Registration'} received: ${p.participant} in ${p.set}`,
+      text: `Thanks for signing up with ${p.organization}.\n\nReference: ${p.reference}\nParticipant: ${p.participant}\nProgram: ${p.set} (${p.campaign})\nWhen: ${p.when}\nPrice: ${p.price}\n\n${p.status === 'WAITLISTED' ? "The program is full, so you're on the waitlist. We'll contact you if a spot opens; nothing is owed until then." : p.payment || 'We will contact you about payment.'}\n\nQuestions? Contact the facility and quote your reference.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `${p.status === 'WAITLISTED' ? 'Liste d’attente' : 'Inscription'} reçue : ${p.participant}, ${p.set}`,
+      text: `Merci de votre inscription auprès de ${p.organization}.\n\nRéférence : ${p.reference}\nParticipant : ${p.participant}\nProgramme : ${p.set} (${p.campaign})\nQuand : ${p.when}\nPrix : ${p.price}\n\n${p.status === 'WAITLISTED' ? 'Le programme est complet : vous êtes sur la liste d’attente. Nous vous contacterons si une place se libère; rien n’est dû d’ici là.' : p.payment || 'Nous communiquerons avec vous pour le paiement.'}\n\nDes questions? Communiquez avec l’installation en indiquant votre référence.`,
+    }),
+  },
+  booking_received: {
+    'en-CA': (p) => ({ subject: `Booking request received: ${p.service}`, text: `We received your request for ${p.service} on ${p.when}.\nReference: ${p.reference}\n\nThis is a request, not a confirmation. Staff will confirm or contact you shortly.` }),
+    'fr-CA': (p) => ({ subject: `Demande de réservation reçue : ${p.service}`, text: `Nous avons reçu votre demande pour ${p.service} le ${p.when}.\nRéférence : ${p.reference}\n\nIl s’agit d’une demande, pas d’une confirmation. Le personnel la confirmera ou communiquera avec vous sous peu.` }),
+  },
+  booking_decided: {
+    'en-CA': (p) => ({ subject: `Booking ${p.confirmed ? 'confirmed' : 'not available'}: ${p.service}`, text: `${p.confirmed ? `Your booking for ${p.service} on ${p.when} is confirmed.` : `Sorry, we can't book ${p.service} on ${p.when}.`}\nReference: ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }),
+    'fr-CA': (p) => ({ subject: `Réservation ${p.confirmed ? 'confirmée' : 'non disponible'} : ${p.service}`, text: `${p.confirmed ? `Votre réservation pour ${p.service} le ${p.when} est confirmée.` : `Désolés, nous ne pouvons pas réserver ${p.service} le ${p.when}.`}\nRéférence : ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }),
+  },
   callout_offer: {
     'en-CA': (p) => ({
       subject: `Call-out: can you work? Answer within ${p.minutes} minutes`,

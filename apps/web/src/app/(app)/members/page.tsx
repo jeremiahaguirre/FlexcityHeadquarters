@@ -115,6 +115,8 @@ function FamilySearch() {
         </Card>
       </div>
 
+      <OnlineSignups />
+
       <Dialog open={adding} onClose={() => setAdding(false)} title={t('members.newFamily')} description={t('members.newFamilyHelp')} closeLabel={t('common.cancel')}>
         <form className="grid gap-4" onSubmit={(e) => void create(e)}>
           <Field label={t('members.familyName')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={80} />}</Field>
@@ -159,6 +161,33 @@ function FamilySearch() {
         </form>
       </Dialog>
     </div>
+  );
+}
+
+/** Families who signed up on the public page: take payment for confirmed spots. */
+function OnlineSignups() {
+  const { t, i18n } = useTranslation();
+  const q = useQuery<Array<{ id: string; reference: string; swimmerName: string; householdId: string; status: string; priceCents: number | null; set: string; createdAt: string; paid: boolean }>>('/api/online-registrations');
+  const { run, busy } = useAction();
+  const [pay, setPay] = useState<string>('DEBIT');
+  const due = (q.data ?? []).filter((r) => !r.paid && r.status === 'ENROLLED');
+  if (!q.data || !q.data.length) return null;
+  return (
+    <Card>
+      <CardHeader title={t('members.online', { count: due.length })} description={t('members.onlineHelp')} action={<div className="w-40"><Select aria-label={t('members.payment')} value={pay} onChange={(e) => setPay(e.target.value)}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{t(`members.pay.${m}`)}</option>)}</Select></div>} />
+      <CardBody className="pt-2">
+        {!due.length ? <p className="text-small text-muted">{t('members.onlineNone')}</p> : (
+          <ul className="divide-y divide-line text-small">
+            {due.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                <Link href={`/members?id=${r.householdId}`} className="min-w-0 hover:underline"><span className="font-semibold">{r.swimmerName}</span><span className="block text-caption text-muted">{r.set} · {r.reference} · {new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(r.createdAt))}</span></Link>
+                <Button size="sm" loading={busy === r.id} icon={<CreditCard className="h-4 w-4" aria-hidden="true" />} onClick={() => void run(r.id, () => api(`/api/online-registrations/${r.id}/pay`, { method: 'POST', body: { paymentMethod: pay } }), t('members.sold')).then(() => q.reload())}>{t('members.takePayment', { price: money(r.priceCents, i18n.language) })}</Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardBody>
+    </Card>
   );
 }
 

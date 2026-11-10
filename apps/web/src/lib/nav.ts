@@ -1,4 +1,4 @@
-import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
+import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -48,6 +48,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', permission: 'jobs.manage', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: true },
   { href: '/manage/fees', key: 'fees', icon: Tags, group: 'manage', permission: 'fees.manage', ready: true },
+  { href: '/manage/bookings', key: 'bookings', icon: Globe, group: 'manage', permission: 'bookings.manage', ready: true },
   { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', permission: 'roles.manage', ready: true },
   { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', permission: 'billing.manage', ready: true },
   { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', permission: ['tenant.configure', 'ops.configure'], ready: true },

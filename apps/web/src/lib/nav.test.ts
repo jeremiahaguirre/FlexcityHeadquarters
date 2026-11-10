@@ -23,12 +23,12 @@ describe('menus per role', () => {
   });
 
   it('front desk: shifts, clock and the live pool board, nothing else', () => {
-    expect(menu('FRONT_DESK').items).toEqual(['/today', '/schedule', '/timeclock', '/status', '/members']);
+    expect(menu('FRONT_DESK').items).toEqual(['/today', '/schedule', '/timeclock', '/status', '/members', '/manage/bookings']);
   });
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/people', '/manage/compliance', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/fees', '/manage/roles', '/manage/billing', '/manage/settings'],
+      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/people', '/manage/compliance', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/fees', '/manage/bookings', '/manage/roles', '/manage/billing', '/manage/settings'],
       home: '/manage/approvals',
     });
   });
