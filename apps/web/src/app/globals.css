@@ -144,6 +144,30 @@ body {
   .fh-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgb(var(--overlay) / 0.25); }
 }
 
+/* Calm entrances. Opacity and transform only (no layout work), short, and gone with reduced motion.
+   A page's sections arrive one after another; .fh-stagger does the same for rows in a list. */
+@keyframes fh-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fh-grow { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes fh-badge { 0% { transform: scale(0.4); } 60% { transform: scale(1.15); } 100% { transform: none; } }
+.fh-page > *, .fh-stagger > * { animation: fh-rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.fh-page > :nth-child(2) { animation-delay: 50ms; }
+.fh-page > :nth-child(3) { animation-delay: 100ms; }
+.fh-page > :nth-child(4) { animation-delay: 150ms; }
+.fh-page > :nth-child(5) { animation-delay: 200ms; }
+.fh-page > :nth-child(n + 6) { animation-delay: 250ms; }
+.fh-stagger > * { animation-duration: 300ms; }
+.fh-stagger > :nth-child(2) { animation-delay: 30ms; }
+.fh-stagger > :nth-child(3) { animation-delay: 60ms; }
+.fh-stagger > :nth-child(4) { animation-delay: 90ms; }
+.fh-stagger > :nth-child(5) { animation-delay: 120ms; }
+.fh-stagger > :nth-child(6) { animation-delay: 150ms; }
+.fh-stagger > :nth-child(7) { animation-delay: 180ms; }
+.fh-stagger > :nth-child(n + 8) { animation-delay: 210ms; }
+/* Progress bars fill from the left when they appear. */
+.fh-bar { transform-origin: left center; animation: fh-grow 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both; }
+/* A new count on a badge gives one small pop. */
+.fh-badge { animation: fh-badge 320ms cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+
 /* A grid with no column setting is one column that never grows past its container, so a long
    row (a toolbar, a wide label) wraps or scrolls inside it instead of widening the page on a
    phone. :where() keeps this weaker than any grid-cols-* utility. */

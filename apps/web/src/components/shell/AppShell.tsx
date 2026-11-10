@@ -138,7 +138,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
           </div>
         </header>
 
-        <main id="main" key={pathname} className="animate-page-in mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:px-8 md:pb-12 md:pt-8">
+        <main id="main" key={pathname} className="fh-page mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:px-8 md:pb-12 md:pt-8">
           {me?.support ? (
             <div role="status" className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-new/30 bg-new-bg px-4 py-3 text-small text-ink">
               <ShieldCheck className="h-4 w-4 shrink-0 text-new" aria-hidden="true" />
@@ -170,7 +170,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
                   aria-current={active ? 'page' : undefined}
                   className={cn('flex h-16 flex-col items-center justify-center gap-1 text-caption font-semibold', active ? 'text-brand-text' : 'text-muted')}
                 >
-                  <span className={cn('grid h-7 w-12 place-items-center rounded-full transition-colors', active && 'bg-brand/10')}>
+                  <span className={cn('grid h-7 w-12 place-items-center rounded-full transition-[background-color,transform] duration-200 ease-out', active ? 'scale-100 bg-brand/10' : 'scale-90')}>
                     <n.icon className="h-5 w-5" aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
                   </span>
                   <span className="max-w-full truncate px-1">{t(`nav.${n.key}Short`, { defaultValue: t(`nav.${n.key}`) })}</span>

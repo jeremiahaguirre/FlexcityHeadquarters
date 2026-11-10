@@ -52,7 +52,7 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5" aria-hidden="true" />
         {unread ? (
-          <span className="absolute right-1.5 top-1.5 grid min-w-[1.125rem] place-items-center rounded-full bg-new px-1 text-[0.6875rem] font-bold leading-[1.125rem] text-white dark:text-page">
+          <span key={unread} className="fh-badge absolute right-1.5 top-1.5 grid min-w-[1.125rem] place-items-center rounded-full bg-new px-1 text-[0.6875rem] font-bold leading-[1.125rem] text-white dark:text-page">
             {unread > 9 ? '9+' : unread}
           </span>
         ) : null}
@@ -74,7 +74,7 @@ export function NotificationBell() {
               {t('shell.noNotifications')}
             </div>
           ) : (
-            <ul className="max-h-[60vh] divide-y divide-line overflow-y-auto">
+            <ul className="fh-stagger max-h-[60vh] divide-y divide-line overflow-y-auto">
               {items.map((n) => (
                 <li key={n.id}>
                   <button type="button" onClick={() => go(n)} className={cn('flex w-full gap-3 px-4 py-3 text-left hover:bg-surface', !n.readAt && 'bg-new-bg/40')}>
