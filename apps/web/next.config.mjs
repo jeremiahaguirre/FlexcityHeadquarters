@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const API_URL = process.env.API_URL ?? 'http://localhost:4000';
+// The Union Hub's own service, when it runs separately (UNION_HUB_MODE=separate on the API).
+const UNION_URL = process.env.UNION_URL;
 
 // NEXT_PUBLIC_DEMO=1 builds a fully static demo (GitHub Pages): no server, no API.
 const DEMO = process.env.NEXT_PUBLIC_DEMO === '1';
@@ -35,7 +37,7 @@ const nextConfig = DEMO
       // load balancer normally routes /api/* to the API service before it reaches
       // Next; this rewrite keeps single-host deployments (and `next start`) working.
       async rewrites() {
-        return [{ source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
+        return [...(UNION_URL ? [{ source: '/api/union/:path*', destination: `${UNION_URL}/api/union/:path*` }] : []), { source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
       },
       async headers() {
         return [{ source: '/:path*', headers: securityHeaders }];

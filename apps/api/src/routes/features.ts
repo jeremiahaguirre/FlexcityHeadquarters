@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
 import { publish } from '../lib/events.js';
 import { localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
@@ -117,6 +117,9 @@ api.use(accommodationRouter);
 api.use(benchmarksRouter);
 api.use(settingsRouter);
 api.use(lessonsRouter);
+// The Union Hub runs here unless it has its own service (UNION_HUB_MODE=separate): then this API
+// doesn't answer for it, and holds no union credentials.
+api.use('/union', (_req, _res, next) => next(process.env.UNION_HUB_MODE === 'separate' ? new HttpError(404, 'UNION_ELSEWHERE', 'The Union Hub is served by its own service.') : undefined));
 api.use(unionRouter);
 api.use(jobsRouter);
 

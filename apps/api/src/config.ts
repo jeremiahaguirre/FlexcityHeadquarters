@@ -7,6 +7,12 @@ const schema = z.object({
   APP_DATABASE_URL: z.string().url(),
   /** Union Hub only: the `flexcity_union` role. Optional when no tenant enables the hub. */
   UNION_DATABASE_URL: z.string().url().optional(),
+  /**
+   * Where the Union Hub runs: "embedded" in this API (the default), or "separate", its own service
+   * (src/unionServer.ts) behind the same address at /api/union. In "separate" mode this API holds no
+   * union database credentials at all, and the union service must be the one given them.
+   */
+  UNION_HUB_MODE: z.enum(['embedded', 'separate']).default('embedded'),
   JWT_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().default(15 * 60),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(14),
@@ -58,6 +64,10 @@ export function config(): Config {
       for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL]] as const) {
         if (url && !/[?&]sslmode=(require|verify-ca|verify-full)\b/.test(url)) throw new Error(`${name} must use TLS in production (sslmode=verify-full)`);
       }
+    }
+    // Separate Union Hub: the main API must not be handed the union role's credentials.
+    if (parsed.data.UNION_HUB_MODE === 'separate' && parsed.data.UNION_DATABASE_URL && process.env.FLEXCITY_SERVICE !== 'union') {
+      throw new Error('UNION_HUB_MODE=separate: give UNION_DATABASE_URL to the Union Hub service only, not to this API.');
     }
     cached = parsed.data;
   }

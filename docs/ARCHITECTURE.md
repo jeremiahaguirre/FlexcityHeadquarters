@@ -77,6 +77,26 @@ Domain events (`src/lib/events.ts`) are published only after the transaction com
 
 Access follows union membership, not employer roles: `/api/me` grants `union.hub` to union members while the organization has the hub switched on, and every hub query re-checks membership of the local through the separate `flexcity_union` database role.
 
+### Running the hub as its own service
+
+By default the API serves `/api/union/*` itself. For stronger separation, run it on its own:
+
+1. Deploy the API with `UNION_HUB_MODE=separate` and **without** `UNION_DATABASE_URL` (the API refuses
+   to start if it's given both). It then answers `/api/union/*` with `404 UNION_ELSEWHERE` and holds no
+   way into the `union_hub` schema, so a flaw or a leaked secret in the main API can't reach union data.
+2. Deploy the same build a second time as the Union Hub service: `npm run start:union --workspace apps/api`
+   (`src/unionServer.ts`, port `UNION_PORT`, default 4100) with `UNION_DATABASE_URL` (the
+   `flexcity_union` role), `APP_DATABASE_URL`, `JWT_SECRET` and the KMS settings. It answers only
+   `/api/union/*` and `/healthz`; every other path is a 404.
+3. Route `/api/union/*` to it at the load balancer (path rule above the general `/api/*` rule), or,
+   for single-host set-ups, set `UNION_URL` for the web app so its rewrite sends those paths there.
+   Same origin either way: no CORS, and the browser keeps one session.
+
+The hub service checks sign-ins exactly like the API (same tokens, account still active, organization
+open, signed agreement, support visits refused), reading those through the app role, which can't read
+the union schema. Give the two services separate secrets stores so each holds only its own credentials.
+Locally: `npm run dev:union --workspace apps/api` beside `npm run dev`.
+
 ## Feature switches
 
 Each organization has fifteen switches (`src/services/platform/features.ts`), set only from the Dev console. A switched-off feature removes its permissions for everyone in that organization when the access token is checked, so menus hide it and permission checks refuse it; features without their own permission (lessons, union hub, public job page) also have a route guard. Notification emails follow their own switch; invitations and password resets always send.

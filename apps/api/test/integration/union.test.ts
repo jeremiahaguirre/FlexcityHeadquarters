@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { closeUnionHub } from '../../src/routes/union.js';
+import { createUnionApp } from '../../src/unionApp.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
@@ -93,3 +94,34 @@ describe('union hub', () => {
     expect(r.body.map((x: { first_name: string }) => x.first_name)).toEqual(['Guard1']);
   });
 });
+
+describe('Union Hub as its own service', () => {
+  const unionServer = createUnionApp();
+  const viaService = (token: string) => request(unionServer).get(`/api/union/locals/${localId}/threads`).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' });
+
+  it('answers the hub with the same sign-in, and nothing else', async () => {
+    const r = await viaService(steward);
+    expect(r.status).toBe(200);
+    expect(r.body.length).toBeGreaterThan(0);
+    expect((await request(unionServer).get('/api/union/locals').set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' })).body[0]).toMatchObject({ id: localId, isSteward: true });
+    // Membership still decides, here too.
+    expect((await viaService(hr)).status).toBe(403);
+    expect((await request(unionServer).get(`/api/union/locals/${localId}/threads`).set('x-tenant-subdomain', SUB)).status).toBe(401);
+    // Not a second door into the main API.
+    expect((await request(unionServer).get('/api/me').set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' })).status).toBe(404);
+    expect((await request(unionServer).get('/healthz')).body).toMatchObject({ service: 'union-hub' });
+  });
+
+  it('the main API stops answering for the hub once it runs separately', async () => {
+    process.env.UNION_HUB_MODE = 'separate';
+    try {
+      const r = await call(steward).get('/api/union/locals');
+      expect(r.status).toBe(404);
+      expect(r.body.code).toBe('UNION_ELSEWHERE');
+    } finally {
+      delete process.env.UNION_HUB_MODE;
+    }
+    expect((await call(steward).get('/api/union/locals')).status).toBe(200);
+  });
+});
+

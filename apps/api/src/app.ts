@@ -20,17 +20,7 @@ export function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // behind the AWS load balancer
-  app.use((_req, res, next) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'same-origin');
-    res.setHeader('Cache-Control', 'no-store');
-    // JSON API: never framed, never rendered as a page, HTTPS only once deployed.
-    res.setHeader('X-Frame-Options', 'DENY');
-    if (!res.getHeader('Content-Security-Policy')) res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
-    if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    next();
-  });
+  app.use(securityHeaders);
   // The marketing site's enquiry form (no organization, its own CORS).
   app.use('/api', marketingRouter);
   // Before the 100 kB body limit: the Dev console uploads logos and spreadsheets.
@@ -51,17 +41,32 @@ export function createApp() {
   app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, publicJobsRouter, publicSignupRouter);
   app.use('/api', api);
 
-  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    if (err instanceof HttpError) {
-      res.status(err.status).json({ code: err.code, message: err.message, details: err.details });
-      return;
-    }
-    if (err instanceof ZodError) {
-      res.status(400).json({ code: 'VALIDATION', message: 'Invalid request', details: err.issues });
-      return;
-    }
-    logError(`${_req.method} ${_req.path}`, err);
-    res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong' });
-  });
+  app.use(errorHandler);
   return app;
+}
+
+/** Headers for every answer: a JSON API is never framed, sniffed or cached, and HTTPS only once deployed. */
+export function securityHeaders(_req: Request, res: Response, next: NextFunction) {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Frame-Options', 'DENY');
+  if (!res.getHeader('Content-Security-Policy')) res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  if (process.env.NODE_ENV === 'production') res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+}
+
+/** Known errors as JSON with their code; anything else is logged and answered without detail. */
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  if (err instanceof HttpError) {
+    res.status(err.status).json({ code: err.code, message: err.message, details: err.details });
+    return;
+  }
+  if (err instanceof ZodError) {
+    res.status(400).json({ code: 'VALIDATION', message: 'Invalid request', details: err.issues });
+    return;
+  }
+  logError(`${req.method} ${req.path}`, err);
+  res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong' });
 }

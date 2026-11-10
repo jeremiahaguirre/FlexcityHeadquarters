@@ -423,3 +423,29 @@ describe('Quebec workforce skills (1% law)', async () => {
     expect(rl1SlipNumber(1)).toBe('000000011');
   });
 });
+
+describe('Union Hub deployment settings', () => {
+  it('won’t hand the main API the union credentials when the hub runs separately', async () => {
+    const { vi } = await import('vitest');
+    const keys = ['APP_DATABASE_URL', 'JWT_SECRET', 'UNION_HUB_MODE', 'UNION_DATABASE_URL', 'FLEXCITY_SERVICE'] as const;
+    const run = async (env: Partial<Record<(typeof keys)[number], string>>) => {
+      const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+      for (const k of keys) delete process.env[k];
+      Object.assign(process.env, { APP_DATABASE_URL: 'postgresql://a@localhost/x', JWT_SECRET: 'x'.repeat(32), ...env });
+      try {
+        vi.resetModules();
+        const m = await import('../../src/config.js');
+        return m.config();
+      } finally {
+        for (const k of keys) {
+          if (saved[k] === undefined) delete process.env[k];
+          else process.env[k] = saved[k];
+        }
+      }
+    };
+    await expect(run({ UNION_HUB_MODE: 'separate', UNION_DATABASE_URL: 'postgresql://u@localhost/x' })).rejects.toThrow(/Union Hub service only/);
+    await expect(run({ UNION_HUB_MODE: 'separate', UNION_DATABASE_URL: 'postgresql://u@localhost/x', FLEXCITY_SERVICE: 'union' })).resolves.toBeTruthy();
+    await expect(run({ UNION_HUB_MODE: 'separate' })).resolves.toBeTruthy();
+    vi.resetModules();
+  });
+});
