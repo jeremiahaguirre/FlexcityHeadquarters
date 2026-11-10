@@ -157,6 +157,32 @@ async function prepareCityWorks() {
   if (!(await water.call('GET', '/api/me/lone-work'))) {
     await water.call('POST', '/api/me/lone-work', { location: 'Pump station 4, lower level', task: 'Valve inspection', intervalMinutes: 60 });
   }
+  await prepareHr(hr, sup);
+}
+
+/** HR departments: training courses and records, a review in progress, a grievance, leave entitlements. */
+async function prepareHr(hr, sup) {
+  const guard = await apiAs('guard');
+  const positions = await hr.call('GET', '/api/positions');
+  const guardPos = positions.find((p) => p.name === 'Lifeguard');
+  const training = await hr.call('GET', '/api/training');
+  if (!training.courses.length) {
+    const sfa = await hr.call('POST', '/api/training/courses', { name: 'Standard First Aid recertification', nameFr: 'Recertification en secourisme général', hours: 8, mandatory: true, renewMonths: 36, positionIds: guardPos ? [guardPos.id] : [] });
+    await hr.call('POST', '/api/training/courses', { name: 'WHMIS 2015', nameFr: 'SIMDUT 2015', hours: 2, mandatory: true, renewMonths: 12 });
+    await hr.call('POST', '/api/training/courses', { name: 'Respectful workplace', nameFr: 'Milieu de travail respectueux', hours: 1.5 });
+    await sup.call('POST', '/api/training/records', { courseId: sfa.id, userIds: [guard.user.id], completedOn: iso(plusDays(-200)), trainer: 'Lifesaving Society' });
+  }
+  if (!(await hr.call('GET', '/api/reviews')).length) {
+    await hr.call('POST', '/api/reviews', { userId: guard.user.id, reviewerId: sup.user.id, cycle: `${new Date().getFullYear()} season review`, dueOn: iso(plusDays(21)), goals: ['Recertify National Lifeguard before it lapses', 'Lead two in-service sessions', 'Mentor a new guard'] });
+    const [r] = await guard.call('GET', '/api/me/reviews');
+    if (r) await guard.call('PUT', `/api/reviews/${r.id}/self`, { selfComments: 'A busy summer. I ran the July in-service on spinal management and covered most of the early opens. I would like support getting my instructor certification next year.' });
+  }
+  if (!(await hr.call('GET', '/api/grievances')).length) {
+    await hr.call('POST', '/api/grievances', { userId: guard.user.id, kind: 'INDIVIDUAL', title: 'Split shifts scheduled without the agreed notice', articles: '14.02, 14.05', filedOn: iso(plusDays(-10)), dueOn: iso(plusDays(4)) });
+    await hr.call('POST', '/api/grievances', { userId: null, kind: 'POLICY', title: 'Overtime offered outside seniority order', articles: '18.03', filedOn: iso(plusDays(-40)), dueOn: iso(plusDays(12)) });
+  }
+  const year = new Date().getFullYear();
+  await hr.call('PUT', `/api/users/${guard.user.id}/leave`, { year, type: 'VACATION', hours: 80, carryover: 16, note: 'Article 21.01' });
 }
 
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
