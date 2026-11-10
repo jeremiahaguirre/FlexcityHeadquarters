@@ -1,9 +1,13 @@
+import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { ensureTaxTables } from '../../src/services/payroll/taxTables.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
+
+// Banking and SINs are sealed: a throwaway key for the test run.
+process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
 
 const server = createApp();
 const SUB = 'paycity';
