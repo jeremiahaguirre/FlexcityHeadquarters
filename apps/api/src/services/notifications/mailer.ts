@@ -88,6 +88,10 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     'en-CA': (p) => ({ subject: `Your pay statement for ${p.payDate}`, text: `Your pay statement for ${p.payDate} is ready in the app:\n${APP_URL()}/pay` }),
     'fr-CA': (p) => ({ subject: `Votre relevé de paie du ${p.payDate}`, text: `Votre relevé de paie du ${p.payDate} est prêt dans l'application :\n${APP_URL()}/pay` }),
   },
+  report_ready: {
+    'en-CA': (p) => ({ subject: `Report: ${p.name} (${p.from} to ${p.to})`, text: `${p.name}, ${p.from} to ${p.to}: ${p.count} row(s).\n\n${p.preview}\n\nOpen the full report and download it as a spreadsheet:\n${APP_URL()}/manage/reports` }),
+    'fr-CA': (p) => ({ subject: `Rapport : ${p.name} (du ${p.from} au ${p.to})`, text: `${p.name}, du ${p.from} au ${p.to} : ${p.count} ligne(s).\n\n${p.preview}\n\nOuvrez le rapport complet et téléchargez-le en tableur :\n${APP_URL()}/manage/reports` }),
+  },
   callout_offer: {
     'en-CA': (p) => ({
       subject: `Call-out: can you work? Answer within ${p.minutes} minutes`,

@@ -178,3 +178,15 @@ export function requireRecentAuth(req: Request, _res: Response, next: NextFuncti
   }
   next();
 }
+
+/**
+ * A person's access as a request would see it (permissions after overrides, custom roles,
+ * switched-off features, department scope), for work done on their behalf without a request:
+ * scheduled reports. Null when they're no longer active.
+ */
+export async function accessOf(tenantId: string, userId: string, roles: AccessRole[]): Promise<AuthContext | null> {
+  const [{ features, overrides }, custom, ok, managed] = await Promise.all([tenantSettings(tenantId), customAccess(tenantId, userId), stillActive(tenantId, userId), managedScope(tenantId, userId)]);
+  if (!ok) return null;
+  const builtIn = permissionsWithOverrides(roles, overrides);
+  return { userId, tenantId, roles, permissions: withoutDisabled(new Set([...builtIn, ...custom.perms]), features), authenticatedAt: null, mfa: false, mfaPending: false, scope: scopeOf(builtIn, custom, { roles, managed }) };
+}

@@ -215,7 +215,8 @@
     "expenses": "Dépenses",
     "manageExpenses": "Demandes de remboursement",
     "logbook": "Registre",
-    "announcements": "Annonces"
+    "announcements": "Annonces",
+    "reports": "Rapports"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -5523,6 +5524,86 @@
       "NO_CONTACT": "Le nom et le téléphone d’une personne-ressource (Paie › Paramètres).",
       "NO_TAX_ID": "{{name}} : un NAS (personne) ou un numéro d’entreprise (entreprise).",
       "NO_ADDRESS": "{{name}} : une adresse postale."
+    }
+  },
+  "reports": {
+    "title": "Rapports",
+    "help": "Produisez un rapport pour n’importe quelle période, téléchargez-le en tableur, et enregistrez ceux que vous utilisez pour les recevoir par courriel chaque semaine ou chaque mois. Vous ne voyez que ce que votre accès permet.",
+    "noneTitle": "Aucun rapport pour votre accès",
+    "noneBody": "Les rapports sont offerts aux personnes qui gèrent les horaires, le temps, la paie, la sécurité ou les RH.",
+    "report": "Rapport",
+    "from": "Du",
+    "to": "Au",
+    "daysAhead": "Jours à venir",
+    "run": "Produire",
+    "csv": "Télécharger le tableur (CSV)",
+    "rows_one": "{{count}} ligne",
+    "rows_other": "{{count}} lignes",
+    "empty": "Rien pour cette période.",
+    "saveTitle": "Enregistrer ce rapport",
+    "saveHelp": "Les rapports envoyés couvrent la dernière semaine (le lundi) ou le dernier mois (le 1er), selon ce que vous pouvez voir à ce moment.",
+    "name": "Nom",
+    "email": "Me l’envoyer par courriel",
+    "save": "Enregistrer",
+    "saved": "Rapport enregistré",
+    "mine": "Mes rapports enregistrés",
+    "remove": "Retirer {{name}}",
+    "schedules": {
+      "NONE": "Ne pas envoyer",
+      "WEEKLY": "Chaque semaine",
+      "MONTHLY": "Chaque mois"
+    },
+    "names": {
+      "hours_worked": "Heures travaillées",
+      "overtime": "Heures supplémentaires par personne",
+      "labour_cost": "Coût de main-d’œuvre par service",
+      "time_off": "Congés pris",
+      "certs_expiring": "Certifications qui expirent",
+      "incidents": "Incidents par installation",
+      "lone_work": "Travail isolé",
+      "policies_unsigned": "Politiques pas encore signées",
+      "expenses": "Demandes de remboursement payées"
+    },
+    "about": {
+      "hours_worked": "Pointages approuvés : quarts et heures par personne.",
+      "overtime": "Heures supplémentaires acceptées et refus, pour l’ordre de rappel.",
+      "labour_cost": "Paie brute et coûts de l’employeur des paies approuvées, par service.",
+      "time_off": "Congés approuvés qui touchent la période.",
+      "certs_expiring": "Certifications vérifiées qui expirent dans le nombre de jours choisi.",
+      "incidents": "Rapports d’incident par installation et par type.",
+      "lone_work": "Séances, vérifications manquées, escalades et demandes d’aide.",
+      "policies_unsigned": "Pour chaque politique en vigueur : combien l’ont signée, combien pas encore.",
+      "expenses": "Demandes approuvées et payées : kilomètres et montants par personne."
+    },
+    "columns": {
+      "person": "Personne",
+      "shifts": "Quarts",
+      "hours": "Heures",
+      "overtimeHours": "Heures supplémentaires",
+      "refusals": "Refus",
+      "department": "Service",
+      "statements": "Relevés de paie",
+      "gross": "Paie brute",
+      "employerCosts": "Coûts de l’employeur",
+      "total": "Total",
+      "type": "Type",
+      "from": "Du",
+      "to": "Au",
+      "certification": "Certification",
+      "expires": "Expire le",
+      "facility": "Installation",
+      "category": "Type",
+      "count": "Nombre",
+      "sessions": "Séances",
+      "missedCheckIns": "Vérifications manquées",
+      "escalated": "Escaladées",
+      "helpRequests": "Demandes d’aide",
+      "policy": "Politique",
+      "version": "Version",
+      "signed": "Signée",
+      "waiting": "Pas encore",
+      "claims": "Demandes",
+      "km": "Km"
     }
   }
 }

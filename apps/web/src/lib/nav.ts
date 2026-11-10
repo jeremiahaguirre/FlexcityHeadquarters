@@ -66,6 +66,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/accounting', key: 'accounting', icon: Calculator, group: 'manage', section: 'pay', permission: 'accounting.manage', ready: true },
   { href: '/manage/fees', key: 'fees', icon: Tags, group: 'manage', section: 'programs', permission: 'fees.manage', ready: true },
   { href: '/manage/bookings', key: 'bookings', icon: Globe, group: 'manage', section: 'programs', permission: 'bookings.manage', ready: true },
+  { href: '/manage/reports', key: 'reports', icon: BarChart3, group: 'manage', section: 'organization', permission: ['timeclock.review', 'payroll.export', 'overtime.manage', 'accounting.manage', 'leave.manage', 'timeoff.approve', 'certs.verify', 'training.manage', 'incidents.read', 'lonework.monitor', 'policies.manage', 'expenses.approve'], ready: true },
   { href: '/manage/announcements', key: 'announcements', icon: BellRing, group: 'manage', section: 'organization', permission: 'announcements.post', ready: true },
   { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', section: 'organization', permission: 'roles.manage', ready: true },
   { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', section: 'organization', permission: 'billing.manage', ready: true },

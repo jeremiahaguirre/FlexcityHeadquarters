@@ -215,7 +215,8 @@
     "expenses": "Expenses",
     "manageExpenses": "Expense claims",
     "logbook": "Logbook",
-    "announcements": "Announcements"
+    "announcements": "Announcements",
+    "reports": "Reports"
   },
   "navGroups": {
     "mine": "My work",
@@ -5523,6 +5524,86 @@
       "NO_CONTACT": "A filing contact name and phone (Payroll › Settings).",
       "NO_TAX_ID": "{{name}}: a SIN (people) or business number (businesses).",
       "NO_ADDRESS": "{{name}}: a mailing address."
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "help": "Run a report for any period, download it as a spreadsheet, and save the ones you use to have them emailed to you each week or month. You see only what your access allows.",
+    "noneTitle": "No reports for your access",
+    "noneBody": "Reports open to people who manage schedules, time, pay, safety or HR.",
+    "report": "Report",
+    "from": "From",
+    "to": "To",
+    "daysAhead": "Days ahead",
+    "run": "Run",
+    "csv": "Download spreadsheet (CSV)",
+    "rows_one": "{{count}} row",
+    "rows_other": "{{count}} rows",
+    "empty": "Nothing in this period.",
+    "saveTitle": "Save this report",
+    "saveHelp": "Emailed reports cover the last week (Mondays) or the last month (on the 1st), with what you can see at the time.",
+    "name": "Name",
+    "email": "Email it to me",
+    "save": "Save",
+    "saved": "Report saved",
+    "mine": "My saved reports",
+    "remove": "Remove {{name}}",
+    "schedules": {
+      "NONE": "Don't email",
+      "WEEKLY": "Every week",
+      "MONTHLY": "Every month"
+    },
+    "names": {
+      "hours_worked": "Hours worked",
+      "overtime": "Overtime by person",
+      "labour_cost": "Labour cost by department",
+      "time_off": "Time off taken",
+      "certs_expiring": "Certifications expiring",
+      "incidents": "Incidents by facility",
+      "lone_work": "Working alone",
+      "policies_unsigned": "Policies not yet signed",
+      "expenses": "Expense claims paid"
+    },
+    "about": {
+      "hours_worked": "Approved punches: shifts and hours per person.",
+      "overtime": "Overtime accepted and refusals, for the overtime order.",
+      "labour_cost": "Gross pay and employer costs from approved pay runs, by department.",
+      "time_off": "Approved time off overlapping the period.",
+      "certs_expiring": "Verified certifications expiring within the days you choose.",
+      "incidents": "Incident reports by facility and type.",
+      "lone_work": "Sessions, missed check-ins, escalations and calls for help.",
+      "policies_unsigned": "Each live policy: how many signed, how many haven't.",
+      "expenses": "Approved and paid claims: kilometres and amounts per person."
+    },
+    "columns": {
+      "person": "Person",
+      "shifts": "Shifts",
+      "hours": "Hours",
+      "overtimeHours": "Overtime hours",
+      "refusals": "Refusals",
+      "department": "Department",
+      "statements": "Pay statements",
+      "gross": "Gross pay",
+      "employerCosts": "Employer costs",
+      "total": "Total",
+      "type": "Type",
+      "from": "From",
+      "to": "To",
+      "certification": "Certification",
+      "expires": "Expires",
+      "facility": "Facility",
+      "category": "Type",
+      "count": "Count",
+      "sessions": "Sessions",
+      "missedCheckIns": "Missed check-ins",
+      "escalated": "Escalated",
+      "helpRequests": "Calls for help",
+      "policy": "Policy",
+      "version": "Version",
+      "signed": "Signed",
+      "waiting": "Not yet",
+      "claims": "Claims",
+      "km": "Km"
     }
   }
 }

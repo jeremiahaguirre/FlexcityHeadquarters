@@ -54,6 +54,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/accounting', key: 'accounting', group: 'manage', permissions: ['accounting.manage'] },
   { href: '/manage/fees', key: 'fees', group: 'manage', permissions: ['fees.manage'] },
   { href: '/manage/bookings', key: 'bookings', group: 'manage', permissions: ['bookings.manage'] },
+  { href: '/manage/reports', key: 'reports', group: 'manage', permissions: ['timeclock.review', 'payroll.export', 'overtime.manage', 'accounting.manage', 'leave.manage', 'timeoff.approve', 'certs.verify', 'training.manage', 'incidents.read', 'lonework.monitor', 'policies.manage', 'expenses.approve'] },
   { href: '/manage/announcements', key: 'announcements', group: 'manage', permissions: ['announcements.post'] },
   { href: '/manage/roles', key: 'roles', group: 'manage', permissions: ['roles.manage'] },
   { href: '/manage/billing', key: 'billing', group: 'manage', permissions: ['billing.manage'] },

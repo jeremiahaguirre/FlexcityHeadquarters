@@ -15,6 +15,7 @@ import { coverageAlerts } from './services/coverage/gaps.js';
 import { injuryReminders } from './routes/injury.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 import { deliverSms, smsSender } from './services/notifications/sms.js';
+import { sendScheduledReports } from './services/reports/scheduled.js';
 import { logError } from './lib/log.js';
 import { applyRetention } from './services/privacy/retention.js';
 import { deliverPush } from './services/notifications/push.js';
@@ -68,6 +69,7 @@ const hourly = async () => {
   await exclusive('people-review', () => perTenant((tx) => flagForReview(tx)));
   await exclusive('anonymize', () => perTenant((tx) => anonymizeDue(tx)));
   await exclusive('retention', () => perTenant((tx) => applyRetention(tx)));
+  await exclusive('scheduled-reports', () => perTenant((tx) => sendScheduledReports(tx)));
   await exclusive('benchmarks', () => computeBenchmarks(db()));
 };
 
