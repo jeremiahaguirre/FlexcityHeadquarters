@@ -189,7 +189,7 @@ payrollProviderRouter.post(
       }
       const options = provider === 'adp' ? { format: 'adp' as const, adpCompanyCode: p.adp!.companyCode, adpBatchId: p.adp!.batchId ?? null } : { format: provider };
       return { settings: p, run: await runPayroll(tx, a.tenantId, b.periodStart, b.weeks, null, null, options) };
-    });
+    }, { timeoutMs: 120_000 });
     if (!built.run.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', message: 'Some details are missing before this period can be sent.', details: { problems: built.run.csv.problems, warnings: built.run.warnings }, problems: built.run.csv.problems, warnings: built.run.warnings });
       return;

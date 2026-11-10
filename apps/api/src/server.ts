@@ -1,3 +1,4 @@
+import cluster from 'node:cluster';
 import { createApp } from './app.js';
 import { config } from './config.js';
 import { subscribe } from './lib/events.js';
@@ -7,16 +8,31 @@ import { logError } from './lib/log.js';
 import { assertLeastPrivilege } from './lib/dbRole.js';
 
 const cfg = config();
-// A subverted query can do no more than the connection's role allows: refuse a powerful one.
-await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
+// Node serves requests on one core: WEB_CONCURRENCY runs that many worker processes on the same
+// port (each with its own DB_POOL_SIZE connections). Containers can also be scaled out instead.
+const workers = cfg.WEB_CONCURRENCY;
 
-// Domain events → stored notifications (+ queued emails).
-subscribe((e) => {
-  handleEvent(e).catch((err) => logError(`notification fan-out failed for ${e.type}`, err));
-});
+if (workers > 1 && cluster.isPrimary) {
+  await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
+  for (let i = 0; i < workers; i++) cluster.fork();
+  cluster.on('exit', (w, code) => {
+    logError(`API worker ${w.process.pid} stopped (${code}); starting another`, new Error('worker exit'));
+    cluster.fork();
+  });
+  console.log(`FlexcityHeadquarters API: ${workers} workers on :${cfg.PORT}`);
+} else {
+  // A subverted query can do no more than the connection's role allows: refuse a powerful one.
+  if (workers <= 1) await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
 
-await startLiveHub(cfg.APP_DATABASE_URL);
+  // Domain events → stored notifications (+ queued emails).
+  subscribe((e) => {
+    handleEvent(e).catch((err) => logError(`notification fan-out failed for ${e.type}`, err));
+  });
 
-createApp().listen(cfg.PORT, () => {
-  console.log(`FlexcityHeadquarters API listening on :${cfg.PORT}`);
-});
+  // Each process relays live notifications to its own browsers (pg LISTEN), so this works across workers and instances.
+  await startLiveHub(cfg.APP_DATABASE_URL);
+
+  createApp().listen(cfg.PORT, () => {
+    console.log(`FlexcityHeadquarters API listening on :${cfg.PORT}${cluster.isWorker ? ` (worker ${process.pid})` : ''}`);
+  });
+}

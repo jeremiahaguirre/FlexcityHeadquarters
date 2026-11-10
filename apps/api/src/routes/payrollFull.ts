@@ -7,6 +7,9 @@ import { conflict, forbidden, notFound } from '../lib/errors.js';
 import { ADJUSTMENT_KINDS, buildRun, runInput } from '../services/payroll/payRuns.js';
 import { h } from './context.js';
 
+/** Building or approving a pay run works through every statement: it gets two minutes, not the usual 15 s. */
+const payrollTx = <T>(tenantId: string, fn: (tx: Parameters<Parameters<typeof withTenant>[1]>[0]) => Promise<T>) => withTenant(tenantId, fn, { timeoutMs: 120_000 });
+
 export const payrollFullRouter = Router();
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -106,7 +109,7 @@ payrollFullRouter.post(
     wholeCity(a.scope);
     const payRunId = uuid.parse(req.params.id);
     const b = z.object({ userId: uuid, kind: z.enum(ADJUSTMENT_KINDS), description: z.string().trim().min(2).max(120), amount: money(1_000_000), positionId: uuid.nullable().optional() }).parse(req.body);
-    const run = await withTenant(a.tenantId, async (tx) => {
+    const run = await payrollTx(a.tenantId, async (tx) => {
       const r = await draftRun(tx, payRunId);
       await person(tx, b.userId);
       const x = await tx.payAdjustment.create({ data: { tenantId: a.tenantId, payRunId, ...b, positionId: b.positionId ?? null, createdById: a.userId } });
@@ -125,7 +128,7 @@ payrollFullRouter.delete(
     wholeCity(a.scope);
     const payRunId = uuid.parse(req.params.id);
     const id = uuid.parse(req.params.adjustmentId);
-    await withTenant(a.tenantId, async (tx) => {
+    await payrollTx(a.tenantId, async (tx) => {
       const r = await draftRun(tx, payRunId);
       const x = await tx.payAdjustment.findFirst({ where: { id, payRunId } });
       if (!x) throw notFound('One-time item');

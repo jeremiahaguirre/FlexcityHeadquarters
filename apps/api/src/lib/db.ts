@@ -5,8 +5,17 @@ let client: PrismaClient | undefined;
 
 /** Prisma client connected as the non-owner app role (RLS enforced). */
 export function db(): PrismaClient {
-  client ??= new PrismaClient({ datasources: { db: { url: config().APP_DATABASE_URL } } });
+  client ??= new PrismaClient({ datasources: { db: { url: pooled(config().APP_DATABASE_URL) } } });
   return client;
+}
+
+/** Adds the configured pool size and wait to a connection URL (unless it already says). */
+export function pooled(url: string): string {
+  const u = new URL(url);
+  const c = config();
+  if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', String(c.DB_POOL_SIZE));
+  if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', String(c.DB_POOL_TIMEOUT_S));
+  return u.toString();
 }
 
 export type Tx = Prisma.TransactionClient;
@@ -30,7 +39,8 @@ export async function withTenant<T>(
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       return fn(tx);
     },
-    { isolationLevel: opts.isolationLevel, timeout: opts.timeoutMs ?? 15_000 },
+    // maxWait: how long to wait for a free connection under load before giving up (Prisma's default is 2 s).
+    { isolationLevel: opts.isolationLevel, timeout: opts.timeoutMs ?? 15_000, maxWait: config().DB_POOL_TIMEOUT_S * 1000 },
   );
 }
 

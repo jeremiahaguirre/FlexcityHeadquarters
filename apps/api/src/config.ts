@@ -8,6 +8,17 @@ const schema = z.object({
   /** Union Hub only: the `flexcity_union` role. Optional when no tenant enables the hub. */
   UNION_DATABASE_URL: z.string().url().optional(),
   /**
+   * Database connections per API instance, and how long a request may wait for one (seconds).
+   * Every request runs in a transaction (for row-level security), so this is the instance's
+   * ceiling on concurrent work: size it to the database's max_connections ÷ instances, leaving
+   * room for the worker and migrations (see docs/SCALABILITY.md). Ignored when the URL sets
+   * connection_limit itself.
+   */
+  DB_POOL_SIZE: z.coerce.number().int().min(2).max(500).default(25),
+  DB_POOL_TIMEOUT_S: z.coerce.number().int().min(1).max(120).default(20),
+  /** API worker processes in this container (Node uses one core each). */
+  WEB_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(1),
+  /**
    * Where the Union Hub runs: "embedded" in this API (the default), or "separate", its own service
    * (src/unionServer.ts) behind the same address at /api/union. In "separate" mode this API holds no
    * union database credentials at all, and the union service must be the one given them.

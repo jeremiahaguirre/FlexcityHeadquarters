@@ -25,6 +25,9 @@ import type { MailingAddress } from '../services/payroll/bank.js';
 import { h } from './context.js';
 import { csvCell } from '../services/payroll/export.js';
 
+/** Building or approving a pay run works through every statement: it gets two minutes, not the usual 15 s. */
+const payrollTx = <T>(tenantId: string, fn: (tx: Parameters<Parameters<typeof withTenant>[1]>[0]) => Promise<T>) => withTenant(tenantId, fn, { timeoutMs: 120_000 });
+
 export const payrollRouter = Router();
 payrollRouter.use(['/payroll', '/me/pay', '/me/pay-statements', '/me/bank-accounts', '/me/pay-profile'], requireFeature('payroll'));
 
@@ -100,7 +103,7 @@ payrollRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = runBody.parse(req.body);
-    const run = await withTenant(a.tenantId, async (tx) => {
+    const run = await payrollTx(a.tenantId, async (tx) => {
       await assertRunInScope(tx, a, body.departmentId);
       const r = await buildRun(tx, a.tenantId, a.userId, body);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.create', entity: 'PayRun', entityId: r.id, after: body });
@@ -157,7 +160,7 @@ payrollRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
-    const run = await withTenant(a.tenantId, async (tx) => {
+    const run = await payrollTx(a.tenantId, async (tx) => {
       const r = await tx.payRun.findUnique({ where: { id } });
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
@@ -175,7 +178,7 @@ payrollRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
-    const run = await withTenant(a.tenantId, async (tx) => {
+    const run = await payrollTx(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
       requirePasskey(a, settings);
       const r = await tx.payRun.findUnique({ where: { id } });

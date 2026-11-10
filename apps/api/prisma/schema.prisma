@@ -937,6 +937,8 @@ model TimePunch {
   edits    TimePunchEdit[]
 
   @@index([tenantId, userId, clockIn])
+  /// Punch review lists one status (pending first) by time.
+  @@index([tenantId, status, clockIn])
 }
 
 /// Every change to a punch is recorded — original values are never lost.

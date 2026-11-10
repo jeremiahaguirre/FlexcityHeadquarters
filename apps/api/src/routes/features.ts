@@ -140,8 +140,16 @@ api.get(
     const offers = await withTenant(a.tenantId, (tx) =>
       tx.shiftOffer.findMany({
         where: { status: { in: ['OPEN', 'PENDING_APPROVAL'] }, shift: { startsAt: { gt: new Date() } } },
-        include: { shift: { include: { facility: { select: { name: true, timezone: true } }, position: { select: { name: true, nameFr: true } } } } },
+        // Only what the board shows (it was every column of every row: ~440 KB for a 300-person city).
+        select: {
+          id: true,
+          status: true,
+          source: true,
+          shift: { select: { id: true, version: true, startsAt: true, endsAt: true, customTitle: true, premiumPerHour: true, positionId: true, facilityId: true, facility: { select: { name: true, timezone: true } }, position: { select: { name: true, nameFr: true } } } },
+        },
         orderBy: { shift: { startsAt: 'asc' } },
+        // The soonest 200: more than anyone scrolls, and the board stays light at shift change.
+        take: 200,
       }),
     );
     // Wall-clock times are computed here with the server's (updatable) tz database,
@@ -414,7 +422,7 @@ api.get(
       const saved = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings).providerExport;
       const options = { ...saved, format: q.format ?? saved?.format ?? 'generic' };
       return { ...(await runPayroll(tx, a.tenantId, q.periodStart, q.weeks, await peopleInScope(tx, a.scope), null, options)), format: options.format };
-    });
+    }, { timeoutMs: 120_000 });
     if (!out.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', problems: out.csv.problems, warnings: out.warnings });
       return;

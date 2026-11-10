@@ -10,3 +10,4 @@ coverage/
 .DS_Store
 *.tsbuildinfo
 out/
+apps/api/test/load/plan.json
