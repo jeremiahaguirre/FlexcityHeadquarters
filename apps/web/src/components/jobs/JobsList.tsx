@@ -72,9 +72,13 @@ export function JobsList({ initial }: { initial: Job[] | null }) {
                   </ul>
                 </div>
                 <p className="max-w-prose whitespace-pre-wrap text-body">{jobDescription(j, lng)}</p>
-                <ButtonLink href={j.applyUrl} className="justify-self-start" target="_blank" rel="noopener noreferrer">
-                  {t('jobs.apply')}
-                </ButtonLink>
+                {j.applyInApp ? (
+                  <ButtonLink href={`/jobs/${j.id}#apply`} className="justify-self-start">{t('jobs.apply')}</ButtonLink>
+                ) : j.applyUrl ? (
+                  <ButtonLink href={j.applyUrl} className="justify-self-start" target="_blank" rel="noopener noreferrer">
+                    {t('jobs.apply')}
+                  </ButtonLink>
+                ) : null}
               </CardBody>
             </Card>
           ))

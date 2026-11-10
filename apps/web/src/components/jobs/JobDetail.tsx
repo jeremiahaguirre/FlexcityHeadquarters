@@ -4,6 +4,7 @@ import { ArrowLeft, Briefcase, CalendarClock, MapPin, Wallet } from 'lucide-reac
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { ButtonLink } from '@/components/ui/Button';
+import { ApplyForm } from '@/components/jobs/Applications';
 import { formatDate, formatMoney } from '@/lib/format';
 import { type Job, jobDescription, jobTitle } from '@/lib/jobs';
 
@@ -39,7 +40,7 @@ export function JobDetail({ job: j }: { job: Job | null }) {
         </ul>
       </header>
       <p className="max-w-prose whitespace-pre-wrap text-body">{jobDescription(j, lng)}</p>
-      <ButtonLink href={j.applyUrl} className="justify-self-start" target="_blank" rel="noopener noreferrer">{t('jobs.apply')}</ButtonLink>
+      {j.applyInApp ? <ApplyForm jobId={j.id} /> : j.applyUrl ? <ButtonLink href={j.applyUrl} className="justify-self-start" target="_blank" rel="noopener noreferrer">{t('jobs.apply')}</ButtonLink> : null}
     </article>
   );
 }

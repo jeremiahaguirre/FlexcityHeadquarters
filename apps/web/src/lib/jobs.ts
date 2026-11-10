@@ -10,7 +10,9 @@ export interface Job {
   payMin: string | null;
   payMax: string | null;
   closesOn: string;
-  applyUrl: string;
+  applyUrl: string | null;
+  /** Applications go through the careers page into FH. */
+  applyInApp?: boolean;
   published?: boolean;
   postedOn?: string;
   province?: string | null;

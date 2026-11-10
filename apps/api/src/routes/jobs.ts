@@ -18,7 +18,9 @@ const body = z.object({
   payMin: money,
   payMax: money,
   closesOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  applyUrl: z.string().max(400).refine((u) => /^https:\/\/\S+$/.test(u) || /^mailto:[^\s@]+@[^\s@]+$/.test(u), 'Use an https:// link or a mailto: address.'),
+  applyUrl: z.string().max(400).refine((u) => /^https:\/\/\S+$/.test(u) || /^mailto:[^\s@]+@[^\s@]+$/.test(u), 'Use an https:// link or a mailto: address.').nullable().optional(),
+  /** Take applications on the careers page, into FH. */
+  applyInApp: z.boolean().default(false),
   published: z.boolean(),
 });
 
@@ -35,6 +37,7 @@ const view = (j: JobPosting & { facility?: { name: string } | null }) => ({
   payMax: j.payMax?.toString() ?? null,
   closesOn: j.closesOn.toISOString().slice(0, 10),
   applyUrl: j.applyUrl,
+  applyInApp: j.applyInApp,
   published: j.published,
 });
 
@@ -91,8 +94,11 @@ jobsRouter.get(
   }),
 );
 
-function check(b: Partial<z.infer<typeof body>>) {
+function check(b: Partial<z.infer<typeof body>>, existing?: { applyUrl: string | null; applyInApp: boolean }) {
   if (b.payMin && b.payMax && Number(b.payMin) > Number(b.payMax)) throw badRequest('The pay range minimum is above the maximum.');
+  const inApp = b.applyInApp ?? existing?.applyInApp ?? false;
+  const url = b.applyUrl !== undefined ? b.applyUrl : (existing?.applyUrl ?? null);
+  if (!inApp && !url) throw badRequest('Take applications in the app, or give a link or email address to apply.');
 }
 
 jobsRouter.post(
@@ -116,10 +122,10 @@ jobsRouter.patch(
     const a = authOf(req);
     const id = z.string().uuid().parse(req.params.id);
     const b = body.partial().parse(req.body);
-    check(b);
     const j = await withTenant(a.tenantId, async (tx) => {
       const existing = await tx.jobPosting.findUnique({ where: { id } });
       if (!existing) throw notFound('Job posting');
+      check(b, existing);
       const updated = await tx.jobPosting.update({ where: { id }, data: { ...b, closesOn: b.closesOn ? new Date(b.closesOn) : undefined } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'job.update', entity: 'JobPosting', entityId: id, after: b });
       return updated;

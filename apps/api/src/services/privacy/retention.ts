@@ -12,6 +12,8 @@
  */
 import type { Tx } from '../../lib/db.js';
 
+/** Job applications that didn't end in a hire. */
+export const APPLICATION_DAYS = 365;
 export const RETENTION_DEFAULTS = { notificationsDays: 730, emailLogDays: 90, familiesInactiveDays: 1095, bookingsDays: 730 } as const;
 export const RETENTION_LIMITS = { notificationsDays: [90, 3650], emailLogDays: [30, 3650], familiesInactiveDays: [365, 3650], bookingsDays: [180, 3650] } as const;
 export type Retention = { notificationsDays: number; emailLogDays: number; familiesInactiveDays: number; bookingsDays: number };
@@ -43,7 +45,12 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const l = await tx.authToken.deleteMany({ where: { OR: [{ expiresAt: { lt: old } }, { usedAt: { lt: old } }] } });
   const g = await tx.loneWorkSession.updateMany({ where: { status: { not: 'ACTIVE' }, lastCheckInAt: { lt: old }, OR: [{ latitude: { not: null } }, { longitude: { not: null } }] }, data: { latitude: null, longitude: null } });
   const b = await tx.bookingRequest.updateMany({ where: { endsAt: { lt: ago(now, r.bookingsDays) }, NOT: { name: 'Former requester' } }, data: { name: 'Former requester', email: '', phone: '', organization: null, notes: null } });
-  return n.count + e.count + s.count + l.count + g.count + b.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
+  // Job applicants: kept a year after the last change (public bodies must keep personal information
+  // used for a decision at least a year); then removed, or for people hired, the résumé wiped.
+  const year = ago(now, APPLICATION_DAYS);
+  const ap = await tx.jobApplication.deleteMany({ where: { status: { not: 'HIRED' }, updatedAt: { lt: year } } });
+  await tx.jobApplication.updateMany({ where: { status: 'HIRED', updatedAt: { lt: year }, NOT: { ciphertext: null } }, data: { ciphertext: null, iv: null, authTag: null, wrappedKey: null, kekId: null, message: null } });
+  return n.count + e.count + s.count + l.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
 }
 
 /** Families with no registration or purchase since `before`: their personal details go; their payment records stay. */

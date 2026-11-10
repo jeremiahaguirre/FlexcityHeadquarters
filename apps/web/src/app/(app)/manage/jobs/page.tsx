@@ -14,6 +14,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { type Job, jobTitle } from '@/lib/jobs';
+import { ApplicationsDialog } from '@/components/jobs/Applications';
 import { EMPLOYMENT } from '@/lib/staff';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 
@@ -24,6 +25,7 @@ export default function JobsPage() {
   const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
   const { run, busy } = useAction();
   const [editing, setEditing] = useState<Job | 'new' | null>(null);
+  const [apps, setApps] = useState<{ id: string; title: string } | null>(null);
   const current = editing === 'new' ? null : editing;
   const today = todayIso();
 
@@ -42,6 +44,7 @@ export default function JobsPage() {
       payMax: s('payMax'),
       closesOn: s('closesOn'),
       applyUrl: s('applyUrl'),
+      applyInApp: f.get('applyInApp') === 'on',
       published: f.get('published') === 'on',
     };
     const r = await run('job', () => (current ? api(`/api/jobs/${current.id}`, { method: 'PATCH', body }) : api('/api/jobs', { method: 'POST', body })), t('jobs.saved'));
@@ -78,15 +81,20 @@ export default function JobsPage() {
       ) : (
         <Card className="divide-y divide-line">
           {jobs.data.map((j) => (
-            <button key={j.id} type="button" onClick={() => setEditing(j)} className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface/60">
+            <div key={j.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <button type="button" onClick={() => setEditing(j)} className="min-w-0 flex-1 rounded-lg text-left hover:underline">
               <span className="min-w-0">
                 <span className="block text-body-strong">{jobTitle(j, lng)}</span>
                 <span className="text-small text-muted">
                   {[t(`staff.employment.${j.employmentStatus}`), j.facility, pay(j), t('jobs.closes', { date: formatDate(`${j.closesOn}T12:00:00`, lng, 'dated') })].filter(Boolean).join(' · ')}
                 </span>
               </span>
-              <StatusPill tone={tone[status(j)]}>{t(`jobs.status.${status(j)}`)}</StatusPill>
             </button>
+              <span className="flex flex-wrap items-center gap-2">
+                {j.applyInApp ? <Button size="sm" variant="secondary" onClick={() => setApps({ id: j.id, title: jobTitle(j, lng) })}>{t('jobs.applications')}</Button> : null}
+                <StatusPill tone={tone[status(j)]}>{t(`jobs.status.${status(j)}`)}</StatusPill>
+              </span>
+            </div>
           ))}
         </Card>
       )}
@@ -126,17 +134,22 @@ export default function JobsPage() {
             <Field label={t('jobs.payMin')} hint={t('jobs.payHint')}>{(p) => <Input {...p} name="payMin" inputMode="decimal" defaultValue={current?.payMin ?? ''} placeholder="21.50" />}</Field>
             <Field label={t('jobs.payMax')}>{(p) => <Input {...p} name="payMax" inputMode="decimal" defaultValue={current?.payMax ?? ''} placeholder="26.75" />}</Field>
             <Field label={t('jobs.closesOn')}>{(p) => <Input {...p} name="closesOn" type="date" required defaultValue={current?.closesOn ?? plusDays(today, 21)} />}</Field>
-            <Field label={t('jobs.applyUrl')} hint={t('jobs.applyUrlHint')}>{(p) => <Input {...p} name="applyUrl" required defaultValue={current?.applyUrl ?? ''} placeholder="https:// or mailto:" />}</Field>
+            <Field label={t('jobs.applyUrl')} hint={t('jobs.applyUrlHintInApp')}>{(p) => <Input {...p} name="applyUrl" defaultValue={current?.applyUrl ?? ''} placeholder="https:// or mailto:" />}</Field>
           </div>
           <label className="flex items-center gap-2 text-small font-semibold">
             <input type="checkbox" name="published" defaultChecked={current?.published ?? false} className="h-5 w-5 accent-[rgb(var(--brand))]" />
             {t('jobs.publish')}
+          </label>
+          <label className="flex items-start gap-2 text-small font-semibold">
+            <input type="checkbox" name="applyInApp" defaultChecked={current?.applyInApp ?? true} className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" />
+            <span>{t('jobs.applyInApp')}<span className="block font-normal text-muted">{t('jobs.applyInAppHelp')}</span></span>
           </label>
           <Button type="submit" loading={busy === 'job'}>
             {t('common.save')}
           </Button>
         </form>
       </Dialog>
+      <ApplicationsDialog job={apps} onClose={() => setApps(null)} />
     </>
   );
 }

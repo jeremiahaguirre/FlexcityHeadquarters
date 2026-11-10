@@ -1382,7 +1382,10 @@ model JobPosting {
   payMin           Decimal?         @db.Decimal(10, 2)
   payMax           Decimal?         @db.Decimal(10, 2)
   closesOn         DateTime         @db.Date
-  applyUrl         String
+  /// Where to apply when not in the app (an https link or a mailto: address).
+  applyUrl         String?
+  /// Applicants apply on the careers page; applications land in FH.
+  applyInApp       Boolean          @default(false)
   published        Boolean          @default(false)
   createdAt        DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
@@ -3212,4 +3215,46 @@ model AnnouncementRead {
   readAt         DateTime     @default(now()) @db.Timestamptz(3)
 
   @@unique([announcementId, userId])
+}
+
+enum ApplicationStatus {
+  NEW
+  REVIEWING
+  INTERVIEW
+  OFFERED
+  HIRED
+  DECLINED
+  WITHDRAWN
+}
+
+/// Someone applying to a job posting from the careers page. The résumé is encrypted like employee documents.
+model JobApplication {
+  id            String            @id @default(uuid()) @db.Uuid
+  tenantId      String            @db.Uuid
+  postingId     String            @db.Uuid
+  firstName     String
+  lastName      String
+  email         String
+  phone         String?
+  message       String?
+  /// Certifications they hold, as they wrote them.
+  certifications String?
+  status        ApplicationStatus @default(NEW)
+  notes         String?
+  /// When they agreed to the privacy notice for applicants.
+  consentAt     DateTime          @db.Timestamptz(3)
+  resumeName    String?
+  resumeType    String?
+  resumeSize    Int?
+  resumeSha256  String?
+  ciphertext    Bytes?
+  iv            Bytes?
+  authTag       Bytes?
+  wrappedKey    Bytes?
+  kekId         String?
+  hiredUserId   String?           @db.Uuid
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, postingId, status])
 }

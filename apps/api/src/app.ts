@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth.js';
 import { supportAuthRouter } from './routes/support.js';
 import { ssoAuthRouter } from './routes/sso.js';
 import { publicJobsRouter } from './routes/jobs.js';
+import { publicApplicationsRouter } from './routes/applications.js';
 import { resolveTenant } from './routes/context.js';
 import { api } from './routes/features.js';
 import { platformRouter } from './routes/platform/index.js';
@@ -44,7 +45,7 @@ export function createApp() {
   app.use('/api', publicCalendarRouter);
   // Facility kiosks (shared tablets) sign requests with their own secret, not a person's session.
   app.use('/api', kioskRouter);
-  app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, publicJobsRouter, publicSignupRouter);
+  app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, publicJobsRouter, publicApplicationsRouter, publicSignupRouter);
   app.use('/api', api);
 
   app.use(errorHandler);
