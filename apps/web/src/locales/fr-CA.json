@@ -1463,7 +1463,9 @@
         "CRA_REQUIREMENT": "Demande formelle de paiement de l’ARC",
         "OTHER": "Autre ordonnance"
       }
-    }
+    },
+    "saveAll": "Enregistrer les paramètres de paie",
+    "saveAllHint": "Enregistre toutes les cartes ci-dessus, sauf la connexion bancaire."
   },
   "settings": {
     "title": "Paramètres",

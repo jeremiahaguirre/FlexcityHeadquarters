@@ -1463,7 +1463,9 @@
         "CRA_REQUIREMENT": "CRA requirement to pay",
         "OTHER": "Other order"
       }
-    }
+    },
+    "saveAll": "Save payroll settings",
+    "saveAllHint": "Saves every card above, except the bank connection."
   },
   "settings": {
     "title": "Settings",

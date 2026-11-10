@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -21,8 +21,10 @@ export function PaySettings() {
   const data = useQuery<Settings>('/api/payroll/settings');
   const { run, busy } = useAction();
   const editable = can('payroll.approve');
+  const [lieuOn, setLieuOn] = useState<boolean | null>(null);
   if (!data.data) return <Skeleton className="h-64" />;
   const s = data.data;
+  const banking = lieuOn ?? s.lieu?.enabled ?? false;
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -130,12 +132,17 @@ export function PaySettings() {
       <Card>
         <CardHeader title={t('lieu.settingsTitle')} description={t('lieu.settingsHelp')} />
         <CardBody className="grid gap-4 pt-2 text-small sm:grid-cols-2">
-          <label className="flex items-start gap-2 sm:col-span-2"><input type="checkbox" name="lieuOn" defaultChecked={s.lieu?.enabled ?? false} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('lieu.settingsOn')}</span><span className="block text-caption text-muted">{t('lieu.settingsOnHelp')}</span></span></label>
-          <Field label={t('lieu.cap')} hint={t('lieu.capHint')}>{(p) => <Input {...p} name="lieuCap" type="number" min={1} max={1000} step={1} defaultValue={s.lieu?.capHours ?? 80} disabled={!editable} />}</Field>
-          <Field label={t('lieu.months')} hint={t('lieu.monthsHint')}>{(p) => <Input {...p} name="lieuMonths" type="number" min={1} max={36} step={1} defaultValue={s.lieu?.takeWithinMonths ?? 12} disabled={!editable} />}</Field>
+          <label className="flex items-start gap-2 sm:col-span-2"><input type="checkbox" name="lieuOn" defaultChecked={s.lieu?.enabled ?? false} onChange={(e) => setLieuOn(e.target.checked)} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('lieu.settingsOn')}</span><span className="block text-caption text-muted">{t('lieu.settingsOnHelp')}</span></span></label>
+          <Field label={t('lieu.cap')} hint={t('lieu.capHint')}>{(p) => <Input {...p} name="lieuCap" readOnly={!banking} className={banking ? undefined : 'opacity-60'} type="number" min={1} max={1000} step={1} defaultValue={s.lieu?.capHours ?? 80} disabled={!editable} />}</Field>
+          <Field label={t('lieu.months')} hint={t('lieu.monthsHint')}>{(p) => <Input {...p} name="lieuMonths" readOnly={!banking} className={banking ? undefined : 'opacity-60'} type="number" min={1} max={36} step={1} defaultValue={s.lieu?.takeWithinMonths ?? 12} disabled={!editable} />}</Field>
         </CardBody>
       </Card>
-      {editable ? <div><Button type="submit" loading={busy === 'save'}>{t('common.save')}</Button></div> : null}
+      {editable ? (
+        <div className="sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel/95 p-3 shadow-card backdrop-blur lg:bottom-4">
+          <p className="text-small text-muted">{t('payroll.saveAllHint')}</p>
+          <Button type="submit" loading={busy === 'save'}>{t('payroll.saveAll')}</Button>
+        </div>
+      ) : null}
     </form>
   );
 }
@@ -147,6 +154,7 @@ export function BankConnection() {
   const data = useQuery<Settings>('/api/payroll/settings');
   const { run, busy } = useAction();
   const editable = can('payroll.approve');
+  const [lieuOn, setLieuOn] = useState<boolean | null>(null);
   if (!data.data) return <Skeleton className="h-48" />;
   const b = data.data.bank;
   async function save(e: FormEvent<HTMLFormElement>) {
