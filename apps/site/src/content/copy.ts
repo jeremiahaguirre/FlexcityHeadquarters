@@ -253,7 +253,7 @@ const en = {
     billingTitle: 'Billing and payment',
     billingLead: 'Set up the way a city’s finance department expects.',
     billing: [
-      { icon: 'receipt', title: 'Pay monthly, your way', body: 'By invoice (EFT or cheque, net 30 by default), by credit card, or by Canadian pre-authorized debit.' },
+      { icon: 'receipt', title: 'Pay monthly, your way', body: 'By invoice (EFT or cheque, net 30 by default), by credit card, or automatically from the city’s bank account by pre-authorized debit, set up by your finance team in the app.' },
       { icon: 'calendar', title: 'Prepay the year', body: 'Prefer a single invoice? You can prepay the year instead of paying monthly.' },
       { icon: 'calculator', title: 'Canadian dollars, plus tax', body: 'Prices are in CAD and exclude GST/HST and PST.' },
       { icon: 'flask', title: 'Trials and pilots', body: 'A trial, or a pilot at one facility, is available. Ask when you request your quote.' },
@@ -273,6 +273,7 @@ const en = {
     faq: [
       { q: 'What happens if an invoice is late?', a: 'HR sees a reminder with the date the account would become read-only. After a grace period (30 days by default), the account becomes read-only until the balance is paid. Safety records, clocking in and out, signing in and paying always keep working.' },
       { q: 'How do we pay?', a: 'Monthly by invoice (EFT or cheque, net 30 by default), by credit card, or by Canadian pre-authorized debit. You can also prepay the year.' },
+      { q: 'How does automatic payment work?', a: 'Your treasurer or finance director authorizes a business pre-authorized debit in the app (or signs our paper form). Each invoice tells you the amount and the debit date at least 10 days ahead, and the amount is taken on the due date. You get a written confirmation, the account number is encrypted, and you can cancel any time.' },
       { q: 'Can we change add-ons later?', a: 'Yes. Tell us and we switch an add-on on or off for your organization. When a feature is switched off its screens disappear, and nothing is deleted.' },
       { q: 'Does our staff count change the price?', a: 'Not for municipalities: plans are per facility with unlimited staff, so summer hiring doesn’t change the bill. Private employers pay per active person, so off-season staff cost nothing.' },
       { q: 'Why do we need a quote?', a: 'The prices here are starting points. Facilities differ in size, zones, payroll setup and collective agreements, so we confirm the tier and the setup fee for each one before you commit.' },
@@ -654,7 +655,7 @@ const fr: DeepString<Copy> = {
     billingTitle: 'Facturation et paiement',
     billingLead: 'Organisé comme le service des finances d’une ville s’y attend.',
     billing: [
-      { icon: 'receipt', title: 'Payez au mois, à votre façon', body: 'Sur facture (virement ou chèque, net 30 jours par défaut), par carte de crédit ou par débit préautorisé canadien.' },
+      { icon: 'receipt', title: 'Payez au mois, à votre façon', body: 'Sur facture (virement ou chèque, net 30 jours par défaut), par carte de crédit, ou automatiquement depuis le compte bancaire de la ville par débit préautorisé, mis en place par vos finances dans l’application.' },
       { icon: 'calendar', title: 'Payez l’année d’avance', body: 'Vous préférez une seule facture? Vous pouvez payer l’année d’avance plutôt qu’au mois.' },
       { icon: 'calculator', title: 'En dollars canadiens, taxes en sus', body: 'Les prix sont en dollars canadiens, avant TPS/TVH et TVP.' },
       { icon: 'flask', title: 'Essais et projets pilotes', body: 'Un essai, ou un projet pilote dans une installation, est possible. Parlez-en dans votre demande de soumission.' },
@@ -674,6 +675,7 @@ const fr: DeepString<Copy> = {
     faq: [
       { q: 'Que se passe-t-il si une facture est en retard?', a: 'Les RH voient un rappel indiquant la date à laquelle le compte passerait en lecture seule. Après un délai de grâce (30 jours par défaut), le compte passe en lecture seule jusqu’au paiement du solde. Les registres de sécurité, le pointage à l’arrivée et au départ, la connexion et le paiement continuent toujours de fonctionner.' },
       { q: 'Comment paie-t-on?', a: 'Au mois sur facture (virement ou chèque, net 30 jours par défaut), par carte de crédit ou par débit préautorisé canadien. Vous pouvez aussi payer l’année d’avance.' },
+      { q: 'Comment fonctionne le paiement automatique?', a: 'Votre trésorier ou directeur des finances autorise un débit préautorisé d’entreprise dans l’application (ou signe notre formulaire papier). Chaque facture vous indique le montant et la date du débit au moins 10 jours d’avance, et le montant est prélevé à l’échéance. Vous recevez une confirmation écrite, le numéro de compte est chiffré et vous pouvez annuler en tout temps.' },
       { q: 'Peut-on changer de modules plus tard?', a: 'Oui. Dites-le-nous et nous activons ou désactivons un module pour votre organisation. Quand une fonction est désactivée, ses écrans disparaissent et rien n’est supprimé.' },
       { q: 'Le nombre d’employés change-t-il le prix?', a: 'Pas pour les municipalités : les forfaits sont par installation, personnel illimité, donc l’embauche d’été ne change pas la facture. Les employeurs privés paient par personne active : le personnel hors saison ne coûte rien.' },
       { q: 'Pourquoi faut-il une soumission?', a: 'Les prix affichés sont des prix de départ. Les installations diffèrent par leur taille, leurs zones, leur paie et leur convention collective : nous confirmons donc le forfait et les frais de mise en service de chacune avant tout engagement.' },

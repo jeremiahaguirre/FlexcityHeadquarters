@@ -193,6 +193,11 @@ async function prepare() {
   const cookie = String(login.headers.get('set-cookie')).split(';')[0];
   const dev = (method, path, body) => fetch(`${API}/api/platform${path}`, { method, headers: { 'content-type': 'application/json', 'x-fh-platform': '1', cookie }, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
   const city = (await dev('GET', '/tenants')).find((c) => c.subdomain === 'kelowna');
+  // Pre-authorized debit for the demo city's plan, and FH's (placeholder) bank details.
+  if (city && !(await dev('GET', `/billing/pad/${city.id}`)).active && (await dev('GET', `/billing/accounts/${city.id}`)).account) {
+    await dev('PUT', '/billing/pad-originator', { originatorId: 'DEMO000001', dataCentre: '00000', shortName: 'FLEXCITY HQ', longName: 'FLEXCITYHEADQUARTERS (DEMO)', returns: { institution: '000', transit: '00000', account: '0000000' } });
+    await dev('POST', `/billing/pad/${city.id}`, { payorName: 'City of Kelowna (demo)', signerName: 'Alex Morgan', signerTitle: 'Director of Finance', institution: '001', transit: '00011', account: '1234567', waivedPreNotice: false, agree: true, formOnFile: true });
+  }
   if (city && !city.logoUrl) {
     const png = readFileSync(join(__dirname, 'demo-city-logo.png')).toString('base64');
     await dev('PUT', `/tenants/${city.id}/logo`, { dataUrl: `data:image/png;base64,${png}` });
@@ -383,6 +388,17 @@ async function capturePlatform(browser) {
     for (const name of tabs) {
       await page.locator('main [role=radiogroup] [role=radio]', { hasText: name }).first().click().catch(() => {});
       await page.waitForTimeout(700);
+    }
+  }
+  // Billing, pre-authorized debits, FH's books (every tab) and payroll tax tables.
+  for (const path of ['/platform/billing', '/platform/debits', '/platform/books', '/platform/payroll-tax']) {
+    await page.goto(`${CONSOLE}${path}`);
+    await page.locator('main h1').first().waitFor();
+    await page.waitForTimeout(1200);
+    const tabs = await page.locator('main [role=radiogroup] [role=radio]').allInnerTexts().catch(() => []);
+    for (const name of tabs) {
+      await page.locator('main [role=radiogroup] [role=radio]', { hasText: name }).first().click().catch(() => {});
+      await page.waitForTimeout(1200);
     }
   }
   await page.goto(`${CONSOLE}/platform/account`);

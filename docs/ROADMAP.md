@@ -21,6 +21,7 @@
 
 - [ ] Constraint-solver scheduling (OR-Tools CP-SAT in a Python worker) behind the existing `proposeSchedule` input/output types, for multi-facility terms.
 - [ ] Direct integrations with payroll providers (ADP, Ceridian Dayforce, Wagepoint) in addition to CSV, for cities that keep one.
+- [ ] FH books: verify the chart of accounts, sales tax treatment and the PAD transaction code with FH's accountant and bank before the first live debit.
 - [ ] Payroll: tax tables for MB, NB, NL, NS, NT, NU, PE, SK and YT (federal, AB, BC and ON ship as unverified starting values); T4 XML and ROE Web XML export; Ontario's low-income tax reduction.
 - [ ] Search-engine-friendly job pages (server-rendered, structured data).
 
@@ -36,6 +37,8 @@
 - Benefits and deductions: pension (RPP), health, dental, life, disability, EAP and union dues, with employee and employer shares, taxable benefits, and T4 boxes 20, 40 and 44; amounts owed to each provider by month.
 - Payroll accounting: each approved run as a balanced general-ledger journal by department segment (CSV), and labour cost against each department's budget.
 - HR departments: an HR home with a card per area; leave balances with entitlements and carry-over; performance reviews (self-assessment, reviewer rating, acknowledgement); training courses required by position with renewal and a due list; a numbered grievance log with steps, deadlines and history; offboarding checklist that ends benefits and sign-in.
+- Plan charges by pre-authorized debit: business PAD agreements (Payments Canada Rule H1) authorized by the city in the app or entered from a signed form; the invoice is the debit notice; CPA-005 debit files for FH's bank, settlement and returns.
+- FH's books: a general ledger built from billing (invoices, voids, payments, returned debits, credit notes, write-offs) plus manual entries; trial balance, income statement, receivables aging, sales tax to remit, revenue by month and organization, chart of accounts and closed periods.
 - Settings: organization, facilities, pay codes, school calendar, collective-agreement overrides, pool thresholds.
 - Offline-first instructor attendance; certification reminders at 90/60/30/7 days; nightly reliability recalculation.
 - Union Hub: discussions, seniority list, membership managed by stewards.
