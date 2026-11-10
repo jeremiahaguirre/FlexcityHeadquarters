@@ -1028,7 +1028,11 @@
       "cpp2": "CPP2 (second contributions)",
       "ei": "Employment Insurance",
       "federalTax": "Federal income tax",
-      "provincialTax": "Provincial income tax ({{province}})"
+      "provincialTax": "Provincial income tax ({{province}})",
+      "qpp": "Quebec Pension Plan (QPP)",
+      "qpp2": "QPP (second additional)",
+      "qpip": "Quebec Parental Insurance (QPIP)",
+      "quebecTax": "Quebec income tax"
     },
     "toVerify": "Banking changes to verify",
     "toVerifyHelp": "Someone other than the person who entered the details has to verify them. Call the employee on a number you already have if anything looks unusual.",
@@ -1134,7 +1138,24 @@
       }
     },
     "employerPaid": "Paid by your employer: {{list}}",
-    "taxableBenefit": "taxable benefit"
+    "taxableBenefit": "taxable benefit",
+    "quebecNumber": "Revenu Québec identification number (for Quebec staff)",
+    "rq": {
+      "title": "To Revenu Québec",
+      "qppEmployee": "QPP (employees)",
+      "qppEmployer": "QPP (employer)",
+      "qpipEmployee": "QPIP (employees)",
+      "qpipEmployer": "QPIP (employer)",
+      "quebecTax": "Quebec income tax",
+      "total": "Total to Revenu Québec",
+      "note": "Due on the same date as the CRA remittance. Employer-only contributions (Health Services Fund, labour standards, workforce skills) depend on the year’s total payroll: work them out on form TPZ-1015.R."
+    },
+    "rl1": {
+      "title": "RL-1 slips",
+      "help": "For staff employed in Quebec. File with Revenu Québec and give each person their slip by the end of February.",
+      "noNumber": "Add your Revenu Québec identification number in Payroll settings before filing.",
+      "summary": "{{slips}} slips · employment income {{income}} · QPP {{qpp}} (both shares) · QPIP {{qpip}} (both shares) · Quebec tax {{tax}}"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -3582,7 +3603,9 @@
       "pensionPayable": "Pension payable",
       "unionDuesPayable": "Union dues payable",
       "benefitsPayable": "Benefit premiums payable",
-      "netPayClearing": "Net pay clearing (bank)"
+      "netPayClearing": "Net pay clearing (bank)",
+      "employerQpip": "Employer QPIP expense",
+      "quebecPayable": "Revenu Québec payable (QPP, QPIP, Quebec tax)"
     }
   },
   "hr": {

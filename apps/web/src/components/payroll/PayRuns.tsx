@@ -180,7 +180,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
             {(['gross', 'deductions', 'net'] as const).map((k) => (
               <div key={k} className="rounded-xl bg-surface p-3"><dt className="text-caption text-muted">{t(`payroll.totals.${k}`)}</dt><dd className="text-body-strong tabular-nums">{money(d.run.totals[k] ?? 0)}</dd></div>
             ))}
-            <div className="rounded-xl bg-surface p-3"><dt className="text-caption text-muted">{t('payroll.totals.employer')}</dt><dd className="text-body-strong tabular-nums">{money((d.run.totals.employerCpp ?? 0) + (d.run.totals.employerEi ?? 0))}</dd></div>
+            <div className="rounded-xl bg-surface p-3"><dt className="text-caption text-muted">{t('payroll.totals.employer')}</dt><dd className="text-body-strong tabular-nums">{money((d.run.totals.employerCpp ?? 0) + (d.run.totals.employerEi ?? 0) + (d.run.totals.employerQpip ?? 0))}</dd></div>
           </dl>
           {d.run.status === 'DRAFT' && d.run.blockers.length ? (
             <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">

@@ -32,7 +32,10 @@ accountingRouter.put(
   h(async (req, res) => {
     const a = authOf(req);
     if (a.scope) throw forbidden('The chart of accounts is set by HR and finance.');
-    const accounts = z.object(Object.fromEntries(ACCOUNT_KEYS.map((k) => [k, z.string().trim().min(1).max(40)])) as Record<(typeof ACCOUNT_KEYS)[number], z.ZodString>).parse(req.body);
+    // Quebec accounts only matter for cities with Quebec staff; left out, they keep the defaults.
+    const OPTIONAL = new Set<string>(['employerQpip', 'quebecPayable']);
+    const parsed = z.object(Object.fromEntries(ACCOUNT_KEYS.map((k) => [k, OPTIONAL.has(k) ? z.string().trim().min(1).max(40).optional() : z.string().trim().min(1).max(40)]))).parse(req.body);
+    const accounts = Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined));
     await withTenant(a.tenantId, async (tx) => {
       const t = await tx.tenant.findFirstOrThrow({ select: { accountingSettings: true } });
       await tx.tenant.update({ where: { id: a.tenantId }, data: { accountingSettings: { ...((t.accountingSettings as object) ?? {}), accounts } } });

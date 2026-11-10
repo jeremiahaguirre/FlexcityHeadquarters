@@ -8,9 +8,9 @@
  * table verified in the Dev console.
  */
 import type { Tx } from '../../lib/db.js';
-import type { FederalTable, ProvincialTable } from './tax.js';
+import type { FederalTable, ProvincialTable, QuebecTable } from './tax.js';
 
-export const STARTING_VALUES: Record<number, Record<string, FederalTable | ProvincialTable>> = {
+export const STARTING_VALUES: Record<number, Record<string, FederalTable | ProvincialTable | QuebecTable>> = {
   2026: {
     CA: {
       cpp: { rate: 0.0595, basicExemption: 3500, ympe: 74600, baseRate: 0.0495 },
@@ -71,6 +71,22 @@ export const STARTING_VALUES: Record<number, Record<string, FederalTable | Provi
       ],
       basicPersonal: 22769,
     } satisfies ProvincialTable,
+    // Compare with Revenu Québec's TP-1015.F and the QPP / QPIP rate notices for the year.
+    QC: {
+      qpp: { rate: 0.064, basicExemption: 3500, ympe: 74600, baseRate: 0.054 },
+      qpp2: { rate: 0.04, yampe: 85000 },
+      qpip: { employeeRate: 0.0043, employerRate: 0.00602, maxInsurable: 103000 },
+      eiRate: 0.013,
+      federalAbatement: 0.165,
+      brackets: [
+        { upTo: 54345, rate: 0.14 },
+        { upTo: 108680, rate: 0.19 },
+        { upTo: 132245, rate: 0.24 },
+        { upTo: null, rate: 0.2575 },
+      ],
+      basicPersonal: 18952,
+      employmentDeduction: { rate: 0.06, max: 1450 },
+    } satisfies QuebecTable,
   },
 };
 
@@ -86,6 +102,7 @@ export async function ensureTaxTables(tx: Tx, year: number) {
 export interface LoadedTables {
   federal: { data: FederalTable; verified: boolean } | null;
   provincial: Map<string, { data: ProvincialTable; verified: boolean }>;
+  quebec: { data: QuebecTable; verified: boolean } | null;
 }
 
 export async function loadTaxTables(tx: Tx, year: number): Promise<LoadedTables> {
@@ -94,6 +111,10 @@ export async function loadTaxTables(tx: Tx, year: number): Promise<LoadedTables>
   const fed = rows.find((r) => r.jurisdiction === 'CA');
   return {
     federal: fed ? { data: fed.data as unknown as FederalTable, verified: !!fed.verifiedAt } : null,
-    provincial: new Map(rows.filter((r) => r.jurisdiction !== 'CA').map((r) => [r.jurisdiction, { data: r.data as unknown as ProvincialTable, verified: !!r.verifiedAt }])),
+    quebec: (() => {
+      const qc = rows.find((r) => r.jurisdiction === 'QC');
+      return qc ? { data: qc.data as unknown as QuebecTable, verified: !!qc.verifiedAt } : null;
+    })(),
+    provincial: new Map(rows.filter((r) => r.jurisdiction !== 'CA' && r.jurisdiction !== 'QC').map((r) => [r.jurisdiction, { data: r.data as unknown as ProvincialTable, verified: !!r.verifiedAt }])),
   };
 }

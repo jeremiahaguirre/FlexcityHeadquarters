@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bracketTax, calculateDeductions, federalBasicPersonal, type FederalTable, type ProvincialTable } from '../../src/services/payroll/tax.js';
+import { bracketTax, calculateDeductions, calculateQuebecDeductions, federalBasicPersonal, type FederalTable, type ProvincialTable, type QuebecTable } from '../../src/services/payroll/tax.js';
 
 // A made-up table with round numbers, to check the method (not CRA's values).
 const fed: FederalTable = {
@@ -76,5 +76,53 @@ describe('payroll deductions', () => {
     expect(withBenefit.federalTax).toBeGreaterThan(plain.federalTax);
     expect(withBenefit.cpp).toBeGreaterThan(plain.cpp);
     expect(withBenefit.ei).toBe(plain.ei);
+  });
+});
+
+describe('Quebec deductions', () => {
+  const qc: QuebecTable = {
+    qpp: { rate: 0.06, basicExemption: 3500, ympe: 70000, baseRate: 0.05 },
+    qpp2: { rate: 0.04, yampe: 80000 },
+    qpip: { employeeRate: 0.005, employerRate: 0.007, maxInsurable: 90000 },
+    eiRate: 0.015,
+    federalAbatement: 0.165,
+    brackets: [{ upTo: 50000, rate: 0.15 }, { upTo: null, rate: 0.2 }],
+    basicPersonal: 18000,
+    employmentDeduction: { rate: 0.06, max: 1200 },
+  };
+  const q = { periodsPerYear: 26, ytd: zero, federal: fed, quebec: qc, federalClaim: null, provincialClaim: null, extraTax: 0, cppExempt: false, eiExempt: false };
+
+  it('takes QPP, QPIP, Quebec EI, abated federal tax and Quebec tax', () => {
+    const d = calculateQuebecDeductions({ ...q, gross: 2000 });
+    expect(d.plan).toBe('QPP');
+    expect(d.cpp).toBe(111.92); // (2000 − 3500/26) × 6%
+    expect(d.cpp2).toBe(0);
+    expect(d.ei).toBe(30); // Quebec rate, not the federal 2%
+    expect(d.qpip).toBe(10);
+    expect(d.employerQpip).toBe(14);
+    expect(d.employerEi).toBe(42);
+    // Annual income 26 × (2000 − enhanced QPP): basic federal tax less K1, K2Q (QPP base, EI, QPIP) and K4, then less 16.5%.
+    expect(d.federalTax).toBeCloseTo(156.83, 1);
+    // Quebec: less the 1,200 employment deduction, credit 15% × 18,000.
+    expect(d.provincialTax).toBeCloseTo(187.04, 1);
+    expect(d.total).toBe(Math.round((d.cpp + d.ei + d.qpip! + d.federalTax + d.provincialTax) * 100) / 100);
+  });
+
+  it('federal tax for a Quebec worker is lower than for the same pay elsewhere (the abatement)', () => {
+    const elsewhere = calculateDeductions({ ...base, gross: 2000 });
+    expect(calculateQuebecDeductions({ ...q, gross: 2000 }).federalTax).toBeLessThan(elsewhere.federalTax);
+  });
+
+  it('stops QPIP at the yearly maximum', () => {
+    const d = calculateQuebecDeductions({ ...q, gross: 3000, ytd: { ...zero, gross: 89000, qpipInsurable: 89000, qpip: 445 } });
+    expect(d.qpipInsurable).toBe(1000);
+    expect(d.qpip).toBe(5);
+    expect(d.employerQpip).toBe(7);
+  });
+
+  it('QPP exemption stops QPP but not QPIP', () => {
+    const d = calculateQuebecDeductions({ ...q, gross: 2000, cppExempt: true });
+    expect(d.cpp).toBe(0);
+    expect(d.qpip).toBe(10);
   });
 });

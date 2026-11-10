@@ -5,8 +5,10 @@
  * annualize the period's pay, compute the year's tax, divide by the periods).
  * Rates and thresholds are DATA (PayrollTaxTable), one table per year and
  * jurisdiction, and a pay run can't be approved until FH staff have checked
- * every table it uses against that year's T4127. Quebec (QPP, QPIP, Revenu
- * Québec) is not calculated here.
+ * every table it uses against that year's T4127. Quebec pays are worked out by
+ * calculateQuebecDeductions: QPP instead of CPP, QPIP, EI at the reduced Quebec
+ * rate, federal tax less the Quebec abatement, and Quebec tax following the
+ * structure of Revenu Québec's TP-1015.F (annualized, like option 1).
  */
 
 export interface Bracket {
@@ -44,6 +46,24 @@ export interface YearToDate {
   cpp2: number;
   insurable: number;
   ei: number;
+  /** Quebec only. */
+  qpip?: number;
+  qpipInsurable?: number;
+}
+
+/** Quebec: QPP, QPIP, the reduced EI rate and Quebec income tax (jurisdiction "QC"). */
+export interface QuebecTable {
+  qpp: { rate: number; basicExemption: number; ympe: number; baseRate: number };
+  qpp2: { rate: number; yampe: number };
+  qpip: { employeeRate: number; employerRate: number; maxInsurable: number };
+  /** EI employee rate for Quebec workers (lower, because QPIP covers parental benefits). */
+  eiRate: number;
+  /** Federal tax is reduced by this share of basic federal tax (16.5%). */
+  federalAbatement: number;
+  brackets: Bracket[];
+  basicPersonal: number;
+  /** Deduction for employment income: rate × annual pay, up to max. */
+  employmentDeduction: { rate: number; max: number };
 }
 
 export interface PayInput {
@@ -79,6 +99,12 @@ export interface Deductions {
   employerEi: number;
   pensionable: number;
   insurable: number;
+  /** Which pension plan the cpp/cpp2 amounts belong to. */
+  plan?: 'CPP' | 'QPP';
+  /** Quebec only. */
+  qpip?: number;
+  employerQpip?: number;
+  qpipInsurable?: number;
 }
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -173,5 +199,82 @@ export function calculateDeductions(p: PayInput): Deductions {
     employerEi: r2(ei * f.ei.employerMultiplier),
     pensionable: r2(pensionable),
     insurable: r2(insurable),
+  };
+}
+
+/**
+ * Quebec source deductions. Uses the same pay and year-to-date inputs; `provincial`
+ * is ignored and `quebec` supplies QPP, QPIP, the Quebec EI rate and Quebec tax.
+ * `cpp`/`cpp2` in the result are QPP amounts (plan: 'QPP'); provincialTax is Quebec tax.
+ */
+export function calculateQuebecDeductions(p: Omit<PayInput, 'provincial'> & { quebec: QuebecTable }): Deductions {
+  const P = p.periodsPerYear;
+  const f = p.federal;
+  const q = p.quebec;
+  const gross = pos(p.gross);
+  const benefit = pos(p.taxableBenefit ?? 0);
+  const rpp = pos(p.rpp ?? 0);
+  const dues = pos(p.unionDues ?? 0);
+  const earnings = gross + benefit;
+
+  // QPP, on the same pattern as CPP with Quebec's rate.
+  const qppMax = r2((q.qpp.ympe - q.qpp.basicExemption) * q.qpp.rate);
+  const pensionable = Math.min(earnings, pos(q.qpp.ympe - p.ytd.pensionable));
+  const qpp = p.cppExempt ? 0 : r2(Math.min(pos(qppMax - p.ytd.cpp), pos((earnings - q.qpp.basicExemption / P) * q.qpp.rate)));
+  const qpp2Max = r2((q.qpp2.yampe - q.qpp.ympe) * q.qpp2.rate);
+  const qpp2Base = pos(Math.min(p.ytd.gross + earnings, q.qpp2.yampe) - Math.max(p.ytd.gross, q.qpp.ympe));
+  const qpp2 = p.cppExempt ? 0 : r2(Math.min(pos(qpp2Max - p.ytd.cpp2), qpp2Base * q.qpp2.rate));
+
+  // EI at the Quebec rate (cash pay only).
+  const insurable = Math.min(gross, pos(f.ei.maxInsurable - p.ytd.insurable));
+  const eiMax = r2(f.ei.maxInsurable * q.eiRate);
+  const ei = p.eiExempt ? 0 : r2(Math.min(pos(eiMax - p.ytd.ei), insurable * q.eiRate));
+
+  // QPIP: cash pay and taxable benefits, up to the maximum insurable earnings. No exemption by EI status.
+  const qpipInsurable = Math.min(earnings, pos(q.qpip.maxInsurable - (p.ytd.qpipInsurable ?? 0)));
+  const qpipMax = r2(q.qpip.maxInsurable * q.qpip.employeeRate);
+  const qpip = r2(Math.min(pos(qpipMax - (p.ytd.qpip ?? 0)), qpipInsurable * q.qpip.employeeRate));
+  const employerQpip = r2(qpipInsurable * q.qpip.employerRate);
+
+  const qppBase = q.qpp.rate ? qpp * (q.qpp.baseRate / q.qpp.rate) : 0;
+  const qppEnhanced = qpp - qppBase;
+  const annualIncome = pos(P * (earnings - rpp - dues - qppEnhanced - qpp2));
+
+  // Federal: credits include base QPP, EI and QPIP; then the Quebec abatement.
+  const baseQppMax = (q.qpp.ympe - q.qpp.basicExemption) * q.qpp.baseRate;
+  const fed = bracketTax(f.brackets, annualIncome);
+  const fedClaim = p.federalClaim ?? federalBasicPersonal(f, annualIncome);
+  const K1 = fed.lowestRate * fedClaim;
+  const K2Q = fed.lowestRate * (Math.min(P * qppBase, baseQppMax) + Math.min(P * ei, eiMax) + Math.min(P * qpip, qpipMax));
+  const K4 = fed.lowestRate * Math.min(annualIncome, f.cea);
+  const basicFederal = pos(fed.tax - K1 - K2Q - K4);
+  const T1 = basicFederal - q.federalAbatement * basicFederal;
+
+  // Quebec: income less the deduction for employment income, then the personal amount credit.
+  const employmentDeduction = Math.min(q.employmentDeduction.max, q.employmentDeduction.rate * P * earnings);
+  const I = pos(annualIncome - employmentDeduction);
+  const qc = bracketTax(q.brackets, I);
+  const qcTax = pos(qc.tax - qc.lowestRate * (p.provincialClaim ?? q.basicPersonal));
+
+  const federalTax = r2(T1 / P);
+  const provincialTax = r2(qcTax / P);
+  const extraTax = r2(pos(p.extraTax));
+  const total = r2(qpp + qpp2 + ei + qpip + federalTax + provincialTax + extraTax);
+  return {
+    cpp: qpp,
+    cpp2: qpp2,
+    ei,
+    federalTax,
+    provincialTax,
+    extraTax,
+    total,
+    employerCpp: r2(qpp + qpp2),
+    employerEi: r2(ei * f.ei.employerMultiplier),
+    pensionable: r2(pensionable),
+    insurable: r2(insurable),
+    plan: 'QPP',
+    qpip,
+    employerQpip,
+    qpipInsurable: r2(qpipInsurable),
   };
 }

@@ -17,7 +17,7 @@ import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfi
 import { type BankLink, checkPgpKey, linkView, normalizeFingerprint, sealCredential, testBankLink } from '../services/payroll/bankLink.js';
 import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
-import { remittance, roeFigures, t4s } from '../services/payroll/yearEnd.js';
+import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
 import { h } from './context.js';
 
 export const payrollRouter = Router();
@@ -126,7 +126,7 @@ payrollRouter.get(
         row.people += 1;
         row.gross += Number(s.gross);
         row.net += Number(s.net);
-        row.employerCost += Number(s.gross) + Number(s.employerCpp) + Number(s.employerEi) + ((s.deductions as { employerBenefits?: number }).employerBenefits ?? 0);
+        row.employerCost += Number(s.gross) + Number(s.employerCpp) + Number(s.employerEi) + ((s.deductions as { employerBenefits?: number }).employerBenefits ?? 0) + ((s.deductions as { employerQpip?: number }).employerQpip ?? 0);
         byDepartment.set(k, row);
       }
       return {
@@ -523,6 +523,24 @@ payrollRouter.get(
 );
 
 payrollRouter.get(
+  '/payroll/rl1',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
+    if (a.scope) throw forbidden('RL-1 slips cover the whole city and are for HR.');
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const r = await rl1s(tx, year);
+      const settings = await settingsOf(tx);
+      const tenant = await tx.tenant.findFirstOrThrow({ select: { name: true } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.rl1.view', entity: 'Tenant', entityId: a.tenantId, after: { year } });
+      return { ...r, employer: { name: tenant.name, quebecNumber: settings.quebecNumber ?? null, address: settings.employerAddress ?? null } };
+    });
+    res.json(out);
+  }),
+);
+
+payrollRouter.get(
   '/payroll/roe/:userId',
   requirePermission('payroll.export'),
   h(async (req, res) => {
@@ -554,6 +572,7 @@ payrollRouter.put(
     const b = z
       .object({
         businessNumber: z.string().trim().regex(/^\d{9}RP\d{4}$/, 'A payroll account number looks like 123456789RP0001.').nullable().optional(),
+        quebecNumber: z.string().trim().regex(/^\d{10}RS\d{4}$/, 'A Revenu Québec identification number looks like 1234567890RS0001.').nullable().optional(),
         originatorId: z.string().trim().regex(/^[A-Za-z0-9]{1,10}$/).nullable().optional(),
         originatorShortName: z.string().trim().max(15).nullable().optional(),
         originatorLongName: z.string().trim().max(30).nullable().optional(),

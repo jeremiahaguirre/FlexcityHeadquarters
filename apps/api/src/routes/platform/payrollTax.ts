@@ -31,7 +31,17 @@ const provincial = z.object({
   healthPremium: z.array(z.object({ over: money, base: money, rate, max: money })).max(10).optional(),
   reduction: z.object({ amount: money, rate, threshold: money }).optional(),
 });
-const JURISDICTIONS = ['CA', 'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'SK', 'YT'] as const;
+const quebec = z.object({
+  qpp: z.object({ rate, basicExemption: money, ympe: money, baseRate: rate }),
+  qpp2: z.object({ rate, yampe: money }),
+  qpip: z.object({ employeeRate: rate, employerRate: rate, maxInsurable: money }),
+  eiRate: rate,
+  federalAbatement: rate,
+  brackets,
+  basicPersonal: money,
+  employmentDeduction: z.object({ rate, max: money }),
+});
+const JURISDICTIONS = ['CA', 'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'] as const;
 const year = z.coerce.number().int().min(2020).max(2100);
 
 payrollTaxRouter.get(
@@ -51,7 +61,7 @@ payrollTaxRouter.put(
     const y = year.parse(req.params.year);
     const j = z.enum(JURISDICTIONS).parse(req.params.jurisdiction);
     const body = z.object({ data: z.unknown(), note: z.string().max(500).nullable().optional() }).parse(req.body);
-    const data = (j === 'CA' ? federal : provincial).parse(body.data);
+    const data = (j === 'CA' ? federal : j === 'QC' ? quebec : provincial).parse(body.data);
     // Any change needs a fresh check against CRA's tables.
     const row = await db().payrollTaxTable.upsert({
       where: { year_jurisdiction: { year: y, jurisdiction: j } },

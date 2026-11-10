@@ -20,12 +20,14 @@ export function StatementView({ s }: { s: Statement }) {
     return p ? (lng === 'fr-CA' && p.nameFr ? p.nameFr : p.name) : '';
   };
   const d = s.deductions;
+  const qc = d.plan === 'QPP';
   const rows: Array<[string, number, number | undefined]> = [
-    [t('payroll.d.cpp'), d.cpp, s.ytd?.cpp],
-    ...(d.cpp2 || s.ytd?.cpp2 ? ([[t('payroll.d.cpp2'), d.cpp2, s.ytd?.cpp2]] as Array<[string, number, number | undefined]>) : []),
+    [t(qc ? 'payroll.d.qpp' : 'payroll.d.cpp'), d.cpp, s.ytd?.cpp],
+    ...(d.cpp2 || s.ytd?.cpp2 ? ([[t(qc ? 'payroll.d.qpp2' : 'payroll.d.cpp2'), d.cpp2, s.ytd?.cpp2]] as Array<[string, number, number | undefined]>) : []),
     [t('payroll.d.ei'), d.ei, s.ytd?.ei],
+    ...(qc ? ([[t('payroll.d.qpip'), d.qpip ?? 0, s.ytd?.qpip]] as Array<[string, number, number | undefined]>) : []),
     [t('payroll.d.federalTax'), d.federalTax + (d.extraTax ?? 0), s.ytd?.federalTax],
-    [t('payroll.d.provincialTax', { province: s.province }), d.provincialTax, s.ytd?.provincialTax],
+    [qc ? t('payroll.d.quebecTax') : t('payroll.d.provincialTax', { province: s.province }), d.provincialTax, s.ytd?.provincialTax],
     ...(d.benefits ?? []).filter((b) => b.employee).map((b) => [lng === 'fr-CA' && b.nameFr ? b.nameFr : b.name, b.employee, undefined] as [string, number, number | undefined]),
   ];
   return (

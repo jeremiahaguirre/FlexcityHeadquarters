@@ -1,7 +1,8 @@
 /**
  * Payroll documents built from approved and paid statements:
  * - the monthly source-deduction remittance (what goes to CRA with a PD7A),
- * - T4 slips and the T4 Summary for the year,
+ * - the monthly Quebec remittance to Revenu Québec (QPP, QPIP, Quebec tax),
+ * - T4 slips and the T4 Summary for the year, and RL-1 slips for Quebec staff,
  * - Record of Employment figures (insurable earnings and hours by pay period).
  */
 import type { Tx } from '../../lib/db.js';
@@ -16,16 +17,28 @@ export async function remittance(tx: Tx, month: string) {
   const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
   const rows = await tx.payStatement.findMany({ where: { payDate: { gte: start, lt: end }, payRun: PAID } });
   const t = { grossPayroll: 0, cppEmployee: 0, cppEmployer: 0, eiEmployee: 0, eiEmployer: 0, incomeTax: 0, total: 0 };
+  // Quebec staff: QPP, QPIP and Quebec tax go to Revenu Québec, not CRA.
+  const qc = { grossPayroll: 0, qppEmployee: 0, qppEmployer: 0, qpipEmployee: 0, qpipEmployer: 0, quebecTax: 0, total: 0 };
   // Amounts owed to each benefit provider (pension plan, insurer, union) for the month.
   const plans = new Map<string, { planId: string; name: string; kind: string; employee: number; employer: number }>();
   for (const s of rows) {
     const d = s.deductions as unknown as Deductions;
     t.grossPayroll += Number(s.gross);
-    t.cppEmployee += d.cpp + d.cpp2;
-    t.cppEmployer += Number(s.employerCpp);
     t.eiEmployee += d.ei;
     t.eiEmployer += Number(s.employerEi);
-    t.incomeTax += d.federalTax + d.provincialTax + (d.extraTax ?? 0);
+    if (d.plan === 'QPP') {
+      qc.grossPayroll += Number(s.gross);
+      qc.qppEmployee += d.cpp + d.cpp2;
+      qc.qppEmployer += Number(s.employerCpp);
+      qc.qpipEmployee += d.qpip ?? 0;
+      qc.qpipEmployer += d.employerQpip ?? 0;
+      qc.quebecTax += d.provincialTax;
+      t.incomeTax += d.federalTax + (d.extraTax ?? 0);
+    } else {
+      t.cppEmployee += d.cpp + d.cpp2;
+      t.cppEmployer += Number(s.employerCpp);
+      t.incomeTax += d.federalTax + d.provincialTax + (d.extraTax ?? 0);
+    }
     for (const b of (d as unknown as { benefits?: Array<{ planId: string; name: string; kind: string; employee: number; employer: number }> }).benefits ?? []) {
       const row = plans.get(b.planId) ?? { planId: b.planId, name: b.name, kind: b.kind, employee: 0, employer: 0 };
       row.employee = r2(row.employee + b.employee);
@@ -35,10 +48,22 @@ export async function remittance(tx: Tx, month: string) {
   }
   t.total = t.cppEmployee + t.cppEmployer + t.eiEmployee + t.eiEmployer + t.incomeTax;
   for (const k of Object.keys(t) as Array<keyof typeof t>) t[k] = r2(t[k]);
+  qc.total = qc.qppEmployee + qc.qppEmployer + qc.qpipEmployee + qc.qpipEmployer + qc.quebecTax;
+  for (const k of Object.keys(qc) as Array<keyof typeof qc>) qc[k] = r2(qc[k]);
   const lastPay = rows.reduce<Date | null>((m, s) => (!m || s.payDate > m ? s.payDate : m), null);
   const employeesLastPay = lastPay ? new Set(rows.filter((s) => s.payDate.getTime() === lastPay.getTime()).map((s) => s.userId)).size : 0;
   const due = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 15)).toISOString().slice(0, 10);
-  return { month, due, statements: rows.length, employeesLastPay, ...t, benefitsByPlan: [...plans.values()] };
+  return {
+    month,
+    due,
+    statements: rows.length,
+    employeesLastPay,
+    ...t,
+    benefitsByPlan: [...plans.values()],
+    // Employer-only Quebec contributions (Health Services Fund, CNT labour standards, workforce skills) depend on total
+    // payroll for the year and aren't withheld from pay: work them out on the TPZ-1015.R form.
+    revenuQuebec: qc.grossPayroll ? { ...qc, due } : null,
+  };
 }
 
 export interface T4Slip {
@@ -50,6 +75,11 @@ export interface T4Slip {
   box14EmploymentIncome: number;
   box16Cpp: number;
   box16aCpp2: number;
+  /** Quebec: QPP instead of CPP (boxes 17 / 17A), QPIP (55, 56). */
+  box17Qpp: number;
+  box17aQpp2: number;
+  box55Ppip: number;
+  box56PpipInsurable: number;
   box18Ei: number;
   box22IncomeTax: number;
   box24EiInsurable: number;
@@ -80,6 +110,10 @@ export async function t4s(tx: Tx, year: number) {
         box14EmploymentIncome: 0,
         box16Cpp: 0,
         box16aCpp2: 0,
+        box17Qpp: 0,
+        box17aQpp2: 0,
+        box55Ppip: 0,
+        box56PpipInsurable: 0,
         box18Ei: 0,
         box22IncomeTax: 0,
         box24EiInsurable: 0,
@@ -95,10 +129,19 @@ export async function t4s(tx: Tx, year: number) {
     slip.box20Rpp += b.rpp ?? 0;
     slip.box40TaxableBenefits += b.taxableBenefit ?? 0;
     slip.box44UnionDues += b.unionDues ?? 0;
-    slip.box16Cpp += d.cpp;
-    slip.box16aCpp2 += d.cpp2;
+    if (d.plan === 'QPP') {
+      slip.box17Qpp += d.cpp;
+      slip.box17aQpp2 += d.cpp2;
+      slip.box55Ppip += d.qpip ?? 0;
+      slip.box56PpipInsurable += d.qpipInsurable ?? 0;
+      // Box 22 is federal tax only; Quebec tax goes on the RL-1.
+      slip.box22IncomeTax += d.federalTax + (d.extraTax ?? 0);
+    } else {
+      slip.box16Cpp += d.cpp;
+      slip.box16aCpp2 += d.cpp2;
+      slip.box22IncomeTax += d.federalTax + d.provincialTax + (d.extraTax ?? 0);
+    }
     slip.box18Ei += d.ei;
-    slip.box22IncomeTax += d.federalTax + d.provincialTax + (d.extraTax ?? 0);
     slip.box24EiInsurable += d.insurable ?? 0;
     slip.box26CppPensionable += d.pensionable ?? 0;
     slips.set(s.userId, slip);
@@ -110,6 +153,10 @@ export async function t4s(tx: Tx, year: number) {
     box14EmploymentIncome: r2(s.box14EmploymentIncome),
     box16Cpp: r2(s.box16Cpp),
     box16aCpp2: r2(s.box16aCpp2),
+    box17Qpp: r2(s.box17Qpp),
+    box17aQpp2: r2(s.box17aQpp2),
+    box55Ppip: r2(s.box55Ppip),
+    box56PpipInsurable: r2(s.box56PpipInsurable),
     box18Ei: r2(s.box18Ei),
     box22IncomeTax: r2(s.box22IncomeTax),
     box24EiInsurable: r2(s.box24EiInsurable),
@@ -127,12 +174,86 @@ export async function t4s(tx: Tx, year: number) {
       box14: sum('box14EmploymentIncome'),
       box16: sum('box16Cpp'),
       box16a: sum('box16aCpp2'),
+      box17: sum('box17Qpp'),
+      box17a: sum('box17aQpp2'),
+      box55: sum('box55Ppip'),
       box18: sum('box18Ei'),
       box19EmployerEi: r2(employerEi),
       box22: sum('box22IncomeTax'),
       box27EmployerCpp: r2(employerCpp),
       box20: sum('box20Rpp'),
       box44: sum('box44UnionDues'),
+      missingSin: list.filter((s) => !s.sin).map((s) => s.name),
+    },
+  };
+}
+
+export interface Rl1Slip {
+  userId: string;
+  name: string;
+  employeeNumber: string | null;
+  sin: string | null;
+  /** A: employment income (cash pay and taxable benefits). */
+  boxA: number;
+  /** B.A: QPP base and first additional contributions; B.B: second additional (QPP2). */
+  boxBA: number;
+  boxBB: number;
+  /** C: EI premiums. */
+  boxC: number;
+  /** D: registered pension plan contributions. */
+  boxD: number;
+  /** E: Quebec income tax withheld. */
+  boxE: number;
+  /** F: union dues. */
+  boxF: number;
+  /** G: pensionable salary under the QPP. */
+  boxG: number;
+  /** H: QPIP premiums. I: salary insurable under the QPIP. */
+  boxH: number;
+  boxI: number;
+  /** L: taxable benefits included in A. */
+  boxL: number;
+}
+
+/** RL-1 slips for everyone paid as a Quebec employee in the year, and RLZ-1.S summary totals. */
+export async function rl1s(tx: Tx, year: number) {
+  const rows = (await tx.payStatement.findMany({ where: { year, province: 'QC', payRun: PAID }, orderBy: { payDate: 'asc' } })).filter((s) => (s.deductions as unknown as Deductions).plan === 'QPP');
+  const users = await tx.user.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.userId))] } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: { select: { sinLast3: true } } } });
+  const slips = new Map<string, Rl1Slip>();
+  let employerQpp = 0;
+  let employerQpip = 0;
+  for (const s of rows) {
+    const u = users.find((x) => x.id === s.userId)!;
+    const d = s.deductions as unknown as Deductions & { rpp?: number; unionDues?: number; taxableBenefit?: number };
+    const slip =
+      slips.get(s.userId) ??
+      ({ userId: s.userId, name: `${u.lastName}, ${u.firstName}`, employeeNumber: u.employeeNumber, sin: u.payProfile?.sinLast3 ? `•••-•••-${u.payProfile.sinLast3}` : null, boxA: 0, boxBA: 0, boxBB: 0, boxC: 0, boxD: 0, boxE: 0, boxF: 0, boxG: 0, boxH: 0, boxI: 0, boxL: 0 } satisfies Rl1Slip);
+    slip.boxA += Number(s.gross) + (d.taxableBenefit ?? 0);
+    slip.boxBA += d.cpp;
+    slip.boxBB += d.cpp2;
+    slip.boxC += d.ei;
+    slip.boxD += d.rpp ?? 0;
+    slip.boxE += d.provincialTax;
+    slip.boxF += d.unionDues ?? 0;
+    slip.boxG += d.pensionable ?? 0;
+    slip.boxH += d.qpip ?? 0;
+    slip.boxI += d.qpipInsurable ?? 0;
+    slip.boxL += d.taxableBenefit ?? 0;
+    slips.set(s.userId, slip);
+    employerQpp += Number(s.employerCpp);
+    employerQpip += d.employerQpip ?? 0;
+  }
+  const keys = ['boxA', 'boxBA', 'boxBB', 'boxC', 'boxD', 'boxE', 'boxF', 'boxG', 'boxH', 'boxI', 'boxL'] as const;
+  const list = [...slips.values()].map((s) => ({ ...s, ...Object.fromEntries(keys.map((k) => [k, r2(s[k])])) }) as Rl1Slip);
+  const sum = (k: (typeof keys)[number]) => r2(list.reduce((a, s) => a + s[k], 0));
+  return {
+    year,
+    slips: list.sort((a, b) => a.name.localeCompare(b.name)),
+    summary: {
+      slips: list.length,
+      ...Object.fromEntries(keys.map((k) => [k, sum(k)])),
+      employerQpp: r2(employerQpp),
+      employerQpip: r2(employerQpip),
       missingSin: list.filter((s) => !s.sin).map((s) => s.name),
     },
   };

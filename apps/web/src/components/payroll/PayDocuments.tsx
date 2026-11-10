@@ -8,12 +8,15 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { formatDate, formatMoney } from '@/lib/format';
 import { todayIso, useQuery } from '@/lib/useQuery';
 
-interface Remittance { month: string; due: string; statements: number; employeesLastPay: number; grossPayroll: number; cppEmployee: number; cppEmployer: number; eiEmployee: number; eiEmployer: number; incomeTax: number; total: number }
-interface Slip { userId: string; name: string; sin: string | null; province: string; box14EmploymentIncome: number; box16Cpp: number; box16aCpp2: number; box18Ei: number; box22IncomeTax: number; box24EiInsurable: number; box26CppPensionable: number }
+interface RevenuQuebec { grossPayroll: number; qppEmployee: number; qppEmployer: number; qpipEmployee: number; qpipEmployer: number; quebecTax: number; total: number; due: string }
+interface Remittance { month: string; due: string; statements: number; employeesLastPay: number; grossPayroll: number; cppEmployee: number; cppEmployer: number; eiEmployee: number; eiEmployer: number; incomeTax: number; total: number; revenuQuebec?: RevenuQuebec | null }
+interface Rl1Slip { userId: string; name: string; sin: string | null; boxA: number; boxBA: number; boxBB: number; boxC: number; boxD: number; boxE: number; boxF: number; boxG: number; boxH: number; boxI: number; boxL: number }
+interface Rl1 { year: number; slips: Rl1Slip[]; summary: { slips: number; boxA: number; boxBA: number; boxE: number; boxH: number; employerQpp: number; employerQpip: number; missingSin: string[] }; employer: { name: string; quebecNumber: string | null } }
+interface Slip { userId: string; name: string; sin: string | null; province: string; box14EmploymentIncome: number; box16Cpp: number; box16aCpp2: number; box17Qpp?: number; box55Ppip?: number; box18Ei: number; box22IncomeTax: number; box24EiInsurable: number; box26CppPensionable: number }
 interface T4 { year: number; slips: Slip[]; summary: { slips: number; box14: number; box16: number; box16a: number; box18: number; box19EmployerEi: number; box22: number; box27EmployerCpp: number; missingSin: string[] }; employer: { name: string; businessNumber: string | null } }
 interface Roe { periods: Array<{ periodStart: string; periodEnd: string; insurableEarnings: number; hours: number }>; totalInsurableEarnings: number; totalInsurableHours: number; firstDay: string | null; lastPaidDay: string | null }
 
-/** Remittance to CRA, T4 slips and Record of Employment figures. */
+/** Remittances to CRA (and Revenu Québec), T4 and RL-1 slips, and Record of Employment figures. */
 export function PayDocuments() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
@@ -23,6 +26,8 @@ export function PayDocuments() {
   const [person, setPerson] = useState('');
   const rem = useQuery<Remittance>(`/api/payroll/remittance?month=${month}`);
   const t4 = useQuery<T4>(`/api/payroll/t4?year=${year}`);
+  const rl1 = useQuery<Rl1>(`/api/payroll/rl1?year=${year}`);
+  const anyQc = !!t4.data?.slips.some((s) => s.box17Qpp);
   const people = useQuery<{ people: Array<{ id: string; name: string }> }>('/api/payroll/people');
   const roe = useQuery<Roe>(person ? `/api/payroll/roe/${person}` : null);
   return (
@@ -37,6 +42,16 @@ export function PayDocuments() {
               ))}
               <div className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rem.total')}</dt><dd>{money(rem.data.total)}</dd></div>
               <p className="text-caption text-muted sm:col-span-3">{t('payroll.rem.due', { date: formatDate(rem.data.due, lng, 'dated'), gross: money(rem.data.grossPayroll), people: rem.data.employeesLastPay })}</p>
+              {rem.data.revenuQuebec ? (
+                <div className="grid gap-3 border-t border-line pt-3 sm:col-span-3 sm:grid-cols-3">
+                  <p className="text-body-strong sm:col-span-3">{t('payroll.rq.title')}</p>
+                  {(['qppEmployee', 'qppEmployer', 'qpipEmployee', 'qpipEmployer', 'quebecTax'] as const).map((k) => (
+                    <div key={k} className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t(`payroll.rq.${k}`)}</dt><dd>{money(rem.data!.revenuQuebec![k])}</dd></div>
+                  ))}
+                  <div className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rq.total')}</dt><dd>{money(rem.data.revenuQuebec.total)}</dd></div>
+                  <p className="text-caption text-muted sm:col-span-3">{t('payroll.rq.note')}</p>
+                </div>
+              ) : null}
             </dl>
           )}
         </CardBody>
@@ -49,10 +64,10 @@ export function PayDocuments() {
               {t4.data.summary.missingSin.length ? <p className="rounded-xl bg-warn/10 px-3 py-2 text-small">{t('payroll.missingSin', { names: t4.data.summary.missingSin.join(', ') })}</p> : null}
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[46rem] text-small tabular-nums">
-                  <thead className="text-left text-caption text-muted"><tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th><th className="py-1.5 font-semibold">10</th><th className="py-1.5 text-right font-semibold">14</th><th className="py-1.5 text-right font-semibold">16</th><th className="py-1.5 text-right font-semibold">16A</th><th className="py-1.5 text-right font-semibold">18</th><th className="py-1.5 text-right font-semibold">22</th><th className="py-1.5 text-right font-semibold">24</th><th className="py-1.5 text-right font-semibold">26</th></tr></thead>
+                  <thead className="text-left text-caption text-muted"><tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th><th className="py-1.5 font-semibold">10</th><th className="py-1.5 text-right font-semibold">14</th><th className="py-1.5 text-right font-semibold">16</th><th className="py-1.5 text-right font-semibold">16A</th>{anyQc ? <><th className="py-1.5 text-right font-semibold">17</th><th className="py-1.5 text-right font-semibold">55</th></> : null}<th className="py-1.5 text-right font-semibold">18</th><th className="py-1.5 text-right font-semibold">22</th><th className="py-1.5 text-right font-semibold">24</th><th className="py-1.5 text-right font-semibold">26</th></tr></thead>
                   <tbody className="divide-y divide-line">
                     {t4.data.slips.map((s) => (
-                      <tr key={s.userId}><td className="py-1.5">{s.name}<span className="block text-caption text-muted">{s.sin ?? t('payroll.missing')}</span></td><td className="py-1.5">{s.province}</td><td className="py-1.5 text-right">{money(s.box14EmploymentIncome)}</td><td className="py-1.5 text-right">{money(s.box16Cpp)}</td><td className="py-1.5 text-right">{money(s.box16aCpp2)}</td><td className="py-1.5 text-right">{money(s.box18Ei)}</td><td className="py-1.5 text-right">{money(s.box22IncomeTax)}</td><td className="py-1.5 text-right">{money(s.box24EiInsurable)}</td><td className="py-1.5 text-right">{money(s.box26CppPensionable)}</td></tr>
+                      <tr key={s.userId}><td className="py-1.5">{s.name}<span className="block text-caption text-muted">{s.sin ?? t('payroll.missing')}</span></td><td className="py-1.5">{s.province}</td><td className="py-1.5 text-right">{money(s.box14EmploymentIncome)}</td><td className="py-1.5 text-right">{money(s.box16Cpp)}</td><td className="py-1.5 text-right">{money(s.box16aCpp2)}</td>{anyQc ? <><td className="py-1.5 text-right">{money(s.box17Qpp ?? 0)}</td><td className="py-1.5 text-right">{money(s.box55Ppip ?? 0)}</td></> : null}<td className="py-1.5 text-right">{money(s.box18Ei)}</td><td className="py-1.5 text-right">{money(s.box22IncomeTax)}</td><td className="py-1.5 text-right">{money(s.box24EiInsurable)}</td><td className="py-1.5 text-right">{money(s.box26CppPensionable)}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -62,6 +77,29 @@ export function PayDocuments() {
           )}
         </CardBody>
       </Card>
+      {rl1.data?.slips.length ? (
+        <Card>
+          <CardHeader title={t('payroll.rl1.title')} description={t('payroll.rl1.help')} />
+          <CardBody className="grid gap-3 pt-2">
+            {!rl1.data.employer.quebecNumber ? <p className="rounded-xl bg-warn/10 px-3 py-2 text-small">{t('payroll.rl1.noNumber')}</p> : null}
+            {rl1.data.summary.missingSin.length ? <p className="rounded-xl bg-warn/10 px-3 py-2 text-small">{t('payroll.missingSin', { names: rl1.data.summary.missingSin.join(', ') })}</p> : null}
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[46rem] text-small tabular-nums">
+                <thead className="text-left text-caption text-muted"><tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th>{(['A', 'B.A', 'B.B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as const).map((b) => <th key={b} className="py-1.5 text-right font-semibold">{b}</th>)}</tr></thead>
+                <tbody className="divide-y divide-line">
+                  {rl1.data.slips.map((s) => (
+                    <tr key={s.userId}>
+                      <td className="py-1.5">{s.name}<span className="block text-caption text-muted">{s.sin ?? t('payroll.missing')}</span></td>
+                      {([s.boxA, s.boxBA, s.boxBB, s.boxC, s.boxD, s.boxE, s.boxF, s.boxG, s.boxH, s.boxI] as number[]).map((v, i) => <td key={i} className="py-1.5 text-right">{money(v)}</td>)}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-caption text-muted">{t('payroll.rl1.summary', { slips: rl1.data.summary.slips, income: money(rl1.data.summary.boxA), qpp: money(rl1.data.summary.boxBA + rl1.data.summary.employerQpp), qpip: money(rl1.data.summary.boxH + rl1.data.summary.employerQpip), tax: money(rl1.data.summary.boxE) })}</p>
+          </CardBody>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader title={t('payroll.roe')} description={t('payroll.roeHelp')} />
         <CardBody className="grid gap-3 pt-2">

@@ -5,14 +5,15 @@
  * Debits (expense, by department GL segment): wages, employer CPP, employer EI,
  * employer benefit costs.
  * Credits (what the city owes): CPP and EI (employee + employer shares) and
- * income tax to CRA, pension contributions to the plan, union dues to the
+ * income tax to CRA; for Quebec staff, QPP, QPIP and Quebec tax to Revenu Québec
+ * (CRA still gets EI and federal tax); pension contributions to the plan, union dues to the
  * union, other benefit premiums to providers, and net pay to employees
  * (cleared by the bank deposit).
  */
 import type { Tx } from '../../lib/db.js';
 import type { Deductions } from './tax.js';
 
-export const ACCOUNT_KEYS = ['wages', 'employerCpp', 'employerEi', 'employerBenefits', 'cppPayable', 'eiPayable', 'taxPayable', 'pensionPayable', 'unionDuesPayable', 'benefitsPayable', 'netPayClearing'] as const;
+export const ACCOUNT_KEYS = ['wages', 'employerCpp', 'employerEi', 'employerBenefits', 'employerQpip', 'cppPayable', 'eiPayable', 'taxPayable', 'pensionPayable', 'unionDuesPayable', 'benefitsPayable', 'quebecPayable', 'netPayClearing'] as const;
 export type AccountKey = (typeof ACCOUNT_KEYS)[number];
 export type Accounts = Partial<Record<AccountKey, string>>;
 
@@ -22,12 +23,14 @@ export const DEFAULT_ACCOUNTS: Record<AccountKey, string> = {
   employerCpp: '5110',
   employerEi: '5120',
   employerBenefits: '5130',
+  employerQpip: '5125',
   cppPayable: '2210',
   eiPayable: '2220',
   taxPayable: '2230',
   pensionPayable: '2240',
   unionDuesPayable: '2250',
   benefitsPayable: '2260',
+  quebecPayable: '2235',
   netPayClearing: '1010',
 };
 
@@ -60,21 +63,28 @@ export async function payrollJournal(tx: Tx, runId: string) {
   const period = `${run.periodStart.toISOString().slice(0, 10)} to ${run.periodEnd.toISOString().slice(0, 10)}`;
 
   // Expenses by department.
-  const byDept = new Map<string, { departmentId: string | null; wages: number; cpp: number; ei: number; benefits: number }>();
-  const credits = { cppPayable: 0, eiPayable: 0, taxPayable: 0, pensionPayable: 0, unionDuesPayable: 0, benefitsPayable: 0, netPayClearing: 0 };
+  const byDept = new Map<string, { departmentId: string | null; wages: number; cpp: number; ei: number; qpip: number; benefits: number }>();
+  const credits = { cppPayable: 0, eiPayable: 0, taxPayable: 0, quebecPayable: 0, pensionPayable: 0, unionDuesPayable: 0, benefitsPayable: 0, netPayClearing: 0 };
   for (const s of statements) {
     const d = s.deductions as unknown as Extra;
     const k = s.departmentId ?? 'none';
-    const row = byDept.get(k) ?? { departmentId: s.departmentId, wages: 0, cpp: 0, ei: 0, benefits: 0 };
+    const row = byDept.get(k) ?? { departmentId: s.departmentId, wages: 0, cpp: 0, ei: 0, qpip: 0, benefits: 0 };
     const employerBenefits = (d.benefits ?? []).reduce((a, b) => a + b.employer, 0);
     row.wages += Number(s.gross);
     row.cpp += Number(s.employerCpp);
     row.ei += Number(s.employerEi);
     row.benefits += employerBenefits;
+    row.qpip += d.employerQpip ?? 0;
     byDept.set(k, row);
-    credits.cppPayable += d.cpp + d.cpp2 + Number(s.employerCpp);
     credits.eiPayable += d.ei + Number(s.employerEi);
-    credits.taxPayable += d.federalTax + d.provincialTax + (d.extraTax ?? 0);
+    if (d.plan === 'QPP') {
+      // Quebec: QPP, QPIP and Quebec tax go to Revenu Québec; EI and federal tax to CRA.
+      credits.quebecPayable += d.cpp + d.cpp2 + Number(s.employerCpp) + (d.qpip ?? 0) + (d.employerQpip ?? 0) + d.provincialTax;
+      credits.taxPayable += d.federalTax + (d.extraTax ?? 0);
+    } else {
+      credits.cppPayable += d.cpp + d.cpp2 + Number(s.employerCpp);
+      credits.taxPayable += d.federalTax + d.provincialTax + (d.extraTax ?? 0);
+    }
     for (const b of d.benefits ?? []) {
       if (b.kind === 'PENSION') credits.pensionPayable += b.employee + b.employer;
       else if (b.kind === 'UNION_DUES') credits.unionDuesPayable += b.employee + b.employer;
@@ -91,12 +101,14 @@ export async function payrollJournal(tx: Tx, runId: string) {
     debit('wages', row.departmentId, row.wages, 'Wages');
     debit('employerCpp', row.departmentId, row.cpp, 'Employer CPP');
     debit('employerEi', row.departmentId, row.ei, 'Employer EI');
+    debit('employerQpip', row.departmentId, row.qpip, 'Employer QPIP');
     debit('employerBenefits', row.departmentId, row.benefits, 'Employer benefits');
   }
   const LABELS: Record<keyof typeof credits, string> = {
     cppPayable: 'CPP owing to CRA',
     eiPayable: 'EI owing to CRA',
     taxPayable: 'Income tax owing to CRA',
+    quebecPayable: 'QPP, QPIP and Quebec tax owing to Revenu Québec',
     pensionPayable: 'Pension contributions owing',
     unionDuesPayable: 'Union dues owing',
     benefitsPayable: 'Benefit premiums owing',
@@ -128,7 +140,7 @@ export async function labourCost(tx: Tx, year: number, onlyDepartments: string[]
     if (onlyDepartments && !onlyDepartments.includes(s.departmentId ?? '')) continue;
     const k = s.departmentId ?? 'none';
     const row = out.get(k) ?? { departmentId: s.departmentId, months: Array(12).fill(0), wages: 0, employerCosts: 0, total: 0 };
-    const employer = Number(s.employerCpp) + Number(s.employerEi) + ((s.deductions as { employerBenefits?: number }).employerBenefits ?? 0);
+    const employer = Number(s.employerCpp) + Number(s.employerEi) + ((s.deductions as { employerBenefits?: number; employerQpip?: number }).employerBenefits ?? 0) + ((s.deductions as { employerQpip?: number }).employerQpip ?? 0);
     const cost = Number(s.gross) + employer;
     row.months[s.payDate.getUTCMonth()] = r2(row.months[s.payDate.getUTCMonth()]! + cost);
     row.wages = r2(row.wages + Number(s.gross));

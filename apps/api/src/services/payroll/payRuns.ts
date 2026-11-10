@@ -18,12 +18,14 @@ import { accountNumber } from './bank.js';
 import { type BankLink, encryptForBank, uploadToBank } from './bankLink.js';
 import { type Payment, buildCpa005 } from './cpa005.js';
 import { runPayroll } from './payrollRun.js';
-import { type Deductions, type YearToDate, calculateDeductions } from './tax.js';
+import { type Deductions, type YearToDate, calculateDeductions, calculateQuebecDeductions } from './tax.js';
 import { loadTaxTables } from './taxTables.js';
 import { type Issue, IssueSet, issue } from './issues.js';
 
 export interface PayrollSettings {
   businessNumber?: string;
+  /** Revenu Québec identification number (1234567890RS0001), for Quebec staff. */
+  quebecNumber?: string;
   originatorId?: string;
   originatorShortName?: string;
   originatorLongName?: string;
@@ -65,7 +67,7 @@ interface YtdTotals extends YearToDate {
 /** Year-to-date from approved and paid statements in the same calendar year (by pay date). */
 export async function yearToDate(tx: Tx, userId: string, year: number, excludeRunId?: string): Promise<YtdTotals> {
   const rows = await tx.payStatement.findMany({ where: { userId, year, payRun: { status: { in: ['APPROVED', 'PAID'] } }, ...(excludeRunId ? { payRunId: { not: excludeRunId } } : {}) } });
-  const t: YtdTotals = { gross: 0, pensionable: 0, cpp: 0, cpp2: 0, insurable: 0, ei: 0, federalTax: 0, provincialTax: 0, net: 0 };
+  const t: YtdTotals & { qpip: number; qpipInsurable: number } = { gross: 0, pensionable: 0, cpp: 0, cpp2: 0, insurable: 0, ei: 0, federalTax: 0, provincialTax: 0, net: 0, qpip: 0, qpipInsurable: 0 };
   for (const s of rows) {
     const d = s.deductions as unknown as Deductions;
     t.gross += Number(s.gross);
@@ -77,8 +79,10 @@ export async function yearToDate(tx: Tx, userId: string, year: number, excludeRu
     t.ei += d.ei;
     t.federalTax += d.federalTax + (d.extraTax ?? 0);
     t.provincialTax += d.provincialTax;
+    t.qpip += d.qpip ?? 0;
+    t.qpipInsurable += d.qpipInsurable ?? 0;
   }
-  for (const k of Object.keys(t) as Array<keyof YtdTotals>) t[k] = r2(t[k]);
+  for (const k of Object.keys(t) as Array<keyof typeof t>) t[k] = r2(t[k]);
   return t;
 }
 
@@ -136,7 +140,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   for (const r of results) byUser.set(r.userId, [...(byUser.get(r.userId) ?? []), r]);
 
   const statements: Prisma.PayStatementCreateManyInput[] = [];
-  const totals = { gross: 0, deductions: 0, net: 0, employerCpp: 0, employerEi: 0, people: 0, deposits: 0, cheques: 0, cpp: 0, cpp2: 0, ei: 0, tax: 0, benefits: 0, employerBenefits: 0 };
+  const totals = { gross: 0, deductions: 0, net: 0, employerCpp: 0, employerEi: 0, people: 0, deposits: 0, cheques: 0, cpp: 0, cpp2: 0, ei: 0, tax: 0, benefits: 0, employerBenefits: 0, qpip: 0, employerQpip: 0, quebecTax: 0 };
   for (const [userId, rs] of byUser) {
     const lines = rs.flatMap((r) => r.result.lines.map((l) => ({ code: l.code, positionId: l.positionId, hours: Number(l.hours), rate: Number(l.rate), amount: Number(l.amount) })));
     const gross = r2(lines.reduce((s, l) => s + l.amount, 0));
@@ -145,9 +149,12 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     const main = [...rs].sort((a, b) => Number(b.result.grossWages) - Number(a.result.grossWages))[0]!;
     const profile = profiles.find((p) => p.userId === userId);
     const province = (profile?.province ?? facilities.find((f) => f.id === main.facilityId)?.province ?? 'ON') as Province;
-    if (province === 'QC') blockers.add(issue('QUEBEC', { name: name(userId) }));
-    const prov = tables.provincial.get(province);
-    if (!prov) blockers.add(issue('NO_PROVINCE_TABLE', { province, year }));
+    const quebec = province === 'QC';
+    const prov = quebec ? null : tables.provincial.get(province);
+    if (quebec) {
+      if (!tables.quebec) blockers.add(issue('QUEBEC_TABLES', { year }));
+      else if (!tables.quebec.verified) blockers.add(issue('QUEBEC_UNVERIFIED', { year }));
+    } else if (!prov) blockers.add(issue('NO_PROVINCE_TABLE', { province, year }));
     else if (!prov.verified) blockers.add(issue('PROVINCE_UNVERIFIED', { province, year }));
     const ytd = await yearToDate(tx, userId, year, runId);
     // Benefits and deductions: each plan's employee and employer share for this pay.
@@ -165,24 +172,28 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     const afterTax = sumOf((b) => (b.kind !== 'PENSION' && b.kind !== 'UNION_DUES' ? b.employee : 0));
     const taxableBenefit = sumOf((b) => b.taxable);
     const employerBenefits = sumOf((b) => b.employer);
-    const d =
-      tables.federal && prov && province !== 'QC'
-        ? calculateDeductions({
-            gross,
-            periodsPerYear: P,
-            ytd,
-            federal: tables.federal.data,
-            provincial: prov.data,
-            federalClaim: profile?.federalClaim != null ? Number(profile.federalClaim) : null,
-            provincialClaim: profile?.provincialClaim != null ? Number(profile.provincialClaim) : null,
-            extraTax: profile ? Number(profile.extraTaxPerPeriod) : 0,
-            cppExempt: profile?.cppExempt ?? false,
-            eiExempt: profile?.eiExempt ?? false,
-            rpp,
-            unionDues,
-            taxableBenefit,
-          })
-        : ZERO_D;
+    const common = {
+      gross,
+      periodsPerYear: P,
+      ytd,
+      federalClaim: profile?.federalClaim != null ? Number(profile.federalClaim) : null,
+      provincialClaim: profile?.provincialClaim != null ? Number(profile.provincialClaim) : null,
+      extraTax: profile ? Number(profile.extraTaxPerPeriod) : 0,
+      cppExempt: profile?.cppExempt ?? false,
+      eiExempt: profile?.eiExempt ?? false,
+      rpp,
+      unionDues,
+      taxableBenefit,
+    };
+    const d: Deductions = !tables.federal
+      ? ZERO_D
+      : quebec
+        ? tables.quebec
+          ? calculateQuebecDeductions({ ...common, federal: tables.federal.data, quebec: tables.quebec.data })
+          : ZERO_D
+        : prov
+          ? { ...calculateDeductions({ ...common, federal: tables.federal.data, provincial: prov.data }), plan: 'CPP' }
+          : ZERO_D;
     const benefitDeductions = r2(rpp + unionDues + afterTax);
     const totalDeductions = r2(d.total + benefitDeductions);
     const net = r2(gross - totalDeductions);
@@ -217,6 +228,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
         net: r2(ytd.net + net),
         pensionable: r2(ytd.pensionable + d.pensionable),
         insurable: r2(ytd.insurable + d.insurable),
+        ...(d.plan === 'QPP' ? { qpip: r2((ytd.qpip ?? 0) + (d.qpip ?? 0)), qpipInsurable: r2((ytd.qpipInsurable ?? 0) + (d.qpipInsurable ?? 0)) } : {}),
       },
       bankAccountId: bank?.id ?? null,
       depositLast4: bank?.last4 ?? null,
@@ -231,6 +243,9 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     totals.cpp += d.cpp + d.cpp2;
     totals.ei += d.ei;
     totals.tax += d.federalTax + d.provincialTax + d.extraTax;
+    totals.qpip += d.qpip ?? 0;
+    totals.employerQpip += d.employerQpip ?? 0;
+    if (d.plan === 'QPP') totals.quebecTax += d.provincialTax;
     totals.people += 1;
     if (bank) totals.deposits += 1;
     else totals.cheques += 1;

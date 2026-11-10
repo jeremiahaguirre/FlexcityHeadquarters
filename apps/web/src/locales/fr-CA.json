@@ -1028,7 +1028,11 @@
       "cpp2": "RPC2 (deuxièmes cotisations)",
       "ei": "Assurance-emploi",
       "federalTax": "Impôt fédéral",
-      "provincialTax": "Impôt provincial ({{province}})"
+      "provincialTax": "Impôt provincial ({{province}})",
+      "qpp": "Régime de rentes du Québec (RRQ)",
+      "qpp2": "RRQ (supplémentaire 2)",
+      "qpip": "Régime québécois d’assurance parentale (RQAP)",
+      "quebecTax": "Impôt du Québec"
     },
     "toVerify": "Changements bancaires à vérifier",
     "toVerifyHelp": "Une personne autre que celle qui a saisi les renseignements doit les vérifier. Appelez l’employé à un numéro que vous avez déjà si quelque chose semble inhabituel.",
@@ -1134,7 +1138,24 @@
       }
     },
     "employerPaid": "Payé par votre employeur : {{list}}",
-    "taxableBenefit": "avantage imposable"
+    "taxableBenefit": "avantage imposable",
+    "quebecNumber": "Numéro d’identification de Revenu Québec (personnel du Québec)",
+    "rq": {
+      "title": "À Revenu Québec",
+      "qppEmployee": "RRQ (employés)",
+      "qppEmployer": "RRQ (employeur)",
+      "qpipEmployee": "RQAP (employés)",
+      "qpipEmployer": "RQAP (employeur)",
+      "quebecTax": "Impôt du Québec",
+      "total": "Total à Revenu Québec",
+      "note": "Payable à la même date que la remise à l’ARC. Les cotisations de l’employeur seulement (Fonds des services de santé, normes du travail, développement de la main-d’œuvre) dépendent de la masse salariale annuelle : calculez-les avec le formulaire TPZ-1015.R."
+    },
+    "rl1": {
+      "title": "Relevés 1",
+      "help": "Pour le personnel employé au Québec. Produisez-les auprès de Revenu Québec et remettez à chaque personne son relevé avant la fin de février.",
+      "noNumber": "Ajoutez votre numéro d’identification de Revenu Québec dans les paramètres de paie avant de produire.",
+      "summary": "{{slips}} relevés · revenus d’emploi {{income}} · RRQ {{qpp}} (deux parts) · RQAP {{qpip}} (deux parts) · impôt du Québec {{tax}}"
+    }
   },
   "settings": {
     "title": "Paramètres",
@@ -3582,7 +3603,9 @@
       "pensionPayable": "Cotisations de retraite à payer",
       "unionDuesPayable": "Cotisations syndicales à payer",
       "benefitsPayable": "Primes d’avantages sociaux à payer",
-      "netPayClearing": "Compte de passage de la paie nette (banque)"
+      "netPayClearing": "Compte de passage de la paie nette (banque)",
+      "employerQpip": "Charge RQAP de l’employeur",
+      "quebecPayable": "Revenu Québec à payer (RRQ, RQAP, impôt du Québec)"
     }
   },
   "hr": {
