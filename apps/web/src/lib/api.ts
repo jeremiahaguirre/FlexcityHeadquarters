@@ -69,10 +69,13 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     if (res.status === 401 && body.code !== 'STEP_UP_REQUIRED' && retry && !path.startsWith('/api/auth/')) {
       if (await refresh()) return api<T>(path, init, false, steppedUp);
     }
+    // A new version of the agreement to sign: the app reloads the session and shows it.
+    if (body.code === 'CONSENT_REQUIRED' && typeof window !== 'undefined') window.dispatchEvent(new Event(CONSENT_EVENT));
     throw new ApiError(res.status, body.code ?? 'ERROR', body.message ?? res.statusText, body.details);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
+export const CONSENT_EVENT = 'fh:consent-required';
 
 type StepUpHandler = () => Promise<boolean>;
 let stepUpHandler: StepUpHandler | null = null;

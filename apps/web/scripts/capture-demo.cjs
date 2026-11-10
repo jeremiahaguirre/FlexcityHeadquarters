@@ -38,8 +38,16 @@ async function apiAs(who) {
     const res = await fetch(`${API}${path}`, { method, headers: { 'content-type': 'application/json', 'x-tenant-subdomain': 'kelowna', authorization: `Bearer ${accessToken}` }, body: body ? JSON.stringify(body) : undefined });
     return res.status === 204 ? null : res.json();
   };
+  // Demo accounts sign the first-sign-in agreement once, so the app (and the recorded demo) opens normally.
+  const me = await call('GET', '/api/me');
+  if (me?.consentRequired) {
+    const c = await call('GET', '/api/me/consent?lang=en-CA');
+    await call('POST', '/api/me/consent', { version: c.version, locale: 'en-CA', name: `${user.firstName} ${user.lastName}`, signature: DEMO_SIGNATURE, choices: { notifications: 'skipped', location: 'skipped' } });
+  }
   return { user, call };
 }
+/** A small drawn line, as a PNG, for the demo accounts' signatures. */
+const DEMO_SIGNATURE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAAoCAIAAAC6iKlyAAAAu0lEQVR42u3YSwrDMAwFwLfvIQq9/x3bE5SAI9vCmUeWwZEmyjdfWZIgAA1aQIMGLaBBC2jQoAU0aAH9bOjX+/Nv29j8yqqyppPLfbYQr6wqU5sp7HwZ8aSqsr2Z4XOzbP2SqtKkmdnWN2fz/mintpMSptonUpOl0mGK510cMwobWzZ95uXs230aDnKfV4XCA6XnIDd5+S2kyNi300M+5wovbv86zvrXIaBBgxbQoEEjAA1aQIMGLaBPyg8+d/3H6v32KAAAAABJRU5ErkJggg==';
 
 const iso = (d) => d.toISOString().slice(0, 10);
 const plusDays = (n) => new Date(Date.now() + n * 86_400_000);
@@ -187,6 +195,7 @@ async function prepareHr(hr, sup) {
 
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
+  for (const who of Object.values(ROLES)) await apiAs(who);
   await prepareCityWorks();
   // The demo city's (placeholder) logo, uploaded through the Dev console API.
   const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });

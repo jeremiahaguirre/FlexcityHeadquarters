@@ -3,7 +3,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, conflict } from '../lib/errors.js';
+import type { NextFunction, Request, Response } from 'express';
+import { HttpError, badRequest, conflict } from '../lib/errors.js';
 import { CONSENT_VERSION, agreementFor, canonicalText, sha256 } from '../services/privacy/consent.js';
 import { h } from './context.js';
 
@@ -13,6 +14,41 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 /** Whether this person still has to sign the current version. FH support visits never do. */
 export async function consentRequired(tx: Parameters<Parameters<typeof withTenant>[1]>[0], userId: string): Promise<boolean> {
   return !(await tx.consentRecord.findFirst({ where: { userId, version: CONSENT_VERSION }, select: { id: true } }));
+}
+
+/**
+ * Until the current agreement is signed, the API answers only what's needed to read and sign it,
+ * sign in safely, and exercise privacy rights: everything else is 428 CONSENT_REQUIRED.
+ * A worker's call for help during a working-alone session is never blocked.
+ */
+const OPEN = [
+  /^\/me$/,
+  /^\/me\/consent$/,
+  /^\/me\/(passkeys|password|push)(\/|$)/,
+  /^\/push\/key$/,
+  /^\/me\/lone-work\/help$/,
+  /^\/data-export(\/|$)/,
+];
+/** People known to have signed the current version, so most requests skip the lookup. */
+const signedCache = new Map<string, number>();
+const CACHE_MS = 10 * 60_000;
+export const rememberSigned = (userId: string) => signedCache.set(`${CONSENT_VERSION}:${userId}`, Date.now() + CACHE_MS);
+
+/** Only the integration suite may switch this off (for tests about something else). */
+const enforced = () => !(process.env.NODE_ENV === 'test' && process.env.CONSENT_ENFORCEMENT === 'off');
+
+export function requireConsent(req: Request, _res: Response, next: NextFunction) {
+  const a = authOf(req);
+  if (!enforced() || a.support || OPEN.some((r) => r.test(req.path))) return next();
+  const key = `${CONSENT_VERSION}:${a.userId}`;
+  if ((signedCache.get(key) ?? 0) > Date.now()) return next();
+  withTenant(a.tenantId, (tx) => consentRequired(tx, a.userId))
+    .then((required) => {
+      if (required) return next(new HttpError(428, 'CONSENT_REQUIRED', 'Read and sign the information and consent agreement first.'));
+      rememberSigned(a.userId);
+      next();
+    })
+    .catch(next);
 }
 
 consentRouter.get(
@@ -68,6 +104,7 @@ consentRouter.post(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'consent.signed', entity: 'ConsentRecord', entityId: r.id, after: { version: CONSENT_VERSION, textSha256, choices: b.choices } });
       return r;
     });
+    rememberSigned(a.userId);
     res.status(201).json({ id: rec.id, signedAt: rec.signedAt, textSha256 });
   }),
 );

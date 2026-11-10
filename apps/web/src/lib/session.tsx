@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiError, api, logout } from './api';
+import { ApiError, CONSENT_EVENT, api, logout } from './api';
 import { setTimeFormat } from './format';
 import { LOCALE_COOKIE } from './i18n';
 
@@ -74,6 +74,12 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // The server asks for the agreement (a new version came out mid-session): show it.
+  useEffect(() => {
+    const again = () => void reload();
+    window.addEventListener(CONSENT_EVENT, again);
+    return () => window.removeEventListener(CONSENT_EVENT, again);
+  }, [reload]);
   // This device's push subscription follows whoever is signed in.
   const meId = me?.id;
   useEffect(() => {

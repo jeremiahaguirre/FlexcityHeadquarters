@@ -33,7 +33,7 @@ import { onboardingRouter } from './onboarding.js';
 import { overtimeRouter } from './overtime.js';
 import { careRouter } from './care.js';
 import { loneWorkRouter } from './loneWork.js';
-import { consentRouter } from './consent.js';
+import { consentRouter, requireConsent } from './consent.js';
 import { billingRouter } from './billing.js';
 import { winterRouter } from './winter.js';
 import { programsRouter } from './programs.js';
@@ -77,6 +77,7 @@ api.use((req, _res, next) => {
     .then((ok) => next(ok ? undefined : notFound('Person')))
     .catch(next);
 });
+api.use(requireConsent);
 api.use(notificationsRouter);
 api.use(myPasskeysRouter);
 api.use(rolesRouter);

@@ -25,10 +25,12 @@ const png = (() => {
 const body = (over: object = {}) => ({ version: CONSENT_VERSION, locale: 'en-CA', name: 'Guard Zero', signature: png, choices: { notifications: 'granted', location: 'denied' }, ...over });
 
 beforeAll(async () => {
+  process.env.CONSENT_ENFORCEMENT = 'on';
   t = await seedTenant(SUB, 1);
   tok = await signAccessToken({ sub: t.users[0]!.id, tid: t.tenant.id, roles: ['EMPLOYEE'], aat: Math.floor(Date.now() / 1000) });
 });
 afterAll(async () => {
+  process.env.CONSENT_ENFORCEMENT = 'off';
   await owner.$disconnect();
   await appDb.$disconnect();
 });
@@ -36,6 +38,11 @@ afterAll(async () => {
 describe('first-sign-in consent agreement', () => {
   it('is required until signed, then stored with fingerprints and the device', async () => {
     expect((await as(tok).get('/api/me')).body.consentRequired).toBe(true);
+    // The server holds everything else back until it's signed.
+    const held = await as(tok).get('/api/notifications');
+    expect(held.status).toBe(428);
+    expect(held.body.code).toBe('CONSENT_REQUIRED');
+    expect((await as(tok).get('/api/push/key')).status).toBe(200);
     const c = await as(tok).get('/api/me/consent?lang=fr-CA');
     expect(c.body).toMatchObject({ required: true, version: CONSENT_VERSION, locale: 'fr-CA' });
     expect(c.body.agreement.sections.length).toBeGreaterThan(3);
@@ -48,6 +55,7 @@ describe('first-sign-in consent agreement', () => {
     const saved = await owner.consentRecord.findFirstOrThrow({ where: { userId: t.users[0]!.id } });
     expect(saved).toMatchObject({ version: CONSENT_VERSION, signedName: 'Guard Zero', userAgent: 'TestPhone/1.0', choices: { notifications: 'granted', location: 'denied' } });
     expect((await as(tok).get('/api/me')).body.consentRequired).toBe(false);
+    expect((await as(tok).get('/api/notifications')).status).toBe(200);
   });
 
   it('cannot be altered by the application', async () => {
