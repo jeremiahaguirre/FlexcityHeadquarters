@@ -25,7 +25,7 @@ export function SchemePicker({ className }: { className?: string }) {
           aria-checked={scheme === o.value}
           onClick={() => setScheme(o.value)}
           title={t(`scheme.${o.value}`)}
-          className={cn('flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-caption font-semibold transition-colors', scheme === o.value ? 'bg-panel text-ink shadow-card' : 'text-muted hover:text-ink')}
+          className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 sm:min-h-0 text-caption font-semibold transition-colors', scheme === o.value ? 'bg-panel text-ink shadow-card' : 'text-muted hover:text-ink')}
         >
           <o.icon className="h-4 w-4" aria-hidden="true" />
           {t(`scheme.${o.value}`)}

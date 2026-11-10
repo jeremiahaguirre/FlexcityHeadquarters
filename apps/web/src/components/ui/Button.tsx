@@ -18,7 +18,7 @@ const variants: Record<Variant, string> = {
 };
 // Touch targets: md and lg are at least 44px tall (FH Typography doc).
 const sizes: Record<Size, string> = {
-  sm: 'h-9 px-3 text-small',
+  sm: 'h-11 px-3 text-small sm:h-9',
   md: 'h-11 px-4 text-body-strong',
   lg: 'h-[3.25rem] px-5 text-body-strong',
 };
