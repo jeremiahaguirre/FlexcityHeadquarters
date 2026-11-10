@@ -9,7 +9,7 @@ import { authenticationOptions, deviceName, platformRp, registrationOptions, ver
 import { h } from '../context.js';
 
 const uuid = z.string().uuid();
-const credential = z.record(z.unknown()).refine((v) => JSON.stringify(v).length < 20_000, 'Too large');
+const credential = z.record(z.string(), z.unknown()).refine((v) => JSON.stringify(v).length < 20_000, 'Too large');
 const RECENT_MS = 10 * 60_000;
 
 export const platformPasskeyRouter = Router();

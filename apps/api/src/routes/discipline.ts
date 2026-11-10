@@ -58,8 +58,8 @@ const recordBody = z.object({
   stewardPresent: z.boolean().default(false),
   level: z.enum(LEVELS as [string, ...string[]]).nullable().default(null),
   /** Facts relied on, by id; their details are copied onto the record as they are now. */
-  evidence: z.object({ events: z.array(uuid).max(50).default([]), notes: z.array(uuid).max(50).default([]) }).default({}),
-  fairProcess: z.record(z.boolean()).default({}),
+  evidence: z.object({ events: z.array(uuid).max(50).default([]), notes: z.array(uuid).max(50).default([]) }).prefault({}),
+  fairProcess: z.record(z.string(), z.boolean()).default({}),
 });
 
 disciplineRouter.post(

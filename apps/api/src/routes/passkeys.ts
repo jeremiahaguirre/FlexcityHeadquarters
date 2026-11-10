@@ -17,7 +17,7 @@ import { h, lookupTenant, subdomainOf } from './context.js';
 
 const uuid = z.string().uuid();
 // Shapes are checked by the WebAuthn library; here we only bound their size.
-const credential = z.record(z.unknown()).refine((v) => JSON.stringify(v).length < 20_000, 'Too large');
+const credential = z.record(z.string(), z.unknown()).refine((v) => JSON.stringify(v).length < 20_000, 'Too large');
 
 async function rpFor(req: Parameters<typeof subdomainOf>[0]) {
   const sub = subdomainOf(req);

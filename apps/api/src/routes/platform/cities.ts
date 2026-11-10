@@ -172,7 +172,7 @@ const cityPatch = z
     payWeekStartDay: z.number().int().min(0).max(6),
     vacationPayMode: z.enum(['PAY_EACH_PERIOD', 'ACCRUE']),
     payrollRetentionYears: z.number().int().min(6).max(15),
-    features: z.record(z.enum(FEATURE_KEYS as [string, ...string[]]), z.boolean()),
+    features: z.partialRecord(z.enum(FEATURE_KEYS as [string, ...string[]]), z.boolean()),
   })
   .partial();
 

@@ -22,7 +22,15 @@ export const DEFAULT_WINTER: WinterSettings = {
 };
 
 export function parseWinter(stored: unknown): WinterSettings {
-  const r = winterSettingsBody.deepPartial().safeParse(stored ?? {});
+  // Each section is optional and so is each value in it; anything missing uses the default.
+  const r = z
+    .object({
+      season: winterSettingsBody.shape.season.partial(),
+      callOuts: winterSettingsBody.shape.callOuts.partial(),
+      patrols: winterSettingsBody.shape.patrols.partial(),
+    })
+    .partial()
+    .safeParse(stored ?? {});
   const v = r.success ? r.data : {};
   return {
     season: { ...DEFAULT_WINTER.season, ...v.season },
