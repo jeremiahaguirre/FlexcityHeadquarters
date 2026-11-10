@@ -4520,7 +4520,8 @@
     "NO_HIRE_DATE": "{{name}} n’a pas de date d’embauche; l’admissibilité à l’indemnité de jour férié a été présumée.",
     "NO_HOURS": "Aucune heure approuvée pour cette période. Approuvez d’abord les pointages, puis recalculez.",
     "ADP_COMPANY_CODE": "Entrez votre code d’entreprise ADP à trois caractères ci-dessus.",
-    "DEDUCTION_WITHOUT_PAY": "{{name}} a une retenue ponctuelle mais aucune paie dans cette paie; elle a été laissée de côté. Ajoutez-la à une paie où la personne est payée."
+    "DEDUCTION_WITHOUT_PAY": "{{name}} a une retenue ponctuelle mais aucune paie dans cette paie; elle a été laissée de côté. Ajoutez-la à une paie où la personne est payée.",
+    "OTHER_DEPARTMENT_HOURS": "{{name}} a aussi travaillé dans un autre service pendant cette période. Payez cette période en une seule paie pour toute la ville, afin que l’impôt, le RPC et l’AE soient calculés une seule fois sur toute sa paie."
   },
   "documents": {
     "title": "Documents",

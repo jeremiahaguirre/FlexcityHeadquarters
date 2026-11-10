@@ -38,7 +38,12 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
   if (unapproved) warnings.add(issue('PUNCHES_PENDING', { count: unapproved }));
   if (openPunches) warnings.add(issue('PUNCHES_OPEN', { count: openPunches }));
 
-  for (const f of facilities) {
+  // One calculation per person per province, across every facility and position they worked there:
+  // daily and weekly overtime count all their hours, not each pool's separately.
+  const byProvince = new Map<string, typeof facilities>();
+  for (const f of facilities) byProvince.set(f.province, [...(byProvince.get(f.province) ?? []), f]);
+  for (const group of byProvince.values()) {
+    const f = group[0]!;
     const holidays = await tx.statutoryHoliday.findMany({
       where: { province: f.province, date: { gte: new Date(periodStart), lt: new Date(periodEnd) } },
     });
@@ -52,10 +57,11 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
 
     // Holiday-pay formulas look back 30 days (4 weeks), so load enough history.
     const lookbackStart = statDates.length && formula ? payWeekStart(addDays(periodStart, -35), tenant.payWeekStartDay) : periodStart;
-    const from = startOfLocalDay(lookbackStart, f.timezone);
-    const to = startOfLocalDay(periodEnd, f.timezone);
+    // A day's edges by the earliest and latest time zone in the province, so no punch is missed.
+    const from = new Date(Math.min(...group.map((g) => startOfLocalDay(lookbackStart, g.timezone).getTime())));
+    const to = new Date(Math.max(...group.map((g) => startOfLocalDay(periodEnd, g.timezone).getTime())));
     const punches = await tx.timePunch.findMany({
-      where: { facilityId: f.id, status: 'APPROVED', clockOut: { not: null, gt: from }, clockIn: { lt: to }, ...(onlyUsers ? { userId: { in: [...onlyUsers] } } : {}), ...(positionIds ? { positionId: { in: positionIds } } : {}) },
+      where: { facilityId: { in: group.map((g) => g.id) }, status: 'APPROVED', clockOut: { not: null, gt: from }, clockIn: { lt: to }, ...(onlyUsers ? { userId: { in: [...onlyUsers] } } : {}), ...(positionIds ? { positionId: { in: positionIds } } : {}) },
       include: { shift: true, user: { include: { payRates: true } } },
     });
     if (punches.length === 0) continue;
@@ -65,6 +71,11 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
 
     for (const [userId, ps] of byUser) {
       const user = ps[0]!.user;
+      // Their main facility (most hours) gives the time zone for days and the cost centre for the export.
+      const hoursAt = new Map<string, number>();
+      for (const p of ps) hoursAt.set(p.facilityId, (hoursAt.get(p.facilityId) ?? 0) + (p.clockOut!.getTime() - p.clockIn.getTime()));
+      const mainId = [...hoursAt.entries()].sort((a, b) => b[1] - a[1])[0]![0];
+      const main = group.find((g) => g.id === mainId) ?? f;
       const rateFor = (positionId: string, localDate: string): Decimal => {
         const r = user.payRates
           .filter((pr) => pr.positionId === positionId && pr.effectiveFrom.toISOString().slice(0, 10) <= localDate && (!pr.effectiveTo || pr.effectiveTo.toISOString().slice(0, 10) >= localDate))
@@ -75,7 +86,7 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
       const intervals = ps.map((p) => ({ start: p.clockIn, end: p.clockOut!, positionId: p.positionId, premiumPerHour: p.shift?.premiumPerHour ? dec(p.shift.premiumPerHour) : null }));
       const common = {
         intervals,
-        timezone: f.timezone,
+        timezone: main.timezone,
         payWeekStartDay: tenant.payWeekStartDay,
         rules,
         rateFor,
@@ -111,12 +122,12 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
         }
       }
       if (result.lines.length === 0) continue;
-      results.push({ userId, facilityId: f.id, result });
+      results.push({ userId, facilityId: main.id, result });
       employees.push({
         userId,
         employeeNumber: user.employeeNumber,
         displayName: `${user.firstName} ${user.lastName}`,
-        costCenter: f.costCenter,
+        costCenter: main.costCenter,
         lines: result.lines,
       });
     }

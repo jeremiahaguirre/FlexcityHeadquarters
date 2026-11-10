@@ -173,6 +173,17 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   else if (!tables.federal.verified) blockers.add(issue('FEDERAL_UNVERIFIED', { year }));
 
   const runUsers = [...new Set([...results.map((r) => r.userId), ...salaries.map((x) => x.userId), ...adjustments.map((x) => x.userId)])];
+  // Someone who also worked in another department this period has to be paid in one run (city-wide), so
+  // tax and CPP/EI are worked out once on all their pay, not twice on halves.
+  if (kind === 'REGULAR' && input.departmentId && positions && runUsers.length) {
+    const elsewhere = await tx.timePunch.findMany({
+      where: { userId: { in: runUsers }, status: 'APPROVED', positionId: { notIn: positions }, clockIn: { lt: new Date(`${addDays(periodEnd, 1)}T12:00:00Z`) }, clockOut: { gt: new Date(`${input.periodStart}T00:00:00Z`) } },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    const who = await tx.user.findMany({ where: { id: { in: elsewhere.map((e) => e.userId) } }, select: { firstName: true, lastName: true } });
+    for (const u of who) blockers.add(issue('OTHER_DEPARTMENT_HOURS', { name: `${u.firstName} ${u.lastName}` }));
+  }
   const enrollments = kind === 'OFF_CYCLE' ? [] : await tx.benefitEnrollment.findMany({
     where: { userId: { in: runUsers }, startsOn: { lte: new Date(periodEnd) }, OR: [{ endsOn: null }, { endsOn: { gte: new Date(input.periodStart) } }], plan: { active: true } },
     include: { plan: true },

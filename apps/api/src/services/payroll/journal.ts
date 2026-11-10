@@ -56,9 +56,10 @@ type Extra = Deductions & { benefits?: Array<{ kind: string; employee: number; e
 
 export async function payrollJournal(tx: Tx, runId: string) {
   const run = await tx.payRun.findUniqueOrThrow({ where: { id: runId } });
-  const [statements, departments, tenant] = await Promise.all([
+  const [statements, departments, positions, tenant] = await Promise.all([
     tx.payStatement.findMany({ where: { payRunId: runId } }),
     tx.department.findMany({ select: { id: true, name: true, glCode: true } }),
+    tx.position.findMany({ select: { id: true, departmentId: true } }),
     tx.tenant.findFirstOrThrow({ select: { accountingSettings: true } }),
   ]);
   const accounts = readAccounts(tenant.accountingSettings);
@@ -71,18 +72,40 @@ export async function payrollJournal(tx: Tx, runId: string) {
   const credits = { cppPayable: 0, eiPayable: 0, taxPayable: 0, quebecPayable: 0, pensionPayable: 0, unionDuesPayable: 0, benefitsPayable: 0, ordersPayable: 0, recoveries: 0, netPayClearing: 0 };
   for (const s of statements) {
     const d = s.deductions as unknown as Extra;
-    const k = s.departmentId ?? 'none';
-    const row = byDept.get(k) ?? { departmentId: s.departmentId, wages: 0, cpp: 0, ei: 0, qpip: 0, benefits: 0, reimbursements: 0 };
     const employerBenefits = (d.benefits ?? []).reduce((a, b) => a + b.employer, 0);
-    row.wages += Number(s.gross);
-    row.cpp += Number(s.employerCpp);
-    row.ei += Number(s.employerEi);
-    row.benefits += employerBenefits;
-    row.qpip += d.employerQpip ?? 0;
-    row.reimbursements += d.reimbursements ?? 0;
+    // Someone working in two departments: each department carries its share of the wages (by the
+    // position of each pay line) and the same share of the employer costs.
+    const share = new Map<string | null, number>();
+    const lines = (s.earnings as Array<{ positionId: string | null; amount: number }> | null) ?? [];
+    for (const l of lines.filter((x) => x.positionId)) {
+      const dept = positions.find((p) => p.id === l.positionId)?.departmentId ?? s.departmentId;
+      share.set(dept, (share.get(dept) ?? 0) + Number(l.amount));
+    }
+    const base = [...share.values()].reduce((a, v) => a + v, 0);
+    const parts: Array<[string | null, number]> = base > 0 ? [...share.entries()].map(([dep, v]) => [dep, v / base]) : [[s.departmentId, 1]];
+    // Each amount is split in whole cents, the last department taking the remainder, so the journal balances exactly.
+    const split = (total: number) => {
+      let left = r2(total);
+      return parts.map(([, f], i) => {
+        const part = i === parts.length - 1 ? left : r2(total * f);
+        left = r2(left - part);
+        return part;
+      });
+    };
+    const [wages, cpp, ei, ben, qpip, reimb] = [Number(s.gross), Number(s.employerCpp), Number(s.employerEi), employerBenefits, d.employerQpip ?? 0, d.reimbursements ?? 0].map(split);
+    parts.forEach(([dep], i) => {
+      const k = dep ?? 'none';
+      const row = byDept.get(k) ?? { departmentId: dep, wages: 0, cpp: 0, ei: 0, qpip: 0, benefits: 0, reimbursements: 0 };
+      row.wages += wages![i]!;
+      row.cpp += cpp![i]!;
+      row.ei += ei![i]!;
+      row.benefits += ben![i]!;
+      row.qpip += qpip![i]!;
+      row.reimbursements += reimb![i]!;
+      byDept.set(k, row);
+    });
     credits.ordersPayable += (d.orders ?? []).reduce((a, o) => a + o.amount, 0);
     credits.recoveries += d.oneTimeDeductions ?? 0;
-    byDept.set(k, row);
     credits.eiPayable += d.ei + Number(s.employerEi);
     if (d.plan === 'QPP') {
       // Quebec: QPP, QPIP and Quebec tax go to Revenu Québec; EI and federal tax to CRA.
