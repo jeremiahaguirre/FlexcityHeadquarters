@@ -19,6 +19,7 @@ import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { db, tenantIds, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, notFound } from '../../lib/errors.js';
+import { csvCell } from '../payroll/export.js';
 
 export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
 export const CHART_KEYS = ['bank', 'ar', 'gstHst', 'qst', 'pst', 'equity', 'revFacility', 'revClub', 'revAddOns', 'revOther', 'credits', 'bankFees', 'badDebt'] as const;
@@ -165,7 +166,8 @@ function merge(lines: Line[]): Line[] {
 }
 
 export function journalCsv(entries: Entry[], accounts: Account[]): string {
-  const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  // Quoted, with spreadsheet formulas neutralised (a name like =HYPERLINK(...) stays text).
+  const q = (v: unknown) => { const c = csvCell(String(v ?? '')); return c.startsWith('"') ? c : `"${c}"`; };
   const name = (c: string) => accounts.find((a) => a.code === c)?.name ?? '';
   const rows = entries.flatMap((e) => e.lines.map((l) => [e.date, e.reference, e.kind, l.account, name(l.account), l.debitCents ? (l.debitCents / 100).toFixed(2) : '', l.creditCents ? (l.creditCents / 100).toFixed(2) : '', e.organization ?? '', e.memo].map(q).join(',')));
   return [['Date', 'Reference', 'Type', 'Account', 'Account name', 'Debit', 'Credit', 'Organization', 'Memo'].map(q).join(','), ...rows].join('\r\n');

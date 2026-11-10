@@ -8,9 +8,9 @@ import { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
-import { platformOf } from '../../auth/platform.js';
+import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { type Tx, tenantIds, withTenant } from '../../lib/db.js';
-import { badRequest, conflict, notFound } from '../../lib/errors.js';
+import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { FEATURE_KEYS, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
@@ -471,6 +471,7 @@ citiesRouter.post(
 /** Creates the rows that passed the check; rows with problems or already on staff are skipped. */
 citiesRouter.post(
   '/tenants/:id/import',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
@@ -483,6 +484,10 @@ citiesRouter.post(
         const pv = await preview(tx, csv);
         if (pv.missingColumns.length) throw badRequest(`Missing columns: ${pv.missingColumns.join(', ')}`);
         const ready = pv.rows.filter((r) => r.status === 'create');
+        // FH creates a city's first HR administrators while setting it up; after that, only the city's own HR can.
+        if (ready.some((r) => r.roles.includes('HR_ADMIN')) && (await tx.user.count({ where: { status: 'ACTIVE', roles: { has: 'HR_ADMIN' } } }))) {
+          throw forbidden('This organization already has an HR administrator: only its own HR can add more. Remove HR_ADMIN from the file.');
+        }
         for (const r of ready) {
           const u = await tx.user.create({
             data: {
@@ -572,10 +577,13 @@ citiesRouter.get(
 /** Require a passkey as a second factor for everyone with this access level. */
 citiesRouter.put(
   '/tenants/:id/access/mfa',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const body = z.object({ role: z.enum(ROLE_KEYS), required: z.boolean() }).parse(req.body);
+    // HR administrators always need a second factor; FH can't take that away.
+    if (body.role === 'HR_ADMIN' && !body.required) throw forbidden('HR administrators always need a second factor.');
     const out = await cityOr404(id, async (tx) => {
       const t = await tx.tenant.findUniqueOrThrow({ where: { id }, select: { roleOverrides: true, features: true, mfaRoles: true } });
       const mfaRoles = body.required ? [...new Set([...t.mfaRoles, body.role])] : t.mfaRoles.filter((r) => r !== body.role);
@@ -600,10 +608,13 @@ citiesRouter.put(
 
 citiesRouter.put(
   '/tenants/:id/access/permission',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const body = z.object({ role: z.enum(ROLE_KEYS), permission: z.enum(PERMISSIONS as unknown as [Permission, ...Permission[]]), on: z.boolean() }).parse(req.body);
+    // FH can switch a role's access off, or back on to its defaults; widening it is the city's decision (its own roles).
+    if (body.on && !ROLE_PERMISSIONS[body.role].includes(body.permission)) throw forbidden('FH can’t give an access level more than its defaults. The city’s HR can make a role for that.');
     res.json(await saveOverrides(id, p.adminId, 'access.permission', body, (o) => setPermission(o, body.role, body.permission, body.on)));
   }),
 );

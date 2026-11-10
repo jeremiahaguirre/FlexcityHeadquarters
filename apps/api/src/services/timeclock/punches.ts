@@ -73,11 +73,14 @@ export async function clockOut(tx: Tx, userId: string) {
 /** Supervisor correction. The original value is preserved in TimePunchEdit. */
 export async function editPunch(
   tx: Tx,
-  input: { tenantId: string; actorId: string; punchId: string; clockIn?: Date; clockOut?: Date; reason: string },
+  input: { tenantId: string; actorId: string; punchId: string; clockIn?: Date; clockOut?: Date; reason: string; inScope?: (userId: string) => Promise<boolean> },
 ) {
   if (!input.reason.trim()) throw badRequest('A reason is required to edit a punch.');
   const punch = await tx.timePunch.findUnique({ where: { id: input.punchId } });
   if (!punch) throw notFound('Punch');
+  // Nobody corrects their own time, or time outside their department.
+  if (punch.userId === input.actorId) throw forbidden('You can’t edit your own punches. Ask another supervisor.');
+  if (input.inScope && !(await input.inScope(punch.userId))) throw forbidden('This person isn’t in your department.');
   const next = { clockIn: input.clockIn ?? punch.clockIn, clockOut: input.clockOut ?? punch.clockOut };
   if (next.clockOut && next.clockOut <= next.clockIn) throw badRequest('Clock-out must be after clock-in.');
 
@@ -97,7 +100,9 @@ export async function editPunch(
       });
     }
   }
-  const updated = await tx.timePunch.update({ where: { id: punch.id }, data: { ...next, varianceReason: input.reason } });
+  const changed = (input.clockIn && input.clockIn.getTime() !== punch.clockIn.getTime()) || (input.clockOut && input.clockOut.getTime() !== punch.clockOut?.getTime());
+  // A changed approved punch goes back for approval (by someone other than the editor), so it can't be padded after the fact.
+  const updated = await tx.timePunch.update({ where: { id: punch.id }, data: { ...next, varianceReason: input.reason, ...(changed && punch.status === 'APPROVED' ? { status: 'PENDING' } : {}) } });
   await audit(tx, { tenantId: input.tenantId, actorId: input.actorId, action: 'punch.edit', entity: 'TimePunch', entityId: punch.id, before: punch, after: updated });
   return updated;
 }

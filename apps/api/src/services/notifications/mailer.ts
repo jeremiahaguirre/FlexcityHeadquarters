@@ -125,6 +125,26 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Le compte FlexcityHeadquarters de ${p.organization} est fermé. Les administrateurs peuvent encore se connecter, seulement pour télécharger une exportation complète de vos données (dossiers du personnel, horaires, temps, paie, incidents, documents), jusqu’au ${p.until}. Après cette date, elles sont supprimées.\n${p.url}`,
     }),
   },
+  sso_changed: {
+    'en-CA': () => ({
+      subject: 'Single sign-on settings were changed',
+      text: `Someone changed how your organization signs in to FlexcityHeadquarters (single sign-on). If this wasn't planned, review it now in Settings and check the audit log.`,
+    }),
+    'fr-CA': () => ({
+      subject: 'Les paramètres d’authentification unique ont été modifiés',
+      text: `Quelqu’un a modifié la façon dont votre organisation se connecte à FlexcityHeadquarters (authentification unique). Si ce n’était pas prévu, vérifiez-le maintenant dans les paramètres et consultez le journal d’audit.`,
+    }),
+  },
+  email_changed: {
+    'en-CA': (p) => ({
+      subject: 'Your FlexcityHeadquarters sign-in email was changed',
+      text: `Your organization changed the email you sign in with to ${p.newEmail}, and signed you out everywhere. If you didn't expect this, contact your HR department right away.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Votre courriel de connexion FlexcityHeadquarters a été modifié',
+      text: `Votre organisation a remplacé le courriel avec lequel vous vous connectez par ${p.newEmail}, et vous a déconnecté partout. Si vous ne vous y attendiez pas, communiquez sans tarder avec vos RH.`,
+    }),
+  },
   password_reset: {
     'en-CA': (p) => ({
       subject: 'Reset your FlexcityHeadquarters password',

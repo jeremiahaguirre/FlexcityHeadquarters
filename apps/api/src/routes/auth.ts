@@ -57,6 +57,14 @@ authRouter.post(
     // counter is committed even when the sign-in is refused.
     const outcome = await withTenant(tenantId, async (tx) => {
       const user = await tx.user.findUnique({ where: { tenantId_email: { tenantId, email: email.toLowerCase() } } });
+      // Decided before the password is checked, so these answers never confirm a correct password:
+      // closed (offboarded) organizations admit only administrators, single-sign-on-only ones only the
+      // people who can turn it off. Anyone else (or an unknown email) gets the same answer.
+      const canConfigure = !!user && permissionsFor(user.roles).has('tenant.configure');
+      const org = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { disabledAt: true } });
+      if (org.disabledAt && !canConfigure) return { kind: 'closed' as const };
+      const sso = await connectionFor(tx);
+      if (ready(sso) && sso.enforced && !canConfigure) return { kind: 'sso' as const };
       // Same error and similar timing whether or not the account exists.
       const ok = user?.passwordHash ? await verifyPassword(password, user.passwordHash) : await verifyPassword(password, 'scrypt$AAAA$AAAA').then(() => false);
       if (user?.lockedUntil && user.lockedUntil > new Date()) return { kind: 'locked' as const };
@@ -70,12 +78,6 @@ authRouter.post(
         }
         return { kind: 'invalid' as const };
       }
-      // Closed (offboarded): only administrators, and only to download the organization's data.
-      const org = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { disabledAt: true } });
-      if (org.disabledAt && !permissionsFor(user.roles).has('tenant.configure')) return { kind: 'closed' as const };
-      // Single sign-on only: passwords stay for the people who can turn it off, so nobody is locked out.
-      const sso = await connectionFor(tx);
-      if (ready(sso) && sso.enforced && !permissionsFor(user.roles).has('tenant.configure')) return { kind: 'sso' as const };
       if (user.failedLoginCount || user.lockedUntil) await tx.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null } });
       const refresh = await issueRefreshToken(tx, tenantId, user.id);
       return { kind: 'ok' as const, user, refresh };

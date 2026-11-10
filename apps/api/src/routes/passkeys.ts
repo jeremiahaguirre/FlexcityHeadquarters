@@ -14,6 +14,8 @@ import { HttpError, notFound } from '../lib/errors.js';
 import { authenticationOptions, deviceName, registrationOptions, tenantRp, verifyAuthentication, verifyRegistration } from '../services/auth/passkeys.js';
 import { COOKIE, cookieOpts } from './auth.js';
 import { h, lookupTenant, subdomainOf } from './context.js';
+import { permissionsFor } from '../auth/permissions.js';
+import { connectionFor, ready } from '../services/auth/sso.js';
 
 const uuid = z.string().uuid();
 // Shapes are checked by the WebAuthn library; here we only bound their size.
@@ -52,6 +54,12 @@ passkeyAuthRouter.post(
     const out = await withTenant(tenantId, async (tx) => {
       const user = await tx.user.findUniqueOrThrow({ where: { id: passkey!.userId } });
       if (user.status !== 'ACTIVE' || user.processingRestrictedAt || user.anonymizedAt) throw new HttpError(401, 'INVALID_CREDENTIALS', 'This account can’t sign in.');
+      // The same doors as password sign-in: closed organizations and single-sign-on-only ones.
+      const canConfigure = permissionsFor(user.roles).has('tenant.configure');
+      const org = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { disabledAt: true } });
+      if (org.disabledAt && !canConfigure) throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
+      const sso = await connectionFor(tx);
+      if (ready(sso) && sso.enforced && !canConfigure) throw new HttpError(403, 'SSO_REQUIRED', 'Your organization signs in with single sign-on.');
       await tx.passkey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
       if (user.failedLoginCount || user.lockedUntil) await tx.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null } });
       // A passkey is something you have, unlocked by something you are or know: both factors.

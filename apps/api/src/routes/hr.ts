@@ -18,6 +18,7 @@ import { forgetActive } from '../services/people/customRoles.js';
 import { peopleInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { h } from './context.js';
 import { leaveHoursFrom, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
+import { assertUserInScope } from '../services/people/scope.js';
 
 export const hrRouter = Router();
 hrRouter.use(['/leave', '/me/leave', '/reviews', '/me/reviews', '/training', '/me/training', '/grievances'], requireFeature('hrSuite'));
@@ -103,7 +104,9 @@ hrRouter.put(
     const a = authOf(req);
     const userId = uuid.parse(req.params.id);
     const b = z.object({ year: z.number().int().min(2020).max(2100), type: z.enum(LEAVE_TYPES), hours: z.number().min(0).max(2000), carryover: z.number().min(0).max(2000).default(0), note: z.string().trim().max(200).nullable().optional() }).parse(req.body);
+    if (userId === a.userId) throw forbidden('You can’t set your own leave entitlement.');
     await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
       await tx.leaveEntitlement.upsert({
         where: { userId_year_type: { userId, year: b.year, type: b.type } },
         update: { hours: b.hours, carryover: b.carryover, note: b.note ?? null },

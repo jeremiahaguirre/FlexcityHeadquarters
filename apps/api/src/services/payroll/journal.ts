@@ -12,6 +12,7 @@
  */
 import type { Tx } from '../../lib/db.js';
 import type { Deductions } from './tax.js';
+import { csvCell } from './export.js';
 
 export const ACCOUNT_KEYS = ['wages', 'employerCpp', 'employerEi', 'employerBenefits', 'employerQpip', 'cppPayable', 'eiPayable', 'taxPayable', 'pensionPayable', 'unionDuesPayable', 'benefitsPayable', 'quebecPayable', 'netPayClearing'] as const;
 export type AccountKey = (typeof ACCOUNT_KEYS)[number];
@@ -123,7 +124,8 @@ export async function payrollJournal(tx: Tx, runId: string) {
 }
 
 export function journalCsv(j: Awaited<ReturnType<typeof payrollJournal>>): string {
-  const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  // Quoted, with spreadsheet formulas neutralised (a name like =HYPERLINK(...) stays text).
+  const q = (v: unknown) => { const c = csvCell(String(v ?? '')); return c.startsWith('"') ? c : `"${c}"`; };
   const head = ['Date', 'Account', 'Segment', 'Debit', 'Credit', 'Description', 'Reference'];
   const rows = j.lines.map((l) => [j.date, l.account, l.segment ?? '', l.debit ? l.debit.toFixed(2) : '', l.credit ? l.credit.toFixed(2) : '', l.description, `FH-PAYRUN-${j.runId.slice(0, 8)}`].map(q).join(','));
   return [head.map(q).join(','), ...rows].join('\r\n');

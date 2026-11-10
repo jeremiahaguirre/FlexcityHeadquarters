@@ -30,6 +30,19 @@ export interface AuthContext {
 
 /** What someone who still owes a second factor may reach: enough to give it, or set up a passkey. */
 const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/step-up(\/|$)/];
+/** Powers that need the same second factor as HR. */
+const ADMIN_LEVEL = new Set<string>(['users.write', 'tenant.configure', 'payroll.approve', 'payroll.export', 'roles.manage', 'documents.manage', 'billing.manage', 'audit.read']);
+
+/** Never open to an FH support visit, whatever the organization allowed. */
+const SUPPORT_BLOCKED = [
+  /^\/api\/me\/.+/, // the granting person's own pay, documents, discipline…
+  /^\/api\/incidents\/[^/]+$/,
+  /^\/api\/(documents|accommodations|injury-claims|grievances|reviews|households|registrations|online-registrations|care\/checkins|people\/review|discipline)(\/|$)/,
+  /^\/api\/users\/[^/]+\/(documents|accommodations|case-file|discipline|records-export|records-export\.pdf|sin|reliability|conduct|pay-profile|bank-accounts)(\/|$)/,
+  /^\/api\/payroll\/(?!settings$|export-settings$).+/,
+  /^\/api\/data-export(\/|$)/,
+];
+
 /** All a closed organization's administrators can reach: who they are, their passkeys, and the export. */
 const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/step-up(\/options)?|data-export(\/.*)?)$/;
 const mfaExempt = (url: string) => MFA_EXEMPT.some((r) => r.test(url.split('?')[0]!));
@@ -67,7 +80,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       if (!exportOnly) throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
     }
     const mfa = claims.mfa === true;
-    const mfaPending = !mfa && claims.roles.some((r) => mfaRoles.includes(r));
+    // A second factor follows the access, not just the role's name: when the city requires it for HR,
+    // anyone holding HR-level powers through a custom role needs it too.
+    const adminLike = mfaRoles.includes('HR_ADMIN') && [...granted].some((p) => ADMIN_LEVEL.has(p));
+    const mfaPending = !mfa && (claims.roles.some((r) => mfaRoles.includes(r)) || adminLike);
     req.auth = {
       userId: claims.sub,
       tenantId: claims.tid,
@@ -90,6 +106,9 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       if (req.method !== 'GET' && !req.originalUrl.startsWith('/api/auth/logout')) throw new HttpError(403, 'SUPPORT_READ_ONLY', 'FH support can look, not change anything.');
       // The union local's hub is never open to FH, whoever allowed the visit.
       if (req.originalUrl.startsWith('/api/union')) throw new HttpError(403, 'FORBIDDEN', 'The union hub isn’t part of support access.');
+      // Nor are individual sensitive records, at any level: support helps with setup and schedules,
+      // it doesn't read narratives, health or HR files, children's details, SINs or anyone's own pages.
+      if (SUPPORT_BLOCKED.some((r) => r.test(req.originalUrl.split('?')[0]!))) throw new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.');
       req.auth.permissions.delete('union.hub');
     }
     // Unpaid past the grace period: read-only, except safety work, clocking and paying.

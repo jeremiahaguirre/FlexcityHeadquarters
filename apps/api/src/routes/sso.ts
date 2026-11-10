@@ -5,7 +5,7 @@
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, consumeAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, issueRefreshToken, signAccessToken } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
@@ -121,11 +121,19 @@ ssoRouter.get(
 
 const PEM = /^(-----BEGIN CERTIFICATE-----)?[\sA-Za-z0-9+/=]+(-----END CERTIFICATE-----)?$/;
 
+/** Who signs everyone in is the most sensitive setting there is: recent sign-in with a second factor, never a support visit. */
+function assertStrongAdmin(a: ReturnType<typeof authOf>) {
+  if (a.support) throw new HttpError(403, 'SUPPORT_READ_ONLY', 'FH support can look, not change anything.');
+  if (!a.mfa) throw new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey to change single sign-on.');
+}
+
 ssoRouter.put(
   '/sso',
   requirePermission('tenant.configure'),
+  requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    assertStrongAdmin(a);
     const b = body.parse(req.body);
     if (b.protocol === 'OIDC') {
       if (b.oidcIssuer) {
@@ -156,6 +164,13 @@ ssoRouter.put(
         samlCert: b.samlCert ?? null,
       };
       const c = before ? await tx.ssoConnection.update({ where: { id: before.id }, data }) : await tx.ssoConnection.create({ data: { tenantId: a.tenantId, ...data } });
+      // A different identity provider: no account stays bound to the old one, and every HR administrator is told.
+      const providerChanged = !before || before.protocol !== data.protocol || before.oidcIssuer !== data.oidcIssuer || before.oidcClientId !== data.oidcClientId || before.samlEntryPoint !== data.samlEntryPoint || before.samlCert !== data.samlCert || before.samlIdpIssuer !== data.samlIdpIssuer;
+      if (providerChanged || (data.enabled && !before?.enabled)) {
+        if (providerChanged) await tx.user.updateMany({ where: { ssoSubject: { not: null } }, data: { ssoSubject: null } });
+        const admins = await tx.user.findMany({ where: { status: 'ACTIVE', roles: { has: 'HR_ADMIN' } }, select: { email: true, locale: true } });
+        for (const ad of admins) await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: ad.email, template: 'sso_changed', locale: ad.locale, params: { protocol: data.protocol, enabled: String(data.enabled) } } });
+      }
       const { oidcSecret: _s, ...after } = data as typeof data & { oidcSecret?: unknown };
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'sso.configure', entity: 'SsoConnection', entityId: c.id, after: { ...after, secretChanged: !!secret } });
       return c;
@@ -167,8 +182,10 @@ ssoRouter.put(
 ssoRouter.delete(
   '/sso',
   requirePermission('tenant.configure'),
+  requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    assertStrongAdmin(a);
     await withTenant(a.tenantId, async (tx) => {
       const c = await connectionFor(tx);
       if (!c) return;

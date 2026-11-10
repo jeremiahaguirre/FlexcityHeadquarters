@@ -184,8 +184,9 @@ describe('OpenID Connect (Microsoft Entra ID)', () => {
     await api().put('/api/sso', { ...oidcConfig, oidcIssuer: issuer, enforced: true });
     expect((await anon.post('/api/auth/login', { email: staffEmail, password: 'staff password 1' })).body.code).toBe('SSO_REQUIRED');
     expect((await anon.post('/api/auth/login', { email: `hr@${SUB}.test`, password: 'hr password 12' })).status).toBe(200);
-    // A wrong password still says only that.
-    expect((await anon.post('/api/auth/login', { email: staffEmail, password: 'wrong' })).body.code).toBe('INVALID_CREDENTIALS');
+    // The answer doesn't depend on the password, so it can't be used to confirm one.
+    expect((await anon.post('/api/auth/login', { email: staffEmail, password: 'wrong' })).body.code).toBe('SSO_REQUIRED');
+    expect((await anon.post('/api/auth/login', { email: `nobody@${SUB}.test`, password: 'wrong' })).body.code).toBe('SSO_REQUIRED');
     await api().put('/api/sso', { ...oidcConfig, oidcIssuer: issuer, enforced: false });
   });
 

@@ -14,7 +14,7 @@ import { reviewList } from '../services/people/reviewList.js';
 import { h } from './context.js';
 import { peopleInScope } from '../services/people/scope.js';
 import { departmentFilter, departmentQuery } from '../services/people/departmentAdmin.js';
-import { hrRecordsBy } from '../services/people/scope.js';
+import { assertUserInScope, hrRecordsBy } from '../services/people/scope.js';
 
 export const peopleRouter = Router();
 const uuid = z.string().uuid();
@@ -100,6 +100,9 @@ peopleRouter.post(
     await withTenant(a.tenantId, async (tx) => {
       const e = await tx.reliabilityEvent.findUnique({ where: { id } });
       if (!e) throw notFound('Event');
+      // Not your own record, and only for people in your department.
+      if (e.userId === a.userId) throw forbidden('You can’t excuse your own record.');
+      await assertUserInScope(tx, a, e.userId);
       if (e.excludedReason) throw conflict('ALREADY_EXCUSED', 'This event is already excused.');
       await tx.reliabilityEvent.update({ where: { id }, data: { excludedReason: reason, excusedById: a.userId, excusedAt: new Date() } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'reliability.excuse', entity: 'ReliabilityEvent', entityId: id, after: { reason } });
@@ -150,6 +153,11 @@ peopleRouter.post(
     await withTenant(a.tenantId, async (tx) => {
       const n = await tx.conductNote.findUnique({ where: { id } });
       if (!n) throw notFound('Note');
+      // Not a note about you; outside HR, only notes you wrote yourself.
+      if (n.userId === a.userId) throw forbidden('You can’t retract a note about yourself.');
+      const by = hrRecordsBy(a);
+      if (by && n.recordedById !== by) throw forbidden('Only HR, or whoever wrote the note, can retract it.');
+      await assertUserInScope(tx, a, n.userId);
       if (n.retractedAt) throw conflict('ALREADY_RETRACTED', 'This note is already retracted.');
       await tx.conductNote.update({ where: { id }, data: { retractedAt: new Date(), retractedReason: reason } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'conduct.retract', entity: 'ConductNote', entityId: id, after: { reason } });

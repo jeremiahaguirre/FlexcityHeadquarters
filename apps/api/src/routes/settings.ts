@@ -81,7 +81,9 @@ settingsRouter.patch(
       .partial()
       .parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      const before = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
+      const row = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
+      // Only the fields that changed: the full row holds sealed payroll and bank-connection settings.
+      const before = Object.fromEntries(Object.keys(body).map((k) => [k, (row as Record<string, unknown>)[k]]));
       await tx.tenant.update({ where: { id: a.tenantId }, data: body as Prisma.TenantUpdateInput });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.update', entity: 'Tenant', entityId: a.tenantId, before, after: body });
     });

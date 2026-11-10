@@ -10,6 +10,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
+import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
@@ -21,6 +22,7 @@ import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.j
 import { type Person, ROE_REASONS, type RoeReason, payPeriodType, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
 import type { MailingAddress } from '../services/payroll/bank.js';
 import { h } from './context.js';
+import { csvCell } from '../services/payroll/export.js';
 
 export const payrollRouter = Router();
 payrollRouter.use(['/payroll', '/me/pay', '/me/pay-statements', '/me/bank-accounts', '/me/pay-profile'], requireFeature('payroll'));
@@ -363,7 +365,8 @@ payrollRouter.get(
       const rows = await tx.payStatement.findMany({ where: { payRunId: id } });
       const users = await tx.user.findMany({ where: { id: { in: rows.map((s) => s.userId) } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true } });
       const depts = await tx.department.findMany({ select: { id: true, name: true } });
-      const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      // Quoted, with spreadsheet formulas neutralised (a name like =HYPERLINK(...) stays text).
+  const q = (v: unknown) => { const c = csvCell(String(v ?? '')); return c.startsWith('"') ? c : `"${c}"`; };
       const head = ['Employee number', 'Name', 'Department', 'Province', 'Hours', 'Gross', 'CPP', 'CPP2', 'EI', 'Federal tax', 'Provincial tax', 'Extra tax', 'Pension', 'Union dues', 'Other benefits', 'Total deductions', 'Net', 'Employer CPP', 'Employer EI', 'Employer benefits', 'Paid by'];
       const lines = rows.map((s) => {
         const u = users.find((x) => x.id === s.userId);
@@ -387,8 +390,10 @@ payrollRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
+      // Tax profiles and banking: only for the people in the viewer's department, and every view is logged.
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.people.view', entity: 'Tenant', entityId: a.tenantId });
       const users = await tx.user.findMany({
-        where: { status: 'ACTIVE', anonymizedAt: null },
+        where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
         select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       });
@@ -497,6 +502,11 @@ payrollRouter.post(
     const id = uuid.parse(req.params.id);
     const { approve } = z.object({ approve: z.boolean() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      const acct = await tx.bankAccount.findUnique({ where: { id }, select: { userId: true } });
+      if (acct) {
+        if (acct.userId === a.userId) throw forbidden('You can’t verify your own bank account.');
+        await assertUserInScope(tx, a, acct.userId);
+      }
       await verifyBankAccount(tx, a.tenantId, id, a.userId, approve);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: approve ? 'payroll.bank.verify' : 'payroll.bank.reject', entity: 'BankAccount', entityId: id });
     });
@@ -663,7 +673,12 @@ payrollRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const userId = uuid.parse(req.params.userId);
-    res.json(await withTenant(a.tenantId, (tx) => roeFigures(tx, userId)));
+    res.json(
+      await withTenant(a.tenantId, async (tx) => {
+        await assertUserInScope(tx, a, userId);
+        return roeFigures(tx, userId);
+      }),
+    );
   }),
 );
 

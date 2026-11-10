@@ -1,4 +1,5 @@
-import { Prisma } from '@prisma/client';
+import { type AccessRole, Prisma } from '@prisma/client';
+import { permissionsFor } from '../auth/permissions.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
@@ -22,6 +23,20 @@ export const staffRouter = Router();
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const roles = z.array(z.enum(['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'UNION_STEWARD', 'EMPLOYEE'])).min(1);
+/**
+ * Nobody gives out more than they hold: outside HR for the whole organization, every permission of
+ * the roles being given must already be the actor's own; HR administrator can only be given by such
+ * an HR administrator; and nobody changes their own roles.
+ */
+function assertCanGrant(a: ReturnType<typeof authOf>, roles: readonly AccessRole[], targetId: string | null) {
+  if (targetId && targetId === a.userId) throw forbidden('You can’t change your own roles. Ask another administrator.');
+  if (roles.includes('HR_ADMIN') && (!a.roles.includes('HR_ADMIN') || a.scope)) throw forbidden('Only an HR administrator for the whole organization can give the HR administrator role.');
+  // HR for the whole organization assigns any role; everyone else only within their own access.
+  if (a.roles.includes('HR_ADMIN') && !a.scope) return;
+  const missing = [...permissionsFor(roles)].filter((p) => !a.permissions.has(p));
+  if (missing.length) throw forbidden('You can’t give a role with more access than your own.');
+}
+
 const d = (s: string | null | undefined) => (s ? new Date(`${s}T00:00:00Z`) : s === null ? null : undefined);
 const iso = (x: Date | null) => (x ? x.toISOString().slice(0, 10) : null);
 
@@ -400,6 +415,7 @@ staffRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = newUser.parse(req.body);
+    assertCanGrant(a, body.roles, null);
     const sub = subdomainOf(req)!;
     const u = await withTenant(a.tenantId, async (tx) => {
       const exists = await tx.user.findUnique({ where: { tenantId_email: { tenantId: a.tenantId, email: body.email.toLowerCase() } } });
@@ -480,7 +496,11 @@ staffRouter.patch(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const { customRoleIds, ...body } = hrPatch.parse(req.body);
-    if (id === a.userId && body.roles && !body.roles.includes('HR_ADMIN')) throw badRequest('You cannot remove your own HR administrator role.');
+    if (body.roles) {
+      if (id === a.userId && !body.roles.includes('HR_ADMIN') && a.roles.includes('HR_ADMIN')) throw badRequest('You cannot remove your own HR administrator role.');
+      // Keeping your own roles exactly as they are is fine; changing them isn't.
+      if (!(id === a.userId && [...body.roles].sort().join() === [...a.roles].sort().join())) assertCanGrant(a, body.roles, id);
+    }
     await withTenant(a.tenantId, async (tx) => {
       const before = await tx.user.findUnique({ where: { id } });
       if (!before || before.anonymizedAt) throw notFound('Staff member');
@@ -492,8 +512,17 @@ staffRouter.patch(
         vscClearedDate: d(body.vscClearedDate),
         dateOfBirth: d(body.dateOfBirth),
       };
+      // An account's roles can't be raised past the editor's own, even if they hold it already.
+      if (body.roles && before.roles.includes('HR_ADMIN') && !body.roles.includes('HR_ADMIN') && (!a.roles.includes('HR_ADMIN') || a.scope)) throw forbidden('Only an HR administrator can change another HR administrator’s roles.');
       await tx.user.update({ where: { id }, data });
       if (customRoleIds) await setUserCustomRoles(tx, a.tenantId, id, customRoleIds, actorOf(a));
+      // A new sign-in email: sessions end, and the old address is told (an account can't be quietly redirected).
+      const emailChanged = body.email && body.email.toLowerCase() !== before.email;
+      if (emailChanged) {
+        await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+        await tx.authToken.updateMany({ where: { userId: id, usedAt: null }, data: { usedAt: new Date() } });
+        await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: before.email, template: 'email_changed', locale: before.locale, params: { newEmail: body.email!.toLowerCase().replace(/^(.).*(@.*)$/, '$1•••$2') } } });
+      }
       if (body.status && body.status !== 'ACTIVE') {
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
         forgetActive(id);

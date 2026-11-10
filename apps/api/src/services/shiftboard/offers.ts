@@ -151,6 +151,7 @@ export async function decideOffer(
     throw conflict('NOT_PENDING', 'This claim is no longer awaiting approval.');
   }
   const claimantId = fresh.claimedById;
+  if (claimantId === actor.userId) throw forbidden('You can’t approve or deny your own claim. Another supervisor decides.');
 
   if (decision === 'DENY') {
     await tx.shiftOffer.update({

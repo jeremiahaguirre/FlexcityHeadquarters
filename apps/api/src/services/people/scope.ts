@@ -11,11 +11,18 @@ import type { RoleActor, Scope } from './customRoles.js';
 
 export const actorOf = (a: AuthContext): RoleActor => ({ permissions: a.permissions, scope: a.scope });
 
-/** Prisma filter: people in scope. */
+/** No limit on people: unscoped, or a scope with neither positions nor facilities. */
+const everyone = (s: Scope) => !s || (!s.positionIds.length && !s.facilityIds.length);
+
+/** Prisma filter: people in scope. A role limited only to facilities reaches the people who work there. */
 export function peopleWhere(s: Scope): Prisma.UserWhereInput {
-  if (!s || !s.positionIds.length) return {};
-  const byRole: Prisma.UserWhereInput[] = s.accessRoles?.length ? [{ roles: { hasSome: s.accessRoles as never[] } }] : [];
-  return { AND: [{ OR: [{ positions: { some: { positionId: { in: s.positionIds } } } }, ...byRole] }] };
+  if (everyone(s)) return {};
+  if (!s!.positionIds.length) {
+    const at = { facilityId: { in: s!.facilityIds } };
+    return { AND: [{ OR: [{ shifts: { some: at } }, { timePunches: { some: at } }] }] };
+  }
+  const byRole: Prisma.UserWhereInput[] = s!.accessRoles?.length ? [{ roles: { hasSome: s!.accessRoles as never[] } }] : [];
+  return { AND: [{ OR: [{ positions: { some: { positionId: { in: s!.positionIds } } } }, ...byRole] }] };
 }
 
 /** Filter for anything placed at a facility for a position (lesson classes, …). */
@@ -38,7 +45,7 @@ export function shiftInScope(s: Scope, shift: { positionId: string; facilityId: 
 }
 
 export async function userInScope(tx: Tx, s: Scope, userId: string): Promise<boolean> {
-  if (!s || !s.positionIds.length) return true;
+  if (everyone(s)) return true;
   return (await tx.user.count({ where: { id: userId, ...peopleWhere(s) } })) > 0;
 }
 
@@ -52,7 +59,7 @@ export function assertShiftInScope(a: AuthContext, shift: { positionId: string; 
 
 /** The people a lead limited to some positions may see, or null for everyone. */
 export async function peopleInScope(tx: Tx, s: Scope): Promise<Set<string> | null> {
-  if (!s || !s.positionIds.length) return null;
+  if (everyone(s)) return null;
   return new Set((await tx.user.findMany({ where: peopleWhere(s), select: { id: true } })).map((u) => u.id));
 }
 

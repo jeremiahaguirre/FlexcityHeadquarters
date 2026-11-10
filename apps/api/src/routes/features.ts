@@ -287,7 +287,7 @@ api.patch(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ clockIn: z.coerce.date().optional(), clockOut: z.coerce.date().optional(), reason: z.string().min(3) }).parse(req.body);
-    const p = await withTenant(a.tenantId, (tx) => editPunch(tx, { ...body, tenantId: a.tenantId, actorId: a.userId, punchId: uuid.parse(req.params.id) }));
+    const p = await withTenant(a.tenantId, (tx) => editPunch(tx, { ...body, tenantId: a.tenantId, actorId: a.userId, punchId: uuid.parse(req.params.id), inScope: (userId) => userInScope(tx, a.scope, userId) }));
     res.json({ id: p.id });
   }),
 );
