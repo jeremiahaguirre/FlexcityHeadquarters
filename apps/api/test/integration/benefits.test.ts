@@ -15,6 +15,7 @@ const tok = { hr: '', hr2: '', sup: '' };
 const call = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  put: (p: string, b: object = {}) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 
 beforeAll(async () => {
@@ -98,3 +99,41 @@ describe('benefits and deductions', () => {
     expect(dental).toMatchObject({ employee: 15, employer: 25 });
   });
 });
+
+describe('payroll accounting', () => {
+  it('posts each approved run as a balanced journal entry by department', async () => {
+    const dept = await call(tok.hr).post('/api/departments', { name: 'Aquatics', aquatic: true, positionIds: [t.position.id] });
+    expect((await call(tok.hr).put(`/api/accounting/departments/${dept.body.id}`, { glCode: '01-7400', labourBudget: 100000 })).status).toBe(200);
+    expect((await call(tok.hr).put('/api/accounting/accounts', { wages: '5100', employerCpp: '5110', employerEi: '5120', employerBenefits: '5130', cppPayable: '2210', eiPayable: '2220', taxPayable: '2230', pensionPayable: '2240', unionDuesPayable: '2250', benefitsPayable: '2260', netPayClearing: '1010' })).status).toBe(200);
+    // A second run, now inside the department.
+    for (const u of t.users) {
+      const start = new Date(Date.UTC(2026, 2, 17, 16));
+      await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: u.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 8 * 3_600_000), status: 'APPROVED' } });
+    }
+    const run = await call(tok.hr).post('/api/payroll/runs', { departmentId: dept.body.id, periodStart: '2026-03-16', weeks: 2, payDate: '2026-04-03' });
+    expect((await call(tok.hr2).post(`/api/payroll/runs/${run.body.id}/approve`)).status).toBe(200);
+    const j = (await call(tok.hr).get(`/api/accounting/journal/${run.body.id}`)).body;
+    expect(j.balanced).toBe(true);
+    expect(j.totalDebit).toBeCloseTo(j.totalCredit, 2);
+    const byKey = (k: string) => j.lines.filter((l: { key: string }) => l.key === k);
+    expect(byKey('wages')[0].segment).toBe('01-7400');
+    expect(byKey('pensionPayable')[0].credit).toBeGreaterThan(0);
+    expect(byKey('unionDuesPayable')[0].credit).toBe(20);
+    expect(byKey('benefitsPayable')[0].credit).toBeCloseTo(15 + 25 + 8, 2);
+    const detail = (await call(tok.hr).get(`/api/payroll/runs/${run.body.id}`)).body;
+    expect(byKey('netPayClearing')[0].credit).toBeCloseTo(detail.statements.reduce((a: number, s: { net: number }) => a + s.net, 0), 2);
+    const csv = await call(tok.hr).get(`/api/accounting/journal/${run.body.id}.csv`);
+    expect(csv.headers['content-type']).toMatch(/text\/csv/);
+    expect(csv.text.split('\r\n')[0]).toBe('"Date","Account","Segment","Debit","Credit","Description","Reference"');
+  });
+
+  it('shows labour cost against budget, and keeps it from people without the permission', async () => {
+    const lc = (await call(tok.hr).get('/api/accounting/labour-cost?year=2026')).body;
+    const aq = lc.departments.find((d: { glCode: string | null }) => d.glCode === '01-7400');
+    expect(aq.budget).toBe(100000);
+    expect(aq.total).toBeGreaterThan(0);
+    expect(aq.used).toBeCloseTo((aq.total / 100000) * 100, 1);
+    expect((await call(tok.sup).get('/api/accounting/labour-cost?year=2026')).status).toBe(403);
+  });
+});
+

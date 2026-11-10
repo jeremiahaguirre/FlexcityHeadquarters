@@ -24,6 +24,7 @@ export const PERMISSIONS = [
   'payroll.export', // prepare pay runs, payroll records, direct deposit details
   'payroll.approve', // release pay runs and bank deposit files; payroll settings
   'benefits.manage', // benefit plans and who is enrolled
+  'accounting.manage', // GL journal entries, chart of accounts, labour cost against budget
   'ops.chemical.record',
   'ops.chemical.signoff',
   'ops.pool.close', // confirm / dismiss closure recommendations, reopen
@@ -100,6 +101,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'payroll.export',
     'payroll.approve',
     'benefits.manage',
+    'accounting.manage',
     'incidents.read',
     'discipline.read',
     'discipline.write',
