@@ -3,6 +3,7 @@
 import { CalendarClock, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MyLeaveBalances } from '@/components/hr/LeaveBalances';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
@@ -86,6 +87,7 @@ export default function TimeOffPage() {
           </Button>
         }
       />
+      <MyLeaveBalances />
       {list.loading ? (
         <ListSkeleton />
       ) : list.error ? (

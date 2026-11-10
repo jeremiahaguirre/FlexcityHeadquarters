@@ -1,4 +1,4 @@
-import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Wallet, HeartPulse } from 'lucide-react';
+import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -31,6 +31,7 @@ export const NAV: NavItem[] = [
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: true },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: true },
+  { href: '/manage/hr', key: 'hr', icon: Building2, group: 'manage', permission: 'leave.manage', ready: true },
   { href: '/members', key: 'members', icon: IdCard, group: 'manage', permission: 'members.manage', tab: 7, ready: true },
   { href: '/manage/programs', key: 'programs', icon: Layers, group: 'manage', permission: 'lessons.plan', ready: true },
   { href: '/manage/schedule', key: 'manageSchedule', icon: Activity, group: 'manage', permission: 'schedule.write', ready: true },
@@ -39,6 +40,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', permission: 'users.read', ready: true },
   { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', permission: 'overtime.manage', ready: true },
   { href: '/manage/onboarding', key: 'onboarding', icon: ClipboardList, group: 'manage', permission: ['onboarding.hr', 'onboarding.lead'], ready: true },
+  { href: '/manage/training', key: 'training', icon: GraduationCap, group: 'manage', permission: 'training.manage', ready: true },
   { href: '/manage/injuries', key: 'injuries', icon: Bandage, group: 'manage', permission: 'injury.manage', ready: true },
   { href: '/manage/care', key: 'care', icon: HeartHandshake, group: 'manage', permission: 'care.manage', ready: true },
   { href: '/manage/lone-work', key: 'loneWorkMonitor', icon: Radio, group: 'manage', permission: 'lonework.monitor', ready: true },

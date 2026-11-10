@@ -28,8 +28,8 @@ describe('menus per role', () => {
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/people', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/roles', '/manage/billing', '/manage/settings'],
-      home: '/manage/approvals',
+      items: ['/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/training', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/people', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/roles', '/manage/billing', '/manage/settings'],
+      home: '/manage/hr',
     });
   });
 
@@ -52,7 +52,7 @@ describe('menus per role', () => {
       return phoneTabs(visibleNav((p) => perms.has(p as never))).tabs.map((n) => n.href);
     };
     expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/headcount', '/board']);
-    expect(tabsFor('HR_ADMIN')).toEqual(['/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding']);
+    expect(tabsFor('HR_ADMIN')).toEqual(['/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime']);
     expect(tabsFor('UNION_STEWARD')).toEqual(['/union']);
   });
 
