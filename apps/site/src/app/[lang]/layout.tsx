@@ -1,3 +1,4 @@
+import { Analytics } from '@vercel/analytics/next';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
@@ -47,6 +48,8 @@ export default async function LangLayout(props: { children: ReactNode; params: P
         <SiteHeader lang={params.lang} />
         <main id="main">{children}</main>
         <SiteFooter lang={params.lang} />
+        {/* Vercel Web Analytics: page views and visitors, no cookies. */}
+        <Analytics />
       </body>
     </html>
   );

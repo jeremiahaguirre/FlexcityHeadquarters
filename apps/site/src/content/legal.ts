@@ -17,7 +17,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
         {
           heading: 'This website',
           body: [
-            'The site does not use cookies, advertising pixels or third-party analytics.',
+            'The site does not use cookies or advertising pixels. To count visits, it uses Vercel Web Analytics, run by our hosting provider: it records the pages viewed, the referring site, and the country, browser and type of device, without cookies and without identifying you; visitors are told apart only by a hash that changes every day.',
             'When you send the contact form we collect your name, work email, organization, role, province, number of facilities and your message. We use them only to reply and, if you tick the box, to send product news. We keep a record of the wording you agreed to and when, as Canada’s Anti-Spam Legislation (CASL) requires.',
             'Our hosting provider keeps standard server logs (IP address, browser, pages requested) for security for a short period.',
           ],
@@ -89,7 +89,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
         {
           heading: 'Ce site',
           body: [
-            'Le site n’utilise ni témoins (cookies), ni pixels publicitaires, ni outils d’analyse de tiers.',
+            'Le site n’utilise ni témoins (cookies) ni pixels publicitaires. Pour compter les visites, il utilise Vercel Web Analytics, fourni par notre hébergeur : l’outil consigne les pages consultées, le site d’où vous venez, ainsi que le pays, le navigateur et le type d’appareil, sans témoins et sans vous identifier; les visiteurs ne sont distingués que par une empreinte qui change chaque jour.',
             'Lorsque vous envoyez le formulaire de contact, nous recueillons votre nom, votre courriel professionnel, votre organisation, votre rôle, votre province, le nombre d’installations et votre message. Nous les utilisons seulement pour vous répondre et, si vous cochez la case, pour vous envoyer des nouvelles. Nous conservons le libellé accepté et la date, comme l’exige la Loi canadienne anti-pourriel (LCAP).',
             'Notre hébergeur conserve brièvement des journaux de serveur standards (adresse IP, navigateur, pages consultées) à des fins de sécurité.',
           ],
