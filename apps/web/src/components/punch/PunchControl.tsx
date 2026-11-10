@@ -92,6 +92,8 @@ function PunchCard({ bare = false, onDone }: { bare?: boolean; onDone?: () => vo
   // Celebrate when a clock-in lands (not on page load, not when asking where).
   const prev = useRef<string | null | undefined>(undefined);
   useEffect(() => {
+    // Wait for the first answer: an already-open punch arriving on page load isn't a new clock-in.
+    if (punch.loading) return;
     const id = punch.open?.id ?? null;
     if (prev.current === null && id) {
       setBurst((b) => b + 1);
@@ -102,7 +104,7 @@ function PunchCard({ bare = false, onDone }: { bare?: boolean; onDone?: () => vo
       }
     }
     prev.current = id;
-  }, [punch.open?.id]);
+  }, [punch.open?.id, punch.loading]);
 
   async function clockIn() {
     await punch.clockInNow();
