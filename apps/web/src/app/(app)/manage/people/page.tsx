@@ -18,9 +18,11 @@ import { type ReviewRow, dayOf } from '@/lib/people';
 import { useQuery } from '@/lib/useQuery';
 import { DepartmentTabs } from '@/components/DepartmentTabs';
 import { departmentParam, useDepartmentTab } from '@/lib/departments';
+import { useSession } from '@/lib/session';
 
 export default function PeopleReviewPage() {
   const { t, i18n } = useTranslation();
+  const { me } = useSession();
   const lng = i18n.language;
   const [department, setDepartment] = useDepartmentTab();
   const list = useQuery<ReviewRow[]>(`/api/people/review${departmentParam(department, true)}`);
@@ -30,7 +32,7 @@ export default function PeopleReviewPage() {
 
   return (
     <div className="grid gap-6">
-      <PageHeader title={t('people.title')} description={t('people.description')} />
+      <PageHeader title={t('people.title')} description={me?.roles.includes('HR_ADMIN') ? t('people.description') : t('people.descriptionMine')} />
       <DepartmentTabs value={department} onChange={setDepartment} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Segmented

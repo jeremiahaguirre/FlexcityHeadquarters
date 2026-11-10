@@ -14,6 +14,7 @@ import { reviewList } from '../services/people/reviewList.js';
 import { h } from './context.js';
 import { peopleInScope } from '../services/people/scope.js';
 import { departmentFilter, departmentQuery } from '../services/people/departmentAdmin.js';
+import { hrRecordsBy } from '../services/people/scope.js';
 
 export const peopleRouter = Router();
 const uuid = z.string().uuid();
@@ -30,7 +31,7 @@ peopleRouter.get(
       const u = await tx.user.findUnique({ where: { id: userId }, select: { id: true, anonymizedAt: true } });
       if (!u || u.anonymizedAt) throw notFound('Staff member');
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'casefile.view', entity: 'User', entityId: userId });
-      return loadCaseFile(tx, userId);
+      return loadCaseFile(tx, userId, new Date(), hrRecordsBy(a));
     });
     res.json(file);
   }),
@@ -55,7 +56,7 @@ peopleRouter.get(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'people.review.view', entity: 'Tenant', entityId: a.tenantId });
       const department = departmentQuery.parse(req.query.department);
       const [rows, people, inDepartment] = await Promise.all([
-        reviewList(tx),
+        reviewList(tx, new Date(), hrRecordsBy(a)),
         peopleInScope(tx, a.scope),
         department ? tx.user.findMany({ where: departmentFilter(department), select: { id: true } }).then((u) => new Set(u.map((x) => x.id))) : null,
       ]);

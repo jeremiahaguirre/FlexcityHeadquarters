@@ -22,6 +22,7 @@ careRouter.get(
     const a = authOf(req);
     const rows = await withTenant(a.tenantId, async (tx) => {
       const people = await peopleInScope(tx, a.scope);
+      // Supervisors do these check-ins, so they see their department's; only that one happened is kept.
       const list = await tx.careCheckIn.findMany({ where: { OR: [{ status: 'OFFERED' }, { completedAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }], ...(people ? { userId: { in: [...people] } } : {}) }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }] });
       const [users, incidents] = await Promise.all([
         tx.user.findMany({ where: { id: { in: [...new Set(list.map((c) => c.userId))] } }, select: { id: true, firstName: true, lastName: true } }),

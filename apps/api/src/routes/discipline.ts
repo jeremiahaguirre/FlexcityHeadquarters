@@ -8,6 +8,7 @@ import { notify } from '../services/notifications/notifier.js';
 import { POINTS } from '../services/reliability/score.js';
 import { LEVELS, SERIOUS_LEVELS, requiredChecks } from '../services/people/review.js';
 import { h } from './context.js';
+import { hrRecordsBy } from '../services/people/scope.js';
 
 export const disciplineRouter = Router();
 const uuid = z.string().uuid();
@@ -45,7 +46,9 @@ disciplineRouter.get(
     const a = authOf(req);
     const userId = uuid.parse(req.params.id);
     const rows = await withTenant(a.tenantId, async (tx) => {
-      const list = await tx.disciplinaryRecord.findMany({ where: { userId }, orderBy: { issuedAt: 'desc' } });
+      // HR sees every record; other supervisors only the ones they issued.
+      const by = hrRecordsBy(a);
+      const list = await tx.disciplinaryRecord.findMany({ where: { userId, ...(by ? { issuedById: by } : {}) }, orderBy: { issuedAt: 'desc' } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'discipline.view', entity: 'User', entityId: userId });
       return list;
     });

@@ -6,11 +6,16 @@ import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { BOARDS, reportDue, reportRequired } from '../services/injury/boards.js';
-import { assertUserInScope, peopleInScope } from '../services/people/scope.js';
+import { assertUserInScope, peopleInScope, hrRecordsBy } from '../services/people/scope.js';
 import { h } from './context.js';
 
 export const injuryRouter = Router();
 injuryRouter.use('/injury-claims', requireFeature('injuryClaims'));
+/** HR sees every claim; other supervisors only the ones they opened or filed. */
+const involvedClaim = (a: ReturnType<typeof authOf>) => {
+  const by = hrRecordsBy(a);
+  return by ? { OR: [{ createdById: by }, { filedById: by }] } : {};
+};
 const uuid = z.string().uuid();
 
 injuryRouter.get(
@@ -20,7 +25,7 @@ injuryRouter.get(
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
       const inScope = await peopleInScope(tx, a.scope);
-      const list = await tx.injuryClaim.findMany({ where: { OR: [{ status: 'OPEN' }, { createdAt: { gte: new Date(Date.now() - 365 * 86_400_000) } }], ...(inScope ? { userId: { in: [...inScope] } } : {}) }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], take: 300 });
+      const list = await tx.injuryClaim.findMany({ where: { OR: [{ status: 'OPEN' }, { createdAt: { gte: new Date(Date.now() - 365 * 86_400_000) } }], ...(inScope ? { userId: { in: [...inScope] } } : {}), AND: [involvedClaim(a)] }, orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], take: 300 });
       const people = await tx.user.findMany({ where: { id: { in: [...new Set(list.map((c) => c.userId))] } }, select: { id: true, firstName: true, lastName: true } });
       return list.map((c) => {
         const p = people.find((x) => x.id === c.userId);
@@ -76,7 +81,7 @@ injuryRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = z.object({ lostTime: z.boolean().optional(), healthCare: z.boolean().optional(), accommodationId: uuid.nullable().optional() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      const c = await tx.injuryClaim.findUnique({ where: { id } });
+      const c = await tx.injuryClaim.findFirst({ where: { id, ...involvedClaim(a) } });
       if (!c) throw notFound('Injury');
       const lostTime = b.lostTime ?? c.lostTime;
       const healthCare = b.healthCare ?? c.healthCare;
@@ -96,7 +101,7 @@ injuryRouter.post(
     const id = uuid.parse(req.params.id);
     const { claimNumber } = z.object({ claimNumber: z.string().trim().max(40).nullable().optional() }).parse(req.body ?? {});
     await withTenant(a.tenantId, async (tx) => {
-      const c = await tx.injuryClaim.findUnique({ where: { id } });
+      const c = await tx.injuryClaim.findFirst({ where: { id, ...involvedClaim(a) } });
       if (!c) throw notFound('Injury');
       if (c.status === 'FILED') throw conflict('ALREADY_FILED', 'Already recorded as filed.');
       await tx.injuryClaim.update({ where: { id }, data: { status: 'FILED', filedAt: new Date(), filedById: a.userId, claimNumber: claimNumber ?? null } });

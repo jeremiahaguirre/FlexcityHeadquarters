@@ -66,3 +66,10 @@ export async function incidentsWhere(tx: Tx, s: Scope): Promise<{ facilityId?: {
 export function assertPositionInScope(a: AuthContext, positionId: string) {
   if (a.scope && a.scope.positionIds.length && !a.scope.positionIds.includes(positionId)) throw notFound('Position');
 }
+
+/**
+ * HR records (discipline, notes, reliability, injuries, care, accommodations):
+ * HR administrators see all of them. Every other supervisor or manager sees only
+ * the ones they were directly involved in. Returns whose records to limit to.
+ */
+export const hrRecordsBy = (a: AuthContext): string | null => (a.roles.includes('HR_ADMIN') ? null : a.userId);

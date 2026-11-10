@@ -6,6 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { h } from './context.js';
+import { hrRecordsBy } from '../services/people/scope.js';
 
 export const accommodationRouter = Router();
 accommodationRouter.use(['/accommodations', '/me/accommodations', '/users/:id/accommodations'], requireFeature('accommodation'));
@@ -49,7 +50,9 @@ accommodationRouter.get(
     const userId = uuid.parse(req.params.id);
     const rows = await withTenant(a.tenantId, async (tx) => {
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'accommodation.view', entity: 'User', entityId: userId });
-      return tx.accommodationCase.findMany({ where: { userId }, orderBy: [{ status: 'asc' }, { startsOn: 'desc' }] });
+      // HR sees every case; anyone else only the cases they opened.
+      const by = hrRecordsBy(a);
+      return tx.accommodationCase.findMany({ where: { userId, ...(by ? { createdById: by } : {}) }, orderBy: [{ status: 'asc' }, { startsOn: 'desc' }] });
     });
     res.json(rows.map(view));
   }),
@@ -82,7 +85,8 @@ accommodationRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = body.partial().extend({ close: z.boolean().optional() }).parse(req.body);
     const c = await withTenant(a.tenantId, async (tx) => {
-      if (!(await tx.accommodationCase.findUnique({ where: { id } }))) throw notFound('Accommodation');
+      const by = hrRecordsBy(a);
+      if (!(await tx.accommodationCase.findFirst({ where: { id, ...(by ? { createdById: by } : {}) } }))) throw notFound('Accommodation');
       const { close, startsOn, endsOn, reviewOn, ...rest } = b;
       const updated = await tx.accommodationCase.update({
         where: { id },

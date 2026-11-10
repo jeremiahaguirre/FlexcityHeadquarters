@@ -1886,7 +1886,9 @@
       "Le score et les notes aident seulement les gestionnaires à voir quand une discussion pourrait aider. Rien ne planifie, ne sanctionne ni ne met fin à votre emploi automatiquement; une personne décide, et vous pouvez toujours répondre par écrit.",
       "Chaque consultation de votre dossier par un gestionnaire est consignée. Vous pouvez demander aux RH de corriger toute erreur, et vous avez le droit de consulter les renseignements détenus à votre sujet."
     ],
-    "skipsSteps": "Ceci saute des étapes de la discipline progressive. Expliquez pourquoi dans le résumé (par exemple, la gravité du manquement à la sécurité), ou choisissez une étape antérieure."
+    "skipsSteps": "Ceci saute des étapes de la discipline progressive. Expliquez pourquoi dans le résumé (par exemple, la gravité du manquement à la sécurité), ou choisissez une étape antérieure.",
+    "onlyMine": "Vous ne voyez que les dossiers que vous avez créés ou émis vous-même. Les RH voient le dossier complet.",
+    "descriptionMine": "Les personnes au sujet desquelles vous avez consigné quelque chose, d’après vos propres dossiers. Les RH voient le dossier complet de chacun."
   },
   "deck": {
     "title": "Rotation",

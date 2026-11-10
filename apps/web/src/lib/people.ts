@@ -59,6 +59,8 @@ export interface FileRecord {
   evidence: Evidence[];
 }
 export interface CaseFile {
+  /** The viewer isn't HR: only records they made themselves are shown. */
+  onlyMine?: boolean;
   score: number;
   review: Review;
   events: FileEvent[];

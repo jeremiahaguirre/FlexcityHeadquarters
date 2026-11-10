@@ -1886,7 +1886,9 @@
       "The score and notes only help managers notice when a conversation may help. Nothing schedules, disciplines or ends your employment automatically; a person decides, and you can always respond in writing.",
       "Every time a manager opens your file, it's logged. You can ask HR to correct anything inaccurate, and you have a right to see the information held about you."
     ],
-    "skipsSteps": "This skips steps in progressive discipline. Say in the summary why (for example, how serious the safety breach was), or choose an earlier step."
+    "skipsSteps": "This skips steps in progressive discipline. Say in the summary why (for example, how serious the safety breach was), or choose an earlier step.",
+    "onlyMine": "You see only the records you made or issued yourself. HR sees the full file.",
+    "descriptionMine": "People you’ve made records about, built from your own records. HR sees everyone’s full file."
   },
   "deck": {
     "title": "Rotation",

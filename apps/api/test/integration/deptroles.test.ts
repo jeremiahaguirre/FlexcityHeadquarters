@@ -103,7 +103,8 @@ describe('department supervisors and managers', () => {
     }
     expect((await call(m).get(`/api/onboarding/people/${ids.m1}`)).status).toBe(404);
     const review = await call(m).get('/api/people/review');
-    if (review.status === 200) expect(review.body.map((r: { id: string }) => r.id)).toEqual([ids.w1]);
+    // Not HR: only people they've made records about (none yet), even inside their department.
+    if (review.status === 200) expect(review.body.map((r: { id: string }) => r.id)).toEqual([]);
     const onboarding = await call(m).get('/api/onboarding/people');
     if (onboarding.status === 200) expect(JSON.stringify(onboarding.body)).not.toContain(ids.m1);
     // An incident reported by someone in another department stays out of their list.

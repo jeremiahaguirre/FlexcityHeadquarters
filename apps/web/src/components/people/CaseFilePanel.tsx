@@ -103,7 +103,7 @@ export function CaseFilePanel({ userId, name, unionMember }: { userId: string; n
     <Card id="case-file" className="lg:col-span-2">
       <CardHeader
         title={t('people.caseFile')}
-        description={t('people.caseFileHelp')}
+        description={f.onlyMine ? t('people.onlyMine') : t('people.caseFileHelp')}
         action={
           <div className="flex flex-wrap gap-2">
             {write ? (

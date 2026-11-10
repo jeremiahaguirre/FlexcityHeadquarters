@@ -9,6 +9,8 @@ import { type Review, review } from './review.js';
 const YEAR = 366 * 86_400_000;
 
 export interface CaseFile {
+  /** True when the viewer isn't HR and sees only the records they made; the score then covers only those. */
+  onlyMine: boolean;
   score: number;
   review: Review;
   events: Array<{ id: string; type: string; points: number; occurredAt: Date; note: string | null; counted: boolean; excludedReason: string | null; source: 'TIMECLOCK' | 'SHIFT_BOARD' | 'SCHEDULE' | 'SUPERVISOR' }>;
@@ -18,13 +20,14 @@ export interface CaseFile {
 
 const SOURCE = { LATE_PUNCH: 'TIMECLOCK', NO_SHOW: 'SCHEDULE', MISSED_IN_SERVICE: 'SUPERVISOR', LATE_DROP: 'SHIFT_BOARD', PICKED_UP_SHIFT: 'SHIFT_BOARD' } as const;
 
-export async function loadCaseFile(tx: Tx, userId: string, now = new Date()): Promise<CaseFile> {
+/** `onlyBy`: a supervisor who isn't HR sees only what they recorded or issued themselves. */
+export async function loadCaseFile(tx: Tx, userId: string, now = new Date(), onlyBy: string | null = null): Promise<CaseFile> {
   const since = new Date(now.getTime() - YEAR);
   const [events, leave, notes, records] = await Promise.all([
-    tx.reliabilityEvent.findMany({ where: { userId, occurredAt: { gte: since } }, orderBy: { occurredAt: 'desc' } }),
+    tx.reliabilityEvent.findMany({ where: { userId, occurredAt: { gte: since }, ...(onlyBy ? { recordedById: onlyBy } : {}) }, orderBy: { occurredAt: 'desc' } }),
     tx.timeOffRequest.findMany({ where: { userId } }),
-    tx.conductNote.findMany({ where: { userId, occurredAt: { gte: since } }, orderBy: { occurredAt: 'desc' } }),
-    tx.disciplinaryRecord.findMany({ where: { userId }, orderBy: { issuedAt: 'desc' } }),
+    tx.conductNote.findMany({ where: { userId, occurredAt: { gte: since }, ...(onlyBy ? { recordedById: onlyBy } : {}) }, orderBy: { occurredAt: 'desc' } }),
+    tx.disciplinaryRecord.findMany({ where: { userId, ...(onlyBy ? { issuedById: onlyBy } : {}) }, orderBy: { issuedAt: 'desc' } }),
   ]);
   const score = computeReliability(events, leave, now);
   const countedIds = new Set(score.counted.map((c) => c.id));
@@ -35,6 +38,7 @@ export async function loadCaseFile(tx: Tx, userId: string, now = new Date()): Pr
     return u ? `${u.firstName} ${u.lastName}` : '—';
   };
   return {
+    onlyMine: !!onlyBy,
     score: score.score,
     review: review(
       {

@@ -1,5 +1,5 @@
 import { exportPersonRecords } from '../services/privacy/recordsExport.js';
-import { assertShiftInScope, incidentsWhere, peopleInScope, userInScope } from '../services/people/scope.js';
+import { assertShiftInScope, hrRecordsBy, incidentsWhere, peopleInScope, userInScope } from '../services/people/scope.js';
 import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
@@ -390,8 +390,10 @@ api.get(
     // Staff can always see their own breakdown; managers need the permission.
     if (userId !== a.userId && !a.permissions.has('reliability.read')) throw forbidden();
     const out = await withTenant(a.tenantId, async (tx) => {
+      // HR (and the person themselves) see every event; other supervisors only those they recorded.
+      const by = userId === a.userId ? null : hrRecordsBy(a);
       const [events, leave] = await Promise.all([
-        tx.reliabilityEvent.findMany({ where: { userId } }),
+        tx.reliabilityEvent.findMany({ where: { userId, ...(by ? { recordedById: by } : {}) } }),
         tx.timeOffRequest.findMany({ where: { userId } }),
       ]);
       return computeReliability(events, leave, new Date());

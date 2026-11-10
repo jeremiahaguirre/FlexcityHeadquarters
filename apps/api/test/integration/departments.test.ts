@@ -169,3 +169,25 @@ describe('department managers', () => {
     expect(names((await call(tok.sup).get('/api/users')).body)).not.toContain(worker);
   });
 });
+
+describe('HR records', () => {
+  it('a supervisor sees only the records they were involved in; HR sees them all', async () => {
+    const at = new Date(Date.now() - 86_400_000).toISOString();
+    const note = (summary: string) => ({ category: 'CONDUCT', summary, occurredAt: at });
+    expect((await call(tok.hr).post(`/api/users/${ids.guard}/conduct-notes`, note('HR wrote this about a late return from break.'))).status).toBe(201);
+    expect((await call(tok.sup).post(`/api/users/${ids.guard}/conduct-notes`, note('Supervisor saw this on deck: phone use on the chair.'))).status).toBe(201);
+    const issued = await call(tok.hr).post(`/api/users/${ids.guard}/discipline`, { summary: 'Written warning issued by HR for repeated lateness.', level: null });
+    expect(issued.status).toBe(201);
+    const supFile = (await call(tok.sup).get(`/api/users/${ids.guard}/case-file`)).body;
+    expect(supFile.onlyMine).toBe(true);
+    expect(supFile.notes.map((n: { summary: string }) => n.summary)).toEqual(['Supervisor saw this on deck: phone use on the chair.']);
+    expect(supFile.records).toEqual([]);
+    expect((await call(tok.sup).get(`/api/users/${ids.guard}/discipline`)).body).toEqual([]);
+    const hrFile = (await call(tok.hr).get(`/api/users/${ids.guard}/case-file`)).body;
+    expect(hrFile.onlyMine).toBe(false);
+    expect(hrFile.notes).toHaveLength(2);
+    expect(hrFile.records).toHaveLength(1);
+    // People review: the supervisor sees the people they wrote about, nobody else.
+    expect((await call(tok.sup).get('/api/people/review')).body.map((r: { id: string }) => r.id)).toEqual([ids.guard]);
+  });
+});
