@@ -31,7 +31,14 @@ const RENAME = [
 // Logos are served by the API, which the static demo doesn't have: the demo embeds its own.
 const rename = (s) => RENAME.reduce((acc, [a, b]) => acc.split(a).join(b), s).replace(/\/api\/public\/logo\/[0-9a-f-]+\?v=[0-9a-f]+/g, '__DEMO_LOGO__');
 
-async function apiAs(who) {
+/** One API session per role for the whole run (sign-ins are rate limited). */
+const sessions = new Map();
+function apiAs(who) {
+  if (!sessions.has(who)) sessions.set(who, signIn(who));
+  return sessions.get(who);
+}
+
+async function signIn(who) {
   const r = await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-tenant-subdomain': 'kelowna' }, body: JSON.stringify({ email: `${who}@kelowna.test`, password: PASSWORD }) });
   const { accessToken, user } = await r.json();
   const call = async (method, path, body) => {
