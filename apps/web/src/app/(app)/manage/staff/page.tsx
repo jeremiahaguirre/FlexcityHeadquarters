@@ -19,6 +19,8 @@ import { useSession } from '@/lib/session';
 import { type CustomRole, roleName } from '@/lib/customRoles';
 import { EMPLOYMENT, type Position, ROLES } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { DepartmentTabs } from '@/components/DepartmentTabs';
+import { departmentParam, useDepartmentTab } from '@/lib/departments';
 
 interface Person {
   id: string;
@@ -41,7 +43,8 @@ export default function StaffPage() {
   const { can } = useSession();
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [q, setQ] = useState('');
-  const people = useQuery<Person[]>(`/api/users?status=${status}${q.trim().length > 1 ? `&q=${encodeURIComponent(q.trim())}` : ''}`);
+  const [department, setDepartment] = useDepartmentTab();
+  const people = useQuery<Person[]>(`/api/users?status=${status}${q.trim().length > 1 ? `&q=${encodeURIComponent(q.trim())}` : ''}${departmentParam(department)}`);
   const positions = useQuery<Position[]>('/api/positions');
   const cityRoles = useQuery<{ roles: CustomRole[] }>('/api/roles');
   const { run, busy } = useAction();
@@ -93,6 +96,9 @@ export default function StaffPage() {
           ) : undefined
         }
       />
+      <div className="mb-3">
+        <DepartmentTabs value={department} onChange={setDepartment} />
+      </div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-sm">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" aria-hidden="true" />

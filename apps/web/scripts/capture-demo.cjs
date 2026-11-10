@@ -265,6 +265,11 @@ async function capture(browser, role) {
       await page.locator('main [role=radiogroup] [role=radio]', { hasText: name }).first().click().catch(() => {});
       await page.waitForTimeout(700);
     }
+    // The department tab is remembered across pages: put it back on "All departments".
+    if (await page.locator('main [role=radiogroup][aria-label="Department"]').count()) {
+      await page.locator('main [role=radiogroup][aria-label="Department"] [role=radio]').first().click().catch(() => {});
+      await page.waitForTimeout(700);
+    }
     if (href === '/union') {
       await page.locator('main [role=radiogroup] [role=radio]').first().click().catch(() => {});
       await page.locator('main button:has(span.text-body-strong)').first().waitFor({ timeout: 10000 }).catch(() => {});

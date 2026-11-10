@@ -16,11 +16,14 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { formatDate } from '@/lib/format';
 import { type ReviewRow, dayOf } from '@/lib/people';
 import { useQuery } from '@/lib/useQuery';
+import { DepartmentTabs } from '@/components/DepartmentTabs';
+import { departmentParam, useDepartmentTab } from '@/lib/departments';
 
 export default function PeopleReviewPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
-  const list = useQuery<ReviewRow[]>('/api/people/review');
+  const [department, setDepartment] = useDepartmentTab();
+  const list = useQuery<ReviewRow[]>(`/api/people/review${departmentParam(department, true)}`);
   const [view, setView] = useState<'attention' | 'everyone'>('attention');
   const rows = (list.data ?? []).filter((r) => view === 'everyone' || r.review.attention);
   const flagged = (list.data ?? []).filter((r) => r.review.attention).length;
@@ -28,6 +31,7 @@ export default function PeopleReviewPage() {
   return (
     <div className="grid gap-6">
       <PageHeader title={t('people.title')} description={t('people.description')} />
+      <DepartmentTabs value={department} onChange={setDepartment} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Segmented
           label={t('people.title')}

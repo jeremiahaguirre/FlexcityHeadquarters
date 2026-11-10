@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { RoleEditor } from '@/components/roles/RoleEditor';
 import { type CityDetail, papi, usePlatformQuery } from '@/lib/platform';
+import { DepartmentsEditor } from '@/components/DepartmentsEditor';
 
 type Tab = 'org' | 'features' | 'access' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing';
 const TABS: Tab[] = ['org', 'features', 'access', 'facilities', 'pools', 'positions', 'roles', 'import', 'billing'];
@@ -72,13 +73,30 @@ function City() {
             reload={city.reload}
           />
         ) : null}
-        {tab === 'positions' ? <PositionsPanel {...props} /> : null}
+        {tab === 'positions' ? (
+          <div className="grid gap-6">
+            <DepartmentsEditor
+              data={
+                c.departmentSetup ?? {
+                  departments: (c.departments ?? []).map((d) => ({ ...d, positions: c.positions.filter((p) => p.departmentId === d.id) })),
+                  unassigned: c.positions.filter((p) => !p.departmentId),
+                  limited: false,
+                }
+              }
+              save={(did, body) => papi(did ? `/tenants/${id}/departments/${did}` : `/tenants/${id}/departments`, { method: did ? 'PUT' : 'POST', body })}
+              remove={(did) => papi(`/tenants/${id}/departments/${did}`, { method: 'DELETE' })}
+              reload={city.reload}
+            />
+            <PositionsPanel {...props} />
+          </div>
+        ) : null}
         {tab === 'roles' ? (
           <RoleEditor
             roles={c.customRoles}
             catalog={c.roleCatalog}
             positions={c.positions}
             facilities={c.facilities}
+            departments={c.departments ?? []}
             save={(body, roleId) => (roleId ? papi(`/tenants/${id}/roles/${roleId}`, { method: 'PUT', body }) : papi(`/tenants/${id}/roles`, { method: 'POST', body }))}
             remove={(roleId) => papi(`/tenants/${id}/roles/${roleId}`, { method: 'DELETE' })}
             reload={city.reload}

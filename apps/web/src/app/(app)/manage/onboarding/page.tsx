@@ -20,6 +20,8 @@ import { formatDate } from '@/lib/format';
 import { type ChecklistItem, OWNERS, type OnboardingItem, itemName, stateTone } from '@/lib/onboarding';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { DepartmentTabs } from '@/components/DepartmentTabs';
+import { departmentParam, useDepartmentTab } from '@/lib/departments';
 
 interface Person { id: string; name: string; roles: string[]; hr: { total: number; done: number }; supervisor: { total: number; done: number }; employee: { total: number; done: number }; outstanding: number; expiring: number; blocked: boolean }
 
@@ -62,12 +64,14 @@ function Progress({ label, p }: { label: string; p: { total: number; done: numbe
 
 function People({ onOpen }: { onOpen: (id: string) => void }) {
   const { t } = useTranslation();
-  const list = useQuery<Person[]>('/api/onboarding/people');
+  const [department, setDepartment] = useDepartmentTab();
+  const list = useQuery<Person[]>(`/api/onboarding/people${departmentParam(department, true)}`);
   const [all, setAll] = useState(false);
   if (!list.data) return <Skeleton className="h-64" />;
   const rows = list.data.filter((p) => all || p.outstanding || p.expiring);
   return (
     <div className="grid gap-4">
+      <DepartmentTabs value={department} onChange={setDepartment} />
       <Segmented label={t('onboarding.people')} value={all ? 'all' : 'open'} onChange={(v) => setAll(v === 'all')} options={[{ value: 'open', label: t('onboarding.needsAction', { count: list.data.filter((p) => p.outstanding || p.expiring).length }) }, { value: 'all', label: t('onboarding.everyone') }]} />
       {!rows.length ? (
         <EmptyState icon={CheckCircle2} title={t('onboarding.allDone')}>{t('onboarding.allDoneHelp')}</EmptyState>

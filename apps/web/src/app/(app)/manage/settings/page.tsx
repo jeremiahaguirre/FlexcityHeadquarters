@@ -21,6 +21,8 @@ import { DeckStations } from '@/components/pools/DeckStations';
 import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { DepartmentsEditor } from '@/components/DepartmentsEditor';
+import type { Departments } from '@/lib/departments';
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
 
@@ -50,7 +52,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules';
+type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -67,7 +69,7 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const { can } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules'] as const) : [])];
+  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
   const settings = useQuery<Settings>(org ? '/api/settings' : null);
 
@@ -81,6 +83,8 @@ export default function SettingsPage() {
       ) : null}
       {tab === 'pools' ? (
         <Pools />
+      ) : tab === 'departments' ? (
+        <DepartmentsSettings />
       ) : settings.error ? (
         <ErrorNotice onRetry={settings.reload} />
       ) : !settings.data ? (
@@ -514,3 +518,20 @@ function Rules({ s, reload }: Props) {
   );
 }
 
+
+/** HR sets up departments: who each supervisor or manager can see. */
+function DepartmentsSettings() {
+  const data = useQuery<Departments>('/api/departments');
+  if (data.error) return <ErrorNotice onRetry={data.reload} />;
+  if (!data.data) return <ListSkeleton rows={3} />;
+  return (
+    <div className="max-w-4xl">
+      <DepartmentsEditor
+        data={data.data}
+        save={(id, body) => api(id ? `/api/departments/${id}` : '/api/departments', { method: id ? 'PUT' : 'POST', body })}
+        remove={(id) => api(`/api/departments/${id}`, { method: 'DELETE' })}
+        reload={data.reload}
+      />
+    </div>
+  );
+}

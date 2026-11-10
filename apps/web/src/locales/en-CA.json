@@ -892,7 +892,8 @@
       "pay": "Pay codes",
       "calendar": "School calendar",
       "rules": "Agreement rules",
-      "roles": "Roles"
+      "roles": "Roles",
+      "departments": "Departments"
     },
     "org": "Organization",
     "orgHelp": "Your staff sign in at {{host}}.",
@@ -1489,7 +1490,8 @@
     "department": "Department (optional)",
     "departmentHelp": "Leave empty for the whole organization. Otherwise, this role's lead and manager capabilities reach only people in these positions, and shifts at these facilities.",
     "scopePositions": "Positions",
-    "scopeFacilities": "Facilities"
+    "scopeFacilities": "Facilities",
+    "scopeDepartments": "Departments (includes positions added later)"
   },
   "headcount": {
     "title": "Headcount",
@@ -3095,5 +3097,49 @@
     "save": "Save",
     "claimNumber": "Board claim number",
     "foot": "Deadlines per province are built in but not yet reviewed by counsel. Confirm them with your board. HR and supervisors are reminded a day before and when a report is overdue."
+  },
+  "departments": {
+    "tabs": "Department",
+    "all": "All departments",
+    "none": "No department",
+    "title": "Departments",
+    "help": "Group positions into departments such as Aquatics, Water Works or Parks. Supervisors and managers see only their departments; HR sees every department.",
+    "add": "Add department",
+    "none_yet": "No departments yet",
+    "noneYetHelp": "Until you add departments, aquatic supervisors and head lifeguards see everyone. Add one to keep each team to its own people.",
+    "name": "Name",
+    "nameFr": "French name",
+    "namePlaceholder": "Water Works",
+    "aquatic": "Aquatics department",
+    "aquaticHelp": "Aquatic supervisors and head lifeguards manage the positions in this department and nothing else.",
+    "aquaticPill": "Aquatics",
+    "positions": "Positions in this department",
+    "noPositions": "Add positions first, then put them in a department.",
+    "staffCount_one": "{{count}} person",
+    "staffCount_other": "{{count}} people",
+    "movesFrom": "Now in {{department}}; ticking it moves it here",
+    "create": "Create department",
+    "saved": "Department saved.",
+    "deleted": "Department deleted. Its positions now have no department.",
+    "delete": "Delete",
+    "confirmDelete": "Delete this department? Its positions stay, with no department.",
+    "managers": "Managed by",
+    "managersHelp": "Pick every role that supervises or manages this department. Those roles see only the departments they manage.",
+    "pickManagers": "Choose management roles",
+    "pickPositions": "Choose positions",
+    "builtInAquatic": "Aquatic supervisors and head lifeguards",
+    "builtIn": "Built-in",
+    "builtInAquaticHint": "Makes this an aquatics department.",
+    "wholeCityHint": "Reaches the whole city today; choosing it here limits it to the departments it manages."
+  },
+  "multiSelect": {
+    "search": "Search",
+    "noMatch": "Nothing matches.",
+    "chosen_one": "{{count}} chosen",
+    "chosen_other": "{{count}} chosen",
+    "clear": "Clear",
+    "done": "Done",
+    "more_one": "+{{count}} more",
+    "more_other": "+{{count}} more"
   }
 }

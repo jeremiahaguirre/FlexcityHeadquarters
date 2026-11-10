@@ -28,6 +28,7 @@ export function RoleEditor({
   reload,
   positions = [],
   facilities = [],
+  departments = [],
   grantable,
 }: {
   roles: CustomRole[];
@@ -37,6 +38,7 @@ export function RoleEditor({
   reload: () => Promise<void>;
   positions?: Named[];
   facilities?: Named[];
+  departments?: Named[];
   grantable?: string[] | null;
 }) {
   const { t, i18n } = useTranslation();
@@ -65,14 +67,15 @@ export function RoleEditor({
   const scopeText = (r: CustomRole) => {
     const ps = (r.scopePositionIds ?? []).map((id) => positions.find((p) => p.id === id)).filter(Boolean).map((p) => label(p!));
     const fs = (r.scopeFacilityIds ?? []).map((id) => facilities.find((f) => f.id === id)).filter(Boolean).map((f) => label(f!));
-    return ps.length || fs.length ? [...ps, ...fs].join(', ') : null;
+    const ds = (r.scopeDepartmentIds ?? []).map((id) => departments.find((d) => d.id === id)).filter(Boolean).map((d) => label(d!));
+    return ds.length || ps.length || fs.length ? [...ds, ...ps, ...fs].join(', ') : null;
   };
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const s = (k: string) => String(f.get(k) ?? '').trim() || null;
-    const body = { name: s('name') ?? '', nameFr: s('nameFr'), description: s('description'), permissions: [...checked], scopePositionIds: f.getAll('scopePos').map(String), scopeFacilityIds: f.getAll('scopeFac').map(String) };
+    const body = { name: s('name') ?? '', nameFr: s('nameFr'), description: s('description'), permissions: [...checked], scopePositionIds: f.getAll('scopePos').map(String), scopeFacilityIds: f.getAll('scopeFac').map(String), scopeDepartmentIds: f.getAll('scopeDept').map(String) };
     const r = await run('role', () => save(body, current?.id), t('customRoles.saved'));
     if (r !== undefined) {
       setEditing(null);
@@ -128,10 +131,23 @@ export function RoleEditor({
               </div>
             </div>
           ) : null}
-          {positions.length || facilities.length ? (
+          {departments.length || positions.length || facilities.length ? (
             <fieldset className="grid gap-3 rounded-xl border border-line p-4">
               <legend className="px-1 text-small font-semibold">{t('customRoles.department')}</legend>
               <p className="text-caption text-muted">{t('customRoles.departmentHelp')}</p>
+              {departments.length ? (
+                <div className="grid gap-1.5">
+                  <p className="text-caption font-semibold uppercase tracking-wide text-muted">{t('customRoles.scopeDepartments')}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {departments.map((d) => (
+                      <label key={d.id} className="flex items-center gap-2 text-small">
+                        <input type="checkbox" name="scopeDept" value={d.id} disabled={readOnly} defaultChecked={current?.scopeDepartmentIds?.includes(d.id)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+                        {label(d)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               {positions.length ? (
                 <div className="grid gap-1.5">
                   <p className="text-caption font-semibold uppercase tracking-wide text-muted">{t('customRoles.scopePositions')}</p>

@@ -892,7 +892,8 @@
       "pay": "Codes de paie",
       "calendar": "Calendrier scolaire",
       "rules": "Convention collective",
-      "roles": "Rôles"
+      "roles": "Rôles",
+      "departments": "Services"
     },
     "org": "Organisation",
     "orgHelp": "Votre personnel se connecte à {{host}}.",
@@ -1489,7 +1490,8 @@
     "department": "Service (facultatif)",
     "departmentHelp": "Laissez vide pour toute l'organisation. Sinon, les capacités de responsable et de gestionnaire de ce rôle ne s'appliquent qu'aux personnes de ces postes et aux quarts de ces installations.",
     "scopePositions": "Postes",
-    "scopeFacilities": "Installations"
+    "scopeFacilities": "Installations",
+    "scopeDepartments": "Services (comprend les postes ajoutés plus tard)"
   },
   "headcount": {
     "title": "Dénombrement",
@@ -3095,5 +3097,49 @@
     "save": "Enregistrer",
     "claimNumber": "Numéro de dossier de l'organisme",
     "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu'une déclaration est en retard."
+  },
+  "departments": {
+    "tabs": "Service",
+    "all": "Tous les services",
+    "none": "Sans service",
+    "title": "Services",
+    "help": "Regroupez les postes en services comme Aquatique, Aqueduc ou Parcs. Les superviseurs et gestionnaires ne voient que leurs services; les RH voient tous les services.",
+    "add": "Ajouter un service",
+    "none_yet": "Aucun service pour l’instant",
+    "noneYetHelp": "Tant qu’aucun service n’existe, les superviseurs aquatiques et les chefs sauveteurs voient tout le monde. Ajoutez-en un pour que chaque équipe ne voie que ses gens.",
+    "name": "Nom",
+    "nameFr": "Nom en français",
+    "namePlaceholder": "Aqueduc",
+    "aquatic": "Service aquatique",
+    "aquaticHelp": "Les superviseurs aquatiques et les chefs sauveteurs gèrent les postes de ce service, et rien d’autre.",
+    "aquaticPill": "Aquatique",
+    "positions": "Postes de ce service",
+    "noPositions": "Ajoutez d’abord des postes, puis placez-les dans un service.",
+    "staffCount_one": "{{count}} personne",
+    "staffCount_other": "{{count}} personnes",
+    "movesFrom": "Actuellement dans {{department}}; le cocher le déplace ici",
+    "create": "Créer le service",
+    "saved": "Service enregistré.",
+    "deleted": "Service supprimé. Ses postes n’ont plus de service.",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer ce service? Ses postes restent, sans service.",
+    "managers": "Géré par",
+    "managersHelp": "Choisissez chaque rôle qui supervise ou gère ce service. Ces rôles ne voient que les services qu’ils gèrent.",
+    "pickManagers": "Choisir des rôles de gestion",
+    "pickPositions": "Choisir des postes",
+    "builtInAquatic": "Superviseurs aquatiques et chefs sauveteurs",
+    "builtIn": "Intégré",
+    "builtInAquaticHint": "En fait un service aquatique.",
+    "wholeCityHint": "Couvre toute la ville pour l’instant; le choisir ici le limite aux services qu’il gère."
+  },
+  "multiSelect": {
+    "search": "Rechercher",
+    "noMatch": "Aucun résultat.",
+    "chosen_one": "{{count}} choisi",
+    "chosen_other": "{{count}} choisis",
+    "clear": "Effacer",
+    "done": "Terminé",
+    "more_one": "+{{count}} autre",
+    "more_other": "+{{count}} autres"
   }
 }

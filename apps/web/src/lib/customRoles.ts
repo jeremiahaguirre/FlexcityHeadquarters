@@ -6,12 +6,13 @@ export interface CustomRole {
   permissions?: string[];
   scopePositionIds?: string[];
   scopeFacilityIds?: string[];
+  scopeDepartmentIds?: string[];
   members?: number;
   /** City side: whether this person may change the role or give it to someone. */
   canManage?: boolean;
 }
 export type RoleCatalog = Record<string, string[]>;
-export interface RoleInput { name: string; nameFr: string | null; description: string | null; permissions: string[]; scopePositionIds: string[]; scopeFacilityIds: string[] }
+export interface RoleInput { name: string; nameFr: string | null; description: string | null; permissions: string[]; scopePositionIds: string[]; scopeFacilityIds: string[]; scopeDepartmentIds: string[] }
 
 export const roleName = (r: { name: string; nameFr: string | null }, lng: string) => (lng === 'fr-CA' && r.nameFr ? r.nameFr : r.name);
 

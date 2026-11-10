@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { type CustomRole, type RoleCatalog, roleName } from '@/lib/customRoles';
 import { useAction, useQuery } from '@/lib/useQuery';
+import type { Departments } from '@/lib/departments';
 
 interface Person { id: string; name: string; customRoles: Array<{ id: string; name: string; nameFr: string | null }>; positions: Array<{ id: string; name: string; nameFr: string | null }> }
 
@@ -23,6 +24,7 @@ export default function RolesPage() {
   const roles = useQuery<{ roles: CustomRole[]; catalog: RoleCatalog; grantable: string[] | null }>('/api/roles');
   const positions = useQuery<Array<{ id: string; name: string; nameFr: string | null }>>('/api/positions');
   const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
+  const departments = useQuery<Departments>('/api/departments');
   const people = useQuery<Person[]>('/api/users');
   const { run, busy } = useAction();
   const [person, setPerson] = useState<Person | null>(null);
@@ -52,6 +54,7 @@ export default function RolesPage() {
           grantable={roles.data.grantable}
           positions={positions.data}
           facilities={facilities.data}
+          departments={departments.data?.departments ?? []}
           save={(body, id) => (id ? api(`/api/roles/${id}`, { method: 'PUT', body }) : api('/api/roles', { method: 'POST', body }))}
           remove={(id) => api(`/api/roles/${id}`, { method: 'DELETE' })}
           reload={roles.reload}
