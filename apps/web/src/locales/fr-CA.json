@@ -1291,7 +1291,7 @@
       "useApp": "Faire la paie dans l’application",
       "switched": "La paie se fait maintenant avec {{what}}.",
       "inAppTitle": "La paie dans l’application",
-      "inAppHelp": "Paies, retenues, dépôt direct, versements et relevés de fin d’année se font ici, dans l’onglet Paies. Choisissez plutôt un onglet de fournisseur si votre organisation garde ADP, Dayforce ou Wagepoint.",
+      "inAppHelp": "Aucun fournisseur de paie requis : paies, retenues, versements et relevés de fin d’année se font ici, et la paie part de votre propre compte bancaire directement vers votre personnel par dépôt direct. Indiquez les renseignements de dépôt et votre connexion bancaire dans l’onglet Réglages (FH peut les configurer pour vous). Choisissez un onglet de fournisseur seulement si vous gardez ADP, Dayforce ou Wagepoint.",
       "fileTitle": "Ou téléchargez un fichier",
       "fileHelp": "Le format d’importation de chaque fournisseur, à téléverser vous-même.",
       "title": "Connexion à {{what}}",
@@ -1602,7 +1602,8 @@
       "billing": "Facturation",
       "access": "Menus et accès",
       "lifecycle": "Soutien et fermeture",
-      "consents": "Ententes signées"
+      "consents": "Ententes signées",
+      "payroll": "Paie"
     },
     "logo": "Logo de la ville",
     "logoHelp": "Affiché à côté du logo FlexcityHeadquarters sur la page de connexion, dans l'application et sur la page carrières. Il ne remplace jamais le logo FH.",
@@ -4863,5 +4864,44 @@
       "skipped": "Passé",
       "unsupported": "Non disponible sur son appareil"
     }
+  },
+  "payrollSetup": {
+    "title": "Paie dans l’application",
+    "lead": "La paie part du compte bancaire de la ville directement vers son personnel par dépôt direct, sans fournisseur de paie : FH calcule la paie, la ville l’approuve et le fichier de dépôt va à la banque de la ville.",
+    "inApp": "Paie dans l’application activée",
+    "provider": "Utilise {{name}}",
+    "step": {
+      "deposit": "Renseignements de dépôt de la banque de la ville",
+      "bank": "Connexion bancaire",
+      "staff_one": "{{count}} personne a le dépôt direct",
+      "staff_other": "{{count}} personnes ont le dépôt direct"
+    },
+    "flowAuto": "Les paies approuvées sont envoyées à la banque automatiquement.",
+    "flowManual": "Les paies approuvées sont envoyées à la banque quand les RH appuient sur Envoyer.",
+    "flowFile": "Sans connexion bancaire, les RH téléchargent le fichier de dépôt et le téléversent sur le portail de la banque.",
+    "depositTitle": "Renseignements de dépôt direct",
+    "depositHelp": "Fournis par la banque de la ville (son entente de transfert électronique de fonds) : l’ID et les noms de l’émetteur, le centre de données et le compte où reviennent les paiements retournés. Enregistrer active aussi la paie dans l’application.",
+    "saveDeposit": "Enregistrer et utiliser la paie dans l’application",
+    "saved": "Renseignements enregistrés; la paie dans l’application est activée.",
+    "bankTitle": "Connexion bancaire",
+    "bankHelp": "La connexion d’hôte à hôte (SFTP) que la banque de la ville a mise en place, pour que la paie approuvée aille directement à la banque.",
+    "bankNotInPlan": "L’option de connexion bancaire n’est pas encore dans le forfait de cette ville : vous pouvez la configurer ici, et ajouter l’option dans Facturation pour que la ville puisse l’utiliser.",
+    "host": "Serveur de la banque",
+    "port": "Port",
+    "username": "Nom d’utilisateur",
+    "remoteDir": "Dossier des fichiers",
+    "hostKey": "Empreinte du serveur (SHA256)",
+    "hostKeyHint": "Fournie par la banque, pour que la connexion ne puisse pas être détournée.",
+    "secret": "Mot de passe ou clé privée",
+    "secretHint": "Le mot de passe ou la clé privée SSH fournis par la banque.",
+    "secretKept": "Enregistré et scellé. Laissez vide pour le conserver.",
+    "pgp": "Clé publique PGP de la banque (facultatif)",
+    "pgpHint": "Quand la banque demande des fichiers chiffrés.",
+    "autoSend": "Envoyer les paies approuvées à la banque automatiquement",
+    "saveBank": "Enregistrer la connexion bancaire",
+    "bankSaved": "Connexion bancaire enregistrée. Testez-la ensuite.",
+    "test": "Tester la connexion",
+    "bankOk": "Le serveur de la banque a répondu.",
+    "disconnect": "Déconnecter"
   }
 }

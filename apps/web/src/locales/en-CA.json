@@ -1291,7 +1291,7 @@
       "useApp": "Run payroll in the app",
       "switched": "Payroll now runs with {{what}}.",
       "inAppTitle": "Payroll in the app",
-      "inAppHelp": "Pay runs, deductions, direct deposit, remittances and year-end slips all happen here, in the Pay runs tab. Choose a provider tab instead if your organization keeps ADP, Dayforce or Wagepoint.",
+      "inAppHelp": "No payroll provider needed: pay runs, deductions, remittances and year-end slips all happen here, and pay goes from your own bank account straight to your staff by direct deposit. Set the deposit details and your bank connection in the Settings tab (FH can set them up for you). Choose a provider tab instead only if you keep ADP, Dayforce or Wagepoint.",
       "fileTitle": "Or download a file",
       "fileHelp": "Every provider’s import layout, to upload by hand.",
       "title": "{{what}} connection",
@@ -1602,7 +1602,8 @@
       "billing": "Billing",
       "access": "Menus and access",
       "lifecycle": "Support and closing",
-      "consents": "Signed agreements"
+      "consents": "Signed agreements",
+      "payroll": "Payroll"
     },
     "logo": "City logo",
     "logoHelp": "Shown beside the FlexcityHeadquarters logo on the sign-in page, in the app and on the careers page. It never replaces the FH logo.",
@@ -4863,5 +4864,44 @@
       "skipped": "Skipped",
       "unsupported": "Not available on their device"
     }
+  },
+  "payrollSetup": {
+    "title": "In-app payroll",
+    "lead": "Pay goes from the city’s own bank account straight to its staff by direct deposit, with no payroll provider: FH calculates the pay, the city approves it, and the deposit file goes to the city’s bank.",
+    "inApp": "In-app payroll on",
+    "provider": "Using {{name}}",
+    "step": {
+      "deposit": "Deposit details from the city’s bank",
+      "bank": "Bank connection",
+      "staff_one": "{{count}} person has direct deposit",
+      "staff_other": "{{count}} people have direct deposit"
+    },
+    "flowAuto": "Approved pay runs are sent to the bank automatically.",
+    "flowManual": "Approved pay runs are sent to the bank when HR presses Send.",
+    "flowFile": "Without a bank connection, HR downloads the deposit file and uploads it to the bank’s portal.",
+    "depositTitle": "Direct deposit details",
+    "depositHelp": "From the city’s bank (its electronic funds transfer agreement): the originator ID and names, the data centre, and the account returned payments go back to. Saving also turns in-app payroll on.",
+    "saveDeposit": "Save and use in-app payroll",
+    "saved": "Deposit details saved; in-app payroll is on.",
+    "bankTitle": "Bank connection",
+    "bankHelp": "The host-to-host (SFTP) connection the city’s bank set up, so approved pay goes straight to the bank.",
+    "bankNotInPlan": "The bank connection option isn’t in this city’s plan yet: you can set it up here, and add the option under Billing so the city can use it.",
+    "host": "Bank server",
+    "port": "Port",
+    "username": "User name",
+    "remoteDir": "Folder for files",
+    "hostKey": "Server fingerprint (SHA256)",
+    "hostKeyHint": "From the bank, so the connection can’t be redirected.",
+    "secret": "Password or private key",
+    "secretHint": "The password or SSH private key the bank issued.",
+    "secretKept": "Saved and sealed. Leave blank to keep it.",
+    "pgp": "Bank’s PGP public key (optional)",
+    "pgpHint": "When the bank asks for files to be encrypted.",
+    "autoSend": "Send approved pay runs to the bank automatically",
+    "saveBank": "Save bank connection",
+    "bankSaved": "Bank connection saved. Test it next.",
+    "test": "Test connection",
+    "bankOk": "The bank’s server answered.",
+    "disconnect": "Disconnect"
   }
 }
