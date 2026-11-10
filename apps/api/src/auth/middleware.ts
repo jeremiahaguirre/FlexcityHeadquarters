@@ -8,6 +8,8 @@ import { managedScope } from '../services/people/departments.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { allowedWhileSuspended } from '../services/billing/entitlements.js';
+import { SETUP_PERMISSIONS, supportStillAllowed } from '../services/platform/support.js';
+import { audit, withTenant } from '../lib/db.js';
 
 export interface AuthContext {
   userId: string;
@@ -22,6 +24,8 @@ export interface AuthContext {
   mfaPending: boolean;
   /** Where supervisory capabilities reach: null = the whole organization, else a department. */
   scope: Scope;
+  /** An FH support visit (read-only, with the organization's consent). */
+  support?: { sessionId: string; level: 'SETUP' | 'FULL'; endsAt: Date; adminId: string };
 }
 
 /** What someone who still owes a second factor may reach: enough to give it, or set up a passkey. */
@@ -66,6 +70,20 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       mfaPending,
       scope: scopeOf(builtIn, custom, { roles: claims.roles, managed }),
     };
+    // FH support, with the organization's consent: read-only, what the grant allows, every page logged.
+    if (claims.sup) {
+      const allowed = await supportStillAllowed(claims.tid, claims.sup);
+      if (!allowed) throw new HttpError(401, 'SUPPORT_ENDED', 'This support visit has ended or the organization withdrew its permission.');
+      req.auth.support = { sessionId: claims.sup, level: allowed.level, endsAt: allowed.endsAt, adminId: allowed.adminId };
+      req.auth.mfaPending = false;
+      if (allowed.level === 'SETUP') req.auth.permissions = new Set([...req.auth.permissions].filter((p) => SETUP_PERMISSIONS.includes(p)));
+      // Logged first, so attempts that are refused are on record too.
+      await withTenant(claims.tid, (tx) => audit(tx, { tenantId: claims.tid, actorId: null, action: 'support.view', entity: 'SupportSession', entityId: claims.sup!, after: { method: req.method, path: req.originalUrl.split('?')[0] } }));
+      if (req.method !== 'GET' && !req.originalUrl.startsWith('/api/auth/logout')) throw new HttpError(403, 'SUPPORT_READ_ONLY', 'FH support can look, not change anything.');
+      // The union local's hub is never open to FH, whoever allowed the visit.
+      if (req.originalUrl.startsWith('/api/union')) throw new HttpError(403, 'FORBIDDEN', 'The union hub isn’t part of support access.');
+      req.auth.permissions.delete('union.hub');
+    }
     // Unpaid past the grace period: read-only, except safety work, clocking and paying.
     if (billing.stage === 'suspended' && !allowedWhileSuspended(req.method, req.originalUrl)) {
       throw new HttpError(402, 'ACCOUNT_SUSPENDED', 'Your organization’s account is read-only until the overdue balance is paid.');

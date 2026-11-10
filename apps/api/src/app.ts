@@ -5,6 +5,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { ZodError } from 'zod';
 import { HttpError } from './lib/errors.js';
 import { authRouter } from './routes/auth.js';
+import { supportAuthRouter } from './routes/support.js';
 import { publicJobsRouter } from './routes/jobs.js';
 import { resolveTenant } from './routes/context.js';
 import { api } from './routes/features.js';
@@ -43,7 +44,7 @@ export function createApp() {
 
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
   app.use('/api', publicLogoRouter);
-  app.use('/api', resolveTenant, authRouter, passkeyAuthRouter, publicJobsRouter, publicSignupRouter);
+  app.use('/api', resolveTenant, authRouter, supportAuthRouter, passkeyAuthRouter, publicJobsRouter, publicSignupRouter);
   app.use('/api', api);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {

@@ -35,7 +35,8 @@ authRouter.get(
     const sub = subdomainOf(req);
     const t = sub ? await lookupTenant(sub) : null;
     if (!t) throw new HttpError(404, 'NOT_FOUND', 'Organization not found');
-    res.json(t);
+    const { disabledAt: _closed, ...branding } = t;
+    res.json(branding);
   }),
 );
 

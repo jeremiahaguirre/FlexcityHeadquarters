@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { platformOf } from '../../auth/platform.js';
+import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { db } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import {
@@ -69,6 +69,7 @@ booksRouter.get(
 /** Entered from the city's signed paper form, which FH keeps on file. */
 booksRouter.post(
   '/billing/pad/:tenantId',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const tenantId = uuid.parse(req.params.tenantId);
@@ -82,6 +83,7 @@ booksRouter.post(
 
 booksRouter.post(
   '/billing/pad/agreements/:id/cancel',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
@@ -98,6 +100,7 @@ booksRouter.post(
 booksRouter.get('/billing/pad-originator', h(async (_req, res) => res.json(await originatorView())));
 booksRouter.put(
   '/billing/pad-originator',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const body = originatorBody.parse(req.body);
@@ -129,6 +132,7 @@ booksRouter.post(
 
 booksRouter.get(
   '/billing/pad-batches/:id/file',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
@@ -224,6 +228,7 @@ booksRouter.put(
 );
 booksRouter.put(
   '/books/settings',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const body = settingsBody.parse(req.body);

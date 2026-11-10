@@ -225,6 +225,12 @@ enum VacationPayMode {
 // ------------------------------------------------------------------
 
 model Tenant {
+  /// Set by FH: nobody can sign in or use the organization's pages until it's cleared.
+  disabledAt            DateTime?       @db.Timestamptz(3)
+  disabledReason        String?
+  /// Offboarded (contract ended): disabled, and its data is deleted after this date.
+  offboardedAt          DateTime?       @db.Timestamptz(3)
+  deleteAfter           DateTime?       @db.Date
   id                    String          @id @default(uuid()) @db.Uuid
   name                  String
   subdomain             String          @unique
@@ -2621,4 +2627,40 @@ model EmployeeDocument {
   deletedReason String?
 
   @@index([tenantId, userId])
+}
+
+enum SupportLevel {
+  /// Set-up screens: settings, facilities, positions, roles, menus, billing. No personal records.
+  SETUP
+  /// Everything HR sees, read-only.
+  FULL
+}
+
+/// The organization's consent for FH support to look in, read-only, until it expires.
+model SupportGrant {
+  id          String       @id @default(uuid()) @db.Uuid
+  tenantId    String       @db.Uuid
+  grantedById String       @db.Uuid
+  level       SupportLevel @default(SETUP)
+  reason      String?
+  expiresAt   DateTime     @db.Timestamptz(3)
+  revokedAt   DateTime?    @db.Timestamptz(3)
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, expiresAt])
+}
+
+/// One FH support visit under a grant: a one-time code exchanged in the city's app for a short, read-only session.
+model SupportSession {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  grantId       String    @db.Uuid
+  adminId       String    @db.Uuid
+  codeHash      String    @unique
+  codeExpiresAt DateTime  @db.Timestamptz(3)
+  usedAt        DateTime? @db.Timestamptz(3)
+  endsAt        DateTime  @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId])
 }

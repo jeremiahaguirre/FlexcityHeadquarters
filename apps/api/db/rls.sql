@@ -32,7 +32,7 @@ DECLARE
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
     'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
-    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument'
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument', 'SupportGrant'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP
@@ -73,10 +73,12 @@ REVOKE INSERT, UPDATE ON "CertificationPrerequisite", "StatutoryHoliday" FROM fl
 
 -- Tenant lookup by subdomain happens BEFORE a tenant context exists (login page).
 -- Expose only the public branding fields through a SECURITY DEFINER function.
-CREATE OR REPLACE FUNCTION public_tenant_by_subdomain(p_subdomain text)
-  RETURNS TABLE (id uuid, name text, "logoUrl" text, "themeColors" jsonb, "defaultLocale" text)
+-- Its columns changed (disabledAt), so it's dropped and made again.
+DROP FUNCTION IF EXISTS public_tenant_by_subdomain(text);
+CREATE FUNCTION public_tenant_by_subdomain(p_subdomain text)
+  RETURNS TABLE (id uuid, name text, "logoUrl" text, "themeColors" jsonb, "defaultLocale" text, "disabledAt" timestamptz)
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
-$$ SELECT id, name, "logoUrl", "themeColors", "defaultLocale" FROM "Tenant" WHERE subdomain = p_subdomain $$;
+$$ SELECT id, name, "logoUrl", "themeColors", "defaultLocale", "disabledAt" FROM "Tenant" WHERE subdomain = p_subdomain $$;
 REVOKE ALL ON FUNCTION public_tenant_by_subdomain(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public_tenant_by_subdomain(text) TO flexcity_app;
 

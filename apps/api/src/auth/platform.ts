@@ -17,7 +17,7 @@ export const PLATFORM_COOKIE = 'fh_platform';
 export const PLATFORM_HEADER = 'x-fh-platform';
 const SESSION_MS = 8 * 3_600_000;
 
-export interface PlatformContext { adminId: string; email: string; name: string; signedInAt: Date; sessionId: string; mfa: boolean }
+export interface PlatformContext { adminId: string; email: string; name: string; signedInAt: Date; sessionId: string; mfa: boolean; mfaAt: Date | null }
 
 /**
  * The Dev console needs a passkey as a second factor. Always in production;
@@ -78,7 +78,7 @@ export async function requirePlatformSession(req: Request, _res: Response, next:
     if (!raw) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console');
     const s = await db().platformSession.findUnique({ where: { tokenHash: sha256(raw) }, include: { admin: true } });
     if (!s || s.revokedAt || s.expiresAt < new Date() || s.admin.disabledAt) throw new HttpError(401, 'UNAUTHENTICATED', 'Session expired');
-    req.platform = { adminId: s.admin.id, email: s.admin.email, name: s.admin.name, signedInAt: s.createdAt, sessionId: s.id, mfa: !!s.mfaAt };
+    req.platform = { adminId: s.admin.id, email: s.admin.email, name: s.admin.name, signedInAt: s.createdAt, sessionId: s.id, mfa: !!s.mfaAt, mfaAt: s.mfaAt };
     next();
   } catch (e) {
     next(e);
@@ -97,4 +97,18 @@ export function requirePlatform(req: Request, res: Response, next: NextFunction)
 export function platformOf(req: Request): PlatformContext {
   if (!req.platform) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console');
   return req.platform;
+}
+
+const STEP_UP_MS = 10 * 60_000;
+/**
+ * The console's most sensitive actions (closing a city, opening a support
+ * visit, bank files and PAD agreements, verifying tax tables, closing the
+ * books) need a passkey confirmation from the last 10 minutes.
+ */
+export function requirePlatformStepUp(req: Request, _res: Response, next: NextFunction) {
+  const p = req.platform;
+  if (!p) return next(new HttpError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console'));
+  if (!platformMfaRequired()) return next();
+  if (!p.mfaAt || Date.now() - p.mfaAt.getTime() > STEP_UP_MS) return next(new HttpError(403, 'PASSKEY_STEP_UP', 'Confirm with your passkey to do this.'));
+  next();
 }

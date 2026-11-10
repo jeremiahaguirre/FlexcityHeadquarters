@@ -15,16 +15,18 @@ export interface AccessClaims {
   aat?: number;
   /** This session proved a second factor (a passkey). */
   mfa?: boolean;
+  /** An FH support visit (SupportSession id): read-only, consent-based. */
+  sup?: string;
 }
 
 const secret = () => new TextEncoder().encode(config().JWT_SECRET);
 
-export async function signAccessToken(claims: AccessClaims): Promise<string> {
-  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}), ...(claims.mfa ? { mfa: true } : {}) })
+export async function signAccessToken(claims: AccessClaims, ttlSeconds?: number): Promise<string> {
+  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}), ...(claims.mfa ? { mfa: true } : {}), ...(claims.sup ? { sup: claims.sup } : {}) })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(claims.sub)
     .setIssuedAt()
-    .setExpirationTime(`${config().ACCESS_TOKEN_TTL_SECONDS}s`)
+    .setExpirationTime(ttlSeconds ? `${ttlSeconds}s` : `${config().ACCESS_TOKEN_TTL_SECONDS}s`)
     .sign(secret());
 }
 
@@ -33,7 +35,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
   if (typeof payload.sub !== 'string' || typeof payload.tid !== 'string' || !Array.isArray(payload.roles)) {
     throw new Error('Malformed token');
   }
-  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true };
+  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true, ...(typeof payload.sup === 'string' ? { sup: payload.sup } : {}) };
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');

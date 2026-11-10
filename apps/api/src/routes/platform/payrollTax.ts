@@ -5,7 +5,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { platformOf } from '../../auth/platform.js';
+import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { db } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import { ensureTaxTables } from '../../services/payroll/taxTables.js';
@@ -65,6 +65,7 @@ payrollTaxRouter.put(
 
 payrollTaxRouter.post(
   '/payroll-tax/:year/:jurisdiction/verify',
+  requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
     const y = year.parse(req.params.year);

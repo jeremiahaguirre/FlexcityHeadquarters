@@ -15,7 +15,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "platform:admin": "tsx scripts/platform-admin.ts",
     "worker": "tsx src/worker.ts",
-    "start:worker": "node dist/worker.js"
+    "start:worker": "node dist/worker.js",
+    "tenant:purge": "tsx scripts/purge-tenant.ts"
   },
   "dependencies": {
     "@prisma/client": "5.22.0",

@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
 import { config } from '../config.js';
 import { db } from '../lib/db.js';
-import { notFound } from '../lib/errors.js';
+import { HttpError, notFound } from '../lib/errors.js';
 import { LocalKeyProvider, AwsKmsKeyProvider, type KeyProvider } from '../services/crypto/envelope.js';
 
 export interface PublicTenant {
+  disabledAt?: Date | null;
   id: string;
   name: string;
   logoUrl: string | null;
@@ -46,6 +47,8 @@ export async function resolveTenant(req: Request, _res: Response, next: NextFunc
     if (!sub) throw notFound('Organization');
     const tenant = await lookupTenant(sub);
     if (!tenant) throw notFound('Organization');
+    // Closed by FH (unpaid for good, or offboarded): nothing opens, not even sign-in.
+    if (tenant.disabledAt) throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
     req.tenantId = tenant.id;
     next();
   } catch (e) {
