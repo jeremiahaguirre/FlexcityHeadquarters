@@ -62,7 +62,7 @@ function City() {
             {t('platform.staffCount', { count: c.staff })} · {t('platform.facilityCount', { count: c.facilities.length })} · {t('platform.positionCount', { count: c.positions.length })}
           </p>
         </div>
-        <a href={c.organization.signInUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-brand-text hover:bg-surface">
+        <a href={c.organization.signInUrl} target="_blank" rel="noopener noreferrer" className="flex min-w-0 max-w-full items-center gap-1.5 break-all rounded-lg px-3 py-2 text-small font-semibold text-brand-text hover:bg-surface max-sm:-ml-3">
           <ExternalLink className="h-4 w-4" aria-hidden="true" />
           {c.organization.signInUrl.replace(/^https?:\/\//, '').replace(/\/login$/, '')}
         </a>

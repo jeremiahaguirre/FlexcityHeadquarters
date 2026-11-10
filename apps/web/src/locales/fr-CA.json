@@ -2544,7 +2544,8 @@
     "contractTotal": "Total du contrat",
     "noTerm": "Sans durée",
     "termsFoot": "Avant taxes et avant l’utilisation : le personnel actif au-delà du forfait est facturé chaque mois pour ce mois. Après la durée, la facturation continue au mois aux mêmes tarifs jusqu’au renouvellement.",
-    "afterDiscount": "après une remise de {{percent}} %"
+    "afterDiscount": "après une remise de {{percent}} %",
+    "titleShort": "Factures"
   },
   "people": {
     "title": "Suivi du personnel",

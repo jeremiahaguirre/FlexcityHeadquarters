@@ -2544,7 +2544,8 @@
     "contractTotal": "Contract total",
     "noTerm": "No term",
     "termsFoot": "Before tax and before usage: active staff beyond the plan are billed each month for that month. After the term, billing continues month to month at the same rates until renewed.",
-    "afterDiscount": "after {{percent}}% term discount"
+    "afterDiscount": "after {{percent}}% term discount",
+    "titleShort": "Billing"
   },
   "people": {
     "title": "People review",
