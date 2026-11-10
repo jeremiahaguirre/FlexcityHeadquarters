@@ -431,6 +431,14 @@ const en = {
     stillBody: 'Contact support and we’ll reply within one business day.',
   },
   contact: {
+    eyebrow: 'Contact',
+    nextTitle: 'What happens next',
+    next: [
+      { title: 'A reply within one business day', body: 'From a person, in English or French, not an automated sequence.' },
+      { title: 'A 30-minute walkthrough', body: 'With your departments, facilities and collective agreement in mind.' },
+      { title: 'A written quote', body: 'Your plan, each facility’s size, the staff allowance and the setup fee, before you commit.' },
+    ],
+    promise: 'Canadian company · Bilingual support · No obligation',
     title: 'Talk to us',
     lead: 'Questions about plans, a guided demo, or help with your account. Send us a message and we’ll reply within one business day.',
     kinds: { SALES: 'Plans and pricing', DEMO: 'Book a walkthrough', SUPPORT: 'Help with my account' },
@@ -907,6 +915,14 @@ const fr: DeepString<Copy> = {
     stillBody: 'Communiquez avec le soutien : nous répondons en un jour ouvrable.',
   },
   contact: {
+    eyebrow: 'Contact',
+    nextTitle: 'Et ensuite?',
+    next: [
+      { title: 'Une réponse en un jour ouvrable', body: 'D’une vraie personne, en français ou en anglais, pas d’une séquence automatique.' },
+      { title: 'Une présentation de 30 minutes', body: 'En pensant à vos services, à vos installations et à votre convention collective.' },
+      { title: 'Une soumission écrite', body: 'Votre forfait, la taille de chaque installation, l’allocation de personnel et les frais de mise en service, avant tout engagement.' },
+    ],
+    promise: 'Entreprise canadienne · Soutien bilingue · Sans engagement',
     title: 'Parlons-en',
     lead: 'Questions sur les forfaits, visite guidée ou aide avec votre compte. Envoyez-nous un message : nous répondons en un jour ouvrable.',
     kinds: { SALES: 'Forfaits et tarifs', DEMO: 'Réserver une visite guidée', SUPPORT: 'Aide avec mon compte' },
