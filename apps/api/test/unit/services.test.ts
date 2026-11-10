@@ -121,6 +121,49 @@ describe('payroll CSV export', () => {
     expect(r.ok).toBe(false);
     expect(!r.ok && r.problems).toHaveLength(3);
   });
+  describe('provider layouts', () => {
+    const lines = [
+      line,
+      { code: 'OVERTIME_1_5' as const, positionId: 'guard', hours: d('2'), rate: d('30'), multiplier: d('1.5'), amount: d('60') },
+      { code: 'STAT_WORKED' as const, positionId: 'guard', hours: d('4'), rate: d('30'), multiplier: d('1.5'), amount: d('120') },
+      { code: 'VACATION_PAY' as const, positionId: null, hours: d('0'), rate: d('0'), multiplier: d('0.04'), amount: d('13.60') },
+    ];
+    const emp = [{ userId: 'u', employeeNumber: '000123', displayName: 'A B', costCenter: 'CC-405', lines }];
+    const codes = { resolve: (k: string) => ({ REGULAR: 'REG', OVERTIME_1_5: 'OT', STAT_WORKED: 'STW', VACATION_PAY: 'VAC' })[k] ?? null };
+    const period = { start: '2026-07-05', end: '2026-07-18' };
+    const rows = (r: ReturnType<typeof buildPayrollCsv>) => (r.ok ? r.csv.trim().split('\r\n') : []);
+
+    it('ADP: regular and overtime hours in their columns, other hours and earnings by code', () => {
+      expect(buildPayrollCsv(emp, codes, period, { format: 'adp' }).ok).toBe(false); // needs the company code
+      const r = rows(buildPayrollCsv(emp, codes, period, { format: 'adp', adpCompanyCode: 'K7X', adpBatchId: '0718' }));
+      expect(r[0]).toBe('Co Code,Batch ID,File #,Temp Dept,Temp Rate,Reg Hours,O/T Hours,Hours 3 Code,Hours 3 Amount,Earnings 3 Code,Earnings 3 Amount');
+      expect(r[1]).toBe('K7X,0718,000123,CC-405,20.00,8.00,,,,,');
+      expect(r[2]).toBe('K7X,0718,000123,CC-405,30.00,,2.00,,,,');
+      expect(r[3]).toBe('K7X,0718,000123,CC-405,30.00,,,STW,4.00,,');
+      expect(r[4]).toBe('K7X,0718,000123,CC-405,,,,,,VAC,13.60');
+    });
+
+    it('Dayforce: XRef codes, effective at the period end', () => {
+      const r = rows(buildPayrollCsv(emp, codes, period, { format: 'dayforce' }));
+      expect(r[0]).toBe('EmployeeXRefCode,PayAdjCodeXRefCode,EffectiveDate,NetHours,Rate,Amount,OrgUnitXRefCode,Comment');
+      expect(r[1]).toBe('000123,REG,2026-07-18,8.00,20.00,160.00,CC-405,FlexcityHeadquarters 2026-07-05 to 2026-07-18');
+      expect(r[4]).toBe('000123,VAC,2026-07-18,,,13.60,CC-405,FlexcityHeadquarters 2026-07-05 to 2026-07-18');
+    });
+
+    it('Wagepoint: earning code, hours, rate and amount', () => {
+      const r = rows(buildPayrollCsv(emp, codes, period, { format: 'wagepoint' }));
+      expect(r[0]).toBe('Employee Number,Earning Code,Hours,Rate,Amount,Department,Period Start,Period End');
+      expect(r[2]).toBe('000123,OT,2.00,30.00,60.00,CC-405,2026-07-05,2026-07-18');
+    });
+
+    it('every layout refuses the same unmapped lines', () => {
+      for (const format of ['generic', 'adp', 'dayforce', 'wagepoint'] as const) {
+        const r = buildPayrollCsv(emp, { resolve: () => null }, period, { format, adpCompanyCode: 'K7X' });
+        expect(!r.ok && r.problems.length).toBe(4);
+      }
+    });
+  });
+
   it('neutralises spreadsheet formula injection', () => {
     expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
     expect(csvCell('-12.50')).toBe('-12.50');

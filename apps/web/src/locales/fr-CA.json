@@ -1204,6 +1204,16 @@
         "NO_SIN": "{{name}} : numéro d’assurance sociale",
         "NO_ADDRESS": "{{name}} : adresse postale à domicile"
       }
+    },
+    "provider": {
+      "label": "Fournisseur de paie",
+      "generic": "CSV générique",
+      "adp": "ADP Workforce Now",
+      "dayforce": "Ceridian Dayforce",
+      "wagepoint": "Wagepoint",
+      "adpCompanyCode": "Code d’entreprise ADP",
+      "adpBatchId": "Numéro de lot",
+      "hint": "Mis en forme pour l’importation des données de paie de votre fournisseur. Chaque client peut renommer les colonnes : comparez votre premier fichier au modèle d’importation fourni."
     }
   },
   "settings": {
@@ -4210,7 +4220,8 @@
     "PUNCHES_PENDING": "{{count}} pointage(s) de cette période ou à proximité attendent encore l’approbation et ont été exclus.",
     "PUNCHES_OPEN": "{{count}} pointage(s) sans heure de sortie ont été exclus.",
     "NO_HIRE_DATE": "{{name}} n’a pas de date d’embauche; l’admissibilité à l’indemnité de jour férié a été présumée.",
-    "NO_HOURS": "Aucune heure approuvée pour cette période. Approuvez d’abord les pointages, puis recalculez."
+    "NO_HOURS": "Aucune heure approuvée pour cette période. Approuvez d’abord les pointages, puis recalculez.",
+    "ADP_COMPANY_CODE": "Entrez votre code d’entreprise ADP à trois caractères ci-dessus."
   },
   "documents": {
     "title": "Documents",

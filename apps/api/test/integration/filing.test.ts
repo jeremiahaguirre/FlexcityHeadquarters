@@ -157,3 +157,25 @@ describe('ROE Web XML', () => {
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.roe.xml', entityId: u.id } })).toBe(1);
   });
 });
+
+describe('payroll provider exports', () => {
+  it('lays the export out for ADP once its company code is set, and remembers the choice', async () => {
+    for (const key of ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const) {
+      await owner.payCodeMapping.create({ data: { tenantId: t.tenant.id, key, code: key.slice(0, 3) } });
+    }
+    const missing = await call(tok.hr).get('/api/payroll/export?periodStart=2026-03-02&weeks=2&format=adp');
+    expect(missing.status).toBe(422);
+    expect(missing.body.problems.map((p: { code: string }) => p.code)).toContain('ADP_COMPANY_CODE');
+    expect((await call(tok.hr).put('/api/payroll/export-settings', { format: 'adp', adpCompanyCode: 'abc', adpBatchId: '0320' })).status).toBe(200);
+    expect((await call(tok.hr).get('/api/payroll/export-settings')).body).toMatchObject({ format: 'adp', adpCompanyCode: 'ABC' });
+    const r = await call(tok.hr).get('/api/payroll/export?periodStart=2026-03-02&weeks=2');
+    expect(r.status).toBe(200);
+    expect(r.headers['content-disposition']).toContain('payroll-adp-2026-03-02.csv');
+    const lines = r.text.trim().split('\r\n');
+    expect(lines[0]).toBe('Co Code,Batch ID,File #,Temp Dept,Temp Rate,Reg Hours,O/T Hours,Hours 3 Code,Hours 3 Amount,Earnings 3 Code,Earnings 3 Amount');
+    expect(lines[1]).toMatch(/^ABC,0320,E-Guard\d,CC-1,25\.00,/);
+    // Asking for another layout this once doesn't change the saved one.
+    expect((await call(tok.hr).get('/api/payroll/export?periodStart=2026-03-02&weeks=2&format=dayforce')).text.split('\r\n')[0]).toMatch(/^EmployeeXRefCode/);
+    expect((await call(tok.hr).get('/api/payroll/export-settings')).body.format).toBe('adp');
+  });
+});

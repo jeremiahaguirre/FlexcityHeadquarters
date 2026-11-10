@@ -8,14 +8,14 @@ import { badRequest } from '../../lib/errors.js';
 import { Decimal, ZERO, cents, dec } from '../../lib/money.js';
 import { addDays, payWeekStart, startOfLocalDay, wholeYearsBetween } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
-import { type ExportEmployee, buildPayrollCsv } from './export.js';
+import { type ExportEmployee, type ExportOptions, buildPayrollCsv } from './export.js';
 import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
 import { type PayResult, calculatePay } from './payCalc.js';
 import { IssueSet, issue } from './issues.js';
 
 /** `onlyUsers`: a department supervisor's people; null = everyone (HR). */
 /** `positionIds`: one department's positions; null = every position. */
-export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, weeks: number, onlyUsers: Set<string> | null = null, positionIds: string[] | null = null) {
+export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, weeks: number, onlyUsers: Set<string> | null = null, positionIds: string[] | null = null, exportOptions: ExportOptions = {}) {
   const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, include: { ruleOverrides: true, payCodeMappings: true } });
   const facilities = await tx.facility.findMany();
   const periodEnd = addDays(periodStart, weeks * 7);
@@ -127,6 +127,6 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
     tenant.payCodeMappings.find((m) => m.key === key && m.positionId === null)?.code ??
     null;
 
-  const csv = buildPayrollCsv(employees, { resolve }, { start: periodStart, end: addDays(periodEnd, -1) });
+  const csv = buildPayrollCsv(employees, { resolve }, { start: periodStart, end: addDays(periodEnd, -1) }, exportOptions);
   return { csv, results, warnings: warnings.list() };
 }

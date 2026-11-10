@@ -57,6 +57,8 @@ import { hrRouter } from './hr.js';
 import { documentsRouter } from './documents.js';
 import { supportRouter } from './support.js';
 import { ssoRouter } from './sso.js';
+import { EXPORT_FORMATS } from '../services/payroll/export.js';
+import { readSettings } from '../services/payroll/payRuns.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -385,16 +387,54 @@ api.get(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5) }).parse(req.query);
+    const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5), format: z.enum(EXPORT_FORMATS).optional() }).parse(req.query);
     // A supervisor limited to a department exports only their department's hours.
-    const out = await withTenant(a.tenantId, async (tx) => runPayroll(tx, a.tenantId, q.periodStart, q.weeks, await peopleInScope(tx, a.scope)));
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const saved = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings).providerExport;
+      const options = { ...saved, format: q.format ?? saved?.format ?? 'generic' };
+      return { ...(await runPayroll(tx, a.tenantId, q.periodStart, q.weeks, await peopleInScope(tx, a.scope), null, options)), format: options.format };
+    });
     if (!out.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', problems: out.csv.problems, warnings: out.warnings });
       return;
     }
     // Codes and details (JSON), so the screen shows them in the reader's language.
     if (out.warnings.length) res.setHeader('X-Flexcity-Warnings', encodeURIComponent(JSON.stringify(out.warnings)));
-    res.type('text/csv').attachment(`payroll-${q.periodStart}.csv`).send(out.csv.csv);
+    res.type('text/csv').attachment(`payroll-${out.format}-${q.periodStart}.csv`).send(out.csv.csv);
+  }),
+);
+
+/** Which payroll provider the export is laid out for (and ADP's codes). */
+api.get(
+  '/payroll/export-settings',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const t = await withTenant(a.tenantId, (tx) => tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } }));
+    res.json({ formats: EXPORT_FORMATS, ...(readSettings(t.payrollSettings).providerExport ?? { format: 'generic', adpCompanyCode: null, adpBatchId: null }) });
+  }),
+);
+
+api.put(
+  '/payroll/export-settings',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    if (a.scope) throw forbidden('The export layout is set by HR.');
+    const b = z
+      .object({
+        format: z.enum(EXPORT_FORMATS),
+        adpCompanyCode: z.string().trim().regex(/^[A-Za-z0-9]{3}$/, 'ADP company codes are three letters or numbers.').nullable().optional(),
+        adpBatchId: z.string().trim().max(10).nullable().optional(),
+      })
+      .parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const t = await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } });
+      const next = { ...readSettings(t.payrollSettings), providerExport: { format: b.format, adpCompanyCode: b.adpCompanyCode?.toUpperCase() ?? null, adpBatchId: b.adpBatchId ?? null } };
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify(next)) } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.export_settings', entity: 'Tenant', entityId: a.tenantId, after: b });
+    });
+    res.json({ ok: true });
   }),
 );
 

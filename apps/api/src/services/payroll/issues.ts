@@ -14,6 +14,7 @@ const EN: Record<string, (p: Record<string, string | number>) => string> = {
   STAT_PAY_MANUAL: (p) => `Statutory holiday pay entitlement for ${p.province} is not automated; calculate manually.`,
   NO_EMPLOYEE_NUMBER: (p) => `${p.name}: missing employer employee number.`,
   NO_COST_CENTRE: (p) => `${p.name}: facility has no cost centre.`,
+  ADP_COMPANY_CODE: () => 'Enter your three-character ADP company code in the export settings.',
   NO_PAY_CODE: (p) => `${p.name}: no pay code mapped for ${p.code}.`,
   NO_FEDERAL_TABLE: (p) => `There is no federal payroll table for ${p.year}. Ask FH support to add it.`,
   FEDERAL_UNVERIFIED: (p) => `The federal ${p.year} payroll table (CPP, EI, tax) hasn’t been verified against CRA’s T4127 yet.`,

@@ -1204,6 +1204,16 @@
         "NO_SIN": "{{name}}: Social Insurance Number",
         "NO_ADDRESS": "{{name}}: home mailing address"
       }
+    },
+    "provider": {
+      "label": "Payroll provider",
+      "generic": "Generic CSV",
+      "adp": "ADP Workforce Now",
+      "dayforce": "Ceridian Dayforce",
+      "wagepoint": "Wagepoint",
+      "adpCompanyCode": "ADP company code",
+      "adpBatchId": "Batch ID",
+      "hint": "Laid out for your provider’s pay data import. Providers let each customer rename columns, so check your first file against the import template they gave you."
     }
   },
   "settings": {
@@ -4210,7 +4220,8 @@
     "PUNCHES_PENDING": "{{count}} punch(es) in or near this period are still waiting for approval and were left out.",
     "PUNCHES_OPEN": "{{count}} punch(es) have no clock-out and were left out.",
     "NO_HIRE_DATE": "{{name}} has no hire date; holiday pay eligibility was assumed.",
-    "NO_HOURS": "No approved hours in this period. Approve punches first, then recalculate."
+    "NO_HOURS": "No approved hours in this period. Approve punches first, then recalculate.",
+    "ADP_COMPANY_CODE": "Enter your three-character ADP company code above."
   },
   "documents": {
     "title": "Documents",

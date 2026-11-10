@@ -24,6 +24,8 @@ import { type Issue, IssueSet, issue } from './issues.js';
 
 export interface PayrollSettings {
   businessNumber?: string;
+  /** Export to a payroll provider: the layout and ADP's company code and batch ID. */
+  providerExport?: { format: 'generic' | 'adp' | 'dayforce' | 'wagepoint'; adpCompanyCode?: string | null; adpBatchId?: string | null };
   /** Revenu Québec identification number (1234567890RS0001), for Quebec staff. */
   quebecNumber?: string;
   originatorId?: string;

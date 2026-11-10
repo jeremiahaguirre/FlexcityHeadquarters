@@ -10,13 +10,13 @@ import { BankConnection, PaySettings } from '@/components/payroll/PaySettings';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Field, Input } from '@/components/ui/Field';
+import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { useToast } from '@/components/ui/Toast';
-import { apiDownload, saveBlob } from '@/lib/api';
+import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate } from '@/lib/format';
-import { plusDays, todayIso } from '@/lib/useQuery';
+import { plusDays, todayIso, useQuery } from '@/lib/useQuery';
 import { type Issue, issueKey, issueLabel } from '@/lib/payrollIssues';
 
 type Result =
@@ -40,18 +40,31 @@ function ProviderExport() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const end = start ? plusDays(start, Number(weeks) * 7 - 1) : '';
+  type Format = 'generic' | 'adp' | 'dayforce' | 'wagepoint';
+  const saved = useQuery<{ formats: Format[]; format: Format; adpCompanyCode: string | null; adpBatchId: string | null }>('/api/payroll/export-settings');
+  const [format, setFormat] = useState<Format | null>(null);
+  const fmt: Format = format ?? saved.data?.format ?? 'generic';
 
-  async function build(e: FormEvent) {
+  async function build(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const f = new FormData(e.currentTarget);
     setBusy(true);
     setResult(null);
     try {
-      const r = await apiDownload(`/api/payroll/export?periodStart=${start}&weeks=${weeks}`);
+      // Remember the provider (and ADP's codes) for next time.
+      const adpCompanyCode = String(f.get('adpCompanyCode') ?? '').trim() || null;
+      const adpBatchId = String(f.get('adpBatchId') ?? '').trim() || null;
+      const s = saved.data;
+      if (s && (fmt !== s.format || (fmt === 'adp' && (adpCompanyCode !== s.adpCompanyCode || adpBatchId !== s.adpBatchId)))) {
+        await api('/api/payroll/export-settings', { method: 'PUT', body: { format: fmt, adpCompanyCode: fmt === 'adp' ? adpCompanyCode : s.adpCompanyCode, adpBatchId: fmt === 'adp' ? adpBatchId : s.adpBatchId } });
+        await saved.reload();
+      }
+      const r = await apiDownload(`/api/payroll/export?periodStart=${start}&weeks=${weeks}&format=${fmt}`);
       if (r.ok) {
         const header = r.headers.get('X-Flexcity-Warnings');
         const warnings = header ? (JSON.parse(decodeURIComponent(header)) as Issue[]) : [];
         const text = await r.blob.text();
-        const file = `payroll-${start}.csv`;
+        const file = `payroll-${fmt}-${start}.csv`;
         saveBlob(r.blob, file);
         setResult({ kind: 'done', file, rows: Math.max(0, text.trim().split(/\r?\n/).length - 1), warnings });
       } else if (r.error.code === 'EXPORT_INVALID') {
@@ -87,6 +100,22 @@ function ProviderExport() {
                   ]}
                 />
               </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field label={t('payroll.provider.label')}>
+                  {(p) => (
+                    <Select {...p} value={fmt} onChange={(e) => setFormat(e.target.value as Format)}>
+                      {(['generic', 'adp', 'dayforce', 'wagepoint'] as const).map((x) => <option key={x} value={x}>{t(`payroll.provider.${x}`)}</option>)}
+                    </Select>
+                  )}
+                </Field>
+                {fmt === 'adp' ? (
+                  <>
+                    <Field label={t('payroll.provider.adpCompanyCode')}>{(p) => <Input {...p} key={`c-${saved.data?.adpCompanyCode}`} name="adpCompanyCode" required maxLength={3} defaultValue={saved.data?.adpCompanyCode ?? ''} className="uppercase" />}</Field>
+                    <Field label={t('payroll.provider.adpBatchId')}>{(p) => <Input {...p} key={`b-${saved.data?.adpBatchId}`} name="adpBatchId" maxLength={10} defaultValue={saved.data?.adpBatchId ?? ''} />}</Field>
+                  </>
+                ) : null}
+              </div>
+              <p className="text-caption text-muted">{t('payroll.provider.hint')}</p>
               {start ? (
                 <p className="text-body text-muted">
                   {t('payroll.covers', { from: formatDate(`${start}T12:00:00`, lng, 'dated'), to: formatDate(`${end}T12:00:00`, lng, 'dated') })}
