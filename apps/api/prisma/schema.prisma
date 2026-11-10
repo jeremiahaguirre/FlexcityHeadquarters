@@ -231,6 +231,9 @@ model Tenant {
   /// Offboarded (contract ended): disabled, and its data is deleted after this date.
   offboardedAt          DateTime?       @db.Timestamptz(3)
   deleteAfter           DateTime?       @db.Date
+  /// After offboarding, the organization's administrators can still sign in, only to download
+  /// their full data export, until this moment (normally the deletion date).
+  exportUntil           DateTime?       @db.Timestamptz(3)
   id                    String          @id @default(uuid()) @db.Uuid
   name                  String
   subdomain             String          @unique

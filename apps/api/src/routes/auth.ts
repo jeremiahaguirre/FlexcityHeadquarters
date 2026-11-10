@@ -37,8 +37,9 @@ authRouter.get(
     const sub = subdomainOf(req);
     const t = sub ? await lookupTenant(sub) : null;
     if (!t) throw new HttpError(404, 'NOT_FOUND', 'Organization not found');
-    const { disabledAt: _closed, ...branding } = t;
-    res.json({ ...branding, sso: await publicSso(t.id) });
+    const { disabledAt, exportUntil, ...branding } = t;
+    // A closed organization only says that its administrators can still download its data.
+    res.json({ ...branding, sso: await publicSso(t.id), ...(disabledAt ? { closed: { exportUntil: exportUntil && new Date(exportUntil) > new Date() ? exportUntil : null } } : {}) });
   }),
 );
 
@@ -69,6 +70,9 @@ authRouter.post(
         }
         return { kind: 'invalid' as const };
       }
+      // Closed (offboarded): only administrators, and only to download the organization's data.
+      const org = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { disabledAt: true } });
+      if (org.disabledAt && !permissionsFor(user.roles).has('tenant.configure')) return { kind: 'closed' as const };
       // Single sign-on only: passwords stay for the people who can turn it off, so nobody is locked out.
       const sso = await connectionFor(tx);
       if (ready(sso) && sso.enforced && !permissionsFor(user.roles).has('tenant.configure')) return { kind: 'sso' as const };
@@ -79,6 +83,7 @@ authRouter.post(
     if (outcome.kind === 'locked') {
       throw new HttpError(423, 'ACCOUNT_LOCKED', 'This account is locked for 15 minutes after too many attempts. Reset your password to unlock it now.');
     }
+    if (outcome.kind === 'closed') throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
     if (outcome.kind === 'sso') throw new HttpError(403, 'SSO_REQUIRED', 'Your organization signs in with single sign-on. Use the button above.');
     if (outcome.kind === 'invalid') throw new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     const result = outcome;

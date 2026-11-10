@@ -147,9 +147,14 @@ export interface SsoInfo { protocol: 'OIDC' | 'SAML'; label: string | null; enfo
 
 /** Whether this organization signs in with Microsoft / its own identity provider. */
 export async function ssoInfo(): Promise<SsoInfo | null> {
-  if (DEMO) return null;
-  const r = await api<{ sso?: SsoInfo | null }>('/api/public/tenant', {}, false).catch(() => null);
-  return r?.sso ?? null;
+  return (await signInInfo()).sso;
+}
+
+/** What the sign-in page needs: single sign-on, and whether the organization is closed (export only). */
+export async function signInInfo(): Promise<{ sso: SsoInfo | null; closed: { exportUntil: string | null } | null }> {
+  if (DEMO) return { sso: null, closed: null };
+  const r = await api<{ sso?: SsoInfo | null; closed?: { exportUntil: string | null } }>('/api/public/tenant', {}, false).catch(() => null);
+  return { sso: r?.sso ?? null, closed: r?.closed ?? null };
 }
 
 /** After single sign-on: trades the one-time code for a session. */

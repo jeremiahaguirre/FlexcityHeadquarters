@@ -43,7 +43,9 @@
       "SSO_NO_ACCOUNT": "Aucun compte actif ici pour ce courriel. Demandez aux RH de vous ajouter.",
       "SSO_SUBJECT_CHANGED": "Ce compte est lié à un autre compte d’annuaire. Communiquez avec les RH.",
       "LINK_EXPIRED": "Cette connexion a expiré. Réessayez."
-    }
+    },
+    "closedExport": "Le compte de cette organisation est fermé. Les administrateurs peuvent encore se connecter pour télécharger ses données jusqu’au {{date}}.",
+    "closedNoAccess": "Le compte de cette organisation est fermé. Communiquez avec votre administrateur ou FlexcityHeadquarters."
   },
   "board": {
     "title": "Tableau des quarts",
@@ -4341,7 +4343,14 @@
     "disabledToast": "Ville désactivée",
     "enabledToast": "Ville réactivée",
     "offboardedToast": "Ville fermée",
-    "passkeyNote": "Ces actions demandent votre clé d’accès."
+    "passkeyNote": "Ces actions demandent votre clé d’accès.",
+    "dataExport": "Remettre à la ville une exportation complète des données",
+    "dataExportHelp": "Ses administrateurs peuvent encore se connecter, seulement pour télécharger toutes leurs données, jusqu’à la date de suppression. Ils reçoivent le lien par courriel.",
+    "exportOpen": "Exportation des données ouverte aux administrateurs de la ville jusqu’au {{date}}.",
+    "exportOff": "Aucune exportation des données n’a été offerte.",
+    "exportsTaken_one": "Téléchargée une fois (dernière : {{last}}).",
+    "exportsTaken_other": "Téléchargée {{count}} fois (dernière : {{last}}).",
+    "exportsNone": "Pas encore téléchargée."
   },
   "sso": {
     "title": "Authentification unique",
@@ -4393,5 +4402,26 @@
     "city": "Ville",
     "province": "Province",
     "postalCode": "Code postal"
+  },
+  "dataExport": {
+    "title": "Téléchargez toutes vos données",
+    "help": "Tout ce que votre organisation conserve dans FlexcityHeadquarters, dans un seul fichier zip que vous pouvez ouvrir sans nous : dossiers du personnel, horaires, temps, paie, incidents, dossiers RH et documents.",
+    "size": "{{kinds}} types de dossiers · {{rows}} lignes · {{files}} documents",
+    "has": {
+      "csv": "Un tableur (CSV) et un fichier JSON pour chaque type de dossier",
+      "files": "Documents, signatures et logo sous forme de fichiers, liés à leurs lignes",
+      "sealed": "NAS, comptes bancaires et récits d’incident déchiffrés, lisibles sans nous",
+      "notUnion": "Non inclus : les secrets de connexion, et l’espace syndical (il appartient à la section locale)"
+    },
+    "sensitive": "Le fichier contient des renseignements personnels, des numéros d’assurance sociale et des numéros de compte bancaire. Conservez-le comme vos dossiers RH et supprimez les copies inutiles.",
+    "download": "Télécharger l’exportation (zip)",
+    "saved": "Exportation téléchargée.",
+    "last": "Dernier téléchargement : {{time}}",
+    "demo": "L’exportation des données n’est pas offerte dans la démo.",
+    "closedTitle": "Le compte de votre organisation est fermé",
+    "closedHelp": "Vous pouvez télécharger vos données jusqu’au {{date}}. Après cette date, elles sont supprimées de FlexcityHeadquarters.",
+    "closedNoDate": "Téléchargez vos données avant leur suppression.",
+    "signIn": "Connectez-vous comme administrateur pour télécharger les données de votre organisation.",
+    "forbidden": "Seuls les administrateurs de votre organisation peuvent télécharger ses données."
   }
 }

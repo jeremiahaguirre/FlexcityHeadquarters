@@ -28,6 +28,8 @@ export interface Me {
   billing?: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; overdueSince: string | null; suspendsOn: string | null; trialEndsAt: string | null; canPay: boolean };
   /** An FH support visit (read-only, with the organization's consent). */
   support?: { admin: string; level: 'SETUP' | 'FULL'; endsAt: string };
+  /** The organization is closed (offboarded): only the data export is open. */
+  closed?: { exportUntil: string | null };
   employmentStatus: string;
   positions: Array<{ id: string; name: string; nameFr: string | null }>;
   certifications: Array<{ id: string; certification: { id: string; name: string; nameFr: string | null }; issueDate: string; expiryDate: string | null; verified: boolean }>;

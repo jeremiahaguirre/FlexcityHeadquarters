@@ -22,7 +22,7 @@ async function record(adminId: string, tenantId: string, action: string, detail?
 }
 
 async function tenantOr404(id: string) {
-  const t = await withTenant(id, (tx) => tx.tenant.findUnique({ where: { id }, select: { id: true, subdomain: true, name: true, disabledAt: true, disabledReason: true, offboardedAt: true, deleteAfter: true } }));
+  const t = await withTenant(id, (tx) => tx.tenant.findUnique({ where: { id }, select: { id: true, subdomain: true, name: true, disabledAt: true, disabledReason: true, offboardedAt: true, deleteAfter: true, exportUntil: true } }));
   if (!t) throw notFound('Organization');
   return t;
 }
@@ -50,6 +50,8 @@ lifecycleRouter.get(
       disabledReason: t.disabledReason,
       offboardedAt: t.offboardedAt,
       deleteAfter: t.deleteAfter?.toISOString().slice(0, 10) ?? null,
+      exportUntil: t.exportUntil,
+      exports: (await withTenant(id, (tx) => tx.auditLog.findMany({ where: { action: 'data.export' }, orderBy: { at: 'desc' }, take: 5, select: { at: true } }))).map((e) => e.at),
       support: grant ? { level: grant.level, expiresAt: grant.expiresAt, reason: grant.reason } : null,
       visits: visits.map((v) => ({ id: v.id, admin: admins.find((a) => a.id === v.adminId)?.name ?? '', startedAt: v.usedAt, endsAt: v.endsAt })),
     });
@@ -79,7 +81,7 @@ lifecycleRouter.post(
     const id = uuid.parse(req.params.id);
     const t = await tenantOr404(id);
     if (!t.disabledAt) throw conflict('NOT_DISABLED', 'This organization is open.');
-    await withTenant(id, (tx) => tx.tenant.update({ where: { id }, data: { disabledAt: null, disabledReason: null, offboardedAt: null, deleteAfter: null } }));
+    await withTenant(id, (tx) => tx.tenant.update({ where: { id }, data: { disabledAt: null, disabledReason: null, offboardedAt: null, deleteAfter: null, exportUntil: null } }));
     forgetTenantLookup();
     forgetFeatures(id);
     await record(p.adminId, id, 'tenant.enable');
@@ -97,15 +99,27 @@ lifecycleRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
-    const b = z.object({ reason: z.string().trim().min(3).max(200), retentionDays: z.number().int().min(30).max(3650).default(90), confirm: z.string() }).parse(req.body);
+    const b = z.object({ reason: z.string().trim().min(3).max(200), retentionDays: z.number().int().min(30).max(3650).default(90), confirm: z.string(), dataExport: z.boolean().default(true) }).parse(req.body);
     const t = await tenantOr404(id);
     if (b.confirm.trim().toLowerCase() !== t.subdomain) throw new HttpError(400, 'CONFIRM_MISMATCH', `Type “${t.subdomain}” to confirm.`);
     if (t.offboardedAt) throw conflict('ALREADY_OFFBOARDED', 'This organization is already being offboarded.');
     if (!t.disabledAt) await disable(id, b.reason);
     const deleteAfter = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + b.retentionDays));
-    await withTenant(id, (tx) => tx.tenant.update({ where: { id }, data: { offboardedAt: new Date(), deleteAfter } }));
-    await record(p.adminId, id, 'tenant.offboard', { reason: b.reason, deleteAfter: deleteAfter.toISOString().slice(0, 10) });
-    res.json({ ok: true, deleteAfter: deleteAfter.toISOString().slice(0, 10) });
+    // The organization's administrators can sign in, only to download all their data, until deletion.
+    const exportUntil = b.dataExport ? deleteAfter : null;
+    await withTenant(id, async (tx) => {
+      await tx.tenant.update({ where: { id }, data: { offboardedAt: new Date(), deleteAfter, exportUntil } });
+      if (exportUntil) {
+        const admins = await tx.user.findMany({ where: { status: 'ACTIVE', roles: { has: 'HR_ADMIN' } }, select: { email: true, locale: true } });
+        for (const ad of admins) {
+          await tx.emailOutbox.create({ data: { tenantId: id, toEmail: ad.email, template: 'data_export_ready', locale: ad.locale, params: { organization: t.name, url: appUrl(t.subdomain, '/export'), until: deleteAfter.toISOString().slice(0, 10) } } });
+        }
+      }
+    });
+    forgetTenantLookup();
+    forgetFeatures(id);
+    await record(p.adminId, id, 'tenant.offboard', { reason: b.reason, deleteAfter: deleteAfter.toISOString().slice(0, 10), dataExport: b.dataExport });
+    res.json({ ok: true, deleteAfter: deleteAfter.toISOString().slice(0, 10), exportUntil });
   }),
 );
 

@@ -43,7 +43,9 @@
       "SSO_NO_ACCOUNT": "There’s no active account here for that email. Ask HR to add you.",
       "SSO_SUBJECT_CHANGED": "This account is linked to a different directory account. Ask HR for help.",
       "LINK_EXPIRED": "This sign-in has expired. Try again."
-    }
+    },
+    "closedExport": "This organization's account is closed. Administrators can still sign in to download its data until {{date}}.",
+    "closedNoAccess": "This organization's account is closed. Contact your administrator or FlexcityHeadquarters."
   },
   "board": {
     "title": "Shift board",
@@ -4341,7 +4343,14 @@
     "disabledToast": "City turned off",
     "enabledToast": "City turned back on",
     "offboardedToast": "City offboarded",
-    "passkeyNote": "These actions ask for your passkey."
+    "passkeyNote": "These actions ask for your passkey.",
+    "dataExport": "Give the city a full data export",
+    "dataExportHelp": "Its administrators can still sign in, only to download all their data, until the deletion date. They're emailed the link.",
+    "exportOpen": "Data export open to the city's administrators until {{date}}.",
+    "exportOff": "No data export was offered.",
+    "exportsTaken_one": "Downloaded once (last {{last}}).",
+    "exportsTaken_other": "Downloaded {{count}} times (last {{last}}).",
+    "exportsNone": "Not downloaded yet."
   },
   "sso": {
     "title": "Single sign-on",
@@ -4393,5 +4402,26 @@
     "city": "City",
     "province": "Province",
     "postalCode": "Postal code"
+  },
+  "dataExport": {
+    "title": "Download all your data",
+    "help": "Everything your organization keeps in FlexcityHeadquarters, in one zip you can open without us: staff records, schedules, time, payroll, incidents, HR files and documents.",
+    "size": "{{kinds}} kinds of records · {{rows}} rows · {{files}} documents",
+    "has": {
+      "csv": "A spreadsheet (CSV) and a JSON file for each kind of record",
+      "files": "Documents, signatures and your logo as files, linked from their rows",
+      "sealed": "SINs, bank accounts and incident narratives opened, so they're readable without us",
+      "notUnion": "Not included: sign-in secrets, and the union hub (it belongs to the union local)"
+    },
+    "sensitive": "The file contains personal information, Social Insurance Numbers and bank account numbers. Store it like your HR records and delete copies you don't need.",
+    "download": "Download the export (zip)",
+    "saved": "Export downloaded.",
+    "last": "Last downloaded {{time}}",
+    "demo": "The data export isn't available in the demo.",
+    "closedTitle": "Your organization's account is closed",
+    "closedHelp": "You can download your data until {{date}}. After that date it's deleted from FlexcityHeadquarters.",
+    "closedNoDate": "Download your data before it's deleted.",
+    "signIn": "Sign in as an administrator to download your organization's data.",
+    "forbidden": "Only your organization's administrators can download its data."
   }
 }

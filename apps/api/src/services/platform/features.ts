@@ -73,17 +73,17 @@ export async function tenantFeatures(tenantId: string): Promise<FeatureSet> {
 }
 
 /** Feature switches and per-role overrides, cached together. */
-export interface TenantSettings { features: FeatureSet; overrides: RoleOverrides; mfaRoles: AccessRole[]; billing: BillingState }
+export interface TenantSettings { features: FeatureSet; overrides: RoleOverrides; mfaRoles: AccessRole[]; billing: BillingState; disabledAt?: Date | null; exportUntil?: Date | null }
 
 export async function tenantSettings(tenantId: string): Promise<TenantSettings> {
   const hit = cache.get(tenantId);
   if (hit && Date.now() - hit.at < TTL_MS) return hit;
-  const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true, roleOverrides: true, mfaRoles: true } }));
+  const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true, roleOverrides: true, mfaRoles: true, disabledAt: true, exportUntil: true } }));
   const billing = await billingState(tenantId);
   // A feature the plan doesn't include is off, whatever its switch says.
   const features = resolveFeatures(row?.features);
   for (const k of Object.keys(billing.locked) as FeatureKey[]) features[k] = false;
-  const entry = { at: Date.now(), features, overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [], billing };
+  const entry = { at: Date.now(), features, overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [], billing, disabledAt: row?.disabledAt ?? null, exportUntil: row?.exportUntil ?? null };
   cache.set(tenantId, entry);
   return entry;
 }

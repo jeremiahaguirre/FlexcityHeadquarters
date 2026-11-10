@@ -76,9 +76,9 @@ REVOKE INSERT, UPDATE ON "CertificationPrerequisite", "StatutoryHoliday" FROM fl
 -- Its columns changed (disabledAt), so it's dropped and made again.
 DROP FUNCTION IF EXISTS public_tenant_by_subdomain(text);
 CREATE FUNCTION public_tenant_by_subdomain(p_subdomain text)
-  RETURNS TABLE (id uuid, name text, "logoUrl" text, "themeColors" jsonb, "defaultLocale" text, "disabledAt" timestamptz)
+  RETURNS TABLE (id uuid, name text, "logoUrl" text, "themeColors" jsonb, "defaultLocale" text, "disabledAt" timestamptz, "exportUntil" timestamptz)
   LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
-$$ SELECT id, name, "logoUrl", "themeColors", "defaultLocale", "disabledAt" FROM "Tenant" WHERE subdomain = p_subdomain $$;
+$$ SELECT id, name, "logoUrl", "themeColors", "defaultLocale", "disabledAt", "exportUntil" FROM "Tenant" WHERE subdomain = p_subdomain $$;
 REVOKE ALL ON FUNCTION public_tenant_by_subdomain(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public_tenant_by_subdomain(text) TO flexcity_app;
 

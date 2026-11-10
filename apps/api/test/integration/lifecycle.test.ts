@@ -109,9 +109,15 @@ describe('closing an organization', () => {
 
   it('offboarding needs the address typed; after the retention date the data is deleted, invoices kept', async () => {
     const other = await seedTenant('purgecity', 2);
+    await owner.user.create({ data: { tenantId: other.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'Pat', lastName: 'HR', email: 'hr@purgecity.test' } });
     expect((await dev('post', `/tenants/${other.tenant.id}/offboard`, { reason: 'Contract ended', confirm: 'wrong' })).body.code).toBe('CONFIRM_MISMATCH');
     const o = await dev('post', `/tenants/${other.tenant.id}/offboard`, { reason: 'Contract ended', confirm: 'purgecity', retentionDays: 30 });
     expect(o.body.deleteAfter).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // By default the city keeps a download-only sign-in until deletion, and its HR administrators are told.
+    expect(o.body.exportUntil.slice(0, 10)).toBe(o.body.deleteAfter);
+    const mail = await owner.emailOutbox.findMany({ where: { tenantId: other.tenant.id, template: 'data_export_ready' } });
+    expect(mail.map((m) => m.toEmail)).toEqual(['hr@purgecity.test']);
+    expect((await dev('get', `/tenants/${other.tenant.id}/lifecycle`)).body.exportUntil).toBeTruthy();
     await owner.invoice.create({ data: { tenantId: other.tenant.id, periodStart: new Date('2026-01-01'), periodEnd: new Date('2026-01-31'), billTo: { legalName: 'Purge City' }, createdById: other.users[0]!.id } });
     await expect(purgeTenant(owner, other.tenant.id)).rejects.toThrow(/retention period/);
     const r = await purgeTenant(owner, other.tenant.id, { force: true });

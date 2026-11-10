@@ -30,6 +30,8 @@ export interface AuthContext {
 
 /** What someone who still owes a second factor may reach: enough to give it, or set up a passkey. */
 const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/step-up(\/|$)/];
+/** All a closed organization's administrators can reach: who they are, their passkeys, and the export. */
+const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/step-up(\/options)?|data-export(\/.*)?)$/;
 const mfaExempt = (url: string) => MFA_EXEMPT.some((r) => r.test(url.split('?')[0]!));
 
 declare global {
@@ -52,12 +54,18 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const [{ features, overrides, mfaRoles, billing }, custom, ok, managed] = await Promise.all([tenantSettings(claims.tid), customAccess(claims.tid, claims.sub), stillActive(claims.tid, claims.sub), managedScope(claims.tid, claims.sub)]);
+    const [{ features, overrides, mfaRoles, billing, disabledAt, exportUntil }, custom, ok, managed] = await Promise.all([tenantSettings(claims.tid), customAccess(claims.tid, claims.sub), stillActive(claims.tid, claims.sub), managedScope(claims.tid, claims.sub)]);
     // Terminated, deactivated or restricted people lose access at once, not when their token expires.
     if (!ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
     // Each role's permissions after the city's Dev console overrides, plus custom roles.
     const builtIn = permissionsWithOverrides(claims.roles, overrides);
     const granted = new Set([...builtIn, ...custom.perms]);
+    // Closed by FH: a session still in hand stops working at once. After offboarding, the
+    // organization's administrators keep only what they need to download their data.
+    if (disabledAt) {
+      const exportOnly = exportUntil && exportUntil > new Date() && granted.has('tenant.configure') && !claims.sup && CLOSED_EXPORT.test(req.originalUrl.split('?')[0]!);
+      if (!exportOnly) throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
+    }
     const mfa = claims.mfa === true;
     const mfaPending = !mfa && claims.roles.some((r) => mfaRoles.includes(r));
     req.auth = {

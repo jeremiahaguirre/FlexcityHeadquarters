@@ -57,6 +57,7 @@ import { hrRouter } from './hr.js';
 import { documentsRouter } from './documents.js';
 import { supportRouter } from './support.js';
 import { ssoRouter } from './sso.js';
+import { dataExportRouter } from './dataExport.js';
 import { EXPORT_FORMATS } from '../services/payroll/export.js';
 import { readSettings } from '../services/payroll/payRuns.js';
 
@@ -86,6 +87,7 @@ api.use(hrRouter);
 api.use(documentsRouter);
 api.use(supportRouter);
 api.use(ssoRouter);
+api.use(dataExportRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);

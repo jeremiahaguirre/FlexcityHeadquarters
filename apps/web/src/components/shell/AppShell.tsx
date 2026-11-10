@@ -3,7 +3,7 @@
 import { Lock, MoreHorizontal, ShieldCheck, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CityBrand, CoBrand, type Organization } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
@@ -34,6 +34,10 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   const { can, me } = useSession();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  // Offboarded: the one thing left is the data export.
+  useEffect(() => {
+    if (me?.closed) window.location.replace('/export');
+  }, [me?.closed]);
   const items = visibleNav(can, me?.hiddenMenu ?? []);
   const { tabs, more } = phoneTabs(items);
   const destinations: Destination[] = [

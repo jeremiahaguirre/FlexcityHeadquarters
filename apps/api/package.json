@@ -25,6 +25,7 @@
     "cookie-parser": "1.4.7",
     "decimal.js": "10.4.3",
     "express": "4.22.3",
+    "fflate": "0.8.2",
     "jose": "5.9.6",
     "luxon": "3.5.0",
     "openpgp": "6.3.2",

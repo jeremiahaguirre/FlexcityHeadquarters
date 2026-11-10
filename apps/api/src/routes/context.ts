@@ -6,6 +6,7 @@ import { LocalKeyProvider, AwsKmsKeyProvider, type KeyProvider } from '../servic
 
 export interface PublicTenant {
   disabledAt?: Date | null;
+  exportUntil?: Date | null;
   id: string;
   name: string;
   logoUrl: string | null;
@@ -41,14 +42,24 @@ export function subdomainOf(req: Request): string | null {
   return sub.includes('.') ? null : sub;
 }
 
+/**
+ * What a closed organization's administrators still need to reach their data export: sign-in, who
+ * they are, their passkeys and the export. requireAuth then admits only administrators to the rest.
+ */
+const CLOSED_OK = /^\/(public\/tenant|auth\/(login|refresh|logout|forgot|reset|passkey(\/options)?|step-up(\/options)?|sso\/.+)|me|me\/passkeys(\/.*)?|data-export(\/.*)?)$/;
+export const exportWindowOpen = (until: Date | string | null | undefined) => !!until && new Date(until) > new Date();
+
 export async function resolveTenant(req: Request, _res: Response, next: NextFunction) {
   try {
     const sub = subdomainOf(req);
     if (!sub) throw notFound('Organization');
     const tenant = await lookupTenant(sub);
     if (!tenant) throw notFound('Organization');
-    // Closed by FH (unpaid for good, or offboarded): nothing opens, not even sign-in.
-    if (tenant.disabledAt) throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
+    // Closed by FH (unpaid for good, or offboarded): nothing opens, not even sign-in, except that
+    // after offboarding its administrators may sign in to download their data until the export window ends.
+    if (tenant.disabledAt && !(exportWindowOpen(tenant.exportUntil) && CLOSED_OK.test(req.path))) {
+      throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
+    }
     req.tenantId = tenant.id;
     next();
   } catch (e) {

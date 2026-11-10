@@ -25,6 +25,7 @@ import { DepartmentsEditor } from '@/components/DepartmentsEditor';
 import type { Departments } from '@/lib/departments';
 import { SupportAccessCard } from '@/components/settings/SupportAccessCard';
 import { SsoCard } from '@/components/settings/SsoCard';
+import { DataExportCard } from '@/components/settings/DataExportCard';
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
 
@@ -96,6 +97,7 @@ export default function SettingsPage() {
           {tab === 'org' ? <Organization s={settings.data} reload={settings.reload} /> : null}
           {tab === 'org' ? <SsoCard /> : null}
           {tab === 'org' ? <SupportAccessCard /> : null}
+          {tab === 'org' ? <DataExportCard /> : null}
           {tab === 'facilities' ? <Facilities s={settings.data} reload={settings.reload} /> : null}
           {tab === 'pay' ? <PayCodes s={settings.data} reload={settings.reload} /> : null}
           {tab === 'calendar' ? <SchoolCalendar s={settings.data} reload={settings.reload} /> : null}

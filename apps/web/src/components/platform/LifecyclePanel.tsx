@@ -12,7 +12,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ApiError } from '@/lib/apiError';
 import { papi, usePlatformQuery } from '@/lib/platform';
 
-interface Lifecycle { disabledAt: string | null; disabledReason: string | null; offboardedAt: string | null; deleteAfter: string | null; support: { level: 'SETUP' | 'FULL'; expiresAt: string; reason: string | null } | null; visits: Array<{ id: string; admin: string; startedAt: string; endsAt: string }> }
+interface Lifecycle { disabledAt: string | null; disabledReason: string | null; offboardedAt: string | null; deleteAfter: string | null; exportUntil?: string | null; exports?: string[]; support: { level: 'SETUP' | 'FULL'; expiresAt: string; reason: string | null } | null; visits: Array<{ id: string; admin: string; startedAt: string; endsAt: string }> }
 
 /** Support visits (with the organization's consent) and closing an organization. */
 export function LifecyclePanel({ id, subdomain }: { id: string; subdomain: string }) {
@@ -68,7 +68,13 @@ export function LifecyclePanel({ id, subdomain }: { id: string; subdomain: strin
         <CardHeader title={t('lifecycle.closeTitle')} description={t('lifecycle.closeHelp')} />
         <CardBody className="grid gap-4 pt-2">
           {d.offboardedAt ? (
-            <p className="text-small"><StatusPill tone="danger">{t('lifecycle.offboarded')}</StatusPill> {t('lifecycle.deleteOn', { date: d.deleteAfter })}</p>
+            <div className="grid gap-1 text-small">
+              <p><StatusPill tone="danger">{t('lifecycle.offboarded')}</StatusPill> {t('lifecycle.deleteOn', { date: d.deleteAfter })}</p>
+              <p className="text-muted">
+                {d.exportUntil ? t('lifecycle.exportOpen', { date: d.exportUntil.slice(0, 10) }) : t('lifecycle.exportOff')}
+                {d.exports?.length ? ` ${t('lifecycle.exportsTaken', { count: d.exports.length, last: when(d.exports[0]!) })}` : d.exportUntil ? ` ${t('lifecycle.exportsNone')}` : ''}
+              </p>
+            </div>
           ) : d.disabledAt ? (
             <p className="text-small"><StatusPill tone="warn">{t('lifecycle.disabled')}</StatusPill> {d.disabledReason}</p>
           ) : (
@@ -92,7 +98,7 @@ export function LifecyclePanel({ id, subdomain }: { id: string; subdomain: strin
               onSubmit={(e: FormEvent<HTMLFormElement>) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
-                void run('offboard', () => papi(`/tenants/${id}/offboard`, { method: 'POST', body: { reason: String(f.get('reason')), retentionDays: Number(f.get('days')), confirm: String(f.get('confirm')) } }), t('lifecycle.offboardedToast')).then(() => setMode('none'));
+                void run('offboard', () => papi(`/tenants/${id}/offboard`, { method: 'POST', body: { reason: String(f.get('reason')), retentionDays: Number(f.get('days')), confirm: String(f.get('confirm')), dataExport: f.get('dataExport') === 'on' } }), t('lifecycle.offboardedToast')).then(() => setMode('none'));
               }}
             >
               <p className="text-small text-muted">{t('lifecycle.offboardHelp')}</p>
@@ -100,6 +106,13 @@ export function LifecyclePanel({ id, subdomain }: { id: string; subdomain: strin
                 <Field label={t('lifecycle.reason')}>{(p) => <Input {...p} name="reason" required minLength={3} maxLength={200} />}</Field>
                 <Field label={t('lifecycle.retention')} hint={t('lifecycle.retentionHint')}>{(p) => <Input {...p} name="days" type="number" min={30} max={3650} defaultValue={90} required />}</Field>
               </div>
+              <label className="flex items-start gap-3 text-small">
+                <input type="checkbox" name="dataExport" defaultChecked className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />
+                <span>
+                  <span className="block font-semibold">{t('lifecycle.dataExport')}</span>
+                  <span className="text-muted">{t('lifecycle.dataExportHelp')}</span>
+                </span>
+              </label>
               <Field label={t('lifecycle.confirm', { subdomain })}>{(p) => <Input {...p} name="confirm" required autoComplete="off" />}</Field>
               <div className="flex gap-2"><Button type="submit" variant="danger" loading={busy === 'offboard'}>{t('lifecycle.offboard')}</Button><Button variant="ghost" onClick={() => setMode('none')}>{t('common.cancel')}</Button></div>
             </form>

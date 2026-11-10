@@ -115,6 +115,16 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `${p.name} a appuyé sur « J'ai besoin d'aide » à ${p.location}.${p.note ? ` Note : ${p.note}` : ''} Intervenez maintenant; composez le 911 si quelqu'un pourrait être blessé.\n${APP_URL()}/manage/lone-work`,
     }),
   },
+  data_export_ready: {
+    'en-CA': (p) => ({
+      subject: `Download ${p.organization}'s data from FlexcityHeadquarters`,
+      text: `${p.organization}'s FlexcityHeadquarters account is closed. Administrators can still sign in, only to download a complete export of your data (staff records, schedules, time, payroll, incidents, documents), until ${p.until}. After that date it is deleted.\n${p.url}`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `Téléchargez les données de ${p.organization} de FlexcityHeadquarters`,
+      text: `Le compte FlexcityHeadquarters de ${p.organization} est fermé. Les administrateurs peuvent encore se connecter, seulement pour télécharger une exportation complète de vos données (dossiers du personnel, horaires, temps, paie, incidents, documents), jusqu’au ${p.until}. Après cette date, elles sont supprimées.\n${p.url}`,
+    }),
+  },
   password_reset: {
     'en-CA': (p) => ({
       subject: 'Reset your FlexcityHeadquarters password',

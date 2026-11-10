@@ -7,14 +7,14 @@ import { type FormEvent, Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
-import { ApiError, login, ssoInfo, type SsoInfo } from '@/lib/api';
+import { ApiError, login, signInInfo, type SsoInfo } from '@/lib/api';
 import { DEMO, DEMO_ACCOUNTS, DEMO_PASSWORD, DEMO_ROLES } from '@/lib/demo';
 import { OFFER_FLAG } from '@/components/auth/PasskeyPrompt';
 import { PasskeyIcon } from '@/components/auth/PasskeyIcon';
 import { cancelled, passkeysSupported, signInWithPasskey } from '@/lib/passkeys';
 
 function LoginForm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const router = useRouter();
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +23,15 @@ function LoginForm() {
   useEffect(() => setCanPasskey(passkeysSupported()), []);
   const [sso, setSso] = useState<SsoInfo | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  useEffect(() => void ssoInfo().then(setSso), []);
+  const [closed, setClosed] = useState<{ exportUntil: string | null } | null>(null);
+  useEffect(
+    () =>
+      void signInInfo().then((i) => {
+        setSso(i.sso);
+        setClosed(i.closed);
+      }),
+    [],
+  );
   // Back from the identity provider with a problem: say what it was.
   const ssoError = params.get('sso');
   useEffect(() => {
@@ -72,10 +80,11 @@ function LoginForm() {
       } catch {
         /* storage blocked */
       }
-      const next = params.get('next');
+      const next = closed ? '/export' : params.get('next');
       router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setError(t('login.invalid'));
+      if (err instanceof ApiError && err.code === 'ORG_DISABLED') setError(t('login.closedNoAccess'));
+      else if (err instanceof ApiError && err.status === 401) setError(t('login.invalid'));
       else if (err instanceof ApiError && err.status === 423) setError(t('login.locked'));
       else if (err instanceof ApiError && err.status === 429) setError(t('login.tooMany'));
       else if (err instanceof ApiError && err.code === 'SSO_REQUIRED') setError(t('login.ssoErrors.SSO_REQUIRED'));
@@ -89,6 +98,11 @@ function LoginForm() {
     <>
       <h1 className="text-title">{t('login.title')}</h1>
       <p className="mt-2 text-body text-muted">{t('login.subtitle')}</p>
+      {closed ? (
+        <p className="mt-4 rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">
+          {closed.exportUntil ? t('login.closedExport', { date: new Date(closed.exportUntil).toLocaleDateString(i18n.language, { dateStyle: 'long' }) }) : t('login.closedNoAccess')}
+        </p>
+      ) : null}
       {DEMO ? (
         <div className="mt-6 grid gap-2">
           <p className="text-small font-semibold">{t('demo.pick')}</p>

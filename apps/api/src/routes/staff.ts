@@ -41,6 +41,7 @@ staffRouter.get(
   '/me',
   h(async (req, res) => {
     const a = authOf(req);
+    const closed = await tenantSettings(a.tenantId);
     const [me, tenant, myRoles] = await withTenant(a.tenantId, (tx) =>
       Promise.all([
         tx.user.findUniqueOrThrow({
@@ -93,6 +94,8 @@ staffRouter.get(
       mfaRequired: a.mfaPending,
       lockedMenu,
       billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: a.permissions.has('billing.manage') },
+      // Offboarded: the app shows only the data export.
+      ...(closed.disabledAt ? { closed: { exportUntil: closed.exportUntil } } : {}),
     });
   }),
 );
