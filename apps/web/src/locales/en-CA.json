@@ -111,7 +111,8 @@
   "demo": {
     "banner": "Demo with sample data — nothing you do here is saved.",
     "hint": "Or sign in with any of them, e.g. guard@demo.flexcity, password {{password}}.",
-    "pick": "Try it as:"
+    "pick": "Try it as:",
+    "back": "Back to the website"
   },
   "common": {
     "close": "Close",
