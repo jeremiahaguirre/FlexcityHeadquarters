@@ -3591,8 +3591,23 @@
       "flagged_one": "{{count}} personne signalée pour examen",
       "flagged_other": "{{count}} personnes signalées pour examen",
       "offboarding_one": "{{count}} personne sur le départ",
-      "offboarding_other": "{{count}} personnes sur le départ"
-    }
+      "offboarding_other": "{{count}} personnes sur le départ",
+      "openClaims_one": "{{count}} réclamation pour blessure ouverte",
+      "openClaims_other": "{{count}} réclamations pour blessure ouvertes"
+    },
+    "attentionCount_one": "{{count}} élément demande votre attention",
+    "attentionCount_other": "{{count}} éléments demandent votre attention",
+    "allClear": "rien ne demande votre attention",
+    "allClearBody": "Tout est en ordre. Rien aux RH ne demande votre attention pour l’instant.",
+    "numbers": "Chiffres clés",
+    "num": {
+      "staff": "Employés actifs",
+      "enrolled": "Adhésions aux avantages",
+      "reviews": "Évaluations en cours",
+      "jobs": "Affichages ouverts"
+    },
+    "allAreas": "Tous les secteurs des RH",
+    "needsAttention": "Demande votre attention"
   },
   "leave": {
     "title": "Soldes de congés",
@@ -3847,8 +3862,8 @@
     "nav": "Débits",
     "title": "Débits préautorisés",
     "description": "Percevoir les frais de forfait dans les comptes bancaires des organisations : produire le fichier pour la banque de FH, puis consigner ce qui a été réglé et ce qui a été retourné.",
-    "originator": "Coordonnées bancaires de FH",
-    "originatorHelp": "Fournies par la banque de FH à la mise en place du DPA : identifiant d’émetteur, centre de données et compte où reviennent les débits retournés.",
+    "originator": "Compte bancaire de FH",
+    "originatorHelp": "Où sont déposés les paiements de forfait des villes. Votre banque enregistre ce compte sous l’identifiant d’émetteur de FH; les débits retournés y reviennent aussi.",
     "setUp": "Configurer",
     "originatorId": "Identifiant d’émetteur",
     "dataCentre": "Centre de données",
@@ -3856,7 +3871,7 @@
     "codeHint": "À confirmer avec la banque",
     "shortName": "Nom abrégé (15)",
     "longName": "Nom complet (30)",
-    "returnsAccount": "Compte des retours (de FH)",
+    "returnsAccount": "Compte de FH (les paiements y arrivent; les retours y reviennent)",
     "keepAccount": "Laisser vide pour garder {{account}}",
     "originatorSaved": "Coordonnées bancaires enregistrées",
     "originatorLine": "Émetteur {{id}} · centre {{centre}} · code {{code}} · retours à {{institution}}-{{transit}} {{account}} · dernier fichier no {{last}}",
@@ -4000,5 +4015,13 @@
     "closedThrough": "Livres fermés jusqu’au",
     "closedHint": "Laisser vide pour garder toutes les périodes ouvertes.",
     "periodSaved": "Enregistré"
+  },
+  "navSections": {
+    "people": "Personnel",
+    "time": "Temps et horaires",
+    "pay": "Paie et avantages",
+    "safety": "Santé et sécurité",
+    "programs": "Programmes et membres",
+    "organization": "Organisation"
   }
 }

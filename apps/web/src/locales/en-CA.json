@@ -3591,8 +3591,23 @@
       "flagged_one": "{{count}} person flagged for review",
       "flagged_other": "{{count}} people flagged for review",
       "offboarding_one": "{{count}} person leaving",
-      "offboarding_other": "{{count}} people leaving"
-    }
+      "offboarding_other": "{{count}} people leaving",
+      "openClaims_one": "{{count}} injury claim open",
+      "openClaims_other": "{{count}} injury claims open"
+    },
+    "attentionCount_one": "{{count}} thing needs you",
+    "attentionCount_other": "{{count}} things need you",
+    "allClear": "nothing needs you right now",
+    "allClearBody": "All clear. Nothing in HR needs your attention right now.",
+    "numbers": "Key numbers",
+    "num": {
+      "staff": "Active employees",
+      "enrolled": "Benefit enrolments",
+      "reviews": "Reviews in progress",
+      "jobs": "Open postings"
+    },
+    "allAreas": "All HR areas",
+    "needsAttention": "Needs attention"
   },
   "leave": {
     "title": "Leave balances",
@@ -3847,8 +3862,8 @@
     "nav": "Debits",
     "title": "Pre-authorized debits",
     "description": "Collect plan charges from organizations' bank accounts: build the file for FH's bank, then record what settled and what came back.",
-    "originator": "FH's bank details",
-    "originatorHelp": "From FH's bank when PAD is set up: the originator ID, data centre and the account returned debits go back to.",
+    "originator": "FH's bank account",
+    "originatorHelp": "Where cities' plan payments are deposited. Your bank registers this account under FH's originator ID; returned debits come back to it too.",
     "setUp": "Set up",
     "originatorId": "Originator ID",
     "dataCentre": "Data centre",
@@ -3856,7 +3871,7 @@
     "codeHint": "Confirm with the bank",
     "shortName": "Short name (15)",
     "longName": "Long name (30)",
-    "returnsAccount": "Returns account (FH's)",
+    "returnsAccount": "FH's account (payments land here; returns come back here)",
     "keepAccount": "Leave blank to keep {{account}}",
     "originatorSaved": "Bank details saved",
     "originatorLine": "Originator {{id}} · data centre {{centre}} · code {{code}} · returns to {{institution}}-{{transit}} {{account}} · last file #{{last}}",
@@ -4000,5 +4015,13 @@
     "closedThrough": "Books closed through",
     "closedHint": "Leave blank to keep every period open.",
     "periodSaved": "Saved"
+  },
+  "navSections": {
+    "people": "People",
+    "time": "Time and scheduling",
+    "pay": "Pay and benefits",
+    "safety": "Health and safety",
+    "programs": "Programs and members",
+    "organization": "Organization"
   }
 }

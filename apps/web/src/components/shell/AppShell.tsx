@@ -9,7 +9,7 @@ import { CityBrand, CoBrand, type Organization } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { Dialog } from '@/components/ui/Dialog';
 import { cn } from '@/lib/cn';
-import { NAV, type NavItem, phoneTabs, visibleNav } from '@/lib/nav';
+import { MANAGE_SECTIONS, NAV, type NavItem, phoneTabs, visibleNav } from '@/lib/nav';
 import { BillingBanner } from '@/components/shell/BillingBanner';
 import { useSession } from '@/lib/session';
 import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
@@ -21,6 +21,7 @@ import { PunchControl } from '@/components/punch/PunchControl';
 import { PunchProvider } from '@/components/punch/PunchProvider';
 import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
+import { ManageNav, SECTION_THRESHOLD } from './ManageNav';
 
 const GROUPS: Array<NavItem['group']> = ['mine', 'deck', 'manage', 'union'];
 
@@ -45,12 +46,28 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         onClick={onClick}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'flex items-center gap-3 rounded-xl px-3 py-2.5 text-small font-semibold transition-colors',
+          'flex items-center gap-3 rounded-xl px-3 py-2 text-small font-semibold transition-colors',
           active ? 'bg-brand/10 text-brand-text' : 'text-muted hover:bg-surface hover:text-ink',
         )}
       >
         <n.icon className="h-5 w-5 shrink-0" aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
         {t(`nav.${n.key}`)}
+      </Link>
+    );
+  };
+
+  const lockedLink = (l: { href: string; key: string; addOn: string }) => {
+    const Icon = NAV.find((n) => n.href === l.href)?.icon ?? Lock;
+    return (
+      <Link
+        key={l.href}
+        href={`/manage/billing?unlock=${l.addOn}`}
+        title={t('billingPage.lockedHint', { addOn: t(`billingPage.addOn.${l.addOn}`) })}
+        className="flex items-center gap-3 rounded-xl px-3 py-2 text-small font-semibold text-muted/60 hover:bg-surface"
+      >
+        <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+        <span className="flex-1">{t(`nav.${l.key}`)}</span>
+        <Lock className="h-3.5 w-3.5" aria-label={t('billingPage.locked')} />
       </Link>
     );
   };
@@ -72,30 +89,20 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         <nav aria-label={t('shell.mainNav')} className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
           {GROUPS.map((g) => {
             const list = items.filter((n) => n.group === g);
+            const locked = (me?.lockedMenu ?? []).filter((l) => l.group === g);
             if (!list.length) return null;
+            const sectioned = g === 'manage' && list.length + locked.length >= SECTION_THRESHOLD;
             return (
               <div key={g}>
                 <p className="mb-1.5 px-3 text-label uppercase text-muted/80">{t(`navGroups.${g}`)}</p>
-                <div className="grid gap-0.5">
-                  {list.map((n) => link(n))}
-                  {(me?.lockedMenu ?? [])
-                    .filter((l) => l.group === g)
-                    .map((l) => {
-                      const Icon = NAV.find((n) => n.href === l.href)?.icon ?? Lock;
-                      return (
-                        <Link
-                          key={l.href}
-                          href={`/manage/billing?unlock=${l.addOn}`}
-                          title={t('billingPage.lockedHint', { addOn: t(`billingPage.addOn.${l.addOn}`) })}
-                          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-small font-semibold text-muted/60 hover:bg-surface"
-                        >
-                          <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                          <span className="flex-1">{t(`nav.${l.key}`)}</span>
-                          <Lock className="h-3.5 w-3.5" aria-label={t('billingPage.locked')} />
-                        </Link>
-                      );
-                    })}
-                </div>
+                {sectioned ? (
+                  <ManageNav items={list} locked={locked} activeHref={list.find((n) => isActive(pathname, n.href))?.href ?? null} link={(n) => link(n)} lockedLink={lockedLink} />
+                ) : (
+                  <div className="grid gap-0.5">
+                    {list.map((n) => link(n))}
+                    {locked.map((l) => lockedLink(l))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -169,7 +176,18 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         </ul>
       </nav>
       <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title={t('nav.more')} closeLabel={t('common.close')}>
-        <div className="grid gap-0.5 pb-2">{more.map((n) => link(n, () => setMoreOpen(false)))}</div>
+        <div className="grid gap-4 pb-2">
+          {[null, ...MANAGE_SECTIONS].map((sec) => {
+            const list = more.filter((n) => (sec === null ? n.group !== 'manage' : n.group === 'manage' && (n.section ?? 'organization') === sec));
+            if (!list.length) return null;
+            return (
+              <div key={sec ?? 'mine'}>
+                <p className="mb-1 px-3 text-label uppercase text-muted/80">{sec ? t(`navSections.${sec}`) : t('navGroups.mine')}</p>
+                <div className="grid gap-0.5">{list.map((n) => link(n, () => setMoreOpen(false)))}</div>
+              </div>
+            );
+          })}
+        </div>
       </Dialog>
     </div>
     </PunchProvider>

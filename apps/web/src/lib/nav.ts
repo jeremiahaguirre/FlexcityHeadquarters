@@ -1,11 +1,16 @@
 import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
+export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
+export type ManageSection = (typeof MANAGE_SECTIONS)[number];
+
 export interface NavItem {
   href: string;
   /** i18n key under "nav." */
   key: string;
   icon: LucideIcon;
   group: 'mine' | 'deck' | 'manage' | 'union';
+  /** Sub-section of the manage menu, so long menus (HR's) read as a few short lists. */
+  section?: ManageSection;
   /** Shown only when the person has this permission (or any of these). */
   permission?: string | string[];
   /** Order in the phone tab bar (lower first); omitted = only under "More". */
@@ -31,36 +36,36 @@ export const NAV: NavItem[] = [
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: true },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: true },
-  { href: '/manage/hr', key: 'hr', icon: Building2, group: 'manage', permission: 'leave.manage', ready: true },
-  { href: '/members', key: 'members', icon: IdCard, group: 'manage', permission: 'members.manage', tab: 7, ready: true },
-  { href: '/manage/programs', key: 'programs', icon: Layers, group: 'manage', permission: 'lessons.plan', ready: true },
-  { href: '/manage/schedule', key: 'manageSchedule', icon: Activity, group: 'manage', permission: 'schedule.write', ready: true },
-  { href: '/manage/forecast', key: 'forecast', icon: TrendingUp, group: 'manage', permission: 'schedule.write', ready: true },
-  { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', permission: 'timeclock.review', ready: true },
-  { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', permission: 'users.read', ready: true },
-  { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', permission: 'overtime.manage', ready: true },
-  { href: '/manage/onboarding', key: 'onboarding', icon: ClipboardList, group: 'manage', permission: ['onboarding.hr', 'onboarding.lead'], ready: true },
-  { href: '/manage/training', key: 'training', icon: GraduationCap, group: 'manage', permission: 'training.manage', ready: true },
-  { href: '/manage/injuries', key: 'injuries', icon: Bandage, group: 'manage', permission: 'injury.manage', ready: true },
-  { href: '/manage/care', key: 'care', icon: HeartHandshake, group: 'manage', permission: 'care.manage', ready: true },
-  { href: '/manage/lone-work', key: 'loneWorkMonitor', icon: Radio, group: 'manage', permission: 'lonework.monitor', ready: true },
-  { href: '/manage/call-outs', key: 'callOuts', icon: Siren, group: 'manage', permission: 'winter.callout', ready: true },
-  { href: '/manage/winter', key: 'winter', icon: Snowflake, group: 'manage', permission: ['winter.manage', 'winter.records'], ready: true },
-  { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', permission: 'reliability.read', ready: true },
-  { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', permission: 'compliance.report', ready: true },
-  { href: '/manage/fleet', key: 'fleet', icon: Truck, group: 'manage', permission: 'fleet.manage', ready: true },
-  { href: '/manage/coverage', key: 'coverage', icon: BadgeCheck, group: 'manage', permission: ['coverage.manage', 'schedule.write'], ready: true },
-  { href: '/manage/benchmarks', key: 'benchmarks', icon: BarChart3, group: 'manage', permission: ['tenant.configure', 'reliability.read'], ready: true },
-  { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', permission: 'certs.verify', ready: true },
-  { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', permission: 'jobs.manage', ready: true },
-  { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: true },
-  { href: '/manage/benefits', key: 'benefits', icon: HeartPulse, group: 'manage', permission: 'benefits.manage', ready: true },
-  { href: '/manage/accounting', key: 'accounting', icon: Calculator, group: 'manage', permission: 'accounting.manage', ready: true },
-  { href: '/manage/fees', key: 'fees', icon: Tags, group: 'manage', permission: 'fees.manage', ready: true },
-  { href: '/manage/bookings', key: 'bookings', icon: Globe, group: 'manage', permission: 'bookings.manage', ready: true },
-  { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', permission: 'roles.manage', ready: true },
-  { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', permission: 'billing.manage', ready: true },
-  { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', permission: ['tenant.configure', 'ops.configure'], ready: true },
+  { href: '/manage/hr', key: 'hr', icon: Building2, group: 'manage', section: 'people', permission: 'leave.manage', ready: true },
+  { href: '/members', key: 'members', icon: IdCard, group: 'manage', section: 'programs', permission: 'members.manage', tab: 7, ready: true },
+  { href: '/manage/programs', key: 'programs', icon: Layers, group: 'manage', section: 'programs', permission: 'lessons.plan', ready: true },
+  { href: '/manage/schedule', key: 'manageSchedule', icon: Activity, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
+  { href: '/manage/forecast', key: 'forecast', icon: TrendingUp, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
+  { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', section: 'time', permission: 'timeclock.review', ready: true },
+  { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', section: 'people', permission: 'users.read', ready: true },
+  { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', section: 'time', permission: 'overtime.manage', ready: true },
+  { href: '/manage/onboarding', key: 'onboarding', icon: ClipboardList, group: 'manage', section: 'people', permission: ['onboarding.hr', 'onboarding.lead'], ready: true },
+  { href: '/manage/training', key: 'training', icon: GraduationCap, group: 'manage', section: 'people', permission: 'training.manage', ready: true },
+  { href: '/manage/injuries', key: 'injuries', icon: Bandage, group: 'manage', section: 'safety', permission: 'injury.manage', ready: true },
+  { href: '/manage/care', key: 'care', icon: HeartHandshake, group: 'manage', section: 'safety', permission: 'care.manage', ready: true },
+  { href: '/manage/lone-work', key: 'loneWorkMonitor', icon: Radio, group: 'manage', section: 'safety', permission: 'lonework.monitor', ready: true },
+  { href: '/manage/call-outs', key: 'callOuts', icon: Siren, group: 'manage', section: 'time', permission: 'winter.callout', ready: true },
+  { href: '/manage/winter', key: 'winter', icon: Snowflake, group: 'manage', section: 'time', permission: ['winter.manage', 'winter.records'], ready: true },
+  { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', section: 'people', permission: 'reliability.read', ready: true },
+  { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', section: 'safety', permission: 'compliance.report', ready: true },
+  { href: '/manage/fleet', key: 'fleet', icon: Truck, group: 'manage', section: 'safety', permission: 'fleet.manage', ready: true },
+  { href: '/manage/coverage', key: 'coverage', icon: BadgeCheck, group: 'manage', section: 'time', permission: ['coverage.manage', 'schedule.write'], ready: true },
+  { href: '/manage/benchmarks', key: 'benchmarks', icon: BarChart3, group: 'manage', section: 'organization', permission: ['tenant.configure', 'reliability.read'], ready: true },
+  { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', section: 'people', permission: 'certs.verify', ready: true },
+  { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', section: 'people', permission: 'jobs.manage', ready: true },
+  { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', section: 'pay', permission: 'payroll.export', ready: true },
+  { href: '/manage/benefits', key: 'benefits', icon: HeartPulse, group: 'manage', section: 'pay', permission: 'benefits.manage', ready: true },
+  { href: '/manage/accounting', key: 'accounting', icon: Calculator, group: 'manage', section: 'pay', permission: 'accounting.manage', ready: true },
+  { href: '/manage/fees', key: 'fees', icon: Tags, group: 'manage', section: 'programs', permission: 'fees.manage', ready: true },
+  { href: '/manage/bookings', key: 'bookings', icon: Globe, group: 'manage', section: 'programs', permission: 'bookings.manage', ready: true },
+  { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', section: 'organization', permission: 'roles.manage', ready: true },
+  { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', section: 'organization', permission: 'billing.manage', ready: true },
+  { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', section: 'organization', permission: ['tenant.configure', 'ops.configure'], ready: true },
   { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: true },
 ];
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { Banknote, Bandage, Briefcase, CalendarClock, ClipboardCheck, DoorOpen, GraduationCap, HeartPulse, type LucideIcon, Scale, UserCheck, Users } from 'lucide-react';
+import { Banknote, Bandage, Briefcase, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, DoorOpen, GraduationCap, HeartPulse, type LucideIcon, Scale, UserCheck, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import { type ReactNode, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GrievancesPanel } from '@/components/hr/Grievances';
 import { LeavePanel } from '@/components/hr/LeaveBalances';
@@ -37,50 +37,117 @@ function HrInner() {
   const setTab = (v: Tab) => router.replace(v === 'overview' ? '/manage/hr' : `/manage/hr?tab=${v}`, { scroll: false });
   return (
     <div className="grid gap-6">
-      <PageHeader title={t('hr.title')} description={t('hr.description')} />
+      <PageHeader title={t('hr.title')} description={tab === 'overview' ? undefined : t('hr.description')} />
       <div className="overflow-x-auto"><Segmented label={t('hr.title')} value={tab} onChange={setTab} options={TABS.map((v) => ({ value: v, label: t(`hr.tabs.${v}`) }))} /></div>
       {tab === 'overview' ? <Overview onTab={setTab} /> : tab === 'leave' ? <LeavePanel canEdit /> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
     </div>
   );
 }
 
-/** HR's departments at a glance: each card is what needs attention there, and opens it. */
+/**
+ * HR's home. Calm by default: what needs action first (and only that), four
+ * numbers, then a quiet directory of every HR area.
+ */
 function Overview({ onTab }: { onTab: (t: Tab) => void }) {
-  const { t } = useTranslation();
-  const { can } = useSession();
+  const { t, i18n } = useTranslation();
+  const lng = i18n.language;
+  const { can, me } = useSession();
   const o = useQuery<HrOverview>('/api/hr/overview');
   if (!o.data) return <Skeleton className="h-64" />;
   const d = o.data;
-  type Area = { key: string; icon: LucideIcon; stat: string; attention: boolean; href?: string; tab?: Tab; show: boolean };
-  const areas: Area[] = [
-    { key: 'records', icon: Users, stat: t('hr.stat.staff', { count: d.staff }), attention: false, href: '/manage/staff', show: can('users.read') },
-    { key: 'recruiting', icon: Briefcase, stat: t('hr.stat.openJobs', { count: d.openJobs }), attention: false, href: '/manage/jobs', show: can('jobs.manage') },
-    { key: 'payroll', icon: Banknote, stat: d.pendingBank ? t('hr.stat.pendingBank', { count: d.pendingBank }) : t('hr.stat.draftRuns', { count: d.draftRuns }), attention: d.pendingBank > 0, href: '/manage/payroll', show: can('payroll.export') },
-    { key: 'benefits', icon: HeartPulse, stat: t('hr.stat.enrolled', { count: d.enrolled, plans: d.plans }), attention: false, href: '/manage/benefits', show: can('benefits.manage') },
-    { key: 'leave', icon: CalendarClock, stat: t('hr.stat.leave'), attention: false, tab: 'leave', show: can('leave.manage') },
-    { key: 'performance', icon: ClipboardCheck, stat: d.reviewsLate ? t('hr.stat.reviewsLate', { count: d.reviewsLate }) : t('hr.stat.reviewsOpen', { count: d.reviewsOpen }), attention: d.reviewsLate > 0, tab: 'reviews', show: can('performance.manage') },
-    { key: 'training', icon: GraduationCap, stat: t('hr.stat.trainingDue', { count: d.trainingDue }), attention: d.trainingDue > 0, href: '/manage/training', show: can('training.manage') },
-    { key: 'health', icon: Bandage, stat: t('hr.stat.health', { claims: d.openClaims, cases: d.activeAccommodations }), attention: d.openClaims > 0, href: '/manage/injuries', show: can('injury.manage') },
-    { key: 'labour', icon: Scale, stat: t('hr.stat.grievances', { count: d.openGrievances }), attention: d.openGrievances > 0, tab: 'labour', show: can('grievances.manage') },
-    { key: 'relations', icon: UserCheck, stat: t('hr.stat.flagged', { count: d.flagged }), attention: d.flagged > 0, href: '/manage/people', show: can('reliability.read') },
-    { key: 'offboarding', icon: DoorOpen, stat: t('hr.stat.offboarding', { count: d.offboarding }), attention: d.offboarding > 0, tab: 'offboarding', show: can('users.write') },
+  type Area = { key: string; icon: LucideIcon; href?: string; tab?: Tab; show: boolean; todo?: string | null };
+  const all: Area[] = [
+    { key: 'records', icon: Users, href: '/manage/staff', show: can('users.read') },
+    { key: 'recruiting', icon: Briefcase, href: '/manage/jobs', show: can('jobs.manage') },
+    { key: 'payroll', icon: Banknote, href: '/manage/payroll', show: can('payroll.export'), todo: d.pendingBank ? t('hr.stat.pendingBank', { count: d.pendingBank }) : null },
+    { key: 'benefits', icon: HeartPulse, href: '/manage/benefits', show: can('benefits.manage') },
+    { key: 'leave', icon: CalendarClock, tab: 'leave', show: can('leave.manage') },
+    { key: 'performance', icon: ClipboardCheck, tab: 'reviews', show: can('performance.manage'), todo: d.reviewsLate ? t('hr.stat.reviewsLate', { count: d.reviewsLate }) : null },
+    { key: 'training', icon: GraduationCap, href: '/manage/training', show: can('training.manage'), todo: d.trainingDue ? t('hr.stat.trainingDue', { count: d.trainingDue }) : null },
+    { key: 'health', icon: Bandage, href: '/manage/injuries', show: can('injury.manage'), todo: d.openClaims ? t('hr.stat.openClaims', { count: d.openClaims }) : null },
+    { key: 'labour', icon: Scale, tab: 'labour', show: can('grievances.manage'), todo: d.openGrievances ? t('hr.stat.grievances', { count: d.openGrievances }) : null },
+    { key: 'relations', icon: UserCheck, href: '/manage/people', show: can('reliability.read'), todo: d.flagged ? t('hr.stat.flagged', { count: d.flagged }) : null },
+    { key: 'offboarding', icon: DoorOpen, tab: 'offboarding', show: can('users.write'), todo: d.offboarding ? t('hr.stat.offboarding', { count: d.offboarding }) : null },
   ];
-  const card = (a: Area) => (
-    <Card className="h-full p-4 transition-shadow hover:shadow-lift">
-      <span className="flex items-center gap-3">
-        <span className={`grid h-10 w-10 place-items-center rounded-xl ${a.attention ? 'bg-warn-bg text-warn' : 'bg-brand/10 text-brand-text'}`}><a.icon className="h-5 w-5" aria-hidden="true" /></span>
-        <span className="text-body-strong">{t(`hr.areas.${a.key}`)}</span>
-      </span>
-      <p className={`mt-3 text-small ${a.attention ? 'font-semibold text-warn' : 'text-muted'}`}>{a.stat}</p>
-    </Card>
-  );
+  const areas = all.filter((a) => a.show);
+  const todo = areas.filter((a) => a.todo);
+  const hour = new Date().getHours();
+  const greeting = t(`today.${hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'}`);
+  const go = (a: Area, children: ReactNode, className: string) =>
+    a.href ? <Link href={a.href} className={className}>{children}</Link> : <button type="button" onClick={() => onTab(a.tab!)} className={`${className} w-full text-left`}>{children}</button>;
+  const numbers = [
+    { label: t('hr.num.staff'), value: d.staff },
+    { label: t('hr.num.enrolled'), value: d.enrolled },
+    { label: t('hr.num.reviews'), value: d.reviewsOpen },
+    { label: t('hr.num.jobs'), value: d.openJobs },
+  ];
   return (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {areas.filter((a) => a.show).map((a) => (
-        <li key={a.key}>
-          {a.href ? <Link href={a.href} className="block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">{card(a)}</Link> : <button type="button" onClick={() => onTab(a.tab!)} className="block h-full w-full rounded-2xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">{card(a)}</button>}
-        </li>
-      ))}
-    </ul>
+    <div className="grid gap-8">
+      <section aria-labelledby="hr-today" className="grid gap-4">
+        <div>
+          <h2 id="hr-today" className="text-heading">{greeting}{me?.firstName ? `, ${me.firstName}` : ''}</h2>
+          <p className="text-body text-muted">
+            {new Intl.DateTimeFormat(lng, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())} · {todo.length ? t('hr.attentionCount', { count: todo.length }) : t('hr.allClear')}
+          </p>
+        </div>
+        {todo.length ? (
+          <Card>
+            <ul className="divide-y divide-line">
+              {todo.map((a) => (
+                <li key={a.key}>
+                  {go(
+                    a,
+                    <>
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-warn-bg text-warn"><a.icon className="h-[18px] w-[18px]" aria-hidden="true" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-body-strong">{a.todo}</span>
+                        <span className="block text-caption text-muted">{t(`hr.areas.${a.key}`)}</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                    </>,
+                    'group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand',
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        ) : (
+          <Card className="flex items-center gap-3 p-4">
+            <span className="grid h-9 w-9 place-items-center rounded-lg bg-ok-bg text-ok"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /></span>
+            <p className="text-body text-muted">{t('hr.allClearBody')}</p>
+          </Card>
+        )}
+      </section>
+
+      <section aria-label={t('hr.numbers')}>
+        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-4">
+          {numbers.map((n) => (
+            <div key={n.label} className="bg-panel px-4 py-4">
+              <dt className="text-caption text-muted">{n.label}</dt>
+              <dd className="mt-1 text-stat tabular-nums">{new Intl.NumberFormat(lng).format(n.value)}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section aria-labelledby="hr-areas" className="grid gap-3">
+        <h2 id="hr-areas" className="text-label uppercase text-muted">{t('hr.allAreas')}</h2>
+        <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+          {areas.map((a) => (
+            <li key={a.key}>
+              {go(
+                a,
+                <>
+                  <a.icon className="h-[18px] w-[18px] shrink-0 text-muted group-hover:text-brand-text" aria-hidden="true" />
+                  <span className="flex-1 text-small font-semibold">{t(`hr.areas.${a.key}`)}</span>
+                  {a.todo ? <span className="h-2 w-2 rounded-full bg-warn" aria-label={t('hr.needsAttention')} /> : null}
+                </>,
+                'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-panel hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }
