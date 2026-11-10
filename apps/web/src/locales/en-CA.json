@@ -4444,5 +4444,70 @@
     "emailLogDays": "Email log (days)",
     "familiesInactiveDays": "Families with no registration or purchase (days)",
     "bookingsDays": "Facility booking contact details, after the booking (days)"
+  },
+  "mfaSettings": {
+    "title": "Second sign-in factor",
+    "help": "Choose who must confirm sign-in with a passkey (Face ID, fingerprint, Windows Hello) or your single sign-on provider's MFA.",
+    "note": "HR administrators always need one. People without a passkey are walked through setting one up at their next sign-in.",
+    "saved": "Saved"
+  },
+  "privacyNotice": {
+    "menu": "Your privacy",
+    "title": "Your privacy",
+    "intro": "What this app keeps about you, why, who can see it, and what you can ask for. Your employer is responsible for your information; FlexcityHeadquarters is the tool it uses.",
+    "collect": {
+      "title": "What's kept, and why",
+      "items": [
+        "Who you are and how to reach you: name, work email, phone, language, employee number.",
+        "Your work: positions, certifications, availability, schedule, time off and leave balances.",
+        "Your time: clock-in and clock-out times, and corrections with the reason, for pay.",
+        "Pay, if your employer pays you through the app: pay rate, tax claim amounts (TD1), deductions, your bank account (sealed) and Social Insurance Number (sealed), and your home mailing address for tax slips.",
+        "HR files about you: reviews, training, onboarding items, attendance events, conduct notes, discipline, accommodations and injury claims, and documents you or HR upload. Medical notes are HR-only."
+      ]
+    },
+    "see": {
+      "title": "Who can see it",
+      "items": [
+        "You can see your own file, pay statements and documents.",
+        "Your supervisor sees what they need to run your department: your schedule, time, availability and the records they wrote. Not your medical information, pay details or banking.",
+        "HR sees your full file. Payroll sees pay and tax details, with banking and SIN masked.",
+        "Colleagues see your first name and last initial on your department's published schedule.",
+        "FlexcityHeadquarters staff can't see employee records. If your employer asks for help, a support visit is read-only, time-limited, logged, and never opens individual records."
+      ]
+    },
+    "monitoring": {
+      "title": "Electronic monitoring",
+      "items": [
+        "Clocking in checks once that you're at the facility. Only whether you were on site and how far away is kept, never where you were or your device's address.",
+        "Working-alone check-ins record when you check in, and a location only if you choose to share it when asking for help. That location is removed 30 days after the session.",
+        "Changes to records are logged (who changed what, when). Sign-ins are logged to protect your account.",
+        "Nothing else is tracked: no continuous location, browsing, keystrokes, screenshots, camera or microphone. Attendance figures are advisory: no decision about you is made by the software alone."
+      ]
+    },
+    "keep": {
+      "title": "How long it's kept",
+      "items": [
+        "Pay records: the years your employer must keep them for tax (at least six after the year).",
+        "In-app notifications: 2 years by default; the email log: 90 days, and it never holds the email's contents.",
+        "When you leave, your file is kept for your employer's legal retention period, then anonymized."
+      ]
+    },
+    "rights": {
+      "title": "Your rights",
+      "items": [
+        "Ask HR for a copy of everything held about you; HR can produce it as a printable file.",
+        "Ask for a correction if something is wrong, and add your response to a discipline record.",
+        "Ask your employer's privacy contact (through HR) how your information is used, or make a complaint to your province's privacy commissioner."
+      ]
+    },
+    "security": {
+      "title": "How it's protected",
+      "items": [
+        "Encrypted in transit and at rest; SINs, bank accounts, incident narratives and documents are additionally sealed with your employer's own key.",
+        "Each organization's data is walled off by the database itself.",
+        "Passkeys and multi-factor sign-in; sensitive actions ask you to confirm it's you."
+      ]
+    },
+    "footer": "This notice describes the app. Your employer's own privacy and electronic monitoring policies apply too; ask HR for them."
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Languages, LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, Languages, LogOut, UserRound, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -86,6 +86,10 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
           <Link href="/profile" className={item} onClick={() => setOpen(false)}>
             <UserRound className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('shell.profile')}
+          </Link>
+          <Link href="/privacy" className={item} onClick={() => setOpen(false)}>
+            <ShieldCheck className="h-4 w-4 text-muted" aria-hidden="true" />
+            {t('privacyNotice.menu')}
           </Link>
           <button type="button" className={item} onClick={switchLanguage} lang={t('app.languageCode')}>
             <Languages className="h-4 w-4 text-muted" aria-hidden="true" />

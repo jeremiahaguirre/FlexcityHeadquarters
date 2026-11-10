@@ -1,12 +1,12 @@
 import type { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, notFound } from '../lib/errors.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
 import { h } from './context.js';
-import { resolveFeatures, tenantSettings } from '../services/platform/features.js';
+import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
 import { RETENTION_DEFAULTS, RETENTION_LIMITS, readRetention } from '../services/privacy/retention.js';
 
 export const settingsRouter = Router();
@@ -246,5 +246,37 @@ settingsRouter.put(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.retention', entity: 'Tenant', entityId: a.tenantId, before: readRetention(before.retentionSettings), after: b });
     });
     res.json(b);
+  }),
+);
+
+/** Which access levels need a second factor (passkey or provider MFA). HR always does. */
+const ALL_ROLES = ['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'UNION_STEWARD', 'EMPLOYEE'] as const;
+
+settingsRouter.get(
+  '/settings/mfa',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const t = await withTenant(a.tenantId, (tx) => tx.tenant.findFirstOrThrow({ select: { mfaRoles: true } }));
+    res.json({ roles: t.mfaRoles, all: ALL_ROLES, everyone: ALL_ROLES.every((r) => t.mfaRoles.includes(r)) });
+  }),
+);
+
+settingsRouter.put(
+  '/settings/mfa',
+  requirePermission('tenant.configure'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    if (!a.mfa) throw new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey to change who needs one.');
+    const b = z.object({ roles: z.array(z.enum(ALL_ROLES)).max(ALL_ROLES.length) }).parse(req.body);
+    const roles = [...new Set<(typeof ALL_ROLES)[number]>(['HR_ADMIN', ...b.roles])];
+    await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenant.findFirstOrThrow({ select: { mfaRoles: true } });
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { mfaRoles: roles } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.mfa', entity: 'Tenant', entityId: a.tenantId, before: before.mfaRoles, after: roles });
+    });
+    forgetFeatures(a.tenantId);
+    res.json({ roles });
   }),
 );

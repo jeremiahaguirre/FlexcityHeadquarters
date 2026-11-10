@@ -300,6 +300,24 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 - Front desk reaches every family, because families use every facility; access is logged instead.
 - [counsel] Electronic monitoring: what the product collects is listed in [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) for cities' written policies (Ontario ESA Part XI.1).
 
+## 5B. Compliance checklist status
+
+| Item | Status | Where |
+| --- | --- | --- |
+| **Data protection laws:** PIPEDA (FH; private-sector employers), BC PIPA (private) and FIPPA (public bodies), MFIPPA, Alberta, Quebec Law 25 | Mapped in §5; data stays in Canada; per-city isolation | §5, [PIA.md](PIA.md) |
+| GDPR | Not targeted: Canadian employers and residents only. A European customer would need an EU-hosted deployment and an Article 28 agreement | — |
+| **Lawful purpose and minimisation** | Role-by-role review; no continuous tracking; clock-in keeps on-site status only; health and HR categories HR-only; staff see only their department's schedule | §5A |
+| **Notice to employees** | "Your privacy" page in the app for every employee (EN/FR); electronic monitoring disclosure for written policies | `/privacy`, [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) |
+| **Statutory payroll rules** | Yearly tables verified against T4127 / TP-1015.F before any pay run; parallel run before go-live; tests | [PAYROLL-VERIFICATION.md](PAYROLL-VERIFICATION.md) |
+| **Retention and disposal** | Schedule per category, automatic jobs, crypto-shredding of a purged city's key, backup expiry | [RETENTION.md](RETENTION.md) |
+| **Encryption in transit** | TLS + HSTS to browsers; database connections must use TLS in production (the API refuses to start otherwise) | `apps/api/src/config.ts` |
+| **Encryption at rest** | Encrypted database and backups (AWS); SINs, bank accounts, incident narratives, documents sealed with the city's own KMS key; devices keep only class rosters, cleared at sign-out | §4, `apps/web/public/sw.js` |
+| **Role-based access** | Staff can't see colleagues' pay, banking or payroll files (tested); department scope for managers | `hardening.test.ts` |
+| **MFA and passwords** | Passkeys and SSO; MFA required for HR, and for any access level the city chooses in Settings; 10+ characters, mixed, common passwords refused; lockout | Settings → Second sign-in factor |
+| **Vendor vetting** | Subprocessor register and checks (DPA, SOC 2/ISO 27001, Canadian location, exit) | [SUBPROCESSORS.md](SUBPROCESSORS.md) |
+| **Regular security audits** | CodeQL and dependency audit on every change and weekly; adversarial and privacy reviews recorded; yearly independent penetration test; disclosure policy | `.github/workflows/security.yml`, [SECURITY.md](../SECURITY.md) |
+| **Privacy impact assessment** | Pre-filled template for each city, to complete before go-live and before new tracking or HR features | [PIA.md](PIA.md) |
+
 ## 6. For counsel
 
 1. Review the employment-standards rule values (H6) and the overtime-equalization defaults.

@@ -4444,5 +4444,70 @@
     "emailLogDays": "Journal des courriels (jours)",
     "familiesInactiveDays": "Familles sans inscription ni achat (jours)",
     "bookingsDays": "Coordonnées des réservations d’installations, après la réservation (jours)"
+  },
+  "mfaSettings": {
+    "title": "Deuxième facteur de connexion",
+    "help": "Choisissez qui doit confirmer sa connexion avec une clé d’accès (Face ID, empreinte, Windows Hello) ou l’AMF de votre fournisseur d’authentification unique.",
+    "note": "Les administrateurs RH en ont toujours besoin. Les personnes sans clé d’accès sont guidées pour en créer une à leur prochaine connexion.",
+    "saved": "Enregistré"
+  },
+  "privacyNotice": {
+    "menu": "Votre vie privée",
+    "title": "Votre vie privée",
+    "intro": "Ce que l’application conserve à votre sujet, pourquoi, qui peut le voir et ce que vous pouvez demander. Votre employeur est responsable de vos renseignements; FlexcityHeadquarters est l’outil qu’il utilise.",
+    "collect": {
+      "title": "Ce qui est conservé, et pourquoi",
+      "items": [
+        "Qui vous êtes et comment vous joindre : nom, courriel de travail, téléphone, langue, numéro d’employé.",
+        "Votre travail : postes, certifications, disponibilités, horaire, congés et soldes de congés.",
+        "Votre temps : heures d’arrivée et de départ, et corrections avec le motif, pour la paie.",
+        "La paie, si votre employeur vous paie par l’application : taux de salaire, montants de demande (TD1), retenues, compte bancaire (scellé), numéro d’assurance sociale (scellé) et adresse postale pour les feuillets fiscaux.",
+        "Les dossiers RH vous concernant : évaluations, formation, éléments d’intégration, événements d’assiduité, notes de conduite, mesures disciplinaires, mesures d’adaptation, réclamations pour lésion et documents que vous ou les RH téléversez. Les notes médicales sont réservées aux RH."
+      ]
+    },
+    "see": {
+      "title": "Qui peut le voir",
+      "items": [
+        "Vous voyez votre propre dossier, vos relevés de paie et vos documents.",
+        "Votre superviseur voit ce qu’il faut pour gérer votre service : horaire, temps, disponibilités et les dossiers qu’il a rédigés. Pas vos renseignements médicaux, les détails de votre paie ni vos coordonnées bancaires.",
+        "Les RH voient votre dossier complet. La paie voit les détails de paie et d’impôt, avec compte bancaire et NAS masqués.",
+        "Vos collègues voient votre prénom et l’initiale de votre nom sur l’horaire publié de votre service.",
+        "Le personnel de FlexcityHeadquarters ne voit pas les dossiers des employés. Si votre employeur demande de l’aide, une visite du soutien est en lecture seule, limitée dans le temps, consignée, et n’ouvre jamais de dossiers individuels."
+      ]
+    },
+    "monitoring": {
+      "title": "Surveillance électronique",
+      "items": [
+        "Au pointage, l’application vérifie une fois que vous êtes à l’installation. Seuls le fait d’être sur place et la distance sont conservés, jamais l’endroit où vous étiez ni l’adresse de votre appareil.",
+        "Les vérifications de travail seul notent l’heure de vos vérifications, et une position seulement si vous choisissez de la partager en demandant de l’aide. Cette position est supprimée 30 jours après la session.",
+        "Les modifications aux dossiers sont consignées (qui a changé quoi, quand). Les connexions sont consignées pour protéger votre compte.",
+        "Rien d’autre n’est suivi : aucune position continue, navigation, frappe, capture d’écran, caméra ni microphone. Les chiffres d’assiduité sont indicatifs : aucune décision à votre sujet n’est prise par le logiciel seul."
+      ]
+    },
+    "keep": {
+      "title": "Combien de temps",
+      "items": [
+        "Dossiers de paie : les années que votre employeur doit les conserver pour l’impôt (au moins six après l’année).",
+        "Notifications dans l’application : 2 ans par défaut; journal des courriels : 90 jours, sans jamais le contenu des courriels.",
+        "À votre départ, votre dossier est conservé pendant la période légale de votre employeur, puis anonymisé."
+      ]
+    },
+    "rights": {
+      "title": "Vos droits",
+      "items": [
+        "Demandez aux RH une copie de tout ce qui est détenu à votre sujet; les RH peuvent la produire en fichier imprimable.",
+        "Demandez une correction si quelque chose est inexact, et ajoutez votre réponse à une mesure disciplinaire.",
+        "Demandez à la personne responsable de la protection des renseignements de votre employeur (par les RH) comment vos renseignements sont utilisés, ou portez plainte au commissaire à la protection de la vie privée de votre province."
+      ]
+    },
+    "security": {
+      "title": "Comment ils sont protégés",
+      "items": [
+        "Chiffrés en transit et au repos; les NAS, comptes bancaires, récits d’incident et documents sont en plus scellés avec la clé propre à votre employeur.",
+        "Les données de chaque organisation sont isolées par la base de données elle-même.",
+        "Clés d’accès et authentification multifacteur; les actions sensibles vous demandent de confirmer votre identité."
+      ]
+    },
+    "footer": "Cet avis décrit l’application. Les politiques de votre employeur sur la vie privée et la surveillance électronique s’appliquent aussi; demandez-les aux RH."
   }
 }

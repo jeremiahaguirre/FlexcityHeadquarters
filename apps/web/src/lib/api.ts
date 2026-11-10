@@ -175,7 +175,7 @@ export async function logout() {
   // Shared deck phones: don't leave rosters (children's names) or cached pages behind.
   try {
     localStorage.removeItem('fh-lessons-cache');
-    if ('caches' in window) await caches.delete('fh-v1');
+    if ('caches' in window) for (const k of await caches.keys()) if (k.startsWith('fh-')) await caches.delete(k);
   } catch {
     /* nothing cached */
   }

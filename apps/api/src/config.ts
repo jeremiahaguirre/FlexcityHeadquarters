@@ -49,6 +49,12 @@ export function config(): Config {
     if (parsed.data.NODE_ENV === 'production' && !parsed.data.AWS_REGION.startsWith('ca-')) {
       throw new Error('Data residency: AWS_REGION must be a Canadian region');
     }
+    // Encryption in transit to the database, not just to the browser.
+    if (parsed.data.NODE_ENV === 'production') {
+      for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL]] as const) {
+        if (url && !/[?&]sslmode=(require|verify-ca|verify-full)\b/.test(url)) throw new Error(`${name} must use TLS in production (sslmode=verify-full)`);
+      }
+    }
     cached = parsed.data;
   }
   return cached;

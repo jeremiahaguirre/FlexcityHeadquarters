@@ -25,6 +25,7 @@ import { DepartmentsEditor } from '@/components/DepartmentsEditor';
 import type { Departments } from '@/lib/departments';
 import { SupportAccessCard } from '@/components/settings/SupportAccessCard';
 import { SsoCard } from '@/components/settings/SsoCard';
+import { MfaCard } from '@/components/settings/MfaCard';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
 
@@ -96,6 +97,7 @@ export default function SettingsPage() {
       ) : (
         <div className="grid max-w-4xl gap-6">
           {tab === 'org' ? <Organization s={settings.data} reload={settings.reload} /> : null}
+          {tab === 'org' ? <MfaCard /> : null}
           {tab === 'org' ? <SsoCard /> : null}
           {tab === 'org' ? <SupportAccessCard /> : null}
           {tab === 'org' ? <RetentionCard /> : null}

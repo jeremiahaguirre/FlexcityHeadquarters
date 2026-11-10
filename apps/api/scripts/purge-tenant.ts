@@ -20,6 +20,8 @@ const owner = new PrismaClient();
   const r = await purgeTenant(owner, t.id);
   await owner.platformAudit.create({ data: { adminId: '00000000-0000-0000-0000-000000000000', tenantId: t.id, action: 'tenant.purge', detail: { rows: r.deleted } } });
   console.log(`Deleted ${r.deleted} rows. Invoices and the ledger are kept.`);
+  // Crypto-shredding: with the organization's own key gone, sealed values in any backup are unreadable.
+  console.log(`Next: schedule its encryption key for deletion:\n  aws kms schedule-key-deletion --key-id "$(aws kms describe-key --key-id alias/flexcity-tenant-${t.id} --query KeyMetadata.KeyId --output text)" --pending-window-in-days 30`);
 })()
   .catch((e) => {
     console.error(e instanceof Error ? e.message : e);

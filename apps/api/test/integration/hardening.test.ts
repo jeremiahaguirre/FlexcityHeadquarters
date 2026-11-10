@@ -201,3 +201,27 @@ describe('the published schedule, for staff', () => {
     expect(ids).not.toContain(otherDept.id);
   });
 });
+
+describe('access control basics', () => {
+  it('staff can’t see colleagues’ pay, banking, tax profiles or payroll files', async () => {
+    for (const path of ['/api/payroll/people', `/api/users/${t.users[1]!.id}/bank-accounts`, '/api/payroll/runs', '/api/payroll/t4?year=2026', '/api/payroll/remittance?month=2026-03', '/api/payroll/export?periodStart=2026-03-02&weeks=2']) {
+      const r = await call(tok.staff).get(path);
+      expect([403, 404], `${path} → ${r.status}`).toContain(r.status);
+    }
+  });
+
+  it('refuses common passwords', async () => {
+    const r = await request(server).post('/api/auth/reset').set('x-tenant-subdomain', SUB).send({ token: 'x'.repeat(30), password: 'Password2026!' });
+    expect(r.status).toBe(400);
+    expect(JSON.stringify(r.body)).toMatch(/too common/);
+  });
+
+  it('HR can require a second factor for everyone; HR itself can’t be dropped', async () => {
+    const r = await call(tok.hr).put('/api/settings/mfa', { roles: ['STAFF', 'EMPLOYEE'] });
+    expect(r.status).toBe(200);
+    expect(r.body.roles).toEqual(expect.arrayContaining(['HR_ADMIN', 'STAFF', 'EMPLOYEE']));
+    // A staff session without a passkey is now asked for one.
+    expect((await call(tok.staff).get('/api/me/shifts?from=2026-01-01&to=2026-01-08')).body.code).toBe('MFA_REQUIRED');
+    await call(tok.hr).put('/api/settings/mfa', { roles: [] });
+  });
+});

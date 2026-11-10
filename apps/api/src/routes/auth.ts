@@ -4,6 +4,7 @@ import { appUrl, consumeAuthToken, issueAuthToken } from '../auth/authTokens.js'
 import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, hashPassword, signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword } from '../auth/tokens.js';
 import { config } from '../config.js';
+import { isCommonPassword } from '../auth/commonPasswords.js';
 import { withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { permissionsFor } from '../auth/permissions.js';
@@ -19,7 +20,8 @@ export const passwordRule = z
   .string()
   .min(10, 'Use at least 10 characters.')
   .max(200)
-  .refine((p) => /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p), 'Mix letters with numbers or symbols.');
+  .refine((p) => /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p), 'Mix letters with numbers or symbols.')
+  .refine((p) => !isCommonPassword(p), 'That password is too common. Choose something less predictable.');
 
 export const cookieOpts = () => ({
   httpOnly: true,
