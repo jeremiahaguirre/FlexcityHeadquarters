@@ -205,26 +205,35 @@ api.post(
     const a = authOf(req);
     const body = z
       .object({
-        facilityId: uuid,
+        /** One facility, or several planned together (staff shared between them). */
+        facilityId: uuid.optional(),
+        facilityIds: z.array(uuid).min(1).max(30).optional(),
         from: z.coerce.date(),
         to: z.coerce.date(),
         distributionMode: z.enum(['SENIORITY', 'EGALITARIAN']),
         useShadowTiers: z.boolean().default(false),
+        travelMinutes: z.number().int().min(0).max(240).default(30),
         apply: z.boolean().default(false),
       })
+      .refine((b) => b.facilityId || b.facilityIds?.length, { message: 'Choose at least one facility.' })
       .parse(req.body);
+    const facilityIds = [...new Set([...(body.facilityIds ?? []), ...(body.facilityId ? [body.facilityId] : [])])];
     if (body.to <= body.from) throw badRequest('`to` must be after `from`');
 
     const out = await withTenant(a.tenantId, async (tx) => {
-      const facility = await tx.facility.findUniqueOrThrow({ where: { id: body.facilityId }, include: { tenant: true } });
+      const facilities = await tx.facility.findMany({ where: { id: { in: facilityIds } }, include: { tenant: true } });
+      if (facilities.length !== facilityIds.length) throw notFound('Facility');
+      const facility = facilities[0]!;
       const open = await tx.shift.findMany({
-        where: { facilityId: body.facilityId, userId: null, status: { in: ['DRAFT', 'PUBLISHED'] }, startsAt: { gte: body.from, lt: body.to } },
+        where: { facilityId: { in: facilityIds }, userId: null, status: { in: ['DRAFT', 'PUBLISHED'] }, startsAt: { gte: body.from, lt: body.to } },
       });
       const bundles = (await Promise.all(open.map((s) => loadShiftBundle(tx, s.id)))).filter((b) => b !== null);
       const candidates = await loadAssistantCandidates(tx, body.from, body.to);
       const proposal = proposeSchedule({
-        shifts: bundles.map((b) => ({ shift: b.shift, position: b.position })),
+        // Each shift with its own facility's rules (provinces can differ) and school calendar.
+        shifts: bundles.map((b) => ({ shift: b.shift, position: b.position, rules: b.rules, schoolCalendar: b.schoolCalendar })),
         candidates,
+        travelMinutes: body.travelMinutes,
         // Same rules (incl. collective-agreement overrides) and school calendar as every other check.
         rules: bundles[0]?.rules ?? resolveRules(facility.province, localDate(body.from, facility.timezone)),
         payWeekStartDay: facility.tenant.payWeekStartDay,

@@ -100,3 +100,52 @@ describe('proposeSchedule', () => {
     expect(out.unfilled[0]?.reason).toBe('2 candidates: 1 not available, 1 on time off.');
   });
 });
+
+describe('proposeSchedule across facilities', () => {
+  const at2 = (id: string, s: string, e: string, facilityId: string, pos: PositionSpec = position) => ({ shift: { id, positionId: pos.id, timezone: VAN, start: at(s), end: at(e), facilityId }, position: pos });
+  const instructor: PositionSpec = { id: 'instructor', minimumAge: null, requiredCertIds: [], prerequisites: new Map() };
+
+  it('fills the hardest shift first, so a scarce qualification isn’t used up elsewhere', () => {
+    // Same time, two pools. Only the senior guard can instruct; anyone can guard.
+    const out = proposeSchedule({
+      ...baseInput,
+      shifts: [at2('guard', '2026-07-06 08:00', '2026-07-06 16:00', 'north'), at2('lesson', '2026-07-06 08:00', '2026-07-06 16:00', 'south', instructor)],
+      candidates: [person('senior', { seniorityDate: '2010-01-01', qualifiedPositionIds: new Set(['guard', 'instructor']) }), person('junior', { seniorityDate: '2022-01-01' })],
+    });
+    expect(out.unfilled).toEqual([]);
+    expect(out.assignments).toEqual(expect.arrayContaining([{ shiftId: 'lesson', userId: 'senior' }, { shiftId: 'guard', userId: 'junior' }]));
+  });
+
+  it('leaves time to travel between facilities', () => {
+    const shifts = [at2('a', '2026-07-06 08:00', '2026-07-06 12:00', 'north'), at2('b', '2026-07-06 12:15', '2026-07-06 16:00', 'south')];
+    const one = [person('only')];
+    const out = proposeSchedule({ ...baseInput, shifts, candidates: one });
+    expect(out.assignments).toHaveLength(1);
+    expect(out.unfilled[0]!.reason).toMatch(/no time to travel/);
+    // Same facility, or a short buffer: both are fine.
+    expect(proposeSchedule({ ...baseInput, shifts: [shifts[0]!, at2('b', '2026-07-06 12:15', '2026-07-06 16:00', 'north')], candidates: [person('only')] }).assignments).toHaveLength(2);
+    expect(proposeSchedule({ ...baseInput, travelMinutes: 10, shifts, candidates: [person('only')] }).assignments).toHaveLength(2);
+  });
+
+  it('prefers whoever already works at that facility, other things equal', () => {
+    const out = proposeSchedule({
+      ...baseInput,
+      distributionMode: 'EGALITARIAN',
+      shifts: [at2('x', '2026-07-08 08:00', '2026-07-08 12:00', 'south')],
+      candidates: [
+        person('a', { existingShifts: [{ start: at('2026-07-06 08:00'), end: at('2026-07-06 12:00'), positionId: 'guard', facilityId: 'north' }] }),
+        person('b', { existingShifts: [{ start: at('2026-07-06 08:00'), end: at('2026-07-06 12:00'), positionId: 'guard', facilityId: 'south' }] }),
+      ],
+    });
+    expect(out.assignments).toEqual([{ shiftId: 'x', userId: 'b' }]);
+  });
+
+  it('checks each shift against its own facility’s province', () => {
+    const out = proposeSchedule({
+      ...baseInput,
+      shifts: [{ ...at2('qc', '2026-07-06 08:00', '2026-07-06 16:00', 'gatineau'), rules: resolveRules('QC', '2026-07-01') }],
+      candidates: [person('a')],
+    });
+    expect(out.assignments).toHaveLength(1);
+  });
+});

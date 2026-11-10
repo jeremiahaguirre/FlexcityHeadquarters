@@ -190,7 +190,7 @@ function toCandidateContext(u: LoadedUser): CandidateContext {
     weeklyMaxHours: u.weeklyMaxHours ? dec(u.weeklyMaxHours) : null,
     qualifiedPositionIds: new Set(u.positions.map((p) => p.positionId)),
     certExpiry,
-    existingShifts: u.shifts.map((s) => ({ start: s.startsAt, end: s.endsAt, positionId: s.positionId })),
+    existingShifts: u.shifts.map((s) => ({ start: s.startsAt, end: s.endsAt, positionId: s.positionId, facilityId: s.facilityId })),
     approvedTimeOff: u.timeOffRequests.map((t) => ({ start: t.startsAt, end: t.endsAt })),
     availability: u.availability.map((a) => ({
       dayOfWeek: a.dayOfWeek,

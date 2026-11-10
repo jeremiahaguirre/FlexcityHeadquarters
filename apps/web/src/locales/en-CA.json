@@ -747,7 +747,18 @@
     "cancelReason": "Reason",
     "cancelHint": "The assigned person sees this.",
     "confirmCancel": "Cancel this shift",
-    "cancelled": "Shift cancelled."
+    "cancelled": "Shift cancelled.",
+    "together_one": "Plan this facility",
+    "together_other": "Plan all {{count}} facilities together",
+    "togetherHelp": "Staff who work at several sites are placed once across all of them, hardest-to-fill shifts first, with time to travel between sites.",
+    "travel": "Travel time between facilities",
+    "travelHint": "Nobody is booked at two different sites closer together than this.",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "summary": "{{filled}} filled, {{open}} left open.",
+    "repaired_one": "1 filled by moving someone from another shift.",
+    "repaired_other": "{{count}} filled by moving someone from another shift.",
+    "otherSites": "The list shows this facility; other sites are included in the totals."
   },
   "approvals": {
     "title": "Approvals",

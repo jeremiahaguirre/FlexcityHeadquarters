@@ -35,7 +35,7 @@ interface Shift {
   assignee: { id: string; name: string } | null;
 }
 interface Candidate { user: { id: string; firstName: string; lastName: string; employmentStatus: string }; eligible: boolean; overtimeHours: string; weeklyHoursAfter: string; blocks: Array<{ code: string }> }
-interface Proposal { assignments: Array<{ shiftId: string; userId: string }>; unfilled: Array<{ shiftId: string; reason: string }> }
+interface Proposal { assignments: Array<{ shiftId: string; userId: string }>; unfilled: Array<{ shiftId: string; reason: string }>; repaired?: number }
 
 export default function ScheduleBuilderPage() {
   const { t, i18n } = useTranslation();
@@ -57,6 +57,9 @@ export default function ScheduleBuilderPage() {
   const [selected, setSelected] = useState<Shift | null>(null);
   const [assistant, setAssistant] = useState<Proposal | null>(null);
   const [mode, setMode] = useState<'SENIORITY' | 'EGALITARIAN'>('SENIORITY');
+  // Plan every facility together, so staff shared between them are placed once, with travel time.
+  const [together, setTogether] = useState(false);
+  const [travel, setTravel] = useState(30);
 
   useEffect(() => {
     if (!facilityId && facilities.data?.[0]) setFacilityId(facilities.data[0].id);
@@ -92,7 +95,10 @@ export default function ScheduleBuilderPage() {
   async function runAssistant(apply: boolean) {
     if (!facility || !range) return;
     const r = await run(apply ? 'apply' : 'preview', () =>
-      api<Proposal>('/api/schedule/assist', { method: 'POST', body: { facilityId: facility.id, from: range.from, to: range.to, distributionMode: mode, useShadowTiers: true, apply } }),
+      api<Proposal>('/api/schedule/assist', {
+        method: 'POST',
+        body: { ...(together && (facilities.data?.length ?? 0) > 1 ? { facilityIds: facilities.data!.map((f) => f.id) } : { facilityId: facility.id }), from: range.from, to: range.to, distributionMode: mode, useShadowTiers: true, travelMinutes: travel, apply },
+      }),
     );
     if (!r) return;
     if (apply) {
@@ -289,6 +295,50 @@ export default function ScheduleBuilderPage() {
               </Select>
             )}
           </Field>
+          {(facilities.data?.length ?? 0) > 1 ? (
+            <div className="grid gap-3 rounded-xl border border-line p-3">
+              <label className="flex items-start gap-3 text-small">
+                <input
+                  type="checkbox"
+                  checked={together}
+                  onChange={(e) => {
+                    setTogether(e.target.checked);
+                    setAssistant(null);
+                  }}
+                  className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]"
+                />
+                <span>
+                  <span className="block font-semibold">{t('builder.together', { count: facilities.data!.length })}</span>
+                  <span className="text-muted">{t('builder.togetherHelp')}</span>
+                </span>
+              </label>
+              {together ? (
+                <Field label={t('builder.travel')} hint={t('builder.travelHint')}>
+                  {(p) => (
+                    <Select
+                      {...p}
+                      value={travel}
+                      onChange={(e) => {
+                        setTravel(Number(e.target.value));
+                        setAssistant(null);
+                      }}
+                    >
+                      {[0, 15, 30, 45, 60, 90].map((m) => <option key={m} value={m}>{t('builder.minutes', { count: m })}</option>)}
+                    </Select>
+                  )}
+                </Field>
+              ) : null}
+            </div>
+          ) : null}
+          {assistant ? (
+            <p className="text-small text-muted">
+              {t('builder.summary', { filled: assistant.assignments.length, open: assistant.unfilled.length })}
+              {assistant.repaired ? ` ${t('builder.repaired', { count: assistant.repaired })}` : ''}
+              {together ? ` ${t('builder.otherSites')}` : ''}
+            </p>
+          ) : (
+            <Button variant="secondary" size="sm" className="justify-self-start" loading={busy === 'preview'} onClick={() => void runAssistant(false)}>{t('builder.assist')}</Button>
+          )}
           <ul className="grid max-h-80 gap-2 overflow-y-auto">
             {assistant?.assignments.map((a) => {
               const s = shifts.data?.find((x) => x.id === a.shiftId);

@@ -12,9 +12,17 @@
  *  - Unfilled shifts carry a human-readable conflictReason ("3 qualified staff:
  *    2 on time off, 1 would exceed rest period").
  *
- * The greedy pass here is adequate for a single facility/week. For large multi-
- * facility terms, swap in a constraint solver (OR-Tools CP-SAT) behind the same
- * input/output types — see docs/ROADMAP.md.
+ *
+ * How it fills a week across several facilities:
+ *  1. Hardest first: at each step it takes the open shift with the FEWEST people
+ *     able to work it (ties: earliest), so scarce certifications aren't used up on
+ *     shifts anyone could cover. Only the person just placed is re-checked each step.
+ *  2. Travel: nobody is booked at two different facilities with less than
+ *     `travelMinutes` between the shifts, and among equals the person already
+ *     working at that facility that week is preferred (fewer moves).
+ *  3. Repair: for each shift still open, it tries moving someone from a filled
+ *     shift and back-filling theirs with someone else, all within the same rules.
+ * Each shift is checked against its own facility's provincial rules.
  */
 import type { Decimal } from '../../lib/money.js';
 import type { ProvinceRules } from '../compliance/provincialRules.js';
@@ -40,7 +48,10 @@ export interface AssistantCandidate extends CandidateContext {
 }
 
 export interface AssistantInput {
-  shifts: Array<{ shift: ShiftSpec; position: PositionSpec }>;
+  /** Each shift may bring its own facility's rules and school calendar; otherwise `rules` applies. */
+  shifts: Array<{ shift: ShiftSpec; position: PositionSpec; rules?: ProvinceRules; schoolCalendar?: SchoolCalendar }>;
+  /** Minimum gap between shifts at two different facilities (default 30). */
+  travelMinutes?: number;
   candidates: AssistantCandidate[];
   rules: ProvinceRules;
   payWeekStartDay: number;
@@ -52,6 +63,8 @@ export interface AssistantInput {
 export interface AssistantOutput {
   assignments: Array<{ shiftId: string; userId: string }>;
   unfilled: Array<{ shiftId: string; reason: string }>;
+  /** Shifts filled by moving someone in the repair pass. */
+  repaired: number;
 }
 
 const TIER_ORDER: Record<ShadowTier, number> = { A_SQUAD: 0, B_SQUAD: 1, C_SQUAD: 2, UNASSIGNED: 3 };
@@ -71,43 +84,112 @@ const BLOCK_LABEL: Partial<Record<BlockCode, string>> = {
   NOT_QUALIFIED_FOR_POSITION: 'not qualified',
 };
 
+type Item = AssistantInput['shifts'][number];
+type Pooled = AssistantCandidate;
+
 export function proposeSchedule(input: AssistantInput): AssistantOutput {
   // Work on copies: assignments made during this run feed later evaluations.
-  const pool = input.candidates.map((c) => ({ ...c, existingShifts: [...c.existingShifts] }));
-  const assignments: AssistantOutput['assignments'] = [];
-  const unfilled: AssistantOutput['unfilled'] = [];
+  const pool: Pooled[] = input.candidates.filter((c) => c.employmentStatus !== 'VOLUNTEER').map((c) => ({ ...c, existingShifts: [...c.existingShifts] }));
+  const travelMs = (input.travelMinutes ?? 30) * 60_000;
+  const evaluate = (c: Pooled, it: Item) => {
+    const e = evaluateCandidate(c, it.shift, it.position, {
+      rules: it.rules ?? input.rules,
+      payWeekStartDay: input.payWeekStartDay,
+      requireAvailability: true,
+      schoolCalendar: it.schoolCalendar ?? input.schoolCalendar,
+    });
+    return { c, e, travel: !tooLittleTravel(c, it.shift, travelMs) };
+  };
+  const viable = (x: Scored): boolean => x.e.eligible && x.e.overtimeHours.eq(0) && x.travel !== false;
 
-  const ordered = [...input.shifts].sort((a, b) => a.shift.start.getTime() - b.shift.start.getTime());
+  // Who could work each open shift right now. Only the person just placed changes between steps.
+  const open = new Map<string, Item>(input.shifts.map((it) => [it.shift.id, it]));
+  const options = new Map<string, Map<string, Scored>>();
+  for (const it of open.values()) options.set(it.shift.id, new Map(pool.map((c) => [c.userId, evaluate(c, it)])));
 
-  for (const { shift, position } of ordered) {
-    const evaluated = pool
-      .filter((c) => c.employmentStatus !== 'VOLUNTEER')
-      .map((c) => ({
-        c,
-        e: evaluateCandidate(c, shift, position, {
-          rules: input.rules,
-          payWeekStartDay: input.payWeekStartDay,
-          requireAvailability: true,
-          schoolCalendar: input.schoolCalendar,
-        }),
-      }));
-
-    const viable = evaluated.filter(({ e }) => e.eligible && e.overtimeHours.eq(0));
-    if (viable.length === 0) {
-      unfilled.push({ shiftId: shift.id, reason: explain(evaluated.map(({ e }) => e)) });
+  const assigned = new Map<string, { item: Item; person: Pooled }>();
+  const unfilledIds: string[] = [];
+  while (open.size) {
+    // Hardest first: fewest viable people, then earliest.
+    let next: Item | null = null;
+    let fewest = Infinity;
+    for (const it of open.values()) {
+      const n = [...options.get(it.shift.id)!.values()].filter(viable).length;
+      if (n < fewest || (n === fewest && next && it.shift.start < next.shift.start)) {
+        next = it;
+        fewest = n;
+      }
+    }
+    const it = next!;
+    open.delete(it.shift.id);
+    const choices = [...options.get(it.shift.id)!.values()].filter(viable);
+    if (!choices.length) {
+      unfilledIds.push(it.shift.id);
       continue;
     }
-
-    viable.sort((x, y) => compare(x, y, input));
-    const winner = viable[0]!.c;
-    winner.existingShifts.push({ start: shift.start, end: shift.end, positionId: shift.positionId });
-    assignments.push({ shiftId: shift.id, userId: winner.userId });
+    choices.sort((x, y) => compare(x, y, input, it.shift.facilityId));
+    const winner = choices[0]!.c;
+    winner.existingShifts.push({ start: it.shift.start, end: it.shift.end, positionId: it.shift.positionId, facilityId: it.shift.facilityId });
+    assigned.set(it.shift.id, { item: it, person: winner });
+    for (const other of open.values()) options.get(other.shift.id)!.set(winner.userId, evaluate(winner, other));
   }
 
-  return { assignments, unfilled };
+  // Repair: move someone from a filled shift to an open one, if another person can take theirs.
+  let repaired = 0;
+  const stillOpen: string[] = [];
+  for (const id of unfilledIds) {
+    const target = input.shifts.find((x) => x.shift.id === id)!;
+    if (!tryRepair(target, assigned, pool, evaluate, viable, input)) stillOpen.push(id);
+    else repaired++;
+  }
+
+  const unfilled = stillOpen.map((id) => {
+    const it = input.shifts.find((x) => x.shift.id === id)!;
+    return { shiftId: id, reason: explain(pool.map((c) => evaluate(c, it))) };
+  });
+  const assignments = input.shifts.filter((x) => assigned.has(x.shift.id)).map((x) => ({ shiftId: x.shift.id, userId: assigned.get(x.shift.id)!.person.userId }));
+  return { assignments, unfilled, repaired };
 }
 
-type Scored = { c: AssistantCandidate; e: ReturnType<typeof evaluateCandidate> };
+/** Booked at another facility too close before or after this shift to get there. */
+function tooLittleTravel(c: Pooled, shift: ShiftSpec, travelMs: number): boolean {
+  if (!shift.facilityId || !travelMs) return false;
+  return c.existingShifts.some(
+    (s) => s.facilityId && s.facilityId !== shift.facilityId && shift.start.getTime() - s.end.getTime() < travelMs && s.start.getTime() - shift.end.getTime() < travelMs,
+  );
+}
+
+function tryRepair(
+  target: Item,
+  assigned: Map<string, { item: Item; person: Pooled }>,
+  pool: Pooled[],
+  evaluate: (c: Pooled, it: Item) => Scored,
+  viable: (x: Scored) => boolean,
+  input: AssistantInput,
+): boolean {
+  for (const [shiftId, { item, person }] of assigned) {
+    // Could this person work the open shift if they gave up the one they have?
+    const without = person.existingShifts.filter((s) => !(s.start.getTime() === item.shift.start.getTime() && s.positionId === item.shift.positionId && s.facilityId === item.shift.facilityId));
+    const freed = { ...person, existingShifts: without };
+    if (!viable(evaluate(freed, target))) continue;
+    // And can someone else take the shift they leave?
+    const withMoved = { ...person, existingShifts: [...without, { start: target.shift.start, end: target.shift.end, positionId: target.shift.positionId, facilityId: target.shift.facilityId }] };
+    const cover = pool
+      .filter((c) => c.userId !== person.userId)
+      .map((c) => evaluate(c, item))
+      .filter(viable)
+      .sort((x, y) => compare(x, y, input, item.shift.facilityId))[0];
+    if (!cover) continue;
+    person.existingShifts = withMoved.existingShifts;
+    cover.c.existingShifts.push({ start: item.shift.start, end: item.shift.end, positionId: item.shift.positionId, facilityId: item.shift.facilityId });
+    assigned.set(target.shift.id, { item: target, person });
+    assigned.set(shiftId, { item, person: cover.c });
+    return true;
+  }
+  return false;
+}
+
+type Scored = { c: AssistantCandidate; e: ReturnType<typeof evaluateCandidate>; travel?: boolean };
 
 function employmentTier(s: Scored): number {
   const { c, e } = s;
@@ -127,7 +209,7 @@ function employmentTier(s: Scored): number {
   }
 }
 
-function compare(x: Scored, y: Scored, input: AssistantInput): number {
+function compare(x: Scored, y: Scored, input: AssistantInput, facilityId?: string): number {
   const t = employmentTier(x) - employmentTier(y);
   if (t !== 0) return t;
   if (input.useShadowTiers) {
@@ -144,14 +226,25 @@ function compare(x: Scored, y: Scored, input: AssistantInput): number {
     const sh = y.c.seniorityHours.comparedTo(x.c.seniorityHours);
     if (sh !== 0) return sh;
   }
+  // Fewer moves: prefer whoever already works at this facility in the period.
+  if (facilityId) {
+    const here = (s: Scored) => s.c.existingShifts.filter((e) => e.facilityId === facilityId).length;
+    const d = here(y) - here(x);
+    if (d !== 0) return d;
+  }
   return x.c.userId.localeCompare(y.c.userId); // deterministic
 }
 
-function explain(evals: Array<ReturnType<typeof evaluateCandidate>>): string {
-  if (evals.length === 0) return 'No staff are qualified for this position.';
+function explain(scored: Scored[]): string {
+  if (scored.length === 0) return 'No staff are qualified for this position.';
+  const evals = scored.map((s) => s.e);
   const counts = new Map<string, number>();
   let overtimeOnly = 0;
-  for (const e of evals) {
+  for (const { e, travel } of scored) {
+    if (e.eligible && travel === false) {
+      counts.set('no time to travel between facilities', (counts.get('no time to travel between facilities') ?? 0) + 1);
+      continue;
+    }
     if (e.eligible) {
       overtimeOnly++;
       continue;

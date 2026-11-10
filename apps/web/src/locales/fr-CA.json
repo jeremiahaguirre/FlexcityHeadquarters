@@ -747,7 +747,18 @@
     "cancelReason": "Motif",
     "cancelHint": "La personne affectée le verra.",
     "confirmCancel": "Annuler ce quart",
-    "cancelled": "Quart annulé."
+    "cancelled": "Quart annulé.",
+    "together_one": "Planifier cette installation",
+    "together_other": "Planifier les {{count}} installations ensemble",
+    "togetherHelp": "Le personnel qui travaille à plusieurs endroits est placé une seule fois pour l’ensemble, en commençant par les quarts les plus difficiles à combler, avec le temps de se déplacer entre les sites.",
+    "travel": "Temps de déplacement entre les installations",
+    "travelHint": "Personne n’est affecté à deux sites différents à moins de cet intervalle.",
+    "minutes_one": "{{count}} minute",
+    "minutes_other": "{{count}} minutes",
+    "summary": "{{filled}} comblés, {{open}} restés ouverts.",
+    "repaired_one": "1 comblé en déplaçant quelqu’un d’un autre quart.",
+    "repaired_other": "{{count}} comblés en déplaçant quelqu’un d’un autre quart.",
+    "otherSites": "La liste montre cette installation; les autres sites sont inclus dans les totaux."
   },
   "approvals": {
     "title": "Approbations",

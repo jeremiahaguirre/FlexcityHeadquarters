@@ -67,7 +67,7 @@ export interface CandidateContext {
   /** certificationId → latest expiry (null = never expires) */
   certExpiry: ReadonlyMap<string, string | null>;
   /** Assigned, non-cancelled shifts near the target shift. */
-  existingShifts: Array<Interval & { positionId: string }>;
+  existingShifts: Array<Interval & { positionId: string; facilityId?: string }>;
   approvedTimeOff: Interval[];
   /** Active work restrictions (accommodation / return to work). */
   restrictions?: Restriction[];
@@ -86,6 +86,8 @@ export interface ShiftSpec extends Interval {
   id: string;
   positionId: string;
   timezone: string;
+  /** Where it is (the scheduling assistant keeps travel time between facilities). */
+  facilityId?: string;
 }
 
 export interface PositionSpec {
