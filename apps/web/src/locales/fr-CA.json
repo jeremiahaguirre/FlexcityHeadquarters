@@ -289,7 +289,8 @@
     "pay_statement_ready": "Votre relevé de paie du {{payDate}} est prêt.",
     "review_self": "Votre évaluation de rendement {{cycle}} est ouverte. Ajoutez votre autoévaluation.",
     "review_manager": "L’autoévaluation est remise pour l’évaluation {{cycle}}. C’est maintenant votre tour.",
-    "review_ready": "Votre évaluation {{cycle}} est prête à lire et à confirmer."
+    "review_ready": "Votre évaluation {{cycle}} est prête à lire et à confirmer.",
+    "lonework_due_soon": "Votre vérification de travail seul à {{location}} est due dans 5 minutes."
   },
   "today": {
     "morning": "Bonjour",
@@ -2666,8 +2667,8 @@
     "intervalHint": "Plus le travail est risqué, plus l'intervalle est court.",
     "every_one": "{{count}} minute",
     "every_other": "{{count}} minutes",
-    "share": "Partager ma position lors des vérifications",
-    "shareHint": "Seuls vos surveillants la voient, et seulement pour cette séance.",
+    "share": "Partager ma position avec mes superviseurs",
+    "shareHint": "Mise à jour pendant que l’application est ouverte, et envoyée à chaque vérification et demande d’aide. Seuls vos superviseurs la voient, seulement pendant cette séance. Vous pouvez la désactiver en tout temps.",
     "start": "Commencer",
     "started": "C'est parti. Nous vous rappellerons la prochaine vérification.",
     "nextCheck": "Prochaine vérification dans",
@@ -2713,7 +2714,19 @@
     "closed": "Séance fermée",
     "endedToday_one": "{{count}} séance terminée au cours des dernières 24 heures",
     "endedToday_other": "{{count}} séances terminées au cours des dernières 24 heures",
-    "monitorFoot": "Une vérification manquée alerte la personne et tous ceux qui surveillent les travailleurs isolés. Sans réponse 15 minutes plus tard, les RH sont aussi alertées par courriel."
+    "monitorFoot": "Une vérification manquée alerte la personne et tous ceux qui surveillent les travailleurs isolés. Sans réponse 15 minutes plus tard, les RH sont aussi alertées par courriel.",
+    "liveShare": "Partager ma position",
+    "liveHint": "Désactivé. Vos superviseurs ne voient que l’endroit que vous avez indiqué.",
+    "liveUpdated": "Activé, dernier envoi {{time}} · seuls vos superviseurs la voient, et elle est supprimée si vous désactivez le partage.",
+    "sharingOn": "Le partage de position est activé",
+    "sharingOff": "Le partage de position est désactivé, et votre position partagée a été supprimée",
+    "locDenied": "Votre téléphone ne permet pas à cette application d’utiliser la position. Autorisez-la dans vos réglages, ou dites à vos superviseurs où vous êtes lors des vérifications.",
+    "locUnavailable": "Votre position est introuvable pour le moment (pas de signal à l’intérieur?). La minuterie de vérification vous protège quand même.",
+    "keepAwake": "Garder l’écran allumé",
+    "keepAwakeHint": "Garde l’application à l’avant-plan pour que votre position continue d’être mise à jour. Consomme plus de batterie.",
+    "backgroundNote": "Les téléphones cessent de partager la position d’une application Web quand elle est en arrière-plan ou que l’écran est verrouillé. La minuterie et les rappels fonctionnent quand même, et une vérification manquée alerte toujours vos superviseurs.",
+    "mapAt": "Position à {{time}}",
+    "live": "en direct"
   },
   "billingPage": {
     "title": "Facturation",
@@ -4479,9 +4492,10 @@
       "title": "Surveillance électronique",
       "items": [
         "Au pointage, l’application vérifie une fois que vous êtes à l’installation. Seuls le fait d’être sur place et la distance sont conservés, jamais l’endroit où vous étiez ni l’adresse de votre appareil.",
-        "Les vérifications de travail seul notent l’heure de vos vérifications, et une position seulement si vous choisissez de la partager en demandant de l’aide. Cette position est supprimée 30 jours après la session.",
+        "Les vérifications de travail seul notent l’heure de vos vérifications. Votre position n’est partagée que si vous activez le partage pour cette séance : l’application l’envoie alors environ toutes les 30 secondes pendant qu’elle est ouverte à l’écran, et à chaque vérification ou demande d’aide. Seules les personnes qui surveillent le travail seul la voient. Désactiver le partage la supprime aussitôt; sinon, elle est supprimée 30 jours après la séance. Rien n’est partagé en dehors d’une séance de travail seul.",
         "Les modifications aux dossiers sont consignées (qui a changé quoi, quand). Les connexions sont consignées pour protéger votre compte.",
-        "Rien d’autre n’est suivi : aucune position continue, navigation, frappe, capture d’écran, caméra ni microphone. Les chiffres d’assiduité sont indicatifs : aucune décision à votre sujet n’est prise par le logiciel seul."
+        "Les notifications sur votre téléphone sont facultatives et se désactivent sur chaque appareil. Leur texte est chiffré pour votre appareil; l’écran verrouillé n’affiche qu’un court titre, jamais de détails sur la paie, la santé, la discipline ou les documents.",
+        "Rien d’autre n’est suivi : aucune position en dehors d’une séance de travail seul que vous avez commencée, navigation, frappe, capture d’écran, caméra ni microphone. Les chiffres d’assiduité sont indicatifs : aucune décision à votre sujet n’est prise par le logiciel seul."
       ]
     },
     "keep": {
@@ -4509,5 +4523,30 @@
       ]
     },
     "footer": "Cet avis décrit l’application. Les politiques de votre employeur sur la vie privée et la surveillance électronique s’appliquent aussi; demandez-les aux RH."
+  },
+  "install": {
+    "button": "Installer l’application sur votre téléphone",
+    "why": "Aucune boutique d’applications. Elle s’ouvre en plein écran et peut vous envoyer des notifications.",
+    "title": "Ajouter FlexcityHeadquarters à votre écran d’accueil",
+    "help": "Cela prend quelques secondes, et vous l’ouvrirez comme toute autre application.",
+    "ios1": "Touchez le bouton Partager au bas de Safari.",
+    "ios2": "Faites défiler et touchez Sur l’écran d’accueil.",
+    "ios3": "Touchez Ajouter. Ouvrez ensuite l’application depuis votre écran d’accueil et connectez-vous.",
+    "iosNote": "Sur iPhone et iPad, les notifications ne fonctionnent que dans l’application installée (iOS 16.4 ou plus récent) : ouvrez-la depuis votre écran d’accueil pour les activer.",
+    "android1": "Ouvrez le menu de votre navigateur (⋮).",
+    "android2": "Touchez Installer l’application ou Ajouter à l’écran d’accueil.",
+    "androidNote": "Si l’option n’apparaît pas, ouvrez cette page dans Chrome, Edge ou Samsung Internet."
+  },
+  "push": {
+    "title": "Notifications sur cet appareil",
+    "description": "Recevez les offres de quarts, les changements d’horaire et les rappels de travail seul, même quand l’application est fermée.",
+    "onPill": "Activées",
+    "turnOn": "Activer les notifications",
+    "turnOff": "Désactiver sur cet appareil",
+    "privacy": "Votre écran verrouillé n’affiche qu’un court titre, jamais de détails sur la paie, la santé, la discipline ou les documents. La déconnexion les arrête sur cet appareil.",
+    "needsInstall": "Sur iPhone et iPad, ajoutez d’abord l’application à votre écran d’accueil, puis activez les notifications à partir de celle-ci.",
+    "blocked": "Les notifications sont bloquées pour ce site. Autorisez-les dans les réglages de votre navigateur ou de votre téléphone, puis revenez ici.",
+    "unsupported": "Ce navigateur ne peut pas recevoir de notifications. Vous les verrez quand même dans l’application et par courriel.",
+    "unavailable": "Les notifications sur appareil ne sont pas encore configurées pour votre organisation. Vous les verrez quand même dans l’application."
   }
 }

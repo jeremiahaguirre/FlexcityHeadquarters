@@ -12,6 +12,7 @@ import { DEMO, DEMO_ACCOUNTS, DEMO_PASSWORD, DEMO_ROLES } from '@/lib/demo';
 import { OFFER_FLAG } from '@/components/auth/PasskeyPrompt';
 import { PasskeyIcon } from '@/components/auth/PasskeyIcon';
 import { cancelled, passkeysSupported, signInWithPasskey } from '@/lib/passkeys';
+import { InstallApp } from '@/components/device/InstallApp';
 
 function LoginForm() {
   const { t, i18n } = useTranslation();
@@ -149,6 +150,7 @@ function LoginForm() {
         )}
       </form>
       )}
+      <InstallApp className="mt-8" />
       <p className="mt-8 border-t border-line pt-5 text-center text-small text-muted">
         {t('login.notStaff')}{' '}
         <Link href="/signup" className="font-semibold text-brand-text hover:underline">{t('login.signupLink')}</Link>

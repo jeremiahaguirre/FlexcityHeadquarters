@@ -6,12 +6,14 @@ import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { currentTenant } from '@/lib/tenant';
 import { UnknownOrg } from '@/components/UnknownOrg';
+import { ServiceWorker } from '@/components/ServiceWorker';
 
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
   if (!tenant) return <UnknownOrg />;
   return (
     <div className="relative grid min-h-screen bg-page lg:grid-cols-2">
+      <ServiceWorker />
       <div className="absolute right-4 top-4 z-10">
         <AuthLanguageSwitch />
       </div>

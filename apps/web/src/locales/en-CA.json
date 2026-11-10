@@ -289,7 +289,8 @@
     "pay_statement_ready": "Your pay statement for {{payDate}} is ready.",
     "review_self": "Your {{cycle}} performance review is open. Add your self-assessment.",
     "review_manager": "A self-assessment is in for the {{cycle}} review. Your part is next.",
-    "review_ready": "Your {{cycle}} review is ready to read and acknowledge."
+    "review_ready": "Your {{cycle}} review is ready to read and acknowledge.",
+    "lonework_due_soon": "Your working-alone check-in at {{location}} is due in 5 minutes."
   },
   "today": {
     "morning": "Good morning",
@@ -2666,8 +2667,8 @@
     "intervalHint": "Riskier work, shorter interval.",
     "every_one": "{{count}} minute",
     "every_other": "{{count}} minutes",
-    "share": "Share my location when I check in",
-    "shareHint": "Only your monitors see it, and only for this session.",
+    "share": "Share my location with my monitors",
+    "shareHint": "Kept up to date while this app is open, and sent with each check-in and help request. Only your monitors see it, only during this session. You can turn it off at any time.",
     "start": "Start",
     "started": "You're checked in. We'll remind you when the next one is due.",
     "nextCheck": "Next check-in in",
@@ -2713,7 +2714,19 @@
     "closed": "Session closed",
     "endedToday_one": "{{count}} session ended in the last 24 hours",
     "endedToday_other": "{{count}} sessions ended in the last 24 hours",
-    "monitorFoot": "A missed check-in alerts the person and everyone who monitors lone workers. If there's still no answer 15 minutes later, HR is alerted by email too."
+    "monitorFoot": "A missed check-in alerts the person and everyone who monitors lone workers. If there's still no answer 15 minutes later, HR is alerted by email too.",
+    "liveShare": "Share my location",
+    "liveHint": "Off. Your monitors see only where you said you'd be.",
+    "liveUpdated": "On, last sent {{time}} · only your monitors see it, and it's removed when you turn this off.",
+    "sharingOn": "Location sharing is on",
+    "sharingOff": "Location sharing is off, and your shared location was removed",
+    "locDenied": "Your phone isn't allowing location for this app. Allow it in your settings, or tell your monitors where you are when you check in.",
+    "locUnavailable": "Your location can't be found right now (no signal indoors?). The check-in timer still protects you.",
+    "keepAwake": "Keep the screen on",
+    "keepAwakeHint": "Keeps the app in front so your location keeps updating. Uses more battery.",
+    "backgroundNote": "Phones stop sharing a web app's location when it's in the background or the screen is locked. Your check-in timer and reminders keep working either way, and a missed check-in still alerts your monitors.",
+    "mapAt": "Location at {{time}}",
+    "live": "live"
   },
   "billingPage": {
     "title": "Billing",
@@ -4479,9 +4492,10 @@
       "title": "Electronic monitoring",
       "items": [
         "Clocking in checks once that you're at the facility. Only whether you were on site and how far away is kept, never where you were or your device's address.",
-        "Working-alone check-ins record when you check in, and a location only if you choose to share it when asking for help. That location is removed 30 days after the session.",
+        "Working-alone check-ins record when you check in. Your location is shared only if you turn sharing on for that session: then the app sends it about every 30 seconds while it's open on your screen, and with each check-in or help request. Only the people who monitor lone workers see it. Turning sharing off removes it at once; otherwise it's removed 30 days after the session. Nothing is shared outside a working-alone session.",
         "Changes to records are logged (who changed what, when). Sign-ins are logged to protect your account.",
-        "Nothing else is tracked: no continuous location, browsing, keystrokes, screenshots, camera or microphone. Attendance figures are advisory: no decision about you is made by the software alone."
+        "Notifications on your phone are optional and can be turned off on each device. Their text is encrypted for your device; the lock screen shows only a short heading, never details about pay, health, discipline or documents.",
+        "Nothing else is tracked: no location outside a working-alone session you started, browsing, keystrokes, screenshots, camera or microphone. Attendance figures are advisory: no decision about you is made by the software alone."
       ]
     },
     "keep": {
@@ -4509,5 +4523,30 @@
       ]
     },
     "footer": "This notice describes the app. Your employer's own privacy and electronic monitoring policies apply too; ask HR for them."
+  },
+  "install": {
+    "button": "Get the app on your phone",
+    "why": "No app store needed. It opens full screen and can send you notifications.",
+    "title": "Add FlexcityHeadquarters to your home screen",
+    "help": "It takes a few seconds, and you'll open it like any other app.",
+    "ios1": "Tap the Share button at the bottom of Safari.",
+    "ios2": "Scroll down and tap Add to Home Screen.",
+    "ios3": "Tap Add. Then open the app from your home screen and sign in.",
+    "iosNote": "On iPhone and iPad, notifications work only in the installed app (iOS 16.4 or later), so open it from your home screen to turn them on.",
+    "android1": "Open your browser's menu (⋮).",
+    "android2": "Tap Install app or Add to Home screen.",
+    "androidNote": "If you don't see it, open this page in Chrome, Edge or Samsung Internet."
+  },
+  "push": {
+    "title": "Notifications on this device",
+    "description": "Get shift offers, schedule changes and working-alone reminders even when the app is closed.",
+    "onPill": "On",
+    "turnOn": "Turn on notifications",
+    "turnOff": "Turn off on this device",
+    "privacy": "Your lock screen shows only a short heading, never details about pay, health, discipline or documents. Signing out stops them on this device.",
+    "needsInstall": "On iPhone and iPad, add the app to your home screen first, then turn on notifications from there.",
+    "blocked": "Notifications are blocked for this site. Allow them in your browser or phone settings, then come back here.",
+    "unsupported": "This browser can't receive notifications. You'll still see them in the app and by email.",
+    "unavailable": "Notifications on devices aren't set up for your organization yet. You'll still see them in the app."
   }
 }

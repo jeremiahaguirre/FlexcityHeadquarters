@@ -165,6 +165,8 @@ export async function ssoExchange(code: string) {
 }
 
 export async function logout() {
+  // This device stops getting the person's push notifications (shared tablets and deck phones).
+  await import('./device').then((d) => d.forgetPushDevice()).catch(() => undefined);
   await api('/api/auth/logout', { method: 'POST' }, false).catch(() => undefined);
   accessToken = null;
   try {

@@ -72,6 +72,11 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // This device's push subscription follows whoever is signed in.
+  const meId = me?.id;
+  useEffect(() => {
+    if (meId) void import('./device').then((d) => d.syncPush());
+  }, [meId]);
 
   const value: SessionValue = {
     me,

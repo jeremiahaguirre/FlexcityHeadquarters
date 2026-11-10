@@ -37,3 +37,41 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(req).then((hit) => hit || caches.match('/lessons') || Response.error())),
   );
 });
+
+// Push notifications. The server sends only a short title and body (never sensitive details);
+// tapping opens the screen it's about, reusing an open window when there is one.
+self.addEventListener('push', (event) => {
+  let n = { title: 'FlexcityHeadquarters', body: '', link: '/', tag: 'fh', urgent: false };
+  try {
+    n = { ...n, ...event.data.json() };
+  } catch {}
+  event.waitUntil(
+    self.registration.showNotification(n.title, {
+      body: n.body,
+      tag: n.tag,
+      renotify: n.urgent,
+      requireInteraction: n.urgent,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: n.urgent ? [300, 100, 300, 100, 300] : [100],
+      data: { link: n.link },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const raw = (event.notification.data && event.notification.data.link) || '/';
+  // Only places inside the app.
+  const target = new URL(raw.startsWith('/') && !raw.startsWith('//') ? raw : '/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const open = list.find((c) => new URL(c.url).origin === self.location.origin);
+      if (open) return open.focus().then((c) => (c && 'navigate' in c ? c.navigate(target) : undefined));
+      return self.clients.openWindow(target);
+    }),
+  );
+});
+
+// When the browser rotates the push keys, the app sends the new subscription the next time it opens
+// (the worker has no sign-in of its own, by design).

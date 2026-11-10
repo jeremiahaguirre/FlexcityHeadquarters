@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, LifeBuoy, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { CheckCircle2, LifeBuoy, LogOut, MapPin, MonitorSmartphone, ShieldCheck, UserRound } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -11,7 +11,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { INTERVALS, type LoneSession, currentPosition } from '@/lib/loneWork';
+import { INTERVALS, type LoneSession, currentPosition, watchLocation } from '@/lib/loneWork';
+import { keepAwake, wakeLockSupported } from '@/lib/device';
+import { PushCard } from '@/components/device/PushCard';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
 
@@ -35,6 +37,33 @@ export default function AlonePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const s = q.data;
+  const sharing = !!s && s.shareLocation && s.status !== 'ENDED';
+  const [locError, setLocError] = useState<'denied' | 'unavailable' | null>(null);
+  const [awake, setAwake] = useState(false);
+  // While sharing is on and this screen is open, send the position every 30 seconds at most.
+  useEffect(() => {
+    if (!sharing) return;
+    setLocError(null);
+    return watchLocation(
+      (p) => void api('/api/me/lone-work/location', { method: 'POST', body: p }).then(() => setLocError(null)).catch(() => undefined),
+      (denied) => setLocError(denied ? 'denied' : 'unavailable'),
+    );
+  }, [sharing]);
+  // "Keep the screen on": the app stays in front, so location and the timer keep going.
+  useEffect(() => {
+    if (!awake || !s) return;
+    let release: (() => void) | null = null;
+    let gone = false;
+    void keepAwake().then((r) => {
+      if (gone) r?.();
+      else if (!r) setAwake(false);
+      else release = r;
+    });
+    return () => {
+      gone = true;
+      release?.();
+    };
+  }, [awake, s]);
   const time = (iso: string) => dateFormat(i18n.language, { timeStyle: 'short' }).format(new Date(iso));
   const where = () => (share ? currentPosition() : Promise.resolve(null));
 
@@ -44,9 +73,13 @@ export default function AlonePage() {
     const pos = await where();
     await run(
       'start',
-      () => api('/api/me/lone-work', { method: 'POST', body: { location: String(f.get('location')), task: String(f.get('task') || '') || null, facilityId: String(f.get('facilityId') || '') || null, intervalMinutes: Number(f.get('interval')), ...pos } }),
+      () => api('/api/me/lone-work', { method: 'POST', body: { location: String(f.get('location')), task: String(f.get('task') || '') || null, facilityId: String(f.get('facilityId') || '') || null, intervalMinutes: Number(f.get('interval')), shareLocation: share, ...pos } }),
       t('loneWork.started'),
     );
+    await q.reload();
+  }
+  async function setSharing(on: boolean) {
+    await run('share', () => api('/api/me/lone-work/share-location', { method: 'PUT', body: { on } }), on ? t('loneWork.sharingOn') : t('loneWork.sharingOff'));
     await q.reload();
   }
   async function act(path: 'check-in' | 'help' | 'end', body: object = {}, ok?: string) {
@@ -92,6 +125,7 @@ export default function AlonePage() {
             </form>
           </CardBody>
         </Card>
+        <div className="max-w-xl"><PushCard compact /></div>
       </div>
     );
   }
@@ -133,6 +167,29 @@ export default function AlonePage() {
           <p className="text-caption text-muted">{t('loneWork.emergency')}</p>
         </CardBody>
       </Card>
+      <Card className="max-w-xl">
+        <CardBody className="grid gap-4">
+          <label className="flex items-start gap-3 text-small">
+            <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--brand)]" checked={s.shareLocation} disabled={busy === 'share'} onChange={(e) => void setSharing(e.target.checked)} />
+            <span>
+              <span className="flex items-center gap-1.5 font-semibold"><MapPin className="h-4 w-4" aria-hidden="true" />{t('loneWork.liveShare')}</span>
+              <span className="block text-caption text-muted">{s.shareLocation && s.locationAt ? t('loneWork.liveUpdated', { time: time(s.locationAt) }) : t('loneWork.liveHint')}</span>
+            </span>
+          </label>
+          {sharing && locError ? <p className="rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">{locError === 'denied' ? t('loneWork.locDenied') : t('loneWork.locUnavailable')}</p> : null}
+          {wakeLockSupported() ? (
+            <label className="flex items-start gap-3 text-small">
+              <input type="checkbox" className="mt-1 h-4 w-4 accent-[var(--brand)]" checked={awake} onChange={(e) => setAwake(e.target.checked)} />
+              <span>
+                <span className="flex items-center gap-1.5 font-semibold"><MonitorSmartphone className="h-4 w-4" aria-hidden="true" />{t('loneWork.keepAwake')}</span>
+                <span className="block text-caption text-muted">{t('loneWork.keepAwakeHint')}</span>
+              </span>
+            </label>
+          ) : null}
+          <p className="text-caption text-muted">{t('loneWork.backgroundNote')}</p>
+        </CardBody>
+      </Card>
+      <div className="max-w-xl"><PushCard compact /></div>
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} title={t('loneWork.helpTitle')} description={t('loneWork.helpHelp')} closeLabel={t('common.cancel')}>
         <form
           className="grid gap-4"

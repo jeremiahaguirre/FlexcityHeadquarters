@@ -7,9 +7,14 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'FlexcityHeadquarters',
     short_name: 'FH',
-    description: 'Aquatic staff scheduling, timekeeping and operations',
+    description: 'Scheduling, timekeeping, safety and HR for municipal staff',
+    id: './',
     start_url: './',
+    scope: './',
     display: 'standalone',
+    orientation: 'any',
+    lang: 'en-CA',
+    categories: ['business', 'productivity'],
     background_color: '#F3F7F6',
     theme_color: '#0D5F59',
     icons: [

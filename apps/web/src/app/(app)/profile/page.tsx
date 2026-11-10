@@ -23,6 +23,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { PasskeysCard } from '@/components/auth/PasskeysCard';
 import { addPasskey } from '@/lib/passkeys';
 import { AppearanceCard } from '@/components/shell/AppearanceCard';
+import { PushCard } from '@/components/device/PushCard';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
 
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
@@ -118,6 +119,7 @@ export default function ProfilePage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <DocumentsCard />
         <AppearanceCard />
+        <PushCard />
         <PasskeysCard
           list={() => api('/api/me/passkeys')}
           add={addPasskey}

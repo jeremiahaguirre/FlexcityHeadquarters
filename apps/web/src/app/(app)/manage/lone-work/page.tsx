@@ -61,7 +61,7 @@ export default function LoneWorkMonitor() {
                     <div className="mt-1 flex flex-wrap gap-3 text-small">
                       {s.phone ? <a href={`tel:${s.phone}`} className="inline-flex items-center gap-1 font-semibold text-brand-text hover:underline"><Phone className="h-4 w-4" aria-hidden="true" />{s.phone}</a> : null}
                       {s.latitude != null && s.longitude != null ? (
-                        <a href={mapLink(s.latitude, s.longitude)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-text hover:underline"><MapPin className="h-4 w-4" aria-hidden="true" />{t('loneWork.map')}</a>
+                        <a href={mapLink(s.latitude, s.longitude)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-text hover:underline"><MapPin className="h-4 w-4" aria-hidden="true" />{s.locationAt ? t('loneWork.mapAt', { time: time(s.locationAt) }) : t('loneWork.map')}{s.shareLocation ? ` · ${t('loneWork.live')}` : ''}</a>
                       ) : null}
                     </div>
                   </div>
