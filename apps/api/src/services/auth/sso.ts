@@ -21,6 +21,7 @@ import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import { config } from '../../config.js';
 import { audit, withTenant, type Tx } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';
+import { assertPublicUrl } from '../../lib/egress.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
 
@@ -99,6 +100,10 @@ interface Discovery { issuer: string; authorization_endpoint: string; token_endp
 const discoveries = new Map<string, { at: number; doc: Discovery }>();
 const jwks = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
+export async function checkIssuerHost(issuer: string) {
+  await assertPublicUrl(issuer, 'The issuer');
+}
+
 export function checkIssuerUrl(issuer: string) {
   let u: URL;
   try {
@@ -117,10 +122,14 @@ export function checkIssuerUrl(issuer: string) {
 async function discover(issuer: string): Promise<Discovery> {
   const hit = discoveries.get(issuer);
   if (hit && Date.now() - hit.at < 3_600_000) return hit.doc;
-  const res = await fetch(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`, { signal: AbortSignal.timeout(8000) }).catch(() => null);
+  // Only public servers, no redirects: the issuer and the addresses it lists are typed in by a city.
+  const safe = async (u: string) => assertPublicUrl(u, 'The sign-in service').then(() => true, () => false);
+  if (!(await safe(issuer))) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
+  const res = await fetch(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`, { redirect: 'error', signal: AbortSignal.timeout(8000) }).catch(() => null);
   if (!res?.ok) throw new SsoError('SSO_PROVIDER_UNREACHABLE');
-  const doc = (await res.json()) as Discovery;
+  const doc = (await res.json().catch(() => ({}))) as Discovery;
   if (doc.issuer !== issuer || !doc.authorization_endpoint || !doc.token_endpoint || !doc.jwks_uri) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
+  if (!(await safe(doc.token_endpoint)) || !(await safe(doc.jwks_uri))) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
   discoveries.set(issuer, { at: Date.now(), doc });
   return doc;
 }
@@ -157,7 +166,7 @@ async function oidcFinish(c: SsoConnection, sub: string, st: State, query: Recor
     code_verifier: st.verifier!,
     ...(c.oidcSecret ? { client_secret: await openClientSecret(c.tenantId, c.oidcSecret as unknown as Sealed) } : {}),
   });
-  const res = await fetch(doc.token_endpoint, { method: 'POST', body, headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, signal: AbortSignal.timeout(8000) }).catch(() => null);
+  const res = await fetch(doc.token_endpoint, { method: 'POST', redirect: 'error', body, headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, signal: AbortSignal.timeout(8000) }).catch(() => null);
   if (!res?.ok) throw new SsoError('SSO_TOKEN_REFUSED');
   const { id_token } = (await res.json()) as { id_token?: string };
   if (!id_token) throw new SsoError('SSO_TOKEN_REFUSED');

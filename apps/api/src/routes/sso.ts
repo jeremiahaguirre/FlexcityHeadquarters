@@ -10,7 +10,7 @@ import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, issueRefreshToken, signAccessToken } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
-import { checkIssuerUrl, connectionFor, finishSso, ready, samlMetadata, sealClientSecret, spUrls, SsoError, startSso, STATE_COOKIE, stateCookieOpts } from '../services/auth/sso.js';
+import { checkIssuerHost, checkIssuerUrl, connectionFor, finishSso, ready, samlMetadata, sealClientSecret, spUrls, SsoError, startSso, STATE_COOKIE, stateCookieOpts } from '../services/auth/sso.js';
 import { COOKIE, cookieOpts } from './auth.js';
 import { h, subdomainOf } from './context.js';
 
@@ -128,7 +128,10 @@ ssoRouter.put(
     const a = authOf(req);
     const b = body.parse(req.body);
     if (b.protocol === 'OIDC') {
-      if (b.oidcIssuer) checkIssuerUrl(b.oidcIssuer);
+      if (b.oidcIssuer) {
+        checkIssuerUrl(b.oidcIssuer);
+        await checkIssuerHost(b.oidcIssuer);
+      }
       if (b.enabled && !(b.oidcIssuer && b.oidcClientId)) throw new HttpError(400, 'SSO_INCOMPLETE', 'Enter the issuer and application (client) ID before turning single sign-on on.');
     } else {
       if (b.samlCert && !PEM.test(b.samlCert)) throw new HttpError(400, 'BAD_CERT', 'Paste the signing certificate (Base64), including the BEGIN and END lines.');

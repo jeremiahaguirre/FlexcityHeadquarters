@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import * as openpgp from 'openpgp';
 import { Client, type ConnectConfig } from 'ssh2';
 import { HttpError } from '../../lib/errors.js';
+import { publicAddress } from '../../lib/egress.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
 
@@ -66,13 +67,15 @@ export async function encryptForBank(content: string, armoredKey: string): Promi
 }
 
 async function connect(tenantId: string, link: BankLink): Promise<Client> {
+  // The bank's server must be on the public internet; connect to the checked address itself (no second lookup).
+  const address = await publicAddress(link.host, 'The bank’s server');
   const secret = await openCredential(tenantId, link.credential);
   const want = normalizeFingerprint(link.hostKeySha256);
   return new Promise((resolve, reject) => {
     const c = new Client();
     let seen = '';
     const cfg: ConnectConfig = {
-      host: link.host,
+      host: address,
       port: link.port,
       username: link.username,
       readyTimeout: 20_000,
@@ -86,7 +89,7 @@ async function connect(tenantId: string, link: BankLink): Promise<Client> {
     c.on('ready', () => resolve(c));
     c.on('error', (e) => {
       if (seen && seen !== want) reject(new HttpError(502, 'BANK_HOST_MISMATCH', `The bank’s server identified itself as SHA256:${seen}, not the fingerprint on file. Nothing was sent. Confirm the fingerprint with your bank.`));
-      else reject(new HttpError(502, 'BANK_UNREACHABLE', `Couldn’t connect to the bank: ${e.message}`));
+      else reject(new HttpError(502, 'BANK_UNREACHABLE', 'Couldn’t connect to the bank’s server. Check the address, port and that your bank expects FlexcityHeadquarters’ address.'));
     });
     c.connect(cfg);
   });
