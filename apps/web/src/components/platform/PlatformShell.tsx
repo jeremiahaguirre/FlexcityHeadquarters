@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, KeyRound, LogOut, Receipt, Terminal } from 'lucide-react';
+import { Building2, KeyRound, LogOut, Receipt, Terminal, Landmark } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -41,6 +41,10 @@ function SignedIn({ children }: { children: ReactNode }) {
             <Link href="/platform/billing" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
               <Receipt className="h-4 w-4" aria-hidden="true" />
               {t('billing.title')}
+            </Link>
+            <Link href="/platform/payroll-tax" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
+              <Landmark className="h-4 w-4" aria-hidden="true" />
+              {t('payTax.nav')}
             </Link>
             <Link href="/platform/account" className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-small font-semibold text-muted hover:bg-surface hover:text-ink" title={t('platform.account')}>
               <KeyRound className="h-4 w-4" aria-hidden="true" />

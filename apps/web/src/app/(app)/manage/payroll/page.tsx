@@ -1,7 +1,12 @@
 'use client';
 
 import { AlertTriangle, CheckCircle2, Download, Settings, Users } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { PayDocuments } from '@/components/payroll/PayDocuments';
+import { PayPeople } from '@/components/payroll/PayPeople';
+import { PayRuns } from '@/components/payroll/PayRuns';
+import { PaySettings } from '@/components/payroll/PaySettings';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -24,7 +29,8 @@ function lastPeriodStart(): string {
   return plusDays(today, -dow - 14);
 }
 
-export default function PayrollPage() {
+/** The CSV for an outside payroll provider (cities that keep using one). */
+function ProviderExport() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const toast = useToast();
@@ -61,7 +67,6 @@ export default function PayrollPage() {
 
   return (
     <>
-      <PageHeader title={t('payroll.title')} description={t('payroll.description')} />
       <div className="grid max-w-3xl gap-6">
         <Card>
           <CardHeader title={t('payroll.period')} description={t('payroll.periodHelp')} />
@@ -142,6 +147,37 @@ export default function PayrollPage() {
           </Card>
         ) : null}
       </div>
+    </>
+  );
+}
+
+type Tab = 'runs' | 'people' | 'documents' | 'settings' | 'export';
+
+export default function PayrollPage() {
+  return (
+    <Suspense fallback={null}>
+      <PayrollTabs />
+    </Suspense>
+  );
+}
+
+/** Pay runs, people (tax set-up and direct deposit), documents, settings and the provider export. */
+function PayrollTabs() {
+  const { t } = useTranslation();
+  const params = useSearchParams();
+  const tabs: Tab[] = ['runs', 'people', 'documents', 'settings', 'export'];
+  const [tab, setTab] = useState<Tab>(() => (tabs.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'runs'));
+  return (
+    <>
+      <PageHeader title={t('payroll.title')} description={t('payroll.descriptionFull')} />
+      <div className="mb-6 overflow-x-auto pb-1">
+        <Segmented label={t('payroll.title')} value={tab} onChange={setTab} options={tabs.map((x) => ({ value: x, label: t(`payroll.tabs.${x}`) }))} />
+      </div>
+      {tab === 'runs' ? <PayRuns /> : null}
+      {tab === 'people' ? <PayPeople /> : null}
+      {tab === 'documents' ? <PayDocuments /> : null}
+      {tab === 'settings' ? <PaySettings /> : null}
+      {tab === 'export' ? <ProviderExport /> : null}
     </>
   );
 }

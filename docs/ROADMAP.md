@@ -20,7 +20,8 @@
 ## Later
 
 - [ ] Constraint-solver scheduling (OR-Tools CP-SAT in a Python worker) behind the existing `proposeSchedule` input/output types, for multi-facility terms.
-- [ ] Direct integrations with payroll providers (ADP, Ceridian Dayforce, Wagepoint) in addition to CSV.
+- [ ] Direct integrations with payroll providers (ADP, Ceridian Dayforce, Wagepoint) in addition to CSV, for cities that keep one.
+- [ ] Payroll: tax tables for MB, NB, NL, NS, NT, NU, PE, SK and YT (federal, AB, BC and ON ship as unverified starting values); T4 XML and ROE Web XML export; Ontario's low-income tax reduction.
 - [ ] Search-engine-friendly job pages (server-rendered, structured data).
 
 ## Done
@@ -30,6 +31,7 @@
 - Staff directory, invitations, roles, pay rates, verified certifications, discipline records with signature capture.
 - Login lockout and rate limits, password reset by email.
 - Payroll CSV export with overtime, statutory holiday pay and vacation pay.
+- In-house payroll: pay runs for the whole city or one department, CPP/CPP2/EI and federal and provincial income tax (T4127 method, yearly tables FH verifies before use), pay statements, CPA-005 direct deposit files, PD7A remittance totals, T4 slip figures and ROE figures. Two-person approval and passkey release by default; bank accounts and SINs sealed with the city's key.
 - Settings: organization, facilities, pay codes, school calendar, collective-agreement overrides, pool thresholds.
 - Offline-first instructor attendance; certification reminders at 90/60/30/7 days; nightly reliability recalculation.
 - Union Hub: discussions, seniority list, membership managed by stewards.
@@ -41,5 +43,5 @@
 
 ## Deliberately out of scope
 
-- Calculating source deductions (CPP/QPP, EI, QPIP, income tax) and issuing T4/RL-1 slips. FH exports gross wages; the payroll provider does the rest.
-- Storing Social Insurance Numbers.
+- Quebec payroll withholding (QPP, QPIP, Revenu Québec) and RL-1 slips: Quebec staff stay with a payroll provider (the CSV export still works).
+- Filing with government directly: T4 XML (Internet File Transfer), ROE Web XML and PD7A payments are prepared in FH and filed by the city.
