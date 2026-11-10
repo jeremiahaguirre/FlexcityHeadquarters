@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftRight, Check, X } from 'lucide-react';
+import { ArrowLeftRight, CalendarX2, Check, X } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -63,7 +63,10 @@ export function TradeDialog({ shiftId, onClose, onDone }: { shiftId: string | nu
       {options.loading ? (
         <Skeleton className="h-40" />
       ) : !options.data?.length ? (
-        <p className="text-body text-muted">{t('trades.noOptions')}</p>
+        <div className="grid justify-items-start gap-4">
+          <p className="flex items-start gap-3 rounded-xl bg-surface p-3 text-small text-muted"><CalendarX2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{t('trades.noOptions')}</p>
+          <Button variant="secondary" onClick={() => { setPick(null); onClose(); }}>{t('common.close')}</Button>
+        </div>
       ) : (
         <form onSubmit={(e) => void propose(e)} className="grid gap-4">
           <fieldset className="grid max-h-72 gap-2 overflow-y-auto">
