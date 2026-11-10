@@ -8,7 +8,7 @@ import { DEMO_LOGO } from './demoLogo';
 export type DemoRole = 'guard' | 'supervisor' | 'hr' | 'frontdesk' | 'steward' | 'waterworks';
 interface Capture { capturedOn: string; responses: Record<string, unknown> }
 
-const loaders: Record<DemoRole | 'public' | 'platform', () => Promise<{ default: Capture }>> = {
+const loaders: Record<DemoRole | 'public', () => Promise<{ default: Capture }>> = {
   guard: () => import('./demo-fixtures/guard.json') as Promise<{ default: Capture }>,
   supervisor: () => import('./demo-fixtures/supervisor.json') as Promise<{ default: Capture }>,
   hr: () => import('./demo-fixtures/hr.json') as Promise<{ default: Capture }>,
@@ -16,7 +16,6 @@ const loaders: Record<DemoRole | 'public' | 'platform', () => Promise<{ default:
   steward: () => import('./demo-fixtures/steward.json') as Promise<{ default: Capture }>,
   waterworks: () => import('./demo-fixtures/waterworks.json') as Promise<{ default: Capture }>,
   public: () => import('./demo-fixtures/public.json') as Promise<{ default: Capture }>,
-  platform: () => import('./demo-fixtures/platform.json') as Promise<{ default: Capture }>,
 };
 
 const DATE = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/;
@@ -60,7 +59,7 @@ function merge(a: unknown, b: unknown): unknown {
 
 export interface Fixtures { get(url: string): unknown }
 
-export async function loadFixtures(role: DemoRole | 'public' | 'platform', today = localToday()): Promise<Fixtures> {
+export async function loadFixtures(role: DemoRole | 'public', today = localToday()): Promise<Fixtures> {
   const { default: capture } = await loaders[role]();
   const days = dayNumber(today) - dayNumber(capture.capturedOn);
   const exact = new Map<string, unknown>();

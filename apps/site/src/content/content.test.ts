@@ -34,11 +34,11 @@ describe('site content', () => {
 
   it('demo links sign in as the role, in the reader’s language', () => {
     expect(demoLink('AQUATIC_SUPERVISOR', 'fr')).toMatch(/\/login\/\?as=AQUATIC_SUPERVISOR&lang=fr$/);
-    expect(demoLink('DEV', 'en')).toMatch(/\/platform\/login\/\?demo=1&lang=en$/);
   });
 
   it('demo roles match the accounts the demo knows', () => {
-    const known = ['STAFF', 'EMPLOYEE', 'AQUATIC_SUPERVISOR', 'HR_ADMIN', 'FRONT_DESK', 'UNION_STEWARD', 'DEV'];
+    const known = ['STAFF', 'EMPLOYEE', 'AQUATIC_SUPERVISOR', 'HR_ADMIN', 'FRONT_DESK', 'UNION_STEWARD'];
+    // The Dev console is FH's own tool: never on the public website or demo.
     for (const r of copy('en').demo.roles) expect(known).toContain(r.id);
   });
 });

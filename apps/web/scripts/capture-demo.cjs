@@ -432,6 +432,6 @@ async function capturePlatform(browser) {
     }
   }
   writeFileSync(join(OUT, 'public.json'), rename(JSON.stringify({ capturedOn: new Date().toISOString().slice(0, 10), responses: { '/api/public/jobs': jobs, '/api/public/signup': signup, slots } })));
-  await capturePlatform(browser);
+  // The Dev console is FH's own tool and isn't part of the public demo.
   await browser.close();
 })();

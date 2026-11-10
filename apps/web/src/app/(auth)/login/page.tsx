@@ -84,9 +84,6 @@ function LoginForm() {
             </Button>
           ))}
           <p className="mt-2 text-caption text-muted">{t('demo.hint', { password: DEMO_PASSWORD })}</p>
-          <Link href="/platform/login" className="mt-1 text-small font-semibold text-brand-text hover:underline">
-            {t('demo.devConsole')}
-          </Link>
         </div>
       ) : null}
       <form onSubmit={onSubmit} className="mt-8 grid gap-5" noValidate>

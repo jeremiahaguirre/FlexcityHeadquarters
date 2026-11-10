@@ -12,7 +12,6 @@ import { type DemoRole, type Fixtures, loadFixtures } from './demoFixtures';
 const FACILITY = { name: 'Lakeview Aquatic Centre', timezone: 'America/Vancouver' };
 const OFFSET = '-07:00';
 const STORE_KEY = 'flexcity-demo-v2';
-const PLATFORM_KEY = 'flexcity-demo-platform';
 
 interface DemoShift {
   offerId: string;
@@ -95,7 +94,7 @@ const delay = () => new Promise((r) => setTimeout(r, 200));
 const roleOf = (email: string) => email.split('@')[0] as DemoRole;
 
 const cache = new Map<string, Promise<Fixtures>>();
-const fixtures = (role: DemoRole | 'public' | 'platform') => {
+const fixtures = (role: DemoRole | 'public') => {
   if (!cache.has(role)) cache.set(role, loadFixtures(role));
   return cache.get(role)!;
 };
@@ -190,83 +189,4 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
 
   // Changes look like they worked, but nothing is kept (the banner says so).
   return { id: 'demo', ok: true, outcome: 'ASSIGNED', outOfRange: false, reasons: [], locationStatus: 'ON_SITE' } as T;
-}
-
-/** Dev console in the static demo: recorded responses; changes look saved but aren't kept. */
-/** Menus-and-access switches flipped in this demo session (never saved). */
-const demoAccess = new Map<string, unknown>();
-
-export async function demoPlatformApi<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  await delay();
-  const method = init.method ?? 'GET';
-  const signedIn = () => {
-    try {
-      return sessionStorage.getItem(PLATFORM_KEY) === '1';
-    } catch {
-      return false;
-    }
-  };
-  const setSignedIn = (on: boolean) => {
-    try {
-      if (on) sessionStorage.setItem(PLATFORM_KEY, '1');
-      else sessionStorage.removeItem(PLATFORM_KEY);
-    } catch {
-      /* fine */
-    }
-  };
-  if (path === '/auth/login' && method === 'POST') {
-    const { email, password } = (init.body ?? {}) as { email?: string; password?: string };
-    if (String(email).toLowerCase() !== 'dev@flexcity.dev' || password !== DEMO_PASSWORD) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
-    setSignedIn(true);
-    return { admin: { id: 'demo-dev', email: 'dev@flexcity.dev', name: 'FH Dev' } } as T;
-  }
-  if (path === '/auth/logout') {
-    setSignedIn(false);
-    return undefined as T;
-  }
-  if (!signedIn()) throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console');
-  const data = await fixtures('platform');
-
-  const preview = /^\/tenants\/([^/]+)\/import(\/preview)?$/.exec(path);
-  if (preview && method === 'POST') {
-    const city = data.get(`/tenants/${preview[1]}`) as { positions: Array<{ id: string; name: string; nameFr: string | null }> };
-    const { previewImport } = await import('../../../api/src/services/platform/staffImport');
-    const result = previewImport(String((init.body as { csv?: string }).csv ?? ''), { existingEmails: new Set(), positions: city.positions, today: new Date().toISOString().slice(0, 10) });
-    if (preview[2]) return result as T;
-    return { created: result.summary.create, exists: 0, errors: result.summary.error, invited: 0 } as T;
-  }
-  // Menus and access: flip switches in the browser so the demo console feels real (nothing is saved).
-  const access = /^\/tenants\/([^/]+)\/access\/(menu|permission|reset|mfa)$/.exec(path);
-  if (access) {
-    const key = `/tenants/${access[1]}/access`;
-    const current = (demoAccess.get(key) ?? data.get(key)) as { roles: Array<{ role: string; mfa?: boolean; customized: boolean; permissions: string[]; defaults: string[]; menu: Array<{ href: string; shown: boolean }> }> } | undefined;
-    if (!current) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
-    const b = (init.body ?? {}) as { role: string; href?: string; shown?: boolean; permission?: string; on?: boolean; required?: boolean };
-    const next = structuredClone(current);
-    const r = next.roles.find((x) => x.role === b.role);
-    if (r && access[2] === 'mfa') r.mfa = !!b.required;
-    else if (r) {
-      if (access[2] === 'menu') r.menu = r.menu.map((m) => (m.href === b.href ? { ...m, shown: !!b.shown } : m));
-      if (access[2] === 'permission') r.permissions = b.on ? [...new Set([...r.permissions, b.permission!])] : r.permissions.filter((p) => p !== b.permission);
-      r.customized = true;
-    }
-    if (access[2] === 'reset') {
-      // Back to the recorded city for that role.
-      const recorded = data.get(key) as typeof current;
-      const i = next.roles.findIndex((x) => x.role === b.role);
-      const orig = recorded.roles.find((x) => x.role === b.role);
-      if (i >= 0 && orig) next.roles[i] = structuredClone(orig);
-    }
-    demoAccess.set(key, next);
-    return next as T;
-  }
-  if (method === 'GET') {
-    const body = demoAccess.get(path) ?? data.get(path);
-    if (body === undefined) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
-    // Open the demo's own sign-in page instead of a recorded local address.
-    const city = body as { organization?: { signInUrl?: string } };
-    if (city.organization?.signInUrl) city.organization.signInUrl = `${window.location.origin}${window.location.pathname.split('/platform')[0]}/login/`;
-    return body as T;
-  }
-  return { id: 'demo', ok: true } as T;
 }

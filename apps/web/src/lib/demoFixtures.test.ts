@@ -26,11 +26,8 @@ describe('demo fixtures', () => {
     }
   });
 
-  it('serves the Dev console with the embedded demo logo instead of an API address', async () => {
-    const f = await loadFixtures('platform', '2030-01-15');
-    const cities = f.get('/tenants') as Array<{ name: string; logoUrl: string | null }>;
-    expect(cities.length).toBeGreaterThan(1);
-    expect(cities.some((c) => c.logoUrl?.startsWith('data:image/png;base64,'))).toBe(true);
-    expect(JSON.stringify(cities)).not.toMatch(/api\/public\/logo|kelowna/i);
+  it('has no Dev console: it is FH’s own tool, not part of the public demo', async () => {
+    const { existsSync } = await import('node:fs');
+    expect(existsSync(new URL('./demo-fixtures/platform.json', import.meta.url))).toBe(false);
   });
 });

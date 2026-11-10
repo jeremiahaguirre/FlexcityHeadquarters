@@ -7,5 +7,4 @@ export const SITE = {
 };
 
 /** Deep link into the demo as a role, in the reader's language (the demo signs in on arrival). */
-export const demoLink = (role: string, lang: 'en' | 'fr') =>
-  role === 'DEV' ? `${SITE.demoUrl}/platform/login/?demo=1&lang=${lang}` : `${SITE.demoUrl}/login/?as=${role}&lang=${lang}`;
+export const demoLink = (role: string, lang: 'en' | 'fr') => `${SITE.demoUrl}/login/?as=${role}&lang=${lang}`;
