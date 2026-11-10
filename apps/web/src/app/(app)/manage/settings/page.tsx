@@ -27,6 +27,7 @@ import { SupportAccessCard } from '@/components/settings/SupportAccessCard';
 import { SsoCard } from '@/components/settings/SsoCard';
 import { MfaCard } from '@/components/settings/MfaCard';
 import { SeniorityCard } from '@/components/settings/SeniorityCard';
+import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
 
@@ -105,6 +106,7 @@ export default function SettingsPage() {
           {tab === 'org' ? <RetentionCard /> : null}
           {tab === 'org' ? <DataExportCard /> : null}
           {tab === 'facilities' ? <Facilities s={settings.data} reload={settings.reload} /> : null}
+          {tab === 'facilities' ? <KiosksCard /> : null}
           {tab === 'pay' ? <PayCodes s={settings.data} reload={settings.reload} /> : null}
           {tab === 'calendar' ? <SchoolCalendar s={settings.data} reload={settings.reload} /> : null}
           {tab === 'rules' ? <Rules s={settings.data} reload={settings.reload} /> : null}

@@ -12,7 +12,7 @@ export interface PunchLocation {
 
 export async function clockIn(
   tx: Tx,
-  input: { tenantId: string; userId: string; facilityId: string; shiftId?: string; positionId?: string; location: PunchLocation | null; ip: string | null },
+  input: { tenantId: string; userId: string; facilityId: string; shiftId?: string; positionId?: string; location: PunchLocation | null; ip: string | null; kioskId?: string },
 ) {
   await advisoryLock(tx, `punch:${input.userId}`);
   const open = await tx.timePunch.findFirst({ where: { userId: input.userId, clockOut: null } });
@@ -52,7 +52,9 @@ export async function clockIn(
       longitude: null,
       accuracyM: input.location?.accuracyM ?? null,
       distanceM: loc.distanceM,
-      locationStatus: loc.status,
+      // At a facility's kiosk the tablet is the facility: on site by definition.
+      locationStatus: input.kioskId ? 'VERIFIED' : loc.status,
+      kioskId: input.kioskId ?? null,
     },
   });
 

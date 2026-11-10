@@ -15,6 +15,7 @@ import { marketingRouter } from './routes/marketing.js';
 import { passkeyAuthRouter } from './routes/passkeys.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
 import { publicCalendarRouter } from './routes/calendar.js';
+import { kioskRouter } from './routes/kiosk.js';
 import { logError } from './lib/log.js';
 
 export function createApp() {
@@ -41,6 +42,8 @@ export function createApp() {
   app.use('/api', publicLogoRouter);
   // Calendar apps fetch a person's private shift feed by its link (routes/calendar.ts).
   app.use('/api', publicCalendarRouter);
+  // Facility kiosks (shared tablets) sign requests with their own secret, not a person's session.
+  app.use('/api', kioskRouter);
   app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, publicJobsRouter, publicSignupRouter);
   app.use('/api', api);
 
