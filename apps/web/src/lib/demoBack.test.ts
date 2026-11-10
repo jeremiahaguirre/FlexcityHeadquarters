@@ -3,6 +3,8 @@ import { allowedBack } from './demoBack';
 
 describe('demo back-to-website link', () => {
   it('accepts the website’s own addresses', () => {
+    expect(allowedBack('https://flexcity-headquarters-iota.vercel.app/en/', undefined)).toBe('https://flexcity-headquarters-iota.vercel.app/en/');
+    expect(allowedBack('https://flexcity-headquarters-iota.vercel.app/fr/', undefined)).toBe('https://flexcity-headquarters-iota.vercel.app/fr/');
     expect(allowedBack('https://flexcityheadquarters.ca/fr/', undefined)).toBe('https://flexcityheadquarters.ca/fr/');
     expect(allowedBack('https://www.flexcityheadquarters.ca/en/', undefined)).toBe('https://www.flexcityheadquarters.ca/en/');
     expect(allowedBack('https://flexcity-headquarters.vercel.app/en/', undefined)).not.toBeNull();

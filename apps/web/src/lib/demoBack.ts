@@ -7,7 +7,7 @@
  * NEXT_PUBLIC_SITE_HOSTS (comma-separated) replaces the default list.
  */
 const KEY = 'fh-demo-back';
-const DEFAULT_HOSTS = ['flexcityheadquarters.ca', 'flexcityheadquarters.com', 'localhost', '127.0.0.1'];
+const DEFAULT_HOSTS = ['flexcity-headquarters-iota.vercel.app', 'flexcityheadquarters.ca', 'flexcityheadquarters.com', 'localhost', '127.0.0.1'];
 
 export function allowedBack(raw: string | null, hosts = process.env.NEXT_PUBLIC_SITE_HOSTS): string | null {
   if (!raw) return null;

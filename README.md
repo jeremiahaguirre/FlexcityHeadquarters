@@ -104,7 +104,7 @@ Vercel builds it with **Root Directory** `apps/site` (the settings are in `apps/
 
 | Variable | Value |
 | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | The site's public address, e.g. `https://www.example.ca` (canonical links and sitemap) |
+| `NEXT_PUBLIC_SITE_URL` | The site's public address, e.g. `https://www.example.ca` (canonical links, sitemap, and the demo's "Back to the website" button). Defaults to the Vercel production address, today `https://flexcity-headquarters-iota.vercel.app` |
 | `NEXT_PUBLIC_DEMO_URL` | The app demo, default `https://jeremiahaguirre.github.io/FlexcityHeadquarters` |
 | `NEXT_PUBLIC_LEADS_URL` | `https://<api host>/api/marketing/leads`; without it the contact form asks visitors to try again shortly |
 
