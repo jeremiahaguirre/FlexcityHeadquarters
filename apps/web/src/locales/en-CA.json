@@ -1468,7 +1468,7 @@
       }
     },
     "saveAll": "Save payroll settings",
-    "saveAllHint": "Saves every card above, except the bank connection."
+    "saveAllHint": "Saves every card on this page except the bank connection."
   },
   "settings": {
     "title": "Settings",

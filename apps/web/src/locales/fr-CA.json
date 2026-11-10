@@ -1468,7 +1468,7 @@
       }
     },
     "saveAll": "Enregistrer les paramètres de paie",
-    "saveAllHint": "Enregistre toutes les cartes ci-dessus, sauf la connexion bancaire."
+    "saveAllHint": "Enregistre toutes les cartes de cette page, sauf la connexion bancaire."
   },
   "settings": {
     "title": "Paramètres",
