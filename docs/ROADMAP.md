@@ -32,6 +32,10 @@
 - Login lockout and rate limits, password reset by email.
 - Payroll CSV export with overtime, statutory holiday pay and vacation pay.
 - In-house payroll: pay runs for the whole city or one department, CPP/CPP2/EI and federal and provincial income tax (T4127 method, yearly tables FH verifies before use), pay statements, CPA-005 direct deposit files, PD7A remittance totals, T4 slip figures and ROE figures. Two-person approval and passkey release by default; bank accounts and SINs sealed with the city's key.
+- Bank connection: approved pay runs sent to the city's bank over SFTP (host key pinned, optional PGP encryption), automatically or by hand, with the credentials sealed with the city's key.
+- Benefits and deductions: pension (RPP), health, dental, life, disability, EAP and union dues, with employee and employer shares, taxable benefits, and T4 boxes 20, 40 and 44; amounts owed to each provider by month.
+- Payroll accounting: each approved run as a balanced general-ledger journal by department segment (CSV), and labour cost against each department's budget.
+- HR departments: an HR home with a card per area; leave balances with entitlements and carry-over; performance reviews (self-assessment, reviewer rating, acknowledgement); training courses required by position with renewal and a due list; a numbered grievance log with steps, deadlines and history; offboarding checklist that ends benefits and sign-in.
 - Settings: organization, facilities, pay codes, school calendar, collective-agreement overrides, pool thresholds.
 - Offline-first instructor attendance; certification reminders at 90/60/30/7 days; nightly reliability recalculation.
 - Union Hub: discussions, seniority list, membership managed by stewards.

@@ -28,7 +28,8 @@ Unlimited users keep budgets predictable through summer hiring surges and put ev
 | --- | --- | --- | --- | --- |
 | Scheduling assistant, Shift Board, geofenced timeclock, certification tracking | ✓ | | | |
 | **Provincial overtime and rest-period guards, young-worker limits** | ✓ | | | |
-| Payroll export (CSV) | ✓ | | | |
+| Payroll export (CSV), in-house payroll with bank connection, benefits and deductions, general-ledger journal | ✓ | | | |
+| Leave balances, performance reviews, training records, grievance log, offboarding | | ✓ | | |
 | VSC tracking, disciplinary records, audit-log access, privacy tooling | | ✓ | | |
 | Chemical logs with closure workflow, incident reports, front-desk board | | | ✓ | |
 | Union Hub, CBA documents, steward access | | | | Sold to the union local |
@@ -51,7 +52,7 @@ Includes subdomain and branding, pay-code and cost-centre mapping with a paralle
 
 ## In the app: what each plan unlocks, and unpaid invoices
 
-- **Base** is everything not listed under an add-on. **HR Compliance** unlocks onboarding checks, people review, discipline records and accommodation cases. **Operations** unlocks water chemistry, incident reports and the front-desk board. **Union hub** unlocks the union local's hub. The mapping lives in `apps/api/src/services/billing/entitlements.ts`.
+- **Base** is everything not listed under an add-on. **HR Compliance** unlocks onboarding checks, people review, discipline records, accommodation cases and the HR suite (leave balances, performance reviews, training, grievances, offboarding). **Operations** unlocks water chemistry, incident reports and the front-desk board. **Union hub** unlocks the union local's hub. The mapping lives in `apps/api/src/services/billing/entitlements.ts`.
 - Features an organization hasn't bought are switched off. HR sees them in the menu with a lock, linking to the Billing page.
 - Organizations with no billing account, or in a trial (Dev console, Billing tab), have every feature.
 - **Overdue invoice:** HR sees a warning with the date access becomes read-only (due date plus the grace period, 30 days by default).
