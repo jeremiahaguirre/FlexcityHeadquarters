@@ -18,13 +18,13 @@ import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
 import { StaffMeter, type StaffUsage } from '@/components/platform/BillingPanel';
-import { type Catalog, MODULES, type Module, type PlanLevel, cents } from '@/lib/plans';
+import { type Catalog, GROUPS, type ItemKey, type ItemState, type PlanLevel, cents } from '@/lib/plans';
 
 interface InvoiceRow { id: string; number: string | null; status: string; periodStart: string; periodEnd: string; issueDate: string | null; dueDate: string | null; totalCents: number; paidCents: number; balanceCents: number }
 interface InvoiceDetail extends InvoiceRow { subtotalCents: number; taxLines: Array<{ name: string; rate: string; amountCents: number }>; lines: Array<{ description: string; quantity: number; amountCents: number }>; payments: Array<{ amountCents: number; receivedOn: string; method: string }>; poNumber: string | null }
 interface Billing {
   state: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; balanceCents: number; overdueCents: number; overdueSince: string | null; suspendsOn: string | null; trialEndsAt: string | null };
-  plan: { legalName?: string; plan: 'MUNICIPAL' | 'CLUB'; level: PlanLevel; rateCents: number | null; modules: Module[]; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
+  plan: { legalName?: string; plan: 'MUNICIPAL' | 'CLUB'; level: PlanLevel; rateCents: number | null; items: ItemState[]; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
   catalog: Catalog;
   staff: StaffUsage | null;
   invoices: InvoiceRow[];
@@ -44,7 +44,7 @@ export default function BillingPage() {
   const { run, busy } = useAction();
   const [open, setOpen] = useState<string | null>(null);
   const detail = useQuery<InvoiceDetail>(open ? `/api/billing/invoices/${open}` : null);
-  const [unlock, setUnlock] = useState<Module | null>(null);
+  const [unlock, setUnlock] = useState<ItemKey | null>(null);
   const money = (c: number) => new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'CAD' }).format(c / 100);
   const date = (d: string | null) => (d ? dateFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
 
@@ -57,7 +57,7 @@ export default function BillingPage() {
     }
     if (p.get('cancelled')) toast(t('billingPage.cancelled'), 'warn');
     const u = p.get('unlock');
-    if (u && (MODULES as string[]).includes(u)) setUnlock(u as Module);
+    if (u) setUnlock(u as ItemKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -106,16 +106,26 @@ export default function BillingPage() {
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
                     <span><span className="font-semibold">{t('plans.core')}</span><span className="block text-caption text-muted">{t('plans.coreIncludes')}</span></span>
                   </li>
-                  {MODULES.map((k) => {
-                    const owned = !b.plan || b.state.stage === 'trial' || (b.plan.plan === 'MUNICIPAL' ? b.catalog.public[b.plan.level].modules.includes(k) || b.plan.modules.includes(k) : b.plan.modules.includes(k));
+                  {GROUPS.map((g) => {
+                    const list = (Object.keys(b.catalog.items) as ItemKey[]).filter((k) => b.catalog.items[k].group === g);
                     return (
-                      <li key={k} className={`flex gap-2 rounded-xl ${unlock === k ? 'bg-brand/10 p-2' : ''}`}>
-                        {owned ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" /> : <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />}
-                        <span>
-                          <span className="font-semibold">{t(`plans.module.${k}`)}</span>
-                          {owned ? null : <span className="ml-2 text-caption text-muted">{t('billingPage.notIncluded')}</span>}
-                          <span className="block text-caption text-muted">{t(`plans.moduleIncludes.${k}`)}</span>
-                        </span>
+                      <li key={g} className="grid gap-2">
+                        <p className="text-caption font-semibold uppercase tracking-wide text-muted">{t(`plans.group.${g}`)}</p>
+                        <ul className="grid gap-2">
+                          {list.map((k) => {
+                            const owned = !b.plan || b.state.stage === 'trial' || !!b.plan.items.find((i) => i.key === k)?.on;
+                            return (
+                              <li key={k} className={`flex gap-2 rounded-xl ${unlock === k ? 'bg-brand/10 p-2' : ''}`}>
+                                {owned ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" /> : <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />}
+                                <span>
+                                  <span className={owned ? 'font-semibold' : 'font-semibold text-muted'}>{t(`plans.item.${k}`)}</span>
+                                  {owned ? null : <span className="ml-2 text-caption text-muted">{t('billingPage.notIncluded')}</span>}
+                                  <span className="block text-caption text-muted">{t(`plans.itemIncludes.${k}`)}</span>
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
                       </li>
                     );
                   })}

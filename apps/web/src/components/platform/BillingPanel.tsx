@@ -1,7 +1,7 @@
 'use client';
 
-import { FilePlus2 } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { Building2, FilePlus2, RotateCcw, Users } from 'lucide-react';
+import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { Button } from '@/components/ui/Button';
@@ -12,14 +12,16 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { ApiError } from '@/lib/apiError';
 import { type InvoiceRow, type TaxLine, cad, thisMonth } from '@/lib/billing';
+import { cn } from '@/lib/cn';
 import { papi, usePlatformQuery } from '@/lib/platform';
 import { PROVINCES } from '@/lib/regions';
 import { InvoiceList } from './InvoiceList';
-import { type Catalog, MODULES, type Module, PLAN_LEVELS, type PlanLevel, cents } from '@/lib/plans';
+import { type Catalog, GROUPS, type ItemKey, type ItemState, PLAN_LEVELS, type PlanLevel, cents } from '@/lib/plans';
 import type { PanelProps } from './types';
 
+type Sector = 'MUNICIPAL' | 'CLUB';
 interface Account {
-  plan: 'MUNICIPAL' | 'CLUB';
+  plan: Sector;
   legalName: string;
   contactName: string | null;
   email: string;
@@ -36,7 +38,6 @@ interface Account {
   quotedRateCents: number | null;
   includedStaff: number | null;
   extraStaffSeats: number;
-  modules: Module[];
   trialEndsAt: string | null;
   graceDays: number;
   suspensionHoldUntil: string | null;
@@ -46,37 +47,110 @@ interface Account {
 }
 export interface StaffUsage { active: number; included: number | null; seats: number; unlimited: boolean; over: number; rateCents: number }
 interface Estimate { lines: Array<{ description: string; quantity: number; amountCents: number }>; subtotalCents: number; taxLines: TaxLine[]; totalCents: number; activeUsers: number; staff: StaffUsage }
-interface BillingData { catalog: Catalog; organization: { name: string }; account: Account | null; facilities: Array<{ id: string; name: string; province: string; tier: number | null; customCents: number | null }>; estimate: Estimate | null; state?: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; overdueCents: number; overdueSince: string | null; suspendsOn: string | null } }
+interface Facility { id: string; name: string; province: string; tier: number | null; customCents: number | null }
+interface BillingData { catalog: Catalog; organization: { name: string }; account: Account | null; items: ItemState[] | null; facilities: Facility[]; estimate: Estimate | null; state?: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; overdueCents: number; overdueSince: string | null; suspendsOn: string | null } }
 
+/** "39.00" ↔ 3900. Empty means "use the standard". */
+const toCents = (v: string) => (v.trim() === '' ? null : Math.round(Number(v.replace(/[$\s]/g, '').replace(',', '.')) * 100));
+const toDollars = (c: number) => (c / 100).toFixed(2);
+const validCents = (c: number | null) => c !== null && Number.isFinite(c) && c >= 0;
+
+/** A numbered part of the billing form. */
+function Part({ n, title, hint, children, aside }: { n: number; title: string; hint?: string; children: ReactNode; aside?: ReactNode }) {
+  return (
+    <section className="grid gap-4 border-t border-line pt-6 first:border-0 first:pt-0">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex gap-3">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand/10 text-caption font-bold text-brand-text">{n}</span>
+          <div>
+            <h3 className="text-body-strong">{title}</h3>
+            {hint ? <p className="mt-0.5 max-w-2xl text-caption text-muted">{hint}</p> : null}
+          </div>
+        </div>
+        {aside}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Switch({ on, onChange, label }: { on: boolean; onChange: () => void; label: string }) {
+  return (
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onChange} className={cn('inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand', on ? 'bg-brand' : 'bg-line')}>
+      <span className={cn('h-5 w-5 rounded-full bg-panel shadow transition-transform', on && 'translate-x-5')} />
+    </button>
+  );
+}
 
 export function BillingPanel({ id, city }: PanelProps) {
+  const data = usePlatformQuery<BillingData>(`/billing/accounts/${id}`);
+  const invoices = usePlatformQuery<InvoiceRow[]>(`/billing/invoices?tenantId=${id}`);
+  const [version, setVersion] = useState(0);
+  if (!data.data) return <ListSkeleton rows={4} />;
+  // Remounted after each save, so every field starts from what's stored.
+  return <AccountEditor key={version} id={id} city={city} d={data.data} invoices={invoices} reload={async () => { await data.reload(); setVersion((v) => v + 1); }} />;
+}
+
+function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: PanelProps['city']; d: BillingData; invoices: ReturnType<typeof usePlatformQuery<InvoiceRow[]>>; reload: () => Promise<void> }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const toast = useToast();
-  const data = usePlatformQuery<BillingData>(`/billing/accounts/${id}`);
-  const invoices = usePlatformQuery<InvoiceRow[]>(`/billing/invoices?tenantId=${id}`);
-  const [plan, setPlan] = useState<'MUNICIPAL' | 'CLUB' | null>(null);
-  const [level, setLevel] = useState<PlanLevel | null>(null);
-  const [mods, setMods] = useState<Module[] | null>(null);
-  const [exempt, setExempt] = useState<boolean | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  if (!data.data) return <ListSkeleton rows={4} />;
-  const a = data.data.account;
-  const p = plan ?? a?.plan ?? 'MUNICIPAL';
-  const isExempt = exempt ?? a?.taxExempt ?? false;
-  const cat = data.data.catalog;
-  const lv = level ?? a?.level ?? 'BUSINESS';
+  const a = d.account;
+  const cat = d.catalog;
+  const est = d.estimate;
+  const [p, setP] = useState<Sector>(a?.plan ?? 'MUNICIPAL');
+  const [lv, setLv] = useState<PlanLevel>(a?.level ?? 'BUSINESS');
   const chosen = cat.public[lv];
+  const [quoted, setQuoted] = useState(toDollars(a?.quotedRateCents ?? cat.public[a?.level ?? 'BUSINESS'].listCents));
+  const [staffQuote, setStaffQuote] = useState(a?.includedStaff != null ? String(a.includedStaff) : '');
+  const [seatsText, setSeatsText] = useState(String(a?.extraStaffSeats ?? 0));
+  const [userRate, setUserRate] = useState(toDollars(a?.clubUserRateCents ?? cat.private.userCents));
+  const [fac, setFac] = useState(() => Object.fromEntries(d.facilities.map((f) => [f.id, { tier: f.tier, custom: f.customCents !== null ? toDollars(f.customCents) : '' }])));
+  // Each option: an explicit on/off (else the plan's standard) and its price text (else the standard price).
+  const saved = new Map((d.items ?? []).map((i) => [i.key, i]));
+  const [choice, setChoice] = useState<Partial<Record<ItemKey, { on?: boolean; price?: string }>>>(() =>
+    Object.fromEntries((d.items ?? []).map((i) => [i.key, { ...(i.on !== i.standard ? { on: i.on } : {}), ...(i.customPrice ? { price: toDollars(i.cents) } : {}) }])),
+  );
+  const [exempt, setExempt] = useState(a?.taxExempt ?? false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const isExempt = exempt;
   const money = (c: number) => cents(c, lng, false);
-  const savedMods = a?.plan === 'CLUB' ? a.modules : [];
-  const picked = mods ?? savedMods;
-  const toggle = (m: Module) => setMods(picked.includes(m) ? picked.filter((x) => x !== m) : [...picked, m]);
-  const trialOn = data.data.state?.stage === 'trial';
-  const userRate = a?.clubUserRateCents ?? cat.private.userCents;
-  const seats = a?.extraStaffSeats ?? 0;
-  const privateMonthly = cat.private.coreCents + (seats + Math.max(0, (data.data.estimate?.activeUsers ?? 0) - cat.private.includedUsers - seats)) * userRate + picked.reduce((n, m) => n + cat.modules[m].privateCents, 0);
-  const dollars = (v: string | null) => (v ? Math.round(Number(v.replace(',', '.')) * 100) : null);
-  const est = data.data.estimate;
+
+  const stdOf = (k: ItemKey) => p === 'MUNICIPAL' && chosen.items.includes(k);
+  const stdPrice = (k: ItemKey) => (p === 'CLUB' ? cat.items[k].privateCents : cat.items[k].publicCents);
+  const rows = (Object.keys(cat.items) as ItemKey[]).map((k) => {
+    const c = choice[k] ?? {};
+    const standard = stdOf(k);
+    const on = c.on ?? standard;
+    const typed = c.price !== undefined ? toCents(c.price) : null;
+    const price = validCents(typed) ? typed! : stdPrice(k);
+    const effect = on && !standard ? price : !on && standard ? -price : 0;
+    const was = saved.get(k);
+    // Compared with what's stored: on in their app now, and whether saving changes it.
+    const liveOn = a ? (was?.on ?? false) && (a.plan === p) : false;
+    return { k, standard, on, price, custom: c.price !== undefined && typed !== stdPrice(k), effect, liveOn, changes: on !== liveOn };
+  });
+  const setOn = (k: ItemKey, on: boolean) => setChoice((x) => ({ ...x, [k]: { ...x[k], on } }));
+  const setPrice = (k: ItemKey, price: string | undefined) => setChoice((x) => ({ ...x, [k]: { ...x[k], price } }));
+
+  // A live estimate of the month, before tax, from everything on screen.
+  const active = est?.activeUsers ?? 0;
+  const seats = Math.max(0, Number(seatsText) || 0);
+  const rate = chosen.quoted && validCents(toCents(quoted)) ? toCents(quoted)! : chosen.listCents;
+  const facLines = d.facilities.map((f) => {
+    const x = fac[f.id]!;
+    const custom = toCents(x.custom);
+    if (validCents(custom)) return custom!;
+    return x.tier ? Math.round((rate * (cat.sizePercent[x.tier] ?? 100)) / 100) : 0;
+  });
+  const billed = d.facilities.filter((f) => fac[f.id]!.tier || validCents(toCents(fac[f.id]!.custom)));
+  const allowance =
+    p === 'CLUB' ? cat.private.includedUsers : chosen.staffPerFacility === null ? null : chosen.quoted && staffQuote.trim() ? Number(staffQuote) || 0 : billed.reduce((n, f) => n + Math.round(((chosen.staffPerFacility ?? 0) * (cat.sizePercent[fac[f.id]!.tier ?? 2] ?? 100)) / 100), 0);
+  const perPerson = p === 'CLUB' ? toCents(userRate) ?? cat.private.userCents : chosen.extraStaffCents;
+  const staffCents = allowance === null ? 0 : (seats + Math.max(0, active - allowance - seats)) * perPerson;
+  const optionsCents = rows.reduce((n, r) => n + (p === 'CLUB' ? (r.on ? r.price : 0) : r.effect), 0);
+  const monthly = (p === 'CLUB' ? cat.private.coreCents : facLines.reduce((n, c) => n + c, 0)) + staffCents + optionsCents;
+  const unsaved = rows.filter((r) => r.changes).length;
 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -97,28 +171,23 @@ export function BillingPanel({ id, city }: PanelProps) {
       taxExempt: isExempt,
       taxExemptNote: isExempt ? s('exemptNote') : null,
       level: lv,
-      quotedRateCents: chosen.quoted ? dollars(s('quotedRate')) : null,
-      includedStaff: chosen.quoted && chosen.staffPerFacility !== null && s('includedStaff') ? Number(s('includedStaff')) : null,
-      extraStaffSeats: Number(s('seats') ?? 0) || 0,
-      modules: p === 'CLUB' ? picked : MODULES.filter((m) => f.get(`module-${m}`) === 'on'),
+      quotedRateCents: chosen.quoted ? toCents(quoted) : null,
+      includedStaff: chosen.quoted && chosen.staffPerFacility !== null && staffQuote.trim() ? Number(staffQuote) : null,
+      extraStaffSeats: seats,
+      items: Object.fromEntries(rows.map((r) => [r.k, { on: r.on, cents: r.custom ? r.price : null }])),
       trialEndsOn: s('trialEnds'),
       graceDays: Number(s('grace') ?? 30),
       suspensionHoldUntil: s('hold'),
       preferredPayment: s('preferred') ?? 'INVOICE',
-      clubUserRateCents: Math.round(Number((s('clubRate') ?? '5').replace(',', '.')) * 100),
+      clubUserRateCents: toCents(userRate) ?? cat.private.userCents,
       notes: s('notes'),
-      facilities: data.data!.facilities.map((x) => {
-        const tier = s(`tier-${x.id}`);
-        const custom = s(`custom-${x.id}`);
-        return { id: x.id, tier: tier ? Number(tier) : null, customCents: dollars(custom) };
-      }),
+      facilities: d.facilities.map((x) => ({ id: x.id, tier: fac[x.id]!.tier, customCents: toCents(fac[x.id]!.custom) })),
     };
     setBusy('save');
     try {
       await papi(`/billing/accounts/${id}`, { method: 'PUT', body });
       toast(t('billing.accountSaved'), 'ok');
-      await data.reload();
-      setMods(null);
+      await reload();
     } catch (err) {
       toast(err instanceof ApiError ? err.message : t('common.error'), 'warn');
     } finally {
@@ -139,24 +208,27 @@ export function BillingPanel({ id, city }: PanelProps) {
     }
   }
 
+  const trialOn = d.state?.stage === 'trial';
+  let n = 0;
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       {est ? (
         <Card>
           <CardHeader
+            className="flex-wrap"
             title={t('billing.thisMonth')}
-            description={t('billing.activeUsersNow', { count: est.activeUsers })}
+            description={t('billing.thisMonthHelp', { count: est.activeUsers })}
             action={<Button size="sm" icon={<FilePlus2 className="h-4 w-4" aria-hidden="true" />} loading={busy === 'draft'} onClick={() => void draft()}>{t('billing.draftThisMonth')}</Button>}
           />
           <CardBody className="pt-3">
             <ul className="divide-y divide-line text-small">
-              {est.lines.map((l) => (
-                <li key={l.description} className="flex justify-between gap-3 py-2">
-                  <span>
+              {est.lines.map((l, i) => (
+                <li key={`${l.description}${i}`} className="flex justify-between gap-3 py-2">
+                  <span className={l.amountCents < 0 ? 'text-ok' : undefined}>
                     {l.description}
                     {l.quantity > 1 ? ` × ${l.quantity}` : ''}
                   </span>
-                  <span className="tabular-nums">{cad(l.amountCents, lng)}</span>
+                  <span className={cn('tabular-nums', l.amountCents < 0 && 'text-ok')}>{cad(l.amountCents, lng)}</span>
                 </li>
               ))}
               {est.taxLines.map((x) => (
@@ -178,142 +250,154 @@ export function BillingPanel({ id, city }: PanelProps) {
 
       <Card>
         <CardHeader title={t('billing.account')} description={a ? t('billing.accountHelp') : t('billing.accountNew', { name: city.organization.name })} />
-        <CardBody className="pt-3">
-          <form onSubmit={(e) => void save(e)} className="grid gap-5">
-            <Segmented
-              label={t('billing.plan')}
-              value={p}
-              onChange={setPlan}
-              options={[
-                { value: 'MUNICIPAL' as const, label: t('plans.sector.MUNICIPAL') },
-                { value: 'CLUB' as const, label: t('plans.sector.CLUB') },
-              ]}
-            />
+        <CardBody className="pt-4">
+          <form onSubmit={(e) => void save(e)} className="grid grid-cols-[minmax(0,1fr)] gap-6">
+            <Part n={++n} title={t('billing.sectorTitle')} hint={t('billing.sectorHint')}>
+              <Segmented
+                label={t('billing.sectorTitle')}
+                value={p}
+                onChange={setP}
+                options={[
+                  { value: 'MUNICIPAL' as const, label: t('plans.sector.MUNICIPAL') },
+                  { value: 'CLUB' as const, label: t('plans.sector.CLUB') },
+                ]}
+              />
+            </Part>
+
             {p === 'MUNICIPAL' ? (
-              <>
-                <fieldset className="grid gap-2">
-                  <legend className="mb-1 text-small font-semibold">{t('billing.chooseLevel')}</legend>
-                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-                    {PLAN_LEVELS.map((l) => {
-                      const pl = cat.public[l];
-                      return (
-                        <label key={l} className={`grid cursor-pointer gap-1 rounded-xl border p-3 text-small ${lv === l ? 'border-brand bg-brand/5' : 'border-line'}`}>
-                          <span className="flex items-center gap-2 font-semibold">
-                            <input type="radio" name="level" value={l} checked={lv === l} onChange={() => setLevel(l)} className="h-4 w-4 accent-[rgb(var(--brand))]" />
-                            {t(`plans.level.${l}`)}
-                          </span>
-                          <span className="tabular-nums">{t(pl.quoted ? 'plans.listFrom' : 'plans.perFacility', { price: cents(pl.listCents, lng) })}</span>
-                          <span className="text-caption text-muted">{pl.staffPerFacility === null ? t('plans.staffUnlimited') : `${t('plans.staffIncluded', { count: pl.staffPerFacility })} · ${t('plans.extraStaff', { price: money(pl.extraStaffCents) })}`}</span>
-                          <span className="text-caption text-muted">{t(`plans.levelFor.${l}`)}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
+              <Part n={++n} title={t('billing.chooseLevel')} hint={t('billing.chooseLevelHint')}>
+                <div role="radiogroup" aria-label={t('billing.chooseLevel')} className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+                  {PLAN_LEVELS.map((l) => {
+                    const pl = cat.public[l];
+                    const picked = lv === l;
+                    return (
+                      <label key={l} className={cn('relative grid cursor-pointer content-start gap-1.5 rounded-xl border p-4 text-small transition-colors', picked ? 'border-brand bg-brand/5 ring-1 ring-brand' : 'border-line hover:border-brand/50')}>
+                        <input type="radio" name="level" value={l} checked={picked} onChange={() => setLv(l)} className="sr-only" />
+                        <span className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-body-strong">{t(`plans.level.${l}`)}</span>
+                          {pl.quoted ? <StatusPill tone="new">{t('billing.quotedPill')}</StatusPill> : picked ? <StatusPill tone="brand">{t('billing.chosen')}</StatusPill> : null}
+                        </span>
+                        <span className="text-heading tabular-nums">{cents(pl.listCents, lng)}</span>
+                        <span className="text-caption text-muted">{t('billing.perStandardFacility')}</span>
+                        <span className="mt-1 text-caption">{pl.staffPerFacility === null ? t('plans.staffUnlimited') : t('plans.staffIncluded', { count: pl.staffPerFacility })}</span>
+                        <span className="text-caption text-muted">{t('billing.optionsCount', { count: pl.items.length })}</span>
+                      </label>
+                    );
+                  })}
+                </div>
                 {chosen.quoted ? (
                   <div className="grid gap-4 rounded-xl bg-surface p-4 sm:grid-cols-2">
                     <Field label={t('billing.quotedRate')} hint={t('billing.quotedRateHint', { price: cents(chosen.listCents, lng) })}>
-                      {(fp) => <Input {...fp} key={`q-${lv}`} name="quotedRate" inputMode="decimal" placeholder={(chosen.listCents / 100).toFixed(2)} defaultValue={a?.level === lv && a.quotedRateCents !== null ? (a.quotedRateCents / 100).toFixed(2) : ''} />}
+                      {(fp) => <Input {...fp} inputMode="decimal" value={quoted} onChange={(e) => setQuoted(e.target.value)} />}
                     </Field>
                     {chosen.staffPerFacility !== null ? (
                       <Field label={t('billing.includedStaff')} hint={t('billing.includedStaffHint', { count: chosen.staffPerFacility })}>
-                        {(fp) => <Input {...fp} key={`s-${lv}`} name="includedStaff" inputMode="numeric" defaultValue={a?.level === lv && a.includedStaff !== null ? String(a.includedStaff) : ''} />}
+                        {(fp) => <Input {...fp} inputMode="numeric" placeholder={String(allowance ?? '')} value={staffQuote} onChange={(e) => setStaffQuote(e.target.value)} />}
                       </Field>
                     ) : null}
                   </div>
                 ) : null}
-                <fieldset className="grid gap-3 rounded-xl bg-surface p-4">
-                  <legend className="px-1 text-small font-semibold">{t('billing.facilitySizes')}</legend>
-                  {data.data.facilities.map((x) => (
-                    <div key={x.id} className="grid items-end gap-3 sm:grid-cols-[1fr_16rem_9rem]">
-                      <p className="text-small font-semibold sm:pb-3">{x.name}</p>
-                      <Field label={t('billing.size')}>
-                        {(fp) => (
-                          <Select {...fp} name={`tier-${x.id}`} defaultValue={x.tier ?? ''}>
-                            <option value="">{t('billing.notBilled')}</option>
-                            {[1, 2, 3].map((n) => (
-                              <option key={n} value={n}>
-                                {t(`plans.size.${n}`)} ({cents(Math.round(((chosen.quoted && a?.level === lv && a.quotedRateCents !== null ? a.quotedRateCents : chosen.listCents) * (cat.sizePercent[n] ?? 100)) / 100), lng)})
-                              </option>
-                            ))}
-                          </Select>
-                        )}
-                      </Field>
-                      <Field label={t('billing.contractRate')} hint={t('common.optional')}>{(fp) => <Input {...fp} name={`custom-${x.id}`} inputMode="decimal" defaultValue={x.customCents !== null ? (x.customCents / 100).toFixed(2) : ''} />}</Field>
-                    </div>
-                  ))}
-                </fieldset>
-                <fieldset className="grid gap-2">
-                  <legend className="mb-1 text-small font-semibold">{t('billing.included')}</legend>
-                  <ul className="grid gap-1 text-small">
-                    <li>✓ {t('plans.core')}</li>
-                    {chosen.modules.map((m) => <li key={m}>✓ {t(`plans.module.${m}`)}</li>)}
-                    {chosen.service.map((x) => <li key={x} className="text-muted">✓ {t(`plans.service.${x}`)}</li>)}
-                  </ul>
-                  {(Object.keys(cat.publicExtras) as Module[]).filter((m) => !chosen.modules.includes(m)).map((m) => (
-                    <label key={m} className="mt-1 flex items-center gap-2 text-small">
-                      <input type="checkbox" name={`module-${m}`} defaultChecked={a?.modules.includes(m)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
-                      {t(`plans.module.${m}`)} (+{t('plans.perMonth', { price: cents(cat.publicExtras[m]!, lng) })})
-                    </label>
-                  ))}
-                </fieldset>
-              </>
+              </Part>
             ) : (
-              <>
-                <div className="grid gap-2 rounded-xl bg-surface p-4">
-                  <p className="text-small">{t('plans.privateCore', { price: cents(cat.private.coreCents, lng), count: cat.private.includedUsers, each: money(cat.private.userCents) })}</p>
+              <Part n={++n} title={t('billing.privateCoreTitle')} hint={t('plans.privateCore', { price: cents(cat.private.coreCents, lng), count: cat.private.includedUsers, each: money(cat.private.userCents) })}>
+                <div className="w-48">
+                  <Field label={t('billing.clubRate')}>{(fp) => <Input {...fp} inputMode="decimal" value={userRate} onChange={(e) => setUserRate(e.target.value)} />}</Field>
+                </div>
+              </Part>
+            )}
+
+            {p === 'MUNICIPAL' ? (
+              <Part n={++n} title={t('billing.facilitySizes')} hint={t('billing.facilitySizesHint')}>
+                <ul className="divide-y divide-line rounded-xl border border-line">
+                  {d.facilities.map((x, i) => (
+                    <li key={x.id} className="grid items-center gap-3 px-4 py-3 sm:grid-cols-[1fr_14rem_9rem_7rem]">
+                      <p className="flex items-center gap-2 text-small font-semibold"><Building2 className="h-4 w-4 text-muted" aria-hidden="true" />{x.name}</p>
+                      <Select aria-label={t('billing.size')} value={fac[x.id]!.tier ?? ''} onChange={(e) => setFac((m) => ({ ...m, [x.id]: { ...m[x.id]!, tier: e.target.value ? Number(e.target.value) : null } }))}>
+                        <option value="">{t('billing.notBilled')}</option>
+                        {[1, 2, 3].map((s) => <option key={s} value={s}>{t(`plans.size.${s}`)} · {cat.sizePercent[s]}%</option>)}
+                      </Select>
+                      <Input aria-label={t('billing.contractRate')} placeholder={t('billing.contractRateShort')} inputMode="decimal" value={fac[x.id]!.custom} onChange={(e) => setFac((m) => ({ ...m, [x.id]: { ...m[x.id]!, custom: e.target.value } }))} />
+                      <p className="text-right text-small font-semibold tabular-nums">{facLines[i] ? money(facLines[i]!) : '—'}</p>
+                    </li>
+                  ))}
+                </ul>
+              </Part>
+            ) : null}
+
+            <Part
+              n={++n}
+              title={t('billing.optionsTitle')}
+              hint={trialOn ? t('billing.modulesTrial') : p === 'CLUB' ? t('billing.optionsHintPrivate') : t('billing.optionsHintPublic')}
+              aside={optionsCents ? <span className={cn('rounded-full px-3 py-1 text-small font-semibold tabular-nums', optionsCents < 0 ? 'bg-ok-bg text-ok' : 'bg-brand/10 text-brand-text')}>{optionsCents > 0 ? '+' : '−'}{money(Math.abs(optionsCents))} {t('billing.perMonthShort')}</span> : null}
+            >
+              <div className="grid gap-4">
+                {GROUPS.map((g) => {
+                  const list = rows.filter((r) => cat.items[r.k].group === g);
+                  return (
+                    <div key={g} className="overflow-hidden rounded-xl border border-line">
+                      <p className="bg-surface px-4 py-2 text-caption font-semibold uppercase tracking-wide text-muted">{t(`plans.group.${g}`)}</p>
+                      <ul className="divide-y divide-line">
+                        {list.map((r) => (
+                          <li key={r.k} className={cn('grid items-center gap-3 px-4 py-3 sm:grid-cols-[auto_1fr_8.5rem_7rem]', !r.on && 'bg-page/40')}>
+                            <Switch on={r.on} onChange={() => setOn(r.k, !r.on)} label={t(`plans.item.${r.k}`)} />
+                            <div className="min-w-0">
+                              <p className="flex flex-wrap items-center gap-2 text-small">
+                                <span className={cn('font-semibold', !r.on && 'text-muted')}>{t(`plans.item.${r.k}`)}</span>
+                                {r.standard ? <StatusPill tone="neutral">{t('billing.inPlan')}</StatusPill> : null}
+                                {r.changes ? <StatusPill tone="warn">{r.on ? t('billing.willTurnOn') : t('billing.willTurnOff')}</StatusPill> : r.liveOn ? <StatusPill tone="ok">{t('billing.liveNow')}</StatusPill> : null}
+                              </p>
+                              <p className="text-caption text-muted">{t(`plans.itemIncludes.${r.k}`)}</p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-small text-muted">$</span>
+                              <Input
+                                aria-label={t('billing.itemPrice', { name: t(`plans.item.${r.k}`) })}
+                                inputMode="decimal"
+                                className="h-9 text-right tabular-nums"
+                                value={choice[r.k]?.price ?? toDollars(stdPrice(r.k))}
+                                onChange={(e) => setPrice(r.k, e.target.value)}
+                              />
+                              {r.custom ? (
+                                <button type="button" onClick={() => setPrice(r.k, undefined)} className="rounded-md p-1 text-muted hover:text-ink" title={t('billing.standardPrice', { price: money(stdPrice(r.k)) })} aria-label={t('billing.standardPrice', { price: money(stdPrice(r.k)) })}>
+                                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                                </button>
+                              ) : null}
+                            </div>
+                            <p className={cn('text-right text-small font-semibold tabular-nums', p === 'CLUB' ? (r.on ? '' : 'text-muted') : r.effect > 0 ? 'text-brand-text' : r.effect < 0 ? 'text-ok' : 'text-muted')}>
+                              {p === 'CLUB' ? (r.on ? `+${money(r.price)}` : '—') : r.effect > 0 ? `+${money(r.effect)}` : r.effect < 0 ? `−${money(-r.effect)}` : r.on ? t('billing.included') : '—'}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-caption text-muted">{t('billing.addOnsLock')}</p>
+            </Part>
+
+            {p === 'CLUB' || chosen.staffPerFacility !== null ? (
+              <Part n={++n} title={t('billing.staffTitle')} hint={t('billing.seatsHint', { price: money(perPerson) })}>
+                {est ? <StaffMeter staff={est.staff} lng={lng} /> : null}
+                <div className="flex flex-wrap items-end gap-3">
                   <div className="w-48">
-                    <Field label={t('billing.clubRate')}>{(fp) => <Input {...fp} name="clubRate" inputMode="decimal" defaultValue={((a?.clubUserRateCents ?? cat.private.userCents) / 100).toFixed(2)} />}</Field>
+                    <Field label={t('billing.seats')}>{(fp) => <Input {...fp} type="number" min={0} step={5} inputMode="numeric" value={seatsText} onChange={(e) => setSeatsText(e.target.value)} />}</Field>
+                  </div>
+                  <div className="flex gap-2 pb-0.5">
+                    {[10, 25, 50].map((k) => (
+                      <Button key={k} type="button" size="sm" variant="secondary" icon={<Users className="h-4 w-4" aria-hidden="true" />} onClick={() => setSeatsText(String(seats + k))}>+{k}</Button>
+                    ))}
                   </div>
                 </div>
-                <fieldset className="grid gap-3">
-                  <legend className="mb-1 text-small font-semibold">{t('billing.modulesTitle')}</legend>
-                  <p className="text-caption text-muted">{trialOn ? t('billing.modulesTrial') : t('billing.modulesHelp')}</p>
-                  <ul className="divide-y divide-line rounded-xl border border-line">
-                    {MODULES.map((m) => {
-                      const on = picked.includes(m);
-                      const live = savedMods.includes(m);
-                      return (
-                        <li key={m} className="flex items-start gap-3 px-4 py-3">
-                          <button type="button" role="switch" aria-checked={on} aria-label={t(`plans.module.${m}`)} onClick={() => toggle(m)} className={`mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${on ? 'bg-brand' : 'bg-line'}`}>
-                            <span className={`h-5 w-5 rounded-full bg-panel shadow transition-transform ${on ? 'translate-x-5' : ''}`} />
-                          </button>
-                          <span className="min-w-0 flex-1 text-small">
-                            <span className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold">{t(`plans.module.${m}`)}</span>
-                              <span className="tabular-nums text-muted">{t('plans.perMonth', { price: cents(cat.modules[m].privateCents, lng) })}</span>
-                              {on !== live ? <StatusPill tone="warn">{on ? t('billing.willTurnOn') : t('billing.willTurnOff')}</StatusPill> : live ? <StatusPill tone="ok">{t('billing.liveNow')}</StatusPill> : null}
-                            </span>
-                            <span className="block text-caption text-muted">{t(`plans.moduleIncludes.${m}`)}</span>
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <p className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl bg-surface px-4 py-3 text-small">
-                    <span>{t('billing.privateMonthly', { count: picked.length })}</span>
-                    <span className="text-body-strong tabular-nums">{t('plans.perMonth', { price: cents(privateMonthly, lng, false) })}</span>
-                  </p>
-                </fieldset>
-              </>
-            )}
-            <p className="text-caption text-muted">{t('billing.addOnsLock')}</p>
-            {p === 'CLUB' || chosen.staffPerFacility !== null ? (
-              <fieldset className="grid gap-3 rounded-2xl border border-line p-4">
-                <legend className="px-1 text-small font-semibold">{t('billing.staffTitle')}</legend>
-                {est ? <StaffMeter staff={est.staff} lng={lng} /> : null}
-                <div className="grid items-end gap-3 sm:grid-cols-[12rem_1fr]">
-                  <Field label={t('billing.seats')}>{(fp) => <Input {...fp} name="seats" type="number" min={0} step={5} inputMode="numeric" defaultValue={String(a?.extraStaffSeats ?? 0)} />}</Field>
-                  <p className="text-caption text-muted sm:pb-3">{t('billing.seatsHint', { price: money(p === 'CLUB' ? (a?.clubUserRateCents ?? cat.private.userCents) : chosen.extraStaffCents) })}</p>
-                </div>
-              </fieldset>
+              </Part>
             ) : null}
-            <fieldset className="grid gap-3 rounded-2xl border border-line p-4">
-              <legend className="px-1 text-small font-semibold">{t('billing.accessTitle')}</legend>
-              {data.data?.state ? (
+
+            <Part n={++n} title={t('billing.accessTitle')}>
+            <div className="grid gap-3">
+              {d.state ? (
                 <p className="text-small">
-                  <StatusPill tone={({ unbilled: 'neutral', trial: 'brand', ok: 'ok', overdue: 'warn', suspended: 'danger' } as const)[data.data.state.stage]}>{t(`billing.stage.${data.data.state.stage}`)}</StatusPill>
-                  {data.data.state.suspendsOn ? <span className="ml-2 text-muted">{t(data.data.state.stage === 'suspended' ? 'billing.suspendedSince' : 'billing.suspendsOn', { date: data.data.state.suspendsOn })}</span> : null}
+                  <StatusPill tone={({ unbilled: 'neutral', trial: 'brand', ok: 'ok', overdue: 'warn', suspended: 'danger' } as const)[d.state.stage]}>{t(`billing.stage.${d.state.stage}`)}</StatusPill>
+                  {d.state.suspendsOn ? <span className="ml-2 text-muted">{t(d.state.stage === 'suspended' ? 'billing.suspendedSince' : 'billing.suspendsOn', { date: d.state.suspendsOn })}</span> : null}
                 </p>
               ) : null}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -334,7 +418,10 @@ export function BillingPanel({ id, city }: PanelProps) {
                   )}
                 </Field>
               </div>
-            </fieldset>
+            </div>
+            </Part>
+
+            <Part n={++n} title={t('billing.billToTitle')}>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('billing.legalName')}>{(fp) => <Input {...fp} name="legalName" required defaultValue={a?.legalName ?? city.organization.name} />}</Field>
               <Field label={t('billing.contactName')}>{(fp) => <Input {...fp} name="contactName" defaultValue={a?.contactName ?? 'Accounts Payable'} />}</Field>
@@ -346,7 +433,7 @@ export function BillingPanel({ id, city }: PanelProps) {
               <div className="grid grid-cols-2 gap-4">
                 <Field label={t('settings.province')} hint={t('billing.provinceHint')}>
                   {(fp) => (
-                    <Select {...fp} name="province" defaultValue={a?.province ?? data.data!.facilities[0]?.province ?? 'BC'}>
+                    <Select {...fp} name="province" defaultValue={a?.province ?? d.facilities[0]?.province ?? 'BC'}>
                       {PROVINCES.map((x) => (
                         <option key={x} value={x}>
                           {x}
@@ -375,9 +462,16 @@ export function BillingPanel({ id, city }: PanelProps) {
             </label>
             {isExempt ? <Field label={t('billing.exemptNote')} hint={t('billing.exemptNoteHint')}>{(fp) => <Input {...fp} name="exemptNote" required defaultValue={a?.taxExemptNote ?? ''} />}</Field> : null}
             <Field label={t('billing.internalNotes')} hint={t('billing.internalNotesHint')}>{(fp) => <Textarea {...fp} name="notes" defaultValue={a?.notes ?? ''} />}</Field>
-            <Button type="submit" className="justify-self-start" loading={busy === 'save'}>
-              {t('common.save')}
-            </Button>
+            </Part>
+
+            <div className="sticky bottom-0 z-10 -mx-5 -mb-5 flex flex-wrap items-center justify-between gap-3 rounded-b-xl2 border-t border-line bg-panel/95 px-5 py-3 backdrop-blur">
+              <div className="text-small">
+                <span className="text-muted">{t('billing.liveEstimate')}</span>{' '}
+                <span className="text-body-strong tabular-nums">{money(monthly)}</span>
+                {unsaved ? <span className="ml-2 text-caption text-warn">{t('billing.unsaved', { count: unsaved })}</span> : null}
+              </div>
+              <Button type="submit" loading={busy === 'save'}>{t('billing.saveAndApply')}</Button>
+            </div>
           </form>
         </CardBody>
       </Card>

@@ -70,7 +70,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
       <Link
         key={l.href}
         href={`/manage/billing?unlock=${l.addOn}`}
-        title={t('billingPage.lockedHint', { addOn: t(`plans.module.${l.addOn}`) })}
+        title={t('billingPage.lockedHint', { addOn: t(`plans.item.${l.addOn}`) })}
         className="flex items-center gap-3 rounded-xl px-3 py-2 text-small font-semibold text-muted/60 hover:bg-surface"
       >
         <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
