@@ -13,6 +13,8 @@ import { resolveFeatures } from '../platform/features.js';
 import { parseOverrides, rolePermissions } from '../platform/roleOverrides.js';
 
 export const NOTIFY_CHANNEL = 'fh_notifications';
+/** Open shifts starting this soon also go out by text to people who asked. */
+export const URGENT_SHIFT_MS = 24 * 3_600_000;
 
 export interface NotificationDraft {
   userId: string;
@@ -21,6 +23,9 @@ export interface NotificationDraft {
   link?: string;
   /** Also queue an email using this template. */
   email?: string;
+  /** Urgent: also text (or call and text) people who confirmed a mobile number, where the city has text alerts on. Template = type unless smsTemplate. */
+  sms?: 'text' | 'call';
+  smsTemplate?: string;
 }
 
 export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft[]): Promise<number> {
@@ -30,6 +35,11 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
   // Notification emails (not invites or password resets) follow the organization's switch.
   const emailOn = wantEmail && resolveFeatures((await tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true } }))?.features).emailNotifications;
   const emailUsers = emailOn ? unique.filter((d) => d.email).map((d) => d.userId) : [];
+  const wantSms = unique.some((d) => d.sms);
+  const smsOn = wantSms && resolveFeatures((await tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true } }))?.features).textAlerts;
+  const texted = smsOn
+    ? await tx.user.findMany({ where: { id: { in: unique.filter((d) => d.sms).map((d) => d.userId) }, status: 'ACTIVE', anonymizedAt: null, smsVerifiedAt: { not: null }, smsPhone: { not: null } }, select: { id: true, smsPhone: true, locale: true } })
+    : [];
   const people = emailUsers.length
     ? await tx.user.findMany({ where: { id: { in: emailUsers }, status: 'ACTIVE', anonymizedAt: null }, select: { id: true, email: true, locale: true } })
     : [];
@@ -50,6 +60,13 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
           locale: person.locale,
         },
       });
+    }
+    const phone = d.sms ? texted.find((p) => p.id === d.userId) : undefined;
+    if (phone) {
+      const base = { tenantId, userId: d.userId, toPhone: phone.smsPhone!, template: d.smsTemplate ?? d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, locale: phone.locale };
+      // A call can go unanswered: the text follows it so the words are on the phone.
+      if (d.sms === 'call') await tx.smsOutbox.create({ data: { ...base, kind: 'CALL' } });
+      await tx.smsOutbox.create({ data: { ...base, kind: 'TEXT' } });
     }
   }
   return unique.length;
@@ -87,8 +104,15 @@ export async function usersWithPermission(tx: Tx, tenantId: string, permission: 
 /** Who hears about what. Pure mapping except for role lookups. */
 export async function draftsFor(tx: Tx, e: DomainEvent): Promise<NotificationDraft[]> {
   switch (e.type) {
-    case 'shift.offer.posted':
-      return e.eligibleUserIds.map((userId) => ({ userId, type: 'shift_available', params: { shiftId: e.shiftId, offerId: e.offerId }, link: '/board' }));
+    case 'shift.offer.posted': {
+      const drafts: NotificationDraft[] = e.eligibleUserIds.map((userId) => ({ userId, type: 'shift_available', params: { shiftId: e.shiftId, offerId: e.offerId }, link: '/board' }));
+      // Starting within a day: a text too, for people who asked for those.
+      const shift = await tx.shift.findUnique({ where: { id: e.shiftId }, select: { startsAt: true, facility: { select: { name: true, timezone: true } }, position: { select: { name: true } } } });
+      if (!shift || shift.startsAt.getTime() - Date.now() > URGENT_SHIFT_MS || shift.startsAt.getTime() < Date.now()) return drafts;
+      const wants = new Set((await tx.user.findMany({ where: { id: { in: e.eligibleUserIds }, smsUrgentShifts: true }, select: { id: true } })).map((u) => u.id));
+      const sms = { position: shift.position.name, facility: shift.facility.name, startsAt: shift.startsAt.toISOString(), tz: shift.facility.timezone };
+      return drafts.map((d) => (wants.has(d.userId) ? { ...d, sms: 'text' as const, smsTemplate: 'shift_urgent', params: { ...d.params, ...sms } } : d));
+    }
     case 'shift.offer.completed': {
       const out: NotificationDraft[] = [
         { userId: e.toUserId, type: 'shift_assigned', params: { shiftId: e.shiftId }, link: '/schedule', email: 'shift_assigned' },

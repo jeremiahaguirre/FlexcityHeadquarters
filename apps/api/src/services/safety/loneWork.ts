@@ -47,8 +47,8 @@ export async function loneWorkChecks(tx: Tx, now = new Date()): Promise<number> 
     if (!claimed.count) continue;
     const params = { name: await workerName(tx, s.userId), location: s.location };
     await notify(tx, s.tenantId, [
-      { userId: s.userId, type: 'lonework_check_in_now', params, link: '/alone' },
-      ...(await monitors(tx, s)).map((userId) => ({ userId, type: 'lonework_overdue', params, link: '/manage/lone-work' })),
+      { userId: s.userId, type: 'lonework_check_in_now', params, link: '/alone', sms: 'text' as const },
+      ...(await monitors(tx, s)).map((userId) => ({ userId, type: 'lonework_overdue', params, link: '/manage/lone-work', sms: 'text' as const })),
     ]);
     changed++;
   }
@@ -59,7 +59,7 @@ export async function loneWorkChecks(tx: Tx, now = new Date()): Promise<number> 
     const params = { name: await workerName(tx, s.userId), location: s.location };
     const hr = await usersWithPermission(tx, s.tenantId, 'accommodation.manage', [s.userId]);
     const to = [...new Set([...(await monitors(tx, s)), ...hr])];
-    await notify(tx, s.tenantId, to.map((userId) => ({ userId, type: 'lonework_escalated', params, link: '/manage/lone-work', email: 'lonework_escalated' })));
+    await notify(tx, s.tenantId, to.map((userId) => ({ userId, type: 'lonework_escalated', params, link: '/manage/lone-work', email: 'lonework_escalated', sms: 'call' as const })));
     changed++;
   }
   return changed;
@@ -70,7 +70,7 @@ export async function raiseHelp(tx: Tx, s: LoneWorkSession, note: string | null,
   const params = { name: await workerName(tx, s.userId), location: s.location, note: note ?? '' };
   const hr = await usersWithPermission(tx, s.tenantId, 'accommodation.manage', [s.userId]);
   const to = [...new Set([...(await monitors(tx, s)), ...hr])];
-  await notify(tx, s.tenantId, to.map((userId) => ({ userId, type: 'lonework_help', params, link: '/manage/lone-work', email: 'lonework_help' })));
+  await notify(tx, s.tenantId, to.map((userId) => ({ userId, type: 'lonework_help', params, link: '/manage/lone-work', email: 'lonework_help', sms: 'call' as const })));
 }
 
 export function view(s: LoneWorkSession & { user?: { firstName: string; lastName: string; phone: string | null } | null; responder?: string | null }) {

@@ -36,6 +36,8 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const n = await tx.notification.deleteMany({ where: { createdAt: { lt: ago(now, r.notificationsDays) } } });
   // Only finished emails: anything still waiting to go out stays.
   const e = await tx.emailOutbox.deleteMany({ where: { createdAt: { lt: ago(now, r.emailLogDays) }, OR: [{ sentAt: { not: null } }, { attempts: { gte: 5 } }] } });
+  // Texts and calls follow the email log's period.
+  await tx.smsOutbox.deleteMany({ where: { createdAt: { lt: ago(now, r.emailLogDays) }, OR: [{ sentAt: { not: null } }, { attempts: { gte: 5 } }] } });
   const old = ago(now, 30);
   const s = await tx.refreshToken.deleteMany({ where: { OR: [{ expiresAt: { lt: old } }, { revokedAt: { lt: old } }] } });
   const l = await tx.authToken.deleteMany({ where: { OR: [{ expiresAt: { lt: old } }, { usedAt: { lt: old } }] } });

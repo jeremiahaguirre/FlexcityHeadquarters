@@ -378,6 +378,11 @@ model User {
   dateOfBirth      DateTime? @db.Date
   /// Identity-provider subject this account is bound to after its first single sign-on ("issuer|subject").
   ssoSubject       String?
+  /// Mobile number confirmed with a texted code (E.164), for urgent texts and calls when the city turns them on.
+  smsPhone         String?
+  smsVerifiedAt    DateTime? @db.Timestamptz(3)
+  /// Also text me about open shifts starting within the next 24 hours.
+  smsUrgentShifts  Boolean   @default(false)
   /// The employer's HR/payroll system ID — used in payroll exports.
   employeeNumber   String?
   passwordHash     String?
@@ -469,6 +474,8 @@ enum AuthTokenPurpose {
   SSO
   /// The same, when the identity provider confirmed a second factor.
   SSO_MFA
+  /// A code texted to confirm a mobile number.
+  SMS_VERIFY
 }
 
 /// One-time links for invitations and password resets. Only a hash is stored.
@@ -2954,4 +2961,27 @@ model EmergencyContact {
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([tenantId, userId])
+}
+
+enum SmsKind {
+  TEXT
+  CALL
+}
+
+/// Texts and voice calls waiting to go out. Bodies are rendered at sending time and the params dropped once sent.
+model SmsOutbox {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  userId    String?   @db.Uuid
+  toPhone   String
+  kind      SmsKind   @default(TEXT)
+  template  String
+  params    Json      @default("{}")
+  locale    String    @default("en-CA")
+  attempts  Int       @default(0)
+  lastError String?
+  sentAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, sentAt])
 }

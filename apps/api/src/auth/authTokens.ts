@@ -3,7 +3,7 @@ import type { AuthTokenPurpose } from '@prisma/client';
 import { config } from '../config.js';
 import type { Tx } from '../lib/db.js';
 
-const TTL_MS: Record<AuthTokenPurpose, number> = { RESET: 60 * 60_000, INVITE: 7 * 86_400_000, SSO: 2 * 60_000, SSO_MFA: 2 * 60_000 };
+const TTL_MS: Record<AuthTokenPurpose, number> = { RESET: 60 * 60_000, INVITE: 7 * 86_400_000, SSO: 2 * 60_000, SSO_MFA: 2 * 60_000, SMS_VERIFY: 10 * 60_000 };
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Issue a one-time link token. Older unused tokens of the same purpose are retired. */

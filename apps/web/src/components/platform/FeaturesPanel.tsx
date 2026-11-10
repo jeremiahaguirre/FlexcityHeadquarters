@@ -16,7 +16,7 @@ const GROUPS: Array<{ key: string; features: string[] }> = [
   { key: 'programs', features: ['lessons', 'registration'] },
   { key: 'safety', features: ['loneWork', 'injuryClaims', 'care', 'fleet', 'callOuts', 'patrols'] },
   { key: 'people', features: ['onboarding', 'hrSuite', 'discipline', 'reliability', 'accommodation', 'jobs', 'union'] },
-  { key: 'communication', features: ['emailNotifications', 'benchmarks'] },
+  { key: 'communication', features: ['emailNotifications', 'textAlerts', 'benchmarks'] },
 ];
 
 export function FeaturesPanel({ id, city, reload }: PanelProps) {

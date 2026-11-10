@@ -46,6 +46,8 @@ export const FEATURES = {
   overtime: { default: true, permissions: ['overtime.manage'] },
   onboarding: { default: true, permissions: ['onboarding.hr', 'onboarding.lead', 'onboarding.configure'] },
   emailNotifications: { default: true, permissions: [] },
+  /** Urgent texts and calls (working alone, call-outs, last-minute shifts). Off until the city turns it on: messages cost money. */
+  textAlerts: { default: false, permissions: [] },
 } as const satisfies Record<string, { default: boolean; permissions: readonly Permission[] }>;
 
 export type FeatureKey = keyof typeof FEATURES;

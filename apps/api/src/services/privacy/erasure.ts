@@ -59,6 +59,8 @@ export async function anonymizeUser(tx: Tx, tenantId: string, actorId: string | 
       lastName: `Employee ${tag}`,
       email: `anonymized+${userId}@invalid.local`,
       phone: null,
+      smsPhone: null,
+      smsVerifiedAt: null,
       dateOfBirth: null,
       passwordHash: null,
       anonymizedAt: new Date(),

@@ -50,6 +50,12 @@ const schema = z.object({
   LOCAL_KEK_BASE64: z.string().optional(),
   KMS_KEY_ARN: z.string().optional(),
   AWS_REGION: z.string().default('ca-central-1'),
+  /** Texts and voice calls (urgent alerts). "console" logs them; "twilio" sends them. */
+  SMS_PROVIDER: z.enum(['console', 'twilio']).default('console'),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  /** The number texts and calls come from, e.g. +12505550100. */
+  SMS_FROM: z.string().optional(),
   /** Web push to phones and desktops. Unset = push is off (in-app and email still work). */
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),

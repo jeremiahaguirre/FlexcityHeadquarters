@@ -24,6 +24,7 @@ import { PasskeysCard } from '@/components/auth/PasskeysCard';
 import { addPasskey } from '@/lib/passkeys';
 import { AppearanceCard } from '@/components/shell/AppearanceCard';
 import { PushCard } from '@/components/device/PushCard';
+import { TextAlertsCard } from '@/components/device/TextAlertsCard';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
 import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
 
@@ -121,6 +122,7 @@ export default function ProfilePage() {
         <DocumentsCard />
         <AppearanceCard />
         <PushCard />
+        <TextAlertsCard />
         <PasskeysCard
           list={() => api('/api/me/passkeys')}
           add={addPasskey}

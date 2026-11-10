@@ -1831,6 +1831,10 @@
       "patrols": {
         "name": "Patrols",
         "help": "Patrol routes and records for road and sidewalk standards."
+      },
+      "textAlerts": {
+        "name": "Text and phone alerts",
+        "help": "Urgent texts and calls: missed working-alone check-ins, calls for help, winter call-outs and open shifts starting within a day. Only to people who confirm their number. Each message is billed by the text provider."
       }
     },
     "positions": "Positions",
@@ -5041,5 +5045,24 @@
     "saved": "Emergency contacts saved",
     "forPerson": "Emergency contacts for {{name}}",
     "monitorHelp": "In the order they asked to be called. This look is recorded."
+  },
+  "textAlerts": {
+    "title": "Text and phone alerts",
+    "help": "For urgent alerts only: a missed check-in while working alone, a call for help, a call-out. Help calls ring your phone.",
+    "on": "On",
+    "to": "Texts and calls go to {{phone}}.",
+    "urgentShifts": "Also text me about open shifts starting within a day",
+    "urgentShiftsHelp": "Only shifts you can take.",
+    "change": "Change number",
+    "stop": "Stop texts and calls",
+    "stopped": "Texts and calls stopped",
+    "mobile": "Mobile number",
+    "mobileHint": "A Canadian or US number. We'll text you a code to confirm it.",
+    "sendCode": "Text me a code",
+    "codeSent": "Code sent",
+    "enterCode": "Enter the 6-digit code we texted to {{phone}}. It expires in 10 minutes.",
+    "code": "Code",
+    "confirm": "Confirm",
+    "verified": "Number confirmed"
   }
 }

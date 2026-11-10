@@ -68,7 +68,7 @@ export async function offerNext(tx: Tx, callOut: CallOut, now = new Date()) {
     return null;
   }
   await tx.callOutContact.update({ where: { id: next.id }, data: { status: 'OFFERED', offeredAt: now } });
-  await notify(tx, callOut.tenantId, [{ userId: next.userId, type: 'callout_offer', params, link: '/call-outs', email: 'callout_offer' }]);
+  await notify(tx, callOut.tenantId, [{ userId: next.userId, type: 'callout_offer', params, link: '/call-outs', email: 'callout_offer', sms: 'text' }]);
   return next;
 }
 

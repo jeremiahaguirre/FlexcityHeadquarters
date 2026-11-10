@@ -1831,6 +1831,10 @@
       "patrols": {
         "name": "Patrouilles",
         "help": "Circuits et registres de patrouille pour les normes des routes et trottoirs."
+      },
+      "textAlerts": {
+        "name": "Alertes par texto et téléphone",
+        "help": "Textos et appels urgents : vérifications de travail isolé manquées, demandes d’aide, rappels d’hiver et quarts libres qui commencent dans la journée. Seulement aux personnes qui confirment leur numéro. Chaque message est facturé par le fournisseur."
       }
     },
     "positions": "Postes",
@@ -5041,5 +5045,24 @@
     "saved": "Personnes à joindre enregistrées",
     "forPerson": "Personnes à joindre pour {{name}}",
     "monitorHelp": "Dans l’ordre où elle souhaite qu’on les appelle. Cette consultation est consignée."
+  },
+  "textAlerts": {
+    "title": "Alertes par texto et téléphone",
+    "help": "Pour les alertes urgentes seulement : une vérification manquée en travail isolé, une demande d’aide, un rappel au travail. Les demandes d’aide font sonner votre téléphone.",
+    "on": "Activées",
+    "to": "Les textos et appels vont au {{phone}}.",
+    "urgentShifts": "M’écrire aussi pour les quarts libres qui commencent dans la journée",
+    "urgentShiftsHelp": "Seulement les quarts que vous pouvez prendre.",
+    "change": "Changer de numéro",
+    "stop": "Arrêter les textos et appels",
+    "stopped": "Textos et appels arrêtés",
+    "mobile": "Numéro de cellulaire",
+    "mobileHint": "Un numéro canadien ou américain. Nous vous enverrons un code par texto pour le confirmer.",
+    "sendCode": "M’envoyer un code",
+    "codeSent": "Code envoyé",
+    "enterCode": "Entrez le code à 6 chiffres envoyé au {{phone}}. Il expire dans 10 minutes.",
+    "code": "Code",
+    "confirm": "Confirmer",
+    "verified": "Numéro confirmé"
   }
 }
