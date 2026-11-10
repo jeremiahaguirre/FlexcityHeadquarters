@@ -3,6 +3,7 @@
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Plus, RefreshCw, Send, ShieldCheck, Wallet } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { RunAdjustments } from './PayrollExtras';
 import { StatementView } from '@/components/payroll/StatementView';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -88,10 +89,11 @@ function lastPeriodStart(weekStart: number) {
 function NewRun({ departments, onClose, onCreated }: { departments: Departments | null; onClose: () => void; onCreated: (id: string) => Promise<void> }) {
   const { t, i18n } = useTranslation();
   const { run, busy } = useAction();
+  const [offCycle, setOffCycle] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const r = await run('new', () => api<Run>('/api/payroll/runs', { method: 'POST', body: { departmentId: String(f.get('department')) || null, periodStart: String(f.get('start')), weeks: Number(f.get('weeks')), payDate: String(f.get('payDate')) } }), t('payroll.runCreated'));
+    const r = await run('new', () => api<Run>('/api/payroll/runs', { method: 'POST', body: { departmentId: String(f.get('department')) || null, periodStart: String(f.get('start')), weeks: Number(f.get('weeks')), payDate: String(f.get('payDate')), kind: String(f.get('kind') || 'REGULAR'), note: String(f.get('note') ?? '').trim() || null } }), t('payroll.runCreated'));
     if (r) await onCreated(r.id);
   }
   const weekStart = useQuery<{ payWeekStartDay: number }>('/api/payroll/settings').data?.payWeekStartDay ?? 0;
@@ -99,6 +101,15 @@ function NewRun({ departments, onClose, onCreated }: { departments: Departments 
   return (
     <Dialog open onClose={onClose} title={t('payroll.newRun')} description={t('payroll.newRunHelp')}>
       <form key={weekStart} onSubmit={(e) => void submit(e)} className="grid gap-4">
+        <Field label={t('payroll.runKind')} hint={t('payroll.runKindHint')}>
+          {(p) => (
+            <Select {...p} name="kind" defaultValue="REGULAR" onChange={(e) => setOffCycle(e.target.value === 'OFF_CYCLE')}>
+              <option value="REGULAR">{t('payroll.kinds.REGULAR')}</option>
+              <option value="OFF_CYCLE">{t('payroll.kinds.OFF_CYCLE')}</option>
+            </Select>
+          )}
+        </Field>
+        {offCycle ? <Field label={t('payroll.runNote')}>{(p) => <Input {...p} name="note" maxLength={200} placeholder={t('payroll.runNotePlaceholder')} />}</Field> : null}
         <Field label={t('payroll.department')}>
           {(p) => (
             <Select {...p} name="department" defaultValue="">
@@ -174,7 +185,8 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
         <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
           <div className="flex flex-wrap items-center gap-2">
             <StatusPill tone={STATUS_TONE[d.run.status]}>{t(`payroll.statuses.${d.run.status}`)}</StatusPill>
-            <span className="text-small text-muted">{t('payroll.payOn', { date: formatDate(d.run.payDate, lng, 'dated') })}</span>
+            {d.run.kind === 'OFF_CYCLE' ? <StatusPill tone="new">{t('payroll.kinds.OFF_CYCLE')}</StatusPill> : null}
+            <span className="text-small text-muted">{t('payroll.payOn', { date: formatDate(d.run.payDate, lng, 'dated') })}{d.run.note ? ` · ${d.run.note}` : ''}</span>
           </div>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {(['gross', 'deductions', 'net'] as const).map((k) => (
@@ -182,6 +194,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
             ))}
             <div className="rounded-xl bg-surface p-3"><dt className="text-caption text-muted">{t('payroll.totals.employer')}</dt><dd className="text-body-strong tabular-nums">{money((d.run.totals.employerCpp ?? 0) + (d.run.totals.employerEi ?? 0) + (d.run.totals.employerQpip ?? 0))}</dd></div>
           </dl>
+          <RunAdjustments runId={id} draft={d.run.status === 'DRAFT'} onChanged={refresh} />
           {d.run.status === 'DRAFT' && d.run.blockers.length ? (
             <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">
               <p className="mb-2 flex items-center gap-2 text-body-strong"><AlertTriangle className="h-5 w-5 text-danger" aria-hidden="true" />{t('payroll.blockers')}</p>

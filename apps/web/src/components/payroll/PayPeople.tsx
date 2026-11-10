@@ -3,6 +3,7 @@
 import { Eye, Landmark } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OrdersEditor, SalaryEditor } from './PayrollExtras';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
@@ -159,6 +160,8 @@ function EditPerson({ person, onClose, onSaved }: { person: Person; onClose: () 
           <label className="flex items-start gap-2 text-small"><input type="checkbox" name="agree" required className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />{t('payroll.haveAuthorization')}</label>
           <div><Button type="submit" size="sm" variant="secondary" loading={busy === 'bank'}>{t('payroll.saveForVerification')}</Button></div>
         </form>
+        <SalaryEditor userId={person.id} />
+        <OrdersEditor userId={person.id} />
       </div>
     </Dialog>
   );

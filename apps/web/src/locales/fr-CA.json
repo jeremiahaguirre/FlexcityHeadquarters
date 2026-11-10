@@ -1335,6 +1335,80 @@
         "FAILED": "Refusée"
       },
       "demo": "Les connexions aux fournisseurs ne sont pas offertes dans la démo."
+    },
+    "runKind": "Type de paie",
+    "runKindHint": "Hors cycle : seulement les paiements ponctuels que vous ajoutez (une paie de primes, la paie finale, une correction), à côté de la paie régulière.",
+    "kinds": {
+      "REGULAR": "Paie régulière",
+      "OFF_CYCLE": "Paie hors cycle"
+    },
+    "runNote": "Objet",
+    "runNotePlaceholder": "p. ex. Rétroactivité, nouvelle convention collective",
+    "extras": {
+      "title": "Paiements et retenues ponctuels",
+      "add": "Ajouter",
+      "help": "Primes, rétroactivité et paiements de vacances sont imposés selon la méthode des primes de l’ARC; les allocations comme une paie normale; les remboursements ne sont pas imposés; les recouvrements sont retenus après impôt.",
+      "kind": "Type",
+      "description": "Objet",
+      "amount": "Montant ($)",
+      "save": "Ajouter à cette paie",
+      "added": "Ajouté; la paie a été recalculée.",
+      "remove": "Retirer {{what}}",
+      "kinds": {
+        "BONUS": "Prime",
+        "RETRO": "Paie rétroactive",
+        "VACATION_PAYOUT": "Paiement de vacances",
+        "ALLOWANCE": "Allocation imposable",
+        "OTHER_EARNING": "Autre gain",
+        "REIMBURSEMENT": "Remboursement de dépenses (non imposé)",
+        "RECOVERY": "Recouvrer un trop-payé",
+        "OTHER_DEDUCTION": "Autre retenue"
+      }
+    },
+    "salary": {
+      "title": "Salaire",
+      "current": "Salaire de {{amount}} par année depuis le {{from}}, versé également à chaque période de paie.",
+      "hourly": "Payé à l’heure selon les pointages approuvés. Indiquez un salaire pour verser plutôt une part égale d’un montant annuel.",
+      "annual": "Salaire annuel ($)",
+      "position": "Poste (pour l’imputation)",
+      "weekly": "Heures normales par semaine",
+      "from": "À partir du",
+      "overtime": "Les heures supplémentaires sont payées en plus",
+      "save": "Enregistrer le salaire",
+      "saved": "Salaire enregistré.",
+      "end": "Revenir à l’heure",
+      "ended": "Salaire terminé; payé à l’heure dorénavant."
+    },
+    "orders": {
+      "title": "Ordonnances et avis de l’ARC",
+      "add": "Ajouter une ordonnance",
+      "help": "Ordonnances alimentaires, saisies et demandes formelles de paiement de l’ARC : retenues après impôt à chaque paie, jamais plus que la part du salaire net prévue, jusqu’au paiement total. Versez les sommes au bénéficiaire.",
+      "kind": "Type",
+      "payee": "Bénéficiaire",
+      "reference": "Numéro d’ordonnance ou de dossier",
+      "by": "Retenir",
+      "byAmount": "Un montant fixe par paie",
+      "byPercent": "Un pourcentage du salaire net",
+      "amount": "Montant par paie ($)",
+      "percent": "Pourcentage du net",
+      "max": "Jamais plus de (% du net)",
+      "maxHint": "Exemptions provinciales : 50 % sauf indication contraire de l’ordonnance.",
+      "total": "Total dû ($)",
+      "totalHint": "Laissez vide si elle dure jusqu’à sa fin.",
+      "starts": "À partir du",
+      "save": "Enregistrer l’ordonnance",
+      "added": "Ordonnance enregistrée; elle s’applique dès la prochaine paie.",
+      "eachPay": "{{amount}} par paie",
+      "ofNet": "{{percent}} % du net",
+      "collected": "{{amount}} perçus",
+      "ended": "terminée le {{date}}",
+      "end": "Terminer",
+      "kinds": {
+        "SUPPORT_ORDER": "Ordonnance alimentaire (Revenu Québec, BOF)",
+        "GARNISHMENT": "Saisie (tribunal)",
+        "CRA_REQUIREMENT": "Demande formelle de paiement de l’ARC",
+        "OTHER": "Autre ordonnance"
+      }
     }
   },
   "settings": {

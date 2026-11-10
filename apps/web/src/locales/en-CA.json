@@ -1335,6 +1335,80 @@
         "FAILED": "Refused"
       },
       "demo": "Provider connections aren’t available in the demo."
+    },
+    "runKind": "Kind of run",
+    "runKindHint": "Off-cycle: only the one-time payments you add (a bonus run, final pay, a correction), beside the regular run.",
+    "kinds": {
+      "REGULAR": "Regular pay run",
+      "OFF_CYCLE": "Off-cycle run"
+    },
+    "runNote": "What it’s for",
+    "runNotePlaceholder": "e.g. Retro pay, new collective agreement",
+    "extras": {
+      "title": "One-time payments and deductions",
+      "add": "Add",
+      "help": "Bonuses, retroactive pay and vacation payouts are taxed with CRA’s bonus method; allowances as regular pay; reimbursements aren’t taxed; recoveries come off after tax.",
+      "kind": "Kind",
+      "description": "What it’s for",
+      "amount": "Amount ($)",
+      "save": "Add to this run",
+      "added": "Added; the run was recalculated.",
+      "remove": "Remove {{what}}",
+      "kinds": {
+        "BONUS": "Bonus",
+        "RETRO": "Retroactive pay",
+        "VACATION_PAYOUT": "Vacation payout",
+        "ALLOWANCE": "Taxable allowance",
+        "OTHER_EARNING": "Other earning",
+        "REIMBURSEMENT": "Expense reimbursement (not taxed)",
+        "RECOVERY": "Recover an overpayment",
+        "OTHER_DEDUCTION": "Other deduction"
+      }
+    },
+    "salary": {
+      "title": "Salary",
+      "current": "Salaried at {{amount}} a year since {{from}}, paid evenly each pay period.",
+      "hourly": "Paid by the hour from approved punches. Set a salary to pay an even share of a yearly amount instead.",
+      "annual": "Annual salary ($)",
+      "position": "Position (for costing)",
+      "weekly": "Normal hours a week",
+      "from": "Starting",
+      "overtime": "Overtime hours are still paid on top",
+      "save": "Save salary",
+      "saved": "Salary saved.",
+      "end": "Back to hourly",
+      "ended": "Salary ended; paid by the hour from now on."
+    },
+    "orders": {
+      "title": "Court and CRA orders",
+      "add": "Add an order",
+      "help": "Support orders, garnishments and CRA requirements to pay: taken after tax each pay, never more than the order’s share of net pay, until the total is paid. Send what’s collected to the payee.",
+      "kind": "Kind",
+      "payee": "Payee",
+      "reference": "Order or file number",
+      "by": "Take",
+      "byAmount": "A fixed amount each pay",
+      "byPercent": "A percent of net pay",
+      "amount": "Amount each pay ($)",
+      "percent": "Percent of net pay",
+      "max": "Never more than (% of net)",
+      "maxHint": "Provincial exemptions: 50% unless the order says otherwise.",
+      "total": "Total owed ($)",
+      "totalHint": "Leave blank if it runs until ended.",
+      "starts": "Starting",
+      "save": "Save order",
+      "added": "Order saved; it applies from the next pay run.",
+      "eachPay": "{{amount}} each pay",
+      "ofNet": "{{percent}}% of net",
+      "collected": "{{amount}} collected",
+      "ended": "ended {{date}}",
+      "end": "End",
+      "kinds": {
+        "SUPPORT_ORDER": "Support order (FRO, Maintenance Enforcement)",
+        "GARNISHMENT": "Garnishment (court)",
+        "CRA_REQUIREMENT": "CRA requirement to pay",
+        "OTHER": "Other order"
+      }
     }
   },
   "settings": {

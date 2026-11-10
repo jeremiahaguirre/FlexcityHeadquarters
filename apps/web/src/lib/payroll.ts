@@ -27,6 +27,8 @@ export interface BankAccount { id: string; holderName: string; institution: stri
 export interface PayProfile { mailingAddress?: { line1: string; line2?: string | null; city: string; province: string; postalCode: string } | null; province: string | null; federalClaim: number | null; provincialClaim: number | null; extraTaxPerPeriod: number; cppExempt: boolean; eiExempt: boolean; sin: string | null; td1SignedAt: string | null }
 export interface MyPay { statements: Statement[]; profile: PayProfile; bankAccounts: BankAccount[]; consent: string }
 export interface Run {
+  kind?: 'REGULAR' | 'OFF_CYCLE';
+  note?: string | null;
   id: string;
   departmentId: string | null;
   periodStart: string;
