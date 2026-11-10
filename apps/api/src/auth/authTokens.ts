@@ -3,7 +3,7 @@ import type { AuthTokenPurpose } from '@prisma/client';
 import { config } from '../config.js';
 import type { Tx } from '../lib/db.js';
 
-const TTL_MS: Record<AuthTokenPurpose, number> = { RESET: 60 * 60_000, INVITE: 7 * 86_400_000 };
+const TTL_MS: Record<AuthTokenPurpose, number> = { RESET: 60 * 60_000, INVITE: 7 * 86_400_000, SSO: 2 * 60_000, SSO_MFA: 2 * 60_000 };
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Issue a one-time link token. Older unused tokens of the same purpose are retired. */
@@ -15,9 +15,9 @@ export async function issueAuthToken(tx: Tx, tenantId: string, userId: string, p
 }
 
 /** Returns the user id if the token is valid, and marks it used. */
-export async function consumeAuthToken(tx: Tx, raw: string): Promise<{ userId: string; purpose: AuthTokenPurpose } | null> {
+export async function consumeAuthToken(tx: Tx, raw: string, purposes: readonly AuthTokenPurpose[]): Promise<{ userId: string; purpose: AuthTokenPurpose } | null> {
   const t = await tx.authToken.findUnique({ where: { tokenHash: sha(raw) } });
-  if (!t || t.usedAt || t.expiresAt < new Date()) return null;
+  if (!t || t.usedAt || t.expiresAt < new Date() || !purposes.includes(t.purpose)) return null;
   await tx.authToken.update({ where: { id: t.id }, data: { usedAt: new Date() } });
   return { userId: t.userId, purpose: t.purpose };
 }

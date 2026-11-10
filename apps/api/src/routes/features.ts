@@ -56,6 +56,7 @@ import { accountingRouter } from './accounting.js';
 import { hrRouter } from './hr.js';
 import { documentsRouter } from './documents.js';
 import { supportRouter } from './support.js';
+import { ssoRouter } from './sso.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -82,6 +83,7 @@ api.use(accountingRouter);
 api.use(hrRouter);
 api.use(documentsRouter);
 api.use(supportRouter);
+api.use(ssoRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);

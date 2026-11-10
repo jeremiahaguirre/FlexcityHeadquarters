@@ -263,6 +263,7 @@ model Tenant {
   users           User[]
   positions       Position[]
   departments     Department[]
+  ssoConnection   SsoConnection?
   ruleOverrides   RuleOverride[]
   payCodeMappings PayCodeMapping[]
   /// Dev console per-role customization: { ROLE: { grant: [], revoke: [], hideMenu: [] } }.
@@ -351,6 +352,8 @@ model User {
   locale           String    @default("en-CA")
   /// Needed only to apply young-worker rules. Not exported anywhere.
   dateOfBirth      DateTime? @db.Date
+  /// Identity-provider subject this account is bound to after its first single sign-on ("issuer|subject").
+  ssoSubject       String?
   /// The employer's HR/payroll system ID — used in payroll exports.
   employeeNumber   String?
   passwordHash     String?
@@ -438,6 +441,10 @@ model RefreshToken {
 enum AuthTokenPurpose {
   INVITE
   RESET
+  /// One-time hand-off after single sign-on, traded for a session on the organization's own site.
+  SSO
+  /// The same, when the identity provider confirmed a second factor.
+  SSO_MFA
 }
 
 /// One-time links for invitations and password resets. Only a hash is stored.
@@ -2663,4 +2670,39 @@ model SupportSession {
   createdAt     DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId])
+}
+
+enum SsoProtocol {
+  OIDC
+  SAML
+}
+
+/// The organization's single sign-on: Microsoft Entra ID (or any OpenID Connect provider), or SAML 2.0.
+/// Only signs in people who already have an account; it never creates one.
+model SsoConnection {
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @unique @db.Uuid
+  protocol    SsoProtocol
+  enabled     Boolean     @default(false)
+  /// Password sign-in is off, except for people who can change this setting (so nobody is locked out).
+  enforced    Boolean     @default(false)
+  /// The identity provider always requires a second factor (e.g. Entra conditional access), so SSO counts as MFA.
+  idpMfa      Boolean     @default(false)
+  /// Button text, e.g. "Microsoft".
+  label       String?
+  /// Only emails at these domains may sign in this way; empty means any.
+  domains     String[]    @default([])
+  oidcIssuer  String?
+  oidcClientId String?
+  /// Sealed client secret.
+  oidcSecret  Json?
+  samlEntryPoint String?
+  samlIdpIssuer  String?
+  /// The identity provider's signing certificate (PEM or base64).
+  samlCert    String?
+  lastUsedAt  DateTime?   @db.Timestamptz(3)
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 }

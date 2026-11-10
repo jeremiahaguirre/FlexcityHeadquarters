@@ -6,6 +6,8 @@ import { epochSeconds, hashPassword, signAccessToken, issueRefreshToken, rotateR
 import { config } from '../config.js';
 import { withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
+import { permissionsFor } from '../auth/permissions.js';
+import { connectionFor, publicSso, ready } from '../services/auth/sso.js';
 import { notify } from '../services/notifications/notifier.js';
 import { h, lookupTenant, subdomainOf } from './context.js';
 
@@ -36,7 +38,7 @@ authRouter.get(
     const t = sub ? await lookupTenant(sub) : null;
     if (!t) throw new HttpError(404, 'NOT_FOUND', 'Organization not found');
     const { disabledAt: _closed, ...branding } = t;
-    res.json(branding);
+    res.json({ ...branding, sso: await publicSso(t.id) });
   }),
 );
 
@@ -67,6 +69,9 @@ authRouter.post(
         }
         return { kind: 'invalid' as const };
       }
+      // Single sign-on only: passwords stay for the people who can turn it off, so nobody is locked out.
+      const sso = await connectionFor(tx);
+      if (ready(sso) && sso.enforced && !permissionsFor(user.roles).has('tenant.configure')) return { kind: 'sso' as const };
       if (user.failedLoginCount || user.lockedUntil) await tx.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null } });
       const refresh = await issueRefreshToken(tx, tenantId, user.id);
       return { kind: 'ok' as const, user, refresh };
@@ -74,6 +79,7 @@ authRouter.post(
     if (outcome.kind === 'locked') {
       throw new HttpError(423, 'ACCOUNT_LOCKED', 'This account is locked for 15 minutes after too many attempts. Reset your password to unlock it now.');
     }
+    if (outcome.kind === 'sso') throw new HttpError(403, 'SSO_REQUIRED', 'Your organization signs in with single sign-on. Use the button above.');
     if (outcome.kind === 'invalid') throw new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
     const result = outcome;
     const accessToken = await signAccessToken({ sub: result.user.id, tid: tenantId, roles: result.user.roles, aat: epochSeconds() });
@@ -147,7 +153,7 @@ authRouter.post(
     if (!await allow(`reset:${req.ip}:${tenantId}`, 10, 15 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const passwordHash = await hashPassword(body.password);
     const done = await withTenant(tenantId, async (tx) => {
-      const t = await consumeAuthToken(tx, body.token);
+      const t = await consumeAuthToken(tx, body.token, ['INVITE', 'RESET']);
       if (!t) return false;
       await tx.user.update({ where: { id: t.userId }, data: { passwordHash, failedLoginCount: 0, lockedUntil: null } });
       await tx.refreshToken.updateMany({ where: { userId: t.userId, revokedAt: null }, data: { revokedAt: new Date() } });

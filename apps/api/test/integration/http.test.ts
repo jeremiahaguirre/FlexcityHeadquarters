@@ -26,7 +26,7 @@ describe('HTTP API', () => {
   it('serves public branding by subdomain without leaking private fields', async () => {
     const r = await request(server).get('/api/public/tenant').set('x-tenant-subdomain', 'delta');
     expect(r.status).toBe(200);
-    expect(Object.keys(r.body).sort()).toEqual(['defaultLocale', 'id', 'logoUrl', 'name', 'themeColors']);
+    expect(Object.keys(r.body).sort()).toEqual(['defaultLocale', 'id', 'logoUrl', 'name', 'sso', 'themeColors']);
   });
 
   it('rejects bad credentials with a generic message', async () => {
