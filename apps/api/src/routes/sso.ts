@@ -5,7 +5,7 @@
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, consumeAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, issueRefreshToken, signAccessToken } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
@@ -130,6 +130,7 @@ function assertStrongAdmin(a: ReturnType<typeof authOf>) {
 ssoRouter.put(
   '/sso',
   requirePermission('tenant.configure'),
+  requireModule('sso'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);

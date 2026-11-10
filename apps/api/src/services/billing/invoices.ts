@@ -8,7 +8,8 @@ import { appUrl } from '../../auth/authTokens.js';
 import { config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
-import { type Line, lineLabel, monthlyLines } from './pricing.js';
+import { type Line, lineLabel, monthlyLines, staffUsage } from './pricing.js';
+import { MODULE_KEYS, type Module, PUBLIC_EXTRAS, PUBLIC_PLANS } from './catalog.js';
 import { SALES_TAX, taxFor } from './tax.js';
 import { forgetFeatures } from '../platform/features.js';
 
@@ -28,11 +29,16 @@ export const accountBody = z.object({
   paymentTermsDays: z.number().int().min(0).max(120),
   taxExempt: z.boolean(),
   taxExemptNote: z.string().trim().max(200).nullable(),
-  addOnHr: z.boolean(),
-  addOnOps: z.boolean(),
+  level: z.enum(['SMALL', 'BUSINESS', 'MULTI_COMPLEX', 'ENTERPRISE']),
+  /** The quoted rate per standard facility (Multi-complex and Enterprise); null = the list price. */
+  quotedRateCents: z.number().int().min(0).max(10_000_000).nullable(),
+  /** Quoted staff allowance (Multi-complex); null = per facility. */
+  includedStaff: z.number().int().min(0).max(100_000).nullable().optional(),
+  /** Extra staff places added to the plan, billed every month. */
+  extraStaffSeats: z.number().int().min(0).max(100_000).optional(),
+  modules: z.array(z.enum(MODULE_KEYS as [Module, ...Module[]])).max(20),
   clubUserRateCents: z.number().int().min(0).max(10_000),
   notes: z.string().trim().max(1000).nullable(),
-  addOnUnion: z.boolean().optional(),
   /** YYYY-MM-DD: every feature is on until the end of that day. */
   trialEndsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   graceDays: z.number().int().min(0).max(180).optional(),
@@ -79,19 +85,20 @@ export async function estimate(tenantId: string, month: string) {
   const { tenant, account, facilities } = await getAccount(tenantId);
   if (!account) return null;
   const { start, next } = monthBounds(month);
-  const users = account.plan === 'CLUB' ? await activeUsers(tenantId, start, next) : 0;
-  const lines = monthlyLines(
-    {
+  const users = await activeUsers(tenantId, start, next);
+  const input = {
       plan: account.plan,
       facilities: facilities.map((f) => ({ name: f.name, tier: f.billingTier, customCents: f.billingMonthlyCents })),
       activeUsers: users,
       clubUserRateCents: account.clubUserRateCents,
-      addOnHr: account.addOnHr,
-      addOnOps: account.addOnOps,
-    },
-    lineLabel(tenant.defaultLocale),
-  );
-  return { ...totals(lines, account.province, account.taxExempt), lines, activeUsers: users };
+      level: account.level,
+      quotedRateCents: account.quotedRateCents,
+      includedStaff: account.includedStaff,
+      extraStaffSeats: account.extraStaffSeats,
+      modules: account.modules,
+  };
+  const lines = monthlyLines(input, lineLabel(tenant.defaultLocale));
+  return { ...totals(lines, account.province, account.taxExempt), lines, activeUsers: users, staff: staffUsage(input) };
 }
 
 export function totals(lines: Array<Pick<Line, 'amountCents'>>, province: string, exempt: boolean) {
@@ -102,6 +109,12 @@ export function totals(lines: Array<Pick<Line, 'amountCents'>>, province: string
 
 export async function saveAccount(tenantId: string, body: AccountInput) {
   const { facilities, trialEndsOn, suspensionHoldUntil, ...rest } = body;
+  // A quoted rate only for plans priced after a quote; public-sector extras only where the plan lacks them.
+  if (!PUBLIC_PLANS[rest.level].quoted) rest.quotedRateCents = null;
+  if (!PUBLIC_PLANS[rest.level].quoted || PUBLIC_PLANS[rest.level].staffPerFacility === null) rest.includedStaff = null;
+  if (rest.plan === 'MUNICIPAL' && PUBLIC_PLANS[rest.level].staffPerFacility === null) rest.extraStaffSeats = 0;
+  if (rest.plan === 'MUNICIPAL') rest.modules = [...new Set(rest.modules)].filter((m) => m in PUBLIC_EXTRAS && !PUBLIC_PLANS[rest.level].modules.includes(m));
+  else rest.modules = [...new Set(rest.modules)];
   const endOfDay = (d: string | null | undefined) => (d === undefined ? undefined : d === null ? null : new Date(`${d}T23:59:59.999Z`));
   const data = { ...rest, trialEndsAt: endOfDay(trialEndsOn), suspensionHoldUntil: endOfDay(suspensionHoldUntil) };
   await withTenant(tenantId, async (tx) => {

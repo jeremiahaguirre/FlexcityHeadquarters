@@ -7,8 +7,9 @@ import { z } from 'zod';
 import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { config } from '../config.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
-import { ADD_ON_FEATURES } from '../services/billing/entitlements.js';
-import { ONLINE_PAYMENT_ACTOR, displayStatus, recordPayment } from '../services/billing/invoices.js';
+import { catalog } from '../services/billing/catalog.js';
+import { planRate } from '../services/billing/pricing.js';
+import { ONLINE_PAYMENT_ACTOR, displayStatus, estimate, recordPayment } from '../services/billing/invoices.js';
 import { createCheckout, onlinePaymentsEnabled, verifyWebhook } from '../services/billing/stripe.js';
 import { activeAgreement, agreementBody, agreementTerms, agreementView, cancelAgreement, createAgreement } from '../services/billing/pad.js';
 import { audit, db, withTenant } from '../lib/db.js';
@@ -40,8 +41,10 @@ billingRouter.get(
     const pad = acct ? await activeAgreement(a.tenantId) : null;
     res.json({
       state: settings.billing,
-      plan: acct ? { legalName: acct.legalName, plan: acct.plan, addOns: { hr: acct.addOnHr, ops: acct.addOnOps, union: acct.addOnUnion }, paymentTermsDays: acct.paymentTermsDays, preferredPayment: acct.preferredPayment, poNumber: acct.poNumber } : null,
-      addOnFeatures: ADD_ON_FEATURES,
+      plan: acct ? { legalName: acct.legalName, plan: acct.plan, level: acct.level, rateCents: acct.plan === 'MUNICIPAL' ? planRate(acct.level, acct.quotedRateCents) : null, modules: acct.modules, paymentTermsDays: acct.paymentTermsDays, preferredPayment: acct.preferredPayment, poNumber: acct.poNumber } : null,
+      catalog: catalog(),
+      // This month's staff against the plan: what's included, places added, and anyone over.
+      staff: acct ? ((await estimate(a.tenantId, new Date().toISOString().slice(0, 7)))?.staff ?? null) : null,
       invoices: invoices.map((i) => ({
         id: i.id,
         number: i.number,

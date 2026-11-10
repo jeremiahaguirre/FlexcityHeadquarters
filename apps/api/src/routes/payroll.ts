@@ -11,7 +11,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
-import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
@@ -246,6 +246,7 @@ payrollRouter.post(
 payrollRouter.put(
   '/payroll/bank-connection',
   requirePermission('payroll.approve'),
+  requireModule('bankConnection'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
@@ -305,6 +306,7 @@ payrollRouter.delete(
 payrollRouter.post(
   '/payroll/bank-connection/test',
   requirePermission('payroll.approve'),
+  requireModule('bankConnection'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);

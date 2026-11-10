@@ -300,9 +300,9 @@ model Facility {
   longitude           Decimal? @db.Decimal(9, 6)
   geoRadiusM          Int      @default(150)
   costCenter          String? // e.g. "CC-405-AQUATICS" for payroll export
-  /// FH billing tier for municipal plans: 1 minor/seasonal, 2 standard, 3 major; null = not billed.
+  /// Facility size for public-sector pricing: 1 seasonal/outdoor (×0.4), 2 standard, 3 major complex (×2); null = not billed.
   billingTier         Int?
-  /// Overrides the tier price (cents per month) when set.
+  /// Overrides this facility's price (cents per month) when set.
   billingMonthlyCents Int?
   /// Deck rotation: minutes on one station before moving on.
   rotationMinutes     Int      @default(30)
@@ -1500,10 +1500,18 @@ model HeadCount {
 // FlexcityHeadquarters' own invoicing of organizations (Dev console only).
 
 enum BillingPlan {
-  /// Per facility per month by tier, unlimited staff.
+  /// Public sector: a plan level, priced per facility per month, unlimited staff.
   MUNICIPAL
-  /// Base fee including 20 active users, then per active user.
+  /// Private sector: core fee including 20 active users, then per active user, plus chosen modules.
   CLUB
+}
+
+/// Public-sector plans (services/billing/catalog.ts).
+enum PlanLevel {
+  SMALL
+  BUSINESS
+  MULTI_COMPLEX
+  ENTERPRISE
 }
 
 enum InvoiceStatus {
@@ -1529,10 +1537,17 @@ model BillingAccount {
   paymentTermsDays    Int         @default(30)
   taxExempt           Boolean     @default(false)
   taxExemptNote       String?
-  addOnHr             Boolean     @default(false)
-  addOnOps            Boolean     @default(false)
-  /// Union hub, usually paid by the union local.
-  addOnUnion          Boolean     @default(false)
+  /// Public sector: which plan.
+  level               PlanLevel   @default(BUSINESS)
+  /// Public sector: the quoted rate per standard facility per month, in cents (Multi-complex and
+  /// Enterprise; replaces the list price). Facility sizes still scale it.
+  quotedRateCents     Int?
+  /// Public sector, Multi-complex: the quoted staff allowance (active people), replacing the per-facility one.
+  includedStaff       Int?
+  /// Extra staff places added to the plan, billed every month at the plan's per-person rate (private: the per-user rate).
+  extraStaffSeats     Int         @default(0)
+  /// Private sector: the modules chosen. Public sector: extras on top of the plan (e.g. union).
+  modules             String[]    @default([])
   /// Until then, every feature is on (a trial or pilot).
   trialEndsAt         DateTime?   @db.Timestamptz(3)
   /// Days after an invoice's due date before the app turns read-only.
@@ -1541,7 +1556,7 @@ model BillingAccount {
   suspensionHoldUntil DateTime?   @db.Timestamptz(3)
   /// How they usually pay: INVOICE (EFT or cheque), CARD or PAD (pre-authorized debit).
   preferredPayment    String      @default("INVOICE")
-  /// CLUB plan: price per active user beyond the 20 included, in cents.
+  /// Private sector: price per active user beyond the 20 included, in cents.
   clubUserRateCents   Int         @default(500)
   notes               String?
   createdAt           DateTime    @default(now()) @db.Timestamptz(3)

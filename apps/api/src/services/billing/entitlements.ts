@@ -2,8 +2,8 @@
  * What an organization's plan includes, and whether its account is in good
  * standing. Read on every request (cached with the feature switches).
  *
- * - Base includes everything not sold as an add-on.
- * - Add-ons unlock their features (docs/PRICING.md).
+ * - The plan (public sector) or the chosen modules (private sector) unlock
+ *   their features; everything else is core (services/billing/catalog.ts).
  * - An organization with no billing account, or in a trial, has everything.
  * - Unpaid invoices: a warning once overdue, then read-only after the grace
  *   period, except safety work (incidents, chemistry, headcounts, working
@@ -12,20 +12,17 @@
 import type { BillingAccount } from '@prisma/client';
 import { db } from '../../lib/db.js';
 import type { FeatureKey } from '../platform/features.js';
+import { type Module, lockedFeatures, ownedModules } from './catalog.js';
 
-export type AddOn = 'hr' | 'ops' | 'union';
-
-export const ADD_ON_FEATURES: Record<AddOn, readonly FeatureKey[]> = {
-  hr: ['onboarding', 'reliability', 'discipline', 'accommodation', 'hrSuite'],
-  ops: ['poolChemistry', 'incidents', 'statusBoard'],
-  union: ['union'],
-};
+export type { Module };
 
 export type BillingStage = 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended';
 export interface BillingState {
   stage: BillingStage;
-  /** Feature → the add-on that unlocks it, for features the plan doesn't include. */
-  locked: Partial<Record<FeatureKey, AddOn>>;
+  /** Feature → the module that unlocks it, for features the plan doesn't include. */
+  locked: Partial<Record<FeatureKey, Module>>;
+  /** Modules the plan includes (everything during a trial or without an account). */
+  modules: Module[] | 'all';
   balanceCents: number;
   overdueCents: number;
   /** Oldest unpaid due date that's passed. */
@@ -38,14 +35,7 @@ export interface BillingState {
 const DAY = 86_400_000;
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10);
 
-export function lockedFor(acct: Pick<BillingAccount, 'addOnHr' | 'addOnOps' | 'addOnUnion'>): Partial<Record<FeatureKey, AddOn>> {
-  const owned: Record<AddOn, boolean> = { hr: acct.addOnHr, ops: acct.addOnOps, union: acct.addOnUnion };
-  const out: Partial<Record<FeatureKey, AddOn>> = {};
-  for (const [addOn, features] of Object.entries(ADD_ON_FEATURES) as Array<[AddOn, readonly FeatureKey[]]>) {
-    if (!owned[addOn]) for (const f of features) out[f] = addOn;
-  }
-  return out;
-}
+export const lockedFor = (acct: Pick<BillingAccount, 'plan' | 'level' | 'modules'>) => lockedFeatures(acct);
 
 export function stateFrom(
   acct: BillingAccount | null,
@@ -53,7 +43,7 @@ export function stateFrom(
   now = new Date(),
 ): BillingState {
   const balanceCents = unpaid.reduce((s, i) => s + Math.max(0, i.totalCents - i.paidCents), 0);
-  const empty = { locked: {}, balanceCents, overdueCents: 0, overdueSince: null, suspendsOn: null, trialEndsAt: null };
+  const empty = { locked: {}, modules: 'all' as const, balanceCents, overdueCents: 0, overdueSince: null, suspendsOn: null, trialEndsAt: null };
   if (!acct) return { stage: 'unbilled', ...empty };
   const trialEndsAt = acct.trialEndsAt && acct.trialEndsAt > now ? acct.trialEndsAt.toISOString() : null;
   const today = dateOnly(now);
@@ -66,6 +56,7 @@ export function stateFrom(
   return {
     stage,
     locked: trialEndsAt ? {} : lockedFor(acct),
+    modules: trialEndsAt ? 'all' : [...ownedModules(acct)],
     balanceCents,
     overdueCents,
     overdueSince: oldest ? dateOnly(oldest) : null,
@@ -101,3 +92,6 @@ const STILL_WORKS = [
 ];
 export const allowedWhileSuspended = (method: string, url: string) =>
   method === 'GET' || method === 'HEAD' || method === 'OPTIONS' || STILL_WORKS.some((r) => r.test(url.split('?')[0]!));
+
+/** Whether the plan includes a module that isn't a feature switch (single sign-on, the bank connection). */
+export const hasModule = (b: Pick<BillingState, 'modules'>, m: Module) => b.modules === 'all' || b.modules.includes(m);

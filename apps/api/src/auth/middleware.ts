@@ -7,7 +7,7 @@ import { type Scope, customAccess, scopeOf, stillActive } from '../services/peop
 import { managedScope } from '../services/people/departments.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
-import { allowedWhileSuspended } from '../services/billing/entitlements.js';
+import { type Module, allowedWhileSuspended, hasModule } from '../services/billing/entitlements.js';
 import { SETUP_PERMISSIONS, supportStillAllowed } from '../services/platform/support.js';
 import { audit, withTenant } from '../lib/db.js';
 
@@ -137,6 +137,20 @@ export function authOf(req: Request): AuthContext {
 }
 
 /** Refuses a route while the organization has the feature switched off. */
+/** A setting the plan must include (single sign-on, the bank connection): 403 PLAN_REQUIRED otherwise. */
+export function requireModule(module: Module) {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const tenantId = req.auth?.tenantId ?? req.tenantId;
+      if (!tenantId) throw new HttpError(401, 'UNAUTHENTICATED', 'Not signed in');
+      if (!hasModule((await tenantSettings(tenantId)).billing, module)) throw new HttpError(403, 'PLAN_REQUIRED', 'Your plan doesn’t include this. See Billing to add it.', { module });
+      next();
+    } catch (e) {
+      next(e);
+    }
+  };
+}
+
 export function requireFeature(feature: FeatureKey) {
   return async (req: Request, _res: Response, next: NextFunction) => {
     try {

@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
-import { hashPassword } from '../../src/auth/tokens.js';
+import { hashPassword, signAccessToken } from '../../src/auth/tokens.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 const server = createApp();
@@ -25,8 +25,9 @@ const account = (over: object = {}) => ({
   paymentTermsDays: 30,
   taxExempt: false,
   taxExemptNote: null,
-  addOnHr: true,
-  addOnOps: false,
+  level: 'MULTI_COMPLEX',
+  quotedRateCents: 300_000,
+  modules: [],
   clubUserRateCents: 500,
   notes: null,
   facilities: [{ id: t.facility.id, tier: 2, customCents: null }],
@@ -48,10 +49,15 @@ afterAll(async () => {
 describe('billing', () => {
   let id: string;
 
-  it('a billing account sets the plan, facility tiers and add-ons; the estimate follows', async () => {
+  it('a billing account sets the plan, its quoted rate and facility sizes; the estimate follows', async () => {
+    // Business at the list price: $2,800 for a standard facility.
+    expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ level: 'BUSINESS', quotedRateCents: 999 }))).body.estimate.subtotalCents).toBe(280_000);
+    const got = await dev('get', `/billing/accounts/${t.tenant.id}`);
+    expect(got.body.account).toMatchObject({ level: 'BUSINESS', quotedRateCents: null });
+    expect(got.body.catalog.public.ENTERPRISE).toMatchObject({ quoted: true, staffPerFacility: null });
+    // Multi-complex quoted at $3,000 a facility; Ontario HST 13% = $390.
     const r = await dev('put', `/billing/accounts/${t.tenant.id}`, account());
     expect(r.status).toBe(200);
-    // Tier 2 = $2,500 + HR 20% = $3,000; Ontario HST 13% = $390.
     expect(r.body.estimate).toMatchObject({ subtotalCents: 300_000, totalCents: 339_000, taxLines: [{ name: 'HST', rate: '13', amountCents: 39_000 }] });
     expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ province: 'XX' }))).status).toBe(400);
   });
@@ -100,10 +106,25 @@ describe('billing', () => {
   });
 
   it('club plan bills active users beyond 20', async () => {
-    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', addOnHr: false, province: 'AB', clubUserRateCents: 600 }));
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', clubUserRateCents: 600 }));
     const est = (await dev('get', `/billing/accounts/${t.tenant.id}`)).body.estimate;
     expect(est.lines[0]).toMatchObject({ kind: 'club_base', amountCents: 9_900 });
     expect(est.taxLines).toEqual([{ name: 'GST', rate: '5', amountCents: 495 }]);
+  });
+
+  it('private sector: modules switched on in the Dev console change the organization’s access at once', async () => {
+    const hr = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'H', lastName: 'R', email: `hr-${randomBytes(3).toString('hex')}@chi.test` } });
+    const tok = await signAccessToken({ sub: hr.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: Math.floor(Date.now() / 1000) });
+    const me = async () => (await request(server).get('/api/me').set('x-tenant-subdomain', 'chi').auth(tok, { type: 'bearer' })).body;
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', modules: [] }));
+    expect((await me()).features).toMatchObject({ registration: false, incidents: false });
+    const r = await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', modules: ['programs', 'operations'] }));
+    expect(r.body.estimate.lines.map((l: { kind: string }) => l.kind)).toEqual(['club_base', 'module_operations', 'module_programs']);
+    expect((await me()).features).toMatchObject({ registration: true, incidents: true, discipline: false });
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', modules: ['programs'] }));
+    expect((await me()).features).toMatchObject({ registration: true, incidents: false });
+    // Unknown modules are refused.
+    expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', modules: ['everything'] }))).status).toBe(400);
   });
 
   it('organizations can’t reach billing', async () => {

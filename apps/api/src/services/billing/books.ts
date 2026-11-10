@@ -34,7 +34,7 @@ export const DEFAULT_CHART: Record<ChartKey, { code: string; name: string; type:
   equity: { code: '3000', name: 'Retained earnings', type: 'EQUITY' },
   revFacility: { code: '4000', name: 'Subscription revenue: facility licences', type: 'REVENUE' },
   revClub: { code: '4010', name: 'Subscription revenue: club plans', type: 'REVENUE' },
-  revAddOns: { code: '4020', name: 'Add-on revenue', type: 'REVENUE' },
+  revAddOns: { code: '4020', name: 'Module and add-on revenue', type: 'REVENUE' },
   revOther: { code: '4090', name: 'Other revenue', type: 'REVENUE' },
   credits: { code: '4900', name: 'Credits and discounts', type: 'REVENUE' },
   bankFees: { code: '6100', name: 'Bank and payment fees', type: 'EXPENSE' },
@@ -88,7 +88,9 @@ export interface Line { account: string; debitCents: number; creditCents: number
 export interface Entry { date: string; kind: 'INVOICE' | 'VOID' | 'PAYMENT' | 'PAD_RETURN' | 'CREDIT' | 'WRITE_OFF' | 'MANUAL'; reference: string; memo: string; organization: string | null; tenantId: string | null; lines: Line[] }
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
-const LINE_ACCOUNT: Record<string, ChartKey> = { facility: 'revFacility', club_base: 'revClub', club_users: 'revClub', addon_hr: 'revAddOns', addon_ops: 'revAddOns', credit: 'credits', other: 'revOther' };
+// Older invoices used addon_hr / addon_ops; new ones use module_<name>. Extra staff count with the facility licences.
+const LINE_ACCOUNT: Record<string, ChartKey> = { facility: 'revFacility', extra_staff: 'revFacility', staff_seats: 'revFacility', club_base: 'revClub', club_users: 'revClub', addon_hr: 'revAddOns', addon_ops: 'revAddOns', credit: 'credits', other: 'revOther' };
+const lineAccount = (kind: string): ChartKey => LINE_ACCOUNT[kind] ?? (kind.startsWith('module_') ? 'revAddOns' : 'revOther');
 const taxKey = (name: string): ChartKey => (name === 'QST' ? 'qst' : name === 'PST' || name === 'RST' ? 'pst' : 'gstHst');
 
 async function orgNames() {
@@ -119,7 +121,7 @@ export async function journal(from: string, to: string): Promise<Entry[]> {
     const taxLines = inv.taxLines as Array<{ name: string; amountCents: number }>;
     const lines: Line[] = [{ account: acct('ar'), debitCents: inv.totalCents, creditCents: 0 }];
     for (const l of inv.lines) {
-      const a = acct(LINE_ACCOUNT[l.amountCents < 0 ? 'credit' : l.kind] ?? 'revOther');
+      const a = acct(l.amountCents < 0 ? 'credits' : lineAccount(l.kind));
       lines.push(l.amountCents >= 0 ? { account: a, debitCents: 0, creditCents: l.amountCents } : { account: a, debitCents: -l.amountCents, creditCents: 0 });
     }
     for (const t of taxLines) if (t.amountCents) lines.push({ account: acct(taxKey(t.name)), debitCents: 0, creditCents: t.amountCents });

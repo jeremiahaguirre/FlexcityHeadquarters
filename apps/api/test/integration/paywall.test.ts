@@ -18,6 +18,8 @@ const tok = { hr: '', guard: '' };
 const as = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+
+  put: (p: string, b: object = {}) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 const day = (offset: number) => new Date(Date.now() + offset * 86_400_000);
 const account = (data: object = {}) =>
@@ -74,18 +76,31 @@ describe('plans unlock features', () => {
     expect((await as(tok.hr).get('/api/me')).body.features).toMatchObject({ discipline: true, incidents: true });
   });
 
-  it('add-ons the city hasn’t bought are locked, and HR sees what would unlock them', async () => {
-    await account({ addOnHr: false, addOnOps: true });
+  it('what the plan doesn’t include is locked, and HR sees which module would unlock it', async () => {
+    await account({ plan: 'MUNICIPAL', level: 'BUSINESS', modules: [] });
     forgetFeatures(t.tenant.id);
     const me = (await as(tok.hr).get('/api/me')).body;
     expect(me.features).toMatchObject({ discipline: false, reliability: false, onboarding: false, incidents: true });
     expect(me.permissions).not.toContain('reliability.read');
-    expect(me.lockedMenu).toEqual(expect.arrayContaining([expect.objectContaining({ href: '/manage/people', addOn: 'hr' }), expect.objectContaining({ href: '/manage/onboarding', addOn: 'hr' })]));
-    // Benchmarks stays open through another permission, so it isn't listed as locked.
-    expect(me.lockedMenu.map((l: { href: string }) => l.href)).not.toContain('/manage/benchmarks');
+    expect(me.lockedMenu).toEqual(expect.arrayContaining([expect.objectContaining({ href: '/manage/people', addOn: 'hrCompliance' }), expect.objectContaining({ href: '/manage/onboarding', addOn: 'hrCompliance' })]));
+    // Settings that need a higher plan are refused with a reason.
+    const sso = await as(tok.hr).put('/api/sso', {});
+    expect(sso.body).toMatchObject({ code: 'PLAN_REQUIRED' });
     expect((await as(tok.hr).get('/api/people/review')).status).toBe(403);
     // Staff don't see upsells.
     expect((await as(tok.guard).get('/api/me')).body.lockedMenu).toEqual([]);
+  });
+
+  it('Small has the core; Enterprise has everything; the private sector gets only the modules chosen', async () => {
+    await account({ plan: 'MUNICIPAL', level: 'SMALL', modules: [] });
+    forgetFeatures(t.tenant.id);
+    expect((await as(tok.hr).get('/api/me')).body.features).toMatchObject({ incidents: false, registration: false, discipline: false, loneWork: true, injuryClaims: true, timeclock: true, payroll: true });
+    await account({ plan: 'MUNICIPAL', level: 'ENTERPRISE', modules: [] });
+    forgetFeatures(t.tenant.id);
+    expect((await as(tok.hr).get('/api/me')).body.lockedMenu).toEqual([]);
+    await account({ plan: 'CLUB', level: 'BUSINESS', modules: ['programs'] });
+    forgetFeatures(t.tenant.id);
+    expect((await as(tok.hr).get('/api/me')).body.features).toMatchObject({ registration: true, incidents: false, discipline: false });
   });
 
   it('a trial has everything until it ends', async () => {
@@ -99,7 +114,7 @@ describe('plans unlock features', () => {
 
 describe('unpaid invoices', () => {
   it('stages: ok → overdue (warning) → suspended after the grace period, unless held', () => {
-    const acct = { addOnHr: true, addOnOps: true, addOnUnion: true, graceDays: 30, trialEndsAt: null, suspensionHoldUntil: null } as never;
+    const acct = { plan: 'MUNICIPAL', level: 'ENTERPRISE', modules: [], graceDays: 30, trialEndsAt: null, suspensionHoldUntil: null } as never;
     expect(stateFrom(acct, [{ dueDate: day(5), totalCents: 100, paidCents: 0 }]).stage).toBe('ok');
     expect(stateFrom(acct, [{ dueDate: day(-3), totalCents: 100, paidCents: 0 }]).stage).toBe('overdue');
     expect(stateFrom(acct, [{ dueDate: day(-31), totalCents: 100, paidCents: 0 }])).toMatchObject({ stage: 'suspended', overdueCents: 100 });
@@ -108,7 +123,7 @@ describe('unpaid invoices', () => {
   });
 
   it('suspended is read-only, except safety work, clocking in and paying', async () => {
-    await account({ addOnHr: true, addOnOps: true });
+    await account({ plan: 'MUNICIPAL', level: 'MULTI_COMPLEX', modules: [] });
     await invoice(-40);
     forgetFeatures(t.tenant.id);
     expect((await as(tok.hr).get('/api/me')).body.billing).toMatchObject({ stage: 'suspended', canPay: true });
