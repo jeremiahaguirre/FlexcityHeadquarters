@@ -57,6 +57,8 @@ export interface FileRecord {
   employeeResponse: string | null;
   respondedAt: string | null;
   evidence: Evidence[];
+  /** Fingerprint of what was signed, and whether the record still matches it. */
+  signatureCheck?: { signed: string | null; signature: string | null; intact: boolean | null } | null;
 }
 export interface CaseFile {
   /** The viewer isn't HR: only records they made themselves are shown. */

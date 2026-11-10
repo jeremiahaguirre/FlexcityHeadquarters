@@ -1136,6 +1136,9 @@ model DisciplinaryRecord {
   /// PNG data captured from the signature canvas.
   acknowledgementSignature Bytes?
   acknowledgedAt           DateTime?        @db.Timestamptz(3)
+  /// SHA-256 of exactly what was signed (content at signing) and of the signature image.
+  signedSha256             String?
+  signatureSha256          String?
   /// Union members may request a steward was present.
   stewardPresent           Boolean          @default(false)
   /// Step in progressive discipline (null on records made before levels existed).

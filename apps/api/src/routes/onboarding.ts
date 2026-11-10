@@ -8,6 +8,7 @@ import { MINORS_SET, checklist, ensureDefaults, recordItem } from '../services/p
 import { h } from './context.js';
 import { peopleWhere } from '../services/people/scope.js';
 import { allOf, departmentFilter, departmentQuery } from '../services/people/departmentAdmin.js';
+import { sha256 } from '../services/people/fingerprint.js';
 
 export const onboardingRouter = Router();
 onboardingRouter.use(['/onboarding', '/me/onboarding'], requireFeature('onboarding'));
@@ -200,8 +201,11 @@ onboardingRouter.post(
     const itemId = uuid.parse(req.params.itemId);
     const { typedName } = z.object({ typedName: z.string().trim().min(2).max(120) }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      const r = await recordItem(tx, a.tenantId, a.userId, a.userId, itemId, { action: 'complete', completedOn: new Date().toISOString().slice(0, 10), note: `Acknowledged by typing "${typedName}"` }, { hr: false, lead: false, self: true });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'onboarding.acknowledge', entity: 'OnboardingRecord', entityId: r.id, after: { itemId } });
+      // Fingerprint of the exact policy text acknowledged, kept with the record and the audit log.
+      const item = await tx.onboardingItem.findUnique({ where: { id: itemId }, select: { policyText: true, description: true } });
+      const policySha256 = sha256(item?.policyText ?? item?.description ?? '');
+      const r = await recordItem(tx, a.tenantId, a.userId, a.userId, itemId, { action: 'complete', completedOn: new Date().toISOString().slice(0, 10), note: `Acknowledged by typing "${typedName}" (policy text SHA-256 ${policySha256})` }, { hr: false, lead: false, self: true });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'onboarding.acknowledge', entity: 'OnboardingRecord', entityId: r.id, after: { itemId, policySha256 } });
     });
     res.json({ ok: true });
   }),

@@ -2141,7 +2141,9 @@
     ],
     "skipsSteps": "Ceci saute des étapes de la discipline progressive. Expliquez pourquoi dans le résumé (par exemple, la gravité du manquement à la sécurité), ou choisissez une étape antérieure.",
     "onlyMine": "Vous ne voyez que les dossiers que vous avez créés ou émis vous-même. Les RH voient le dossier complet.",
-    "descriptionMine": "Les personnes au sujet desquelles vous avez consigné quelque chose, d’après vos propres dossiers. Les RH voient le dossier complet de chacun."
+    "descriptionMine": "Les personnes au sujet desquelles vous avez consigné quelque chose, d’après vos propres dossiers. Les RH voient le dossier complet de chacun.",
+    "signedIntact": "Inchangé depuis la signature (empreinte {{fp}}…)",
+    "signedChanged": "Modifié après la signature : ce n’est pas la version signée par l’employé."
   },
   "deck": {
     "title": "Rotation",

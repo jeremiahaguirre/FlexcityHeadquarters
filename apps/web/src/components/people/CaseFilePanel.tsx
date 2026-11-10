@@ -1,6 +1,6 @@
 'use client';
 
-import { Award, CalendarX2, ClipboardPen, Clock, FileText, MessageSquareWarning, Plus, Scale, Undo2 } from 'lucide-react';
+import { Award, CalendarX2, ClipboardPen, Clock, FileText, MessageSquareWarning, Plus, Scale, ShieldAlert, ShieldCheck, Undo2 } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -297,6 +297,12 @@ export function RecordRow({ r }: { r: FileRecord }) {
     >
       <p className="whitespace-pre-wrap">{r.summary}</p>
       {r.evidence?.length ? <p className="text-caption text-muted">{t('people.reliesOn', { count: r.evidence.length })}</p> : null}
+      {r.signatureCheck?.signed ? (
+        <p className={`flex items-center gap-1.5 text-caption ${r.signatureCheck.intact ? 'text-ok' : 'font-semibold text-danger'}`} title={`SHA-256 ${r.signatureCheck.signed}`}>
+          {r.signatureCheck.intact ? <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> : <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />}
+          {r.signatureCheck.intact ? t('people.signedIntact', { fp: r.signatureCheck.signed.slice(0, 12) }) : t('people.signedChanged')}
+        </p>
+      ) : null}
       {r.employeeResponse ? (
         <blockquote className="mt-1 rounded-lg border-l-4 border-brand/40 bg-surface px-3 py-2">
           <p className="text-caption font-semibold text-muted">{t('people.employeeResponse')}</p>

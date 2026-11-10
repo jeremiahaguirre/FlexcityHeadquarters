@@ -2141,7 +2141,9 @@
     ],
     "skipsSteps": "This skips steps in progressive discipline. Say in the summary why (for example, how serious the safety breach was), or choose an earlier step.",
     "onlyMine": "You see only the records you made or issued yourself. HR sees the full file.",
-    "descriptionMine": "People you’ve made records about, built from your own records. HR sees everyone’s full file."
+    "descriptionMine": "People you’ve made records about, built from your own records. HR sees everyone’s full file.",
+    "signedIntact": "Unchanged since it was signed (fingerprint {{fp}}…)",
+    "signedChanged": "Changed after it was signed: this isn’t the version the employee signed."
   },
   "deck": {
     "title": "Rotation",

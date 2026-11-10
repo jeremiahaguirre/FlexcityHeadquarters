@@ -60,7 +60,7 @@ Severity reflects risk to cities and their staff if the product launched today.
 
 | # | Finding | Recommendation |
 | --- | --- | --- |
-| M1 | Discipline acknowledgements store the signature image and time but no hash of what was signed. Reliability under the Electronic Commerce / Transactions Acts is stronger if you can show the record wasn't changed after signing. | At signing, store a SHA-256 hash of the record (summary, level, evidence) and show it on the record. |
+| M1 | **Fixed.** Signed discipline records now keep a SHA-256 fingerprint of exactly what was signed (and of the signature image); each view recomputes it and shows whether the record is unchanged. Policy acknowledgements record a fingerprint of the policy text. | Keep the audit log (append-only) as the second copy of each fingerprint. |
 | M2 | Personal records have no export format other than JSON. | Add a printable PDF of the records export for FOI and access responses. |
 | M3 | No published Accessibility Conformance Report (VPAT 2.5 / EN 301 549). Ontario and BC municipalities increasingly require one in procurement. | Commission an independent WCAG 2.1 AA audit and publish the ACR. |
 | M4 | Subprocessors (email, push notifications, error tracking) are not chosen or listed. | Choose Canadian-hosted or contractually bound providers; publish a subprocessor list; include it in privacy impact assessments. |

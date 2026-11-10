@@ -9,13 +9,16 @@ import { POINTS } from '../services/reliability/score.js';
 import { LEVELS, SERIOUS_LEVELS, requiredChecks } from '../services/people/review.js';
 import { h } from './context.js';
 import { hrRecordsBy } from '../services/people/scope.js';
+import { type SignableRecord, recordFingerprint, sha256, signatureCheck } from '../services/people/fingerprint.js';
 
 export const disciplineRouter = Router();
 const uuid = z.string().uuid();
 const MAX_SIGNATURE_BYTES = 200_000;
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-type Row = {
+type Row = SignableRecord & {
+  signedSha256: string | null;
+  signatureSha256: string | null;
   id: string;
   summary: string;
   issuedAt: Date;
@@ -37,6 +40,7 @@ const view = (r: Row) => ({
   evidence: r.evidence,
   employeeResponse: r.employeeResponse,
   respondedAt: r.respondedAt,
+  signatureCheck: signatureCheck(r),
 });
 
 disciplineRouter.get(
@@ -145,8 +149,11 @@ disciplineRouter.post(
       const r = await tx.disciplinaryRecord.findUnique({ where: { id } });
       if (!r || r.userId !== a.userId) throw notFound('Record');
       if (r.acknowledgedAt) throw conflict('ALREADY_ACKNOWLEDGED', 'You already signed this record.');
-      await tx.disciplinaryRecord.update({ where: { id }, data: { acknowledgementSignature: png, acknowledgedAt: new Date() } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'discipline.acknowledge', entity: 'DisciplinaryRecord', entityId: id });
+      // Fingerprint exactly what was signed, so it can be shown later to be unchanged.
+      const signedSha256 = recordFingerprint(r);
+      const signatureSha256 = sha256(png);
+      await tx.disciplinaryRecord.update({ where: { id }, data: { acknowledgementSignature: png, acknowledgedAt: new Date(), signedSha256, signatureSha256 } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'discipline.acknowledge', entity: 'DisciplinaryRecord', entityId: id, after: { signedSha256, signatureSha256 } });
     });
     res.json({ ok: true });
   }),

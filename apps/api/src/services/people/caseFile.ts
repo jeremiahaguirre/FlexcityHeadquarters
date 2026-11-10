@@ -5,6 +5,7 @@
 import type { Tx } from '../../lib/db.js';
 import { POINTS, computeReliability } from '../reliability/score.js';
 import { type Review, review } from './review.js';
+import { signatureCheck } from './fingerprint.js';
 
 const YEAR = 366 * 86_400_000;
 
@@ -71,6 +72,7 @@ export async function loadCaseFile(tx: Tx, userId: string, now = new Date(), onl
       employeeResponse: r.employeeResponse,
       respondedAt: r.respondedAt,
       evidence: r.evidence,
+      signatureCheck: signatureCheck(r as unknown as Parameters<typeof signatureCheck>[0]),
     })),
   };
 }

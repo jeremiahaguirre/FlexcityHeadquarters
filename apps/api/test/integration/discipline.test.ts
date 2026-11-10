@@ -42,6 +42,15 @@ describe('disciplinary records', () => {
     expect((await call(staff).post(`/api/me/discipline/${r.body.id}/acknowledge`, { signature: PNG })).status).toBe(409);
     const stored = await owner.disciplinaryRecord.findUniqueOrThrow({ where: { id: r.body.id } });
     expect(stored.acknowledgementSignature?.subarray(1, 4).toString()).toBe('PNG');
+    // A fingerprint of exactly what was signed, and of the signature image.
+    expect(stored.signedSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored.signatureSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect((await call(staff).get('/api/me/discipline')).body[0].signatureCheck).toMatchObject({ signed: stored.signedSha256, intact: true });
+    // Changed after signing (e.g. directly in the database): the check shows it.
+    await owner.disciplinaryRecord.update({ where: { id: r.body.id }, data: { summary: `${stored.summary} (edited)` } });
+    expect((await call(staff).get('/api/me/discipline')).body[0].signatureCheck.intact).toBe(false);
+    await owner.disciplinaryRecord.update({ where: { id: r.body.id }, data: { summary: stored.summary } });
+    expect((await call(staff).get('/api/me/discipline')).body[0].signatureCheck.intact).toBe(true);
   });
 
   it('keeps records away from staff and logs who viewed them', async () => {
