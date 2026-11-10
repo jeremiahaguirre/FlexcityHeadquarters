@@ -4721,6 +4721,12 @@
     "version": "version {{version}}",
     "older": "Earlier version",
     "certificate": "Certificate (PDF)",
-    "downloadFailed": "The download didn’t work. Try again."
+    "downloadFailed": "The download didn’t work. Try again.",
+    "state": {
+      "granted": "Allowed",
+      "denied": "Refused",
+      "skipped": "Skipped",
+      "unsupported": "Not available on their device"
+    }
   }
 }

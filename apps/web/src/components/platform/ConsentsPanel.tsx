@@ -54,8 +54,8 @@ export function ConsentsPanel({ id }: { id: string }) {
                   <p className="font-semibold">{r.person}{r.signedName !== r.person ? <span className="font-normal text-muted"> · {t('consents.signedAs', { name: r.signedName })}</span> : null}</p>
                   <p className="text-caption text-muted">{when(r.signedAt)} · {t('consents.version', { version: r.version })} · {r.locale}{r.ipAddress ? ` · ${r.ipAddress}` : ''}</p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    <StatusPill tone={tone(r.choices.notifications)}>{t('consent.notifications.title')}: {t(`consent.state.${r.choices.notifications ?? 'skipped'}`)}</StatusPill>
-                    <StatusPill tone={tone(r.choices.location)}>{t('consent.location.title')}: {t(`consent.state.${r.choices.location ?? 'skipped'}`)}</StatusPill>
+                    <StatusPill tone={tone(r.choices.notifications)}>{t('consent.notifications.title')}: {t(`consents.state.${r.choices.notifications ?? 'skipped'}`)}</StatusPill>
+                    <StatusPill tone={tone(r.choices.location)}>{t('consent.location.title')}: {t(`consents.state.${r.choices.location ?? 'skipped'}`)}</StatusPill>
                     {r.version !== d.currentVersion ? <StatusPill tone="neutral">{t('consents.older')}</StatusPill> : null}
                   </div>
                 </div>
