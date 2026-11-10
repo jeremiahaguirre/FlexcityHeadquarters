@@ -89,7 +89,7 @@ export interface Entry { date: string; kind: 'INVOICE' | 'VOID' | 'PAYMENT' | 'P
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 // Older invoices used addon_hr / addon_ops; new ones use module_<name>. Extra staff count with the facility licences.
-const LINE_ACCOUNT: Record<string, ChartKey> = { facility: 'revFacility', extra_staff: 'revFacility', staff_seats: 'revFacility', club_base: 'revClub', club_users: 'revClub', addon_hr: 'revAddOns', addon_ops: 'revAddOns', credit: 'credits', other: 'revOther' };
+const LINE_ACCOUNT: Record<string, ChartKey> = { facility: 'revFacility', extra_staff: 'revFacility', staff_seats: 'revFacility', term_discount: 'credits', club_base: 'revClub', club_users: 'revClub', addon_hr: 'revAddOns', addon_ops: 'revAddOns', credit: 'credits', other: 'revOther' };
 const lineAccount = (kind: string): ChartKey => LINE_ACCOUNT[kind] ?? (kind.startsWith('module_') || kind.startsWith('item_') ? 'revAddOns' : 'revOther');
 const taxKey = (name: string): ChartKey => (name === 'QST' ? 'qst' : name === 'PST' || name === 'RST' ? 'pst' : 'gstHst');
 

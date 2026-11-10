@@ -133,6 +133,25 @@ describe('billing', () => {
     expect(got.find((i: { key: string }) => i.key === 'registration')).toMatchObject({ on: true, standard: false, cents: 9_900 });
   });
 
+  it('a 5-year term billed yearly: twelve months in advance with the term discount, nothing in between', async () => {
+    const r = await dev('put', `/billing/accounts/${t.tenant.id}`, account({ level: 'BUSINESS', quotedRateCents: null, billingCycle: 'ANNUAL', termMonths: 60, termStart: '2027-03-15', discountPercent: null }));
+    expect(r.status).toBe(200);
+    expect((await owner.billingAccount.findUniqueOrThrow({ where: { tenantId: t.tenant.id } })).termStart?.toISOString().slice(0, 10)).toBe('2027-03-01');
+    const est = (await dev('get', `/billing/accounts/${t.tenant.id}`)).body.estimate;
+    expect(est.term).toMatchObject({ cycle: 'ANNUAL', termMonths: 60, discountPercent: 12, termEnd: '2032-02-29', perInvoiceMonths: 12 });
+    expect(est.term.contractCents).toBe(Math.round(280_000 * 0.88) * 60);
+    expect((await dev('post', '/billing/invoices/generate', { month: '2027-03', tenantIds: [t.tenant.id] })).body).toMatchObject({ created: 1 });
+    const inv = (await dev('get', `/billing/invoices?tenantId=${t.tenant.id}&status=DRAFT`)).body.find((i: { periodStart: string }) => i.periodStart === '2027-03-01');
+    expect(inv).toMatchObject({ periodEnd: '2028-02-29', subtotalCents: 280_000 * 12 - Math.round(280_000 * 12 * 0.12) });
+    expect(inv.lines.map((l: { amountCents: number }) => l.amountCents)).toEqual([280_000 * 12, -Math.round(280_000 * 12 * 0.12)]);
+    // A month inside the prepaid year: nothing fixed to bill.
+    expect((await dev('post', '/billing/invoices/generate', { month: '2027-06', tenantIds: [t.tenant.id] })).body).toMatchObject({ 'nothing-to-bill': 1 });
+    // The whole term needs a length; yearly needs a start.
+    expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ billingCycle: 'TERM', termMonths: null, termStart: '2027-03-01' }))).status).toBe(400);
+    expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ billingCycle: 'ANNUAL', termStart: null }))).status).toBe(400);
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ billingCycle: 'MONTHLY', termMonths: null, termStart: null }));
+  });
+
   it('organizations can’t reach billing', async () => {
     expect((await request(server).get('/api/platform/billing/summary').set('x-fh-platform', '1')).status).toBe(401);
   });

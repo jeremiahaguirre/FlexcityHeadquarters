@@ -1506,6 +1506,15 @@ enum BillingPlan {
   CLUB
 }
 
+/// How often an organization is invoiced (services/billing/terms.ts).
+enum BillingCycle {
+  MONTHLY
+  /// Twelve months of fixed charges in advance.
+  ANNUAL
+  /// The whole term in advance on one invoice.
+  TERM
+}
+
 /// Public-sector plans (services/billing/catalog.ts).
 enum PlanLevel {
   SMALL
@@ -1544,6 +1553,14 @@ model BillingAccount {
   quotedRateCents     Int?
   /// Public sector, Multi-complex: the quoted staff allowance (active people), replacing the per-facility one.
   includedStaff       Int?
+  /// How often fixed charges are invoiced.
+  billingCycle        BillingCycle @default(MONTHLY)
+  /// Committed term in months (12, 36, 60...); null = month to month. Prices are held for the term.
+  termMonths          Int?
+  /// First day of the term, and of yearly invoices.
+  termStart           DateTime?   @db.Date
+  /// Commitment discount on fixed charges, in percent; null = the standard for the term.
+  discountPercent     Decimal?    @db.Decimal(5, 2)
   /// Extra staff places added to the plan, billed every month at the plan's per-person rate (private: the per-user rate).
   extraStaffSeats     Int         @default(0)
   /// Options switched away from the plan's standard, and custom prices: { "<option>": { "on": bool, "cents": int } }

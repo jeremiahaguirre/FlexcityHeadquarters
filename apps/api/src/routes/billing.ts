@@ -44,7 +44,10 @@ billingRouter.get(
       plan: acct ? { legalName: acct.legalName, plan: acct.plan, level: acct.level, rateCents: acct.plan === 'MUNICIPAL' ? planRate(acct.level, acct.quotedRateCents) : null, items: itemStates(acct), paymentTermsDays: acct.paymentTermsDays, preferredPayment: acct.preferredPayment, poNumber: acct.poNumber } : null,
       catalog: catalog(),
       // This month's staff against the plan: what's included, places added, and anyone over.
-      staff: acct ? ((await estimate(a.tenantId, new Date().toISOString().slice(0, 7)))?.staff ?? null) : null,
+      ...(await (async () => {
+        const est = acct ? await estimate(a.tenantId, new Date().toISOString().slice(0, 7)) : null;
+        return { staff: est?.staff ?? null, term: est?.term ?? null };
+      })()),
       invoices: invoices.map((i) => ({
         id: i.id,
         number: i.number,

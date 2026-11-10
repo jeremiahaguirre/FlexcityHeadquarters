@@ -9,6 +9,7 @@ import { config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { type Line, lineLabel, monthlyLines, staffUsage } from './pricing.js';
+import { type Terms, invoiceLinesFor, termSummary } from './terms.js';
 import { ITEM_KEYS, type ItemKey, PUBLIC_PLANS, readChoices, standardCents, standardItems } from './catalog.js';
 import { SALES_TAX, taxFor } from './tax.js';
 import { forgetFeatures } from '../platform/features.js';
@@ -36,6 +37,14 @@ export const accountBody = z.object({
   includedStaff: z.number().int().min(0).max(100_000).nullable().optional(),
   /** Extra staff places added to the plan, billed every month. */
   extraStaffSeats: z.number().int().min(0).max(100_000).optional(),
+  /** How often fixed charges are invoiced: monthly, yearly in advance, or the whole term in advance. */
+  billingCycle: z.enum(['MONTHLY', 'ANNUAL', 'TERM']).optional(),
+  /** Committed term in months (e.g. 12, 36, 60); null = month to month. */
+  termMonths: z.number().int().min(1).max(120).nullable().optional(),
+  /** YYYY-MM-DD: first day of the term (moved to the first of its month). */
+  termStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  /** Commitment discount in percent; null = the standard for the term. */
+  discountPercent: z.number().min(0).max(50).nullable().optional(),
   /** Every option's state for this organization: on or off, and its price (null = standard). */
   items: z.partialRecord(z.enum(ITEM_KEYS as [ItemKey, ...ItemKey[]]), z.object({ on: z.boolean(), cents: z.number().int().min(0).max(10_000_000).nullable() })).default({}),
   clubUserRateCents: z.number().int().min(0).max(10_000),
@@ -98,9 +107,20 @@ export async function estimate(tenantId: string, month: string) {
       extraStaffSeats: account.extraStaffSeats,
       items: account.items,
   };
-  const lines = monthlyLines(input, lineLabel(tenant.defaultLocale));
-  return { ...totals(lines, account.province, account.taxExempt), lines, activeUsers: users, staff: staffUsage(input) };
+  const label = lineLabel(tenant.defaultLocale);
+  const monthly = monthlyLines(input, label);
+  // This month's invoice under the account's terms: prepaid months of fixed charges, usage, the discount.
+  const terms = termsOf(account);
+  const { lines, prepaid, periodEnd } = invoiceLinesFor(monthly, terms, start, label);
+  return { ...totals(lines, account.province, account.taxExempt), lines, monthlyLines: monthly, prepaidMonths: prepaid, periodEnd, activeUsers: users, staff: staffUsage(input), term: termSummary(monthly, terms, start) };
 }
+
+export const termsOf = (a: { billingCycle: Terms['billingCycle']; termMonths: number | null; termStart: Date | null; discountPercent: Prisma.Decimal | number | null }): Terms => ({
+  billingCycle: a.billingCycle,
+  termMonths: a.termMonths,
+  termStart: a.termStart,
+  discountPercent: a.discountPercent === null ? null : Number(a.discountPercent),
+});
 
 export function totals(lines: Array<Pick<Line, 'amountCents'>>, province: string, exempt: boolean) {
   const subtotalCents = lines.reduce((s, l) => s + l.amountCents, 0);
@@ -109,7 +129,11 @@ export function totals(lines: Array<Pick<Line, 'amountCents'>>, province: string
 }
 
 export async function saveAccount(tenantId: string, body: AccountInput) {
-  const { facilities, trialEndsOn, suspensionHoldUntil, ...rest } = body;
+  const { facilities, trialEndsOn, suspensionHoldUntil, termStart, ...rest } = body;
+  // A term starts on the first of its month; yearly or whole-term billing needs a start.
+  const start = termStart === undefined ? undefined : termStart === null ? null : day(`${termStart.slice(0, 7)}-01`);
+  if (rest.billingCycle === 'TERM' && !rest.termMonths) throw badRequest('Choose the term length to invoice the whole term.');
+  if (rest.billingCycle && rest.billingCycle !== 'MONTHLY' && start === null) throw badRequest('Choose when the term starts.');
   // A quoted rate only for plans priced after a quote; public-sector extras only where the plan lacks them.
   if (!PUBLIC_PLANS[rest.level].quoted) rest.quotedRateCents = null;
   if (!PUBLIC_PLANS[rest.level].quoted || PUBLIC_PLANS[rest.level].staffPerFacility === null) rest.includedStaff = null;
@@ -125,7 +149,7 @@ export async function saveAccount(tenantId: string, body: AccountInput) {
   }
   const data0 = { ...rest, items: readChoices(choices) };
   const endOfDay = (d: string | null | undefined) => (d === undefined ? undefined : d === null ? null : new Date(`${d}T23:59:59.999Z`));
-  const data = { ...data0, trialEndsAt: endOfDay(trialEndsOn), suspensionHoldUntil: endOfDay(suspensionHoldUntil) };
+  const data = { ...data0, ...(start !== undefined ? { termStart: start } : {}), trialEndsAt: endOfDay(trialEndsOn), suspensionHoldUntil: endOfDay(suspensionHoldUntil) };
   await withTenant(tenantId, async (tx) => {
     for (const f of facilities) {
       const updated = await tx.facility.updateMany({ where: { id: f.id }, data: { billingTier: f.tier, billingMonthlyCents: f.customCents } });
@@ -159,7 +183,8 @@ export async function generateDraft(tenantId: string, month: string, adminId: st
     data: {
       tenantId,
       periodStart: start,
-      periodEnd: end,
+      // A prepaid invoice covers its months (a year, or the whole term).
+      periodEnd: est.prepaidMonths > 1 ? est.periodEnd : end,
       subtotalCents: est.subtotalCents,
       taxLines: est.taxLines as unknown as Prisma.InputJsonValue,
       totalCents: est.totalCents,

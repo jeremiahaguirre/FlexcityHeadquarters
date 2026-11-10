@@ -84,6 +84,30 @@ organization:
 | Bank connection | Integration | $39 | $300 |
 | Union hub | Union | $150 | $150 |
 
+## Billing terms: monthly, yearly or a set term
+
+Set per organization in the Dev console (city → Billing → Billing terms); logic in `apps/api/src/services/billing/terms.ts`.
+
+- **Invoice:** monthly; yearly in advance (twelve months of fixed charges on the anniversary month); or the whole term up
+  front (e.g. five years on one invoice).
+- **Term:** month to month, or a committed length (1–5 years offered, any number of months up to 120). Prices are held for
+  the term; afterwards billing continues month to month at the same rates, without the discount, until renewed.
+- **Discount** on fixed charges (plans, facilities, options, staff places), standard by term and editable per organization:
+
+| Term | Standard discount | Whole term up front |
+| --- | --- | --- |
+| Month to month | 0% | — |
+| 1 year (or yearly billing) | 4% | 6% |
+| 2 years | 6% | 8% |
+| 3 years | 8% | 10% |
+| 4 years | 10% | 12% |
+| 5 years | 12% | 14% |
+
+- **Usage** (active staff beyond the allowance) is never prepaid or discounted: it's invoiced each month for that month.
+  Between prepaid invoices, a month with no usage has nothing to bill.
+- The estimate shows each invoice, the monthly equivalent, the yearly amount and the contract total; the organization's
+  Billing page shows its terms and the next invoice in advance. The website's plans page has a monthly / yearly switch.
+
 ## Never behind a paywall
 
 Safety and legal duties (working alone, injury reports, the provincial rules engine: overtime, rest periods, young-worker
