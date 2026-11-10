@@ -84,7 +84,7 @@ export function MultiSelect({
         aria-describedby={describedBy}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'flex min-h-[3rem] w-full items-center gap-2 rounded-xl border border-line bg-panel px-3 py-2 text-left text-body transition-colors hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--brand))] disabled:cursor-not-allowed disabled:opacity-60',
+          'flex min-h-[3rem] w-full items-center gap-2 rounded-xl border border-field bg-panel px-3 py-2 text-left text-body transition-colors hover:border-ink/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60',
           open && 'border-[rgb(var(--brand))]',
         )}
       >
@@ -115,7 +115,7 @@ export function MultiSelect({
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t('multiSelect.search')}
                 aria-label={t('multiSelect.search')}
-                className="h-10 w-full rounded-lg bg-surface pl-9 pr-3 text-small outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--brand))]"
+                className="h-10 w-full rounded-lg bg-surface pl-9 pr-3 text-small outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 autoFocus
               />
             </div>

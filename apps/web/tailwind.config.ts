@@ -31,6 +31,8 @@ const config: Config = {
         display: ['var(--font-sans)', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
       colors: {
+        focus: 'rgb(var(--focus) / <alpha-value>)',
+        field: 'rgb(var(--field-border) / <alpha-value>)',
         brand: {
           DEFAULT: 'rgb(var(--brand) / <alpha-value>)',
           hover: 'rgb(var(--brand-hover) / <alpha-value>)',

@@ -104,7 +104,7 @@ export function CommandMenu({ destinations, compact = false }: { destinations: D
               aria-activedescendant={results[i] ? `jump-${i}` : undefined}
               aria-label={t('jump.placeholder')}
               placeholder={t('jump.placeholder')}
-              className="h-11 w-full rounded-xl border border-line bg-panel pl-9 pr-3 text-body outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="h-11 w-full rounded-xl border border-field bg-panel pl-9 pr-3 text-body outline-none focus:border-focus focus:ring-2 focus:ring-focus/30"
             />
           </div>
           <ul id="jump-list" role="listbox" className="-mx-1 max-h-[50vh] overflow-y-auto">

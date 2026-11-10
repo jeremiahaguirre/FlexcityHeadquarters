@@ -15,6 +15,8 @@
   --ink: 11 31 34;
   --muted: 74 92 94;          /* 5.2:1 on page, 4.8:1 on surface */
   --line: 201 213 210;
+  --field-border: 112 130 128; /* text boxes and dropdowns: 3.6:1 on cards (WCAG non-text contrast) */
+  --focus: 13 95 89;           /* keyboard focus ring: 6:1 or better */
   --brand-text: 10 90 84;     /* pine text: 6.5:1 on page */
   --ok: 36 96 48;             /* forest: done, open, confirmed */
   --ok-bg: 219 235 220;
@@ -38,6 +40,8 @@
     --ink: 228 236 234;
     --muted: 150 170 168;
     --line: 39 58 59;
+    --field-border: 98 122 121;
+    --focus: 118 206 192;
     --brand-text: 118 206 192;
     --ok: 140 205 145;
     --ok-bg: 24 46 31;
@@ -59,6 +63,8 @@
     --ink: 228 236 234;
     --muted: 150 170 168;
     --line: 39 58 59;
+    --field-border: 98 122 121;
+    --focus: 118 206 192;
     --brand-text: 118 206 192;
     --ok: 140 205 145;
     --ok-bg: 24 46 31;
@@ -102,7 +108,7 @@ body {
 
 /* One focus style everywhere: visible, brand-coloured, never removed. */
 :focus-visible {
-  outline: 2px solid rgb(var(--brand));
+  outline: 2px solid rgb(var(--focus));
   outline-offset: 2px;
 }
 

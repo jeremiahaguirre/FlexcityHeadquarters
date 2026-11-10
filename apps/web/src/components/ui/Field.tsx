@@ -5,7 +5,7 @@ import { type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, ty
 import { cn } from '@/lib/cn';
 
 const control =
-  'block w-full rounded-xl border border-line bg-panel px-3.5 text-body text-ink placeholder:text-muted/80 transition-colors hover:border-muted/60 disabled:bg-surface aria-[invalid=true]:border-warn';
+  'block w-full rounded-xl border border-field bg-panel px-3.5 text-body text-ink placeholder:text-muted transition-colors hover:border-ink/50 disabled:border-line disabled:bg-surface aria-[invalid=true]:border-warn';
 
 /**
  * Label above, optional hint, error below with an icon. Inputs are 16px so phones

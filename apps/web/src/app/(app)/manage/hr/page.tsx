@@ -109,7 +109,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
                       </span>
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                     </>,
-                    'group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand',
+                    'group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus',
                   )}
                 </li>
               ))}
@@ -149,7 +149,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
                   <span className="flex-1 text-small font-semibold">{t(`hr.areas.${a.key}`)}</span>
                   {a.todo ? <span className="h-2 w-2 rounded-full bg-warn" aria-label={t('hr.needsAttention')} /> : null}
                 </>,
-                'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-panel hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                'group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-panel hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus',
               )}
             </li>
           ))}
