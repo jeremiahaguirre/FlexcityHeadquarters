@@ -363,8 +363,13 @@ signupRouter.get(
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
       const list = await tx.bookingRequest.findMany({ where: { OR: [{ status: 'REQUESTED' }, { startsAt: { gte: new Date(Date.now() - 86_400_000) } }] }, orderBy: [{ status: 'desc' }, { startsAt: 'asc' }], take: 200 });
-      const services = await tx.bookableService.findMany({ select: { id: true, name: true } });
-      return list.map((r) => ({ ...r, service: services.find((s) => s.id === r.serviceId)?.name ?? '' }));
+      const services = await tx.bookableService.findMany({ select: { id: true, name: true, facilityId: true } });
+      const facilities = await tx.facility.findMany({ select: { id: true, timezone: true } });
+      return list.map((r) => {
+        const v = services.find((s) => s.id === r.serviceId);
+        // Times read in the facility's own time zone, wherever staff sit.
+        return { ...r, service: v?.name ?? '', timezone: facilities.find((f) => f.id === v?.facilityId)?.timezone ?? 'America/Toronto' };
+      });
     });
     res.json(out);
   }),

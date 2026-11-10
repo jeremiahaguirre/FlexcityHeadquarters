@@ -18,7 +18,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Settings { enabled: boolean; terms: string; termsFr: string; payment: string; paymentFr: string; privacyContact: string }
 interface Service { id: string; facilityId: string; name: string; nameFr: string | null; description: string | null; durationMinutes: number; priceCents: number; capacity: number; maxPartySize: number | null; daysOfWeek: number[]; openMinute: number; closeMinute: number; leadDays: number; active: boolean }
-interface Booking { id: string; service: string; startsAt: string; endsAt: string; partySize: number | null; name: string; email: string; phone: string; organization: string | null; notes: string | null; status: 'REQUESTED' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED'; reference: string }
+interface Booking { id: string; service: string; startsAt: string; endsAt: string; partySize: number | null; name: string; email: string; phone: string; organization: string | null; notes: string | null; status: 'REQUESTED' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED'; reference: string; timezone: string }
 const TONE: Record<Booking['status'], Tone> = { REQUESTED: 'new', CONFIRMED: 'ok', DECLINED: 'neutral', CANCELLED: 'neutral' };
 
 /** The public sign-up page's settings, what the public can book, and booking requests. */
@@ -36,7 +36,7 @@ export default function BookingsPage() {
   const [url, setUrl] = useState('');
   useEffect(() => setUrl(`${window.location.origin}/signup`), []);
   const dow = (d: number) => new Intl.DateTimeFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
-  const when = (iso: string) => new Intl.DateTimeFormat(lng, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string, timeZone?: string) => new Intl.DateTimeFormat(lng, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(new Date(iso));
 
   async function saveSettings(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,7 +68,7 @@ export default function BookingsPage() {
               {bookings.data.map((b) => (
                 <li key={b.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="font-semibold">{b.service} · {when(b.startsAt)} <StatusPill tone={TONE[b.status]} className="ml-1">{t(`bookingsPage.status.${b.status}`)}</StatusPill></p>
+                    <p className="font-semibold">{b.service} · {when(b.startsAt, b.timezone)} <StatusPill tone={TONE[b.status]} className="ml-1">{t(`bookingsPage.status.${b.status}`)}</StatusPill></p>
                     <p className="text-caption text-muted">{b.name}{b.organization ? ` (${b.organization})` : ''} · {b.phone} · {b.email}{b.partySize ? ` · ${t('bookingsPage.people', { count: b.partySize })}` : ''} · {b.reference}</p>
                     {b.notes ? <p className="text-caption">“{b.notes}”</p> : null}
                   </div>
