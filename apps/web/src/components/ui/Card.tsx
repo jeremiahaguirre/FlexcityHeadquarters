@@ -7,12 +7,12 @@ export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
 
 export function CardHeader({ title, description, action, className }: { title: ReactNode; description?: ReactNode; action?: ReactNode; className?: string }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3 px-5 pt-5', className)}>
-      <div className="min-w-0">
+    <div className={cn('flex flex-wrap items-start justify-between gap-3 px-5 pt-5', className)}>
+      <div className="min-w-[min(100%,12rem)] flex-1">
         <h2 className="text-subheading text-ink">{title}</h2>
         {description ? <p className="mt-1 text-small text-muted">{description}</p> : null}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="max-w-full shrink-0">{action}</div> : null}
     </div>
   );
 }
