@@ -45,7 +45,7 @@ export function MyLeaveBalances() {
   const data = useQuery<{ year: number; types: LeaveBalance[] }>('/api/me/leave');
   if (data.error || !data.data?.types.length) return null;
   return (
-    <Card>
+    <Card className="mb-3">
       <CardHeader title={t('leave.myTitle', { year: data.data.year })} description={t('leave.myHelp')} />
       <CardBody className="pt-2"><BalanceTiles types={data.data.types} /></CardBody>
     </Card>

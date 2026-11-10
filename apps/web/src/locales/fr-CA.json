@@ -3569,7 +3569,7 @@
       "reviewsLate_other": "{{count}} évaluations en retard",
       "trainingDue_one": "{{count}} formation obligatoire manquante ou expirée",
       "trainingDue_other": "{{count}} formations obligatoires manquantes ou expirées",
-      "health": "{{claims}} réclamations pour blessure ouvertes · {{cases}} mesures d’adaptation",
+      "health": "Réclamations pour blessure ouvertes : {{claims}} · mesures d’adaptation : {{cases}}",
       "grievances_one": "{{count}} grief ouvert",
       "grievances_other": "{{count}} griefs ouverts",
       "flagged_one": "{{count}} personne signalée pour examen",

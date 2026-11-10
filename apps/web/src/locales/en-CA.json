@@ -3569,7 +3569,7 @@
       "reviewsLate_other": "{{count}} reviews past due",
       "trainingDue_one": "{{count}} required course missing or expired",
       "trainingDue_other": "{{count}} required courses missing or expired",
-      "health": "{{claims}} open injury claims · {{cases}} accommodations",
+      "health": "Open injury claims: {{claims}} · accommodations: {{cases}}",
       "grievances_one": "{{count}} open grievance",
       "grievances_other": "{{count}} open grievances",
       "flagged_one": "{{count}} person flagged for review",
