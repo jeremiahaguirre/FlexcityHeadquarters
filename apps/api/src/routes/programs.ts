@@ -1,7 +1,8 @@
 /**
- * Lesson and swim club planning: head guards and aquatics supervisors keep the
- * swim levels, build a campaign (a season of lessons, a swim club session, a
- * camp) out of sets on any pattern, and publish it for member services.
+ * Program planning for any facility (pool, arena, community centre): planners
+ * keep the levels (swimming, skating or the city's own), build a campaign (a
+ * season of lessons, a club session, a camp) out of sets on any pattern, and
+ * publish it for member services.
  */
 import type { LessonClass } from '@prisma/client';
 import { Router } from 'express';
@@ -50,7 +51,7 @@ programsRouter.post(
   requirePermission('lessons.plan'),
   h(async (req, res) => {
     const a = authOf(req);
-    const { preset } = z.object({ preset: z.enum(['RED_CROSS', 'LIFESAVING']) }).parse(req.body);
+    const { preset } = z.object({ preset: z.enum(['RED_CROSS', 'LIFESAVING', 'CANSKATE']) }).parse(req.body);
     const p = PRESETS[preset];
     const added = await withTenant(a.tenantId, async (tx) => {
       const existing = await tx.swimLevel.count({ where: { program: p.program } });
@@ -311,7 +312,7 @@ programsRouter.patch(
       const s = await tx.lessonClass.findFirst({ where: { id: setId, campaignId: uuid.parse(req.params.id) } });
       if (!s) throw notFound('Set');
       const { capacity, daysOfWeek, startsOn, endsOn, name, ...rest } = b;
-      if (capacity !== undefined && capacity < (await tx.lessonEnrollment.count({ where: { classId: setId, status: 'ENROLLED' } }))) throw conflict('BELOW_ENROLLED', 'More swimmers are already registered than that.');
+      if (capacity !== undefined && capacity < (await tx.lessonEnrollment.count({ where: { classId: setId, status: 'ENROLLED' } }))) throw conflict('BELOW_ENROLLED', 'More people are already registered than that.');
       await tx.lessonClass.update({
         where: { id: setId },
         data: { ...rest, ...(name ? { name } : {}), ...(capacity !== undefined ? { maxSwimmers: capacity } : {}), ...(daysOfWeek ? { daysOfWeek: [...new Set(daysOfWeek)].sort(), dayOfWeek: Math.min(...daysOfWeek) } : {}), ...(startsOn ? { startsOn: new Date(startsOn) } : {}), ...(endsOn ? { endsOn: new Date(endsOn) } : {}) },
@@ -331,7 +332,7 @@ programsRouter.delete(
     await withTenant(a.tenantId, async (tx) => {
       const s = await tx.lessonClass.findFirst({ where: { id: setId, campaignId: uuid.parse(req.params.id) } });
       if (!s) throw notFound('Set');
-      if (await tx.lessonEnrollment.count({ where: { classId: setId } })) throw conflict('HAS_REGISTRATIONS', 'Swimmers are registered in this set. Cancel their registrations first.');
+      if (await tx.lessonEnrollment.count({ where: { classId: setId } })) throw conflict('HAS_REGISTRATIONS', 'People are registered in this set. Cancel their registrations first.');
       await tx.lessonClass.delete({ where: { id: setId } });
     });
     res.status(204).end();

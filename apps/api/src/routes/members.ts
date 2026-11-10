@@ -210,7 +210,7 @@ membersRouter.post(
         if (!member.dateOfBirth && !b.ageOverride) throw new HttpError(400, 'NEEDS_BIRTH_DATE', 'Add a birth date to check the age for this level.');
         const age = member.dateOfBirth ? ageInMonths(iso(member.dateOfBirth)!, iso(set.startsOn)!) : null;
         if (age !== null && !fitsAge(age, set.minAgeMonths, set.maxAgeMonths) && !b.ageOverride) {
-          throw new HttpError(409, 'AGE_OUTSIDE_LEVEL', 'This swimmer’s age is outside this level.', { ageMonths: age, minAgeMonths: set.minAgeMonths, maxAgeMonths: set.maxAgeMonths });
+          throw new HttpError(409, 'AGE_OUTSIDE_LEVEL', 'This participant’s age is outside this level.', { ageMonths: age, minAgeMonths: set.minAgeMonths, maxAgeMonths: set.maxAgeMonths });
         }
       }
       const enrolled = await tx.lessonEnrollment.count({ where: { classId: set.id, status: 'ENROLLED' } });

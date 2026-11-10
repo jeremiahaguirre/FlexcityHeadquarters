@@ -1,4 +1,8 @@
 /**
+ * Program level presets (swimming and skating) with the ages each program
+ * publishes. Cities can also add their own levels for anything else: hockey
+ * skills, gymnastics, dance, fitness.
+ *
  * Swim level presets with the ages each program publishes. The Canadian Red
  * Cross ended its swim program at the end of 2022 and many cities now teach
  * the Lifesaving Society's Swim for Life; both are offered, and every level
@@ -14,7 +18,7 @@ const range = (prefix: string, prefixFr: string, from: number, to: number, base:
     return tweak ? tweak(n, l) : l;
   });
 
-export const PRESETS: Record<'RED_CROSS' | 'LIFESAVING', { program: string; levels: LevelPreset[] }> = {
+export const PRESETS: Record<'RED_CROSS' | 'LIFESAVING' | 'CANSKATE', { program: string; levels: LevelPreset[] }> = {
   RED_CROSS: {
     program: 'Red Cross Swim',
     levels: [
@@ -39,6 +43,15 @@ export const PRESETS: Record<'RED_CROSS' | 'LIFESAVING', { program: string; leve
       { name: 'Star Patrol', nameFr: 'Patrouille étoile', minAgeMonths: 96, maxAgeMonths: null, ratio: 8, durationMinutes: 60 },
       { name: 'Bronze Star', nameFr: 'Étoile de bronze', minAgeMonths: 120, maxAgeMonths: null, ratio: 10, durationMinutes: 60 },
       { name: 'Adult Learn to Swim', nameFr: 'Apprendre à nager adulte', minAgeMonths: 168, maxAgeMonths: null, ratio: 8, durationMinutes: 45 },
+    ],
+  },
+  /** Skate Canada's learn-to-skate program: stages taught on ice, in groups led by coaches. */
+  CANSKATE: {
+    program: 'Skate Canada CanSkate',
+    levels: [
+      { name: 'Pre-CanSkate', nameFr: 'Pré-Patinage Plus', minAgeMonths: 36, maxAgeMonths: 60, ratio: 6, durationMinutes: 30 },
+      ...range('CanSkate Stage', 'Patinage Plus étape', 1, 6, { minAgeMonths: 48, maxAgeMonths: null, ratio: 10, durationMinutes: 45 }),
+      { name: 'Adult Learn to Skate', nameFr: 'Apprendre à patiner adulte', minAgeMonths: 216, maxAgeMonths: null, ratio: 10, durationMinutes: 45 },
     ],
   },
 };

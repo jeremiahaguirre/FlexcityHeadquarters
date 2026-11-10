@@ -61,6 +61,10 @@ describe('planning and registration', () => {
   let kid: string;
   let toddler: string;
 
+  it('arenas load Skate Canada CanSkate levels too', async () => {
+    expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'CANSKATE' })).body.added).toBe(8);
+  });
+
   it('head guards load Red Cross levels with their ages', async () => {
     expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'RED_CROSS' })).body.added).toBe(19);
     expect((await call(tok.head).post('/api/swim-levels/presets', { preset: 'RED_CROSS' })).body.added).toBe(0);

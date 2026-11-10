@@ -22,7 +22,7 @@ export const MENU: MenuItem[] = [
   { href: '/status', key: 'status', group: 'deck', permissions: ['ops.status.read'] },
   { href: '/ops', key: 'ops', group: 'deck', permissions: ['ops.chemical.record'] },
   { href: '/incidents', key: 'incidents', group: 'deck', permissions: ['incidents.create'] },
-  { href: '/members', key: 'members', group: 'deck', permissions: ['members.manage'] },
+  { href: '/members', key: 'members', group: 'manage', permissions: ['members.manage'] },
   { href: '/manage/programs', key: 'programs', group: 'manage', permissions: ['lessons.plan'] },
   { href: '/manage/schedule', key: 'manageSchedule', group: 'manage', permissions: ['schedule.write'] },
   { href: '/manage/forecast', key: 'forecast', group: 'manage', permissions: ['schedule.write'] },

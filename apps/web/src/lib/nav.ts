@@ -29,7 +29,7 @@ export const NAV: NavItem[] = [
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: true },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: true },
-  { href: '/members', key: 'members', icon: IdCard, group: 'deck', permission: 'members.manage', tab: 7, ready: true },
+  { href: '/members', key: 'members', icon: IdCard, group: 'manage', permission: 'members.manage', tab: 7, ready: true },
   { href: '/manage/programs', key: 'programs', icon: Layers, group: 'manage', permission: 'lessons.plan', ready: true },
   { href: '/manage/schedule', key: 'manageSchedule', icon: Activity, group: 'manage', permission: 'schedule.write', ready: true },
   { href: '/manage/forecast', key: 'forecast', icon: TrendingUp, group: 'manage', permission: 'schedule.write', ready: true },

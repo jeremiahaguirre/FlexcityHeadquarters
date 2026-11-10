@@ -21,7 +21,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 const STATUS_TONE: Record<Campaign['status'], Tone> = { DRAFT: 'neutral', PUBLISHED: 'ok', CLOSED: 'warn' };
 const DOW = [0, 1, 2, 3, 4, 5, 6];
 
-/** Head guards and aquatics supervisors plan lessons and swim club: levels, campaigns, sets. */
+/** Planners at any facility (pool, arena, community centre) plan lessons, clubs and camps: levels, campaigns, sets. */
 export default function ProgramsPage() {
   return (
     <Suspense fallback={<Skeleton className="h-96" />}>
@@ -252,7 +252,7 @@ function Levels() {
   const { t, i18n } = useTranslation();
   const q = useQuery<SwimLevel[]>('/api/swim-levels');
   const { run, busy } = useAction();
-  const preset = (p: 'RED_CROSS' | 'LIFESAVING') => void run(p, () => api<{ added: number }>('/api/swim-levels/presets', { method: 'POST', body: { preset: p } }), t('programs.levelsAdded')).then(() => q.reload());
+  const preset = (p: 'RED_CROSS' | 'LIFESAVING' | 'CANSKATE') => void run(p, () => api<{ added: number }>('/api/swim-levels/presets', { method: 'POST', body: { preset: p } }), t('programs.levelsAdded')).then(() => q.reload());
   const programs = [...new Set((q.data ?? []).map((l) => l.program))];
   return (
     <Card>
@@ -261,6 +261,7 @@ function Levels() {
         <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="secondary" loading={busy === 'RED_CROSS'} onClick={() => preset('RED_CROSS')}>{t('programs.addRedCross')}</Button>
           <Button size="sm" variant="secondary" loading={busy === 'LIFESAVING'} onClick={() => preset('LIFESAVING')}>{t('programs.addLifesaving')}</Button>
+          <Button size="sm" variant="secondary" loading={busy === 'CANSKATE'} onClick={() => preset('CANSKATE')}>{t('programs.addCanSkate')}</Button>
         </div>
         <p className="rounded-xl bg-surface px-4 py-3 text-caption text-muted">{t('programs.levelsNote')}</p>
         {!q.data ? <Skeleton className="h-32" /> : !q.data.length ? <EmptyState icon={Layers} title={t('programs.noLevels')}>{t('programs.noLevelsHelp')}</EmptyState> : programs.map((p) => (
