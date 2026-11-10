@@ -479,3 +479,17 @@ describe('RL-1 slip numbers stay with the person', async () => {
     expect(assignRl1Numbers(['aaron', 'alice', 'bob'], 1000, first)).toEqual({ alice: 1000, bob: 1001, aaron: 1002 });
   });
 });
+
+describe('several roles at once', async () => {
+  const { hiddenMenuFor } = await import('../../src/services/platform/roleOverrides.js');
+  const { scopeOf } = await import('../../src/services/people/customRoles.js');
+  it('a screen the city hid for one role still shows when another of their roles has it', () => {
+    const overrides = { STAFF: { grant: [], revoke: [], hideMenu: ['/board'] } } as never;
+    expect(hiddenMenuFor(['STAFF'], overrides)).toContain('/board');
+    expect(hiddenMenuFor(['STAFF', 'FRONT_DESK'], overrides)).not.toContain('/board');
+  });
+  it('HR administrator reaches every department, whatever department-limited role they also hold', () => {
+    const access = { perms: new Set(), roles: [{ perms: ['schedule.write'], positionIds: ['p1'], facilityIds: [] }] } as never;
+    expect(scopeOf(new Set() as never, access, { roles: ['HR_ADMIN', 'STAFF'], managed: { hasDepartments: true, positionIds: [], aquatic: false } })).toBeNull();
+  });
+});

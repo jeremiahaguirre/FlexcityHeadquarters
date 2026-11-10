@@ -46,6 +46,27 @@ describe('menus per role', () => {
     expect(menu('UNION_STEWARD', 'STAFF').items).toContain('/board');
   });
 
+  it('two or more roles: every screen of each, once, in the usual order, starting at their own work', () => {
+    const both = menu('STAFF', 'FRONT_DESK');
+    for (const h of [...menu('STAFF').items, ...menu('FRONT_DESK').items]) expect(both.items).toContain(h);
+    expect(new Set(both.items).size).toBe(both.items.length);
+    expect(both.home).toBe('/today');
+    // HR who also works shifts: personal screens come back, and their day starts on Today.
+    const hrGuard = menu('HR_ADMIN', 'STAFF');
+    expect(hrGuard.items).toEqual(expect.arrayContaining(['/today', '/board', '/manage/payroll', '/manage/settings']));
+    expect(hrGuard.home).toBe('/today');
+    // A supervisor who is a steward keeps the deck and gains the union hub.
+    expect(menu('AQUATIC_SUPERVISOR', 'UNION_STEWARD').items).toEqual(expect.arrayContaining(['/deck', '/manage/schedule', '/union']));
+  });
+
+  it('on phones, several roles still get four tabs and everything else under More, nothing lost', () => {
+    const perms = new Set([...ROLE_PERMISSIONS.STAFF, ...ROLE_PERMISSIONS.FRONT_DESK, ...ROLE_PERMISSIONS.AQUATIC_SUPERVISOR]);
+    const items = visibleNav((p) => perms.has(p as never));
+    const { tabs, more } = phoneTabs(items);
+    expect(tabs).toHaveLength(4);
+    expect([...tabs, ...more].map((n) => n.href).sort()).toEqual(items.map((n) => n.href).sort());
+  });
+
   it('phones get useful tabs for every role', () => {
     const tabsFor = (role: keyof typeof ROLE_PERMISSIONS) => {
       const perms = new Set(ROLE_PERMISSIONS[role]);
