@@ -12,7 +12,16 @@ export { ApiError };
  *   lift a long-lived credential. The refresh token is an HTTP-only cookie.
  * - On 401, it refreshes once and retries.
  */
-let accessToken: string | null = null;
+export const SUPPORT_TOKEN_KEY = 'fh-support-token';
+/** An FH support visit keeps its short read-only token for this tab only. */
+function supportToken(): string | null {
+  try {
+    return typeof window === 'undefined' ? null : sessionStorage.getItem(SUPPORT_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+let accessToken: string | null = supportToken();
 let refreshing: Promise<boolean> | null = null;
 
 function tenantHeader(): Record<string, string> {
@@ -23,6 +32,8 @@ function tenantHeader(): Record<string, string> {
 }
 
 async function refresh(): Promise<boolean> {
+  // A support visit can't be renewed: when it ends, it ends.
+  if (supportToken()) return false;
   refreshing ??= fetch('/api/auth/refresh', { method: 'POST', credentials: 'include', headers: tenantHeader() })
     .then(async (r) => {
       if (!r.ok) return false;
@@ -131,6 +142,11 @@ export async function login(email: string, password: string) {
 export async function logout() {
   await api('/api/auth/logout', { method: 'POST' }, false).catch(() => undefined);
   accessToken = null;
+  try {
+    sessionStorage.removeItem(SUPPORT_TOKEN_KEY);
+  } catch {
+    /* fine */
+  }
   // Shared deck phones: don't leave rosters (children's names) or cached pages behind.
   try {
     localStorage.removeItem('fh-lessons-cache');

@@ -1,6 +1,6 @@
 'use client';
 
-import { Lock, MoreHorizontal, UserRound } from 'lucide-react';
+import { Lock, MoreHorizontal, ShieldCheck, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -118,6 +118,13 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         </header>
 
         <main id="main" key={pathname} className="animate-page-in mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:px-8 md:pb-12 md:pt-8">
+          {me?.support ? (
+            <div role="status" className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-new/30 bg-new-bg px-4 py-3 text-small text-ink">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-new" aria-hidden="true" />
+              <span className="font-semibold">{t('support.banner', { name: me.support.admin })}</span>
+              <span className="text-muted">{t(`support.level.${me.support.level}`)} · {t('support.until', { time: new Date(me.support.endsAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) })}</span>
+            </div>
+          ) : null}
           <BillingBanner />
           {children}
         </main>

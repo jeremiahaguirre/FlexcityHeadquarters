@@ -1373,7 +1373,8 @@
       "roles": "Roles",
       "pools": "Pools",
       "billing": "Billing",
-      "access": "Menus and access"
+      "access": "Menus and access",
+      "lifecycle": "Support and closing"
     },
     "logo": "City logo",
     "logoHelp": "Shown beside the FlexcityHeadquarters logo on the sign-in page, in the app and on the careers page. It never replaces the FH logo.",
@@ -1581,7 +1582,8 @@
       "setup": "Set-up",
       "access": "Access",
       "people": "People",
-      "money": "Money"
+      "money": "Money",
+      "account": "Account"
     }
   },
   "passkeys": {
@@ -4157,5 +4159,66 @@
       "POLICY": "Signed safety policy",
       "OTHER": "Description"
     }
+  },
+  "support": {
+    "cardTitle": "FlexcityHeadquarters support access",
+    "cardHelp": "Let the FlexcityHeadquarters team see your setup to help you. Access is read-only, time-limited, recorded, and you can end it at any time.",
+    "activeLine": "Support can view until {{time}}",
+    "by": "allowed by {{name}}",
+    "revoke": "End access now",
+    "revoked": "Support access ended",
+    "off": "Support can't see your organization right now.",
+    "what": "What they can see",
+    "howLong": "For how long",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "levelHelp": {
+      "SETUP": "Settings, facilities, positions, schedules and roles. No personal records.",
+      "FULL": "Everything an administrator sees, except the union hub. Use only when a problem involves people's records."
+    },
+    "level": {
+      "SETUP": "Setup only",
+      "FULL": "Full view"
+    },
+    "reason": "Why (optional)",
+    "reasonPlaceholder": "e.g. Help with the summer schedule",
+    "allow": "Allow support access",
+    "allowed": "Support access allowed",
+    "visits": "Recent support visits",
+    "auditHint": "Every page they open is in your audit log.",
+    "readOnly": "Read-only",
+    "never": "Support can never change anything, and never sees the union hub.",
+    "title": "Support visit",
+    "opening": "Opening the support view…",
+    "noCode": "This link is missing its code. Start the visit again from the Dev console.",
+    "failed": "This support link has expired or access was ended.",
+    "banner": "Support view: {{name}} from FlexcityHeadquarters",
+    "until": "until {{time}}"
+  },
+  "lifecycle": {
+    "supportTitle": "Support visit",
+    "supportHelp": "Open a read-only view of this city. Only possible while the city has allowed it; every page is logged for them.",
+    "allowedUntil": "Allowed until {{time}}",
+    "openVisit": "Open support view",
+    "noConsent": "This city hasn't allowed support access. Ask an administrator there to turn it on in Settings.",
+    "closeTitle": "Close this city",
+    "closeHelp": "Turning a city off blocks sign-in right away. Offboarding also schedules its records for deletion.",
+    "offboarded": "Offboarded",
+    "deleteOn": "Records will be deleted after {{date}}. Billing records are kept.",
+    "disabled": "Turned off",
+    "open": "Active",
+    "reason": "Reason",
+    "disableHint": "Staff will see that the organization is unavailable.",
+    "disable": "Turn off",
+    "enable": "Turn back on",
+    "offboard": "Offboard city",
+    "offboardHelp": "Sign-in stops now. Records are kept for the retention period so the city can export them, then deleted. Invoices and payment records are kept as the law requires.",
+    "retention": "Keep records for (days)",
+    "retentionHint": "Between 30 and 3650 days.",
+    "confirm": "Type {{subdomain}} to confirm",
+    "disabledToast": "City turned off",
+    "enabledToast": "City turned back on",
+    "offboardedToast": "City offboarded",
+    "passkeyNote": "These actions ask for your passkey."
   }
 }

@@ -1373,7 +1373,8 @@
       "roles": "Rôles",
       "pools": "Bassins",
       "billing": "Facturation",
-      "access": "Menus et accès"
+      "access": "Menus et accès",
+      "lifecycle": "Soutien et fermeture"
     },
     "logo": "Logo de la ville",
     "logoHelp": "Affiché à côté du logo FlexcityHeadquarters sur la page de connexion, dans l'application et sur la page carrières. Il ne remplace jamais le logo FH.",
@@ -1581,7 +1582,8 @@
       "setup": "Configuration",
       "access": "Accès",
       "people": "Personnel",
-      "money": "Facturation"
+      "money": "Facturation",
+      "account": "Compte"
     }
   },
   "passkeys": {
@@ -4157,5 +4159,66 @@
       "POLICY": "Politique de sécurité signée",
       "OTHER": "Description"
     }
+  },
+  "support": {
+    "cardTitle": "Accès du soutien FlexcityHeadquarters",
+    "cardHelp": "Permettez à l’équipe FlexcityHeadquarters de voir votre configuration pour vous aider. L’accès est en lecture seule, limité dans le temps, consigné, et vous pouvez y mettre fin en tout temps.",
+    "activeLine": "Le soutien peut consulter jusqu’à {{time}}",
+    "by": "autorisé par {{name}}",
+    "revoke": "Mettre fin à l’accès",
+    "revoked": "Accès du soutien terminé",
+    "off": "Le soutien ne peut pas voir votre organisation en ce moment.",
+    "what": "Ce qu’ils peuvent voir",
+    "howLong": "Pendant combien de temps",
+    "hours_one": "{{count}} heure",
+    "hours_other": "{{count}} heures",
+    "levelHelp": {
+      "SETUP": "Paramètres, installations, postes, horaires et rôles. Aucun dossier personnel.",
+      "FULL": "Tout ce que voit un administrateur, sauf l’espace syndical. À utiliser seulement si le problème touche des dossiers de personnes."
+    },
+    "level": {
+      "SETUP": "Configuration seulement",
+      "FULL": "Vue complète"
+    },
+    "reason": "Motif (facultatif)",
+    "reasonPlaceholder": "p. ex. Aide avec l’horaire d’été",
+    "allow": "Autoriser l’accès du soutien",
+    "allowed": "Accès du soutien autorisé",
+    "visits": "Visites récentes du soutien",
+    "auditHint": "Chaque page consultée figure dans votre journal d’audit.",
+    "readOnly": "Lecture seule",
+    "never": "Le soutien ne peut jamais rien modifier et ne voit jamais l’espace syndical.",
+    "title": "Visite du soutien",
+    "opening": "Ouverture de la vue soutien…",
+    "noCode": "Ce lien n’a pas de code. Relancez la visite depuis la console Dev.",
+    "failed": "Ce lien de soutien a expiré ou l’accès a été retiré.",
+    "banner": "Vue soutien : {{name}} de FlexcityHeadquarters",
+    "until": "jusqu’à {{time}}"
+  },
+  "lifecycle": {
+    "supportTitle": "Visite du soutien",
+    "supportHelp": "Ouvrez une vue en lecture seule de cette ville. Possible seulement si la ville l’a autorisé; chaque page lui est consignée.",
+    "allowedUntil": "Autorisé jusqu’à {{time}}",
+    "openVisit": "Ouvrir la vue soutien",
+    "noConsent": "Cette ville n’a pas autorisé l’accès du soutien. Demandez à un administrateur de l’activer dans les paramètres.",
+    "closeTitle": "Fermer cette ville",
+    "closeHelp": "Désactiver une ville bloque la connexion immédiatement. La fermeture planifie aussi la suppression de ses dossiers.",
+    "offboarded": "Fermée",
+    "deleteOn": "Les dossiers seront supprimés après le {{date}}. Les dossiers de facturation sont conservés.",
+    "disabled": "Désactivée",
+    "open": "Active",
+    "reason": "Motif",
+    "disableHint": "Le personnel verra que l’organisation n’est pas disponible.",
+    "disable": "Désactiver",
+    "enable": "Réactiver",
+    "offboard": "Fermer la ville",
+    "offboardHelp": "La connexion cesse maintenant. Les dossiers sont conservés pendant la période de conservation pour que la ville puisse les exporter, puis supprimés. Les factures et paiements sont conservés comme l’exige la loi.",
+    "retention": "Conserver les dossiers (jours)",
+    "retentionHint": "Entre 30 et 3650 jours.",
+    "confirm": "Tapez {{subdomain}} pour confirmer",
+    "disabledToast": "Ville désactivée",
+    "enabledToast": "Ville réactivée",
+    "offboardedToast": "Ville fermée",
+    "passkeyNote": "Ces actions demandent votre clé d’accès."
   }
 }

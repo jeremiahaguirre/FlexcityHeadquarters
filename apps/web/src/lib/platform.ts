@@ -10,7 +10,7 @@ import { demoPlatformApi } from './demoApi';
  * FH Dev console client. The session is an HTTP-only cookie the browser sends
  * by itself; the x-fh-platform header is the API's guard against cross-site requests.
  */
-export async function papi<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function papi<T>(path: string, init: { method?: string; body?: unknown; steppedUp?: boolean } = {}): Promise<T> {
   if (DEMO) return demoPlatformApi<T>(path, init);
   const res = await fetch(`/api/platform${path}`, {
     method: init.method ?? 'GET',
@@ -20,6 +20,12 @@ export async function papi<T>(path: string, init: { method?: string; body?: unkn
   });
   if (!res.ok) {
     const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string; details?: unknown };
+    // Sensitive actions: confirm with the passkey, then try once more.
+    if (b.code === 'PASSKEY_STEP_UP' && !init.steppedUp) {
+      const { platformConfirmWithPasskey } = await import('./passkeys');
+      await platformConfirmWithPasskey();
+      return papi<T>(path, { ...init, steppedUp: true });
+    }
     throw new ApiError(res.status, b.code ?? 'ERROR', b.message ?? res.statusText, b.details);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
