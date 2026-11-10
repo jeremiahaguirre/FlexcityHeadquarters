@@ -41,8 +41,127 @@ async function apiAs(who) {
   return { user, call };
 }
 
+const iso = (d) => d.toISOString().slice(0, 10);
+const plusDays = (n) => new Date(Date.now() + n * 86_400_000);
+const nextDow = (dow, from = 7) => {
+  const d = plusDays(from);
+  while (d.getDay() !== dow) d.setDate(d.getDate() + 1);
+  return iso(d);
+};
+
+/** Programs, member services, prices, bookings, coverage, fleet, injuries, winter and lone work. */
+async function prepareCityWorks() {
+  const sup = await apiAs('supervisor');
+  const hr = await apiAs('hr');
+  const desk = await apiAs('frontdesk');
+  const water = await apiAs('waterworks');
+  const [facility] = await sup.call('GET', '/api/facilities');
+  const positions = await sup.call('GET', '/api/positions');
+  const instructor = positions.find((p) => /instructor/i.test(p.name)) ?? positions[0];
+
+  if (!(await sup.call('GET', '/api/swim-levels')).length) {
+    await sup.call('POST', '/api/swim-levels/presets', { preset: 'LIFESAVING', advanced: true });
+    await sup.call('POST', '/api/swim-levels/presets', { preset: 'CANSKATE' });
+  }
+  if (!(await sup.call('GET', '/api/campaigns')).length) {
+    const levels = await sup.call('GET', '/api/swim-levels');
+    const lvl = (n) => levels.find((l) => l.name === n)?.id ?? null;
+    const startsOn = nextDow(1);
+    const { id } = await sup.call('POST', '/api/campaigns', { name: 'Winter swim lessons 2027', nameFr: 'Cours de natation d’hiver 2027', kind: 'LESSONS', startsOn, endsOn: iso(new Date(new Date(startsOn).getTime() + 70 * 86_400_000)), registrationOpensAt: new Date(Date.now() - 86_400_000).toISOString() });
+    const base = { facilityId: facility.id, positionId: instructor.id, priceCents: 9500, memberPriceCents: 8000 };
+    const set = (level, daysOfWeek, start, weeks, extra = {}) =>
+      sup.call('POST', `/api/campaigns/${id}/sets`, { ...base, levelId: lvl(level), daysOfWeek, startMinute: start, endMinute: start + 30, startsOn, endsOn: iso(new Date(new Date(startsOn).getTime() + (weeks * 7 - 1) * 86_400_000)), ...extra });
+    await set('Parent & Tot 1', [0], 9 * 60 + 30, 8, { priceCents: 7500, memberPriceCents: 6500 });
+    await set('Preschool 2', [6], 10 * 60, 8);
+    await set('Preschool 2', [1, 2, 3, 4, 5], 9 * 60, 2, { name: 'Preschool 2 (March break)' });
+    await set('Swimmer 3', [2, 4], 17 * 60, 6, { endMinute: 17 * 60 + 45, priceCents: 12000, memberPriceCents: 10500 });
+    await set('Bronze Medallion', [1, 2, 3, 4, 5], 13 * 60, 2, { endMinute: 15 * 60, priceCents: 22500, memberPriceCents: null });
+    await sup.call('POST', `/api/campaigns/${id}/publish`);
+  }
+  if (!(await sup.call('GET', '/api/fees')).length) {
+    for (const f of [
+      { kind: 'MEMBERSHIP', period: 'YEAR', ageGroup: 'FAMILY', name: 'Family annual', nameFr: 'Famille, annuel', priceCents: 52000 },
+      { kind: 'MEMBERSHIP', period: 'YEAR', ageGroup: 'ADULT', name: 'Adult annual', nameFr: 'Adulte, annuel', priceCents: 34000 },
+      { kind: 'MEMBERSHIP', period: 'MONTH', ageGroup: 'ADULT', name: 'Adult monthly', nameFr: 'Adulte, mensuel', priceCents: 5500 },
+      { kind: 'MEMBERSHIP', period: 'MONTH', ageGroup: 'SENIOR', name: 'Senior monthly', nameFr: 'Aîné, mensuel', priceCents: 3800 },
+      { kind: 'DROP_IN', period: 'VISIT', ageGroup: 'ADULT', name: 'Adult swim drop-in', nameFr: 'Bain libre adulte', priceCents: 650 },
+      { kind: 'DROP_IN', period: 'VISIT', ageGroup: 'CHILD', name: 'Child swim drop-in', nameFr: 'Bain libre enfant', priceCents: 375 },
+      { kind: 'DROP_IN', period: 'VISIT', ageGroup: 'ALL', name: 'Public skate', nameFr: 'Patinage libre', priceCents: 450 },
+      { kind: 'PASS', period: 'NONE', ageGroup: 'ADULT', name: 'Adult 10-visit pass', nameFr: 'Carte 10 visites adulte', priceCents: 5800, visits: 10 },
+    ]) await sup.call('POST', '/api/fees', f);
+  }
+  const settings = await sup.call('GET', '/api/signup/settings');
+  if (!settings.enabled) {
+    await sup.call('PUT', '/api/signup/settings', {
+      enabled: true,
+      terms: 'Participants follow instructors’ and lifeguards’ directions at all times.\nA full refund is available before the second class; after that, credits only for medical reasons.\nParents or guardians of children under 7 stay on site during lessons.',
+      termsFr: 'Les participants suivent en tout temps les consignes des moniteurs et des sauveteurs.\nUn remboursement complet est offert avant le deuxième cours; ensuite, des crédits seulement pour raisons médicales.\nLes parents ou tuteurs des enfants de moins de 7 ans restent sur place pendant les cours.',
+      payment: 'Pay at the front desk or by phone within 3 days to keep your spot.',
+      paymentFr: 'Payez à l’accueil ou par téléphone d’ici 3 jours pour garder votre place.',
+      privacyContact: 'privacy@demo.flexcity',
+    });
+  }
+  if (!(await sup.call('GET', '/api/bookable-services')).length) {
+    await sup.call('POST', '/api/bookable-services', { facilityId: facility.id, name: 'Party room', nameFr: 'Salle de fête', description: 'Two hours in the party room after a public swim. Tables and chairs for 20.', durationMinutes: 120, priceCents: 15000, capacity: 1, maxPartySize: 20, daysOfWeek: [0, 6], openMinute: 10 * 60, closeMinute: 18 * 60, leadDays: 3 });
+    await sup.call('POST', '/api/bookable-services', { facilityId: facility.id, name: 'Lane rental', nameFr: 'Location de couloir', description: 'One 25 m lane for a team or club.', durationMinutes: 60, priceCents: 4500, capacity: 2, maxPartySize: 10, daysOfWeek: [1, 2, 3, 4, 5], openMinute: 6 * 60, closeMinute: 9 * 60, leadDays: 2 });
+  }
+  if (!(await sup.call('GET', '/api/bookings')).length) {
+    const [room] = await sup.call('GET', '/api/bookable-services');
+    const date = nextDow(6, 5);
+    await fetch(`${API}/api/public/bookings`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-tenant-subdomain': 'kelowna' }, body: JSON.stringify({ serviceId: room.id, date, startMinute: 12 * 60, partySize: 14, contact: { name: 'Sam Lee', email: 'sam.lee@example.ca', phone: '250-555-0177' }, notes: 'Birthday party, turning 7', consents: { terms: true, privacy: true }, startedAt: Date.now() - 60_000 }) });
+  }
+  if (!(await desk.call('GET', '/api/households?q=')).length) {
+    const years = (y) => iso(new Date(Date.now() - y * 365.25 * 86_400_000));
+    const { id } = await desk.call('POST', '/api/households', {
+      name: 'Tremblay', emergencyName: 'Luc Tremblay', emergencyPhone: '250-555-0123',
+      members: [
+        { role: 'GUARDIAN', firstName: 'Marie', lastName: 'Tremblay', phone: '250-555-0199', email: 'marie.tremblay@example.ca' },
+        { role: 'CHILD', firstName: 'Léa', lastName: 'Tremblay', dateOfBirth: years(4.4), safetyNote: 'Asthma: inhaler in swim bag' },
+        { role: 'CHILD', firstName: 'Noé', lastName: 'Tremblay', dateOfBirth: years(0.6) },
+      ],
+    });
+    await desk.call('POST', '/api/households', { name: 'Singh', members: [{ role: 'GUARDIAN', firstName: 'Priya', lastName: 'Singh', phone: '250-555-0144' }, { role: 'CHILD', firstName: 'Arjun', lastName: 'Singh', dateOfBirth: years(7.2) }] });
+    const fees = await desk.call('GET', '/api/fees');
+    await desk.call('POST', '/api/sales', { feeId: fees.find((f) => f.name === 'Family annual').id, householdId: id, paymentMethod: 'DEBIT' });
+    const fam = await desk.call('GET', `/api/households/${id}`);
+    const offers = await desk.call('GET', `/api/offerings?memberId=${fam.members.find((m) => m.firstName === 'Léa').id}`);
+    const pre = offers[0].sets.find((x) => x.name === 'Preschool 2');
+    await desk.call('POST', '/api/registrations', { setId: pre.id, memberId: fam.members.find((m) => m.firstName === 'Léa').id, paymentMethod: 'DEBIT' });
+    const fees2 = fees.find((f) => f.name === 'Child swim drop-in');
+    await desk.call('POST', '/api/sales', { feeId: fees2.id, paymentMethod: 'CASH' });
+  }
+  if (!(await sup.call('GET', '/api/coverage/rules')).length) {
+    const certs = await sup.call('GET', '/api/certifications');
+    const nl = certs.find((c) => /national lifeguard|nls/i.test(c.name)) ?? certs[0];
+    await sup.call('POST', '/api/coverage/rules', { facilityId: facility.id, name: 'Certified lifeguard on deck', certificationId: nl.id, minCount: 2, daysOfWeek: [0, 1, 2, 3, 4, 5, 6], startMinute: 6 * 60, endMinute: 21 * 60, note: 'Facility safety plan: two NL guards whenever the pool is open.' });
+  }
+  if (!(await hr.call('GET', '/api/vehicles')).vehicles.length) {
+    await hr.call('POST', '/api/vehicles', { unit: 'P-12', description: 'Tandem plow truck', plate: 'KJ 4471' });
+    await hr.call('POST', '/api/vehicles', { unit: 'T-3', description: 'Water service pickup', plate: 'LM 2208' });
+    await hr.call('POST', '/api/vehicles', { unit: 'Z-1', description: 'Ice resurfacer' });
+    const vs = (await water.call('GET', '/api/vehicles')).vehicles;
+    const items = ['BRAKES', 'STEERING', 'LIGHTS', 'TIRES_WHEELS', 'HORN', 'WIPERS_WASHERS', 'MIRRORS_WINDOWS', 'FLUID_LEAKS'].map((item) => ({ item, ok: true }));
+    await water.call('POST', `/api/vehicles/${vs.find((v) => v.unit === 'T-3').id}/inspections`, { odometerKm: 84213, items });
+  }
+  if (!(await hr.call('GET', '/api/injury-claims')).claims.length) {
+    const users = await hr.call('GET', '/api/users');
+    const who = users.find((u) => /maintenance/i.test(u.email)) ?? users[0];
+    await hr.call('POST', '/api/injury-claims', { userId: who.id, facilityId: facility.id, occurredAt: new Date(Date.now() - 26 * 3_600_000).toISOString(), learnedAt: new Date(Date.now() - 25 * 3_600_000).toISOString(), lostTime: true, healthCare: true, description: 'Strained lower back lifting a pool cover reel' });
+  }
+  const winter = await hr.call('GET', '/api/winter/settings');
+  if (!winter.callOutsOn) {
+    await hr.call('PUT', '/api/winter/settings', { callOutsOn: true, patrolsOn: true, season: { start: '11-01', end: '04-15' }, callOuts: { responseMinutes: 15, minRestHours: 8 }, patrols: { graceMinutes: 60 } });
+    await hr.call('POST', '/api/winter/routes', { name: 'Route 7: Hillside Dr', roadClass: '3', intervalHours: 24 });
+    await hr.call('POST', '/api/winter/routes', { name: 'Route 2: Lakeshore Rd', roadClass: '2', intervalHours: 8 });
+  }
+  if (!(await water.call('GET', '/api/me/lone-work'))) {
+    await water.call('POST', '/api/me/lone-work', { location: 'Pump station 4, lower level', task: 'Valve inspection', intervalMinutes: 60 });
+  }
+}
+
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
+  await prepareCityWorks();
   // The demo city's (placeholder) logo, uploaded through the Dev console API.
   const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });
   const cookie = String(login.headers.get('set-cookie')).split(';')[0];
@@ -153,6 +272,25 @@ async function capture(browser, role) {
       await page.waitForTimeout(1000);
     }
   }
+  // Detail pages reached by links, not the menu.
+  for (const [list, link] of [['/manage/programs', 'main a[href*="/manage/programs?id="]'], ['/members', 'main a[href*="/members?id="]']]) {
+    if (!hrefs.includes(list)) continue;
+    await visit(list);
+    const links = await page.$$eval(link, (as) => [...new Set(as.map((a) => a.getAttribute('href')))]).catch(() => []);
+    for (const href of links.slice(0, 4)) {
+      await visit(href);
+      // Dialogs that load their own data: registering a child, a set's class list.
+      for (const name of ['Register', 'Class list']) {
+        const n = Math.min(await page.getByRole('button', { name, exact: true }).count(), 3);
+        for (let i = 0; i < n; i++) {
+          await page.getByRole('button', { name, exact: true }).nth(i).click().catch(() => {});
+          await page.waitForTimeout(900);
+          await page.keyboard.press('Escape');
+          await page.waitForTimeout(300);
+        }
+      }
+    }
+  }
   if (hrefs.includes('/manage/staff')) {
     await visit('/manage/staff');
     for (const status of ['Inactive', 'Active']) {
@@ -221,7 +359,20 @@ async function capturePlatform(browser) {
   page.on('response', async (r) => r.url().includes('/api/public/jobs') && (jobs = await r.json()));
   await page.goto(`${BASE}/jobs`);
   await page.waitForTimeout(1500);
-  writeFileSync(join(OUT, 'public.json'), rename(JSON.stringify({ capturedOn: new Date().toISOString().slice(0, 10), responses: { '/api/public/jobs': jobs } })));
+  // Public sign-up page (no sign-in), with a sample of open times for each bookable space.
+  const signup = await fetch(`${API}/api/public/signup`, { headers: { 'x-tenant-subdomain': 'kelowna' } }).then((r) => r.json());
+  const slots = {};
+  for (const v of signup.services ?? []) {
+    for (let d = v.leadDays; d < v.leadDays + 14; d++) {
+      const date = iso(plusDays(d));
+      const list = await fetch(`${API}/api/public/services/${v.id}/slots?date=${date}`, { headers: { 'x-tenant-subdomain': 'kelowna' } }).then((r) => r.json());
+      if (list.length) {
+        slots[v.id] = list;
+        break;
+      }
+    }
+  }
+  writeFileSync(join(OUT, 'public.json'), rename(JSON.stringify({ capturedOn: new Date().toISOString().slice(0, 10), responses: { '/api/public/jobs': jobs, '/api/public/signup': signup, slots } })));
   await capturePlatform(browser);
   await browser.close();
 })();

@@ -113,7 +113,12 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
   const state = load();
   const method = init.method ?? 'GET';
 
-  if (path === '/api/public/jobs') return (await fixtures('public')).get(path) as T;
+  if (path === '/api/public/jobs' || path === '/api/public/signup') return (await fixtures('public')).get(path) as T;
+  // Public sign-up: open times from the recorded sample whatever date is picked; sign-ups aren't sent anywhere.
+  const slots = /^\/api\/public\/services\/([^/]+)\/slots/.exec(path);
+  if (slots) return (((await fixtures('public')).get('slots') as Record<string, unknown[]> | undefined)?.[slots[1]!] ?? []) as T;
+  if (path === '/api/public/registrations' && method === 'POST') return { reference: 'R-DEMO42', status: 'ENROLLED', priceCents: 9500 } as T;
+  if (path === '/api/public/bookings' && method === 'POST') return { reference: 'B-DEMO42' } as T;
 
   if (path === '/api/auth/login' && method === 'POST') {
     const { email, password } = (init.body ?? {}) as { email?: string; password?: string };
