@@ -121,7 +121,7 @@ export default function ProfilePage() {
         </Card>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="gap-6 lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
         <DocumentsCard />
         <AppearanceCard />
         <PushCard />
