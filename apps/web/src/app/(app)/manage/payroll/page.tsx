@@ -7,6 +7,7 @@ import { PayDocuments } from '@/components/payroll/PayDocuments';
 import { PayPeople } from '@/components/payroll/PayPeople';
 import { PayRuns } from '@/components/payroll/PayRuns';
 import { BankConnection, PaySettings } from '@/components/payroll/PaySettings';
+import { ProviderConnections } from '@/components/payroll/ProviderConnections';
 import { useTranslation } from 'react-i18next';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -81,7 +82,7 @@ function ProviderExport() {
 
   return (
     <>
-      <div className="grid max-w-3xl gap-6">
+      <div className="grid gap-6">
         <Card>
           <CardHeader title={t('payroll.period')} description={t('payroll.periodHelp')} />
           <CardBody className="pt-3">
@@ -212,7 +213,7 @@ function PayrollTabs() {
           <PaySettings />
         </div>
       ) : null}
-      {tab === 'export' ? <ProviderExport /> : null}
+      {tab === 'export' ? <ProviderConnections fileExport={<ProviderExport />} /> : null}
     </>
   );
 }

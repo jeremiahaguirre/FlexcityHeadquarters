@@ -960,7 +960,7 @@
       "people": "Personnes",
       "documents": "Versements et fin d’année",
       "settings": "Paramètres",
-      "export": "Exportation pour un fournisseur"
+      "export": "Fournisseur de paie"
     },
     "runs": "Paies",
     "runsHelp": "Chaque paie prend les heures approuvées d’une période, calcule la paie et les retenues, et est approuvée par une deuxième personne avant que quiconque soit payé.",
@@ -1277,6 +1277,64 @@
         "MATERIALS": "Matériel de formation",
         "OTHER": "Autre dépense admissible"
       }
+    },
+    "connect": {
+      "choose": "Comment vous faites la paie",
+      "tab": {
+        "in_app": "Dans l’application",
+        "adp": "ADP",
+        "dayforce": "Dayforce",
+        "wagepoint": "Wagepoint"
+      },
+      "inUse": "Utilisé",
+      "use": "Faire la paie avec {{what}}",
+      "useApp": "Faire la paie dans l’application",
+      "switched": "La paie se fait maintenant avec {{what}}.",
+      "inAppTitle": "La paie dans l’application",
+      "inAppHelp": "Paies, retenues, dépôt direct, versements et relevés de fin d’année se font ici, dans l’onglet Paies. Choisissez plutôt un onglet de fournisseur si votre organisation garde ADP, Dayforce ou Wagepoint.",
+      "fileTitle": "Ou téléchargez un fichier",
+      "fileHelp": "Le format d’importation de chaque fournisseur, à téléverser vous-même.",
+      "title": "Connexion à {{what}}",
+      "help": {
+        "adp": "Les heures approuvées vont à ADP Workforce Now sous forme de lot de données de paie, avec le client API et le certificat TLS mutuel qu’ADP fournit quand il accorde l’accès à l’API.",
+        "dayforce": "Les heures approuvées vont à Ceridian Dayforce sous forme d’importation de paie pour votre espace client, avec un client API de Dayforce ID.",
+        "wagepoint": "Les heures approuvées vont à Wagepoint sous forme d’importation d’heures pour votre entreprise, avec une clé API de Wagepoint."
+      },
+      "clientId": "ID du client API",
+      "clientSecret": "Secret du client",
+      "certificate": "Certificat client (PEM)",
+      "certificateHint": "Le certificat qu’ADP a émis pour ce client API.",
+      "privateKey": "Clé privée du certificat (PEM)",
+      "clientNamespace": "Espace client",
+      "clientNamespaceHint": "Le nom dans votre adresse Web Dayforce.",
+      "companyId": "ID de l’entreprise",
+      "apiKey": "Clé API",
+      "secretKept": "Enregistré et scellé. Laissez vide pour le conserver.",
+      "addresses": "Adresses du fournisseur",
+      "addressesHelp": "Préremplies avec les adresses publiées du fournisseur. Ne les changez que si le fournisseur vous en a donné d’autres; elles doivent rester sur son propre domaine.",
+      "tokenUrl": "Adresse de connexion (jeton)",
+      "importUrl": "Adresse d’importation",
+      "save": "Enregistrer la connexion",
+      "saved": "Connexion à {{what}} enregistrée. Testez-la ensuite.",
+      "sealed": "Les secrets sont scellés avec la clé de votre organisation; personne, FH compris, ne peut les relire.",
+      "tested": "Connexion testée le {{when}}",
+      "untested": "Pas encore testée",
+      "test": "Tester la connexion",
+      "testOk": "{{what}} a accepté la connexion.",
+      "edit": "Modifier",
+      "disconnect": "Déconnecter",
+      "sendTitle": "Envoyer une période de paie à {{what}}",
+      "sendHelp": "Les heures approuvées de la période, dans le format d’importation du fournisseur, vérifiées d’abord comme pour le téléchargement.",
+      "send": "Envoyer à {{what}}",
+      "download": "Télécharger le fichier plutôt",
+      "sent_one": "Envoyé à {{what}} : {{count}} ligne. Référence {{ref}}.",
+      "sent_other": "Envoyé à {{what}} : {{count}} lignes. Référence {{ref}}.",
+      "history": "Périodes envoyées",
+      "status": {
+        "SENT": "Envoyée",
+        "FAILED": "Refusée"
+      },
+      "demo": "Les connexions aux fournisseurs ne sont pas offertes dans la démo."
     }
   },
   "settings": {

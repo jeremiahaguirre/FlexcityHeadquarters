@@ -960,7 +960,7 @@
       "people": "People",
       "documents": "Remittance and year-end",
       "settings": "Settings",
-      "export": "Provider export"
+      "export": "Payroll provider"
     },
     "runs": "Pay runs",
     "runsHelp": "Each run takes approved hours for a period, works out pay and deductions, and is approved by a second person before anyone is paid.",
@@ -1277,6 +1277,64 @@
         "MATERIALS": "Training materials",
         "OTHER": "Other eligible expense"
       }
+    },
+    "connect": {
+      "choose": "How you run payroll",
+      "tab": {
+        "in_app": "In the app",
+        "adp": "ADP",
+        "dayforce": "Dayforce",
+        "wagepoint": "Wagepoint"
+      },
+      "inUse": "In use",
+      "use": "Use {{what}} for payroll",
+      "useApp": "Run payroll in the app",
+      "switched": "Payroll now runs with {{what}}.",
+      "inAppTitle": "Payroll in the app",
+      "inAppHelp": "Pay runs, deductions, direct deposit, remittances and year-end slips all happen here, in the Pay runs tab. Choose a provider tab instead if your organization keeps ADP, Dayforce or Wagepoint.",
+      "fileTitle": "Or download a file",
+      "fileHelp": "Every provider’s import layout, to upload by hand.",
+      "title": "{{what}} connection",
+      "help": {
+        "adp": "Approved hours go to ADP Workforce Now as a pay data batch, signed in with the API client and mutual-TLS certificate ADP issues when it grants API access.",
+        "dayforce": "Approved hours go to Ceridian Dayforce as a pay import for your client namespace, signed in with an API client from Dayforce ID.",
+        "wagepoint": "Approved hours go to Wagepoint as an hours import for your company, with an API key from Wagepoint."
+      },
+      "clientId": "API client ID",
+      "clientSecret": "Client secret",
+      "certificate": "Client certificate (PEM)",
+      "certificateHint": "The certificate ADP issued for this API client.",
+      "privateKey": "Certificate private key (PEM)",
+      "clientNamespace": "Client namespace",
+      "clientNamespaceHint": "The name in your Dayforce web address.",
+      "companyId": "Company ID",
+      "apiKey": "API key",
+      "secretKept": "Saved and sealed. Leave blank to keep it.",
+      "addresses": "Provider addresses",
+      "addressesHelp": "Pre-filled with the provider’s published addresses. Change them only if the provider gave you different ones; they must stay on the provider’s own domain.",
+      "tokenUrl": "Sign-in (token) address",
+      "importUrl": "Import address",
+      "save": "Save connection",
+      "saved": "{{what}} connection saved. Test it next.",
+      "sealed": "Secrets are sealed with your organization’s own key; nobody, FH included, can read them back.",
+      "tested": "Connection tested {{when}}",
+      "untested": "Not tested yet",
+      "test": "Test connection",
+      "testOk": "{{what}} accepted the sign-in.",
+      "edit": "Change",
+      "disconnect": "Disconnect",
+      "sendTitle": "Send a pay period to {{what}}",
+      "sendHelp": "Approved hours for the period, in the provider’s import layout, checked first like the file download.",
+      "send": "Send to {{what}}",
+      "download": "Download the file instead",
+      "sent_one": "Sent to {{what}}: {{count}} row. Reference {{ref}}.",
+      "sent_other": "Sent to {{what}}: {{count}} rows. Reference {{ref}}.",
+      "history": "Sent periods",
+      "status": {
+        "SENT": "Sent",
+        "FAILED": "Refused"
+      },
+      "demo": "Provider connections aren’t available in the demo."
     }
   },
   "settings": {
