@@ -4,26 +4,20 @@
 
 - [ ] **Legal review of provincial rules** (see `COMPLIANCE.md` checklist); flip `verified` per province.
 - [ ] Push notifications (web push / FCM). In-app notifications (live over SSE) and email already work.
-- [ ] SSO (SAML / Entra ID) for municipal tenants.
 - [ ] Subprocessor list and data-residency assessment.
 - [ ] Union Hub as its own deployment. Today the API mounts its routes when `UNION_DATABASE_URL` is set; the database role and per-local keys already keep employers out.
-- [ ] Translate payroll export problems and warnings (currently English-only text from the API).
 
 ## Next
 
 - [ ] Demand generation from facility hours, lesson registrations and bather-load history.
-- [ ] Bulk staff import (CSV) for onboarding a new organization.
-- [ ] Creating pools from Settings or the Dev console (thresholds are editable; new pools are added by support today).
-- [ ] Dev console: disable or offboard an organization, and "view as" support access with the city's consent.
-- [ ] Passkey step-up for the Dev console's most sensitive actions (today: adding/removing passkeys needs a sign-in from the last 10 minutes).
 
 ## Later
 
-- [ ] Constraint-solver scheduling (OR-Tools CP-SAT in a Python worker) behind the existing `proposeSchedule` input/output types, for multi-facility terms.
-- [ ] Direct integrations with payroll providers (ADP, Ceridian Dayforce, Wagepoint) in addition to CSV, for cities that keep one.
+- [ ] Constraint-solver scheduling (OR-Tools CP-SAT) behind the existing `proposeSchedule` types, if large multi-facility terms outgrow the hardest-first planner with its repair pass.
+- [ ] Direct API connections to payroll providers (exports in ADP, Dayforce and Wagepoint import layouts ship today).
 - [ ] FH books: verify the chart of accounts, sales tax treatment and the PAD transaction code with FH's accountant and bank before the first live debit.
-- [ ] Payroll: tax tables for MB, NB, NL, NS, NT, NU, PE, SK and YT (federal, AB, BC and ON ship as unverified starting values); T4 XML and ROE Web XML export; Ontario's low-income tax reduction.
-- [ ] Search-engine-friendly job pages (server-rendered, structured data).
+- [ ] Payroll: tax tables for MB, NB, NL, NS, NT, NU, PE, SK and YT (federal, AB, BC, ON and QC ship as unverified starting values); Ontario's low-income tax reduction.
+- [ ] Quebec: RL-1 in Revenu Québec's XML format, and the employer-only contributions (Health Services Fund, CNT, workforce skills) worked out from annual payroll.
 
 ## Done
 
@@ -47,8 +41,15 @@
 - FH Dev console: create cities, fifteen feature switches, facilities, positions, city logo upload, CSV staff import with preview.
 - City logo beside the FH logo on sign-in, in the app and on the careers page.
 - Passkeys (Windows Hello, Face ID / Touch ID, Android biometrics) for sign-in and a "confirm it's you" step before sensitive changes.
+- Single sign-on: Microsoft Entra ID (OpenID Connect) and SAML 2.0, existing accounts only, bound to the directory identity; can be made the only way in.
+- Quebec payroll: QPP/QPP2, QPIP, Quebec EI rate, federal abatement, Quebec tax (TP-1015.F structure), Revenu Québec remittance and GL account, RL-1 slips and T4 boxes 17, 17A, 55 and 56.
+- Filing files: T4 return as CRA XML and Records of Employment as ROE Web XML (full SINs only with a passkey, audited, refused while details are missing); home mailing address with the TD1.
+- Payroll exports laid out for ADP Workforce Now, Ceridian Dayforce and Wagepoint.
+- Dev console: turn a city off or on, offboard it with a retention period (billing records kept), consent-based read-only support visits, passkey step-up for its most sensitive actions; website enquiries inbox.
+- Payroll problems and warnings in English and French; printable PDF of a person's records; encrypted employee document uploads; fingerprints of what was signed on discipline records.
+- Scheduling assistant across several facilities: hardest-to-fill shifts first, repair pass, travel time between sites, each shift under its own province's rules.
+- Job postings server-rendered with JobPosting structured data, robots.txt and sitemap per city; a nonce-based script policy (CSP) on every page.
 
 ## Deliberately out of scope
 
-- Quebec payroll withholding (QPP, QPIP, Revenu Québec) and RL-1 slips: Quebec staff stay with a payroll provider (the CSV export still works).
-- Filing with government directly: T4 XML (Internet File Transfer), ROE Web XML and PD7A payments are prepared in FH and filed by the city.
+- Filing with government directly: FH prepares the T4 XML, ROE Web XML and remittance totals; the city uploads them (Internet File Transfer, ROE Web) and pays its remittances.
