@@ -74,7 +74,7 @@ export function MyOnboarding({ compact = false }: { compact?: boolean }) {
         <ul className="grid gap-2">
           {shown.map((i) => (
             <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2.5 text-small">
-              <span className="min-w-0">
+              <span className="min-w-0 basis-full sm:basis-0 sm:flex-1">
                 <span className="block font-semibold">{itemName(i, lng)}</span>
                 <span className="text-caption text-muted">{t(`onboarding.whoDoes.${i.owner}`)}</span>
               </span>

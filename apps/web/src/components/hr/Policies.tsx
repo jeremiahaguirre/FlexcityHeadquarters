@@ -1,6 +1,6 @@
 'use client';
 
-import { FileSignature, Plus, ScrollText } from 'lucide-react';
+import { ChevronRight, FileSignature, Plus, ScrollText } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,8 @@ export function PoliciesBanner() {
   return (
     <Link href="/profile#policies" className="flex items-center gap-3 rounded-2xl border border-warn/40 bg-warn/10 p-4 text-body text-ink hover:bg-warn/15">
       <FileSignature className="h-5 w-5 shrink-0 text-warn" aria-hidden="true" />
-      <span>{t('policies.banner', { count: n })}</span>
+      <span className="min-w-0 flex-1 font-semibold">{t('policies.banner', { count: n })}</span>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
     </Link>
   );
 }
@@ -54,7 +55,7 @@ export function MyPolicies() {
       <CardBody className="grid gap-3 pt-2">
         {q.data.toSign.map((p) => (
           <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warn/40 p-3">
-            <span><span className="font-semibold text-ink">{p.title}</span>{p.version > 1 ? <span className="text-muted"> · {t('policies.version', { n: p.version })}</span> : null}{p.dueOn ? <span className="block text-caption text-muted">{t('policies.dueBy', { date: formatDate(p.dueOn, i18n.language) })}</span> : null}</span>
+            <span className="min-w-0 basis-full sm:basis-0 sm:flex-1"><span className="font-semibold text-ink">{p.title}</span>{p.version > 1 ? <span className="text-muted"> · {t('policies.version', { n: p.version })}</span> : null}{p.dueOn ? <span className="block text-caption text-muted">{t('policies.dueBy', { date: formatDate(p.dueOn, i18n.language) })}</span> : null}</span>
             <Button size="sm" icon={<FileSignature className="h-4 w-4" aria-hidden="true" />} onClick={() => setReading(p)}>{t('policies.readSign')}</Button>
           </div>
         ))}
