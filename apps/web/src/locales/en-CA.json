@@ -5,7 +5,8 @@
     "language": "Français",
     "languageLabel": "Passer au français",
     "unknownOrg": "We couldn't find this organization. Check the web address you were given.",
-    "languageCode": "fr-CA"
+    "languageCode": "fr-CA",
+    "copyright": "© {{year}} FlexcityHeadquarters. All rights reserved."
   },
   "login": {
     "title": "Sign in",
@@ -1502,7 +1503,8 @@
       "pools": "Pools",
       "billing": "Billing",
       "access": "Menus and access",
-      "lifecycle": "Support and closing"
+      "lifecycle": "Support and closing",
+      "consents": "Signed agreements"
     },
     "logo": "City logo",
     "logoHelp": "Shown beside the FlexcityHeadquarters logo on the sign-in page, in the app and on the careers page. It never replaces the FH logo.",
@@ -4681,5 +4683,43 @@
       "bankConnection": "Approved payroll sent straight to the bank over SFTP.",
       "union": "The union local's own hub: discussions, documents and seniority list."
     }
+  },
+  "consent": {
+    "kicker": "Before you start",
+    "textLabel": "The agreement",
+    "choices": "Your choices",
+    "choicesHelp": "Both are optional. Tap Allow and your device will ask you; you can change your mind later in your phone or browser settings.",
+    "notifications": {
+      "title": "Notifications",
+      "body": "Shift offers, schedule changes and working-alone reminders. The lock screen shows a short heading only."
+    },
+    "location": {
+      "title": "Location",
+      "body": "Checked once when you clock in, and shared only during a working-alone session you start."
+    },
+    "state": {
+      "granted": "Allowed",
+      "denied": "Not allowed",
+      "skipped": "Not asked yet",
+      "unsupported": "Not available on this device"
+    },
+    "allow": "Allow",
+    "allowed": "Allowed",
+    "sign": "Sign the agreement",
+    "name": "Your full name",
+    "submit": "Sign and continue",
+    "failed": "The agreement couldn’t be saved. Check your connection and try again.",
+    "record": "Version {{version}}. A copy is kept with your signature, the time and this device’s address, and can’t be changed."
+  },
+  "consents": {
+    "title": "Signed agreements",
+    "lead": "Each person signs the information and consent agreement at their first sign-in, and again when it changes. Current version {{version}}: {{signed}} of {{staff}} active staff have signed. Records can’t be changed or deleted.",
+    "csv": "Download CSV",
+    "none": "No one has signed yet. People sign at their first sign-in.",
+    "signedAs": "signed as {{name}}",
+    "version": "version {{version}}",
+    "older": "Earlier version",
+    "certificate": "Certificate (PDF)",
+    "downloadFailed": "The download didn’t work. Try again."
   }
 }

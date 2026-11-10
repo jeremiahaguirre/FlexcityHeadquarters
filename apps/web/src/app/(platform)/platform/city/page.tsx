@@ -22,14 +22,15 @@ import { type CityDetail, papi, usePlatformQuery } from '@/lib/platform';
 import { DepartmentsEditor } from '@/components/DepartmentsEditor';
 import { Select } from '@/components/ui/Field';
 import { LifecyclePanel } from '@/components/platform/LifecyclePanel';
+import { ConsentsPanel } from '@/components/platform/ConsentsPanel';
 
-type Tab = 'org' | 'features' | 'access' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing' | 'lifecycle';
+type Tab = 'org' | 'features' | 'access' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing' | 'lifecycle' | 'consents';
 const SECTIONS: Array<{ key: string; tabs: Tab[] }> = [
   { key: 'setup', tabs: ['org', 'facilities', 'pools', 'positions'] },
   { key: 'access', tabs: ['features', 'access', 'roles'] },
   { key: 'people', tabs: ['import'] },
   { key: 'money', tabs: ['billing'] },
-  { key: 'account', tabs: ['lifecycle'] },
+  { key: 'account', tabs: ['lifecycle', 'consents'] },
 ];
 
 function City() {
@@ -135,6 +136,7 @@ function City() {
           />
         ) : null}
         {tab === 'import' ? <ImportPanel {...props} /> : null}
+        {tab === 'consents' ? <ConsentsPanel id={id} /> : null}
         {tab === 'lifecycle' ? <LifecyclePanel id={id} subdomain={c.organization.subdomain} /> : null}
         {tab === 'billing' ? (
           <div className="grid gap-6">

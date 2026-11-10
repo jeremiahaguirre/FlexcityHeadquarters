@@ -23,6 +23,8 @@ import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 import { CommandMenu, type Destination } from './CommandMenu';
 import { SideNav } from './SideNav';
+import { ConsentGate } from '@/components/privacy/ConsentGate';
+import { Copyright } from '@/components/Copyright';
 
 
 function isActive(pathname: string, href: string) {
@@ -80,6 +82,16 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
     );
   };
 
+  // The first-sign-in agreement comes before anything else (never for an FH support visit).
+  if (me?.consentRequired && !me.support)
+    return (
+      <>
+        <ConsentGate />
+        <StepUpDialog />
+        <MfaDialog />
+      </>
+    );
+
   return (
     <PunchProvider>
     <div className="min-h-screen md:grid md:grid-cols-[17rem_minmax(0,1fr)]">
@@ -99,6 +111,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         </nav>
         <div className="border-t border-line p-3">
           <UserMenu placement="up" />
+          <Copyright className="mt-2 px-1 text-center" />
         </div>
       </aside>
 
@@ -185,6 +198,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
               </div>
             );
           })}
+          <Copyright className="px-3 text-center" />
         </div>
       </Dialog>
     </div>

@@ -7,6 +7,7 @@ import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { currentTenant } from '@/lib/tenant';
 import { UnknownOrg } from '@/components/UnknownOrg';
 import { ServiceWorker } from '@/components/ServiceWorker';
+import { Copyright } from '@/components/Copyright';
 
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
@@ -29,6 +30,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
             ) : null}
           </div>
           {children}
+          <Copyright className="mt-12 text-center" />
         </div>
       </main>
       {/* Calm brand panel on large screens */}
