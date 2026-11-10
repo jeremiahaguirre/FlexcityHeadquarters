@@ -177,7 +177,8 @@
     "bookings": "Réservations et inscriptions",
     "coverage": "Couverture requise",
     "pretrip": "Inspection avant départ",
-    "fleet": "Parc de véhicules"
+    "fleet": "Parc de véhicules",
+    "injuries": "Déclarations de lésion"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -247,7 +248,9 @@
     "booking_requested": "Demande de réservation : {{service}} le {{when}}, de {{name}}.",
     "coverage_gap": "Couverture manquante : {{rule}} n'est pas couvert dans les deux prochains jours.",
     "vehicle_out_of_service": "L'unité {{unit}} est hors service : {{reason}}.",
-    "vehicle_minor_defect": "Une défectuosité mineure a été signalée sur l'unité {{unit}}."
+    "vehicle_minor_defect": "Une défectuosité mineure a été signalée sur l'unité {{unit}}.",
+    "injury_due_soon": "Une déclaration de lésion à {{board}} est due d'ici un jour.",
+    "injury_overdue": "Une déclaration de lésion à {{board}} est en retard."
   },
   "today": {
     "morning": "Bonjour",
@@ -362,7 +365,9 @@
     "LICENCE_REQUIRED": "Il vous faut un permis valide au dossier pour ce véhicule.",
     "NEEDS_SEVERITY": "Indiquez si chaque défectuosité est mineure ou majeure.",
     "UNIT_EXISTS": "Un véhicule porte déjà ce numéro d'unité.",
-    "IN_SERVICE": "Ce véhicule est déjà en service."
+    "IN_SERVICE": "Ce véhicule est déjà en service.",
+    "ALREADY_FILED": "Déjà inscrite comme envoyée.",
+    "BAD_DATES": "Vérifiez les dates."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1462,7 +1467,8 @@
       "bookings.manage": "Inscriptions en ligne et réservations",
       "coverage.manage": "Définir la couverture requise",
       "fleet.inspect": "Inspections avant départ",
-      "fleet.manage": "Gérer les véhicules et les réparations"
+      "fleet.manage": "Gérer les véhicules et les réparations",
+      "injury.manage": "Déclarations de lésion à l'organisme"
     },
     "limits": "Vous pouvez seulement donner à un rôle ce que vous pouvez faire vous-même, dans votre propre service.",
     "anything": "Les capacités de supervision suivent le service du rôle : les personnes qui occupent ses postes et les quarts dans ses installations. L'espace syndical n'est pas offert; il suit l'adhésion syndicale.",
@@ -3047,5 +3053,41 @@
     "noLicence": "Aucun",
     "yard": "Garage ou installation",
     "foot": "Un véhicule est prêt pendant 24 heures après une inspection conforme ou mineure. Les permis sont des certifications; ajoutez-les aux postes de conduite pour que l'horaire les vérifie aussi."
+  },
+  "injuries": {
+    "title": "Déclarations de lésion",
+    "description": "Les lésions des travailleurs et la déclaration de l'employeur à l'organisme d'indemnisation (CNESST, WSIB, WorkSafeBC…), avant l'échéance.",
+    "add": "Inscrire une lésion",
+    "addHelp": "L'organisme et l'échéance dépendent de la province où le travail a eu lieu, à partir du moment où vous l'avez appris.",
+    "added": "Lésion inscrite",
+    "toFile_one": "{{count}} déclaration à faire",
+    "toFile_other": "{{count}} déclarations à faire",
+    "allFiled": "Rien à déclarer pour l'instant.",
+    "overdue": "En retard",
+    "dueIn_one": "Due dans {{count}} heure",
+    "dueIn_other": "Due dans {{count}} heures",
+    "toBoard": "{{board}} : {{form}}, d'ici {{due}}",
+    "markFiled": "Inscrire comme envoyée",
+    "filed": "Inscrite comme envoyée",
+    "history": "Au dossier",
+    "filedWith": "Envoyée à {{board}} {{number}}",
+    "notRequired": "Aucune déclaration requise",
+    "none": "Aucune lésion inscrite",
+    "noneHelp": "Inscrivez ici la lésion d'un travailleur, même pour des premiers soins, pour qu'elle soit au dossier.",
+    "person": "Personne blessée",
+    "where": "Lieu",
+    "whereHint": "Détermine l'organisme.",
+    "occurred": "Quand c'est arrivé",
+    "learned": "Quand un superviseur l'a appris",
+    "learnedHint": "L'échéance se calcule à partir d'ici.",
+    "what": "Ce qui s'est passé",
+    "whatHint": "Bref et factuel, p. ex. « Entorse à la cheville droite dans l'escalier du bassin ». Les détails vont dans le rapport d'incident.",
+    "reportable": "Faut-il une déclaration?",
+    "lostTime": "Perte de temps : absence du travail après le jour de la lésion",
+    "healthCare": "Soins au-delà des premiers soins (médecin, physio, hôpital)",
+    "reportableHelp": "Les premiers soins seulement, sans perte de temps, restent au dossier sans déclaration. Si l'un ou l'autre change, mettez à jour et la déclaration devient due.",
+    "save": "Enregistrer",
+    "claimNumber": "Numéro de dossier de l'organisme",
+    "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu'une déclaration est en retard."
   }
 }

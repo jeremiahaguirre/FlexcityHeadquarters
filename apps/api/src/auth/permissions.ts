@@ -67,6 +67,7 @@ export const PERMISSIONS = [
   'coverage.manage', // required coverage rules (certificates that must be on duty)
   'fleet.inspect', // pre-trip vehicle inspections
   'fleet.manage', // vehicles, defects, returning vehicles to service
+  'injury.manage', // workers' injuries and reports to the compensation board
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -117,6 +118,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'bookings.manage',
     'coverage.manage',
     'fleet.manage',
+    'injury.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -158,6 +160,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'fees.manage',
     'bookings.manage',
     'coverage.manage',
+    'injury.manage',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,

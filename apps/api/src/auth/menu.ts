@@ -31,6 +31,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/staff', key: 'staff', group: 'manage', permissions: ['users.read'] },
   { href: '/manage/overtime', key: 'overtime', group: 'manage', permissions: ['overtime.manage'] },
   { href: '/manage/onboarding', key: 'onboarding', group: 'manage', permissions: ['onboarding.hr', 'onboarding.lead'] },
+  { href: '/manage/injuries', key: 'injuries', group: 'manage', permissions: ['injury.manage'] },
   { href: '/manage/care', key: 'care', group: 'manage', permissions: ['care.manage'] },
   { href: '/manage/lone-work', key: 'loneWorkMonitor', group: 'manage', permissions: ['lonework.monitor'] },
   { href: '/manage/call-outs', key: 'callOuts', group: 'manage', permissions: ['winter.callout'] },

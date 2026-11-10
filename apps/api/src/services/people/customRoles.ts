@@ -23,7 +23,7 @@ export const CUSTOM_ROLE_PERMISSIONS = {
   fleet: ['fleet.inspect', 'fleet.manage'],
   aquatics: ['lessons.teach', 'ops.chemical.record', 'ops.chemical.signoff', 'ops.pool.close', 'ops.status.read', 'ops.page_head_guard', 'deck.rotate', 'ops.configure'],
   lead: ['users.read', 'users.scheduling', 'schedule.write', 'schedule.assist', 'shiftboard.approve', 'shiftboard.assign_emergency', 'timeoff.approve', 'timeclock.review', 'certs.verify', 'lonework.monitor', 'onboarding.lead', 'overtime.manage', 'coverage.manage'],
-  manager: ['reliability.read', 'reliability.write', 'discipline.read', 'discipline.write', 'incidents.read', 'care.manage', 'compliance.report', 'payroll.export', 'positions.manage', 'jobs.manage', 'roles.manage'],
+  manager: ['injury.manage', 'reliability.read', 'reliability.write', 'discipline.read', 'discipline.write', 'incidents.read', 'care.manage', 'compliance.report', 'payroll.export', 'positions.manage', 'jobs.manage', 'roles.manage'],
   admin: ['users.write', 'users.privacy', 'audit.read', 'onboarding.hr', 'onboarding.configure', 'accommodation.manage', 'tenant.configure', 'billing.manage'],
 } as const satisfies Record<string, readonly Permission[]>;
 

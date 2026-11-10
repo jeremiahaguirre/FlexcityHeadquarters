@@ -2011,3 +2011,42 @@ model VehicleInspection {
 
   @@index([tenantId, vehicleId, at])
 }
+
+enum InjuryClaimStatus {
+  /// Needs reporting to the board.
+  OPEN
+  FILED
+  /// First aid only, no lost time: kept on file, no report required.
+  NOT_REQUIRED
+}
+
+/// A worker's injury and the employer's report to the province's
+/// compensation board (WSIB, WorkSafeBC, WCB…), with its deadline.
+model InjuryClaim {
+  id            String            @id @default(uuid()) @db.Uuid
+  tenantId      String            @db.Uuid
+  userId        String            @db.Uuid
+  facilityId    String            @db.Uuid
+  incidentId    String?           @db.Uuid
+  occurredAt    DateTime          @db.Timestamptz(3)
+  /// When a supervisor or HR learned of it: the deadline counts from here.
+  learnedAt     DateTime          @db.Timestamptz(3)
+  province      Province
+  board         String
+  dueAt         DateTime          @db.Timestamptz(3)
+  lostTime      Boolean           @default(false)
+  healthCare    Boolean           @default(false)
+  /// Short and factual (e.g. "Sprained right ankle on pool deck stairs"); details stay in the incident report.
+  description   String
+  status        InjuryClaimStatus @default(OPEN)
+  claimNumber   String?
+  filedAt       DateTime?         @db.Timestamptz(3)
+  filedById     String?           @db.Uuid
+  accommodationId String?         @db.Uuid
+  createdById   String            @db.Uuid
+  reminderSentAt DateTime?        @db.Timestamptz(3)
+  overdueSentAt  DateTime?        @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, status, dueAt])
+}

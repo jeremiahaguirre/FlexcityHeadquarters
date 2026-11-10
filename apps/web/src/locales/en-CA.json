@@ -177,7 +177,8 @@
     "bookings": "Bookings & sign-up",
     "coverage": "Required coverage",
     "pretrip": "Pre-trip inspection",
-    "fleet": "Fleet"
+    "fleet": "Fleet",
+    "injuries": "Injury reports"
   },
   "navGroups": {
     "mine": "My work",
@@ -247,7 +248,9 @@
     "booking_requested": "Booking request: {{service}} on {{when}} from {{name}}.",
     "coverage_gap": "Coverage gap: {{rule}} isn't covered in the next two days.",
     "vehicle_out_of_service": "Unit {{unit}} is out of service: {{reason}}.",
-    "vehicle_minor_defect": "A minor defect was reported on unit {{unit}}."
+    "vehicle_minor_defect": "A minor defect was reported on unit {{unit}}.",
+    "injury_due_soon": "An injury report to {{board}} is due within a day.",
+    "injury_overdue": "An injury report to {{board}} is overdue."
   },
   "today": {
     "morning": "Good morning",
@@ -362,7 +365,9 @@
     "LICENCE_REQUIRED": "You need a valid licence on file for this vehicle.",
     "NEEDS_SEVERITY": "Say whether each defect is minor or major.",
     "UNIT_EXISTS": "There is already a vehicle with that unit number.",
-    "IN_SERVICE": "This vehicle is already in service."
+    "IN_SERVICE": "This vehicle is already in service.",
+    "ALREADY_FILED": "Already recorded as filed.",
+    "BAD_DATES": "Check the dates."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1462,7 +1467,8 @@
       "bookings.manage": "Online sign-up and bookings",
       "coverage.manage": "Set required coverage",
       "fleet.inspect": "Pre-trip inspections",
-      "fleet.manage": "Manage vehicles and repairs"
+      "fleet.manage": "Manage vehicles and repairs",
+      "injury.manage": "Injury reports to the board"
     },
     "limits": "You can give a role only what you can do yourself, within your own department.",
     "anything": "Supervisory capabilities follow a role's department: people holding its positions, and shifts at its facilities. The union hub isn't offered; it follows union membership.",
@@ -3047,5 +3053,41 @@
     "noLicence": "None",
     "yard": "Yard or facility",
     "foot": "A vehicle is ready for 24 hours after a passing or minor inspection. Licences are certifications; add them to driving positions so the schedule checks them too."
+  },
+  "injuries": {
+    "title": "Injury reports",
+    "description": "Workers' injuries and the employer's report to the compensation board (WSIB, WorkSafeBC, WCB…), before the deadline.",
+    "add": "Record an injury",
+    "addHelp": "The board and deadline come from the province where the work happened, counted from when you learned of it.",
+    "added": "Injury recorded",
+    "toFile_one": "{{count}} report to file",
+    "toFile_other": "{{count}} reports to file",
+    "allFiled": "Nothing to report right now.",
+    "overdue": "Overdue",
+    "dueIn_one": "Due in {{count}} hour",
+    "dueIn_other": "Due in {{count}} hours",
+    "toBoard": "{{board}}: {{form}}, by {{due}}",
+    "markFiled": "Mark as filed",
+    "filed": "Recorded as filed",
+    "history": "On file",
+    "filedWith": "Filed with {{board}} {{number}}",
+    "notRequired": "No report needed",
+    "none": "No injuries recorded",
+    "noneHelp": "Record a worker's injury here, even first aid, so it's on file.",
+    "person": "Who was hurt",
+    "where": "Where it happened",
+    "whereHint": "Decides the board.",
+    "occurred": "When it happened",
+    "learned": "When a supervisor learned of it",
+    "learnedHint": "The deadline counts from here.",
+    "what": "What happened",
+    "whatHint": "Short and factual, e.g. \"Sprained right ankle on pool deck stairs\". Details belong in the incident report.",
+    "reportable": "Does it need a report?",
+    "lostTime": "Lost time: they missed work after the day of the injury",
+    "healthCare": "Health care beyond first aid (doctor, physio, hospital)",
+    "reportableHelp": "First aid only, with no lost time, is kept on file without a report. If either changes later, update it and the report becomes due.",
+    "save": "Save",
+    "claimNumber": "Board claim number",
+    "foot": "Deadlines per province are built in but not yet reviewed by counsel. Confirm them with your board. HR and supervisors are reminded a day before and when a report is overdue."
   }
 }
