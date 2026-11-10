@@ -181,7 +181,8 @@
     "fleet": "Parc de véhicules",
     "injuries": "Déclarations de lésion",
     "myPay": "Ma paie",
-    "benefits": "Avantages sociaux"
+    "benefits": "Avantages sociaux",
+    "accounting": "Comptabilité"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -3471,6 +3472,55 @@
       "UNION_DUES": "Cotisations syndicales",
       "EAP": "Aide aux employés",
       "OTHER": "Autre"
+    }
+  },
+  "accounting": {
+    "title": "Comptabilité",
+    "description": "La paie au grand livre : écritures de journal pour chaque paie, coût de la main-d’œuvre par rapport au budget de chaque service, et comptes utilisés.",
+    "tabs": {
+      "journal": "Écritures de journal",
+      "labour": "Coût de la main-d’œuvre",
+      "accounts": "Plan comptable"
+    },
+    "noJournals": "Aucune écriture pour l’instant",
+    "noJournalsHelp": "Chaque paie approuvée devient ici une écriture de journal équilibrée.",
+    "journals": "Écritures de journal des paies",
+    "journalsHelp": "Salaires et coûts de l’employeur débités au segment du grand livre de chaque service; sommes dues à l’ARC, au régime de retraite, au syndicat, aux assureurs et aux employés créditées. Téléchargez un CSV pour votre système financier.",
+    "payOn": "Date de paie {{date}}",
+    "csv": "CSV",
+    "entry": "Écriture de journal",
+    "balanced": "Équilibrée",
+    "unbalanced": "Non équilibrée : vérifiez avant de comptabiliser",
+    "account": "Compte",
+    "segment": "Segment",
+    "descriptionCol": "Description",
+    "debit": "Débit",
+    "credit": "Crédit",
+    "totals": "Totaux",
+    "labour": "Coût de la main-d’œuvre par service",
+    "labourHelp": "Salaires plus RPC, AE et avantages sociaux de l’employeur, selon les paies approuvées, par rapport au budget annuel de chaque service.",
+    "noCost": "Aucune paie approuvée cette année pour l’instant.",
+    "used": "{{pct}} % du budget",
+    "split": "Salaires {{wages}} · coûts de l’employeur {{employer}}",
+    "chart": "Plan comptable",
+    "chartHelp": "Les comptes du grand livre utilisés par la paie. Utilisez les numéros de compte de votre ville.",
+    "deptTitle": "Codes du grand livre et budgets des services",
+    "deptHelp": "Le segment de centre de coûts de chaque service et son budget de main-d’œuvre annuel.",
+    "glCode": "Segment du grand livre",
+    "budget": "Budget de main-d’œuvre",
+    "saved": "Enregistré.",
+    "keys": {
+      "wages": "Charge salariale",
+      "employerCpp": "Charge RPC de l’employeur",
+      "employerEi": "Charge AE de l’employeur",
+      "employerBenefits": "Charge des avantages sociaux de l’employeur",
+      "cppPayable": "RPC à payer",
+      "eiPayable": "AE à payer",
+      "taxPayable": "Impôt à payer",
+      "pensionPayable": "Cotisations de retraite à payer",
+      "unionDuesPayable": "Cotisations syndicales à payer",
+      "benefitsPayable": "Primes d’avantages sociaux à payer",
+      "netPayClearing": "Compte de passage de la paie nette (banque)"
     }
   }
 }

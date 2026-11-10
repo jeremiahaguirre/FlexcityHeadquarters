@@ -181,7 +181,8 @@
     "fleet": "Fleet",
     "injuries": "Injury reports",
     "myPay": "My pay",
-    "benefits": "Benefits"
+    "benefits": "Benefits",
+    "accounting": "Accounting"
   },
   "navGroups": {
     "mine": "My work",
@@ -3471,6 +3472,55 @@
       "UNION_DUES": "Union dues",
       "EAP": "Employee assistance",
       "OTHER": "Other"
+    }
+  },
+  "accounting": {
+    "title": "Accounting",
+    "description": "Payroll in the general ledger: journal entries for each pay run, labour cost against each department's budget, and the accounts it posts to.",
+    "tabs": {
+      "journal": "Journal entries",
+      "labour": "Labour cost",
+      "accounts": "Chart of accounts"
+    },
+    "noJournals": "No journal entries yet",
+    "noJournalsHelp": "Each approved pay run becomes a balanced journal entry here.",
+    "journals": "Pay run journal entries",
+    "journalsHelp": "Wages and employer costs debited to each department's GL segment; what's owed to CRA, the pension plan, the union, benefit providers and employees credited. Download a CSV for your financial system.",
+    "payOn": "Pay date {{date}}",
+    "csv": "CSV",
+    "entry": "Journal entry",
+    "balanced": "Balanced",
+    "unbalanced": "Out of balance: check before posting",
+    "account": "Account",
+    "segment": "Segment",
+    "descriptionCol": "Description",
+    "debit": "Debit",
+    "credit": "Credit",
+    "totals": "Totals",
+    "labour": "Labour cost by department",
+    "labourHelp": "Wages plus employer CPP, EI and benefits, from approved pay runs, against each department's budget for the year.",
+    "noCost": "No approved pay runs this year yet.",
+    "used": "{{pct}}% of budget",
+    "split": "Wages {{wages}} · employer costs {{employer}}",
+    "chart": "Chart of accounts",
+    "chartHelp": "The general-ledger accounts payroll posts to. Use your city's account numbers.",
+    "deptTitle": "Department GL codes and budgets",
+    "deptHelp": "Each department's cost-centre segment and its labour budget for the year.",
+    "glCode": "GL segment",
+    "budget": "Labour budget",
+    "saved": "Saved.",
+    "keys": {
+      "wages": "Wages expense",
+      "employerCpp": "Employer CPP expense",
+      "employerEi": "Employer EI expense",
+      "employerBenefits": "Employer benefits expense",
+      "cppPayable": "CPP payable",
+      "eiPayable": "EI payable",
+      "taxPayable": "Income tax payable",
+      "pensionPayable": "Pension payable",
+      "unionDuesPayable": "Union dues payable",
+      "benefitsPayable": "Benefit premiums payable",
+      "netPayClearing": "Net pay clearing (bank)"
     }
   }
 }

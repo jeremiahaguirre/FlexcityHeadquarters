@@ -53,6 +53,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', permission: 'jobs.manage', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', permission: 'payroll.export', ready: true },
   { href: '/manage/benefits', key: 'benefits', icon: HeartPulse, group: 'manage', permission: 'benefits.manage', ready: true },
+  { href: '/manage/accounting', key: 'accounting', icon: Calculator, group: 'manage', permission: 'accounting.manage', ready: true },
   { href: '/manage/fees', key: 'fees', icon: Tags, group: 'manage', permission: 'fees.manage', ready: true },
   { href: '/manage/bookings', key: 'bookings', icon: Globe, group: 'manage', permission: 'bookings.manage', ready: true },
   { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', permission: 'roles.manage', ready: true },
