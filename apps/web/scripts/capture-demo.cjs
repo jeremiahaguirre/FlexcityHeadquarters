@@ -67,6 +67,11 @@ async function prepareCityWorks() {
   const positions = await sup.call('GET', '/api/positions');
   const instructor = positions.find((p) => /instructor/i.test(p.name)) ?? positions[0];
 
+  // Opening hours for the forecast (6 a.m.–9 p.m. on weekdays, 8–8 on weekends, two guards minimum).
+  if (!(await sup.call('GET', `/api/facilities/${facility.id}/hours`)).length) {
+    const blocks = [1, 2, 3, 4, 5].map((d) => ({ dayOfWeek: d, opensMinute: 360, closesMinute: 1260, minGuards: 2 })).concat([6, 0].map((d) => ({ dayOfWeek: d, opensMinute: 480, closesMinute: 1200, minGuards: 2 })));
+    await sup.call('PUT', `/api/facilities/${facility.id}/hours`, { blocks });
+  }
   if (!(await sup.call('GET', '/api/swim-levels')).length) {
     await sup.call('POST', '/api/swim-levels/presets', { preset: 'LIFESAVING', advanced: true });
     await sup.call('POST', '/api/swim-levels/presets', { preset: 'CANSKATE' });
@@ -329,6 +334,18 @@ async function capture(browser, role) {
       await page.waitForTimeout(1200);
       await page.keyboard.press('Escape');
       await page.waitForTimeout(300);
+      // A person's pay set-up (salary, court orders), then each payroll provider sub-tab.
+      await page.locator('main [role=radiogroup] [role=radio]', { hasText: 'People' }).first().click().catch(() => {});
+      await page.waitForTimeout(800);
+      await page.locator('main button', { hasText: /^(Edit|Set up)$/ }).first().click().catch(() => {});
+      await page.waitForTimeout(1500);
+      await page.keyboard.press('Escape');
+      await page.locator('main [role=radiogroup] [role=radio]', { hasText: 'Payroll provider' }).first().click().catch(() => {});
+      await page.waitForTimeout(800);
+      for (const name of ['ADP', 'Dayforce', 'Wagepoint', 'In the app']) {
+        await page.locator('main [role=radio]', { hasText: name }).first().click().catch(() => {});
+        await page.waitForTimeout(500);
+      }
     }
     if (href === '/union') {
       await page.locator('main [role=radiogroup] [role=radio]').first().click().catch(() => {});
@@ -396,15 +413,13 @@ async function capturePlatform(browser) {
   await page.getByRole('button', { name: 'Not now' }).click({ timeout: 3000 }).catch(() => {});
   await page.locator('main a[href*="/platform/city"]').first().waitFor();
   const cities = await page.$$eval('main a[href*="/platform/city"]', (as) => as.map((a) => a.getAttribute('href')));
+  // Every city tab that loads its own data, opened by its address (the page reads ?tab=).
+  const CITY_TABS = ['org', 'facilities', 'pools', 'positions', 'features', 'access', 'roles', 'import', 'billing', 'payroll', 'lifecycle', 'consents'];
   for (const href of cities) {
-    await page.goto(`${CONSOLE}${href}`);
-    await page.locator('main h1').first().waitFor();
-    await page.waitForTimeout(800);
-    // Every tab that loads its own data (menus and access, pools, roles, billing…).
-    const tabs = await page.locator('main [role=radiogroup] [role=radio]').allInnerTexts().catch(() => []);
-    for (const name of tabs) {
-      await page.locator('main [role=radiogroup] [role=radio]', { hasText: name }).first().click().catch(() => {});
-      await page.waitForTimeout(700);
+    for (const tab of CITY_TABS) {
+      await page.goto(`${CONSOLE}${href}${href.includes('?') ? '&' : '?'}tab=${tab}`);
+      await page.locator('main h1').first().waitFor();
+      await page.waitForTimeout(900);
     }
   }
   // Billing, pre-authorized debits, FH's books (every tab) and payroll tax tables.
