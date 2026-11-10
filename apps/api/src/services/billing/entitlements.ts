@@ -16,7 +16,7 @@ import type { FeatureKey } from '../platform/features.js';
 export type AddOn = 'hr' | 'ops' | 'union';
 
 export const ADD_ON_FEATURES: Record<AddOn, readonly FeatureKey[]> = {
-  hr: ['onboarding', 'reliability', 'discipline', 'accommodation'],
+  hr: ['onboarding', 'reliability', 'discipline', 'accommodation', 'hrSuite'],
   ops: ['poolChemistry', 'incidents', 'statusBoard'],
   union: ['union'],
 };

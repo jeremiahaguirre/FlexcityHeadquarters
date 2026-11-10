@@ -25,6 +25,10 @@ export const PERMISSIONS = [
   'payroll.approve', // release pay runs and bank deposit files; payroll settings
   'benefits.manage', // benefit plans and who is enrolled
   'accounting.manage', // GL journal entries, chart of accounts, labour cost against budget
+  'leave.manage', // leave entitlements and balances
+  'performance.manage', // set up performance reviews
+  'training.manage', // training courses and records
+  'grievances.manage', // labour relations: grievances
   'ops.chemical.record',
   'ops.chemical.signoff',
   'ops.pool.close', // confirm / dismiss closure recommendations, reopen
@@ -102,6 +106,10 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'payroll.approve',
     'benefits.manage',
     'accounting.manage',
+    'leave.manage',
+    'performance.manage',
+    'training.manage',
+    'grievances.manage',
     'incidents.read',
     'discipline.read',
     'discipline.write',
@@ -140,6 +148,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'shiftboard.assign_emergency',
     'timeoff.approve',
     'timeclock.review',
+    'training.manage',
     'ops.chemical.signoff',
     'ops.pool.close',
     'ops.status.read',

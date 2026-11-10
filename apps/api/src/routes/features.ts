@@ -52,6 +52,7 @@ import { departmentsRouter } from './departments.js';
 import { payrollRouter } from './payroll.js';
 import { benefitsRouter } from './benefits.js';
 import { accountingRouter } from './accounting.js';
+import { hrRouter } from './hr.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -75,6 +76,7 @@ api.use(departmentsRouter);
 api.use(payrollRouter);
 api.use(benefitsRouter);
 api.use(accountingRouter);
+api.use(hrRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);

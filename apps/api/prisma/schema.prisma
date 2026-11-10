@@ -396,6 +396,8 @@ model User {
   bankAccounts        BankAccount[]
   payStatements       PayStatement[]
   benefitEnrollments  BenefitEnrollment[]
+  leaveEntitlements   LeaveEntitlement[]
+  trainingRecords     TrainingRecord[]
   authTokens          AuthToken[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
 
@@ -2330,4 +2332,141 @@ model BenefitEnrollment {
 
   @@index([userId])
   @@index([planId])
+}
+
+// ------------------------------------------------------------------ HR departments
+
+/// Leave for one person, type and year (hours). Balance = hours + carry-over − approved leave that year.
+model LeaveEntitlement {
+  id        String      @id @default(uuid()) @db.Uuid
+  tenantId  String      @db.Uuid
+  userId    String      @db.Uuid
+  year      Int
+  type      TimeOffType
+  hours     Decimal     @db.Decimal(8, 2)
+  carryover Decimal     @default(0) @db.Decimal(8, 2)
+  note      String?
+  updatedAt DateTime    @updatedAt @db.Timestamptz(3)
+  user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, year, type])
+}
+
+enum ReviewStatus {
+  /// Waiting for the employee's self-assessment.
+  SELF
+  /// Waiting for the reviewer.
+  MANAGER
+  /// Reviewer done; waiting for the employee to read and acknowledge.
+  DISCUSS
+  ACKNOWLEDGED
+}
+
+/// A performance review: goals, self-assessment, the reviewer's assessment and rating, and the employee's acknowledgement.
+model PerformanceReview {
+  id               String       @id @default(uuid()) @db.Uuid
+  tenantId         String       @db.Uuid
+  userId           String       @db.Uuid
+  reviewerId       String       @db.Uuid
+  cycle            String
+  dueOn            DateTime     @db.Date
+  status           ReviewStatus @default(SELF)
+  /// [{ text, met: boolean | null }]
+  goals            Json         @default("[]")
+  selfComments     String?
+  managerComments  String?
+  /// 1 (needs improvement) to 5 (outstanding).
+  rating           Int?
+  employeeComments String?
+  acknowledgedAt   DateTime?    @db.Timestamptz(3)
+  createdById      String       @db.Uuid
+  createdAt        DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime     @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([reviewerId])
+}
+
+/// An internal course: in-service, WHMIS, orientation, defensive driving… Mandatory ones can apply to some positions and need renewing.
+model TrainingCourse {
+  id          String           @id @default(uuid()) @db.Uuid
+  tenantId    String           @db.Uuid
+  name        String
+  nameFr      String?
+  hours       Decimal          @default(0) @db.Decimal(6, 2)
+  mandatory   Boolean          @default(false)
+  /// Months until it must be retaken; null = once.
+  renewMonths Int?
+  /// Positions it's mandatory for; empty = everyone.
+  positionIds String[]         @default([]) @db.Uuid
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
+  records     TrainingRecord[]
+
+  @@unique([tenantId, name])
+}
+
+model TrainingRecord {
+  id           String         @id @default(uuid()) @db.Uuid
+  tenantId     String         @db.Uuid
+  courseId     String         @db.Uuid
+  userId       String         @db.Uuid
+  completedOn  DateTime       @db.Date
+  hours        Decimal?       @db.Decimal(6, 2)
+  trainer      String?
+  recordedById String         @db.Uuid
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  course       TrainingCourse @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([courseId])
+}
+
+enum GrievanceStatus {
+  FILED
+  STEP_1
+  STEP_2
+  STEP_3
+  ARBITRATION
+  RESOLVED
+  WITHDRAWN
+}
+
+/// A grievance under the collective agreement, tracked step by step against its deadlines.
+model Grievance {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @db.Uuid
+  number      Int
+  /// The grievor; null for a policy or group grievance.
+  userId      String?         @db.Uuid
+  kind        String          @default("INDIVIDUAL")
+  title       String
+  articles    String?
+  filedOn     DateTime        @db.Date
+  status      GrievanceStatus @default(FILED)
+  /// When the employer's reply (or the next step) is due.
+  dueOn       DateTime?       @db.Date
+  outcome     String?
+  /// [{ at, by, status, note }]
+  history     Json            @default("[]")
+  createdById String          @db.Uuid
+  createdAt   DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@unique([tenantId, number])
+}
+
+/// Someone leaving: the checklist from last day to final pay, Record of Employment and access removed.
+model Offboarding {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  userId      String    @unique @db.Uuid
+  lastDay     DateTime  @db.Date
+  reason      String
+  /// [{ key, done, doneAt, doneById }]
+  checklist   Json
+  completedAt DateTime? @db.Timestamptz(3)
+  createdById String    @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
 }
