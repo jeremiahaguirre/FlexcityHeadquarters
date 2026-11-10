@@ -23,7 +23,7 @@ ssoAuthRouter.get(
     if (!(await allow(`sso:${req.ip}:${req.tenantId}`, 30, 10 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
     const hint = typeof req.query.hint === 'string' && req.query.hint.length < 200 ? req.query.hint : undefined;
     try {
-      const s = await startSso(req.tenantId!, sub, hint);
+      const s = await startSso(req.tenantId!, sub, hint, typeof req.query.next === 'string' ? req.query.next : undefined);
       res.cookie(STATE_COOKIE, s.cookie, stateCookieOpts(s.protocol));
       res.redirect(302, s.url);
     } catch (e) {
@@ -38,8 +38,8 @@ async function finish(req: express.Request, res: express.Response, p: 'OIDC' | '
   const sub = subdomainOf(req)!;
   res.clearCookie(STATE_COOKIE, { path: '/api/auth/sso' });
   try {
-    const code = await finishSso(req.tenantId!, sub, p, req.cookies?.[STATE_COOKIE] as string | undefined, input);
-    res.redirect(303, appUrl(sub, `/sso?code=${code}`));
+    const { code, next } = await finishSso(req.tenantId!, sub, p, req.cookies?.[STATE_COOKIE] as string | undefined, input);
+    res.redirect(303, appUrl(sub, `/sso?code=${code}${next ? `&next=${encodeURIComponent(next)}` : ''}`));
   } catch (e) {
     if (!(e instanceof SsoError)) throw e;
     res.redirect(303, appUrl(sub, `/login?sso=${e.code}`));

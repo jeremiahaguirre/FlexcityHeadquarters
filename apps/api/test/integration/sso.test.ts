@@ -134,6 +134,19 @@ describe('OpenID Connect (Microsoft Entra ID)', () => {
     expect((await anon.post('/api/auth/reset', { token: l2.searchParams.get('code'), password: 'new password 123' })).body.code).toBe('LINK_EXPIRED');
   });
 
+  it('returns people to the page they were going to, never to another site', async () => {
+    const go = async (next: string) => {
+      const start = await anon.get(`/api/auth/sso/start?next=${encodeURIComponent(next)}`);
+      const to = new URL(start.headers.location!);
+      nextClaims = { nonce: to.searchParams.get('nonce'), email: staffEmail };
+      const back = await anon.get(`/api/auth/sso/oidc/callback?code=good-code&state=${to.searchParams.get('state')}`, stateCookie(start));
+      return new URL(back.headers.location!).searchParams.get('next');
+    };
+    expect(await go('/manage/payroll')).toBe('/manage/payroll');
+    expect(await go('//evil.example')).toBeNull();
+    expect(await go('https://evil.example')).toBeNull();
+  });
+
   it('the provider’s MFA counts when it says so', async () => {
     const { location } = await oidcRound({ email: staffEmail, amr: ['pwd', 'mfa'] });
     const x = await anon.post('/api/auth/sso/exchange', { code: location.searchParams.get('code') });

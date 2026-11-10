@@ -24,6 +24,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { DepartmentsEditor } from '@/components/DepartmentsEditor';
 import type { Departments } from '@/lib/departments';
 import { SupportAccessCard } from '@/components/settings/SupportAccessCard';
+import { SsoCard } from '@/components/settings/SsoCard';
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
 
@@ -93,6 +94,7 @@ export default function SettingsPage() {
       ) : (
         <div className="grid max-w-4xl gap-6">
           {tab === 'org' ? <Organization s={settings.data} reload={settings.reload} /> : null}
+          {tab === 'org' ? <SsoCard /> : null}
           {tab === 'org' ? <SupportAccessCard /> : null}
           {tab === 'facilities' ? <Facilities s={settings.data} reload={settings.reload} /> : null}
           {tab === 'pay' ? <PayCodes s={settings.data} reload={settings.reload} /> : null}

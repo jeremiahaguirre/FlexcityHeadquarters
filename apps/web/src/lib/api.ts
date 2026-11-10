@@ -139,6 +139,22 @@ export async function login(email: string, password: string) {
   return r.user;
 }
 
+export interface SsoInfo { protocol: 'OIDC' | 'SAML'; label: string | null; enforced: boolean }
+
+/** Whether this organization signs in with Microsoft / its own identity provider. */
+export async function ssoInfo(): Promise<SsoInfo | null> {
+  if (DEMO) return null;
+  const r = await api<{ sso?: SsoInfo | null }>('/api/public/tenant', {}, false).catch(() => null);
+  return r?.sso ?? null;
+}
+
+/** After single sign-on: trades the one-time code for a session. */
+export async function ssoExchange(code: string) {
+  const r = await api<{ accessToken: string; user: { id: string; firstName: string; roles: string[]; locale: string } }>('/api/auth/sso/exchange', { method: 'POST', body: { code } }, false);
+  accessToken = r.accessToken;
+  return r.user;
+}
+
 export async function logout() {
   await api('/api/auth/logout', { method: 'POST' }, false).catch(() => undefined);
   accessToken = null;

@@ -67,6 +67,8 @@ interface State {
   rid?: string;
   /** When the SAML request was made (ms). */
   rat?: number;
+  /** Where to go after signing in (a path on this site). */
+  nx?: string;
 }
 async function signState(s: State) {
   return new SignJWT({ ...s }).setProtectedHeader({ alg: 'HS256' }).setAudience('fh-sso-state').setIssuedAt().setExpirationTime(`${STATE_TTL_S}s`).sign(secret());
@@ -123,7 +125,7 @@ async function discover(issuer: string): Promise<Discovery> {
   return doc;
 }
 
-async function oidcStart(c: SsoConnection, sub: string, loginHint?: string) {
+async function oidcStart(c: SsoConnection, sub: string, loginHint?: string, nx?: string) {
   const doc = await discover(c.oidcIssuer!);
   const state = b64url(randomBytes(24));
   const nonce = b64url(randomBytes(24));
@@ -140,7 +142,7 @@ async function oidcStart(c: SsoConnection, sub: string, loginHint?: string) {
   q.set('code_challenge', b64url(createHash('sha256').update(verifier).digest()));
   q.set('code_challenge_method', 'S256');
   if (loginHint) q.set('login_hint', loginHint);
-  return { url: url.toString(), cookie: await signState({ tid: c.tenantId, p: 'OIDC', state, nonce, verifier }) };
+  return { url: url.toString(), cookie: await signState({ tid: c.tenantId, p: 'OIDC', state, nonce, verifier, nx }) };
 }
 
 async function oidcFinish(c: SsoConnection, sub: string, st: State, query: Record<string, unknown>) {
@@ -221,11 +223,11 @@ export function samlMetadata(sub: string) {
   return new SAML({ issuer: u.entityId, callbackUrl: u.acsUrl, idpCert: 'unused', wantAssertionsSigned: true, identifierFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' }).generateServiceProviderMetadata(null);
 }
 
-async function samlStart(c: SsoConnection, sub: string) {
+async function samlStart(c: SsoConnection, sub: string, nx?: string) {
   const cache = cookieCache();
   const url = await samlFor(c, sub, cache).getAuthorizeUrlAsync('', undefined, {});
   if (!cache.saved) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
-  return { url, cookie: await signState({ tid: c.tenantId, p: 'SAML', rid: cache.saved, rat: cache.savedAt ? new Date(cache.savedAt).getTime() || Date.now() : Date.now() }) };
+  return { url, cookie: await signState({ tid: c.tenantId, p: 'SAML', rid: cache.saved, rat: cache.savedAt ? new Date(cache.savedAt).getTime() || Date.now() : Date.now(), nx }) };
 }
 
 const SAML_EMAIL = ['email', 'mail', 'urn:oid:0.9.2342.19200300.100.1.3', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'];
@@ -255,14 +257,17 @@ export function ready(c: SsoConnection | null): c is SsoConnection {
   return c.protocol === 'OIDC' ? !!(c.oidcIssuer && c.oidcClientId) : !!(c.samlEntryPoint && c.samlCert);
 }
 
-export async function startSso(tenantId: string, sub: string, loginHint?: string) {
+export const safeNext = (n: unknown) => (typeof n === 'string' && n.startsWith('/') && !n.startsWith('//') && !n.includes('\\') && n.length < 300 ? n : undefined);
+
+export async function startSso(tenantId: string, sub: string, loginHint?: string, next?: string) {
   const c = await withTenant(tenantId, connectionFor);
   if (!ready(c)) throw new SsoError('SSO_OFF');
-  return { protocol: c.protocol, ...(c.protocol === 'OIDC' ? await oidcStart(c, sub, loginHint) : await samlStart(c, sub)) };
+  const nx = safeNext(next);
+  return { protocol: c.protocol, ...(c.protocol === 'OIDC' ? await oidcStart(c, sub, loginHint, nx) : await samlStart(c, sub, nx)) };
 }
 
 /** Checks the provider's answer and returns the one-time code for /sso. */
-export async function finishSso(tenantId: string, sub: string, p: State['p'], rawState: string | undefined, input: Record<string, unknown>): Promise<string> {
+export async function finishSso(tenantId: string, sub: string, p: State['p'], rawState: string | undefined, input: Record<string, unknown>): Promise<{ code: string; next?: string }> {
   const st = await readState(rawState, tenantId, p);
   const c = await withTenant(tenantId, connectionFor);
   if (!ready(c) || c.protocol !== p) throw new SsoError('SSO_OFF');
@@ -280,7 +285,7 @@ export async function finishSso(tenantId: string, sub: string, p: State['p'], ra
     await audit(tx, { tenantId, actorId: user.id, action: 'auth.sso', entity: 'SsoConnection', entityId: c.id, after: { protocol: p, mfa } });
     return { code: await issueAuthToken(tx, tenantId, user.id, mfa ? 'SSO_MFA' : 'SSO') };
   });
-  if ('code' in out) return out.code;
+  if ('code' in out) return { code: out.code, next: safeNext(st.nx) };
   await withTenant(tenantId, (tx) => audit(tx, { tenantId, actorId: out.userId, action: 'auth.sso.refused', entity: 'SsoConnection', entityId: c.id, after: { code: out.refused, protocol: p } }));
   throw new SsoError(out.refused);
 }
