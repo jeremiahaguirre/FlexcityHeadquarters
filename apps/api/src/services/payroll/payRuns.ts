@@ -35,6 +35,8 @@ export interface PayrollSettings {
   rqPreparerNumber?: string;
   rqCertificationNumber?: string;
   rl1FirstSlip?: number;
+  /** RL-1 slip sequence numbers given out, by year and person, so amendments reuse them. */
+  rl1Numbers?: Record<string, Record<string, number>>;
   originatorId?: string;
   originatorShortName?: string;
   originatorLongName?: string;
@@ -140,10 +142,18 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   const kind = input.kind ?? 'REGULAR';
   // One live regular run per department (or city-wide) per period; off-cycle runs can be added any time.
   if (kind === 'REGULAR') {
+    // Any overlapping period counts, and a city-wide run overlaps every department's (and the reverse): nobody is paid twice for the same days.
     const clash = await tx.payRun.findFirst({
-      where: { kind: 'REGULAR', departmentId: input.departmentId, periodStart: new Date(input.periodStart), status: { not: 'VOID' }, ...(runId ? { id: { not: runId } } : {}) },
+      where: {
+        kind: 'REGULAR',
+        status: { not: 'VOID' },
+        periodStart: { lte: new Date(periodEnd) },
+        periodEnd: { gte: new Date(input.periodStart) },
+        ...(input.departmentId ? { OR: [{ departmentId: input.departmentId }, { departmentId: null }] } : {}),
+        ...(runId ? { id: { not: runId } } : {}),
+      },
     });
-    if (clash) throw conflict('RUN_EXISTS', 'There is already a pay run for this department and period. Open it, or void it first.');
+    if (clash) throw conflict('RUN_EXISTS', 'There is already a pay run covering some of these days for these people. Open it, or void it first.');
   }
 
   const { results, warnings: calcWarnings } = kind === 'OFF_CYCLE' ? { results: [] as Awaited<ReturnType<typeof runPayroll>>['results'], warnings: [] } : await runPayroll(tx, tenantId, input.periodStart, input.weeks, null, positions);
@@ -188,7 +198,9 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     const prior = await tx.payStatement.findMany({ where: { userId: { in: [...new Set(orders.map((o) => o.userId))] }, payRun: { status: { in: ['APPROVED', 'PAID'] } }, ...(runId ? { payRunId: { not: runId } } : {}) }, select: { deductions: true } });
     for (const st of prior) for (const o of ((st.deductions as { orders?: Array<{ id: string; amount: number }> }).orders ?? [])) collected.set(o.id, (collected.get(o.id) ?? 0) + o.amount);
   }
-  const lastRegular = async (userId: string) => Number((await tx.payStatement.findFirst({ where: { userId, year: Number(input.payDate.slice(0, 4)), payRun: { kind: 'REGULAR', status: { not: 'VOID' } } }, orderBy: { payDate: 'desc' }, select: { gross: true } }))?.gross ?? 0);
+  // The person's usual pay, for the bonus method: their latest regular pay before this one (never this run's own figures).
+  const lastRegular = async (userId: string) =>
+    Number((await tx.payStatement.findFirst({ where: { userId, payDate: { lte: new Date(input.payDate) }, payRun: { kind: 'REGULAR', status: { not: 'VOID' } }, ...(runId ? { payRunId: { not: runId } } : {}) }, orderBy: { payDate: 'desc' }, select: { gross: true } }))?.gross ?? 0);
   const periodDays = input.weeks * 7;
 
   const statements: Prisma.PayStatementCreateManyInput[] = [];
@@ -199,9 +211,11 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     // Salaried: the salary replaces hours pay (overtime stays for those eligible for it).
     const mySalaries = salaries.filter((x) => x.userId === userId);
     if (mySalaries.length) {
+      // The salary covers its own position's hours (overtime still paid when eligible); hours in other positions stay hourly.
+      const salaried = new Set(mySalaries.map((x) => x.positionId));
       const keepOt = mySalaries.some((x) => x.overtimeEligible);
-      lines = lines.filter((l) => keepOt && l.code.startsWith('OVERTIME'));
-      hours = 0;
+      lines = lines.filter((l) => !salaried.has(l.positionId ?? '') || (keepOt && l.code.startsWith('OVERTIME')));
+      hours = r2(lines.filter((l) => !salaried.has(l.positionId ?? '') && l.code !== 'VACATION_PAY' && l.code !== 'STAT_HOLIDAY_PAY').reduce((a, l) => a + l.hours, 0));
       for (const sal of mySalaries) {
         const days = overlapDays(input.periodStart, periodEnd, sal.effectiveFrom.toISOString().slice(0, 10), sal.effectiveTo?.toISOString().slice(0, 10) ?? null);
         if (!days) continue;
@@ -211,17 +225,21 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
         hours += h;
         lines.push({ code: 'SALARY', positionId: sal.positionId, hours: h, rate: r2(Number(sal.annualAmount)), amount, description: undefined });
       }
-      hours = r2(hours + lines.filter((l) => l.code.startsWith('OVERTIME')).reduce((a, l) => a + l.hours, 0));
+      hours = r2(hours + lines.filter((l) => salaried.has(l.positionId ?? '') && l.code.startsWith('OVERTIME')).reduce((a, l) => a + l.hours, 0));
     }
     // One-time items on this run.
     const mine = adjustments.filter((x) => x.userId === userId);
     const amt = (k: Set<string>) => r2(mine.filter((x) => k.has(x.kind)).reduce((a, x) => a + Number(x.amount), 0));
     for (const x of mine.filter((y) => LUMP_SUM_KINDS.has(y.kind) || REGULAR_EARNING_KINDS.has(y.kind))) lines.push({ code: x.kind, positionId: x.positionId, hours: 0, rate: 0, amount: r2(Number(x.amount)), description: x.description });
-    const lump = amt(LUMP_SUM_KINDS);
+    // On an off-cycle run every earning is extra to the person's usual pay: all of it by the bonus method.
+    const lump = kind === 'OFF_CYCLE' ? r2(lines.reduce((a, l) => a + l.amount, 0)) : amt(LUMP_SUM_KINDS);
     const reimbursements = amt(REIMBURSEMENT_KINDS);
     const oneTimeDeductions = amt(DEDUCTION_KINDS);
     const gross = r2(lines.reduce((s, l) => s + l.amount, 0));
-    if (gross <= 0 && reimbursements <= 0) continue;
+    if (gross <= 0 && reimbursements <= 0) {
+      if (oneTimeDeductions > 0) warnings.add(issue('DEDUCTION_WITHOUT_PAY', { name: name(userId) }));
+      continue;
+    }
     const main = [...rs].sort((a, b) => Number(b.result.grossWages) - Number(a.result.grossWages))[0];
     const mainFacility = main?.facilityId ?? null;
     const profile = profiles.find((p) => p.userId === userId);
@@ -374,7 +392,14 @@ export async function approveRun(tx: Tx, tenantId: string, runId: string, approv
   const run = await tx.payRun.findUnique({ where: { id: runId } });
   if (!run) throw notFound('Pay run');
   if (run.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be approved.');
-  if (settings.twoPersonApproval !== false && run.preparedById === approverId) throw forbidden('Someone other than the person who prepared this pay run has to approve it.');
+  if (settings.twoPersonApproval !== false) {
+    if (run.preparedById === approverId) throw forbidden('Someone other than the person who prepared this pay run has to approve it.');
+    // Nobody releases a one-time payment they added, or one that pays them.
+    const own = await tx.payAdjustment.findFirst({ where: { payRunId: runId, OR: [{ createdById: approverId }, { userId: approverId }] } });
+    if (own) throw forbidden('Someone else has to approve this pay run: it has a one-time item you added or that pays you.');
+  }
+  // In-app pay runs only while the organization runs payroll in the app.
+  if (settings.payrollProvider && settings.payrollProvider.mode !== 'in_app') throw conflict('PAYROLL_WITH_PROVIDER', `Payroll runs with ${settings.payrollProvider.mode} for this organization: send the period from the Payroll provider tab, or switch back to payroll in the app.`);
   const fresh = await buildRun(tx, tenantId, run.preparedById, runInput(run), run.id);
   const blockers = fresh.blockers as unknown as Array<Issue | string>;
   if (blockers.length) throw new HttpError(409, 'RUN_BLOCKED', 'This pay run can’t be approved yet.', { blockers });

@@ -160,6 +160,7 @@ complianceRouter.get(
     const a = authOf(req);
     const q = z.object({ facilityId: uuid, at: z.coerce.date() }).parse(req.query);
     if (q.at.getTime() > Date.now() + 60_000) throw notFound('A report for the future');
+    facilityInScope(req, q.facilityId);
     const out = await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.facility.findUnique({ where: { id: q.facilityId } }))) throw notFound('Facility');
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'compliance.snapshot', entity: 'Facility', entityId: q.facilityId, after: { at: q.at.toISOString() } });
@@ -176,6 +177,8 @@ complianceRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = z.object({ facilityId: uuid, weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), positionId: uuid.optional() }).parse(req.query);
+    facilityInScope(req, q.facilityId);
+    positionInScope(req, q.positionId);
     res.json(await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.facility.findUnique({ where: { id: q.facilityId } }))) throw notFound('Facility');
       return forecastWeek(tx, q.facilityId, q.weekStart, q.positionId ?? null);
@@ -183,10 +186,15 @@ complianceRouter.get(
   }),
 );
 
-const facilityInScope = (req: Parameters<typeof authOf>[0], facilityId: string) => {
+function facilityInScope(req: Parameters<typeof authOf>[0], facilityId: string) {
   const only = facilitiesOf(authOf(req).scope);
   if (only && !only.includes(facilityId)) throw notFound('Facility');
-};
+}
+/** A lead limited to some positions forecasts and drafts shifts only for those. */
+function positionInScope(req: Parameters<typeof authOf>[0], positionId: string | undefined) {
+  const s = authOf(req).scope;
+  if (positionId && s?.positionIds.length && !s.positionIds.includes(positionId)) throw notFound('Position');
+}
 
 /** A facility's opening hours by weekday, and the fewest lifeguards on deck while open. */
 complianceRouter.get(
@@ -231,6 +239,7 @@ complianceRouter.post(
     const a = authOf(req);
     const b = z.object({ facilityId: uuid, weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), positionId: uuid }).parse(req.body);
     facilityInScope(req, b.facilityId);
+    positionInScope(req, b.positionId);
     const created = await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.facility.findUnique({ where: { id: b.facilityId } }))) throw notFound('Facility');
       if (!(await tx.position.findUnique({ where: { id: b.positionId } }))) throw notFound('Position');

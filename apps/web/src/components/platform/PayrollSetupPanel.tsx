@@ -55,7 +55,7 @@ export function PayrollSetupPanel({ id }: { id: string }) {
     const f = new FormData(e.currentTarget);
     const s = (k: string) => String(f.get(k) ?? '').trim();
     const secret = s('secret');
-    void run('bank', () => papi(`/tenants/${id}/payroll/bank`, { method: 'PUT', body: { host: s('host'), port: Number(s('port') || 22), username: s('username'), remoteDir: s('remoteDir'), hostKeySha256: s('hostKeySha256'), pgpPublicKey: s('pgpPublicKey') || null, autoSend: f.get('autoSend') === 'on', ...(secret ? (secret.includes('PRIVATE KEY') ? { privateKey: secret } : { password: secret }) : {}) } }), t('payrollSetup.bankSaved'));
+    void run('bank', () => papi(`/tenants/${id}/payroll/bank`, { method: 'PUT', body: { host: s('host'), port: Number(s('port') || 22), username: s('username'), remoteDir: s('remoteDir'), hostKeySha256: s('hostKeySha256'), ...(s('pgpPublicKey') ? { pgpPublicKey: s('pgpPublicKey') } : {}), autoSend: f.get('autoSend') === 'on', ...(secret ? (secret.includes('PRIVATE KEY') ? { privateKey: secret } : { password: secret }) : {}) } }), t('payrollSetup.bankSaved'));
   }
   const field = (name: keyof Deposit, label: string, props: Record<string, unknown> = {}) => (
     <Field label={label}>{(p) => <Input {...p} name={name} defaultValue={name === 'returnsAccount' ? '' : (d[name] ?? '')} placeholder={name === 'returnsAccount' && d.returnsAccount ? d.returnsAccount : undefined} {...props} />}</Field>

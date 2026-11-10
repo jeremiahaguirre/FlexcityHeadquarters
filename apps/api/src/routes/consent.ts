@@ -26,7 +26,8 @@ const OPEN = [
   /^\/me\/consent$/,
   /^\/me\/(passkeys|password|push)(\/|$)/,
   /^\/push\/key$/,
-  /^\/me\/lone-work\/help$/,
+  // Safety never waits on paperwork: working-alone check-ins, help, and the people monitoring them.
+  /^\/(me\/)?lone-work(\/|$)/,
   /^\/data-export(\/|$)/,
 ];
 /** People known to have signed the current version, so most requests skip the lookup. */
@@ -93,6 +94,7 @@ consentRouter.post(
           version: CONSENT_VERSION,
           locale: b.locale,
           textSha256,
+          agreement: JSON.parse(JSON.stringify(agreementFor(b.locale))),
           signedName: b.name,
           signature: png,
           signatureSha256: sha256(png),

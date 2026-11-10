@@ -109,7 +109,12 @@ async function token(tenantId: string, provider: 'adp' | 'dayforce', c: AdpConne
     ...mtls,
   });
   if (r.status !== 200) throw new HttpError(502, 'PROVIDER_AUTH', `The provider refused the sign-in: ${describe(r.status, r.body)}`);
-  const t = (JSON.parse(r.body) as { access_token?: string }).access_token;
+  let t: string | undefined;
+  try {
+    t = (JSON.parse(r.body) as { access_token?: string }).access_token;
+  } catch {
+    throw new HttpError(502, 'PROVIDER_AUTH', 'The provider’s sign-in answer wasn’t readable.');
+  }
   if (!t) throw new HttpError(502, 'PROVIDER_AUTH', 'The provider’s answer had no access token.');
   return t;
 }

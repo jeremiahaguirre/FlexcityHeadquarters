@@ -2809,6 +2809,8 @@ model ConsentRecord {
   locale          String
   /// SHA-256 of the agreement text exactly as shown.
   textSha256      String
+  /// The agreement exactly as shown ({ title, intro, sections, confirm }), so a certificate shows the version this person signed.
+  agreement       Json?
   signedName      String
   /// PNG from the signature pad, and its SHA-256.
   signature       Bytes

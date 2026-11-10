@@ -222,7 +222,7 @@ export function rl1Problems(o: { quebecNumber?: string | null; transmitter: Part
   if (!o.transmitter.certificationNumber) out.push({ code: 'NO_CERTIFICATION' });
   if (!o.transmitter.firstSlipSequence) out.push({ code: 'NO_SLIP_RANGE' });
   if (!o.employer.address) out.push({ code: 'NO_EMPLOYER_ADDRESS' });
-  if (!o.employer.contact?.name || !o.employer.contact?.phone) out.push({ code: 'NO_CONTACT' });
+  if (!o.employer.contact?.name || digits(o.employer.contact?.phone).length !== 10) out.push({ code: 'NO_CONTACT' });
   for (const s of slips) {
     const p = people.get(s.userId);
     if (!p) out.push({ code: 'NO_SIN', name: s.name });
@@ -242,13 +242,25 @@ function rqAddr(a: MailingAddress | null) {
  * through Revenu Québec's test service, and confirm the schema version for the year.
  * `kind` 'R' is an original; 'A' amends (each slip keeps its number), 'D' cancels.
  */
-export function rl1Xml(o: { year: number; kind: 'R' | 'A' | 'D'; quebecNumber: string; employer: Employer; transmitter: Rl1Transmitter; slips: Rl1Slip[]; people: Map<string, Person>; software: { name: string; version: string } }) {
+/**
+ * Each person keeps the same RL-1 slip number for the year (an amendment or cancellation must reuse
+ * it): numbers already given out stay; new people get the next unused number in the range.
+ */
+export function assignRl1Numbers(userIds: string[], firstSequence: number, assigned: Record<string, number> = {}): Record<string, number> {
+  const out = { ...assigned };
+  let next = Math.max(firstSequence - 1, ...Object.values(out)) + 1;
+  for (const u of userIds) if (out[u] == null) out[u] = next++;
+  return out;
+}
+
+export function rl1Xml(o: { year: number; kind: 'R' | 'A' | 'D'; quebecNumber: string; employer: Employer; transmitter: Rl1Transmitter; slips: Rl1Slip[]; people: Map<string, Person>; software: { name: string; version: string }; numbers?: Record<string, number> }) {
   const money = (name: string, n: number) => (n ? el(name, n.toFixed(2)) : '');
-  const slips = o.slips.map((s, i) => {
+  const numbers = o.numbers ?? assignRl1Numbers(o.slips.map((s) => s.userId), o.transmitter.firstSlipSequence);
+  const slips = o.slips.map((s) => {
     const p = o.people.get(s.userId)!;
     return (
       '<R>' +
-      `<Identification>${el('Annee', o.year)}${el('NoReleve', rl1SlipNumber(o.transmitter.firstSlipSequence + i))}</Identification>` +
+      `<Identification>${el('Annee', o.year)}${el('NoReleve', rl1SlipNumber(numbers[s.userId]!))}</Identification>` +
       `<Employe>${el('NAS', digits(p.sin))}${el('NoRef', cut(p.employeeNumber, 20))}${el('Nom', cut(p.lastName, 30))}${el('Prenom', cut(p.firstName, 30))}${rqAddr(p.address)}</Employe>` +
       '<Montants>' +
       money('A_RevenuEmploi', s.boxA) +
@@ -280,5 +292,5 @@ export function rl1Xml(o: { year: number; kind: 'R' | 'A' | 'D'; quebecNumber: s
     el('VersionLogiciel', o.software.version) +
     '</P>';
   const group = `<Groupe01>${el('NoId', o.quebecNumber.slice(0, 10))}${el('TypeDossier', 'RS')}${el('NoDossier', o.quebecNumber.slice(12))}${slips.join('')}</Groupe01>`;
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<Transmission VersionSchema="${o.year}.1" pxmlns="http://www.mrq.gouv.qc.ca/T5">${header}${group}</Transmission>\n`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<Transmission VersionSchema="${o.year}.1" xmlns="http://www.mrq.gouv.qc.ca/T5">${header}${group}</Transmission>\n`;
 }

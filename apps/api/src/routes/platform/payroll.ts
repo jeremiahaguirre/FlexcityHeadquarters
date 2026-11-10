@@ -68,6 +68,7 @@ platformPayrollRouter.put(
     const b = depositBody.extend({ inApp: z.boolean().optional() }).parse(req.body);
     const { inApp, ...deposit } = b;
     await withTenant(tenantId, async (tx) => {
+      if (!(await tx.tenant.findUnique({ where: { id: tenantId }, select: { id: true } }))) throw notFound('Organization');
       const s = await read(tx);
       let next = await applyDeposit(tenantId, s, deposit);
       if (inApp) next = { ...next, payrollProvider: { ...(next.payrollProvider ?? {}), mode: 'in_app' } };
@@ -86,6 +87,7 @@ platformPayrollRouter.put(
     const tenantId = uuid.parse(req.params.id);
     const b = bankLinkBody.parse(req.body);
     const changed = await withTenant(tenantId, async (tx) => {
+      if (!(await tx.tenant.findUnique({ where: { id: tenantId }, select: { id: true } }))) throw notFound('Organization');
       const s = await read(tx);
       const { link, credentialChanged } = await buildBankLink(tenantId, b, s.bank);
       await write(tx, tenantId, { ...s, bank: link });

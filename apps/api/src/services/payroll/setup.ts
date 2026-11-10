@@ -23,6 +23,12 @@ export const bankLinkBody = z.object({
 export async function buildBankLink(tenantId: string, b: z.infer<typeof bankLinkBody>, prev: BankLink | undefined): Promise<{ link: BankLink; credentialChanged: boolean }> {
   const secret = b.privateKey ?? b.password;
   if (!secret && !prev) throw new HttpError(400, 'BANK_CREDENTIAL', 'Enter the password or private key the bank gave you.');
+  // A saved password never follows the connection to another server or account.
+  if (!secret && prev && (prev.host !== b.host || prev.port !== b.port || prev.username !== b.username)) {
+    throw new HttpError(400, 'BANK_CREDENTIAL', 'The server or user name changed: enter the password or private key for it.');
+  }
+  // Leaving the PGP key out keeps the saved one; only an explicit empty value removes encryption.
+  const pgp = b.pgpPublicKey === undefined ? (prev?.pgpPublicKey ? { pgpPublicKey: prev.pgpPublicKey, pgpFingerprint: prev.pgpFingerprint } : {}) : b.pgpPublicKey ? { pgpPublicKey: b.pgpPublicKey, pgpFingerprint: await checkPgpKey(b.pgpPublicKey) } : {};
   return {
     credentialChanged: !!secret,
     link: {
@@ -32,7 +38,7 @@ export async function buildBankLink(tenantId: string, b: z.infer<typeof bankLink
       remoteDir: b.remoteDir,
       hostKeySha256: normalizeFingerprint(b.hostKeySha256),
       autoSend: b.autoSend,
-      ...(b.pgpPublicKey ? { pgpPublicKey: b.pgpPublicKey, pgpFingerprint: await checkPgpKey(b.pgpPublicKey) } : {}),
+      ...pgp,
       credentialKind: secret ? (b.privateKey ? 'privateKey' : 'password') : prev!.credentialKind,
       credential: secret ? await sealCredential(tenantId, secret) : prev!.credential,
     },

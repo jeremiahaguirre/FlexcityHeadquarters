@@ -470,3 +470,12 @@ describe('bonus method for one-time payments', async () => {
     expect(d.federalTax).toBeCloseTo(26 * (calc(2050).federalTax - calc(2000).federalTax), 2);
   });
 });
+
+describe('RL-1 slip numbers stay with the person', async () => {
+  const { assignRl1Numbers } = await import('../../src/services/payroll/filingXml.js');
+  it('keeps given numbers and gives new people the next ones', () => {
+    const first = assignRl1Numbers(['alice', 'bob'], 1000);
+    expect(first).toEqual({ alice: 1000, bob: 1001 });
+    expect(assignRl1Numbers(['aaron', 'alice', 'bob'], 1000, first)).toEqual({ alice: 1000, bob: 1001, aaron: 1002 });
+  });
+});

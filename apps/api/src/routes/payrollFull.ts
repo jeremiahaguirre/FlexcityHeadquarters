@@ -49,7 +49,8 @@ payrollFullRouter.post(
       await person(tx, userId);
       if (!(await tx.position.findUnique({ where: { id: b.positionId } }))) throw notFound('Position');
       const dayBefore = new Date(Date.parse(b.effectiveFrom) - 86_400_000);
-      await tx.salary.updateMany({ where: { userId, effectiveTo: null, effectiveFrom: { lt: new Date(b.effectiveFrom) } }, data: { effectiveTo: dayBefore } });
+      // Whatever salary is still running on the new start date (open-ended or ending later) ends the day before.
+      await tx.salary.updateMany({ where: { userId, effectiveFrom: { lt: new Date(b.effectiveFrom) }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date(b.effectiveFrom) } }] }, data: { effectiveTo: dayBefore } });
       if (await tx.salary.findFirst({ where: { userId, effectiveFrom: { gte: new Date(b.effectiveFrom) } } })) throw conflict('SALARY_LATER', 'There is already a salary starting on or after that date. End or change that one.');
       const created = await tx.salary.create({ data: { tenantId: a.tenantId, userId, ...b, effectiveFrom: new Date(b.effectiveFrom), createdById: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.salary.set', entity: 'User', entityId: userId, after: b });

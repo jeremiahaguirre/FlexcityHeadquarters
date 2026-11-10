@@ -175,13 +175,18 @@ payrollProviderRouter.post(
     const a = authOf(req);
     wholeCity(a);
     const provider: Provider = providerParam.parse(req.params.provider);
-    const b = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.number().int().min(1).max(5) }).parse(req.body);
+    const b = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.number().int().min(1).max(5), resend: z.boolean().default(false) }).parse(req.body);
     const periodEnd = addDays(b.periodStart, b.weeks * 7 - 1);
     const built = await withTenant(a.tenantId, async (tx) => {
       const s = await settingsOf(tx);
       passkey(a, s);
       const p = s.payrollProvider ?? { mode: 'in_app' as const };
       if (!p[provider]) throw new HttpError(400, 'PROVIDER_NOT_SET', 'Connect that provider first.');
+      if (p.mode !== provider) throw new HttpError(409, 'PROVIDER_NOT_IN_USE', `Payroll doesn’t run with ${provider} for this organization: choose it first, so the same hours aren’t also paid in the app.`);
+      // The same period once, unless someone deliberately sends it again (the provider rejected it, or it was corrected).
+      if (!b.resend && (await tx.payrollSync.findFirst({ where: { provider, periodStart: new Date(`${b.periodStart}T00:00:00Z`), status: 'SENT' } }))) {
+        throw new HttpError(409, 'ALREADY_SENT', 'This period was already sent to the provider. Sending it again could pay people twice; confirm to send it again.');
+      }
       const options = provider === 'adp' ? { format: 'adp' as const, adpCompanyCode: p.adp!.companyCode, adpBatchId: p.adp!.batchId ?? null } : { format: provider };
       return { settings: p, run: await runPayroll(tx, a.tenantId, b.periodStart, b.weeks, null, null, options) };
     });

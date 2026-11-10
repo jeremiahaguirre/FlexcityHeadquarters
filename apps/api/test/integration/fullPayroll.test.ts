@@ -110,4 +110,29 @@ describe('in-app payroll as a full payroll system', () => {
     expect(st[0]).toMatchObject({ userId: t.users[1]!.id, gross: 450 });
     expect(st[0]!.deductions.federalTax).toBeGreaterThan(0);
   });
+
+  it('never lets two regular runs cover the same days', async () => {
+    const dept = await owner.department.create({ data: { tenantId: t.tenant.id, name: 'Aquatics' } });
+    const pos = await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Instructor', departmentId: dept.id } });
+    void pos;
+    expect((await call(tok.prep).post('/api/payroll/runs', { departmentId: dept.id, periodStart: PERIOD, weeks: 2, payDate: PAY_DATE })).body.code).toBe('RUN_EXISTS');
+    expect((await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: '2026-03-09', weeks: 2, payDate: '2026-03-27' })).body.code).toBe('RUN_EXISTS');
+  });
+
+  it('a new salary ends the one running on that date, even one with a planned end', async () => {
+    await call(tok.prep).post(`/api/users/${manager}/salary/end`, { lastDay: '2026-12-31' });
+    expect((await call(tok.prep).post(`/api/users/${manager}/salary`, { positionId: t.position.id, annualAmount: 82000, effectiveFrom: '2026-07-01' })).status).toBe(201);
+    const list = (await call(tok.prep).get(`/api/users/${manager}/salary`)).body as Array<{ annualAmount: number; effectiveFrom: string; effectiveTo: string | null }>;
+    const old = list.find((x) => x.annualAmount === 78000)!;
+    expect(old.effectiveTo).toBe('2026-06-30');
+  });
+
+  it('the approver can’t release a one-time payment they added or that pays them', async () => {
+    const off = await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: PERIOD, weeks: 2, payDate: '2026-04-03', kind: 'OFF_CYCLE', note: 'Bonus' });
+    const approverId = (await owner.user.findFirstOrThrow({ where: { tenantId: t.tenant.id, email: `approver@${SUB}.test` } })).id;
+    expect((await call(tok.approver).post(`/api/payroll/runs/${off.body.id}/adjustments`, { userId: approverId, kind: 'BONUS', description: 'Mine', amount: 500 })).status).toBe(201);
+    const r = await call(tok.approver).post(`/api/payroll/runs/${off.body.id}/approve`);
+    expect(r.status).toBe(403);
+  });
 });
+

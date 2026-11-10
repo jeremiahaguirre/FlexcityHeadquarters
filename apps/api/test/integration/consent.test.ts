@@ -89,6 +89,6 @@ describe('first-sign-in consent agreement', () => {
     expect(pdf.headers['content-type']).toBe('application/pdf');
     expect((pdf.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
     const logged = await owner.platformAudit.findMany({ where: { adminId: admin.id } });
-    expect(logged.map((l) => l.action).sort()).toEqual(['consent.certificate', 'consent.export']);
+    expect(logged.map((l) => l.action).sort()).toEqual(['consent.certificate', 'consent.export', 'consent.list']);
   });
 });

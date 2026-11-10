@@ -20,7 +20,7 @@ import { bankLinkBody, buildBankLink } from '../services/payroll/setup.js';
 import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
-import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
+import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, assignRl1Numbers, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
 import type { MailingAddress } from '../services/payroll/bank.js';
 import { h } from './context.js';
 import { csvCell } from '../services/payroll/export.js';
@@ -253,6 +253,7 @@ payrollRouter.put(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     const b = bankLinkBody.parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
@@ -273,6 +274,7 @@ payrollRouter.delete(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     await withTenant(a.tenantId, async (tx) => {
       const { bank: _gone, ...rest } = await settingsOf(tx);
       await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify(rest)) } });
@@ -289,6 +291,7 @@ payrollRouter.post(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     const settings = await withTenant(a.tenantId, settingsOf);
     if (!settings.bank) throw conflict('BANK_NOT_CONNECTED', 'Connect your bank first.');
     res.json(await testBankLink(a.tenantId, settings.bank));
@@ -563,8 +566,11 @@ payrollRouter.get(
       const transmitter = { preparerNumber: settings.rqPreparerNumber, certificationNumber: settings.rqCertificationNumber, firstSlipSequence: settings.rl1FirstSlip };
       const problems = rl1Problems({ quebecNumber: settings.quebecNumber, transmitter, employer }, people, r.slips);
       if (problems.length) throw new HttpError(400, 'FILING_INCOMPLETE', 'Some details are missing before this file can be made.', { problems });
+      // Same number for the same person all year: amendments and cancellations reuse it.
+      const numbers = assignRl1Numbers(r.slips.map((x) => x.userId), settings.rl1FirstSlip!, settings.rl1Numbers?.[year]);
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify({ ...settings, rl1Numbers: { ...settings.rl1Numbers, [year]: numbers } })) } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.rl1.xml', entity: 'Tenant', entityId: a.tenantId, after: { year, kind, slips: r.slips.length } });
-      return rl1Xml({ year, kind, quebecNumber: settings.quebecNumber!, employer, transmitter: transmitter as Rl1Transmitter, slips: r.slips, people: people as Map<string, Person>, software: { name: 'FlexcityHeadquarters', version: String(year) } });
+      return rl1Xml({ numbers, year, kind, quebecNumber: settings.quebecNumber!, employer, transmitter: transmitter as Rl1Transmitter, slips: r.slips, people: people as Map<string, Person>, software: { name: 'FlexcityHeadquarters', version: String(year) } });
     });
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="RL-1-${year}.xml"`);
@@ -768,6 +774,7 @@ payrollRouter.put(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     const b = z
       .object({
         businessNumber: z.string().trim().regex(/^\d{9}RP\d{4}$/, 'A payroll account number looks like 123456789RP0001.').nullable().optional(),

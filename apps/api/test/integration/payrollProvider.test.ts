@@ -105,8 +105,12 @@ describe('payroll provider connections', () => {
   });
 
   it('records a refusal from the provider instead of losing it', async () => {
+    // Sending the same period again needs saying so: it could pay people twice.
+    const again = await call(tok.hr).post('/api/payroll/provider/adp/send', { periodStart: '2026-03-02', weeks: 1 });
+    expect(again.status).toBe(409);
+    expect(again.body.code).toBe('ALREADY_SENT');
     answer = (r) => (r.url.includes('token') ? { status: 200, body: '{"access_token":"tok"}' } : { status: 400, body: JSON.stringify({ message: 'Unknown file number E-Guard1' }) });
-    const r = await call(tok.hr).post('/api/payroll/provider/adp/send', { periodStart: '2026-03-02', weeks: 1 });
+    const r = await call(tok.hr).post('/api/payroll/provider/adp/send', { periodStart: '2026-03-02', weeks: 1, resend: true });
     expect(r.status).toBe(502);
     expect(r.body.message).toContain('Unknown file number E-Guard1');
     expect((await call(tok.hr).get('/api/payroll/provider')).body.history[0]).toMatchObject({ status: 'FAILED', httpStatus: 400 });
@@ -116,14 +120,19 @@ describe('payroll provider connections', () => {
     answer = (r) => (r.url.includes('token') ? { status: 200, body: '{"access_token":"df"}' } : { status: 200, body: '{}' });
     expect((await call(tok.hr).put('/api/payroll/provider/dayforce', { clientId: 'df-client', clientSecret: 'df-secret-123', clientNamespace: 'lakeview' })).status).toBe(200);
     expect((await call(tok.hr).put('/api/payroll/provider/wagepoint', { apiKey: 'wp-key-0123456789abcdef', companyId: 'C123' })).status).toBe(200);
+    // Only the provider in use: the hours can't go to two places.
+    expect((await call(tok.hr).post('/api/payroll/provider/dayforce/send', { periodStart: '2026-03-02', weeks: 1 })).body.code).toBe('PROVIDER_NOT_IN_USE');
+    expect((await call(tok.hr).put('/api/payroll/provider/mode', { mode: 'dayforce' })).status).toBe(200);
     seen.length = 0;
     expect((await call(tok.hr).post('/api/payroll/provider/dayforce/send', { periodStart: '2026-03-02', weeks: 1 })).status).toBe(201);
     expect(seen.map((x) => x.url)).toEqual(['https://dfid.dayforcehcm.com/connect/token', 'https://www.dayforcehcm.com/api/lakeview/V1/Imports/PayrollImport']);
     expect(String(seen[1]!.body).split('\r\n')[0]).toMatch(/^EmployeeXRefCode/);
+    expect((await call(tok.hr).put('/api/payroll/provider/mode', { mode: 'wagepoint' })).status).toBe(200);
     seen.length = 0;
     expect((await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-02', weeks: 1 })).status).toBe(201);
     expect(seen[0]!.url).toBe('https://api.wagepoint.com/v1/companies/C123/hours/import');
     expect(seen[0]!.headers['x-api-key']).toBe('wp-key-0123456789abcdef');
+    expect((await call(tok.hr).put('/api/payroll/provider/mode', { mode: 'adp' })).status).toBe(200);
     const off = await call(tok.hr).del('/api/payroll/provider/adp');
     expect(off.body).toMatchObject({ mode: 'in_app', adp: null });
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.provider.send' } })).toBe(4);

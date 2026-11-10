@@ -4519,7 +4519,8 @@
     "PUNCHES_OPEN": "{{count}} punch(es) have no clock-out and were left out.",
     "NO_HIRE_DATE": "{{name}} has no hire date; holiday pay eligibility was assumed.",
     "NO_HOURS": "No approved hours in this period. Approve punches first, then recalculate.",
-    "ADP_COMPANY_CODE": "Enter your three-character ADP company code above."
+    "ADP_COMPANY_CODE": "Enter your three-character ADP company code above.",
+    "DEDUCTION_WITHOUT_PAY": "{{name}} has a one-time deduction but no pay in this run; it was left out. Add it to a run where they’re paid."
   },
   "documents": {
     "title": "Documents",

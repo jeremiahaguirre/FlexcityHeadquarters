@@ -25,6 +25,11 @@ export function localIso(at: Date, timezone: string): string {
   return DateTime.fromJSDate(at, { zone: timezone }).toISO()!;
 }
 
+/** The instant of a local wall-clock hour on a date (DST-safe: 9 a.m. is 9 a.m. on changeover days too). */
+export function localHour(isoDate: string, hour: number, timezone: string): Date {
+  return DateTime.fromISO(isoDate, { zone: timezone }).startOf('day').set({ hour }).toJSDate();
+}
+
 /** Start instant of a local calendar date in a timezone (DST-safe). */
 export function startOfLocalDay(isoDate: string, timezone: string): Date {
   return DateTime.fromISO(isoDate, { zone: timezone }).startOf('day').toJSDate();

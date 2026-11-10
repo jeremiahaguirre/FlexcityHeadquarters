@@ -35,7 +35,11 @@ async function rows(tenantId: string) {
 consentsRouter.get(
   '/tenants/:id/consents',
   h(async (req, res) => {
-    res.json(await rows(uuid.parse(req.params.id)));
+    const p = platformOf(req);
+    const tenantId = uuid.parse(req.params.id);
+    const out = await rows(tenantId);
+    await audit(p.adminId, tenantId, 'consent.list', { rows: out.records.length });
+    res.json(out);
   }),
 );
 

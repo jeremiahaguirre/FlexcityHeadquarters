@@ -141,7 +141,7 @@ export function BankConnection() {
       username: v('username'),
       remoteDir: v('remoteDir'),
       hostKeySha256: v('fingerprint'),
-      pgpPublicKey: v('pgp') || null,
+      ...(v('pgp') ? { pgpPublicKey: v('pgp') } : {}),
       autoSend: f.get('autoSend') === 'on',
       ...(secret ? (secret.includes('PRIVATE KEY') ? { privateKey: secret } : { password: secret }) : {}),
     };

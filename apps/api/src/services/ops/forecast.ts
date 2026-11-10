@@ -10,7 +10,7 @@
  * Weather and one-off events are not known to it; it says how many days each figure rests on.
  */
 import type { Tx } from '../../lib/db.js';
-import { addDays, dayOfWeek, localDate, localIso, startOfLocalDay } from '../../lib/time.js';
+import { addDays, dayOfWeek, localDate, localHour, localIso, startOfLocalDay } from '../../lib/time.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { lifeguardsRequired } from './chemistry.js';
 
@@ -111,7 +111,7 @@ export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string
     date: day,
     schoolDay: cal.isSchoolDay(day),
     hours: hoursSeen.map((hour) => {
-      const slotStart = new Date(startOfLocalDay(day, tz).getTime() + hour * 3_600_000);
+      const slotStart = localHour(day, hour, tz);
       const slotEnd = new Date(slotStart.getTime() + 3_600_000);
       let expected = 0;
       let fromBathers = 0;
@@ -210,10 +210,9 @@ export async function draftShiftsFor(tx: Tx, tenantId: string, facilityId: strin
   const blocks = gapBlocks(f.days.map((d) => ({ date: d.date, hours: d.hours.map((h) => ({ hour: h.hour, gap: Math.max(0, h.gap - h.unfilled) })) })));
   const created = [];
   for (const b of blocks) {
-    const day = startOfLocalDay(b.date, facility.timezone);
     created.push(
       await tx.shift.create({
-        data: { tenantId, facilityId, positionId, startsAt: new Date(day.getTime() + b.startHour * 3_600_000), endsAt: new Date(day.getTime() + b.endHour * 3_600_000), status: 'DRAFT', conflictReason: null },
+        data: { tenantId, facilityId, positionId, startsAt: localHour(b.date, b.startHour, facility.timezone), endsAt: b.endHour >= 24 ? startOfLocalDay(addDays(b.date, 1), facility.timezone) : localHour(b.date, b.endHour, facility.timezone), status: 'DRAFT', conflictReason: null },
         select: { id: true, startsAt: true, endsAt: true },
       }),
     );

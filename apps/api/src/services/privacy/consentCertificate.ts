@@ -5,7 +5,7 @@
  */
 import PDFDocument from 'pdfkit';
 import type { ConsentRecord } from '@prisma/client';
-import { agreementFor, canonicalText, sha256 } from './consent.js';
+import { type AgreementText, agreementFor, canonicalText, sha256 } from './consent.js';
 
 export function consentCertificate(r: ConsentRecord, who: { name: string; email: string | null; organization: string }): Promise<Buffer> {
   const doc = new PDFDocument({ size: 'LETTER', margins: { top: 60, bottom: 60, left: 60, right: 60 }, info: { Title: `Signed agreement: ${r.signedName}`, Creator: 'FlexcityHeadquarters' } });
@@ -16,7 +16,8 @@ export function consentCertificate(r: ConsentRecord, who: { name: string; email:
   const muted = '#4A5C5E';
   const accent = '#0D5F59';
   const width = doc.page.width - 120;
-  const text = agreementFor(r.locale);
+  // The text this person saw (stored with the signature); older records fall back to the current text of their language.
+  const text = (r.agreement as AgreementText | null) ?? agreementFor(r.locale);
   const textOk = sha256(canonicalText(r.version, text)) === r.textSha256;
   const sigOk = sha256(Buffer.from(r.signature)) === r.signatureSha256;
   const choices = r.choices as Record<string, string>;
