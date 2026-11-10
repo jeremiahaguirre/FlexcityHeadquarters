@@ -3,7 +3,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
-import { ensureTaxTables } from '../../src/services/payroll/taxTables.js';
+import { STARTING_VALUES, ensureTaxTables } from '../../src/services/payroll/taxTables.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
@@ -42,7 +42,7 @@ beforeAll(async () => {
   await ensureTaxTables(owner, 2026);
   // Tax tables are shared by every city (and test file): only the Quebec one is un-checked here.
   await owner.payrollTaxTable.updateMany({ where: { year: 2026, verifiedAt: null }, data: { verifiedAt: new Date(), verifiedBy: 'test' } });
-  await owner.payrollTaxTable.updateMany({ where: { year: 2026, jurisdiction: 'QC' }, data: { verifiedAt: null, verifiedBy: null } });
+  await owner.payrollTaxTable.updateMany({ where: { year: 2026, jurisdiction: 'QC' }, data: { data: STARTING_VALUES[2026]!.QC as object, verifiedAt: null, verifiedBy: null } });
 });
 afterAll(async () => {
   await owner.payrollTaxTable.updateMany({ where: { year: 2026, jurisdiction: 'QC' }, data: { verifiedAt: new Date(), verifiedBy: 'test' } });
@@ -93,6 +93,9 @@ describe('Quebec payroll', () => {
     expect(r.revenuQuebec.qppEmployee).toBeCloseTo(qc.deductions.cpp + qc.deductions.cpp2, 2);
     expect(r.revenuQuebec.qpipEmployer).toBeCloseTo(qc.deductions.employerQpip, 2);
     expect(r.revenuQuebec.quebecTax).toBeCloseTo(qc.deductions.provincialTax, 2);
+    // Employer-only Health Services Fund: a city is a public body, so the top rate.
+    expect(r.revenuQuebec.hsf).toMatchObject({ sector: 'public', rate: 0.0426 });
+    expect(r.revenuQuebec.hsf.amount).toBeCloseTo(qc.gross * 0.0426, 2);
     expect(r.cppEmployee).toBeCloseTo(on.deductions.cpp + on.deductions.cpp2, 2);
     expect(r.incomeTax).toBeCloseTo(qc.deductions.federalTax + on.deductions.federalTax + on.deductions.provincialTax, 2);
     expect(r.eiEmployee).toBeCloseTo(qc.deductions.ei + on.deductions.ei, 2);
@@ -115,6 +118,11 @@ describe('Quebec payroll', () => {
     expect(s.boxH).toBeGreaterThan(0);
     expect(s.boxI).toBe(s.boxA);
     expect(s.boxBA).toBeGreaterThan(0);
+    expect(rl1.summary.contributions).toMatchObject({ sector: 'public', hsfRate: 0.0426, wsdrfBeforeTraining: 0 });
+    expect(rl1.summary.contributions.cnt).toBeCloseTo(s.boxA * 0.0006, 2);
+    // A private employer with a small payroll pays the lowest rate.
+    expect((await call(tok.hr).put('/api/payroll/settings', { quebecSector: 'private' })).status).toBe(200);
+    expect((await call(tok.hr).get('/api/payroll/rl1?year=2026')).body.summary.contributions.hsfRate).toBe(0.0165);
 
     const t4 = (await call(tok.hr).get('/api/payroll/t4?year=2026')).body;
     const q = t4.slips.find((x: { userId: string }) => x.userId === quebecer());

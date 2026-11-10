@@ -174,6 +174,11 @@ export const STARTING_VALUES: Record<number, Record<string, FederalTable | Provi
       ],
       basicPersonal: 18952,
       employmentDeduction: { rate: 0.06, max: 1450 },
+      employer: {
+        hsf: { publicRate: 0.0426, minRate: 0.0165, maxRate: 0.0426, minUpTo: 1_000_000, maxFrom: 7_500_000 },
+        cntRate: 0.0006,
+        wsdrf: { rate: 0.01, threshold: 2_000_000 },
+      },
     } satisfies QuebecTable,
   },
 };
@@ -183,7 +188,15 @@ export const STARTING_NOTE = 'Unverified starting values. Compare every number w
 /** Adds this year's starting tables (unverified) if they aren't there yet. */
 export async function ensureTaxTables(tx: Tx, year: number) {
   for (const [jurisdiction, data] of Object.entries(STARTING_VALUES[year] ?? {})) {
-    await tx.payrollTaxTable.upsert({ where: { year_jurisdiction: { year, jurisdiction } }, update: {}, create: { year, jurisdiction, data: data as object, note: STARTING_NOTE } });
+    const row = await tx.payrollTaxTable.findUnique({ where: { year_jurisdiction: { year, jurisdiction } } });
+    if (!row) {
+      await tx.payrollTaxTable.create({ data: { year, jurisdiction, data: data as object, note: STARTING_NOTE } });
+      continue;
+    }
+    // A table not yet verified gets any parts added since it was created (a verified one is never touched).
+    const current = row.data as Record<string, unknown>;
+    const missing = Object.entries(data).filter(([k]) => !(k in current));
+    if (!row.verifiedAt && missing.length) await tx.payrollTaxTable.update({ where: { id: row.id }, data: { data: { ...current, ...Object.fromEntries(missing) } as object } });
   }
 }
 

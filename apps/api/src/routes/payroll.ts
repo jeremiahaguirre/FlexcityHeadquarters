@@ -692,6 +692,7 @@ payrollRouter.put(
         transmitterNumber: z.string().trim().regex(/^MM\d{6}$/, 'A transmitter number looks like MM123456.').nullable().optional(),
         filingContact: z.object({ name: z.string().trim().min(2).max(60), phone: z.string().trim().regex(/^\D*(\d\D*){10}$/, 'Use a 10-digit phone number.'), email: z.string().trim().email().nullable().optional() }).nullable().optional(),
         employerMailing: z.object({ line1: z.string().trim().min(3).max(60), line2: z.string().trim().max(60).nullable().optional(), city: z.string().trim().min(2).max(40), province: z.enum(PROVINCES), postalCode: z.string().trim().regex(/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/, 'A postal code looks like A1A 1A1.') }).nullable().optional(),
+        quebecSector: z.enum(['public', 'private']).nullable().optional(),
         quebecNumber: z.string().trim().regex(/^\d{10}RS\d{4}$/, 'A Revenu Québec identification number looks like 1234567890RS0001.').nullable().optional(),
         originatorId: z.string().trim().regex(/^[A-Za-z0-9]{1,10}$/).nullable().optional(),
         originatorShortName: z.string().trim().max(15).nullable().optional(),

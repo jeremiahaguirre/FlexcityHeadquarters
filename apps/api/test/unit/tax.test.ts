@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bracketTax, calculateDeductions, calculateQuebecDeductions, federalBasicPersonal, type FederalTable, type ProvincialTable, type QuebecTable } from '../../src/services/payroll/tax.js';
+import { bracketTax, calculateDeductions, calculateQuebecDeductions, hsfRate, federalBasicPersonal, type FederalTable, type ProvincialTable, type QuebecTable } from '../../src/services/payroll/tax.js';
 
 // A made-up table with round numbers, to check the method (not CRA's values).
 const fed: FederalTable = {
@@ -141,5 +141,15 @@ describe('Ontario tax reduction (T4127 factor S)', () => {
     expect(mid).toBeLessThan(tax(750, without));
     // High: no reduction.
     expect(tax(3000, on)).toBe(tax(3000, without));
+  });
+});
+
+describe('Quebec Health Services Fund rate', () => {
+  const t = { publicRate: 0.0426, minRate: 0.0165, maxRate: 0.0426, minUpTo: 1_000_000, maxFrom: 7_500_000 };
+  it('is the top rate for public bodies, and slides with payroll for others', () => {
+    expect(hsfRate(t, 100_000, 'public')).toBe(0.0426);
+    expect(hsfRate(t, 800_000, 'private')).toBe(0.0165);
+    expect(hsfRate(t, 9_000_000, 'private')).toBe(0.0426);
+    expect(hsfRate(t, 4_250_000, 'private')).toBeCloseTo((0.0165 + 0.0426) / 2, 6);
   });
 });

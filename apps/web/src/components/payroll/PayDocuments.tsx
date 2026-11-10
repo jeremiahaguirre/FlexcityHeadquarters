@@ -13,10 +13,10 @@ import { DEMO } from '@/lib/demo';
 import { formatDate, formatMoney } from '@/lib/format';
 import { todayIso, useQuery } from '@/lib/useQuery';
 
-interface RevenuQuebec { grossPayroll: number; qppEmployee: number; qppEmployer: number; qpipEmployee: number; qpipEmployer: number; quebecTax: number; total: number; due: string }
+interface RevenuQuebec { grossPayroll: number; qppEmployee: number; qppEmployer: number; qpipEmployee: number; qpipEmployer: number; quebecTax: number; total: number; due: string; hsf?: { rate: number; sector: string; estimatedAnnualPayroll: number; amount: number } | null }
 interface Remittance { month: string; due: string; statements: number; employeesLastPay: number; grossPayroll: number; cppEmployee: number; cppEmployer: number; eiEmployee: number; eiEmployer: number; incomeTax: number; total: number; revenuQuebec?: RevenuQuebec | null }
 interface Rl1Slip { userId: string; name: string; sin: string | null; boxA: number; boxBA: number; boxBB: number; boxC: number; boxD: number; boxE: number; boxF: number; boxG: number; boxH: number; boxI: number; boxL: number }
-interface Rl1 { year: number; slips: Rl1Slip[]; summary: { slips: number; boxA: number; boxBA: number; boxE: number; boxH: number; employerQpp: number; employerQpip: number; missingSin: string[] }; employer: { name: string; quebecNumber: string | null } }
+interface Rl1 { year: number; slips: Rl1Slip[]; summary: { slips: number; boxA: number; boxBA: number; boxE: number; boxH: number; employerQpp: number; employerQpip: number; missingSin: string[]; contributions?: { sector: string; payroll: number; hsfRate: number; hsf: number; cnt: number; wsdrfBeforeTraining: number } | null }; employer: { name: string; quebecNumber: string | null } }
 interface Slip { userId: string; name: string; sin: string | null; province: string; box14EmploymentIncome: number; box16Cpp: number; box16aCpp2: number; box17Qpp?: number; box55Ppip?: number; box18Ei: number; box22IncomeTax: number; box24EiInsurable: number; box26CppPensionable: number }
 interface T4 { year: number; slips: Slip[]; summary: { slips: number; box14: number; box16: number; box16a: number; box18: number; box19EmployerEi: number; box22: number; box27EmployerCpp: number; missingSin: string[] }; employer: { name: string; businessNumber: string | null } }
 interface Roe { periods: Array<{ periodStart: string; periodEnd: string; insurableEarnings: number; hours: number }>; totalInsurableEarnings: number; totalInsurableHours: number; firstDay: string | null; lastPaidDay: string | null }
@@ -87,7 +87,10 @@ export function PayDocuments() {
                   {(['qppEmployee', 'qppEmployer', 'qpipEmployee', 'qpipEmployer', 'quebecTax'] as const).map((k) => (
                     <div key={k} className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t(`payroll.rq.${k}`)}</dt><dd>{money(rem.data!.revenuQuebec![k])}</dd></div>
                   ))}
-                  <div className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rq.total')}</dt><dd>{money(rem.data.revenuQuebec.total)}</dd></div>
+                  {rem.data.revenuQuebec.hsf ? (
+                    <div className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t('payroll.rq.hsf', { rate: (rem.data.revenuQuebec.hsf.rate * 100).toFixed(2) })}</dt><dd>{money(rem.data.revenuQuebec.hsf.amount)}</dd></div>
+                  ) : null}
+                  <div className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rq.total')}</dt><dd>{money(rem.data.revenuQuebec.total + (rem.data.revenuQuebec.hsf?.amount ?? 0))}</dd></div>
                   <p className="text-caption text-muted sm:col-span-3">{t('payroll.rq.note')}</p>
                 </div>
               ) : null}
@@ -143,6 +146,9 @@ export function PayDocuments() {
                 </tbody>
               </table>
             </div>
+            {rl1.data.summary.contributions ? (
+              <p className="text-small">{t('payroll.rl1.contributions', { hsf: money(rl1.data.summary.contributions.hsf), rate: (rl1.data.summary.contributions.hsfRate * 100).toFixed(2), cnt: money(rl1.data.summary.contributions.cnt), wsdrf: money(rl1.data.summary.contributions.wsdrfBeforeTraining) })}</p>
+            ) : null}
             <p className="text-caption text-muted">{t('payroll.rl1.summary', { slips: rl1.data.summary.slips, income: money(rl1.data.summary.boxA), qpp: money(rl1.data.summary.boxBA + rl1.data.summary.employerQpp), qpip: money(rl1.data.summary.boxH + rl1.data.summary.employerQpip), tax: money(rl1.data.summary.boxE) })}</p>
           </CardBody>
         </Card>

@@ -1161,13 +1161,15 @@
       "qpipEmployer": "QPIP (employer)",
       "quebecTax": "Quebec income tax",
       "total": "Total to Revenu Québec",
-      "note": "Due on the same date as the CRA remittance. Employer-only contributions (Health Services Fund, labour standards, workforce skills) depend on the year’s total payroll: work them out on form TPZ-1015.R."
+      "note": "Due on the same date as the CRA remittance. The Health Services Fund rate is estimated from your payroll so far this year and settled on the RLZ-1.S; labour standards (CNT) and workforce skills contributions are paid once a year, with the RL-1 slips.",
+      "hsf": "Health Services Fund ({{rate}}%, employer)"
     },
     "rl1": {
       "title": "RL-1 slips",
       "help": "For staff employed in Quebec. File with Revenu Québec and give each person their slip by the end of February.",
       "noNumber": "Add your Revenu Québec identification number in Payroll settings before filing.",
-      "summary": "{{slips}} slips · employment income {{income}} · QPP {{qpp}} (both shares) · QPIP {{qpip}} (both shares) · Quebec tax {{tax}}"
+      "summary": "{{slips}} slips · employment income {{income}} · QPP {{qpp}} (both shares) · QPIP {{qpip}} (both shares) · Quebec tax {{tax}}",
+      "contributions": "Employer contributions for the year (RLZ-1.S): Health Services Fund {{hsf}} at {{rate}}% · labour standards (CNT) {{cnt}} · workforce skills {{wsdrf}} before eligible training spending."
     },
     "filingTitle": "Electronic filing",
     "filingHelp": "Used in the T4 file for CRA and Record of Employment files for Service Canada.",
@@ -1227,6 +1229,12 @@
       "adpCompanyCode": "ADP company code",
       "adpBatchId": "Batch ID",
       "hint": "Laid out for your provider’s pay data import. Providers let each customer rename columns, so check your first file against the import template they gave you."
+    },
+    "quebecSector": "Employer type (Quebec)",
+    "quebecSectorHint": "Sets the Health Services Fund rate. Municipalities and other public bodies pay the public-sector rate.",
+    "sector": {
+      "public": "Public sector (municipality, public body)",
+      "private": "Private sector"
     }
   },
   "settings": {

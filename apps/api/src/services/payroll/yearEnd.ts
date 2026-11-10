@@ -6,7 +6,9 @@
  * - Record of Employment figures (insurable earnings and hours by pay period).
  */
 import type { Tx } from '../../lib/db.js';
-import type { Deductions } from './tax.js';
+import { readSettings } from './payRuns.js';
+import { type Deductions, hsfRate } from './tax.js';
+import { loadTaxTables } from './taxTables.js';
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 const PAID = { status: { in: ['APPROVED', 'PAID'] as Array<'APPROVED' | 'PAID'> } };
@@ -60,10 +62,27 @@ export async function remittance(tx: Tx, month: string) {
     employeesLastPay,
     ...t,
     benefitsByPlan: [...plans.values()],
-    // Employer-only Quebec contributions (Health Services Fund, CNT labour standards, workforce skills) depend on total
-    // payroll for the year and aren't withheld from pay: work them out on the TPZ-1015.R form.
-    revenuQuebec: qc.grossPayroll ? { ...qc, due } : null,
+    revenuQuebec: qc.grossPayroll ? { ...qc, ...(await healthServicesFund(tx, start, qc.grossPayroll)), due } : null,
   };
+}
+
+const qcEarnings = (s: { gross: unknown; deductions: unknown }) => Number(s.gross) + ((s.deductions as { taxableBenefit?: number }).taxableBenefit ?? 0);
+
+/**
+ * The Health Services Fund for a month's Quebec payroll, remitted with the source deductions.
+ * The rate depends on the year's total payroll (public bodies pay the top rate); during the year it's
+ * estimated from the payroll so far, annualized, and settled on the RLZ-1.S.
+ */
+async function healthServicesFund(tx: Tx, monthStart: Date, monthPayroll: number) {
+  const year = monthStart.getUTCFullYear();
+  const table = (await loadTaxTables(tx, year)).quebec?.data.employer;
+  if (!table) return { hsf: null };
+  const sector = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings).quebecSector ?? 'public';
+  const end = new Date(Date.UTC(year, monthStart.getUTCMonth() + 1, 1));
+  const ytd = (await tx.payStatement.findMany({ where: { year, payDate: { lt: end }, payRun: PAID } })).filter((s) => (s.deductions as unknown as Deductions).plan === 'QPP');
+  const annualized = (ytd.reduce((a, s) => a + qcEarnings(s), 0) / (monthStart.getUTCMonth() + 1)) * 12;
+  const rate = hsfRate(table.hsf, annualized, sector);
+  return { hsf: { rate: Math.round(rate * 1e6) / 1e6, sector, estimatedAnnualPayroll: r2(annualized), amount: r2(monthPayroll * rate) } };
 }
 
 export interface T4Slip {
@@ -254,7 +273,31 @@ export async function rl1s(tx: Tx, year: number) {
       ...Object.fromEntries(keys.map((k) => [k, sum(k)])),
       employerQpp: r2(employerQpp),
       employerQpip: r2(employerQpip),
+      ...(await employerContributions(tx, year, rows)),
       missingSin: list.filter((s) => !s.sin).map((s) => s.name),
+    },
+  };
+}
+
+/** The year's employer-only Quebec contributions for the RLZ-1.S: Health Services Fund, labour standards (CNT), workforce skills (WSDRF). */
+async function employerContributions(tx: Tx, year: number, rows: Array<{ userId: string; gross: unknown; deductions: unknown }>) {
+  const q = (await loadTaxTables(tx, year)).quebec?.data;
+  if (!q?.employer) return { contributions: null };
+  const sector = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings).quebecSector ?? 'public';
+  const payroll = rows.reduce((a, s) => a + qcEarnings(s), 0);
+  const perPerson = new Map<string, number>();
+  for (const s of rows) perPerson.set(s.userId, (perPerson.get(s.userId) ?? 0) + qcEarnings(s));
+  const cntBase = [...perPerson.values()].reduce((a, v) => a + Math.min(v, q.qpip.maxInsurable), 0);
+  const rate = hsfRate(q.employer.hsf, payroll, sector);
+  return {
+    contributions: {
+      sector,
+      payroll: r2(payroll),
+      hsfRate: Math.round(rate * 1e6) / 1e6,
+      hsf: r2(payroll * rate),
+      cnt: r2(cntBase * q.employer.cntRate),
+      // Owed only above the threshold, less what was spent on eligible training (Form LE-39.0.2): not tracked here.
+      wsdrfBeforeTraining: payroll > q.employer.wsdrf.threshold ? r2(payroll * q.employer.wsdrf.rate) : 0,
     },
   };
 }

@@ -41,6 +41,13 @@ const quebec = z.object({
   brackets,
   basicPersonal: money,
   employmentDeduction: z.object({ rate, max: money }),
+  employer: z
+    .object({
+      hsf: z.object({ publicRate: rate, minRate: rate, maxRate: rate, minUpTo: money, maxFrom: money }),
+      cntRate: rate,
+      wsdrf: z.object({ rate, threshold: money }),
+    })
+    .optional(),
 });
 const JURISDICTIONS = ['CA', 'AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'] as const;
 const year = z.coerce.number().int().min(2020).max(2100);

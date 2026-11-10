@@ -26,6 +26,8 @@ export interface PayrollSettings {
   businessNumber?: string;
   /** Export to a payroll provider: the layout and ADP's company code and batch ID. */
   providerExport?: { format: 'generic' | 'adp' | 'dayforce' | 'wagepoint'; adpCompanyCode?: string | null; adpBatchId?: string | null };
+  /** For the Health Services Fund rate: municipalities and other public bodies are 'public' (the default). */
+  quebecSector?: 'public' | 'private';
   /** Revenu Québec identification number (1234567890RS0001), for Quebec staff. */
   quebecNumber?: string;
   originatorId?: string;

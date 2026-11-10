@@ -66,6 +66,23 @@ export interface QuebecTable {
   basicPersonal: number;
   /** Deduction for employment income: rate × annual pay, up to max. */
   employmentDeduction: { rate: number; max: number };
+  /** Employer-only contributions (TPZ-1015.R), not withheld from pay. */
+  employer?: {
+    /** Health Services Fund: public-sector employers pay `publicRate`; others `minRate` up to `minUpTo` of annual payroll, `maxRate` from `maxFrom`, straight-line between. */
+    hsf: { publicRate: number; minRate: number; maxRate: number; minUpTo: number; maxFrom: number };
+    /** Labour standards (CNT): on each person's pay up to QPIP's maximum insurable earnings. */
+    cntRate: number;
+    /** Workforce skills development (WSDRF): when annual payroll exceeds `threshold`, less eligible training spending. */
+    wsdrf: { rate: number; threshold: number };
+  };
+}
+
+/** The Health Services Fund rate for an annual Quebec payroll. */
+export function hsfRate(t: NonNullable<QuebecTable['employer']>['hsf'], annualPayroll: number, sector: 'public' | 'private'): number {
+  if (sector === 'public') return t.publicRate;
+  if (annualPayroll <= t.minUpTo) return t.minRate;
+  if (annualPayroll >= t.maxFrom) return t.maxRate;
+  return t.minRate + ((annualPayroll - t.minUpTo) * (t.maxRate - t.minRate)) / (t.maxFrom - t.minUpTo);
 }
 
 export interface PayInput {

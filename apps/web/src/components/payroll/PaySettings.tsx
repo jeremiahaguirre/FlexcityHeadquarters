@@ -4,7 +4,7 @@ import { type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
-import { Field, Input, Textarea } from '@/components/ui/Field';
+import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
@@ -12,7 +12,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { AddressFields, type MailingAddress, readAddress } from './AddressFields';
 
 interface BankLinkView { configured: boolean; host?: string; port?: number; username?: string; remoteDir?: string; hostKeySha256?: string; pgpFingerprint?: string | null; autoSend?: boolean; credentialKind?: 'password' | 'privateKey' }
-interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean }
+interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; quebecSector?: 'public' | 'private'; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean }
 
 /** CRA payroll account and the direct deposit details the city's bank provides. */
 export function PaySettings() {
@@ -36,6 +36,7 @@ export function PaySettings() {
           body: {
             businessNumber: v('businessNumber'),
             quebecNumber: v('quebecNumber'),
+            quebecSector: v('quebecSector'),
             transmitterNumber: v('transmitterNumber'),
             ...(v('contactName') || v('contactPhone') ? { filingContact: { name: v('contactName') ?? '', phone: v('contactPhone') ?? '', email: v('contactEmail') } } : {}),
             ...(readAddress(f, 'emp_') ? { employerMailing: readAddress(f, 'emp_') } : {}),
@@ -65,6 +66,14 @@ export function PaySettings() {
         <CardBody className="grid gap-4 pt-2 sm:grid-cols-2">
           {field('businessNumber', t('payroll.businessNumber'), { placeholder: '123456789RP0001' })}
           {field('quebecNumber', t('payroll.quebecNumber'), { placeholder: '1234567890RS0001' })}
+          <Field label={t('payroll.quebecSector')} hint={t('payroll.quebecSectorHint')}>
+            {(p) => (
+              <Select {...p} name="quebecSector" defaultValue={s.quebecSector ?? 'public'} disabled={!editable}>
+                <option value="public">{t('payroll.sector.public')}</option>
+                <option value="private">{t('payroll.sector.private')}</option>
+              </Select>
+            )}
+          </Field>
           {field('employerAddress', t('payroll.employerAddress'))}
         </CardBody>
       </Card>

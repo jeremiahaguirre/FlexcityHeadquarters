@@ -17,7 +17,7 @@
 - [ ] Direct API connections to payroll providers (exports in ADP, Dayforce and Wagepoint import layouts ship today).
 - [ ] FH books: verify the chart of accounts, sales tax treatment and the PAD transaction code with FH's accountant and bank before the first live debit.
 - [ ] Payroll: FH verifies each year's tax tables against CRA's T4127 (all 13 provinces and territories and the federal table ship as unverified starting values); the basic personal amount phase-outs in Manitoba and Yukon.
-- [ ] Quebec: RL-1 in Revenu Québec's XML format, and the employer-only contributions (Health Services Fund, CNT, workforce skills) worked out from annual payroll.
+- [ ] Quebec: RL-1 in Revenu Québec's XML format; tracking eligible training spending against the workforce skills contribution.
 
 ## Done
 
@@ -46,6 +46,7 @@
 - Filing files: T4 return as CRA XML and Records of Employment as ROE Web XML (full SINs only with a passkey, audited, refused while details are missing); home mailing address with the TD1.
 - Payroll exports laid out for ADP Workforce Now, Ceridian Dayforce and Wagepoint.
 - Dev console: turn a city off or on, offboard it with a retention period (billing records kept) and a full data export for the city until deletion, consent-based read-only support visits, passkey step-up for its most sensitive actions; website enquiries inbox.
+- Quebec employer contributions: Health Services Fund on each remittance (public-sector or payroll-based rate), and the year's HSF, labour standards (CNT) and workforce skills figures for the RLZ-1.S.
 - Retention schedule per city for notifications and the email log; ended sessions and used links cleared after 30 days.
 - Full data export for each city (every record as CSV and JSON, documents as files) from Settings.
 - Payroll problems and warnings in English and French; printable PDF of a person's records; encrypted employee document uploads; fingerprints of what was signed on discipline records.
