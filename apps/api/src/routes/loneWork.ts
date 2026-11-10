@@ -42,6 +42,7 @@ loneWorkRouter.post(
         task: z.string().trim().max(200).nullable().optional(),
         facilityId: uuid.nullable().optional(),
         intervalMinutes: z.number().int().refine((n) => (INTERVALS as readonly number[]).includes(n), 'Choose a listed interval'),
+        shareLocation: z.boolean().optional(),
         ...coords,
       })
       .parse(req.body);
@@ -61,9 +62,11 @@ loneWorkRouter.post(
           nextDueAt: new Date(now.getTime() + body.intervalMinutes * 60_000),
           latitude: body.latitude ?? null,
           longitude: body.longitude ?? null,
+          locationAt: body.latitude != null && body.longitude != null ? now : null,
+          shareLocation: body.shareLocation ?? false,
         },
       });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'lonework.start', entity: 'LoneWorkSession', entityId: created.id, after: { location: body.location, intervalMinutes: body.intervalMinutes } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'lonework.start', entity: 'LoneWorkSession', entityId: created.id, after: { location: body.location, intervalMinutes: body.intervalMinutes, shareLocation: body.shareLocation ?? false } });
       return created;
     });
     res.status(201).json(view(s));
@@ -103,6 +106,46 @@ loneWorkRouter.post(
   }),
 );
 
+/**
+ * Keep my location up to date during this session (the person's choice, which they can turn off
+ * at any time). Turning it off removes the position already shared.
+ */
+loneWorkRouter.put(
+  '/me/lone-work/share-location',
+  requirePermission('lonework.self'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const { on } = z.object({ on: z.boolean() }).parse(req.body);
+    const s = await withTenant(a.tenantId, async (tx) => {
+      const cur = await mine(tx, a.userId);
+      if (!cur) throw notFound('Working-alone session');
+      const next = await tx.loneWorkSession.update({ where: { id: cur.id }, data: on ? { shareLocation: true } : { shareLocation: false, latitude: null, longitude: null, locationAt: null } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: on ? 'lonework.location_on' : 'lonework.location_off', entity: 'LoneWorkSession', entityId: cur.id });
+      return next;
+    });
+    res.json(view(s));
+  }),
+);
+
+/** A position from the worker's device while sharing is on. At most one every 30 seconds is kept. */
+loneWorkRouter.post(
+  '/me/lone-work/location',
+  requirePermission('lonework.self'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) }).parse(req.body);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const cur = await mine(tx, a.userId);
+      if (!cur) throw notFound('Working-alone session');
+      if (!cur.shareLocation) throw conflict('LOCATION_OFF', 'Location sharing is off for this session.');
+      if (cur.locationAt && Date.now() - cur.locationAt.getTime() < 30_000) return { kept: false };
+      await tx.loneWorkSession.update({ where: { id: cur.id }, data: position(body.latitude, body.longitude) });
+      return { kept: true };
+    });
+    res.json(out);
+  }),
+);
+
 loneWorkRouter.post(
   '/me/lone-work/help',
   requirePermission('lonework.self'),
@@ -129,7 +172,7 @@ loneWorkRouter.post(
     await withTenant(a.tenantId, async (tx) => {
       const cur = await mine(tx, a.userId);
       if (!cur) throw notFound('Working-alone session');
-      await tx.loneWorkSession.update({ where: { id: cur.id }, data: { status: 'ENDED', endedAt: new Date() } });
+      await tx.loneWorkSession.update({ where: { id: cur.id }, data: { status: 'ENDED', endedAt: new Date(), shareLocation: false } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'lonework.end', entity: 'LoneWorkSession', entityId: cur.id });
     });
     res.json({ ok: true });
@@ -194,7 +237,7 @@ loneWorkRouter.post(
       const s = await tx.loneWorkSession.findUnique({ where: { id } });
       if (!s) throw notFound('Working-alone session');
       if (s.status === 'ENDED') throw conflict('ALREADY_ENDED', 'This session has ended.');
-      await tx.loneWorkSession.update({ where: { id }, data: { status: 'ENDED', endedAt: new Date() } });
+      await tx.loneWorkSession.update({ where: { id }, data: { status: 'ENDED', endedAt: new Date(), shareLocation: false } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'lonework.close', entity: 'LoneWorkSession', entityId: id, after: { note } });
     });
     res.json({ ok: true });

@@ -27,9 +27,20 @@ async function workerName(tx: Tx, userId: string) {
   return u ? `${u.firstName} ${u.lastName}` : '';
 }
 
-/** Minutely: flag missed check-ins, then escalate the ones still unanswered. */
+/** How long before a check-in is due the worker gets a reminder on their phone. */
+export const REMIND_MINUTES = 5;
+
+/** Minutely: remind before a check-in is due, flag missed check-ins, then escalate the ones still unanswered. */
 export async function loneWorkChecks(tx: Tx, now = new Date()): Promise<number> {
   let changed = 0;
+  const soon = await tx.loneWorkSession.findMany({ where: { status: 'ACTIVE', nextDueAt: { gt: now, lte: new Date(now.getTime() + minutes(REMIND_MINUTES)) } } });
+  for (const s of soon) {
+    // Once per interval: a check-in moves lastCheckInAt past the last reminder.
+    if (s.remindedAt && s.remindedAt >= s.lastCheckInAt) continue;
+    const claimed = await tx.loneWorkSession.updateMany({ where: { id: s.id, status: 'ACTIVE', lastCheckInAt: s.lastCheckInAt }, data: { remindedAt: now } });
+    if (!claimed.count) continue;
+    await notify(tx, s.tenantId, [{ userId: s.userId, type: 'lonework_due_soon', params: { location: s.location }, link: '/alone' }]);
+  }
   const missed = await tx.loneWorkSession.findMany({ where: { status: 'ACTIVE', nextDueAt: { lte: now } } });
   for (const s of missed) {
     const claimed = await tx.loneWorkSession.updateMany({ where: { id: s.id, status: 'ACTIVE' }, data: { status: 'OVERDUE', overdueAt: now } });
@@ -80,6 +91,8 @@ export function view(s: LoneWorkSession & { user?: { firstName: string; lastName
     escalatedAt: s.escalatedAt,
     helpAt: s.helpAt,
     helpNote: s.helpNote,
+    shareLocation: s.shareLocation,
+    locationAt: s.locationAt,
     latitude: s.latitude === null ? null : Number(s.latitude),
     longitude: s.longitude === null ? null : Number(s.longitude),
     responder: s.responder ?? null,
@@ -89,4 +102,4 @@ export function view(s: LoneWorkSession & { user?: { firstName: string; lastName
 }
 
 export const position = (lat?: number | null, lng?: number | null): Prisma.LoneWorkSessionUpdateInput =>
-  lat != null && lng != null ? { latitude: lat, longitude: lng } : {};
+  lat != null && lng != null ? { latitude: lat, longitude: lng, locationAt: new Date() } : {};

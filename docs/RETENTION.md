@@ -13,7 +13,8 @@ with their records retention by-law.
 | Email log (address, kind of email; never contents) | 90 days (*set by the city*) | Deleted | Hourly job; contents cleared as soon as an email is sent |
 | Families and children (program registrations) | Until 3 years without a registration or purchase (*set by the city*) | Personal details removed | Names, birth dates, contacts, safety notes removed; payment records kept as "Former family" |
 | Facility booking requests | 2 years after the booking (*set by the city*) | Contact details removed | Hourly job |
-| Working-alone check-in locations | 30 days after the session | Deleted | Hourly job |
+| Working-alone check-in locations | Deleted when the person turns sharing off; otherwise 30 days after the session | Deleted | On request; hourly job |
+| Device push subscriptions | Until the person signs out on that device or turns notifications off; dropped when the push service reports the device gone, or after 10 failed sends | Deleted | Immediately / each send |
 | Sign-in sessions and one-time links | 30 days after they end or are used | Deleted | Hourly job |
 | Audit log | For the life of the account | Deleted with the organization | Append-only while the account exists |
 | Incident reports | The city's retention (OHS and insurance) | Deleted with the organization, or on request | Narratives sealed with the city's key |

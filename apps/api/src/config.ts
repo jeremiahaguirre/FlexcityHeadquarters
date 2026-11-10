@@ -32,6 +32,10 @@ const schema = z.object({
   LOCAL_KEK_BASE64: z.string().optional(),
   KMS_KEY_ARN: z.string().optional(),
   AWS_REGION: z.string().default('ca-central-1'),
+  /** Web push to phones and desktops. Unset = push is off (in-app and email still work). */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:support@flexcityhq.example'),
 });
 
 export type Config = z.infer<typeof schema>;

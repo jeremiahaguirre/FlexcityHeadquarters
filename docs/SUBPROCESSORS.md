@@ -8,6 +8,7 @@ added only after the checks below; each city is told 30 days before a new one is
 | Amazon Web Services | Hosting, database, backups, key management (KMS) | All application data | Canada (Central), `ca-central-1` only: the API refuses another region | To confirm before launch: DPA, SOC 2 Type II and ISO 27001 reports on file |
 | Email delivery (to be chosen) | Sign-in links, notifications | Recipient address, message (the app keeps no copy of contents) | Canada preferred | Choose: Canadian region, DPA, SOC 2 |
 | Stripe (optional, per city) | Card and pre-authorized debit payments for FH invoices | Billing contact, payment method (held by Stripe, not FH) | Canada / US | Only when a city pays by card; PCI DSS Level 1 |
+| Browser push services (Google FCM, Apple Push, Mozilla, Microsoft WNS) | Delivering notifications to devices where the person turned them on | An encrypted message (end to end, RFC 8291: the push service can't read it) and the device's push address; lock-screen text is a short heading, never sensitive details | Global (operated by the person's browser maker) | Chosen by the person's browser, not FH; optional per person and per device; no readable personal information reaches them |
 | The city's own bank | Payroll deposit files, sent by the city's own SFTP connection | Employees' names, deposit amounts, account numbers | Canada | The city's contract, not FH's subprocessor |
 | The city's identity provider (Entra ID, SAML) | Single sign-on | Work email, sign-in assertion | The city's tenant | The city's contract |
 

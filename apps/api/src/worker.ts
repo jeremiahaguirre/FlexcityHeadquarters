@@ -16,6 +16,7 @@ import { injuryReminders } from './routes/injury.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 import { logError } from './lib/log.js';
 import { applyRetention } from './services/privacy/retention.js';
+import { deliverPush } from './services/notifications/push.js';
 
 const cfg = config();
 const lockClient = new pg.Client({ connectionString: cfg.APP_DATABASE_URL });
@@ -49,6 +50,7 @@ const minutely = async () => {
   await exclusive('call-outs', () => perTenant((tx) => callOutTimeouts(tx)));
   await exclusive('rotation-alerts', () => perTenant((tx) => rotationAlerts(tx)));
   await exclusive('email', () => deliverOutbox(db(), mailer));
+  await exclusive('push', () => perTenant((tx) => deliverPush(tx)));
 };
 const hourly = async () => {
   await exclusive('patrols', () => perTenant((tx) => patrolReminders(tx)));

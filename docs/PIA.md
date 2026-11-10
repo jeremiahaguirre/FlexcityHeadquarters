@@ -25,7 +25,8 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Pay | Pay rates, deductions, TD1 claims, home mailing address, SIN, bank account | Payroll | **Yes** (SIN, banking sealed with the city's key) |
 | HR files | Reviews, training, onboarding, conduct notes, discipline, grievances | HR suite | **Yes** |
 | Health | Accommodation limits (no diagnosis), injury claims, medical notes (HR only), care check-ins after critical incidents | Accommodation, injury, documents, care | **Yes** |
-| Location | Working-alone check-in location the person chooses to share (removed after 30 days) | Lone work | **Yes** |
+| Location | Working-alone location the person chooses to share during a session: latest position only, while the app is open (deleted when sharing is turned off, otherwise after 30 days) | Lone work | **Yes** |
+| Device push addresses | Browser push endpoint and keys for devices where the person turned notifications on | Notifications | No |
 | Union | Union membership (HR, discipline writers), union hub content (union only) | Union hub | **Yes** |
 | Public: families and children | Guardian contacts, children's names, ages, safety notes | Programs | **Yes** (minors) |
 

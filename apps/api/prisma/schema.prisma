@@ -1207,6 +1207,8 @@ model Notification {
   /// In-app path to open, e.g. "/board"
   link      String?
   readAt    DateTime? @db.Timestamptz(3)
+  /// Sent to the person's devices (web push), or skipped because they have none.
+  pushedAt  DateTime? @db.Timestamptz(3)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([userId, createdAt])
@@ -1692,6 +1694,11 @@ model LoneWorkSession {
   escalatedAt     DateTime?      @db.Timestamptz(3)
   helpAt          DateTime?      @db.Timestamptz(3)
   helpNote        String?
+  /// The person chose to keep their location up to date during this session (while the app is open).
+  shareLocation   Boolean        @default(false)
+  locationAt      DateTime?      @db.Timestamptz(3)
+  /// The "check-in due soon" reminder for the current interval was sent.
+  remindedAt      DateTime?      @db.Timestamptz(3)
   /// Last position the worker's device shared, if any.
   latitude        Decimal?       @db.Decimal(9, 6)
   longitude       Decimal?       @db.Decimal(9, 6)
@@ -2716,4 +2723,22 @@ model SsoConnection {
   updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+}
+
+/// A browser or installed app that receives push notifications for one person.
+model PushSubscription {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  userId     String    @db.Uuid
+  /// The push service's address for this device (unguessable).
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  /// e.g. "iPhone", "Android", "Windows": shown so people can tell their devices apart.
+  device     String?
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  lastSentAt DateTime? @db.Timestamptz(3)
+  failures   Int       @default(0)
+
+  @@index([tenantId, userId])
 }
