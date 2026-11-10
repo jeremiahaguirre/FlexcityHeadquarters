@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
@@ -217,6 +217,11 @@ export const positionBody = z.object({
   nameFr: z.string().max(80).nullable().optional(),
   minimumAge: z.number().int().min(12).max(25).nullable().optional(),
   requiredCertificationIds: z.array(uuid).max(10),
+  /** Driving limits; omit or null for none. */
+  hoursOfService: z
+    .object({ maxDailyHours: z.number().min(1).max(24).nullable().optional(), minRestHours: z.number().min(1).max(24).nullable().optional(), maxHoursIn7Days: z.number().min(1).max(168).nullable().optional() })
+    .nullable()
+    .optional(),
 });
 
 staffRouter.post(
@@ -226,7 +231,7 @@ staffRouter.post(
     const a = authOf(req);
     const body = positionBody.parse(req.body);
     const p = await withTenant(a.tenantId, async (tx) => {
-      const pos = await tx.position.create({ data: { tenantId: a.tenantId, name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null } });
+      const pos = await tx.position.create({ data: { tenantId: a.tenantId, name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, hoursOfService: body.hoursOfService ?? Prisma.DbNull } });
       if (body.requiredCertificationIds.length) {
         await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId: a.tenantId, positionId: pos.id, certificationId })) });
       }
@@ -244,7 +249,7 @@ staffRouter.put(
     const id = uuid.parse(req.params.id);
     const body = positionBody.parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      await tx.position.update({ where: { id }, data: { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null } });
+      await tx.position.update({ where: { id }, data: { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) } });
       await tx.positionCertRequirement.deleteMany({ where: { positionId: id } });
       if (body.requiredCertificationIds.length) {
         await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId: a.tenantId, positionId: id, certificationId })) });

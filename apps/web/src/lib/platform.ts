@@ -59,7 +59,7 @@ export function usePlatformQuery<T>(path: string | null) {
 
 export interface CitySummary { id: string; name: string; subdomain: string; logoUrl: string | null; staff: number; facilities: number; featuresOn: number; featuresTotal: number; createdAt: string }
 export interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null }
-export interface PositionRow { id: string; name: string; nameFr: string | null; minimumAge: number | null; requiredCertificationIds: string[]; staff: number }
+export interface PositionRow { id: string; name: string; nameFr: string | null; minimumAge: number | null; hoursOfService?: { maxDailyHours?: number | null; minRestHours?: number | null; maxHoursIn7Days?: number | null } | null; requiredCertificationIds: string[]; staff: number }
 export interface CityDetail {
   organization: { id: string; name: string; subdomain: string; defaultLocale: string; themeColors: { primary?: string } | null; logoUrl: string | null; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number; createdAt: string; signInUrl: string };
   features: Record<string, boolean>;

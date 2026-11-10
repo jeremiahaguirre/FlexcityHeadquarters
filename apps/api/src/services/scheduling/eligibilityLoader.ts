@@ -13,7 +13,7 @@ import { localDate } from '../../lib/time.js';
 import { type ProvinceRules, resolveRules } from '../compliance/provincialRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
-import type { CandidateContext, EvaluateOptions, PositionSpec, SchoolCalendar, ShiftSpec } from './eligibility.js';
+import { type CandidateContext, type EvaluateOptions, type PositionSpec, type SchoolCalendar, type ShiftSpec, parseHoursOfService } from './eligibility.js';
 
 const NEIGHBOURHOOD_MS = 8 * 86_400_000; // enough for rest + weekly checks
 
@@ -80,6 +80,7 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
       requiredCertIds: s.position.requirements.map((r) => r.certificationId),
       prerequisites,
       blockingOnboarding: await blockingItemsForPosition(tx, s.positionId),
+      hoursOfService: parseHoursOfService(s.position.hoursOfService),
     },
     province: s.facility.province,
     rules,

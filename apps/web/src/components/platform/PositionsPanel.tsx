@@ -33,6 +33,12 @@ export function PositionsPanel({ id, city, reload }: PanelProps) {
       nameFr: String(f.get('nameFr') ?? '').trim() || null,
       minimumAge: age ? Number(age) : null,
       requiredCertificationIds: f.getAll('certs').map(String),
+      // Driving limits: blank fields mean no limit.
+      hoursOfService: (() => {
+        const n = (k: string) => (String(f.get(k) ?? '').trim() ? Number(f.get(k)) : null);
+        const h = { maxDailyHours: n('hosDaily'), minRestHours: n('hosRest'), maxHoursIn7Days: n('hosWeek') };
+        return h.maxDailyHours || h.minRestHours || h.maxHoursIn7Days ? h : null;
+      })(),
     };
     const r = await run('pos', () => (current ? papi(`/tenants/${id}/positions/${current.id}`, { method: 'PUT', body }) : papi(`/tenants/${id}/positions`, { method: 'POST', body })), t('platform.positionSaved'));
     if (r !== undefined) {
@@ -96,6 +102,15 @@ export function PositionsPanel({ id, city, reload }: PanelProps) {
                 {name(c)}
               </label>
             ))}
+          </fieldset>
+          <fieldset className="grid gap-2 rounded-xl border border-line p-3">
+            <legend className="px-1 text-small font-semibold">{t('platform.hos')}</legend>
+            <p className="text-caption text-muted">{t('platform.hosHelp')}</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label={t('platform.hosDaily')}>{(p) => <Input {...p} name="hosDaily" type="number" min={1} max={24} step="0.5" defaultValue={current?.hoursOfService?.maxDailyHours ?? ''} />}</Field>
+              <Field label={t('platform.hosRest')}>{(p) => <Input {...p} name="hosRest" type="number" min={1} max={24} step="0.5" defaultValue={current?.hoursOfService?.minRestHours ?? ''} />}</Field>
+              <Field label={t('platform.hosWeek')}>{(p) => <Input {...p} name="hosWeek" type="number" min={1} max={168} defaultValue={current?.hoursOfService?.maxHoursIn7Days ?? ''} />}</Field>
+            </div>
           </fieldset>
           <Button type="submit" loading={busy === 'pos'}>
             {t('common.save')}

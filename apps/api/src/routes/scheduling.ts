@@ -41,7 +41,7 @@ schedulingRouter.get(
     res.json(
       await withTenant(a.tenantId, (tx) =>
         tx.position.findMany({
-          select: { id: true, name: true, nameFr: true, minimumAge: true, requirements: { select: { certificationId: true } } },
+          select: { id: true, name: true, nameFr: true, minimumAge: true, hoursOfService: true, requirements: { select: { certificationId: true } } },
           orderBy: { name: 'asc' },
         }),
       ),

@@ -31,6 +31,10 @@ type Template = (p: Params) => { subject: string; text: string };
 const APP_URL = () => process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
+  vehicle_out_of_service: {
+    'en-CA': (p) => ({ subject: `Vehicle ${p.unit} out of service`, text: `A pre-trip inspection found a major defect on unit ${p.unit}: ${p.reason}.\nIt's out of service until a repair is recorded:\n${APP_URL()}/manage/fleet` }),
+    'fr-CA': (p) => ({ subject: `Véhicule ${p.unit} hors service`, text: `Une inspection avant départ a relevé une défectuosité majeure sur l'unité ${p.unit} : ${p.reason}.\nIl est hors service jusqu'à ce qu'une réparation soit consignée :\n${APP_URL()}/manage/fleet` }),
+  },
   coverage_gap: {
     'en-CA': (p) => ({ subject: `Coverage gap: ${p.rule}`, text: `The schedule doesn't cover "${p.rule}" in the next two days (${p.count} gap${Number(p.count) === 1 ? '' : 's'}). Assign someone who holds the certificate:\n${APP_URL()}/manage/coverage` }),
     'fr-CA': (p) => ({ subject: `Couverture manquante : ${p.rule}`, text: `L'horaire ne couvre pas « ${p.rule} » dans les deux prochains jours (${p.count} trou(s)). Affectez une personne qui détient le certificat :\n${APP_URL()}/manage/coverage` }),

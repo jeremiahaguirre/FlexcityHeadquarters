@@ -46,7 +46,10 @@ export type BlockCode =
   | 'NOT_AVAILABLE'
   | 'OVER_PERSONAL_WEEKLY_MAX'
   | 'ONBOARDING_INCOMPLETE'
-  | 'ACCOMMODATION';
+  | 'ACCOMMODATION'
+  | 'HOS_DAILY'
+  | 'HOS_REST'
+  | 'HOS_WEEKLY';
 
 export type FlagCode = 'OVERTIME' | 'PARENTAL_CONSENT_REQUIRED' | 'RULES_UNVERIFIED' | 'DATE_OF_BIRTH_MISSING';
 
@@ -93,6 +96,46 @@ export interface PositionSpec {
   prerequisites: ReadonlyMap<string, string[]>;
   /** Onboarding items that must be done (and unexpired) before working this position. */
   blockingOnboarding?: Array<{ id: string; name: string }>;
+  /** Hours-of-service limits for driving positions. */
+  hoursOfService?: HoursOfService | null;
+}
+
+export interface HoursOfService { maxDailyHours?: number | null; minRestHours?: number | null; maxHoursIn7Days?: number | null }
+
+/** Reads a position's stored limits; anything missing or invalid means no limit. */
+export function parseHoursOfService(stored: unknown): HoursOfService | null {
+  if (!stored || typeof stored !== 'object') return null;
+  const s = stored as Record<string, unknown>;
+  const n = (k: string) => (typeof s[k] === 'number' && (s[k] as number) > 0 ? (s[k] as number) : null);
+  const out = { maxDailyHours: n('maxDailyHours'), minRestHours: n('minRestHours'), maxHoursIn7Days: n('maxHoursIn7Days') };
+  return out.maxDailyHours || out.minRestHours || out.maxHoursIn7Days ? out : null;
+}
+
+const hoursOf = (a: Interval) => (a.end.getTime() - a.start.getTime()) / 3_600_000;
+
+/**
+ * Driving limits, modelled on commercial vehicle hours-of-service rules
+ * (e.g. 13 hours driving and 14 on duty a day, 8 hours off between shifts,
+ * 70 hours in 7 days); each city sets its own numbers per position.
+ */
+export function checkHoursOfService(existing: Interval[], shift: Interval, hos: HoursOfService, tz: string): Reason<BlockCode>[] {
+  const out: Reason<BlockCode>[] = [];
+  if (hos.maxDailyHours) {
+    const day = localDate(shift.start, tz);
+    const total = [...existing.filter((s) => localDate(s.start, tz) === day), shift].reduce((sum, s) => sum + hoursOf(s), 0);
+    if (total > hos.maxDailyHours + 1e-9) out.push({ code: 'HOS_DAILY', message: `Would be ${total.toFixed(1)}h on duty that day (limit ${hos.maxDailyHours}h).` });
+  }
+  if (hos.minRestHours) {
+    const gapMs = hos.minRestHours * 3_600_000;
+    const tooClose = existing.some((s) => (s.end <= shift.start && shift.start.getTime() - s.end.getTime() < gapMs) || (s.start >= shift.end && s.start.getTime() - shift.end.getTime() < gapMs));
+    if (tooClose) out.push({ code: 'HOS_REST', message: `Needs ${hos.minRestHours}h off duty between driving shifts.` });
+  }
+  if (hos.maxHoursIn7Days) {
+    const from = shift.end.getTime() - 7 * 86_400_000;
+    const total = [...existing, shift].reduce((sum, s) => sum + Math.max(0, (Math.min(s.end.getTime(), shift.end.getTime()) - Math.max(s.start.getTime(), from)) / 3_600_000), 0);
+    if (total > hos.maxHoursIn7Days + 1e-9) out.push({ code: 'HOS_WEEKLY', message: `Would be ${total.toFixed(1)}h in 7 days (limit ${hos.maxHoursIn7Days}h).` });
+  }
+  return out;
 }
 
 export interface SchoolCalendar {
@@ -182,6 +225,9 @@ export function evaluateCandidate(
   if (c.approvedTimeOff.some((t) => overlaps(t, shift))) {
     blocks.push({ code: 'ON_APPROVED_TIME_OFF', message: 'Has approved time off during this shift.' });
   }
+
+  // Hours of service (driving positions) ----------------------------------------
+  if (position.hoursOfService) blocks.push(...checkHoursOfService(c.existingShifts, shift, position.hoursOfService, tz));
 
   // Rest periods ---------------------------------------------------------------
   const restBlock = checkRestBetweenShifts(c.existingShifts, shift, rules);

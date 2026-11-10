@@ -175,7 +175,9 @@
     "programs": "Cours et programmes",
     "fees": "Tarifs",
     "bookings": "Réservations et inscriptions",
-    "coverage": "Couverture requise"
+    "coverage": "Couverture requise",
+    "pretrip": "Inspection avant départ",
+    "fleet": "Parc de véhicules"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -243,7 +245,9 @@
     "callout_cancelled": "Le rappel au travail est annulé : {{reason}}. Rien à faire.",
     "patrol_overdue": "Patrouille en retard sur {{route}}.",
     "booking_requested": "Demande de réservation : {{service}} le {{when}}, de {{name}}.",
-    "coverage_gap": "Couverture manquante : {{rule}} n'est pas couvert dans les deux prochains jours."
+    "coverage_gap": "Couverture manquante : {{rule}} n'est pas couvert dans les deux prochains jours.",
+    "vehicle_out_of_service": "L'unité {{unit}} est hors service : {{reason}}.",
+    "vehicle_minor_defect": "Une défectuosité mineure a été signalée sur l'unité {{unit}}."
   },
   "today": {
     "morning": "Bonjour",
@@ -354,7 +358,11 @@
     "NEEDS_TERMS": "Ajoutez vos conditions d'inscription avant d'ouvrir les inscriptions.",
     "ALREADY_DECIDED": "Cette réservation a déjà été traitée.",
     "ALREADY_PAID": "Déjà payé.",
-    "BAD_BIRTH_DATE": "Vérifiez la date de naissance."
+    "BAD_BIRTH_DATE": "Vérifiez la date de naissance.",
+    "LICENCE_REQUIRED": "Il vous faut un permis valide au dossier pour ce véhicule.",
+    "NEEDS_SEVERITY": "Indiquez si chaque défectuosité est mineure ou majeure.",
+    "UNIT_EXISTS": "Un véhicule porte déjà ce numéro d'unité.",
+    "IN_SERVICE": "Ce véhicule est déjà en service."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1320,7 +1328,12 @@
     "mfaUse": "Utiliser ma clé d'accès",
     "mfaSetUp": "Configurer une clé d'accès",
     "mfaBack": "Utiliser un autre compte",
-    "mfaExpired": "Votre connexion a expiré. Utilisez un autre compte pour recommencer."
+    "mfaExpired": "Votre connexion a expiré. Utilisez un autre compte pour recommencer.",
+    "hos": "Heures de service (postes de conduite)",
+    "hosHelp": "Vide = aucune limite. Un quart qui dépasserait une limite ne peut pas être attribué ni réclamé.",
+    "hosDaily": "Heures max par jour",
+    "hosRest": "Heures de repos min entre",
+    "hosWeek": "Heures max sur 7 jours"
   },
   "passkeys": {
     "title": "Clés d'accès",
@@ -1374,7 +1387,8 @@
       "manager": "Gestion du personnel",
       "admin": "Administration de l'organisation",
       "winter": "Opérations hivernales",
-      "memberServices": "Services aux membres et programmes"
+      "memberServices": "Services aux membres et programmes",
+      "fleet": "Parc de véhicules"
     },
     "groupHelp": {
       "everyday": "Ce dont presque tout employé a besoin.",
@@ -1385,7 +1399,8 @@
       "manager": "Dossiers, discipline, paie, postes, offres d'emploi, et création de rôles pour leur équipe.",
       "admin": "Accès de niveau RH à toute l'organisation. À accorder avec parcimonie.",
       "winter": "Patrouilles, rappels en cas de tempête, registres de patrouille et paramètres hivernaux.",
-      "memberServices": "Inscrire les familles, vendre abonnements et entrées, planifier cours et club de natation, fixer les tarifs."
+      "memberServices": "Inscrire les familles, vendre abonnements et entrées, planifier cours et club de natation, fixer les tarifs.",
+      "fleet": "Inspections avant départ, et gestion des véhicules et des réparations."
     },
     "perms": {
       "schedule.read": "Voir l'horaire",
@@ -1445,7 +1460,9 @@
       "lessons.plan": "Planifier cours et club de natation",
       "fees.manage": "Fixer les tarifs",
       "bookings.manage": "Inscriptions en ligne et réservations",
-      "coverage.manage": "Définir la couverture requise"
+      "coverage.manage": "Définir la couverture requise",
+      "fleet.inspect": "Inspections avant départ",
+      "fleet.manage": "Gérer les véhicules et les réparations"
     },
     "limits": "Vous pouvez seulement donner à un rôle ce que vous pouvez faire vous-même, dans votre propre service.",
     "anything": "Les capacités de supervision suivent le service du rôle : les personnes qui occupent ses postes et les quarts dans ses installations. L'espace syndical n'est pas offert; il suit l'adhésion syndicale.",
@@ -2947,5 +2964,88 @@
     "note": "Note",
     "noteHint": "Facultatif, p. ex. le règlement ou la condition du permis.",
     "added": "Règle ajoutée"
+  },
+  "pretrip": {
+    "title": "Inspection avant départ",
+    "description": "Faites le tour du véhicule avant de conduire. Une défectuosité majeure le met hors service jusqu'à la réparation.",
+    "vehicles": "Véhicules",
+    "none": "Aucun véhicule pour l'instant",
+    "noneHelp": "Votre superviseur ajoute les véhicules dans Parc de véhicules.",
+    "status": {
+      "READY": "Prêt",
+      "NEEDS_INSPECTION": "Inspecter avant de conduire",
+      "OUT_OF_SERVICE": "Hors service"
+    },
+    "last": "Dernière inspection {{when}}",
+    "start": "Inspecter",
+    "inspect": "Inspecter {{unit}}",
+    "ok": "OK",
+    "defect": "Défectuosité",
+    "severity": {
+      "MINOR": "Mineure",
+      "MAJOR": "Majeure : ne pas conduire"
+    },
+    "whatsWrong": "Quel est le problème?",
+    "odometer": "Odomètre (km)",
+    "notes": "Notes",
+    "submit": "Envoyer l'inspection",
+    "majorWarning": "Une défectuosité majeure (p. ex. freins, direction) signifie que le véhicule ne doit pas être conduit. Votre superviseur est avisé immédiatement.",
+    "result": {
+      "PASS": "{{unit}} est prêt",
+      "MINOR": "{{unit}} : défectuosité mineure signalée",
+      "MAJOR": "{{unit}} est hors service"
+    },
+    "resultHelp": {
+      "PASS": "Inspection enregistrée. Soyez prudent.",
+      "MINOR": "Inspection enregistrée. Votre superviseur a été avisé de la défectuosité.",
+      "MAJOR": "Ne le conduisez pas. Votre superviseur a été avisé et organisera la réparation."
+    },
+    "done": "Terminé",
+    "items": {
+      "BRAKES": "Freins (service et stationnement)",
+      "STEERING": "Direction",
+      "LIGHTS": "Phares et clignotants",
+      "TIRES_WHEELS": "Pneus et roues",
+      "HORN": "Klaxon",
+      "WIPERS_WASHERS": "Essuie-glaces et lave-glaces",
+      "MIRRORS_WINDOWS": "Rétroviseurs et vitres",
+      "FLUID_LEAKS": "Fuites de liquide",
+      "SEATBELTS": "Ceintures de sécurité",
+      "EMERGENCY_EQUIPMENT": "Équipement d'urgence",
+      "COUPLING_HITCH": "Attelage",
+      "ATTACHMENTS": "Chasse-neige, épandeur ou accessoires"
+    }
+  },
+  "fleet": {
+    "title": "Parc de véhicules",
+    "description": "Véhicules, permis requis, inspections avant départ, défectuosités et réparations.",
+    "add": "Ajouter un véhicule",
+    "added": "Véhicule ajouté",
+    "none": "Aucun véhicule pour l'instant",
+    "noneHelp": "Ajoutez chasse-neige, camionnettes, surfaceuses : tout ce qui exige une inspection avant départ.",
+    "needs": "exige {{licence}}",
+    "history": "Historique",
+    "return": "Remettre en service",
+    "returned": "De retour en service",
+    "returnTitle": "Remettre {{unit}} en service",
+    "repairNote": "Qu'est-ce qui a été réparé?",
+    "repairHint": "Enregistré avec l'inspection, p. ex. le numéro du bon de travail.",
+    "historyTitle": "{{unit}} : inspections",
+    "noHistory": "Aucune inspection pour l'instant.",
+    "result": {
+      "PASS": "Conforme",
+      "MINOR": "Défectuosité mineure",
+      "MAJOR": "Défectuosité majeure"
+    },
+    "repaired": "Réparé : {{note}}",
+    "unit": "Numéro d'unité",
+    "plate": "Plaque",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Camion chasse-neige tandem",
+    "licence": "Permis requis",
+    "licenceHint": "Seuls les conducteurs qui le détiennent peuvent l'inspecter et le prendre.",
+    "noLicence": "Aucun",
+    "yard": "Garage ou installation",
+    "foot": "Un véhicule est prêt pendant 24 heures après une inspection conforme ou mineure. Les permis sont des certifications; ajoutez-les aux postes de conduite pour que l'horaire les vérifie aussi."
   }
 }

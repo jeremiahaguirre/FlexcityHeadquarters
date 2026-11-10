@@ -175,7 +175,9 @@
     "programs": "Lessons & programs",
     "fees": "Prices",
     "bookings": "Bookings & sign-up",
-    "coverage": "Required coverage"
+    "coverage": "Required coverage",
+    "pretrip": "Pre-trip inspection",
+    "fleet": "Fleet"
   },
   "navGroups": {
     "mine": "My work",
@@ -243,7 +245,9 @@
     "callout_cancelled": "The call-out was cancelled: {{reason}}. Nothing to do.",
     "patrol_overdue": "Patrol overdue on {{route}}.",
     "booking_requested": "Booking request: {{service}} on {{when}} from {{name}}.",
-    "coverage_gap": "Coverage gap: {{rule}} isn't covered in the next two days."
+    "coverage_gap": "Coverage gap: {{rule}} isn't covered in the next two days.",
+    "vehicle_out_of_service": "Unit {{unit}} is out of service: {{reason}}.",
+    "vehicle_minor_defect": "A minor defect was reported on unit {{unit}}."
   },
   "today": {
     "morning": "Good morning",
@@ -354,7 +358,11 @@
     "NEEDS_TERMS": "Add your registration terms before opening sign-up.",
     "ALREADY_DECIDED": "This booking was already handled.",
     "ALREADY_PAID": "Already paid.",
-    "BAD_BIRTH_DATE": "Check the birth date."
+    "BAD_BIRTH_DATE": "Check the birth date.",
+    "LICENCE_REQUIRED": "You need a valid licence on file for this vehicle.",
+    "NEEDS_SEVERITY": "Say whether each defect is minor or major.",
+    "UNIT_EXISTS": "There is already a vehicle with that unit number.",
+    "IN_SERVICE": "This vehicle is already in service."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1320,7 +1328,12 @@
     "mfaUse": "Use my passkey",
     "mfaSetUp": "Set up a passkey",
     "mfaBack": "Use a different account",
-    "mfaExpired": "Your sign-in timed out. Use a different account to start again."
+    "mfaExpired": "Your sign-in timed out. Use a different account to start again.",
+    "hos": "Hours of service (driving positions)",
+    "hosHelp": "Blank = no limit. A shift that would break a limit can't be booked or claimed.",
+    "hosDaily": "Max hours a day",
+    "hosRest": "Min hours off between",
+    "hosWeek": "Max hours in 7 days"
   },
   "passkeys": {
     "title": "Passkeys",
@@ -1374,7 +1387,8 @@
       "manager": "Managing people",
       "admin": "Organization administration",
       "winter": "Winter operations",
-      "memberServices": "Member services and programs"
+      "memberServices": "Member services and programs",
+      "fleet": "Fleet"
     },
     "groupHelp": {
       "everyday": "What almost every employee needs.",
@@ -1385,7 +1399,8 @@
       "manager": "Files, discipline, payroll, positions, job postings, and making roles for their team.",
       "admin": "HR-level access across the organization. Give it sparingly.",
       "winter": "Patrols, storm call-outs, patrol records and winter settings.",
-      "memberServices": "Register families, sell memberships and drop-ins, plan lessons and swim club, set prices."
+      "memberServices": "Register families, sell memberships and drop-ins, plan lessons and swim club, set prices.",
+      "fleet": "Pre-trip inspections, and managing vehicles and repairs."
     },
     "perms": {
       "schedule.read": "See the schedule",
@@ -1445,7 +1460,9 @@
       "lessons.plan": "Plan lessons and swim club",
       "fees.manage": "Set prices",
       "bookings.manage": "Online sign-up and bookings",
-      "coverage.manage": "Set required coverage"
+      "coverage.manage": "Set required coverage",
+      "fleet.inspect": "Pre-trip inspections",
+      "fleet.manage": "Manage vehicles and repairs"
     },
     "limits": "You can give a role only what you can do yourself, within your own department.",
     "anything": "Supervisory capabilities follow a role's department: people holding its positions, and shifts at its facilities. The union hub isn't offered; it follows union membership.",
@@ -2947,5 +2964,88 @@
     "note": "Note",
     "noteHint": "Optional, e.g. the regulation or permit condition.",
     "added": "Rule added"
+  },
+  "pretrip": {
+    "title": "Pre-trip inspection",
+    "description": "Walk around the vehicle before you drive. A major defect takes it out of service until it's repaired.",
+    "vehicles": "Vehicles",
+    "none": "No vehicles yet",
+    "noneHelp": "Your supervisor adds vehicles under Fleet.",
+    "status": {
+      "READY": "Ready",
+      "NEEDS_INSPECTION": "Inspect before driving",
+      "OUT_OF_SERVICE": "Out of service"
+    },
+    "last": "Last inspected {{when}}",
+    "start": "Inspect",
+    "inspect": "Inspect {{unit}}",
+    "ok": "OK",
+    "defect": "Defect",
+    "severity": {
+      "MINOR": "Minor",
+      "MAJOR": "Major: don't drive"
+    },
+    "whatsWrong": "What's wrong?",
+    "odometer": "Odometer (km)",
+    "notes": "Notes",
+    "submit": "Submit inspection",
+    "majorWarning": "A major defect (e.g. brakes, steering) means the vehicle must not be driven. Your fleet supervisor is told right away.",
+    "result": {
+      "PASS": "{{unit}} is ready to go",
+      "MINOR": "{{unit}}: minor defect reported",
+      "MAJOR": "{{unit}} is out of service"
+    },
+    "resultHelp": {
+      "PASS": "Inspection saved. Drive safe.",
+      "MINOR": "Inspection saved. Your supervisor has been told about the defect.",
+      "MAJOR": "Don't drive it. Your supervisor has been told and will arrange the repair."
+    },
+    "done": "Done",
+    "items": {
+      "BRAKES": "Brakes (service and parking)",
+      "STEERING": "Steering",
+      "LIGHTS": "Lights and signals",
+      "TIRES_WHEELS": "Tires and wheels",
+      "HORN": "Horn",
+      "WIPERS_WASHERS": "Wipers and washers",
+      "MIRRORS_WINDOWS": "Mirrors and windows",
+      "FLUID_LEAKS": "Fluid leaks",
+      "SEATBELTS": "Seatbelts",
+      "EMERGENCY_EQUIPMENT": "Emergency equipment",
+      "COUPLING_HITCH": "Coupling or hitch",
+      "ATTACHMENTS": "Plow, spreader or attachments"
+    }
+  },
+  "fleet": {
+    "title": "Fleet",
+    "description": "Vehicles, the licence each needs, pre-trip inspections, defects and repairs.",
+    "add": "Add vehicle",
+    "added": "Vehicle added",
+    "none": "No vehicles yet",
+    "noneHelp": "Add plows, pickups, ice resurfacers: anything that needs a pre-trip inspection.",
+    "needs": "needs {{licence}}",
+    "history": "History",
+    "return": "Return to service",
+    "returned": "Back in service",
+    "returnTitle": "Return {{unit}} to service",
+    "repairNote": "What was fixed?",
+    "repairHint": "Saved with the inspection, e.g. the work order number.",
+    "historyTitle": "{{unit}}: inspections",
+    "noHistory": "No inspections yet.",
+    "result": {
+      "PASS": "Pass",
+      "MINOR": "Minor defect",
+      "MAJOR": "Major defect"
+    },
+    "repaired": "Repaired: {{note}}",
+    "unit": "Unit number",
+    "plate": "Plate",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Tandem plow truck",
+    "licence": "Licence needed",
+    "licenceHint": "Only drivers holding it can inspect and take it.",
+    "noLicence": "None",
+    "yard": "Yard or facility",
+    "foot": "A vehicle is ready for 24 hours after a passing or minor inspection. Licences are certifications; add them to driving positions so the schedule checks them too."
   }
 }

@@ -35,6 +35,7 @@ export const FEATURES = {
   /** Lesson and swim club campaigns, member services and the price list. */
   registration: { default: true, permissions: ['lessons.plan', 'members.manage', 'fees.manage', 'bookings.manage'] },
   coverage: { default: true, permissions: ['coverage.manage'] },
+  fleet: { default: true, permissions: ['fleet.inspect', 'fleet.manage'] },
   loneWork: { default: true, permissions: ['lonework.self', 'lonework.monitor'] },
   /** Off until the city's managers switch them on (Winter operations screen). */
   callOuts: { default: false, permissions: ['winter.callout'] },

@@ -1,4 +1,4 @@
-import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
+import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   href: string;
@@ -24,6 +24,7 @@ export const NAV: NavItem[] = [
   { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'lessons.teach', ready: true },
   { href: '/alone', key: 'loneWork', icon: ShieldCheck, group: 'mine', permission: 'lonework.self', ready: true },
   { href: '/patrol', key: 'patrol', icon: Snowflake, group: 'mine', permission: 'winter.patrol', ready: true },
+  { href: '/pretrip', key: 'pretrip', icon: Truck, group: 'mine', permission: 'fleet.inspect', ready: true },
   { href: '/headcount', key: 'headcount', icon: Calculator, group: 'deck', permission: 'ops.headcount.record', tab: 3, ready: true },
   { href: '/deck', key: 'deck', icon: Armchair, group: 'deck', permission: 'deck.rotate', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
@@ -43,6 +44,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/winter', key: 'winter', icon: Snowflake, group: 'manage', permission: ['winter.manage', 'winter.records'], ready: true },
   { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', permission: 'reliability.read', ready: true },
   { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', permission: 'compliance.report', ready: true },
+  { href: '/manage/fleet', key: 'fleet', icon: Truck, group: 'manage', permission: 'fleet.manage', ready: true },
   { href: '/manage/coverage', key: 'coverage', icon: BadgeCheck, group: 'manage', permission: ['coverage.manage', 'schedule.write'], ready: true },
   { href: '/manage/benchmarks', key: 'benchmarks', icon: BarChart3, group: 'manage', permission: ['tenant.configure', 'reliability.read'], ready: true },
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', permission: 'certs.verify', ready: true },

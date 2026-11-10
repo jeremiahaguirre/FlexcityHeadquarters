@@ -149,7 +149,7 @@ citiesRouter.get(
         features: resolveFeatures(t.features),
         featureDefaults: Object.fromEntries(FEATURE_KEYS.map((k) => [k, FEATURES[k].default])),
         facilities: facilities.map((f) => ({ ...f, latitude: f.latitude?.toNumber() ?? null, longitude: f.longitude?.toNumber() ?? null })),
-        positions: positions.map((p) => ({ id: p.id, name: p.name, nameFr: p.nameFr, minimumAge: p.minimumAge, requiredCertificationIds: p.requirements.map((r) => r.certificationId), staff: p._count.qualifiedUsers })),
+        positions: positions.map((p) => ({ id: p.id, name: p.name, nameFr: p.nameFr, minimumAge: p.minimumAge, hoursOfService: p.hoursOfService, requiredCertificationIds: p.requirements.map((r) => r.certificationId), staff: p._count.qualifiedUsers })),
         certifications,
         staff,
         admins: admins.map((a) => ({ id: a.id, name: `${a.firstName} ${a.lastName}`, email: a.email, invited: !a.passwordHash })),
@@ -232,7 +232,7 @@ citiesRouter.patch(
 async function savePosition(tx: Tx, tenantId: string, positionId: string | null, body: z.infer<typeof positionBody>) {
   const visible = await tx.certification.count({ where: { id: { in: body.requiredCertificationIds } } });
   if (visible !== new Set(body.requiredCertificationIds).size) throw badRequest('Unknown certification.');
-  const data = { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null };
+  const data = { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) };
   const pos = positionId ? await tx.position.update({ where: { id: positionId }, data }) : await tx.position.create({ data: { ...data, tenantId } });
   await tx.positionCertRequirement.deleteMany({ where: { positionId: pos.id } });
   if (body.requiredCertificationIds.length) {
