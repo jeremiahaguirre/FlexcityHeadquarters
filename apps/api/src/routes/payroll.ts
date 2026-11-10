@@ -802,6 +802,7 @@ payrollRouter.put(
         twoPersonApproval: z.boolean().optional(),
         requirePasskey: z.boolean().optional(),
         lieu: z.object({ enabled: z.boolean(), capHours: z.number().min(1).max(1000), takeWithinMonths: z.number().int().min(1).max(36) }).optional(),
+        mileage: z.object({ centsPerKm: z.number().min(1).max(500), centsAfter: z.number().min(1).max(500), tierKm: z.number().int().min(0).max(100_000), receiptOver: z.number().min(0).max(10_000) }).optional(),
       })
       .parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {

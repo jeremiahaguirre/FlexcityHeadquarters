@@ -2695,6 +2695,8 @@ enum DocumentKind {
   CONTRACT
   POLICY
   OTHER
+  /// A receipt attached to an expense claim.
+  RECEIPT
 }
 
 enum DocumentVisibility {
@@ -3067,4 +3069,61 @@ model Kiosk {
   revokedAt   DateTime? @db.Timestamptz(3)
 
   @@index([tenantId, facilityId])
+}
+
+enum ClaimStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  /// Paid on a pay run (payRunId).
+  PAID
+  WITHDRAWN
+}
+
+enum ExpenseCategory {
+  MILEAGE
+  MEALS
+  TRAVEL
+  PARKING
+  SUPPLIES
+  TRAINING
+  OTHER
+}
+
+/// Money a person spent for work, or kilometres they drove, to be paid back (not taxed) on a pay run.
+model ExpenseClaim {
+  id           String      @id @default(uuid()) @db.Uuid
+  tenantId     String      @db.Uuid
+  userId       String      @db.Uuid
+  title        String
+  status       ClaimStatus @default(SUBMITTED)
+  total        Decimal     @db.Decimal(12, 2)
+  submittedAt  DateTime    @default(now()) @db.Timestamptz(3)
+  decidedById  String?     @db.Uuid
+  decidedAt    DateTime?   @db.Timestamptz(3)
+  decisionNote String?
+  payRunId     String?     @db.Uuid
+  items        ExpenseItem[]
+
+  @@index([tenantId, status])
+  @@index([userId])
+}
+
+model ExpenseItem {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @db.Uuid
+  claimId           String          @db.Uuid
+  claim             ExpenseClaim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  date              DateTime        @db.Date
+  category          ExpenseCategory
+  description       String
+  amount            Decimal         @db.Decimal(12, 2)
+  /// Mileage: kilometres driven and the rate applied (cents per km).
+  km                Decimal?        @db.Decimal(8, 1)
+  centsPerKm        Decimal?        @db.Decimal(6, 2)
+  /// GST/HST included in the amount, if the receipt shows it.
+  salesTax          Decimal?        @db.Decimal(12, 2)
+  receiptDocumentId String?         @db.Uuid
+
+  @@index([claimId])
 }

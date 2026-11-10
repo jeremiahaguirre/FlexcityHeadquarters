@@ -211,7 +211,9 @@
     "benefits": "Benefits",
     "accounting": "Accounting",
     "hr": "HR",
-    "training": "Training"
+    "training": "Training",
+    "expenses": "Expenses",
+    "manageExpenses": "Expense claims"
   },
   "navGroups": {
     "mine": "My work",
@@ -299,7 +301,10 @@
     "trade_cancelled": "A trade you agreed to was cancelled.",
     "trade_to_approve": "A shift trade is waiting for your approval.",
     "trade_approved": "Your shift trade was approved. Check your schedule.",
-    "trade_denied": "Your shift trade wasn't approved."
+    "trade_denied": "Your shift trade wasn't approved.",
+    "expense_submitted": "{{name}} submitted an expense claim.",
+    "expense_approved": "Your expense claim “{{title}}” was approved. It'll be paid on your next pay.",
+    "expense_rejected": "Your expense claim “{{title}}” wasn't approved."
   },
   "today": {
     "morning": "Good morning",
@@ -1853,6 +1858,10 @@
       "seniority": {
         "name": "Seniority",
         "help": "Seniority dates and hours break ties in the overtime order, call-outs and the scheduling assistant. The organization can also switch this in its settings."
+      },
+      "expenses": {
+        "name": "Expense and mileage claims",
+        "help": "Staff claim kilometres and costs with receipts; supervisors approve; claims are paid back, untaxed, on the next pay run."
       }
     },
     "positions": "Positions",
@@ -5249,5 +5258,67 @@
     "newPin": "New PIN",
     "pinRule": "4 to 6 digits, not easy to guess.",
     "pinSaved": "PIN saved"
+  },
+  "expenses": {
+    "pageTitle": "Expenses and mileage",
+    "pageHelp": "Claim kilometres you drove for work and costs you paid. Once approved, they're paid back on your next pay, untaxed.",
+    "manageTitle": "Expense claims",
+    "manageHelp": "Claims from your department. Approved claims are paid on the next pay run.",
+    "rateLine": "Mileage: {{first}}¢ a km for the first {{tier}} km in a year, {{after}}¢ after. You've claimed {{km}} km this year.",
+    "new": "New claim",
+    "newHelp": "Attach a receipt for anything over ${{over}}. Mileage needs no receipt.",
+    "title": "What it's for",
+    "titlePlaceholder": "e.g. NLS recertification in Vernon",
+    "line": "Item {{n}}",
+    "category": "Type",
+    "date": "Date",
+    "description": "Description",
+    "tripPlaceholder": "From, to and why",
+    "km": "Kilometres",
+    "amount": "Amount ($)",
+    "salesTax": "GST/HST included ($, optional)",
+    "receipt": "Receipt",
+    "addLine": "Add an item",
+    "removeLine": "Remove this item",
+    "submit": "Submit claim",
+    "submitted": "Claim submitted",
+    "withdraw": "Withdraw",
+    "withdrawn": "Claim withdrawn",
+    "note": "Note: {{note}}",
+    "kmAt": "{{km}} km at {{cents}}¢",
+    "emptyTitle": "No claims yet",
+    "emptyBody": "When you drive for work or pay for something your job needs, claim it here.",
+    "show": "Show",
+    "noneHere": "Nothing here",
+    "noneWaiting": "No claims are waiting for you.",
+    "approve": "Approve",
+    "reject": "Don't approve",
+    "approved": "Claim approved; it'll be paid on the next pay run",
+    "rejected": "Claim not approved",
+    "rejectTitle": "Not approving this claim",
+    "why": "Tell them why",
+    "paidHow": "Approved claims are added to the next pay run as reimbursements: not taxed and not counted for CPP or EI.",
+    "status": {
+      "SUBMITTED": "Waiting",
+      "APPROVED": "Approved",
+      "PAID": "Paid",
+      "REJECTED": "Not approved",
+      "WITHDRAWN": "Withdrawn"
+    },
+    "categories": {
+      "MILEAGE": "Mileage",
+      "MEALS": "Meals",
+      "TRAVEL": "Travel",
+      "PARKING": "Parking",
+      "SUPPLIES": "Supplies",
+      "TRAINING": "Training",
+      "OTHER": "Other"
+    },
+    "settingsTitle": "Mileage and expenses",
+    "settingsHelp": "Cents per kilometre, like CRA's reasonable rates (check them each January), and when a receipt is needed.",
+    "rateFirst": "Rate up to the yearly threshold (¢/km)",
+    "rateAfter": "Rate after it (¢/km)",
+    "tier": "Yearly threshold (km)",
+    "receiptOver": "Receipt needed above ($)"
   }
 }

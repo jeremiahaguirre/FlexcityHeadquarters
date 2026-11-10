@@ -76,6 +76,8 @@ export const PERMISSIONS = [
   'fleet.inspect', // pre-trip vehicle inspections
   'fleet.manage', // vehicles, defects, returning vehicles to service
   'injury.manage', // workers' injuries and reports to the compensation board
+  'expenses.self', // claim expenses and mileage
+  'expenses.approve', // approve expense and mileage claims (their department)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -93,6 +95,7 @@ const STAFF_BASE: Permission[] = [
   'ops.headcount.record',
   'incidents.create',
   'lonework.self',
+  'expenses.self',
 ];
 
 export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
@@ -135,6 +138,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'coverage.manage',
     'fleet.manage',
     'injury.manage',
+    'expenses.approve',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -178,6 +182,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'bookings.manage',
     'coverage.manage',
     'injury.manage',
+    'expenses.approve',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
@@ -194,7 +199,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {

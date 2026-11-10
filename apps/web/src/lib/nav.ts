@@ -1,4 +1,4 @@
-import { Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Wallet, HeartPulse, Building2 } from 'lucide-react';
+import { ReceiptText, Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
 export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
 export type ManageSection = (typeof MANAGE_SECTIONS)[number];
@@ -31,6 +31,7 @@ export const NAV: NavItem[] = [
   { href: '/patrol', key: 'patrol', icon: Snowflake, group: 'mine', permission: 'winter.patrol', ready: true },
   { href: '/pretrip', key: 'pretrip', icon: Truck, group: 'mine', permission: 'fleet.inspect', ready: true },
   { href: '/pay', key: 'myPay', icon: Wallet, group: 'mine', permission: 'timeclock.punch', ready: true },
+  { href: '/expenses', key: 'expenses', icon: ReceiptText, group: 'mine', permission: 'expenses.self', ready: true },
   { href: '/headcount', key: 'headcount', icon: Calculator, group: 'deck', permission: 'ops.headcount.record', tab: 3, ready: true },
   { href: '/deck', key: 'deck', icon: Armchair, group: 'deck', permission: 'deck.rotate', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
@@ -59,6 +60,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', section: 'people', permission: 'certs.verify', ready: true },
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', section: 'people', permission: 'jobs.manage', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', section: 'pay', permission: 'payroll.export', ready: true },
+  { href: '/manage/expenses', key: 'manageExpenses', icon: ReceiptText, group: 'manage', section: 'pay', permission: 'expenses.approve', ready: true },
   { href: '/manage/benefits', key: 'benefits', icon: HeartPulse, group: 'manage', section: 'pay', permission: 'benefits.manage', ready: true },
   { href: '/manage/accounting', key: 'accounting', icon: Calculator, group: 'manage', section: 'pay', permission: 'accounting.manage', ready: true },
   { href: '/manage/fees', key: 'fees', icon: Tags, group: 'manage', section: 'programs', permission: 'fees.manage', ready: true },

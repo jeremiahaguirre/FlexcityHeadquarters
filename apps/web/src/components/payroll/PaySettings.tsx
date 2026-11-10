@@ -12,7 +12,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { AddressFields, type MailingAddress, readAddress } from './AddressFields';
 
 interface BankLinkView { configured: boolean; host?: string; port?: number; username?: string; remoteDir?: string; hostKeySha256?: string; pgpFingerprint?: string | null; autoSend?: boolean; credentialKind?: 'password' | 'privateKey' }
-interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; rqPreparerNumber?: string; rqCertificationNumber?: string; rl1FirstSlip?: number; quebecSector?: 'public' | 'private'; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean; lieu?: { enabled?: boolean; capHours?: number; takeWithinMonths?: number } }
+interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; rqPreparerNumber?: string; rqCertificationNumber?: string; rl1FirstSlip?: number; quebecSector?: 'public' | 'private'; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean; lieu?: { enabled?: boolean; capHours?: number; takeWithinMonths?: number }; mileage?: { centsPerKm?: number; centsAfter?: number; tierKm?: number; receiptOver?: number } }
 
 /** CRA payroll account and the direct deposit details the city's bank provides. */
 export function PaySettings() {
@@ -53,6 +53,7 @@ export function PaySettings() {
             ...(account ? { returnsAccount: account } : {}),
             twoPersonApproval: f.get('twoPerson') === 'on',
             requirePasskey: f.get('passkey') === 'on',
+            mileage: { centsPerKm: Number(f.get('kmRate') || 72), centsAfter: Number(f.get('kmRateAfter') || 66), tierKm: Number(f.get('kmTier') || 5000), receiptOver: Number(f.get('receiptOver') || 25) },
             lieu: { enabled: f.get('lieuOn') === 'on', capHours: Number(f.get('lieuCap') || 80), takeWithinMonths: Number(f.get('lieuMonths') || 12) },
           },
         }),
@@ -115,6 +116,15 @@ export function PaySettings() {
         <CardBody className="grid gap-3 pt-2 text-small">
           <label className="flex items-start gap-2"><input type="checkbox" name="twoPerson" defaultChecked={s.twoPersonApproval} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('payroll.twoPerson')}</span><span className="block text-caption text-muted">{t('payroll.twoPersonHelp')}</span></span></label>
           <label className="flex items-start gap-2"><input type="checkbox" name="passkey" defaultChecked={s.requirePasskey} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('payroll.passkey')}</span><span className="block text-caption text-muted">{t('payroll.passkeyHelp')}</span></span></label>
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader title={t('expenses.settingsTitle')} description={t('expenses.settingsHelp')} />
+        <CardBody className="grid gap-4 pt-2 text-small sm:grid-cols-2">
+          <Field label={t('expenses.rateFirst')}>{(p) => <Input {...p} name="kmRate" type="number" min={1} max={500} step={0.5} defaultValue={s.mileage?.centsPerKm ?? 72} disabled={!editable} />}</Field>
+          <Field label={t('expenses.rateAfter')}>{(p) => <Input {...p} name="kmRateAfter" type="number" min={1} max={500} step={0.5} defaultValue={s.mileage?.centsAfter ?? 66} disabled={!editable} />}</Field>
+          <Field label={t('expenses.tier')}>{(p) => <Input {...p} name="kmTier" type="number" min={0} max={100000} step={100} defaultValue={s.mileage?.tierKm ?? 5000} disabled={!editable} />}</Field>
+          <Field label={t('expenses.receiptOver')}>{(p) => <Input {...p} name="receiptOver" type="number" min={0} max={10000} step={1} defaultValue={s.mileage?.receiptOver ?? 25} disabled={!editable} />}</Field>
         </CardBody>
       </Card>
       <Card>

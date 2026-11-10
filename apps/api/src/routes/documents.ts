@@ -51,7 +51,7 @@ const aad = (tenantId: string, id: string) => `doc:${tenantId}:${id}`;
 // supervisor is unscoped, and must still never see medical notes.
 const isHr = (a: AuthContext) => a.permissions.has('documents.manage') && a.roles.includes('HR_ADMIN');
 
-async function store(tx: Tx, a: AuthContext, userId: string, b: z.infer<typeof body>) {
+export async function store(tx: Tx, a: AuthContext, userId: string, b: Omit<z.infer<typeof body>, 'kind'> & { kind: DocumentKind }) {
   const file = Buffer.from(b.data.slice(b.data.indexOf(',') + 1), 'base64');
   if (!file.length) throw badRequest('The file is empty.');
   if (file.length > MAX_BYTES) throw new HttpError(413, 'TOO_LARGE', 'Files can be up to 10 MB.');
@@ -60,7 +60,8 @@ async function store(tx: Tx, a: AuthContext, userId: string, b: z.infer<typeof b
   const id = randomUUID();
   // Base64 inside the seal: the envelope works on text.
   const sealed = await seal(keys(), tenantKekId(a.tenantId), file.toString('base64'), aad(a.tenantId, id));
-  const visibility: DocumentVisibility = b.kind === 'MEDICAL_NOTE' ? 'HR' : b.shareWithDepartment ? 'DEPARTMENT' : 'HR';
+  // Receipts are seen by whoever approves the claim: the person's department supervisors and HR.
+  const visibility: DocumentVisibility = b.kind === 'MEDICAL_NOTE' ? 'HR' : b.kind === 'RECEIPT' || b.shareWithDepartment ? 'DEPARTMENT' : 'HR';
   const doc = await tx.employeeDocument.create({
     data: { id, tenantId: a.tenantId, userId, uploadedById: a.userId, kind: b.kind as DocumentKind, visibility, title: b.title, fileName: b.fileName.replace(/[^\w.\- ()]/g, '_'), contentType: type, size: file.length, sha256: sha256(file), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId },
   });
@@ -87,8 +88,10 @@ async function names(tx: Tx, ids: string[]) {
 }
 
 /** May this person see this document? The employee, HR, or (for department-shared files) their supervisors. */
-async function canSee(tx: Tx, a: AuthContext, d: { userId: string; visibility: string }) {
+async function canSee(tx: Tx, a: AuthContext, d: { userId: string; visibility: string; kind?: string }) {
   if (d.userId === a.userId) return true;
+  // Receipts: whoever approves this person's expense claims.
+  if (d.kind === 'RECEIPT' && a.permissions.has('expenses.approve') && (await userInScope(tx, a.scope, d.userId))) return true;
   if (!a.permissions.has('documents.manage')) return false;
   if (isHr(a)) return true;
   return d.visibility === 'DEPARTMENT' && (await userInScope(tx, a.scope, d.userId));

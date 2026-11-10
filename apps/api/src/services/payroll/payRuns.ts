@@ -20,6 +20,7 @@ import { type Payment, buildCpa005 } from './cpa005.js';
 import { runPayroll } from './payrollRun.js';
 import { type Deductions, type YearToDate, calculateDeductions, calculateQuebecDeductions } from './tax.js';
 import { loadTaxTables } from './taxTables.js';
+import { claimsToPay } from './expenses.js';
 import { banks as lieuBanksOf, bankOvertime, expiredHours, lieuPolicy, regularRate, type StatementLieu } from './lieu.js';
 import { withBonusMethod } from './lumpSum.js';
 import { type Issue, IssueSet, issue } from './issues.js';
@@ -63,6 +64,8 @@ export interface PayrollSettings {
   bank?: BankLink;
   /** Time in lieu (lieu.ts): whether people may bank overtime, the most they may hold, how long they may keep it. */
   lieu?: { enabled?: boolean; capHours?: number; takeWithinMonths?: number };
+  /** Mileage rates in cents per km, the yearly threshold for the lower rate, and above what amount a receipt is needed (expenses.ts). */
+  mileage?: { centsPerKm?: number; centsAfter?: number; tierKm?: number; receiptOver?: number };
 }
 
 export const readSettings = (raw: unknown): PayrollSettings => (raw && typeof raw === 'object' ? (raw as PayrollSettings) : {});
@@ -186,6 +189,9 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   else if (!tables.federal.verified) blockers.add(issue('FEDERAL_UNVERIFIED', { year }));
 
   const runUsers = [...new Set([...results.map((r) => r.userId), ...salaries.map((x) => x.userId), ...adjustments.map((x) => x.userId), ...lieuOff.map((r) => r.userId)])];
+  // Approved expense claims: everyone's on a city-wide run; on a department run, its people's.
+  const claims = kind === 'OFF_CYCLE' ? [] : await claimsToPay(tx, runId, input.payDate, input.departmentId ? runUsers : null);
+  for (const c of claims) if (!runUsers.includes(c.userId)) runUsers.push(c.userId);
   const lieuBanks = await lieuBanksOf(tx, runUsers, { excludeRunId: runId });
   const bankers = new Set(policy.enabled && kind === 'REGULAR' ? (await tx.user.findMany({ where: { id: { in: runUsers }, bankOvertime: true }, select: { id: true } })).map((u) => u.id) : []);
   const leaving = new Set((await tx.offboarding.findMany({ where: { userId: { in: runUsers }, lastDay: { lte: new Date(periodEnd) } }, select: { userId: true } })).map((o) => o.userId));
@@ -291,7 +297,8 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     for (const x of mine.filter((y) => LUMP_SUM_KINDS.has(y.kind) || REGULAR_EARNING_KINDS.has(y.kind))) lines.push({ code: x.kind, positionId: x.positionId, hours: 0, rate: 0, amount: r2(Number(x.amount)), description: x.description });
     // On an off-cycle run every earning is extra to the person's usual pay: all of it by the bonus method.
     const lump = kind === 'OFF_CYCLE' ? r2(lines.reduce((a, l) => a + l.amount, 0)) : amt(LUMP_SUM_KINDS);
-    const reimbursements = amt(REIMBURSEMENT_KINDS);
+    const myClaims = claims.filter((c) => c.userId === userId);
+    const reimbursements = r2(amt(REIMBURSEMENT_KINDS) + myClaims.reduce((a, c) => a + c.amount, 0));
     const oneTimeDeductions = amt(DEDUCTION_KINDS);
     const gross = r2(lines.reduce((s, l) => s + l.amount, 0));
     if (gross <= 0 && reimbursements <= 0) {
@@ -377,7 +384,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       payDate: new Date(input.payDate),
       hours,
       earnings: lines,
-      deductions: { ...d, benefits, rpp, unionDues, afterTax, taxableBenefit, employerBenefits, lumpSum: lump, reimbursements, oneTimeDeductions, oneTime: mine.filter((x) => REIMBURSEMENT_KINDS.has(x.kind) || DEDUCTION_KINDS.has(x.kind)).map((x) => ({ kind: x.kind, description: x.description, amount: Number(x.amount) })), orders: orderLines, ...(lieu.banked || lieu.taken || lieu.paidOut ? { lieu } : {}) } as unknown as Prisma.InputJsonValue,
+      deductions: { ...d, benefits, rpp, unionDues, afterTax, taxableBenefit, employerBenefits, lumpSum: lump, reimbursements, oneTimeDeductions, oneTime: mine.filter((x) => REIMBURSEMENT_KINDS.has(x.kind) || DEDUCTION_KINDS.has(x.kind)).map((x) => ({ kind: x.kind, description: x.description, amount: Number(x.amount) })), orders: orderLines, ...(myClaims.length ? { expenses: myClaims.map((c) => ({ id: c.id, title: c.title, amount: c.amount })) } : {}), ...(lieu.banked || lieu.taken || lieu.paidOut ? { lieu } : {}) } as unknown as Prisma.InputJsonValue,
       gross,
       totalDeductions,
       net,
@@ -462,7 +469,10 @@ export async function approveRun(tx: Tx, tenantId: string, runId: string, approv
   const blockers = fresh.blockers as unknown as Array<Issue | string>;
   if (blockers.length) throw new HttpError(409, 'RUN_BLOCKED', 'This pay run can’t be approved yet.', { blockers });
   const approved = await tx.payRun.update({ where: { id: runId }, data: { status: 'APPROVED', approvedById: approverId, approvedAt: new Date() } });
-  const people = await tx.payStatement.findMany({ where: { payRunId: runId }, select: { id: true, userId: true, net: true } });
+  const people = await tx.payStatement.findMany({ where: { payRunId: runId }, select: { id: true, userId: true, net: true, deductions: true } });
+  // Expense claims on this run are paid now (and so drop out of any other draft run).
+  const claimIds = people.flatMap((p) => ((p.deductions as { expenses?: Array<{ id: string }> }).expenses ?? []).map((e) => e.id));
+  if (claimIds.length) await tx.expenseClaim.updateMany({ where: { id: { in: claimIds }, status: 'APPROVED' }, data: { status: 'PAID', payRunId: runId } });
   await notify(
     tx,
     tenantId,

@@ -46,6 +46,8 @@ export const FEATURES = {
   callOuts: { default: false, permissions: ['winter.callout'] },
   patrols: { default: false, permissions: ['winter.patrol', 'winter.records'] },
   overtime: { default: true, permissions: ['overtime.manage'] },
+  /** Expense and mileage claims, paid back on pay runs. */
+  expenses: { default: true, permissions: ['expenses.self', 'expenses.approve'] },
   onboarding: { default: true, permissions: ['onboarding.hr', 'onboarding.lead', 'onboarding.configure'] },
   emailNotifications: { default: true, permissions: [] },
   /** Urgent texts and calls (working alone, call-outs, last-minute shifts). Off until the city turns it on: messages cost money. */

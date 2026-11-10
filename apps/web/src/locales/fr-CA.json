@@ -211,7 +211,9 @@
     "benefits": "Avantages sociaux",
     "accounting": "Comptabilité",
     "hr": "RH",
-    "training": "Formation"
+    "training": "Formation",
+    "expenses": "Dépenses",
+    "manageExpenses": "Demandes de remboursement"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -299,7 +301,10 @@
     "trade_cancelled": "Un échange que vous aviez accepté a été annulé.",
     "trade_to_approve": "Un échange de quarts attend votre approbation.",
     "trade_approved": "Votre échange de quarts est approuvé. Consultez votre horaire.",
-    "trade_denied": "Votre échange de quarts n’a pas été approuvé."
+    "trade_denied": "Votre échange de quarts n’a pas été approuvé.",
+    "expense_submitted": "{{name}} a soumis une demande de remboursement.",
+    "expense_approved": "Votre demande « {{title}} » est approuvée. Elle sera payée sur votre prochaine paie.",
+    "expense_rejected": "Votre demande « {{title}} » n’a pas été approuvée."
   },
   "today": {
     "morning": "Bonjour",
@@ -1853,6 +1858,10 @@
       "seniority": {
         "name": "Ancienneté",
         "help": "Les dates et heures d’ancienneté départagent les égalités dans l’ordre des heures supplémentaires, les rappels au travail et l’assistant d’horaire. L’organisation peut aussi changer ce choix dans ses paramètres."
+      },
+      "expenses": {
+        "name": "Dépenses et kilométrage",
+        "help": "Le personnel réclame ses kilomètres et ses frais avec reçus; la supervision approuve; le remboursement, non imposable, se fait sur la paie suivante."
       }
     },
     "positions": "Postes",
@@ -5249,5 +5258,67 @@
     "newPin": "Nouveau NIP",
     "pinRule": "4 à 6 chiffres, difficiles à deviner.",
     "pinSaved": "NIP enregistré"
+  },
+  "expenses": {
+    "pageTitle": "Dépenses et kilométrage",
+    "pageHelp": "Réclamez les kilomètres parcourus pour le travail et les frais que vous avez payés. Une fois approuvés, ils vous sont remboursés sur votre prochaine paie, sans impôt.",
+    "manageTitle": "Demandes de remboursement",
+    "manageHelp": "Les demandes de votre service. Les demandes approuvées sont payées sur la paie suivante.",
+    "rateLine": "Kilométrage : {{first}} ¢ le km pour les {{tier}} premiers km de l’année, {{after}} ¢ ensuite. Vous avez réclamé {{km}} km cette année.",
+    "new": "Nouvelle demande",
+    "newHelp": "Joignez un reçu pour toute dépense de plus de {{over}} $. Le kilométrage n’en demande pas.",
+    "title": "Objet",
+    "titlePlaceholder": "p. ex. Requalification SNS à Vernon",
+    "line": "Élément {{n}}",
+    "category": "Type",
+    "date": "Date",
+    "description": "Description",
+    "tripPlaceholder": "Départ, arrivée et raison",
+    "km": "Kilomètres",
+    "amount": "Montant ($)",
+    "salesTax": "TPS/TVH incluse ($, facultatif)",
+    "receipt": "Reçu",
+    "addLine": "Ajouter un élément",
+    "removeLine": "Retirer cet élément",
+    "submit": "Soumettre la demande",
+    "submitted": "Demande soumise",
+    "withdraw": "Retirer",
+    "withdrawn": "Demande retirée",
+    "note": "Note : {{note}}",
+    "kmAt": "{{km}} km à {{cents}} ¢",
+    "emptyTitle": "Aucune demande pour l’instant",
+    "emptyBody": "Quand vous conduisez pour le travail ou payez quelque chose dont votre poste a besoin, réclamez-le ici.",
+    "show": "Afficher",
+    "noneHere": "Rien ici",
+    "noneWaiting": "Aucune demande ne vous attend.",
+    "approve": "Approuver",
+    "reject": "Ne pas approuver",
+    "approved": "Demande approuvée; elle sera payée sur la prochaine paie",
+    "rejected": "Demande non approuvée",
+    "rejectTitle": "Refus de cette demande",
+    "why": "Expliquez pourquoi",
+    "paidHow": "Les demandes approuvées s’ajoutent à la paie suivante comme remboursements : non imposables et non comptés pour le RPC ou l’AE.",
+    "status": {
+      "SUBMITTED": "En attente",
+      "APPROVED": "Approuvée",
+      "PAID": "Payée",
+      "REJECTED": "Non approuvée",
+      "WITHDRAWN": "Retirée"
+    },
+    "categories": {
+      "MILEAGE": "Kilométrage",
+      "MEALS": "Repas",
+      "TRAVEL": "Déplacement",
+      "PARKING": "Stationnement",
+      "SUPPLIES": "Fournitures",
+      "TRAINING": "Formation",
+      "OTHER": "Autre"
+    },
+    "settingsTitle": "Kilométrage et dépenses",
+    "settingsHelp": "Cents par kilomètre, comme les taux raisonnables de l’ARC (à vérifier chaque janvier), et à partir de quand un reçu est exigé.",
+    "rateFirst": "Taux jusqu’au seuil annuel (¢/km)",
+    "rateAfter": "Taux ensuite (¢/km)",
+    "tier": "Seuil annuel (km)",
+    "receiptOver": "Reçu exigé au-delà de ($)"
   }
 }
