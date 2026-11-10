@@ -21,7 +21,8 @@ export const PERMISSIONS = [
   'timeoff.approve',
   'timeclock.punch',
   'timeclock.review',
-  'payroll.export',
+  'payroll.export', // prepare pay runs, payroll records, direct deposit details
+  'payroll.approve', // release pay runs and bank deposit files; payroll settings
   'ops.chemical.record',
   'ops.chemical.signoff',
   'ops.pool.close', // confirm / dismiss closure recommendations, reopen
@@ -96,6 +97,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'schedule.read',
     'timeclock.review',
     'payroll.export',
+    'payroll.approve',
     'incidents.read',
     'discipline.read',
     'discipline.write',
@@ -134,7 +136,6 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'shiftboard.assign_emergency',
     'timeoff.approve',
     'timeclock.review',
-    'payroll.export',
     'ops.chemical.signoff',
     'ops.pool.close',
     'ops.status.read',

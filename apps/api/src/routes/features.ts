@@ -49,6 +49,7 @@ import { jobsRouter } from './jobs.js';
 import { myPasskeysRouter } from './passkeys.js';
 import { rolesRouter } from './roles.js';
 import { departmentsRouter } from './departments.js';
+import { payrollRouter } from './payroll.js';
 
 export const api = Router();
 api.use(requireAuth);
@@ -69,6 +70,7 @@ api.use(notificationsRouter);
 api.use(myPasskeysRouter);
 api.use(rolesRouter);
 api.use(departmentsRouter);
+api.use(payrollRouter);
 api.use(schedulingRouter);
 api.use(attendanceRouter);
 api.use(staffRouter);

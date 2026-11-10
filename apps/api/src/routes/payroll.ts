@@ -1,0 +1,568 @@
+/**
+ * Payroll: pay runs per department, direct deposit, pay statements, remittances,
+ * T4s and Record of Employment figures.
+ *
+ * Who can do what:
+ * - payroll.export (HR): prepare pay runs, manage tax profiles and enter or verify banking details.
+ * - payroll.approve (HR): approve and release pay runs, download bank deposit files, payroll settings.
+ * - Everyone: their own pay statements, direct deposit and TD1 tax credits.
+ * Releasing pay and seeing full SINs needs a recent sign-in, and by default a passkey.
+ */
+import { Router } from 'express';
+import { z } from 'zod';
+import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { audit, withTenant } from '../lib/db.js';
+import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
+import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
+import { type PayrollSettings, approveRun, buildRun, depositFile, readSettings, runInput, sealReturnsAccount } from '../services/payroll/payRuns.js';
+import type { Deductions } from '../services/payroll/tax.js';
+import { remittance, roeFigures, t4s } from '../services/payroll/yearEnd.js';
+import { h } from './context.js';
+
+export const payrollRouter = Router();
+payrollRouter.use(['/payroll', '/me/pay', '/me/pay-statements', '/me/bank-accounts', '/me/pay-profile'], requireFeature('payroll'));
+
+const uuid = z.string().uuid();
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const PROVINCES = ['AB', 'BC', 'MB', 'NB', 'NL', 'NS', 'NT', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'] as const;
+
+/** Releasing pay needs a passkey sign-in unless the city turned that off. */
+function requirePasskey(a: AuthContext, settings: PayrollSettings) {
+  if (settings.requirePasskey !== false && !a.mfa) throw new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey (Face ID, fingerprint or Windows Hello) to release pay or see banking details.');
+}
+
+/** A supervisor limited to departments can only work with runs for those departments. */
+async function assertRunInScope(tx: Parameters<Parameters<typeof withTenant>[1]>[0], a: AuthContext, departmentId: string | null) {
+  if (!a.scope) return;
+  if (!departmentId) throw forbidden('City-wide pay runs are for HR.');
+  const positions = await tx.position.findMany({ where: { departmentId }, select: { id: true } });
+  if (!positions.every((p) => a.scope!.positionIds.includes(p.id))) throw notFound('Pay run');
+}
+
+const settingsOf = async (tx: Parameters<Parameters<typeof withTenant>[1]>[0]) => readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings);
+
+const runView = (r: { id: string; departmentId: string | null; periodStart: Date; periodEnd: Date; payDate: Date; status: string; totals: unknown; blockers: unknown; warnings: unknown; preparedById: string; approvedById: string | null; approvedAt: Date | null; paidAt: Date | null; fileCreationNumber: number | null; depositFileSha256: string | null; createdAt: Date }) => ({
+  id: r.id,
+  departmentId: r.departmentId,
+  periodStart: r.periodStart.toISOString().slice(0, 10),
+  periodEnd: r.periodEnd.toISOString().slice(0, 10),
+  payDate: r.payDate.toISOString().slice(0, 10),
+  status: r.status,
+  totals: r.totals,
+  blockers: r.blockers,
+  warnings: r.warnings,
+  preparedById: r.preparedById,
+  approvedById: r.approvedById,
+  approvedAt: r.approvedAt,
+  paidAt: r.paidAt,
+  fileCreationNumber: r.fileCreationNumber,
+  depositFileSha256: r.depositFileSha256,
+  createdAt: r.createdAt,
+});
+
+// ------------------------------------------------------------- Pay runs
+payrollRouter.get(
+  '/payroll/runs',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const department = z.string().uuid().optional().parse(req.query.department);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const runs = await tx.payRun.findMany({ where: department ? { departmentId: department } : {}, orderBy: [{ periodStart: 'desc' }, { createdAt: 'desc' }], take: 100 });
+      const visible = [];
+      for (const r of runs) {
+        try {
+          await assertRunInScope(tx, a, r.departmentId);
+          visible.push(runView(r));
+        } catch {
+          /* another department's run */
+        }
+      }
+      return visible;
+    });
+    res.json(out);
+  }),
+);
+
+const runBody = z.object({ departmentId: uuid.nullable(), periodStart: isoDate, weeks: z.number().int().min(1).max(5), payDate: isoDate });
+
+payrollRouter.post(
+  '/payroll/runs',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = runBody.parse(req.body);
+    const run = await withTenant(a.tenantId, async (tx) => {
+      await assertRunInScope(tx, a, body.departmentId);
+      const r = await buildRun(tx, a.tenantId, a.userId, body);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.create', entity: 'PayRun', entityId: r.id, after: body });
+      return r;
+    });
+    res.status(201).json(runView(run));
+  }),
+);
+
+payrollRouter.get(
+  '/payroll/runs/:id',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const run = await tx.payRun.findUnique({ where: { id } });
+      if (!run) throw notFound('Pay run');
+      await assertRunInScope(tx, a, run.departmentId);
+      const statements = await tx.payStatement.findMany({ where: { payRunId: id }, orderBy: { net: 'desc' } });
+      const [users, departments] = await Promise.all([
+        tx.user.findMany({ where: { id: { in: statements.map((s) => s.userId) } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true } }),
+        tx.department.findMany({ select: { id: true, name: true, nameFr: true } }),
+      ]);
+      const byDepartment = new Map<string, { departmentId: string | null; people: number; gross: number; net: number; employerCost: number }>();
+      for (const s of statements) {
+        const k = s.departmentId ?? 'none';
+        const row = byDepartment.get(k) ?? { departmentId: s.departmentId, people: 0, gross: 0, net: 0, employerCost: 0 };
+        row.people += 1;
+        row.gross += Number(s.gross);
+        row.net += Number(s.net);
+        row.employerCost += Number(s.gross) + Number(s.employerCpp) + Number(s.employerEi);
+        byDepartment.set(k, row);
+      }
+      return {
+        run: runView(run),
+        departments,
+        byDepartment: [...byDepartment.values()].map((d) => ({ ...d, gross: Math.round(d.gross * 100) / 100, net: Math.round(d.net * 100) / 100, employerCost: Math.round(d.employerCost * 100) / 100 })),
+        statements: statements.map((s) => {
+          const u = users.find((x) => x.id === s.userId);
+          return { id: s.id, userId: s.userId, name: u ? `${u.firstName} ${u.lastName}` : '', employeeNumber: u?.employeeNumber ?? null, departmentId: s.departmentId, province: s.province, hours: Number(s.hours), gross: Number(s.gross), deductions: s.deductions, totalDeductions: Number(s.totalDeductions), net: Number(s.net), deposit: s.depositLast4 ? `••••${s.depositLast4}` : null };
+        }),
+      };
+    });
+    res.json(out);
+  }),
+);
+
+payrollRouter.post(
+  '/payroll/runs/:id/recalculate',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const run = await withTenant(a.tenantId, async (tx) => {
+      const r = await tx.payRun.findUnique({ where: { id } });
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      if (r.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be recalculated.');
+      return buildRun(tx, a.tenantId, r.preparedById, runInput(r), r.id);
+    });
+    res.json(runView(run));
+  }),
+);
+
+payrollRouter.post(
+  '/payroll/runs/:id/approve',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const run = await withTenant(a.tenantId, async (tx) => {
+      const settings = await settingsOf(tx);
+      requirePasskey(a, settings);
+      const r = await tx.payRun.findUnique({ where: { id } });
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      const approved = await approveRun(tx, a.tenantId, id, a.userId, settings);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.approve', entity: 'PayRun', entityId: id, after: approved.totals as object });
+      return approved;
+    });
+    res.json(runView(run));
+  }),
+);
+
+payrollRouter.get(
+  '/payroll/runs/:id/deposit-file',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const settings = await settingsOf(tx);
+      requirePasskey(a, settings);
+      const r = await tx.payRun.findUnique({ where: { id } });
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      const f = await depositFile(tx, a.tenantId, id, settings);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.deposit_file', entity: 'PayRun', entityId: id, after: { sha256: f.sha256, fileCreationNumber: f.fileCreationNumber, deposits: f.count, totalCents: f.totalCents } });
+      return f;
+    });
+    res.setHeader('X-Deposit-Sha256', out.sha256);
+    res.type('text/plain').attachment(`deposit-${String(out.fileCreationNumber).padStart(4, '0')}.txt`).send(out.file);
+  }),
+);
+
+payrollRouter.post(
+  '/payroll/runs/:id/paid',
+  requirePermission('payroll.approve'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    await withTenant(a.tenantId, async (tx) => {
+      const r = await tx.payRun.findUnique({ where: { id } });
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      if (r.status !== 'APPROVED') throw conflict('NOT_APPROVED', 'Only an approved pay run can be marked paid.');
+      await tx.payRun.update({ where: { id }, data: { status: 'PAID', paidAt: new Date() } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.paid', entity: 'PayRun', entityId: id });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+payrollRouter.post(
+  '/payroll/runs/:id/void',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const reason = z.object({ reason: z.string().trim().min(5).max(500) }).parse(req.body).reason;
+    await withTenant(a.tenantId, async (tx) => {
+      const r = await tx.payRun.findUnique({ where: { id } });
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      if (r.status === 'PAID' || r.status === 'VOID') throw conflict('CANNOT_VOID', 'A paid pay run can’t be voided; correct it in the next run.');
+      if (r.status === 'APPROVED' && !a.permissions.has('payroll.approve')) throw forbidden('Only someone who approves pay runs can void an approved one.');
+      await tx.payRun.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date() } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: !!r.depositFileSha256 } });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+payrollRouter.get(
+  '/payroll/runs/:id/register.csv',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const csv = await withTenant(a.tenantId, async (tx) => {
+      const r = await tx.payRun.findUnique({ where: { id } });
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      const rows = await tx.payStatement.findMany({ where: { payRunId: id } });
+      const users = await tx.user.findMany({ where: { id: { in: rows.map((s) => s.userId) } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true } });
+      const depts = await tx.department.findMany({ select: { id: true, name: true } });
+      const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const head = ['Employee number', 'Name', 'Department', 'Province', 'Hours', 'Gross', 'CPP', 'CPP2', 'EI', 'Federal tax', 'Provincial tax', 'Extra tax', 'Total deductions', 'Net', 'Employer CPP', 'Employer EI', 'Paid by'];
+      const lines = rows.map((s) => {
+        const u = users.find((x) => x.id === s.userId);
+        const d = s.deductions as unknown as Deductions;
+        return [u?.employeeNumber, u ? `${u.lastName}, ${u.firstName}` : '', depts.find((x) => x.id === s.departmentId)?.name ?? '', s.province, s.hours, s.gross, d.cpp, d.cpp2, d.ei, d.federalTax, d.provincialTax, d.extraTax, s.totalDeductions, s.net, s.employerCpp, s.employerEi, s.depositLast4 ? `Deposit ••••${s.depositLast4}` : 'Cheque']
+          .map(q)
+          .join(',');
+      });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.register', entity: 'PayRun', entityId: id });
+      return [head.map(q).join(','), ...lines].join('\r\n');
+    });
+    res.type('text/csv').attachment(`payroll-register-${id.slice(0, 8)}.csv`).send(csv);
+  }),
+);
+
+// ------------------------------------------------------------- People: tax profiles and banking
+payrollRouter.get(
+  '/payroll/people',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const users = await tx.user.findMany({
+        where: { status: 'ACTIVE', anonymizedAt: null },
+        select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      });
+      return users.map((u) => ({
+        id: u.id,
+        name: `${u.firstName} ${u.lastName}`,
+        employeeNumber: u.employeeNumber,
+        departmentIds: [...new Set(u.positions.map((p) => p.position.departmentId).filter(Boolean))],
+        profile: profileView(u.payProfile),
+        bankAccounts: u.bankAccounts.map(bankView),
+      }));
+    });
+    res.json({ people: out, me: a.userId });
+  }),
+);
+
+const profileBody = z.object({
+  province: z.enum(PROVINCES).nullable().optional(),
+  federalClaim: z.number().min(0).max(1_000_000).nullable().optional(),
+  provincialClaim: z.number().min(0).max(1_000_000).nullable().optional(),
+  extraTaxPerPeriod: z.number().min(0).max(10_000).optional(),
+  cppExempt: z.boolean().optional(),
+  eiExempt: z.boolean().optional(),
+  sin: z.string().max(15).nullable().optional(),
+});
+
+payrollRouter.put(
+  '/users/:id/pay-profile',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.id);
+    const body = profileBody.parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      if (!(await tx.user.findUnique({ where: { id: userId } }))) throw notFound('Person');
+      await savePayProfile(tx, a.tenantId, userId, body, false);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.profile.update', entity: 'User', entityId: userId, after: { ...body, sin: body.sin ? 'changed' : undefined } });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+payrollRouter.get(
+  '/users/:id/sin',
+  requirePermission('payroll.export'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.id);
+    const sin = await withTenant(a.tenantId, async (tx) => {
+      requirePasskey(a, await settingsOf(tx));
+      const p = await tx.payProfile.findUnique({ where: { userId } });
+      if (!p) throw notFound('SIN');
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.sin.view', entity: 'User', entityId: userId });
+      return revealSin(a.tenantId, p);
+    });
+    if (!sin) throw notFound('SIN');
+    res.json({ sin: `${sin.slice(0, 3)}-${sin.slice(3, 6)}-${sin.slice(6)}` });
+  }),
+);
+
+const bankBody = z.object({
+  holderName: z.string().trim().min(2).max(30),
+  institution: z.string().trim(),
+  transit: z.string().trim(),
+  account: z.string().trim(),
+  /** The person agreed to the direct deposit authorization. */
+  agree: z.literal(true),
+});
+
+payrollRouter.post(
+  '/users/:id/bank-accounts',
+  requirePermission('payroll.export'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.id);
+    const body = bankBody.parse(req.body);
+    const row = await withTenant(a.tenantId, async (tx) => {
+      const u = await tx.user.findUnique({ where: { id: userId }, select: { locale: true } });
+      if (!u) throw notFound('Person');
+      const r = await addBankAccount(tx, a.tenantId, { userId, enteredById: a.userId, ...body, locale: u.locale === 'fr-CA' ? 'fr-CA' : 'en-CA' });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank.enter', entity: 'User', entityId: userId, after: { last4: r.last4, institution: r.institution, transit: r.transit } });
+      return r;
+    });
+    res.status(201).json(bankView(row));
+  }),
+);
+
+payrollRouter.post(
+  '/bank-accounts/:id/verify',
+  requirePermission('payroll.export'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const { approve } = z.object({ approve: z.boolean() }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      await verifyBankAccount(tx, a.tenantId, id, a.userId, approve);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: approve ? 'payroll.bank.verify' : 'payroll.bank.reject', entity: 'BankAccount', entityId: id });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+// ------------------------------------------------------------- Documents
+payrollRouter.get(
+  '/payroll/remittance',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const month = z.string().regex(/^\d{4}-\d{2}$/).parse(req.query.month);
+    if (a.scope) throw forbidden('Remittances cover the whole city and are for HR.');
+    res.json(await withTenant(a.tenantId, (tx) => remittance(tx, month)));
+  }),
+);
+
+payrollRouter.get(
+  '/payroll/t4',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
+    if (a.scope) throw forbidden('T4s cover the whole city and are for HR.');
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const r = await t4s(tx, year);
+      const settings = await settingsOf(tx);
+      const tenant = await tx.tenant.findFirstOrThrow({ select: { name: true } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.t4.view', entity: 'Tenant', entityId: a.tenantId, after: { year } });
+      return { ...r, employer: { name: tenant.name, businessNumber: settings.businessNumber ?? null, address: settings.employerAddress ?? null } };
+    });
+    res.json(out);
+  }),
+);
+
+payrollRouter.get(
+  '/payroll/roe/:userId',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.userId);
+    res.json(await withTenant(a.tenantId, (tx) => roeFigures(tx, userId)));
+  }),
+);
+
+// ------------------------------------------------------------- Settings
+const settingsView = (s: PayrollSettings) => ({ ...s, returnsAccount: s.returnsAccount ? `••••${s.returnsAccount.last4}` : null, twoPersonApproval: s.twoPersonApproval !== false, requirePasskey: s.requirePasskey !== false });
+
+payrollRouter.get(
+  '/payroll/settings',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    res.json(settingsView(await withTenant(a.tenantId, settingsOf)));
+  }),
+);
+
+payrollRouter.put(
+  '/payroll/settings',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const b = z
+      .object({
+        businessNumber: z.string().trim().regex(/^\d{9}RP\d{4}$/, 'A payroll account number looks like 123456789RP0001.').nullable().optional(),
+        originatorId: z.string().trim().regex(/^[A-Za-z0-9]{1,10}$/).nullable().optional(),
+        originatorShortName: z.string().trim().max(15).nullable().optional(),
+        originatorLongName: z.string().trim().max(30).nullable().optional(),
+        destinationDataCentre: z.string().trim().regex(/^\d{5}$/).nullable().optional(),
+        returnsInstitution: z.string().trim().regex(/^\d{3}$/).nullable().optional(),
+        returnsTransit: z.string().trim().regex(/^\d{5}$/).nullable().optional(),
+        returnsAccount: z.string().trim().regex(/^\d{5,12}$/).optional(),
+        employerAddress: z.string().trim().max(200).nullable().optional(),
+        twoPersonApproval: z.boolean().optional(),
+        requirePasskey: z.boolean().optional(),
+      })
+      .parse(req.body);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const before = await settingsOf(tx);
+      // Turning off the safeguards needs a passkey sign-in itself.
+      if ((b.twoPersonApproval === false && before.twoPersonApproval !== false) || (b.requirePasskey === false && before.requirePasskey !== false)) requirePasskey(a, before);
+      const { returnsAccount, ...rest } = b;
+      const next: PayrollSettings = { ...before, ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, v ?? undefined])) };
+      if (returnsAccount) next.returnsAccount = await sealReturnsAccount(a.tenantId, returnsAccount);
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify(next)) } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.settings', entity: 'Tenant', entityId: a.tenantId, after: { ...rest, returnsAccount: returnsAccount ? `••••${returnsAccount.slice(-4)}` : undefined } });
+      return next;
+    });
+    res.json(settingsView(out));
+  }),
+);
+
+// ------------------------------------------------------------- My pay
+const statementView = (s: { id: string; payDate: Date; year: number; province: string; hours: unknown; earnings: unknown; deductions: unknown; gross: unknown; totalDeductions: unknown; net: unknown; ytd: unknown; depositLast4: string | null }) => ({
+  id: s.id,
+  payDate: s.payDate.toISOString().slice(0, 10),
+  year: s.year,
+  province: s.province,
+  hours: Number(s.hours),
+  earnings: s.earnings,
+  deductions: s.deductions,
+  gross: Number(s.gross),
+  totalDeductions: Number(s.totalDeductions),
+  net: Number(s.net),
+  ytd: s.ytd,
+  deposit: s.depositLast4 ? `••••${s.depositLast4}` : null,
+});
+
+payrollRouter.get(
+  '/me/pay',
+  h(async (req, res) => {
+    const a = authOf(req);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const [statements, profile, banks, me] = await Promise.all([
+        tx.payStatement.findMany({ where: { userId: a.userId, payRun: { status: { in: ['APPROVED', 'PAID'] } } }, orderBy: { payDate: 'desc' }, take: 60 }),
+        tx.payProfile.findUnique({ where: { userId: a.userId } }),
+        tx.bankAccount.findMany({ where: { userId: a.userId, status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }),
+        tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { locale: true } }),
+      ]);
+      return { statements: statements.map(statementView), profile: profileView(profile), bankAccounts: banks.map(bankView), consent: CONSENT[me.locale === 'fr-CA' ? 'fr-CA' : 'en-CA'] };
+    });
+    res.json(out);
+  }),
+);
+
+/** One pay statement with everything a statement of earnings must show. People see their own; payroll staff any. */
+payrollRouter.get(
+  ['/me/pay-statements/:id', '/payroll/statements/:id'],
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const s = await tx.payStatement.findUnique({ where: { id }, include: { payRun: true } });
+      const staff = req.path.startsWith('/payroll') && a.permissions.has('payroll.export');
+      if (!s || (!staff && s.userId !== a.userId) || (!staff && s.payRun.status !== 'APPROVED' && s.payRun.status !== 'PAID')) throw notFound('Pay statement');
+      if (staff) await assertRunInScope(tx, a, s.payRun.departmentId);
+      const [u, tenant, positions] = await Promise.all([
+        tx.user.findUniqueOrThrow({ where: { id: s.userId }, select: { firstName: true, lastName: true, employeeNumber: true } }),
+        tx.tenant.findFirstOrThrow({ select: { name: true, payrollSettings: true } }),
+        tx.position.findMany({ select: { id: true, name: true, nameFr: true } }),
+      ]);
+      if (staff && s.userId !== a.userId) await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.statement.view', entity: 'PayStatement', entityId: id });
+      return {
+        ...statementView(s),
+        periodStart: s.payRun.periodStart.toISOString().slice(0, 10),
+        periodEnd: s.payRun.periodEnd.toISOString().slice(0, 10),
+        employee: { name: `${u.firstName} ${u.lastName}`, employeeNumber: u.employeeNumber },
+        employer: { name: tenant.name, address: readSettings(tenant.payrollSettings).employerAddress ?? null },
+        positions,
+        status: s.payRun.status,
+      };
+    });
+    res.json(out);
+  }),
+);
+
+payrollRouter.post(
+  '/me/bank-accounts',
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = bankBody.parse(req.body);
+    const row = await withTenant(a.tenantId, async (tx) => {
+      const u = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { locale: true } });
+      const r = await addBankAccount(tx, a.tenantId, { userId: a.userId, enteredById: a.userId, ...body, locale: u.locale === 'fr-CA' ? 'fr-CA' : 'en-CA' });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank.enter', entity: 'User', entityId: a.userId, after: { last4: r.last4, institution: r.institution, transit: r.transit } });
+      return r;
+    });
+    res.status(201).json(bankView(row));
+  }),
+);
+
+payrollRouter.put(
+  '/me/pay-profile',
+  h(async (req, res) => {
+    const a = authOf(req);
+    // People fill in their own TD1 claims and SIN; province and exemptions are set by payroll.
+    const body = profileBody.pick({ federalClaim: true, provincialClaim: true, extraTaxPerPeriod: true, sin: true }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const existing = await tx.payProfile.findUnique({ where: { userId: a.userId }, select: { sinLast3: true } });
+      // Once on file, a SIN is changed by payroll (they check the card), not in the app.
+      if (body.sin && existing?.sinLast3) throw forbidden('Your SIN is already on file. Ask payroll to change it.');
+      await savePayProfile(tx, a.tenantId, a.userId, body, true);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.td1', entity: 'User', entityId: a.userId, after: { ...body, sin: body.sin ? 'added' : undefined } });
+    });
+    res.json({ ok: true });
+  }),
+);

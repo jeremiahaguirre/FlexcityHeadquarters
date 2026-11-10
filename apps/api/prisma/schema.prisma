@@ -225,26 +225,30 @@ enum VacationPayMode {
 // ------------------------------------------------------------------
 
 model Tenant {
-  id              String          @id @default(uuid()) @db.Uuid
-  name            String
-  subdomain       String          @unique
-  logoUrl         String?
+  id                    String          @id @default(uuid()) @db.Uuid
+  name                  String
+  subdomain             String          @unique
+  logoUrl               String?
   /// { primary, primaryHover, primaryContrast, accent } — injected as CSS variables
-  themeColors     Json            @default("{}")
-  defaultLocale   String          @default("en-CA")
+  themeColors           Json            @default("{}")
+  defaultLocale         String          @default("en-CA")
   /// How clock times are shown: "auto" (the language's usual style), "12h" or "24h".
-  timeFormat      String          @default("auto")
+  timeFormat            String          @default("auto")
   /// 0 = Sunday ... 6 = Saturday, in each facility's local time
-  payWeekStartDay Int             @default(0)
-  vacationPayMode VacationPayMode @default(PAY_EACH_PERIOD)
+  payWeekStartDay       Int             @default(0)
+  vacationPayMode       VacationPayMode @default(PAY_EACH_PERIOD)
   /// Years to keep payroll records after the end of the tax year they relate to.
   /// CRA requires 6; default adds a year of margin.
-  payrollRetentionYears Int       @default(7)
+  payrollRetentionYears Int             @default(7)
+  /// Direct deposit and remittance details: { businessNumber, originatorId, originatorShortName,
+  /// originatorLongName, destinationDataCentre, returnsInstitution, returnsTransit, returnsAccount (sealed),
+  /// employerAddress, twoPersonApproval, requirePasskey }.
+  payrollSettings       Json            @default("{}")
   /// Feature switches set from the FH Dev console: { featureKey: boolean }.
   /// Missing keys use the defaults in src/services/platform/features.ts.
-  features        Json            @default("{}")
-  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
+  features              Json            @default("{}")
+  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
 
   facilities      Facility[]
   users           User[]
@@ -253,34 +257,34 @@ model Tenant {
   ruleOverrides   RuleOverride[]
   payCodeMappings PayCodeMapping[]
   /// Dev console per-role customization: { ROLE: { grant: [], revoke: [], hideMenu: [] } }.
-  roleOverrides Json @default("{}")
+  roleOverrides   Json             @default("{}")
   /// Overtime equalization: { countRefusals, clause, periodStartMonth }.
-  overtimePolicy Json @default("{}")
+  overtimePolicy  Json             @default("{}")
   /// Care after critical incidents: { eap: "Employee assistance: 1-800-…" }.
-  careSettings   Json @default("{}")
+  careSettings    Json             @default("{}")
   /// Shares anonymous measures with other cities (and sees theirs).
-  benchmarkOptIn Boolean @default(false)
+  benchmarkOptIn  Boolean          @default(false)
   /// Access levels that must sign in with a passkey as a second factor.
-  mfaRoles       AccessRole[] @default([])
+  mfaRoles        AccessRole[]     @default([])
   /// Winter operations, set by the city's managers: { season: { start: "11-01", end: "04-15" },
   /// callOuts: { responseMinutes, minRestHours }, patrols: { maxShiftHours } }.
-  winterSettings Json @default("{}")
+  winterSettings  Json             @default("{}")
   /// Public sign-up portal: { enabled, terms, termsFr, payment, paymentFr, privacyContact }.
-  signupSettings Json @default("{}")
+  signupSettings  Json             @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
 /// not on Tenant (a YMCA association can span provinces).
 model Facility {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @db.Uuid
-  name        String
-  province    Province
-  timezone    String // IANA, e.g. "America/Vancouver"
-  latitude    Decimal? @db.Decimal(9, 6)
-  longitude   Decimal? @db.Decimal(9, 6)
-  geoRadiusM  Int      @default(150)
-  costCenter  String? // e.g. "CC-405-AQUATICS" for payroll export
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @db.Uuid
+  name                String
+  province            Province
+  timezone            String // IANA, e.g. "America/Vancouver"
+  latitude            Decimal? @db.Decimal(9, 6)
+  longitude           Decimal? @db.Decimal(9, 6)
+  geoRadiusM          Int      @default(150)
+  costCenter          String? // e.g. "CC-405-AQUATICS" for payroll export
   /// FH billing tier for municipal plans: 1 minor/seasonal, 2 standard, 3 major; null = not billed.
   billingTier         Int?
   /// Overrides the tier price (cents per month) when set.
@@ -289,14 +293,14 @@ model Facility {
   rotationMinutes     Int      @default(30)
   /// Fatigue limit: continuous minutes on stations (across rotations) before a break.
   maxOnChairMinutes   Int      @default(120)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id])
-  shifts      Shift[]
-  poolBodies  PoolBody[]
-  timePunches TimePunch[]
-  incidents   IncidentReport[]
+  tenant       Tenant           @relation(fields: [tenantId], references: [id])
+  shifts       Shift[]
+  poolBodies   PoolBody[]
+  timePunches  TimePunch[]
+  incidents    IncidentReport[]
   deckStations DeckStation[]
 
   @@index([tenantId])
@@ -314,7 +318,7 @@ model RuleOverride {
   effectiveTo   DateTime? @db.Date
   source        String? // e.g. "CUPE Local 338 CBA art. 14.02"
 
-  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId, ruleKey, effectiveFrom])
 }
@@ -335,57 +339,60 @@ model User {
   lastName         String
   email            String
   phone            String?
-  locale           String           @default("en-CA")
+  locale           String    @default("en-CA")
   /// Needed only to apply young-worker rules. Not exported anywhere.
-  dateOfBirth      DateTime?        @db.Date
+  dateOfBirth      DateTime? @db.Date
   /// The employer's HR/payroll system ID — used in payroll exports.
   employeeNumber   String?
   passwordHash     String?
   /// Account lockout after repeated failed sign-ins.
-  failedLoginCount Int              @default(0)
-  lockedUntil      DateTime?        @db.Timestamptz(3)
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime? @db.Timestamptz(3)
 
-  hireDate         DateTime?        @db.Date
+  hireDate       DateTime? @db.Date
   /// Collective-agreement seniority can differ from hire date; hours-based
   /// seniority is accumulated separately.
-  seniorityDate    DateTime?        @db.Date
-  seniorityHours   Decimal          @default(0) @db.Decimal(10, 2)
+  seniorityDate  DateTime? @db.Date
+  seniorityHours Decimal   @default(0) @db.Decimal(10, 2)
   /// Target / cap hours per week, used by the scheduling assistant.
-  weeklyMinHours   Decimal?         @db.Decimal(5, 2)
-  weeklyMaxHours   Decimal?         @db.Decimal(5, 2)
-  vscClearedDate   DateTime?        @db.Date
-  unionMember      Boolean          @default(false)
+  weeklyMinHours Decimal?  @db.Decimal(5, 2)
+  weeklyMaxHours Decimal?  @db.Decimal(5, 2)
+  vscClearedDate DateTime? @db.Date
+  unionMember    Boolean   @default(false)
 
   /// Advisory only (see services/reliability). Never drives automated decisions.
-  reliabilityScore Int              @default(100)
+  reliabilityScore Int       @default(100)
   /// Set while the nightly review flags this person for HR / supervisor attention.
-  reviewFlaggedAt  DateTime?        @db.Timestamptz(3)
+  reviewFlaggedAt  DateTime? @db.Timestamptz(3)
 
   /// Privacy: set when erasure was requested but payroll retention still applies.
-  processingRestrictedAt DateTime?  @db.Timestamptz(3)
-  erasureDueAt     DateTime?        @db.Date
-  anonymizedAt     DateTime?        @db.Timestamptz(3)
+  processingRestrictedAt DateTime? @db.Timestamptz(3)
+  erasureDueAt           DateTime? @db.Date
+  anonymizedAt           DateTime? @db.Timestamptz(3)
 
-  createdAt        DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime         @updatedAt @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  tenant           Tenant           @relation(fields: [tenantId], references: [id])
-  positions        UserPosition[]
-  payRates         PayRate[]
-  certifications   UserCertification[]
-  availability     Availability[]
-  timeOffRequests  TimeOffRequest[]
-  shifts           Shift[]
-  timePunches      TimePunch[]
-  offersPosted     ShiftOffer[]     @relation("OfferPostedBy")
-  offersClaimed    ShiftOffer[]     @relation("OfferClaimedBy")
-  reliabilityEvents ReliabilityEvent[]
-  conductNotes      ConductNote[]
-  onboarding        OnboardingRecord[]
-  accommodations    AccommodationCase[]
-  refreshTokens    RefreshToken[]
-  managesDepartments DepartmentManager[]
-  authTokens       AuthToken[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  positions           UserPosition[]
+  payRates            PayRate[]
+  certifications      UserCertification[]
+  availability        Availability[]
+  timeOffRequests     TimeOffRequest[]
+  shifts              Shift[]
+  timePunches         TimePunch[]
+  offersPosted        ShiftOffer[]         @relation("OfferPostedBy")
+  offersClaimed       ShiftOffer[]         @relation("OfferClaimedBy")
+  reliabilityEvents   ReliabilityEvent[]
+  conductNotes        ConductNote[]
+  onboarding          OnboardingRecord[]
+  accommodations      AccommodationCase[]
+  refreshTokens       RefreshToken[]
+  managesDepartments  DepartmentManager[]
+  payProfile          PayProfile?
+  bankAccounts        BankAccount[]
+  payStatements       PayStatement[]
+  authTokens          AuthToken[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
 
   @@unique([tenantId, email])
@@ -394,24 +401,24 @@ model User {
 }
 
 model RefreshToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  tenantId  String    @db.Uuid
-  userId    String    @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  userId          String    @db.Uuid
   /// SHA-256 of the opaque token; the raw token only ever lives in an HTTP-only cookie.
-  tokenHash String    @unique
+  tokenHash       String    @unique
   /// Rotation family — reuse of a revoked token revokes the whole family.
-  familyId  String    @db.Uuid
+  familyId        String    @db.Uuid
   /// When the person last proved who they are (password or passkey), carried
   /// through rotation. Sensitive actions need this to be recent.
-  authenticatedAt DateTime @default(now()) @db.Timestamptz(3)
+  authenticatedAt DateTime  @default(now()) @db.Timestamptz(3)
   /// When this session proved a second factor (a passkey), carried through
   /// rotation. Null = password only.
-  mfaAt     DateTime? @db.Timestamptz(3)
-  expiresAt DateTime  @db.Timestamptz(3)
-  revokedAt DateTime? @db.Timestamptz(3)
-  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  mfaAt           DateTime? @db.Timestamptz(3)
+  expiresAt       DateTime  @db.Timestamptz(3)
+  revokedAt       DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
 
-  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([familyId])
 }
@@ -444,16 +451,16 @@ model AuthToken {
 /// What can be worked: "Lifeguard", "Swim Instructor", "Head Lifeguard"...
 /// Shifts require a Position; Positions require certifications.
 model Position {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @db.Uuid
-  name        String
-  nameFr      String?
-  minimumAge  Int?
+  id             String  @id @default(uuid()) @db.Uuid
+  tenantId       String  @db.Uuid
+  name           String
+  nameFr         String?
+  minimumAge     Int?
   /// Driving limits for this position: { maxDailyHours, minRestHours, maxHoursIn7Days }.
   /// Empty = no limits beyond the province's rules.
   hoursOfService Json?
   /// The department this position belongs to (Aquatics, Water Works…). Null = none yet.
-  departmentId String? @db.Uuid
+  departmentId   String? @db.Uuid
 
   tenant          Tenant                    @relation(fields: [tenantId], references: [id])
   department      Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
@@ -470,14 +477,14 @@ model Position {
 /// A part of the city's workforce: Aquatics, Water Works, Parks… Supervisors and
 /// managers see only their departments; HR sees every department.
 model Department {
-  id        String     @id @default(uuid()) @db.Uuid
-  tenantId  String     @db.Uuid
+  id        String              @id @default(uuid()) @db.Uuid
+  tenantId  String              @db.Uuid
   name      String
   nameFr    String?
   /// The built-in aquatic roles (supervisor, head lifeguard) manage this department.
-  aquatic   Boolean    @default(false)
-  createdAt DateTime   @default(now()) @db.Timestamptz(3)
-  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  aquatic   Boolean             @default(false)
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  tenant    Tenant              @relation(fields: [tenantId], references: [id])
   positions Position[]
   managers  DepartmentManager[]
 
@@ -795,19 +802,19 @@ model Shift {
 /// A shift on the Shift Board: either an open shift or a swap offer.
 /// The original holder stays responsible until status = COMPLETED.
 model ShiftOffer {
-  id             String      @id @default(uuid()) @db.Uuid
-  tenantId       String      @db.Uuid
-  shiftId        String      @db.Uuid
-  source         OfferSource
-  postedById     String?     @db.Uuid // null for OPEN_SHIFT posted by the system
-  claimedById    String?     @db.Uuid
-  status         OfferStatus @default(OPEN)
+  id                 String      @id @default(uuid()) @db.Uuid
+  tenantId           String      @db.Uuid
+  shiftId            String      @db.Uuid
+  source             OfferSource
+  postedById         String?     @db.Uuid // null for OPEN_SHIFT posted by the system
+  claimedById        String?     @db.Uuid
+  status             OfferStatus @default(OPEN)
   /// Snapshot of the compliance evaluation at claim time (reasons, OT hours).
   complianceSnapshot Json?
-  decidedById    String?     @db.Uuid
-  decidedAt      DateTime?   @db.Timestamptz(3)
-  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+  decidedById        String?     @db.Uuid
+  decidedAt          DateTime?   @db.Timestamptz(3)
+  createdAt          DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime    @updatedAt @db.Timestamptz(3)
 
   shift     Shift @relation(fields: [shiftId], references: [id], onDelete: Restrict)
   postedBy  User? @relation("OfferPostedBy", fields: [postedById], references: [id], onDelete: Restrict)
@@ -883,15 +890,15 @@ model TimePunch {
 
 /// Every change to a punch is recorded — original values are never lost.
 model TimePunchEdit {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @db.Uuid
-  punchId     String   @db.Uuid
-  editedById  String   @db.Uuid
-  field       String
-  oldValue    String?
-  newValue    String?
-  reason      String
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  punchId    String   @db.Uuid
+  editedById String   @db.Uuid
+  field      String
+  oldValue   String?
+  newValue   String?
+  reason     String
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
   punch TimePunch @relation(fields: [punchId], references: [id], onDelete: Restrict)
 
@@ -948,52 +955,52 @@ model ReliabilityEvent {
 /// Thresholds come from the applicable provincial / health-authority regulation
 /// and MUST be configured before readings are accepted — there are no defaults.
 model PoolBody {
-  id                  String         @id @default(uuid()) @db.Uuid
-  tenantId            String         @db.Uuid
-  facilityId          String         @db.Uuid
-  name                String
-  kind                PoolBodyKind
-  status              PoolBodyStatus @default(OPEN)
-  freeChlorineMinPpm  Decimal?       @db.Decimal(5, 2)
-  freeChlorineMaxPpm  Decimal?       @db.Decimal(5, 2)
-  combinedChlorineMaxPpm Decimal?    @db.Decimal(5, 2)
-  phMin               Decimal?       @db.Decimal(4, 2)
-  phMax               Decimal?       @db.Decimal(4, 2)
-  thresholdSource     String? // e.g. "BC Pool Regulation / Interior Health permit conditions"
+  id                     String         @id @default(uuid()) @db.Uuid
+  tenantId               String         @db.Uuid
+  facilityId             String         @db.Uuid
+  name                   String
+  kind                   PoolBodyKind
+  status                 PoolBodyStatus @default(OPEN)
+  freeChlorineMinPpm     Decimal?       @db.Decimal(5, 2)
+  freeChlorineMaxPpm     Decimal?       @db.Decimal(5, 2)
+  combinedChlorineMaxPpm Decimal?       @db.Decimal(5, 2)
+  phMin                  Decimal?       @db.Decimal(4, 2)
+  phMax                  Decimal?       @db.Decimal(4, 2)
+  thresholdSource        String? // e.g. "BC Pool Regulation / Interior Health permit conditions"
   /// Max bathers per on-duty lifeguard, per the regulation / facility safety plan.
-  bathersPerLifeguard Int?
+  bathersPerLifeguard    Int?
   /// Maximum bathers allowed at once (permit / occupant load). Headcounts above it alert supervisors.
-  maxCapacity         Int?
-  depthMinM           Decimal?       @db.Decimal(4, 2)
-  depthMaxM           Decimal?       @db.Decimal(4, 2)
-  volumeLitres        Int?
-  notes               String?
+  maxCapacity            Int?
+  depthMinM              Decimal?       @db.Decimal(4, 2)
+  depthMaxM              Decimal?       @db.Decimal(4, 2)
+  volumeLitres           Int?
+  notes                  String?
   /// Retired pools keep their history but leave the deck screens.
-  archivedAt          DateTime?      @db.Timestamptz(3)
-  headcounts          HeadCount[]
+  archivedAt             DateTime?      @db.Timestamptz(3)
+  headcounts             HeadCount[]
 
-  facility  Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
-  readings  ChemicalReading[]
-  closures  PoolClosure[]
+  facility Facility          @relation(fields: [facilityId], references: [id], onDelete: Restrict)
+  readings ChemicalReading[]
+  closures PoolClosure[]
 
   @@index([facilityId])
 }
 
 model ChemicalReading {
-  id                 String   @id @default(uuid()) @db.Uuid
-  tenantId           String   @db.Uuid
-  poolBodyId         String   @db.Uuid
-  recordedById       String   @db.Uuid
-  recordedAt         DateTime @db.Timestamptz(3)
-  freeChlorinePpm    Decimal? @db.Decimal(5, 2)
-  totalChlorinePpm   Decimal? @db.Decimal(5, 2)
-  ph                 Decimal? @db.Decimal(4, 2)
-  waterTempC         Decimal? @db.Decimal(4, 1)
-  batherCount        Int?
-  outOfRange         Boolean  @default(false)
-  outOfRangeDetails  Json?
-  signedOffById      String?  @db.Uuid
-  signedOffAt        DateTime? @db.Timestamptz(3)
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @db.Uuid
+  poolBodyId        String    @db.Uuid
+  recordedById      String    @db.Uuid
+  recordedAt        DateTime  @db.Timestamptz(3)
+  freeChlorinePpm   Decimal?  @db.Decimal(5, 2)
+  totalChlorinePpm  Decimal?  @db.Decimal(5, 2)
+  ph                Decimal?  @db.Decimal(4, 2)
+  waterTempC        Decimal?  @db.Decimal(4, 1)
+  batherCount       Int?
+  outOfRange        Boolean   @default(false)
+  outOfRangeDetails Json?
+  signedOffById     String?   @db.Uuid
+  signedOffAt       DateTime? @db.Timestamptz(3)
 
   poolBody PoolBody @relation(fields: [poolBodyId], references: [id], onDelete: Restrict)
 
@@ -1022,18 +1029,18 @@ model PoolClosure {
 /// Envelope-encrypted: the narrative is AES-256-GCM encrypted with a per-record
 /// data key, which is itself wrapped by the tenant's KMS key.
 model IncidentReport {
-  id               String   @id @default(uuid()) @db.Uuid
-  tenantId         String   @db.Uuid
-  facilityId       String   @db.Uuid
-  reportedById     String   @db.Uuid
-  occurredAt       DateTime @db.Timestamptz(3)
-  category         String // non-sensitive, for reporting (e.g. "FIRST_AID", "RESCUE")
-  ciphertext       Bytes
-  iv               Bytes
-  authTag          Bytes
-  wrappedDataKey   Bytes
-  kekId            String
-  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  facilityId     String   @db.Uuid
+  reportedById   String   @db.Uuid
+  occurredAt     DateTime @db.Timestamptz(3)
+  category       String // non-sensitive, for reporting (e.g. "FIRST_AID", "RESCUE")
+  ciphertext     Bytes
+  iv             Bytes
+  authTag        Bytes
+  wrappedDataKey Bytes
+  kekId          String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
 
   facility  Facility            @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   accessLog IncidentAccessLog[]
@@ -1110,26 +1117,26 @@ model IncidentAccessLog {
 // ------------------------------------------------------------------
 
 model DisciplinaryRecord {
-  id               String    @id @default(uuid()) @db.Uuid
-  tenantId         String    @db.Uuid
-  userId           String    @db.Uuid
-  issuedById       String    @db.Uuid
-  issuedAt         DateTime  @db.Timestamptz(3)
-  summary          String
+  id                       String           @id @default(uuid()) @db.Uuid
+  tenantId                 String           @db.Uuid
+  userId                   String           @db.Uuid
+  issuedById               String           @db.Uuid
+  issuedAt                 DateTime         @db.Timestamptz(3)
+  summary                  String
   /// PNG data captured from the signature canvas.
   acknowledgementSignature Bytes?
-  acknowledgedAt   DateTime? @db.Timestamptz(3)
+  acknowledgedAt           DateTime?        @db.Timestamptz(3)
   /// Union members may request a steward was present.
-  stewardPresent   Boolean   @default(false)
+  stewardPresent           Boolean          @default(false)
   /// Step in progressive discipline (null on records made before levels existed).
-  level            DisciplineLevel?
+  level                    DisciplineLevel?
   /// Frozen copy of the facts relied on (events, notes) as they were when issued.
-  evidence         Json      @default("[]")
+  evidence                 Json             @default("[]")
   /// Fair-process confirmations made by the issuer, with the time they were made.
-  fairProcess      Json?
+  fairProcess              Json?
   /// The employee's own written response, kept with the record.
-  employeeResponse String?
-  respondedAt      DateTime? @db.Timestamptz(3)
+  employeeResponse         String?
+  respondedAt              DateTime?        @db.Timestamptz(3)
 
   user User @relation("DisciplineSubject", fields: [userId], references: [id], onDelete: Restrict)
 
@@ -1137,15 +1144,15 @@ model DisciplinaryRecord {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @db.Uuid
-  actorId   String?  @db.Uuid
-  action    String
-  entity    String
-  entityId  String?
-  before    Json?
-  after     Json?
-  at        DateTime @default(now()) @db.Timestamptz(3)
+  id       String   @id @default(uuid()) @db.Uuid
+  tenantId String   @db.Uuid
+  actorId  String?  @db.Uuid
+  action   String
+  entity   String
+  entityId String?
+  before   Json?
+  after    Json?
+  at       DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, entity, entityId])
   @@index([tenantId, at])
@@ -1194,30 +1201,30 @@ model EmailOutbox {
 
 /// A weekly class (e.g. "Swimmer 3, Tuesdays 4:30 p.m.") between two dates.
 model LessonClass {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @db.Uuid
-  facilityId  String   @db.Uuid
-  positionId  String   @db.Uuid // the instructor position whose shift covers it
-  name        String
-  level       String?
-  dayOfWeek   Int // 0 = Sunday, facility local time
-  startMinute Int
-  endMinute   Int
-  startsOn    DateTime @db.Date
-  endsOn      DateTime @db.Date
-  maxSwimmers Int      @default(8)
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @db.Uuid
+  facilityId       String   @db.Uuid
+  positionId       String   @db.Uuid // the instructor position whose shift covers it
+  name             String
+  level            String?
+  dayOfWeek        Int // 0 = Sunday, facility local time
+  startMinute      Int
+  endMinute        Int
+  startsOn         DateTime @db.Date
+  endsOn           DateTime @db.Date
+  maxSwimmers      Int      @default(8)
   /// Several days a week (e.g. Monday to Friday); empty = just `dayOfWeek`.
-  daysOfWeek  Int[]    @default([])
+  daysOfWeek       Int[]    @default([])
   /// Part of a registration campaign (lessons, swim club…), with its level and price.
-  campaignId  String?  @db.Uuid
-  levelId     String?  @db.Uuid
-  minAgeMonths Int?
-  maxAgeMonths Int?
+  campaignId       String?  @db.Uuid
+  levelId          String?  @db.Uuid
+  minAgeMonths     Int?
+  maxAgeMonths     Int?
   priceCents       Int?
   memberPriceCents Int?
   /// Instructors and member services see it once its campaign is published.
-  published   Boolean  @default(true)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  published        Boolean  @default(true)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
 
   enrollments LessonEnrollment[]
   attendance  LessonAttendance[]
@@ -1227,26 +1234,26 @@ model LessonClass {
 
 /// Swimmers are often children: keep only what the instructor needs on deck.
 model LessonEnrollment {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @db.Uuid
-  classId      String   @db.Uuid
-  swimmerName  String
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @db.Uuid
+  classId        String           @db.Uuid
+  swimmerName    String
   /// Short safety note visible to the instructor (e.g. "Asthma: inhaler in bag").
-  safetyNote   String?
-  active       Boolean  @default(true)
+  safetyNote     String?
+  active         Boolean          @default(true)
   /// Registered by member services for a child (or adult) on file.
-  memberId     String?  @db.Uuid
-  householdId  String?  @db.Uuid
-  status       EnrollmentStatus @default(ENROLLED)
-  priceCents   Int?
-  registeredById String? @db.Uuid
+  memberId       String?          @db.Uuid
+  householdId    String?          @db.Uuid
+  status         EnrollmentStatus @default(ENROLLED)
+  priceCents     Int?
+  registeredById String?          @db.Uuid
   /// Age check skipped by staff, and why.
-  ageOverride  String?
+  ageOverride    String?
   /// STAFF (member services) or ONLINE (the public sign-up page).
-  source       String   @default("STAFF")
+  source         String           @default("STAFF")
   /// Reference given to the family, e.g. R-7F3K2Q.
-  reference    String?  @unique
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  reference      String?          @unique
+  createdAt      DateTime         @default(now()) @db.Timestamptz(3)
 
   lessonClass LessonClass        @relation(fields: [classId], references: [id], onDelete: Restrict)
   attendance  LessonAttendance[]
@@ -1407,21 +1414,21 @@ model WebAuthnChallenge {
 /// Operator", "Maintenance Lead"). Its permissions come only from the safe,
 /// non-aquatic list in src/services/people/customRoles.ts.
 model CustomRole {
-  id          String           @id @default(uuid()) @db.Uuid
-  tenantId    String           @db.Uuid
-  name        String
-  nameFr      String?
-  description String?
-  permissions String[]
+  id                 String           @id @default(uuid()) @db.Uuid
+  tenantId           String           @db.Uuid
+  name               String
+  nameFr             String?
+  description        String?
+  permissions        String[]
   /// Department scope: lead and manager capabilities reach only people who hold
   /// one of these positions (empty = every position)…
-  scopePositionIds String[] @default([]) @db.Uuid
+  scopePositionIds   String[]         @default([]) @db.Uuid
   /// …and only shifts at these facilities (empty = every facility).
-  scopeFacilityIds String[] @default([]) @db.Uuid
+  scopeFacilityIds   String[]         @default([]) @db.Uuid
   /// …or every position in these departments, including ones added later.
-  scopeDepartmentIds String[] @default([]) @db.Uuid
-  createdAt   DateTime         @default(now()) @db.Timestamptz(3)
-  members     UserCustomRole[]
+  scopeDepartmentIds String[]         @default([]) @db.Uuid
+  createdAt          DateTime         @default(now()) @db.Timestamptz(3)
+  members            UserCustomRole[]
 
   @@unique([tenantId, name])
 }
@@ -1470,38 +1477,38 @@ enum InvoiceStatus {
 }
 
 model BillingAccount {
-  tenantId          String      @id @db.Uuid
-  plan              BillingPlan @default(MUNICIPAL)
-  legalName         String
-  contactName       String?
-  email             String
-  addressLine1      String?
-  addressLine2      String?
-  city              String?
+  tenantId            String      @id @db.Uuid
+  plan                BillingPlan @default(MUNICIPAL)
+  legalName           String
+  contactName         String?
+  email               String
+  addressLine1        String?
+  addressLine2        String?
+  city                String?
   /// Two-letter province or territory: decides the sales tax.
-  province          String
-  postalCode        String?
-  poNumber          String?
-  paymentTermsDays  Int         @default(30)
-  taxExempt         Boolean     @default(false)
-  taxExemptNote     String?
-  addOnHr           Boolean     @default(false)
-  addOnOps          Boolean     @default(false)
+  province            String
+  postalCode          String?
+  poNumber            String?
+  paymentTermsDays    Int         @default(30)
+  taxExempt           Boolean     @default(false)
+  taxExemptNote       String?
+  addOnHr             Boolean     @default(false)
+  addOnOps            Boolean     @default(false)
   /// Union hub, usually paid by the union local.
-  addOnUnion        Boolean     @default(false)
+  addOnUnion          Boolean     @default(false)
   /// Until then, every feature is on (a trial or pilot).
-  trialEndsAt       DateTime?   @db.Timestamptz(3)
+  trialEndsAt         DateTime?   @db.Timestamptz(3)
   /// Days after an invoice's due date before the app turns read-only.
-  graceDays         Int         @default(30)
+  graceDays           Int         @default(30)
   /// The Dev console can hold off suspension (e.g. a cheque is in the mail).
-  suspensionHoldUntil DateTime? @db.Timestamptz(3)
+  suspensionHoldUntil DateTime?   @db.Timestamptz(3)
   /// How they usually pay: INVOICE (EFT or cheque), CARD or PAD (pre-authorized debit).
-  preferredPayment  String      @default("INVOICE")
+  preferredPayment    String      @default("INVOICE")
   /// CLUB plan: price per active user beyond the 20 included, in cents.
-  clubUserRateCents Int         @default(500)
-  notes             String?
-  createdAt         DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime    @updatedAt @db.Timestamptz(3)
+  clubUserRateCents   Int         @default(500)
+  notes               String?
+  createdAt           DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime    @updatedAt @db.Timestamptz(3)
 }
 
 model Invoice {
@@ -1570,25 +1577,25 @@ model InvoiceCounter {
 
 /// Enquiries from the marketing website (sales, demo requests, support). Seen in the Dev console.
 model Lead {
-  id                String   @id @default(uuid()) @db.Uuid
+  id               String   @id @default(uuid()) @db.Uuid
   /// SALES | DEMO | SUPPORT
-  kind              String
-  name              String
-  email             String
-  organization      String?
-  role              String?
-  province          String?
-  facilities        Int?
-  message           String
-  locale            String   @default("en-CA")
+  kind             String
+  name             String
+  email            String
+  organization     String?
+  role             String?
+  province         String?
+  facilities       Int?
+  message          String
+  locale           String   @default("en-CA")
   /// CASL: express consent to marketing email, recorded separately from the enquiry itself.
-  marketingConsent  Boolean  @default(false)
-  consentText       String?
+  marketingConsent Boolean  @default(false)
+  consentText      String?
   /// NEW | CONTACTED | WON | CLOSED
-  status            String   @default("NEW")
-  notes             String?
-  createdAt         DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime @updatedAt @db.Timestamptz(3)
+  status           String   @default("NEW")
+  notes            String?
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
 
   @@index([status, createdAt])
 }
@@ -1683,39 +1690,39 @@ enum CallOutContactStatus {
 
 /// A storm call-out: extra crew offered in overtime order, one at a time.
 model CallOut {
-  id              String        @id @default(uuid()) @db.Uuid
-  tenantId        String        @db.Uuid
-  facilityId      String        @db.Uuid
-  positionId      String        @db.Uuid
+  id              String           @id @default(uuid()) @db.Uuid
+  tenantId        String           @db.Uuid
+  facilityId      String           @db.Uuid
+  positionId      String           @db.Uuid
   /// The open shift created for it; assigned to whoever accepts.
-  shiftId         String        @db.Uuid
+  shiftId         String           @db.Uuid
   reason          String
-  startsAt        DateTime      @db.Timestamptz(3)
-  endsAt          DateTime      @db.Timestamptz(3)
+  startsAt        DateTime         @db.Timestamptz(3)
+  endsAt          DateTime         @db.Timestamptz(3)
   responseMinutes Int
-  status          CallOutStatus @default(OPEN)
-  filledUserId    String?       @db.Uuid
-  createdById     String        @db.Uuid
-  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
-  closedAt        DateTime?     @db.Timestamptz(3)
+  status          CallOutStatus    @default(OPEN)
+  filledUserId    String?          @db.Uuid
+  createdById     String           @db.Uuid
+  createdAt       DateTime         @default(now()) @db.Timestamptz(3)
+  closedAt        DateTime?        @db.Timestamptz(3)
   contacts        CallOutContact[]
 
   @@index([tenantId, status, createdAt])
 }
 
 model CallOutContact {
-  id          String               @id @default(uuid()) @db.Uuid
-  tenantId    String               @db.Uuid
-  callOutId   String               @db.Uuid
-  callOut     CallOut              @relation(fields: [callOutId], references: [id], onDelete: Cascade)
-  userId      String               @db.Uuid
-  rank        Int
-  status      CallOutContactStatus @default(WAITING)
-  skipReason  String?
-  offeredAt   DateTime?            @db.Timestamptz(3)
-  respondedAt DateTime?            @db.Timestamptz(3)
+  id           String               @id @default(uuid()) @db.Uuid
+  tenantId     String               @db.Uuid
+  callOutId    String               @db.Uuid
+  callOut      CallOut              @relation(fields: [callOutId], references: [id], onDelete: Cascade)
+  userId       String               @db.Uuid
+  rank         Int
+  status       CallOutContactStatus @default(WAITING)
+  skipReason   String?
+  offeredAt    DateTime?            @db.Timestamptz(3)
+  respondedAt  DateTime?            @db.Timestamptz(3)
   /// Who recorded the answer when it came by phone (null = the person answered in the app).
-  recordedById String?             @db.Uuid
+  recordedById String?              @db.Uuid
 
   @@index([callOutId, rank])
   @@index([tenantId, status, offeredAt])
@@ -1773,19 +1780,19 @@ enum EnrollmentStatus {
 
 /// A swim level (Red Cross, Lifesaving Society, or the city's own), with its ages.
 model SwimLevel {
-  id             String   @id @default(uuid()) @db.Uuid
-  tenantId       String   @db.Uuid
-  program        String
-  name           String
-  nameFr         String?
-  minAgeMonths   Int
-  maxAgeMonths   Int?
-  parentInWater  Boolean  @default(false)
+  id              String  @id @default(uuid()) @db.Uuid
+  tenantId        String  @db.Uuid
+  program         String
+  name            String
+  nameFr          String?
+  minAgeMonths    Int
+  maxAgeMonths    Int?
+  parentInWater   Boolean @default(false)
   /// Swimmers per instructor.
-  ratio          Int      @default(6)
+  ratio           Int     @default(6)
   durationMinutes Int     @default(30)
-  sortOrder      Int      @default(0)
-  active         Boolean  @default(true)
+  sortOrder       Int     @default(0)
+  active          Boolean @default(true)
 
   @@unique([tenantId, program, name])
 }
@@ -1827,17 +1834,17 @@ model LessonCampaign {
 
 /// A family on file: parents or guardians and their children.
 model Household {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String   @db.Uuid
-  name       String
-  address    String?
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  name           String
+  address        String?
   emergencyName  String?
   emergencyPhone String?
-  notes      String?
+  notes          String?
   /// STAFF or ONLINE; online families may duplicate one already on file.
-  source     String   @default("STAFF")
-  createdAt  DateTime @default(now()) @db.Timestamptz(3)
-  members    Member[]
+  source         String   @default("STAFF")
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  members        Member[]
 
   @@index([tenantId, name])
 }
@@ -1849,21 +1856,21 @@ enum MemberRole {
 }
 
 model Member {
-  id          String     @id @default(uuid()) @db.Uuid
-  tenantId    String     @db.Uuid
-  householdId String     @db.Uuid
-  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  role        MemberRole
-  firstName   String
-  lastName    String
-  dateOfBirth DateTime?  @db.Date
-  email       String?
-  phone       String?
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @db.Uuid
+  householdId  String     @db.Uuid
+  household    Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  role         MemberRole
+  firstName    String
+  lastName     String
+  dateOfBirth  DateTime?  @db.Date
+  email        String?
+  phone        String?
   /// Short note the instructor sees on deck (e.g. "Asthma: inhaler in bag").
-  safetyNote  String?
+  safetyNote   String?
   /// Consent to share photos, recorded at registration.
-  photoConsent Boolean   @default(false)
-  createdAt   DateTime   @default(now()) @db.Timestamptz(3)
+  photoConsent Boolean    @default(false)
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, lastName])
   @@index([householdId])
@@ -2010,18 +2017,18 @@ model CoverageRule {
 
 /// A city vehicle: a plow, a pickup, a sewer flusher, an ice resurfacer.
 model Vehicle {
-  id            String    @id @default(uuid()) @db.Uuid
-  tenantId      String    @db.Uuid
-  facilityId    String?   @db.Uuid
-  unit          String
-  description   String
-  plate         String?
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @db.Uuid
+  facilityId         String?   @db.Uuid
+  unit               String
+  description        String
+  plate              String?
   /// The licence needed to drive it (a certification, e.g. Class 3 with air brakes).
-  certificationId String? @db.Uuid
+  certificationId    String?   @db.Uuid
   outOfServiceAt     DateTime? @db.Timestamptz(3)
   outOfServiceReason String?
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  active             Boolean   @default(true)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
 
   @@unique([tenantId, unit])
 }
@@ -2034,19 +2041,19 @@ enum InspectionResult {
 
 /// A driver's pre-trip (or post-trip) inspection, item by item.
 model VehicleInspection {
-  id         String           @id @default(uuid()) @db.Uuid
-  tenantId   String           @db.Uuid
-  vehicleId  String           @db.Uuid
-  userId     String           @db.Uuid
-  at         DateTime         @default(now()) @db.Timestamptz(3)
-  odometerKm Int?
+  id           String           @id @default(uuid()) @db.Uuid
+  tenantId     String           @db.Uuid
+  vehicleId    String           @db.Uuid
+  userId       String           @db.Uuid
+  at           DateTime         @default(now()) @db.Timestamptz(3)
+  odometerKm   Int?
   /// [{ item: "BRAKES", ok: false, severity: "MAJOR", note: "Soft pedal" }]
-  items      Json
-  result     InspectionResult
-  notes      String?
+  items        Json
+  result       InspectionResult
+  notes        String?
   /// When a major defect was fixed and the vehicle returned to service.
-  repairedAt   DateTime? @db.Timestamptz(3)
-  repairedById String?   @db.Uuid
+  repairedAt   DateTime?        @db.Timestamptz(3)
+  repairedById String?          @db.Uuid
   repairNote   String?
 
   @@index([tenantId, vehicleId, at])
@@ -2063,30 +2070,175 @@ enum InjuryClaimStatus {
 /// A worker's injury and the employer's report to the province's
 /// compensation board (WSIB, WorkSafeBC, WCB…), with its deadline.
 model InjuryClaim {
-  id            String            @id @default(uuid()) @db.Uuid
-  tenantId      String            @db.Uuid
-  userId        String            @db.Uuid
-  facilityId    String            @db.Uuid
-  incidentId    String?           @db.Uuid
-  occurredAt    DateTime          @db.Timestamptz(3)
+  id              String            @id @default(uuid()) @db.Uuid
+  tenantId        String            @db.Uuid
+  userId          String            @db.Uuid
+  facilityId      String            @db.Uuid
+  incidentId      String?           @db.Uuid
+  occurredAt      DateTime          @db.Timestamptz(3)
   /// When a supervisor or HR learned of it: the deadline counts from here.
-  learnedAt     DateTime          @db.Timestamptz(3)
-  province      Province
-  board         String
-  dueAt         DateTime          @db.Timestamptz(3)
-  lostTime      Boolean           @default(false)
-  healthCare    Boolean           @default(false)
+  learnedAt       DateTime          @db.Timestamptz(3)
+  province        Province
+  board           String
+  dueAt           DateTime          @db.Timestamptz(3)
+  lostTime        Boolean           @default(false)
+  healthCare      Boolean           @default(false)
   /// Short and factual (e.g. "Sprained right ankle on pool deck stairs"); details stay in the incident report.
-  description   String
-  status        InjuryClaimStatus @default(OPEN)
-  claimNumber   String?
-  filedAt       DateTime?         @db.Timestamptz(3)
-  filedById     String?           @db.Uuid
-  accommodationId String?         @db.Uuid
-  createdById   String            @db.Uuid
-  reminderSentAt DateTime?        @db.Timestamptz(3)
-  overdueSentAt  DateTime?        @db.Timestamptz(3)
-  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  description     String
+  status          InjuryClaimStatus @default(OPEN)
+  claimNumber     String?
+  filedAt         DateTime?         @db.Timestamptz(3)
+  filedById       String?           @db.Uuid
+  accommodationId String?           @db.Uuid
+  createdById     String            @db.Uuid
+  reminderSentAt  DateTime?         @db.Timestamptz(3)
+  overdueSentAt   DateTime?         @db.Timestamptz(3)
+  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, status, dueAt])
+}
+
+// ------------------------------------------------------------------ Payroll
+
+enum PayRunStatus {
+  DRAFT
+  APPROVED
+  PAID
+  VOID
+}
+
+enum BankAccountStatus {
+  /// Entered, waiting for someone other than the person who entered it to verify.
+  PENDING
+  ACTIVE
+  RETIRED
+  REJECTED
+}
+
+/// Tax set-up for one employee (from their TD1 forms). SIN is sealed with the city's key.
+model PayProfile {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @db.Uuid
+  userId            String    @unique @db.Uuid
+  /// Province or territory of employment for tax; null = the province of the facility they work at.
+  province          Province?
+  /// TD1 total claim amounts; null = the basic personal amount.
+  federalClaim      Decimal?  @db.Decimal(12, 2)
+  provincialClaim   Decimal?  @db.Decimal(12, 2)
+  extraTaxPerPeriod Decimal   @default(0) @db.Decimal(10, 2)
+  cppExempt         Boolean   @default(false)
+  eiExempt          Boolean   @default(false)
+  sinCiphertext     Bytes?
+  sinIv             Bytes?
+  sinAuthTag        Bytes?
+  sinWrappedKey     Bytes?
+  sinKekId          String?
+  sinLast3          String?
+  td1SignedAt       DateTime? @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+}
+
+/// Where someone's pay is deposited. The account number is sealed; only the last four digits are kept in clear.
+model BankAccount {
+  id                String            @id @default(uuid()) @db.Uuid
+  tenantId          String            @db.Uuid
+  userId            String            @db.Uuid
+  holderName        String
+  /// Financial institution number (3 digits) and branch transit (5 digits).
+  institution       String
+  transit           String
+  accountCiphertext Bytes
+  accountIv         Bytes
+  accountAuthTag    Bytes
+  accountWrappedKey Bytes
+  accountKekId      String
+  last4             String
+  status            BankAccountStatus @default(PENDING)
+  /// The direct-deposit authorization the person agreed to, word for word.
+  consentText       String
+  consentAt         DateTime          @db.Timestamptz(3)
+  enteredById       String            @db.Uuid
+  verifiedById      String?           @db.Uuid
+  verifiedAt        DateTime?         @db.Timestamptz(3)
+  retiredAt         DateTime?         @db.Timestamptz(3)
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
+  user              User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status])
+}
+
+/// One pay run: a pay period for the whole city or one department.
+model PayRun {
+  id                 String         @id @default(uuid()) @db.Uuid
+  tenantId           String         @db.Uuid
+  departmentId       String?        @db.Uuid
+  periodStart        DateTime       @db.Date
+  periodEnd          DateTime       @db.Date
+  payDate            DateTime       @db.Date
+  periodsPerYear     Int
+  status             PayRunStatus   @default(DRAFT)
+  preparedById       String         @db.Uuid
+  approvedById       String?        @db.Uuid
+  approvedAt         DateTime?      @db.Timestamptz(3)
+  paidAt             DateTime?      @db.Timestamptz(3)
+  voidedAt           DateTime?      @db.Timestamptz(3)
+  /// { gross, deductions, net, employerCpp, employerEi, people, deposits, cheques }
+  totals             Json           @default("{}")
+  /// Problems that must be fixed before approval.
+  blockers           Json           @default("[]")
+  warnings           Json           @default("[]")
+  fileCreationNumber Int?
+  depositFileSha256  String?
+  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+  statements         PayStatement[]
+
+  @@index([tenantId, periodStart])
+}
+
+/// What one person is paid in one run: earnings, deductions, net and year-to-date.
+model PayStatement {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  payRunId        String   @db.Uuid
+  userId          String   @db.Uuid
+  departmentId    String?  @db.Uuid
+  province        Province
+  year            Int
+  payDate         DateTime @db.Date
+  hours           Decimal  @db.Decimal(10, 2)
+  /// [{ code, positionId, hours, rate, amount }]
+  earnings        Json
+  /// { cpp, cpp2, ei, federalTax, provincialTax, extraTax }
+  deductions      Json
+  gross           Decimal  @db.Decimal(12, 2)
+  totalDeductions Decimal  @db.Decimal(12, 2)
+  net             Decimal  @db.Decimal(12, 2)
+  employerCpp     Decimal  @db.Decimal(12, 2)
+  employerEi      Decimal  @db.Decimal(12, 2)
+  /// Year-to-date after this statement: { gross, cpp, cpp2, ei, federalTax, provincialTax, net, insurable, pensionable }
+  ytd             Json
+  bankAccountId   String?  @db.Uuid
+  depositLast4    String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  payRun          PayRun   @relation(fields: [payRunId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, year])
+  @@index([payRunId])
+}
+
+/// CRA and provincial payroll rates for one year and jurisdiction ("CA" = federal, CPP and EI).
+/// Shared by every city; FH staff check each table against CRA's T4127 before it's used.
+model PayrollTaxTable {
+  id           String    @id @default(uuid()) @db.Uuid
+  year         Int
+  jurisdiction String
+  data         Json
+  verifiedAt   DateTime? @db.Timestamptz(3)
+  verifiedBy   String?
+  note         String?
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@unique([year, jurisdiction])
 }

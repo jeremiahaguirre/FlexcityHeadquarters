@@ -61,6 +61,22 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     'en-CA': (p) => ({ subject: `Booking ${p.confirmed ? 'confirmed' : 'not available'}: ${p.service}`, text: `${p.confirmed ? `Your booking for ${p.service} on ${p.when} is confirmed.` : `Sorry, we can't book ${p.service} on ${p.when}.`}\nReference: ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }),
     'fr-CA': (p) => ({ subject: `Réservation ${p.confirmed ? 'confirmée' : 'non disponible'} : ${p.service}`, text: `${p.confirmed ? `Votre réservation pour ${p.service} le ${p.when} est confirmée.` : `Désolés, nous ne pouvons pas réserver ${p.service} le ${p.when}.`}\nRéférence : ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }),
   },
+  bank_changed: {
+    'en-CA': (p) => ({ subject: 'Your direct deposit details were changed', text: `New banking details ending in ${p.last4} were added for your pay. They'll be used once payroll verifies them.\n\nIf you didn't make this change, tell your payroll or HR office right away.` }),
+    'fr-CA': (p) => ({ subject: 'Vos renseignements de dépôt direct ont été modifiés', text: `De nouveaux renseignements bancaires se terminant par ${p.last4} ont été ajoutés pour votre paie. Ils seront utilisés une fois vérifiés par la paie.\n\nSi vous n'avez pas fait ce changement, avisez immédiatement la paie ou les RH.` }),
+  },
+  bank_active: {
+    'en-CA': (p) => ({ subject: 'Direct deposit set up', text: `Your pay will now be deposited to the account ending in ${p.last4}.\n\nIf you didn't ask for this, tell your payroll or HR office right away.` }),
+    'fr-CA': (p) => ({ subject: 'Dépôt direct en place', text: `Votre paie sera maintenant déposée dans le compte se terminant par ${p.last4}.\n\nSi vous n'avez pas demandé ce changement, avisez immédiatement la paie ou les RH.` }),
+  },
+  bank_rejected: {
+    'en-CA': (p) => ({ subject: 'Direct deposit details not accepted', text: `Payroll couldn't verify the account ending in ${p.last4}. Your pay continues to go where it did before. Check the details in the app or contact payroll:\n${APP_URL()}/pay` }),
+    'fr-CA': (p) => ({ subject: 'Renseignements de dépôt direct refusés', text: `La paie n'a pas pu vérifier le compte se terminant par ${p.last4}. Votre paie continue d'être versée comme avant. Vérifiez les renseignements dans l'application ou communiquez avec la paie :\n${APP_URL()}/pay` }),
+  },
+  pay_statement_ready: {
+    'en-CA': (p) => ({ subject: `Your pay statement for ${p.payDate}`, text: `Your pay statement for ${p.payDate} is ready in the app:\n${APP_URL()}/pay` }),
+    'fr-CA': (p) => ({ subject: `Votre relevé de paie du ${p.payDate}`, text: `Votre relevé de paie du ${p.payDate} est prêt dans l'application :\n${APP_URL()}/pay` }),
+  },
   callout_offer: {
     'en-CA': (p) => ({
       subject: `Call-out: can you work? Answer within ${p.minutes} minutes`,

@@ -13,7 +13,8 @@ import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
 import { type PayResult, calculatePay } from './payCalc.js';
 
 /** `onlyUsers`: a department supervisor's people; null = everyone (HR). */
-export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, weeks: number, onlyUsers: Set<string> | null = null) {
+/** `positionIds`: one department's positions; null = every position. */
+export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, weeks: number, onlyUsers: Set<string> | null = null, positionIds: string[] | null = null) {
   const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, include: { ruleOverrides: true, payCodeMappings: true } });
   const facilities = await tx.facility.findMany();
   const periodEnd = addDays(periodStart, weeks * 7);
@@ -53,7 +54,7 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
     const from = startOfLocalDay(lookbackStart, f.timezone);
     const to = startOfLocalDay(periodEnd, f.timezone);
     const punches = await tx.timePunch.findMany({
-      where: { facilityId: f.id, status: 'APPROVED', clockOut: { not: null, gt: from }, clockIn: { lt: to }, ...(onlyUsers ? { userId: { in: [...onlyUsers] } } : {}) },
+      where: { facilityId: f.id, status: 'APPROVED', clockOut: { not: null, gt: from }, clockIn: { lt: to }, ...(onlyUsers ? { userId: { in: [...onlyUsers] } } : {}), ...(positionIds ? { positionId: { in: positionIds } } : {}) },
       include: { shift: true, user: { include: { payRates: true } } },
     });
     if (punches.length === 0) continue;

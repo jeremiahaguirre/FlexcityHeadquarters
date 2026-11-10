@@ -25,7 +25,7 @@ export const FEATURES = {
   incidents: { default: true, permissions: ['incidents.create', 'incidents.read'] },
   discipline: { default: true, permissions: ['discipline.read', 'discipline.write'] },
   reliability: { default: true, permissions: ['reliability.read', 'reliability.write'] },
-  payroll: { default: true, permissions: ['payroll.export'] },
+  payroll: { default: true, permissions: ['payroll.export', 'payroll.approve'] },
   jobs: { default: true, permissions: ['jobs.manage'] },
   union: { default: false, permissions: ['union.hub', 'seniority.read'] },
   rotations: { default: true, permissions: ['deck.rotate'] },

@@ -18,6 +18,7 @@ export const MENU: MenuItem[] = [
   { href: '/alone', key: 'loneWork', group: 'mine', permissions: ['lonework.self'] },
   { href: '/patrol', key: 'patrol', group: 'mine', permissions: ['winter.patrol'] },
   { href: '/pretrip', key: 'pretrip', group: 'mine', permissions: ['fleet.inspect'] },
+  { href: '/pay', key: 'myPay', group: 'mine', permissions: ['timeclock.punch'] },
   { href: '/headcount', key: 'headcount', group: 'deck', permissions: ['ops.headcount.record'] },
   { href: '/deck', key: 'deck', group: 'deck', permissions: ['deck.rotate'] },
   { href: '/status', key: 'status', group: 'deck', permissions: ['ops.status.read'] },

@@ -6,9 +6,10 @@ import { billingRouter } from './billing.js';
 import { citiesRouter } from './cities.js';
 import { leadsRouter } from './leads.js';
 import { platformPasskeyRouter } from './passkeys.js';
+import { payrollTaxRouter } from './payrollTax.js';
 
 /** FH Dev console API: no organization subdomain, its own sessions, larger bodies (logos, CSV). */
 export const platformRouter = Router();
 platformRouter.use(express.json({ limit: '2mb' }), cookieParser(), requirePlatformHeader);
 platformRouter.use(platformAuthRouter, platformPasskeyRouter);
-platformRouter.use(requirePlatform, citiesRouter, billingRouter, leadsRouter);
+platformRouter.use(requirePlatform, citiesRouter, billingRouter, leadsRouter, payrollTaxRouter);

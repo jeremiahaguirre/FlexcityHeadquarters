@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest';
+import { bracketTax, calculateDeductions, federalBasicPersonal, type FederalTable, type ProvincialTable } from '../../src/services/payroll/tax.js';
+
+// A made-up table with round numbers, to check the method (not CRA's values).
+const fed: FederalTable = {
+  cpp: { rate: 0.05, basicExemption: 3500, ympe: 70000, baseRate: 0.04 },
+  cpp2: { rate: 0.04, yampe: 80000 },
+  ei: { rate: 0.02, maxInsurable: 60000, employerMultiplier: 1.4 },
+  brackets: [
+    { upTo: 50000, rate: 0.15 },
+    { upTo: 100000, rate: 0.2 },
+    { upTo: null, rate: 0.3 },
+  ],
+  basicPersonal: { max: 15000, min: 14000, phaseOutFrom: 150000, phaseOutTo: 200000 },
+  cea: 1000,
+};
+const prov: ProvincialTable = { brackets: [{ upTo: 40000, rate: 0.05 }, { upTo: null, rate: 0.1 }], basicPersonal: 10000 };
+const zero = { gross: 0, pensionable: 0, cpp: 0, cpp2: 0, insurable: 0, ei: 0 };
+const base = { periodsPerYear: 26, ytd: zero, federal: fed, provincial: prov, federalClaim: null, provincialClaim: null, extraTax: 0, cppExempt: false, eiExempt: false };
+
+describe('payroll deductions', () => {
+  it('taxes by bracket', () => {
+    expect(bracketTax(fed.brackets, 40000).tax).toBeCloseTo(6000);
+    expect(bracketTax(fed.brackets, 120000).tax).toBeCloseTo(50000 * 0.15 + 50000 * 0.2 + 20000 * 0.3);
+  });
+
+  it('phases out the basic personal amount', () => {
+    expect(federalBasicPersonal(fed, 100000)).toBe(15000);
+    expect(federalBasicPersonal(fed, 175000)).toBe(14500);
+    expect(federalBasicPersonal(fed, 250000)).toBe(14000);
+  });
+
+  it('works out CPP, EI and tax for an ordinary pay', () => {
+    const d = calculateDeductions({ ...base, gross: 2000 });
+    expect(d.cpp).toBeCloseTo((2000 - 3500 / 26) * 0.05, 2);
+    expect(d.ei).toBeCloseTo(40, 2);
+    expect(d.cpp2).toBe(0);
+    expect(d.federalTax).toBeGreaterThan(0);
+    expect(d.provincialTax).toBeGreaterThan(0);
+    expect(d.employerEi).toBeCloseTo(56, 2);
+    expect(d.employerCpp).toBe(d.cpp);
+    expect(d.total).toBeCloseTo(d.cpp + d.ei + d.federalTax + d.provincialTax, 2);
+  });
+
+  it('stops CPP and EI at the yearly maximums', () => {
+    const ytd = { gross: 69900, pensionable: 69900, cpp: (70000 - 3500) * 0.05 - 1, cpp2: 0, insurable: 60000, ei: 60000 * 0.02 };
+    const d = calculateDeductions({ ...base, gross: 3000, ytd });
+    expect(d.cpp).toBeCloseTo(1, 2);
+    expect(d.ei).toBe(0);
+    // Earnings past the YMPE start CPP2.
+    expect(d.cpp2).toBeCloseTo((72900 - 70000) * 0.04, 2);
+  });
+
+  it('respects TD1 claims, exemptions and extra tax', () => {
+    const none = calculateDeductions({ ...base, gross: 300, federalClaim: 99999, provincialClaim: 99999, cppExempt: true, eiExempt: true, extraTax: 25 });
+    expect(none.cpp + none.ei + none.federalTax + none.provincialTax).toBe(0);
+    expect(none.total).toBe(25);
+  });
+
+  it('applies a provincial surtax, health premium and low-income reduction', () => {
+    const p2: ProvincialTable = { ...prov, surtax: [{ threshold: 1000, rate: 0.2 }], healthPremium: [{ over: 20000, base: 0, rate: 0.06, max: 300 }] };
+    const plain = calculateDeductions({ ...base, gross: 3000 });
+    const ont = calculateDeductions({ ...base, gross: 3000, provincial: p2 });
+    expect(ont.provincialTax).toBeGreaterThan(plain.provincialTax);
+    const reduced = calculateDeductions({ ...base, gross: 800, provincial: { ...prov, reduction: { amount: 500, rate: 0.03, threshold: 20000 } } });
+    expect(reduced.provincialTax).toBeLessThanOrEqual(calculateDeductions({ ...base, gross: 800 }).provincialTax);
+  });
+});
