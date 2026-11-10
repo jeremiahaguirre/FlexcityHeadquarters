@@ -23,7 +23,7 @@ export function subdomainFromHost(host: string | null): string | null {
 
 /** Server-side: branding for the current request's subdomain. */
 export async function currentTenant(): Promise<PublicTenant | null> {
-  const sub = subdomainFromHost(headers().get('host'));
+  const sub = subdomainFromHost((await headers()).get('host'));
   if (!sub) return null;
   try {
     const res = await fetch(`${API_URL}/api/public/tenant`, {

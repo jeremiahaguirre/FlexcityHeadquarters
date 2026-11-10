@@ -8,12 +8,14 @@ import { ARTICLES, articleIn } from '@/content/help';
 
 export const generateStaticParams = () => LANGS.flatMap((lang) => ARTICLES.map((a) => ({ lang, slug: a.slug })));
 
-export function generateMetadata({ params }: { params: { lang: Lang; slug: string } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: Lang; slug: string }> }) {
+  const params = await props.params;
   const a = ARTICLES.find((x) => x.slug === params.slug);
   return a ? pageMeta(params.lang, `help/${a.slug}/`, articleIn(a, params.lang).title, articleIn(a, params.lang).summary) : {};
 }
 
-export default function Article({ params }: { params: { lang: Lang; slug: string } }) {
+export default async function Article(props: { params: Promise<{ lang: Lang; slug: string }> }) {
+  const params = await props.params;
   const a = ARTICLES.find((x) => x.slug === params.slug);
   if (!a) notFound();
   const b = articleIn(a, params.lang);

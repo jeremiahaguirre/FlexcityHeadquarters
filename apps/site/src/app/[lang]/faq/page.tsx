@@ -5,12 +5,14 @@ import { reveal } from '@/lib/reveal';
 import { Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
 
-export function generateMetadata({ params }: { params: { lang: Lang } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).faq;
   return pageMeta(params.lang, 'faq/', c.title, c.groups.flatMap((g) => g.items.map((i) => i.q)).slice(0, 4).join(' '));
 }
 
-export default function Faq({ params }: { params: { lang: Lang } }) {
+export default async function Faq(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const all = copy(params.lang);
   // The billing questions shown on the plans page also belong to the last group here (Plans and billing).
   const c = { ...all.faq, groups: all.faq.groups.map((g, i, a) => (i === a.length - 1 ? { ...g, items: [...g.items, ...all.plans.faq] } : g)) };

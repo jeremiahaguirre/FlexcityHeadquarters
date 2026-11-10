@@ -7,12 +7,14 @@ import { cn } from '@/lib/cn';
 import { reveal } from '@/lib/reveal';
 import { pageMeta } from '@/lib/seo';
 
-export function generateMetadata({ params }: { params: { lang: Lang } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).plans;
   return pageMeta(params.lang, 'plans/', c.title, c.lead);
 }
 
-export default function Plans({ params }: { params: { lang: Lang } }) {
+export default async function Plans(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).plans;
   const quote = `/${params.lang}/contact/?kind=SALES`;
   const money = (n: number) => new Intl.NumberFormat(params.lang === 'fr' ? 'fr-CA' : 'en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);

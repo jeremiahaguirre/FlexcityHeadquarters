@@ -12,12 +12,14 @@ import { type Lang, copy } from '@/content/copy';
 import { SITE_URL, pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
 
-export function generateMetadata({ params }: { params: { lang: Lang } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang);
   return pageMeta(params.lang, '', undefined, c.meta.description);
 }
 
-export default function Home({ params }: { params: { lang: Lang } }) {
+export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang);
   const h = c.home;
   const fr = params.lang === 'fr';

@@ -16,7 +16,9 @@ const jakarta = localFont({ src: '../../fonts/plus-jakarta-sans-latin-wght-norma
 export const generateStaticParams = () => LANGS.map((lang) => ({ lang }));
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0F766E' };
 
-export function generateMetadata({ params }: { params: { lang: Lang } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  // Only en and fr are generated (generateStaticParams).
+  const params = (await props.params) as { lang: Lang };
   const c = copy(params.lang);
   return {
     ...pageMeta(params.lang, '', c.meta.title, c.meta.description),
@@ -28,7 +30,10 @@ export function generateMetadata({ params }: { params: { lang: Lang } }): Metada
   };
 }
 
-export default function LangLayout({ children, params }: { children: ReactNode; params: { lang: Lang } }) {
+export default async function LangLayout(props: { children: ReactNode; params: Promise<{ lang: string }> }) {
+  // Only en and fr are generated (generateStaticParams).
+  const params = (await props.params) as { lang: Lang };
+  const children = props.children;
   return (
     <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable}>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">

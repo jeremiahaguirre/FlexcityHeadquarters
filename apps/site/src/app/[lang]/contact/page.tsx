@@ -3,12 +3,14 @@ import { ContactForm } from '@/components/ContactForm';
 import { Section } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
 
-export function generateMetadata({ params }: { params: { lang: Lang } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).contact;
   return pageMeta(params.lang, 'contact/', c.title, c.lead);
 }
 
-export default function Contact({ params }: { params: { lang: Lang } }) {
+export default async function Contact(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).contact;
   return (
     <Section>

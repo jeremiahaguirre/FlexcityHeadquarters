@@ -7,14 +7,16 @@ import { type Lang, copy } from '@/content/copy';
 import { pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
 
-export function generateMetadata({ params }: { params: { lang: Lang } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).privateSector;
   return pageMeta(params.lang, 'private-sector/', c.title, c.lead);
 }
 
 const ICONS = ['waves', 'users', 'trees', 'wrench'];
 
-export default function PrivateSector({ params }: { params: { lang: Lang } }) {
+export default async function PrivateSector(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const all = copy(params.lang);
   const c = all.privateSector;
   return (

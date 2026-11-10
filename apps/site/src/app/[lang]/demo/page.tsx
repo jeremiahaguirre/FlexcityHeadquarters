@@ -6,12 +6,14 @@ import { Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
 import { demoLink } from '@/lib/site';
 
-export function generateMetadata({ params }: { params: { lang: Lang } }) {
+export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).demo;
   return pageMeta(params.lang, 'demo/', c.title, c.lead);
 }
 
-export default function Demo({ params }: { params: { lang: Lang } }) {
+export default async function Demo(props: { params: Promise<{ lang: Lang }> }) {
+  const params = await props.params;
   const c = copy(params.lang).demo;
   return (
     <>

@@ -28,7 +28,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
   const locale = DEMO
     ? normalizeLocale(tenant?.defaultLocale)
-    : normalizeLocale(cookies().get(LOCALE_COOKIE)?.value ?? tenant?.defaultLocale ?? headers().get('accept-language'));
+    : normalizeLocale((await cookies()).get(LOCALE_COOKIE)?.value ?? tenant?.defaultLocale ?? (await headers()).get('accept-language'));
   const t = createI18n(locale).t;
 
   return (
