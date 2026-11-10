@@ -34,7 +34,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
   const c = copy(params.lang).plans;
   const quote = `/${params.lang}/contact/?kind=SALES`;
   const money = (n: number) => new Intl.NumberFormat(params.lang === 'fr' ? 'fr-CA' : 'en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(n);
-  const btn = 'inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-body-strong';
+  const btn = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 py-2 text-center text-body-strong';
   const btnBrand = cn(btn, 'bg-brand text-brand-contrast shadow-lift hover:bg-brand-hover');
   const btnLine = cn(btn, 'border border-line bg-panel hover:bg-surface');
   const btnLight = cn(btn, 'bg-[#C5F23A] text-[#14210A] shadow-[0_10px_30px_-8px_rgb(197_242_58/0.55)] hover:bg-[#D4F767]');

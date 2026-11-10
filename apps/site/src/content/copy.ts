@@ -609,7 +609,7 @@ const fr: DeepString<Copy> = {
     proof: [
       { k: '13', v: 'provinces et territoires dans le moteur de règles' },
       { k: '2', v: 'langues officielles, partout' },
-      { k: '1 glissement', v: 'pour pointer au début du quart' },
+      { k: '1 geste', v: 'pour pointer au début du quart' },
       { k: '0', v: 'boutique d’applications : on l’installe depuis la page de connexion' },
     ],
     departmentsTitle: 'Une plateforme pour tous les services',

@@ -14,7 +14,7 @@ export function Section({ id, children, className, tone = 'page' }: { id?: strin
 export function Kicker({ n, children, dark = false }: { n?: string; children: ReactNode; dark?: boolean }) {
   return (
     <p className={cn('mb-4 flex items-center gap-3 text-label uppercase tracking-[0.18em]', dark ? 'text-[#5EEAD4]' : 'text-brand-text')}>
-      {n ? <span className="kicker-num">{n}</span> : null}
+      {n ? <span aria-hidden="true" className="kicker-num">{n}</span> : null}
       <span aria-hidden="true" className={cn('h-px w-8', dark ? 'bg-[#5EEAD4]/60' : 'bg-brand-text/50')} />
       <span>{children}</span>
     </p>

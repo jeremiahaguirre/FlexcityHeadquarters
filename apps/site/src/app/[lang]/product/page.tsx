@@ -138,7 +138,7 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {h.features.map((f, i) => (
             <article key={f.title} {...reveal(i)} className={cn('lift group relative overflow-hidden rounded-3xl border border-line bg-panel p-7 shadow-card', i === 0 && 'card-glow border-transparent')}>
-              <span aria-hidden="true" className="kicker-num absolute right-6 top-6 text-caption font-bold text-muted/70">{String(i + 1).padStart(2, '0')}</span>
+              <span aria-hidden="true" className="kicker-num absolute right-6 top-6 text-caption font-bold text-muted">{String(i + 1).padStart(2, '0')}</span>
               <span className="lift-icon grid h-12 w-12 place-items-center rounded-2xl bg-brand/10 text-brand-text">
                 <Icon name={f.icon} />
               </span>
