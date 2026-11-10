@@ -317,8 +317,27 @@ model Facility {
   timePunches  TimePunch[]
   incidents    IncidentReport[]
   deckStations DeckStation[]
+  openHours    FacilityHours[]
 
   @@index([tenantId])
+}
+
+/// When a facility is open, by weekday (several blocks a day allowed), and the fewest lifeguards
+/// on deck at any open hour, whatever the bather count. The forecast and its draft shifts use it.
+model FacilityHours {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  facilityId   String   @db.Uuid
+  /// 0 = Sunday, facility local time.
+  dayOfWeek    Int
+  opensMinute  Int
+  closesMinute Int
+  minGuards    Int      @default(1)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, facilityId, dayOfWeek])
 }
 
 /// Tenant-specific overrides of provincial rules, e.g. a collective agreement

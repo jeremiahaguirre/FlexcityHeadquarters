@@ -383,3 +383,26 @@ describe('leave hours', () => {
     expect(leaveHoursFrom(req, [])).toEqual({ hours: 8, basis: 'WEEKDAYS' }); // Sat, Sun, Mon → one weekday
   });
 });
+
+describe('forecast gaps to draft shifts', async () => {
+  const { gapBlocks, openAt, lessonsAt } = await import('../../src/services/ops/forecast.js');
+  it('layers the gaps and splits long ones into shifts of at most eight hours', () => {
+    const hours = Array.from({ length: 15 }, (_, i) => ({ hour: 6 + i, gap: i >= 4 && i < 7 ? 2 : 1 }));
+    expect(gapBlocks([{ date: '2026-08-17', hours }])).toEqual([
+      { date: '2026-08-17', startHour: 6, endHour: 14 },
+      { date: '2026-08-17', startHour: 14, endHour: 21 },
+      { date: '2026-08-17', startHour: 10, endHour: 13 },
+    ]);
+  });
+  it('knows when the facility is open and the minimum then', () => {
+    const b = [{ dayOfWeek: 1, opensMinute: 390, closesMinute: 720, minGuards: 2 }, { dayOfWeek: 1, opensMinute: 1020, closesMinute: 1260, minGuards: 1 }];
+    expect(openAt(b, 1, 6)).toEqual({ open: true, minGuards: 2 });
+    expect(openAt(b, 1, 13)).toEqual({ open: false, minGuards: 0 });
+    expect(openAt([], 1, 13)).toBeNull();
+  });
+  it('needs one instructor per class with swimmers, more when over size', () => {
+    const c = { positionId: 'p', daysOfWeek: [1], startMinute: 1020, endMinute: 1065, startsOn: '2026-07-01', endsOn: '2026-09-30', maxSwimmers: 6 };
+    expect(lessonsAt([{ ...c, swimmers: 4 }, { ...c, swimmers: 9 }, { ...c, swimmers: 0 }], '2026-08-17', 17, 'p')).toEqual({ classes: 2, swimmers: 13, instructors: 3 });
+    expect(lessonsAt([{ ...c, swimmers: 4 }], '2026-08-18', 17, 'p').classes).toBe(0);
+  });
+});

@@ -6,7 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { applyRotation, loadPlan } from '../services/ops/rotation.js';
 import { complianceSnapshot } from '../services/ops/compliance.js';
-import { forecastWeek } from '../services/ops/forecast.js';
+import { draftShiftsFor, forecastWeek } from '../services/ops/forecast.js';
 import { h } from './context.js';
 import { facilitiesOf } from '../services/people/scope.js';
 
@@ -180,5 +180,64 @@ complianceRouter.get(
       if (!(await tx.facility.findUnique({ where: { id: q.facilityId } }))) throw notFound('Facility');
       return forecastWeek(tx, q.facilityId, q.weekStart, q.positionId ?? null);
     }));
+  }),
+);
+
+const facilityInScope = (req: Parameters<typeof authOf>[0], facilityId: string) => {
+  const only = facilitiesOf(authOf(req).scope);
+  if (only && !only.includes(facilityId)) throw notFound('Facility');
+};
+
+/** A facility's opening hours by weekday, and the fewest lifeguards on deck while open. */
+complianceRouter.get(
+  '/facilities/:id/hours',
+  requirePermission('schedule.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const facilityId = uuid.parse(req.params.id);
+    facilityInScope(req, facilityId);
+    res.json(await withTenant(a.tenantId, (tx) => tx.facilityHours.findMany({ where: { facilityId }, orderBy: [{ dayOfWeek: 'asc' }, { opensMinute: 'asc' }], select: { dayOfWeek: true, opensMinute: true, closesMinute: true, minGuards: true } })));
+  }),
+);
+
+const block = z
+  .object({ dayOfWeek: z.number().int().min(0).max(6), opensMinute: z.number().int().min(0).max(1439), closesMinute: z.number().int().min(1).max(1440), minGuards: z.number().int().min(0).max(50) })
+  .refine((b) => b.closesMinute > b.opensMinute, { message: 'Closes after it opens' });
+
+complianceRouter.put(
+  '/facilities/:id/hours',
+  requirePermission('schedule.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const facilityId = uuid.parse(req.params.id);
+    facilityInScope(req, facilityId);
+    const blocks = z.object({ blocks: z.array(block).max(70) }).parse(req.body).blocks;
+    await withTenant(a.tenantId, async (tx) => {
+      if (!(await tx.facility.findUnique({ where: { id: facilityId } }))) throw notFound('Facility');
+      const before = await tx.facilityHours.findMany({ where: { facilityId }, select: { dayOfWeek: true, opensMinute: true, closesMinute: true, minGuards: true } });
+      await tx.facilityHours.deleteMany({ where: { facilityId } });
+      if (blocks.length) await tx.facilityHours.createMany({ data: blocks.map((b) => ({ ...b, tenantId: a.tenantId, facilityId })) });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'facility.hours', entity: 'Facility', entityId: facilityId, before, after: blocks });
+    });
+    res.json({ blocks: blocks.length });
+  }),
+);
+
+/** Creates the week's gaps for one position as draft open shifts, for the scheduler to review and fill. */
+complianceRouter.post(
+  '/forecast/draft-shifts',
+  requirePermission('schedule.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const b = z.object({ facilityId: uuid, weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), positionId: uuid }).parse(req.body);
+    facilityInScope(req, b.facilityId);
+    const created = await withTenant(a.tenantId, async (tx) => {
+      if (!(await tx.facility.findUnique({ where: { id: b.facilityId } }))) throw notFound('Facility');
+      if (!(await tx.position.findUnique({ where: { id: b.positionId } }))) throw notFound('Position');
+      const shifts = await draftShiftsFor(tx, a.tenantId, b.facilityId, b.weekStart, b.positionId);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'forecast.draft_shifts', entity: 'Facility', entityId: b.facilityId, after: { weekStart: b.weekStart, positionId: b.positionId, shifts: shifts.length } });
+      return shifts;
+    });
+    res.status(201).json({ created: created.length, shifts: created });
   }),
 );
