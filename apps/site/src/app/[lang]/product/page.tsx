@@ -1,5 +1,7 @@
 import { ArrowRight, Check, MapPin } from 'lucide-react';
 import Link from 'next/link';
+import { PhoneClip } from '@/components/PhoneClip';
+import { PageHero } from '@/components/PageHero';
 import { Icon } from '@/components/Icon';
 import { reveal } from '@/lib/reveal';
 import { DepartmentTabs } from '@/components/DepartmentTabs';
@@ -30,23 +32,17 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
   const btnGhost = 'inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15';
   return (
     <>
-      <section className="night grain overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 pb-14 pt-12 md:px-6 md:pb-20 md:pt-20">
-          <div className="rise max-w-4xl">
-            <h1 className="text-hero2 [text-wrap:balance]">{h.pages.productTitle}</h1>
-            <p className="mt-5 max-w-2xl text-[1.125rem] leading-8 text-white/85">{h.pages.productLead}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <a href={demoLink('STAFF', params.lang)} className={btnLight}>
-                {h.ctaDemo}
-                <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
-              </a>
-              <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
-                {h.ctaTalk}
-              </Link>
-            </div>
-          </div>
+      <PageHero eyebrow={c.nav.product} title={h.pages.productTitle} lead={h.pages.productLead} aside={<PhoneClip clip="count" lang={params.lang} label={h.see.clips[1]!.title} />}>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <a href={demoLink('STAFF', params.lang)} className={btnLight}>
+            {h.ctaDemo}
+            <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
+          </a>
+          <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
+            {h.ctaTalk}
+          </Link>
         </div>
-      </section>
+      </PageHero>
       {/* 01 Departments */}
       <Section id="product" className="wash">
         <SectionHead n="01" eyebrow={k.departments} title={h.departmentsTitle} lead={h.departmentsLead} />

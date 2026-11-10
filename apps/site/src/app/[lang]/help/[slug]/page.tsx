@@ -3,6 +3,7 @@ import { ArrowLeft, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Section } from '@/components/Section';
+import { PageHero } from '@/components/PageHero';
 import { LANGS, type Lang, copy } from '@/content/copy';
 import { ARTICLES, articleIn } from '@/content/help';
 
@@ -35,17 +36,17 @@ export default async function Article(props: { params: Promise<{ lang: Lang; slu
     },
   ];
   return (
+    <>
+    <PageHero eyebrow={c.help.audience[a.audience]} title={b.title} lead={b.summary} size="md">
+      <Link href={`/${params.lang}/help/`} className="mt-6 inline-flex items-center gap-1.5 text-small font-semibold text-[#5EEAD4] hover:underline">
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        {c.help.back}
+      </Link>
+    </PageHero>
     <Section>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
       <div className="mx-auto max-w-2xl">
-        <Link href={`/${params.lang}/help/`} className="mb-6 inline-flex items-center gap-1.5 text-small font-semibold text-brand-text hover:underline">
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          {c.help.back}
-        </Link>
-        <p className="text-label uppercase text-muted">{c.help.audience[a.audience]}</p>
-        <h1 className="mt-2 text-title">{b.title}</h1>
-        <p className="mt-3 text-body text-muted">{b.summary}</p>
-        <ol className="mt-8 grid gap-4">
+        <ol className="grid gap-4">
           {b.steps.map((s, i) => (
             <li key={s} className="flex gap-4">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand text-small font-bold text-brand-contrast">{i + 1}</span>
@@ -68,5 +69,6 @@ export default async function Article(props: { params: Promise<{ lang: Lang; slu
         </div>
       </div>
     </Section>
+    </>
   );
 }

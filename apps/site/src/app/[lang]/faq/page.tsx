@@ -2,7 +2,9 @@ import { pageMeta } from '@/lib/seo';
 import { ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { reveal } from '@/lib/reveal';
-import { Section, SectionHead } from '@/components/Section';
+import { Section } from '@/components/Section';
+import { Icon } from '@/components/Icon';
+import { PageHero } from '@/components/PageHero';
 import { type Lang, copy } from '@/content/copy';
 
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
@@ -10,6 +12,8 @@ export async function generateMetadata(props: { params: Promise<{ lang: Lang }> 
   const c = copy(params.lang).faq;
   return pageMeta(params.lang, 'faq/', c.title, c.groups.flatMap((g) => g.items.map((i) => i.q)).slice(0, 4).join(' '));
 }
+
+const GROUP_ICON = ['calendar', 'calculator', 'users', 'shield', 'receipt', 'clipboard'];
 
 export default async function Faq(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
@@ -19,9 +23,10 @@ export default async function Faq(props: { params: Promise<{ lang: Lang }> }) {
   // FAQPage structured data helps search engines show answers.
   const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: c.groups.flatMap((g) => g.items.map((i) => ({ '@type': 'Question', name: i.q, acceptedAnswer: { '@type': 'Answer', text: i.a } }))) };
   return (
+    <>
+    <PageHero eyebrow={all.nav.faq} title={c.title} size="md" />
     <Section>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
-      <SectionHead as="h1" title={c.title} />
       <div className="grid gap-10 lg:grid-cols-[14rem_1fr]">
         <nav aria-label={c.title} className="hidden lg:block">
           <ul className="sticky top-24 grid gap-1 text-small">
@@ -37,7 +42,10 @@ export default async function Faq(props: { params: Promise<{ lang: Lang }> }) {
         <div className="grid gap-10">
           {c.groups.map((g, i) => (
             <section key={g.name} id={`g${i}`} {...(i ? reveal() : {})} className="scroll-mt-24">
-              <h2 className="mb-3 text-heading">{g.name}</h2>
+              <h2 className="mb-3 flex items-center gap-3 text-heading">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand-text"><Icon name={GROUP_ICON[i] ?? 'shield'} className="h-5 w-5" /></span>
+                {g.name}
+              </h2>
               <div className="divide-y divide-line rounded-2xl border border-line bg-panel">
                 {g.items.map((it) => (
                   <details key={it.q} className="group px-5 py-4">
@@ -60,5 +68,6 @@ export default async function Faq(props: { params: Promise<{ lang: Lang }> }) {
         </div>
       </div>
     </Section>
+    </>
   );
 }

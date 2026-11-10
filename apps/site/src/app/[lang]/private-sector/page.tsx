@@ -1,5 +1,7 @@
 import { ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
+import { PageHero } from '@/components/PageHero';
+import { PhoneClip } from '@/components/PhoneClip';
 import { Icon } from '@/components/Icon';
 import { reveal } from '@/lib/reveal';
 import { Section, SectionHead } from '@/components/Section';
@@ -21,22 +23,17 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
   const c = all.privateSector;
   return (
     <>
-      <Section>
-        <div className="rise max-w-3xl">
-          <p className="mb-4 inline-flex rounded-full border border-brand/20 bg-brand/5 px-3 py-1 text-caption font-semibold text-brand-text">{all.nav.privateSector}</p>
-          <h1 className="text-display [text-wrap:balance]">{c.title}</h1>
-          <p className="mt-5 text-[1.0625rem] leading-7 text-muted">{c.lead}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href={`/${params.lang}/contact/?kind=SALES`} className="inline-flex h-12 items-center gap-2 rounded-xl bg-brand px-6 text-body-strong text-brand-contrast shadow-lift hover:bg-brand-hover">
-              {c.cta}
-              <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
-            </Link>
-            <a href={demoLink('STAFF', params.lang)} className="inline-flex h-12 items-center rounded-xl border border-line bg-panel px-6 text-body-strong hover:bg-surface">
-              {all.home.ctaDemo}
-            </a>
-          </div>
+      <PageHero eyebrow={all.nav.privateSector} title={c.title} lead={c.lead} aside={<PhoneClip clip="board" lang={params.lang} label={all.home.see.clips[0]!.title} />}>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href={`/${params.lang}/contact/?kind=SALES`} className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] shadow-[0_10px_30px_-8px_rgb(197_242_58/0.55)] hover:bg-[#D4F767]">
+            {c.cta}
+            <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
+          </Link>
+          <a href={demoLink('STAFF', params.lang)} className="inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15">
+            {all.home.ctaDemo}
+          </a>
         </div>
-      </Section>
+      </PageHero>
       <Section tone="panel">
         <SectionHead title={c.whoTitle} />
         <div className="grid gap-5 sm:grid-cols-2">

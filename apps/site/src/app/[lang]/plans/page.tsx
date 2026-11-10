@@ -1,5 +1,6 @@
 import { ArrowRight, Check, ChevronDown, Minus } from 'lucide-react';
 import Link from 'next/link';
+import { PageHero } from '@/components/PageHero';
 import { Icon } from '@/components/Icon';
 import { Kicker, Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
@@ -42,31 +43,24 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       {/* Hero */}
-      <section className="night grain overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 pb-16 pt-12 md:px-6 md:pb-24 md:pt-20">
-          <div className="rise max-w-5xl">
-            <Kicker dark>{c.title}</Kicker>
-            <h1 className="text-hero2 [text-wrap:balance]">{c.hero}</h1>
-            <p className="mt-6 max-w-3xl text-[1.125rem] leading-8 text-white/85">{c.lead}</p>
-            <ul className="mt-7 flex flex-wrap gap-2">
-              {c.chips.map((chip) => (
-                <li key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-small font-semibold text-white">
-                  <Check className="h-4 w-4 text-[#C5F23A]" aria-hidden="true" />
-                  {chip}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link href={quote} className={btnLight}>
-                {c.cta}
-                <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
-              </Link>
-              <a href="#included" className={cn(btn, 'border border-white/30 bg-white/5 text-white hover:bg-white/15')}>{c.jump}</a>
-            </div>
-            <p className="mt-4 text-caption text-white/70">{c.ctaNote}</p>
-          </div>
+      <PageHero eyebrow={c.title} title={c.hero} lead={c.lead}>
+        <ul className="mt-7 flex flex-wrap gap-2">
+          {c.chips.map((chip) => (
+            <li key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-small font-semibold text-white">
+              <Check className="h-4 w-4 text-[#C5F23A]" aria-hidden="true" />
+              {chip}
+            </li>
+          ))}
+        </ul>
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          <Link href={quote} className={btnLight}>
+            {c.cta}
+            <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
+          </Link>
+          <a href="#included" className={cn(btn, 'border border-white/30 bg-white/5 text-white hover:bg-white/15')}>{c.jump}</a>
         </div>
-      </section>
+        <p className="mt-4 text-caption text-white/70">{c.ctaNote}</p>
+      </PageHero>
 
       {/* Public-sector plans */}
       <Section className="wash">

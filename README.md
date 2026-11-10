@@ -2,7 +2,7 @@
 
 # FlexcityHeadquarters (FH)
 
-Aquatic staff scheduling, timekeeping and operations for Canadian municipalities and private swim clubs.
+Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and private employers, in English and French.
 
 - **apps/api** — Node.js, Express, TypeScript, Prisma, PostgreSQL (row-level security)
 - **apps/web** — Next.js, Tailwind, i18next (English / Canadian French)

@@ -1,5 +1,6 @@
 import { pageMeta } from '@/lib/seo';
-import { Section, SectionHead } from '@/components/Section';
+import { Section } from '@/components/Section';
+import { PageHero } from '@/components/PageHero';
 import { HelpIndex } from '@/components/HelpIndex';
 import { type Lang, copy } from '@/content/copy';
 
@@ -13,9 +14,11 @@ export default async function Help(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang).help;
   return (
-    <Section>
-      <SectionHead as="h1" title={c.title} lead={c.lead} />
-      <HelpIndex lang={params.lang} />
-    </Section>
+    <>
+      <PageHero eyebrow={copy(params.lang).nav.help} title={c.title} lead={c.lead} size="md" />
+      <Section>
+        <HelpIndex lang={params.lang} />
+      </Section>
+    </>
   );
 }
