@@ -71,6 +71,22 @@ export const ARTICLES: Article[] = [
     },
   },
   {
+    slug: 'facility-kiosk',
+    audience: 'staff',
+    en: {
+      title: 'Punching at the facility kiosk',
+      summary: 'Clock in and out on the shared tablet at your facility with your employee number and a PIN, without a phone.',
+      steps: ['In the app, go to your profile and, under Kiosk PIN, tap Set my PIN. Choose 4 to 6 digits that aren’t easy to guess.', 'At the facility tablet, enter your employee number (it’s shown next to your PIN on your profile), then your PIN.', 'Your punch goes to the shift you’re working, the same as a punch on your phone. With no shift there right now, a supervisor reviews it.', 'Never share your PIN. Forgot it? Set a new one on your profile.'],
+      tip: 'Supervisors set up a tablet from Settings › Facilities › Facility kiosks: tap Add kiosk, then open the setup link once on the tablet. The link isn’t shown again.',
+    },
+    fr: {
+      title: 'Pointer à la borne de l’installation',
+      summary: 'Pointez à l’arrivée et au départ sur la tablette partagée de votre installation avec votre numéro d’employé et un NIP, sans téléphone.',
+      steps: ['Dans l’application, allez à votre profil et, sous NIP de borne, touchez Créer mon NIP. Choisissez 4 à 6 chiffres difficiles à deviner.', 'À la tablette de l’installation, entrez votre numéro d’employé (il figure à côté de votre NIP, à votre profil), puis votre NIP.', 'Votre pointage va au quart que vous faites, comme un pointage sur votre téléphone. S’il n’y a aucun quart à cet endroit en ce moment, un superviseur le vérifie.', 'Ne partagez jamais votre NIP. Oublié? Créez-en un nouveau à votre profil.'],
+      tip: 'Les superviseurs configurent une tablette dans Paramètres › Installations › Bornes de pointage : touchez Ajouter une borne, puis ouvrez le lien de configuration une fois sur la tablette. Le lien ne sera plus affiché.',
+    },
+  },
+  {
     slug: 'headcount',
     audience: 'staff',
     en: {
@@ -96,6 +112,38 @@ export const ARTICLES: Article[] = [
       title: 'Prendre et céder des quarts',
       summary: 'Utilisez le babillard pour prendre des quarts ouverts et céder les vôtres.',
       steps: ['Ouvrez Babillard des quarts pour voir les quarts ouverts auxquels vous êtes admissible, avec une estimation de la paie.', 'Touchez Prendre ce quart. S’il vous ferait faire des heures supplémentaires, un superviseur l’approuve d’abord.', 'Pour céder un quart, ouvrez-le depuis Mon horaire et choisissez Céder.', 'Le quart reste le vôtre jusqu’à ce que quelqu’un le prenne.'],
+    },
+  },
+  {
+    slug: 'trade-a-shift',
+    audience: 'staff',
+    en: {
+      title: 'Trading a shift with a coworker',
+      summary: 'Swap one of your shifts for one of a coworker’s. They agree, then a supervisor approves.',
+      steps: ['Open My schedule and tap Trade on the shift you want to swap.', 'Pick a shift you could take in exchange. Only shifts within two weeks where you’re both eligible are listed.', 'Add a message if you like, then tap Ask to trade.', 'Your coworker gets a notification and taps Agree or No thanks. A supervisor then approves it in Approvals.', 'Once approved, both schedules update together. Until then, you each keep your own shift.'],
+      tip: 'If either shift changes before approval, the trade closes and you can ask again.',
+    },
+    fr: {
+      title: 'Échanger un quart avec un collègue',
+      summary: 'Échangez un de vos quarts contre un quart d’un collègue. Il accepte, puis un superviseur approuve.',
+      steps: ['Ouvrez Mon horaire et touchez Échanger sur le quart à échanger.', 'Choisissez un quart que vous pourriez prendre en échange. Seuls les quarts des deux prochaines semaines où vous êtes tous les deux admissibles sont proposés.', 'Ajoutez un message si vous le voulez, puis touchez Demander l’échange.', 'Votre collègue reçoit une notification et touche Accepter ou Non merci. Un superviseur l’approuve ensuite dans Approbations.', 'Une fois l’échange approuvé, les deux horaires changent ensemble. D’ici là, chacun garde son quart.'],
+      tip: 'Si l’un des quarts change avant l’approbation, l’échange est fermé et vous pouvez en proposer un autre.',
+    },
+  },
+  {
+    slug: 'shifts-in-your-calendar',
+    audience: 'staff',
+    en: {
+      title: 'Your shifts in Google, Outlook or Apple Calendar',
+      summary: 'Get a private link that keeps your own shifts up to date in your calendar app.',
+      steps: ['Go to your profile and, under Shifts in your calendar, tap Get my calendar link.', 'Copy the link right away: for your privacy it isn’t shown again.', 'Google Calendar: Other calendars › From URL. Outlook: Add calendar › Subscribe from web. iPhone: Settings › Calendar › Accounts › Add subscribed calendar. On a phone you can also tap Add my shifts to my phone’s calendar.', 'Lost the link? Make a new one; the old one stops working. To stop the feed, tap Turn off.'],
+      tip: 'The feed holds only your own shifts: times, position and facility, no other names. Calendar apps refresh it on their own schedule, so a change can take a while to show there; the app is always current.',
+    },
+    fr: {
+      title: 'Vos quarts dans Google Agenda, Outlook ou Calendrier d’Apple',
+      summary: 'Obtenez un lien privé qui tient vos propres quarts à jour dans votre agenda.',
+      steps: ['Allez à votre profil et, sous Vos quarts dans votre agenda, touchez Obtenir mon lien d’agenda.', 'Copiez le lien aussitôt : pour votre confidentialité, il ne sera plus affiché.', 'Google Agenda : Autres agendas › À partir de l’URL. Outlook : Ajouter un calendrier › S’abonner à partir du web. iPhone : Réglages › Calendrier › Comptes › Ajouter un calendrier avec abonnement. Sur un téléphone, vous pouvez aussi toucher Ajouter mes quarts à l’agenda de mon téléphone.', 'Lien perdu? Créez-en un nouveau; l’ancien cessera de fonctionner. Pour arrêter le lien, touchez Désactiver.'],
+      tip: 'Le lien ne contient que vos propres quarts : heures, poste et installation, aucun autre nom. Les agendas l’actualisent à leur propre rythme : un changement peut tarder à y paraître; l’application est toujours à jour.',
     },
   },
   {
@@ -178,6 +226,54 @@ export const ARTICLES: Article[] = [
         'Choisissez Comment ça fonctionne pour une explication simple de ce qui est suivi et de son utilisation.',
       ],
       tip: 'Signer un dossier confirme que vous l’avez reçu, pas que vous êtes d’accord.',
+    },
+  },
+  {
+    slug: 'expenses-and-mileage',
+    audience: 'staff',
+    en: {
+      title: 'Claiming expenses and mileage',
+      summary: 'Claim kilometres you drove for work and costs you paid. Approved claims are paid back on your next pay, untaxed.',
+      steps: ['Open Expenses from the menu and tap New claim.', 'Say what it’s for, then add each item: kilometres driven, or a cost with its receipt.', 'Attach a receipt for anything over your organization’s limit. Mileage needs no receipt.', 'Submit it. Your supervisor approves it, and you get a notification.', 'Approved claims are added to the next pay as reimbursements: not taxed and not counted for CPP or EI.'],
+      tip: 'Mileage is paid at your organization’s rate per kilometre, with a lower rate after a yearly threshold, like CRA’s. Your page shows how many kilometres you’ve claimed this year.',
+    },
+    fr: {
+      title: 'Réclamer des dépenses et du kilométrage',
+      summary: 'Réclamez les kilomètres parcourus pour le travail et les frais que vous avez payés. Les demandes approuvées vous sont remboursées sur la paie suivante, sans impôt.',
+      steps: ['Ouvrez Dépenses dans le menu et touchez Nouvelle demande.', 'Indiquez l’objet, puis ajoutez chaque élément : les kilomètres parcourus, ou une dépense avec son reçu.', 'Joignez un reçu pour toute dépense au-delà de la limite de votre organisation. Le kilométrage n’en demande pas.', 'Soumettez-la. Votre superviseur l’approuve, et vous recevez une notification.', 'Les demandes approuvées s’ajoutent à la paie suivante comme remboursements : non imposables et non comptées pour le RPC ou l’AE.'],
+      tip: 'Le kilométrage est payé au taux par kilomètre de votre organisation, avec un taux plus bas au-delà d’un seuil annuel, comme celui de l’ARC. Votre page indique combien de kilomètres vous avez réclamés cette année.',
+    },
+  },
+  {
+    slug: 'time-in-lieu',
+    audience: 'staff',
+    en: {
+      title: 'Banking overtime as time in lieu',
+      summary: 'Where your organization allows it, choose to bank overtime as paid time off instead of being paid for it.',
+      steps: ['Open My pay. Under Banked overtime (time in lieu), tap Bank my overtime instead of being paid, then I agree, bank my overtime.', 'From the next pay, overtime banks at its premium: an hour at time and a half banks 1.5 hours. Overtime beyond your organization’s cap is paid.', 'To use it, request time off and choose Time in lieu (banked overtime). You can ask for up to what you have banked.', 'Changed your mind? Tap Pay my overtime instead. It applies from the next pay.'],
+      tip: 'Banked time older than your organization’s limit is flagged to be taken or paid out, so book it as time off before then.',
+    },
+    fr: {
+      title: 'Accumuler ses heures supplémentaires en congé compensatoire',
+      summary: 'Là où votre organisation le permet, choisissez d’accumuler vos heures supplémentaires en congé payé au lieu de vous les faire payer.',
+      steps: ['Ouvrez Ma paie. Sous Heures accumulées (congé compensatoire), touchez Accumuler mes heures supplémentaires au lieu d’être payé, puis J’accepte, accumuler mes heures.', 'Dès la paie suivante, les heures s’accumulent avec leur majoration : une heure à taux et demi donne 1,5 heure. Les heures au-delà du plafond de votre organisation sont payées.', 'Pour les utiliser, demandez un congé et choisissez Congé compensatoire (heures accumulées). Vous pouvez demander jusqu’à ce que vous avez accumulé.', 'Vous changez d’idée? Touchez Payer mes heures supplémentaires à la place. Le changement s’applique dès la paie suivante.'],
+      tip: 'Le temps accumulé plus ancien que la limite de votre organisation est signalé pour être pris ou payé : planifiez-le en congé avant.',
+    },
+  },
+  {
+    slug: 'emergency-contacts-and-text-alerts',
+    audience: 'staff',
+    en: {
+      title: 'Emergency contacts and text alerts',
+      summary: 'Say who to call if something happens to you at work, and get urgent alerts by text and phone call.',
+      steps: ['Go to your profile and, under Emergency contacts, tap Add contacts. Add a name, relationship and phone for each, and mark who to call first.', 'Only HR sees them, and whoever responds if your working-alone session escalates. Each look is recorded.', 'If your organization has turned on text alerts, open Text and phone alerts on your profile, enter your mobile number and tap Text me a code.', 'Enter the 6-digit code to confirm your number. You can also choose to be texted about open shifts starting within a day.', 'To stop, tap Stop texts and calls.'],
+      tip: 'Texts are for urgent alerts only, such as a missed working-alone check-in or a call-out, and never contain links. Don’t tap a link in a text that claims to be from FlexcityHeadquarters.',
+    },
+    fr: {
+      title: 'Personnes à joindre en cas d’urgence et alertes par texto',
+      summary: 'Indiquez qui appeler s’il vous arrive quelque chose au travail, et recevez les alertes urgentes par texto et par appel.',
+      steps: ['Allez à votre profil et, sous Personnes à joindre en cas d’urgence, touchez Ajouter des personnes. Indiquez le nom, le lien et le téléphone de chacune, et qui appeler en premier.', 'Seuls les RH les voient, et la personne qui intervient si votre séance de travail seul est escaladée. Chaque consultation est consignée.', 'Si votre organisation a activé les alertes par texto, ouvrez Alertes par texto et téléphone à votre profil, entrez votre numéro de cellulaire et touchez M’envoyer un code.', 'Entrez le code à 6 chiffres pour confirmer votre numéro. Vous pouvez aussi choisir de recevoir un texto pour les quarts libres qui commencent dans la journée.', 'Pour arrêter, touchez Arrêter les textos et appels.'],
+      tip: 'Les textos servent seulement aux alertes urgentes, comme une vérification de travail seul manquée ou un rappel au travail, et ne contiennent jamais de lien. Ne touchez pas un lien dans un texto qui prétend venir de FlexcityHeadquarters.',
     },
   },
   {

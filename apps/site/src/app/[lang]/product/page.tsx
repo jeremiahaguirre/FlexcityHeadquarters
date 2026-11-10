@@ -147,6 +147,31 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
             </article>
           ))}
         </div>
+        {/* The everyday details: smaller features, grouped, kept compact */}
+        <div className="mt-16" {...reveal()}>
+          <h3 className="text-title [text-wrap:balance]">{h.more.title}</h3>
+          <p className="mt-3 max-w-2xl text-[1.0625rem] leading-7 text-muted">{h.more.lead}</p>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {h.more.groups.map((g) => (
+              <section key={g.title} aria-labelledby={`more-${g.icon}`} className="rounded-3xl border border-line bg-panel/70 p-6">
+                <h4 id={`more-${g.icon}`} className="flex items-center gap-3 text-subheading">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand-text">
+                    <Icon name={g.icon} className="h-5 w-5" />
+                  </span>
+                  {g.title}
+                </h4>
+                <ul className="mt-5 grid gap-4">
+                  {g.items.map((it) => (
+                    <li key={it.t}>
+                      <span className="block text-body-strong">{it.t}</span>
+                      <span className="text-small leading-6 text-muted">{it.b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </div>
         <div className="mt-16 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div className="relative mx-auto grid max-w-md grid-cols-2 gap-4 lg:max-w-none" {...reveal()}>
             <div aria-hidden="true" className="absolute inset-6 -z-10 rounded-full bg-[radial-gradient(closest-side,rgb(var(--brand)/0.25),transparent)] blur-2xl" />

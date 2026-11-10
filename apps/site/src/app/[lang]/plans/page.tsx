@@ -215,6 +215,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
             </article>
           ))}
         </div>
+        <p className="mt-8 max-w-3xl text-small leading-6 text-muted">{c.alertsNote}</p>
       </Section>
 
       {/* Comparison: a real table, scrolling sideways on phones */}
