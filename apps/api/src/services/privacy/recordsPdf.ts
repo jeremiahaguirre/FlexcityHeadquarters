@@ -129,7 +129,11 @@ export function recordsPdf(data: Records, opts: { organization: string; prepared
   const accent = '#0D5F59';
   const width = doc.page.width - 120;
 
-  // Cover
+  // Cover: the brand strip and wordmark, then the title.
+  doc.rect(0, 0, doc.page.width, 6).fill(accent);
+  doc.rect(doc.page.width * 0.7, 0, doc.page.width * 0.3, 6).fill('#C5F23A');
+  doc.font('Helvetica-Bold').fontSize(15).fillColor(ink).text('Flexcity', 60, 34, { continued: true }).font('Helvetica').fillColor(accent).text('Headquarters');
+  doc.moveDown(2);
   doc.fillColor(accent).font('Helvetica-Bold').fontSize(10).text(t.confidential.toUpperCase(), { characterSpacing: 1 });
   doc.moveDown(1.5).fillColor(ink).fontSize(26).text(t.title);
   doc.moveDown(0.3).font('Helvetica').fontSize(13).fillColor(muted).text(`${t.for} ${data.person.firstName} ${data.person.lastName}`);
@@ -184,7 +188,7 @@ export function recordsPdf(data: Records, opts: { organization: string; prepared
   for (let i = range.start; i < range.start + range.count; i++) {
     doc.switchToPage(i);
     doc.page.margins.bottom = 0;
-    doc.fontSize(8).fillColor(muted).font('Helvetica').text(`${data.person.firstName} ${data.person.lastName} · ${t.confidential} · ${t.page} ${i + 1} ${t.of} ${range.count}`, 60, doc.page.height - 40, { width, align: 'center' });
+    doc.fontSize(8).fillColor(muted).font('Helvetica').text(`FlexcityHeadquarters · ${data.person.firstName} ${data.person.lastName} · ${t.confidential} · ${t.page} ${i + 1} ${t.of} ${range.count}`, 60, doc.page.height - 40, { width, align: 'center' });
   }
   doc.end();
   return done;

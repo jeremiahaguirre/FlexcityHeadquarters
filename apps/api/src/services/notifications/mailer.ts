@@ -5,11 +5,14 @@
 import type { PrismaClient } from '@prisma/client';
 import { tenantIds, withTenant } from '../../lib/db.js';
 import { maskEmail } from '../../lib/log.js';
+import { emailHtml } from './emailHtml.js';
 
 export interface Mail {
   to: string;
   subject: string;
   text: string;
+  /** The branded HTML version of the same message. */
+  html?: string;
 }
 
 export interface Mailer {
@@ -248,7 +251,7 @@ export async function deliverOutbox(prisma: PrismaClient, mailer: Mailer, batch 
       let error: string | null = null;
       try {
         const { subject, text } = renderEmail(m.template, m.locale, m.params as Params);
-        await mailer.send({ to: m.toEmail, subject, text });
+        await mailer.send({ to: m.toEmail, subject, text, html: emailHtml(subject, text, m.locale) });
         sent++;
       } catch (err) {
         error = String(err instanceof Error ? err.message : err).slice(0, 500);

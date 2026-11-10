@@ -19,7 +19,7 @@ const jakarta = localFont({ src: '../fonts/plus-jakarta-sans-latin-wght-normal.w
 
 export const metadata: Metadata = {
   title: { default: 'FlexcityHeadquarters', template: '%s · FH' },
-  description: 'Aquatic staff scheduling, timekeeping and operations',
+  description: 'Scheduling, timekeeping, safety and HR for municipal staff',
   applicationName: 'FlexcityHeadquarters',
 };
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
