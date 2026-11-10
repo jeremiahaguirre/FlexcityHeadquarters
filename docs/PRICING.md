@@ -21,6 +21,7 @@ follow it. Prices are monthly, in Canadian dollars, before GST/HST and PST.
 | Single sign-on (Entra ID, SAML) | | | ✓ | ✓ |
 | Bank connection (SFTP) for payroll | | | ✓ | ✓ |
 | Union hub | +$150 | +$150 | +$150 | ✓ |
+| Anything else not included | each option at its own price (below) | | | |
 | Support | Email and phone | Email and phone | Priority | Priority, success manager, 99.9% uptime commitment, test organization, multi-year price lock |
 
 - **Facility size** (`Facility.billingTier`) scales the price and the staff allowance: seasonal or outdoor ×0.4,
@@ -50,11 +51,38 @@ Extra-staff charges are new revenue for large or seasonal-heavy organizations: a
 facilities and 210 active people in July pays 60 × $7 = $420 that month. Existing accounts were moved to the plan matching
 what they had (HR Compliance → Multi-complex, otherwise Business).
 
-## Private sector: core plus modules
+## Options, one by one
 
-- Core: $99 / month including 20 active people, then $5 per active person (the per-person rate can be changed per account).
-- Modules, each its own monthly price: Operations $79, Programs and registration $99, Fleet and winter $39,
-  HR Compliance $89, HR Suite $69, Benchmarks $29, Single sign-on $49, Bank connection $39, Union hub $150.
+Everything beyond the core is a single option with its own standard price. Each public plan switches on its standard
+options (table above). In the Dev console (city → Billing → Options) any option can be switched on or off for one
+organization, and every option has a price box filled in with the standard price, which can be changed for that
+organization:
+
+- **Public sector:** switching on an option the plan doesn't include adds its price each month; switching off one of the
+  plan's standard options credits its price (a negative line on the invoice).
+- **Private sector:** core is $99 / month including 20 active people, then $5 per active person; each option switched on
+  bills its price each month.
+- Stored as `BillingAccount.items`: only what differs from the plan (an option switched away from its standard, or a
+  price of its own). Access changes as soon as the account is saved.
+
+| Option | Group | Private / month | Added to a public plan / month |
+| --- | --- | --- | --- |
+| Water chemistry and closures | Operations | $39 | $300 |
+| Incident reports | Operations | $29 | $250 |
+| Front-desk status board | Operations | $19 | $150 |
+| Deck rotation | Operations | $19 | $150 |
+| Programs and registration | Programs | $99 | $600 |
+| Fleet: inspections, licences, hours of service | Fleet and winter | $29 | $250 |
+| Winter call-outs and patrols | Fleet and winter | $19 | $200 |
+| Onboarding checks | HR | $39 | $300 |
+| People review | HR | $29 | $250 |
+| Discipline records | HR | $29 | $250 |
+| Accommodation cases | HR | $19 | $200 |
+| HR Suite: leave, reviews, training, grievances, offboarding | HR | $69 | $500 |
+| Benchmarks | HR | $29 | $100 |
+| Single sign-on | Integration | $49 | $300 |
+| Bank connection | Integration | $39 | $300 |
+| Union hub | Union | $150 | $150 |
 
 ## Never behind a paywall
 
@@ -65,8 +93,8 @@ liability when a customer doesn't buy it.
 
 ## What sits behind which module
 
-- Feature switches: `MODULES` in `catalog.ts` maps each module to the features it unlocks. Locked features are switched
-  off; HR sees them in the menu with a lock and the module that unlocks them, linking to Billing.
+- Feature switches: `ITEMS` in `catalog.ts` maps each option to the features it unlocks. Locked features are switched
+  off; HR sees them in the menu with a lock and the option that unlocks them, linking to Billing.
 - Settings that aren't feature switches are refused with `403 PLAN_REQUIRED`: saving single sign-on (`sso`) and saving
   or testing the bank connection (`bankConnection`). An existing connection keeps working after a downgrade so nobody is
   locked out mid-pay-run.

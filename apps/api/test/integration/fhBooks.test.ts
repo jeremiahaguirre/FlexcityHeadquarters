@@ -29,7 +29,7 @@ beforeAll(async () => {
   cookie = String(r.headers['set-cookie']).split(';')[0]!;
   const hrUser = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'Hr', lastName: 'X', email: `hr@${SUB}.test` } });
   hr = await signAccessToken({ sub: hrUser.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: Math.floor(Date.now() / 1000), mfa: true });
-  expect((await dev('put', `/billing/accounts/${t.tenant.id}`, { plan: 'MUNICIPAL', legalName: 'City of Pad', contactName: 'AP', email: 'ap@pad.test', addressLine1: null, addressLine2: null, city: null, province: 'ON', postalCode: null, poNumber: null, paymentTermsDays: 30, taxExempt: false, taxExemptNote: null, level: 'MULTI_COMPLEX', quotedRateCents: 300_000, modules: [], clubUserRateCents: 500, notes: null, facilities: [{ id: t.facility.id, tier: 2, customCents: null }] })).status).toBe(200);
+  expect((await dev('put', `/billing/accounts/${t.tenant.id}`, { plan: 'MUNICIPAL', legalName: 'City of Pad', contactName: 'AP', email: 'ap@pad.test', addressLine1: null, addressLine2: null, city: null, province: 'ON', postalCode: null, poNumber: null, paymentTermsDays: 30, taxExempt: false, taxExemptNote: null, level: 'MULTI_COMPLEX', quotedRateCents: 300_000, items: {}, clubUserRateCents: 500, notes: null, facilities: [{ id: t.facility.id, tier: 2, customCents: null }] })).status).toBe(200);
 });
 afterAll(async () => {
   await appDb.$disconnect();

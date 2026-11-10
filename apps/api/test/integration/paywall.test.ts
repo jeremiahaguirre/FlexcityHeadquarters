@@ -77,12 +77,12 @@ describe('plans unlock features', () => {
   });
 
   it('what the plan doesn’t include is locked, and HR sees which module would unlock it', async () => {
-    await account({ plan: 'MUNICIPAL', level: 'BUSINESS', modules: [] });
+    await account({ plan: 'MUNICIPAL', level: 'BUSINESS', items: {} });
     forgetFeatures(t.tenant.id);
     const me = (await as(tok.hr).get('/api/me')).body;
     expect(me.features).toMatchObject({ discipline: false, reliability: false, onboarding: false, incidents: true });
     expect(me.permissions).not.toContain('reliability.read');
-    expect(me.lockedMenu).toEqual(expect.arrayContaining([expect.objectContaining({ href: '/manage/people', addOn: 'hrCompliance' }), expect.objectContaining({ href: '/manage/onboarding', addOn: 'hrCompliance' })]));
+    expect(me.lockedMenu).toEqual(expect.arrayContaining([expect.objectContaining({ href: '/manage/people', addOn: 'reliability' }), expect.objectContaining({ href: '/manage/onboarding', addOn: 'onboarding' })]));
     // Settings that need a higher plan are refused with a reason.
     const sso = await as(tok.hr).put('/api/sso', {});
     expect(sso.body).toMatchObject({ code: 'PLAN_REQUIRED' });
@@ -91,14 +91,14 @@ describe('plans unlock features', () => {
     expect((await as(tok.guard).get('/api/me')).body.lockedMenu).toEqual([]);
   });
 
-  it('Small has the core; Enterprise has everything; the private sector gets only the modules chosen', async () => {
-    await account({ plan: 'MUNICIPAL', level: 'SMALL', modules: [] });
+  it('Small has the core; Enterprise has everything; the private sector gets only the options chosen', async () => {
+    await account({ plan: 'MUNICIPAL', level: 'SMALL', items: {} });
     forgetFeatures(t.tenant.id);
     expect((await as(tok.hr).get('/api/me')).body.features).toMatchObject({ incidents: false, registration: false, discipline: false, loneWork: true, injuryClaims: true, timeclock: true, payroll: true });
-    await account({ plan: 'MUNICIPAL', level: 'ENTERPRISE', modules: [] });
+    await account({ plan: 'MUNICIPAL', level: 'ENTERPRISE', items: {} });
     forgetFeatures(t.tenant.id);
     expect((await as(tok.hr).get('/api/me')).body.lockedMenu).toEqual([]);
-    await account({ plan: 'CLUB', level: 'BUSINESS', modules: ['programs'] });
+    await account({ plan: 'CLUB', level: 'BUSINESS', items: { registration: { on: true } } });
     forgetFeatures(t.tenant.id);
     expect((await as(tok.hr).get('/api/me')).body.features).toMatchObject({ registration: true, incidents: false, discipline: false });
   });
@@ -114,7 +114,7 @@ describe('plans unlock features', () => {
 
 describe('unpaid invoices', () => {
   it('stages: ok → overdue (warning) → suspended after the grace period, unless held', () => {
-    const acct = { plan: 'MUNICIPAL', level: 'ENTERPRISE', modules: [], graceDays: 30, trialEndsAt: null, suspensionHoldUntil: null } as never;
+    const acct = { plan: 'MUNICIPAL', level: 'ENTERPRISE', items: {}, graceDays: 30, trialEndsAt: null, suspensionHoldUntil: null } as never;
     expect(stateFrom(acct, [{ dueDate: day(5), totalCents: 100, paidCents: 0 }]).stage).toBe('ok');
     expect(stateFrom(acct, [{ dueDate: day(-3), totalCents: 100, paidCents: 0 }]).stage).toBe('overdue');
     expect(stateFrom(acct, [{ dueDate: day(-31), totalCents: 100, paidCents: 0 }])).toMatchObject({ stage: 'suspended', overdueCents: 100 });
@@ -123,7 +123,7 @@ describe('unpaid invoices', () => {
   });
 
   it('suspended is read-only, except safety work, clocking in and paying', async () => {
-    await account({ plan: 'MUNICIPAL', level: 'MULTI_COMPLEX', modules: [] });
+    await account({ plan: 'MUNICIPAL', level: 'MULTI_COMPLEX', items: {} });
     await invoice(-40);
     forgetFeatures(t.tenant.id);
     expect((await as(tok.hr).get('/api/me')).body.billing).toMatchObject({ stage: 'suspended', canPay: true });

@@ -27,7 +27,7 @@ const account = (over: object = {}) => ({
   taxExemptNote: null,
   level: 'MULTI_COMPLEX',
   quotedRateCents: 300_000,
-  modules: [],
+  items: {},
   clubUserRateCents: 500,
   notes: null,
   facilities: [{ id: t.facility.id, tier: 2, customCents: null }],
@@ -112,19 +112,25 @@ describe('billing', () => {
     expect(est.taxLines).toEqual([{ name: 'GST', rate: '5', amountCents: 495 }]);
   });
 
-  it('private sector: modules switched on in the Dev console change the organization’s access at once', async () => {
+  it('private sector: options switched on in the Dev console change the organization’s access at once', async () => {
     const hr = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'H', lastName: 'R', email: `hr-${randomBytes(3).toString('hex')}@chi.test` } });
     const tok = await signAccessToken({ sub: hr.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: Math.floor(Date.now() / 1000) });
     const me = async () => (await request(server).get('/api/me').set('x-tenant-subdomain', 'chi').auth(tok, { type: 'bearer' })).body;
-    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', modules: [] }));
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', items: {} }));
     expect((await me()).features).toMatchObject({ registration: false, incidents: false });
-    const r = await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', modules: ['programs', 'operations'] }));
-    expect(r.body.estimate.lines.map((l: { kind: string }) => l.kind)).toEqual(['club_base', 'module_operations', 'module_programs']);
+    const r = await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', items: { registration: { on: true, cents: null }, incidents: { on: true, cents: 2_500 } } }));
+    expect(r.body.estimate.lines.map((l: { kind: string }) => l.kind)).toEqual(['club_base', 'item_incidents', 'item_registration']);
+    expect(r.body.estimate.lines[1].amountCents).toBe(2_500);
+    // Stored: only what differs from the plan's standard.
+    expect((await owner.billingAccount.findUniqueOrThrow({ where: { tenantId: t.tenant.id } })).items).toEqual({ registration: { on: true }, incidents: { on: true, cents: 2_500 } });
     expect((await me()).features).toMatchObject({ registration: true, incidents: true, discipline: false });
-    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', modules: ['programs'] }));
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', province: 'AB', items: { registration: { on: true, cents: null } } }));
     expect((await me()).features).toMatchObject({ registration: true, incidents: false });
-    // Unknown modules are refused.
-    expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', modules: ['everything'] }))).status).toBe(400);
+    // Unknown options are refused.
+    expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ plan: 'CLUB', items: { everything: { on: true, cents: null } } }))).status).toBe(400);
+    // The Dev console sees every option's state.
+    const got = (await dev('get', `/billing/accounts/${t.tenant.id}`)).body.items;
+    expect(got.find((i: { key: string }) => i.key === 'registration')).toMatchObject({ on: true, standard: false, cents: 9_900 });
   });
 
   it('organizations can’t reach billing', async () => {

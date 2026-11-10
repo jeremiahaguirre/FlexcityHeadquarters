@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { lineLabel, monthlyLines, staffUsage } from '../../src/services/billing/pricing.js';
-import { PLAN_LEVELS, PRIVATE_MODULE_CENTS, PUBLIC_PLANS, lockedFeatures } from '../../src/services/billing/catalog.js';
+import { ITEMS, PLAN_LEVELS, PUBLIC_PLANS, lockedFeatures } from '../../src/services/billing/catalog.js';
 import { SALES_TAX, taxFor } from '../../src/services/billing/tax.js';
 
 const en = lineLabel('en-CA');
 
-const base = { facilities: [], activeUsers: 0, clubUserRateCents: 500, quotedRateCents: null, modules: [] as string[] };
+const base = { facilities: [], activeUsers: 0, clubUserRateCents: 500, quotedRateCents: null, items: {} as object };
 
 describe('subscription pricing', () => {
   it('public sector: the plan rate per facility, scaled by size; contract rates win; unbilled facilities skipped', () => {
@@ -61,19 +61,32 @@ describe('subscription pricing', () => {
     expect(club.map((l) => l.kind)).toEqual(['club_base', 'staff_seats']);
   });
 
-  it('the union hub is an extra below Enterprise and included in it', () => {
+  it('any option can be switched on or off: added ones billed, removed standard ones credited, at a custom price if set', () => {
     const one = [{ name: 'Centre', tier: 2, customCents: null }];
-    expect(monthlyLines({ ...base, plan: 'MUNICIPAL', level: 'BUSINESS', modules: ['union'], facilities: one }, en).map((l) => l.kind)).toEqual(['facility', 'module_union']);
-    expect(monthlyLines({ ...base, plan: 'MUNICIPAL', level: 'ENTERPRISE', modules: ['union'], facilities: one }, en).map((l) => l.kind)).toEqual(['facility']);
+    const lines = monthlyLines({ ...base, plan: 'MUNICIPAL', level: 'BUSINESS', facilities: one, items: { discipline: { on: true, cents: 12_000 }, rotations: { on: false }, fleet: { on: false, cents: 5_000 }, incidents: { cents: 1 } } }, en);
+    expect(lines.map((l) => [l.kind, l.amountCents])).toEqual([
+      ['facility', 280_000],
+      ['credit_rotations', -ITEMS.rotations.publicCents],
+      ['credit_fleet', -5_000],
+      ['item_discipline', 12_000],
+    ]);
+    expect(lines[1]!.description).toBe('Removed from the plan: Deck rotation');
+    expect(lines[3]!.description).toBe('Added to the plan: Discipline records');
   });
 
-  it('private sector: core with 20 active users, then per user, then each module at its own price', () => {
-    const lines = monthlyLines({ ...base, plan: 'CLUB', level: 'BUSINESS', activeUsers: 34, clubUserRateCents: 550, modules: ['operations', 'hrCompliance'] }, en);
+  it('the union hub is an extra below Enterprise and included in it', () => {
+    const one = [{ name: 'Centre', tier: 2, customCents: null }];
+    expect(monthlyLines({ ...base, plan: 'MUNICIPAL', level: 'BUSINESS', items: { union: { on: true } }, facilities: one }, en).map((l) => [l.kind, l.amountCents])).toEqual([['facility', 280_000], ['item_union', ITEMS.union.publicCents]]);
+    expect(monthlyLines({ ...base, plan: 'MUNICIPAL', level: 'ENTERPRISE', items: { union: { on: true } }, facilities: one }, en).map((l) => l.kind)).toEqual(['facility']);
+  });
+
+  it('private sector: core with 20 active users, then per user, then each option at its own price', () => {
+    const lines = monthlyLines({ ...base, plan: 'CLUB', level: 'BUSINESS', activeUsers: 34, clubUserRateCents: 550, items: { poolChemistry: { on: true }, discipline: { on: true, cents: 1_500 } } }, en);
     expect(lines.map((l) => [l.kind, l.quantity, l.amountCents])).toEqual([
       ['club_base', 1, 9_900],
       ['club_users', 14, 7_700],
-      ['module_operations', 1, PRIVATE_MODULE_CENTS.operations],
-      ['module_hrCompliance', 1, PRIVATE_MODULE_CENTS.hrCompliance],
+      ['item_poolChemistry', 1, ITEMS.poolChemistry.privateCents],
+      ['item_discipline', 1, 1_500],
     ]);
     expect(monthlyLines({ ...base, plan: 'CLUB', level: 'BUSINESS', activeUsers: 12 }, en)).toHaveLength(1);
   });
@@ -87,18 +100,19 @@ describe('subscription pricing', () => {
 describe('what each plan unlocks', () => {
   const locked = (e: Parameters<typeof lockedFeatures>[0]) => Object.keys(lockedFeatures(e)).sort();
   it('Small has the core; each level adds to the one below; Enterprise has everything', () => {
-    expect(locked({ plan: 'MUNICIPAL', level: 'SMALL', modules: [] })).toContain('poolChemistry');
-    expect(locked({ plan: 'MUNICIPAL', level: 'BUSINESS', modules: [] })).not.toContain('poolChemistry');
-    expect(locked({ plan: 'MUNICIPAL', level: 'BUSINESS', modules: [] })).toContain('discipline');
-    expect(locked({ plan: 'MUNICIPAL', level: 'MULTI_COMPLEX', modules: [] })).toEqual(['union']);
-    expect(locked({ plan: 'MUNICIPAL', level: 'ENTERPRISE', modules: [] })).toEqual([]);
-    for (let i = 1; i < PLAN_LEVELS.length; i++) for (const m of PUBLIC_PLANS[PLAN_LEVELS[i - 1]!].modules) expect(PUBLIC_PLANS[PLAN_LEVELS[i]!].modules).toContain(m);
+    expect(locked({ plan: 'MUNICIPAL', level: 'SMALL', items: {} })).toContain('poolChemistry');
+    expect(locked({ plan: 'MUNICIPAL', level: 'BUSINESS', items: {} })).not.toContain('poolChemistry');
+    expect(locked({ plan: 'MUNICIPAL', level: 'BUSINESS', items: {} })).toContain('discipline');
+    expect(locked({ plan: 'MUNICIPAL', level: 'MULTI_COMPLEX', items: {} })).toEqual(['union']);
+    expect(locked({ plan: 'MUNICIPAL', level: 'ENTERPRISE', items: {} })).toEqual([]);
+    for (let i = 1; i < PLAN_LEVELS.length; i++) for (const m of PUBLIC_PLANS[PLAN_LEVELS[i - 1]!].items) expect(PUBLIC_PLANS[PLAN_LEVELS[i]!].items).toContain(m);
   });
   it('safety, legal duties and privacy are never locked', () => {
-    for (const f of ['loneWork', 'injuryClaims', 'timeclock', 'payroll', 'overtime', 'care', 'coverage'] as const) expect(locked({ plan: 'CLUB', level: 'SMALL', modules: [] })).not.toContain(f);
+    for (const f of ['loneWork', 'injuryClaims', 'timeclock', 'payroll', 'overtime', 'care', 'coverage'] as const) expect(locked({ plan: 'CLUB', level: 'SMALL', items: {} })).not.toContain(f);
   });
-  it('private sector: only the modules chosen', () => {
-    const l = locked({ plan: 'CLUB', level: 'BUSINESS', modules: ['programs'] });
+  it('private sector: only the options chosen; the Dev console can lock a standard one', () => {
+    expect(locked({ plan: 'MUNICIPAL', level: 'BUSINESS', items: { incidents: { on: false } } })).toContain('incidents');
+    const l = locked({ plan: 'CLUB', level: 'BUSINESS', items: { registration: { on: true } } });
     expect(l).not.toContain('registration');
     expect(l).toContain('poolChemistry');
   });

@@ -2,8 +2,9 @@
  * What an organization's plan includes, and whether its account is in good
  * standing. Read on every request (cached with the feature switches).
  *
- * - The plan (public sector) or the chosen modules (private sector) unlock
- *   their features; everything else is core (services/billing/catalog.ts).
+ * - The plan's standard options, plus or minus what the Dev console switched
+ *   for this organization, unlock their features; everything else is core
+ *   (services/billing/catalog.ts).
  * - An organization with no billing account, or in a trial, has everything.
  * - Unpaid invoices: a warning once overdue, then read-only after the grace
  *   period, except safety work (incidents, chemistry, headcounts, working
@@ -12,16 +13,16 @@
 import type { BillingAccount } from '@prisma/client';
 import { db } from '../../lib/db.js';
 import type { FeatureKey } from '../platform/features.js';
-import { type Module, lockedFeatures, ownedModules } from './catalog.js';
+import { type ItemKey, lockedFeatures, ownedItems } from './catalog.js';
 
-export type { Module };
+export type Module = ItemKey;
 
 export type BillingStage = 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended';
 export interface BillingState {
   stage: BillingStage;
   /** Feature → the module that unlocks it, for features the plan doesn't include. */
   locked: Partial<Record<FeatureKey, Module>>;
-  /** Modules the plan includes (everything during a trial or without an account). */
+  /** Options the plan includes (everything during a trial or without an account). */
   modules: Module[] | 'all';
   balanceCents: number;
   overdueCents: number;
@@ -35,7 +36,7 @@ export interface BillingState {
 const DAY = 86_400_000;
 const dateOnly = (d: Date) => d.toISOString().slice(0, 10);
 
-export const lockedFor = (acct: Pick<BillingAccount, 'plan' | 'level' | 'modules'>) => lockedFeatures(acct);
+export const lockedFor = (acct: Pick<BillingAccount, 'plan' | 'level' | 'items'>) => lockedFeatures(acct);
 
 export function stateFrom(
   acct: BillingAccount | null,
@@ -56,7 +57,7 @@ export function stateFrom(
   return {
     stage,
     locked: trialEndsAt ? {} : lockedFor(acct),
-    modules: trialEndsAt ? 'all' : [...ownedModules(acct)],
+    modules: trialEndsAt ? 'all' : [...ownedItems(acct)],
     balanceCents,
     overdueCents,
     overdueSince: oldest ? dateOnly(oldest) : null,

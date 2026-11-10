@@ -1546,8 +1546,9 @@ model BillingAccount {
   includedStaff       Int?
   /// Extra staff places added to the plan, billed every month at the plan's per-person rate (private: the per-user rate).
   extraStaffSeats     Int         @default(0)
-  /// Private sector: the modules chosen. Public sector: extras on top of the plan (e.g. union).
-  modules             String[]    @default([])
+  /// Options switched away from the plan's standard, and custom prices: { "<option>": { "on": bool, "cents": int } }
+  /// (services/billing/catalog.ts). Private sector: every option is off unless switched on here.
+  items               Json        @default("{}")
   /// Until then, every feature is on (a trial or pilot).
   trialEndsAt         DateTime?   @db.Timestamptz(3)
   /// Days after an invoice's due date before the app turns read-only.

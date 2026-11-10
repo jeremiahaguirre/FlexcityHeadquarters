@@ -9,7 +9,7 @@ import { config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { type Line, lineLabel, monthlyLines, staffUsage } from './pricing.js';
-import { MODULE_KEYS, type Module, PUBLIC_EXTRAS, PUBLIC_PLANS } from './catalog.js';
+import { ITEM_KEYS, type ItemKey, PUBLIC_PLANS, readChoices, standardCents, standardItems } from './catalog.js';
 import { SALES_TAX, taxFor } from './tax.js';
 import { forgetFeatures } from '../platform/features.js';
 
@@ -36,7 +36,8 @@ export const accountBody = z.object({
   includedStaff: z.number().int().min(0).max(100_000).nullable().optional(),
   /** Extra staff places added to the plan, billed every month. */
   extraStaffSeats: z.number().int().min(0).max(100_000).optional(),
-  modules: z.array(z.enum(MODULE_KEYS as [Module, ...Module[]])).max(20),
+  /** Every option's state for this organization: on or off, and its price (null = standard). */
+  items: z.partialRecord(z.enum(ITEM_KEYS as [ItemKey, ...ItemKey[]]), z.object({ on: z.boolean(), cents: z.number().int().min(0).max(10_000_000).nullable() })).default({}),
   clubUserRateCents: z.number().int().min(0).max(10_000),
   notes: z.string().trim().max(1000).nullable(),
   /** YYYY-MM-DD: every feature is on until the end of that day. */
@@ -95,7 +96,7 @@ export async function estimate(tenantId: string, month: string) {
       quotedRateCents: account.quotedRateCents,
       includedStaff: account.includedStaff,
       extraStaffSeats: account.extraStaffSeats,
-      modules: account.modules,
+      items: account.items,
   };
   const lines = monthlyLines(input, lineLabel(tenant.defaultLocale));
   return { ...totals(lines, account.province, account.taxExempt), lines, activeUsers: users, staff: staffUsage(input) };
@@ -113,10 +114,18 @@ export async function saveAccount(tenantId: string, body: AccountInput) {
   if (!PUBLIC_PLANS[rest.level].quoted) rest.quotedRateCents = null;
   if (!PUBLIC_PLANS[rest.level].quoted || PUBLIC_PLANS[rest.level].staffPerFacility === null) rest.includedStaff = null;
   if (rest.plan === 'MUNICIPAL' && PUBLIC_PLANS[rest.level].staffPerFacility === null) rest.extraStaffSeats = 0;
-  if (rest.plan === 'MUNICIPAL') rest.modules = [...new Set(rest.modules)].filter((m) => m in PUBLIC_EXTRAS && !PUBLIC_PLANS[rest.level].modules.includes(m));
-  else rest.modules = [...new Set(rest.modules)];
+  // Keep only what differs from the plan: a switch away from its standard, or a price of its own.
+  const std = standardItems(rest.plan, rest.level);
+  const choices: Record<string, { on?: boolean; cents?: number }> = {};
+  for (const [k, v] of Object.entries(rest.items) as Array<[ItemKey, { on: boolean; cents: number | null }]>) {
+    const c: { on?: boolean; cents?: number } = {};
+    if (v.on !== std.includes(k)) c.on = v.on;
+    if (v.cents !== null && v.cents !== standardCents(rest.plan, k)) c.cents = v.cents;
+    if (Object.keys(c).length) choices[k] = c;
+  }
+  const data0 = { ...rest, items: readChoices(choices) };
   const endOfDay = (d: string | null | undefined) => (d === undefined ? undefined : d === null ? null : new Date(`${d}T23:59:59.999Z`));
-  const data = { ...rest, trialEndsAt: endOfDay(trialEndsOn), suspensionHoldUntil: endOfDay(suspensionHoldUntil) };
+  const data = { ...data0, trialEndsAt: endOfDay(trialEndsOn), suspensionHoldUntil: endOfDay(suspensionHoldUntil) };
   await withTenant(tenantId, async (tx) => {
     for (const f of facilities) {
       const updated = await tx.facility.updateMany({ where: { id: f.id }, data: { billingTier: f.tier, billingMonthlyCents: f.customCents } });

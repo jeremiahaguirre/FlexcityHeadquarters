@@ -1,10 +1,12 @@
 /**
  * What an organization owes for a month, from the plan catalogue (catalog.ts):
  * - Public sector: the plan's rate (list, or the quoted rate) per facility, scaled by the
- *   facility's size; a facility's own contract price wins. Extras (e.g. the union hub) on top.
- * - Private sector: the core fee with 20 active users, then per active user, plus each module.
+ *   facility's size; a facility's own contract price wins. Staff places and overage. Then each
+ *   option switched away from the plan: added ones billed, removed standard ones credited.
+ * - Private sector: the core fee with 20 active users, then per active user, plus each option on.
+ * Each option bills at the organization's own price when one is set, else the standard price.
  */
-import { MODULE_KEYS, type Module, type PlanLevel, PRIVATE_INCLUDED_USERS, PRIVATE_CORE_CENTS, PRIVATE_MODULE_CENTS, PUBLIC_EXTRAS, PUBLIC_PLANS, SIZE_PERCENT, ownedModules } from './catalog.js';
+import { type PlanLevel, PRIVATE_INCLUDED_USERS, PRIVATE_CORE_CENTS, PUBLIC_PLANS, SIZE_PERCENT, itemStates } from './catalog.js';
 
 export interface PricingInput {
   plan: 'MUNICIPAL' | 'CLUB';
@@ -14,7 +16,8 @@ export interface PricingInput {
   includedStaff?: number | null;
   /** Extra staff places added to the plan, billed every month. */
   extraStaffSeats?: number;
-  modules: readonly string[];
+  /** Per-organization option choices (BillingAccount.items). */
+  items: unknown;
   facilities: Array<{ name: string; tier: number | null; customCents: number | null }>;
   activeUsers: number;
   clubUserRateCents: number;
@@ -36,7 +39,7 @@ export function staffAllowance(input: Pick<PricingInput, 'level' | 'facilities' 
 
 export function monthlyLines(input: PricingInput, label: (key: string, vars?: Record<string, string | number>) => string): Line[] {
   const lines: Line[] = [];
-  const owned = ownedModules({ plan: input.plan, level: input.level, modules: input.modules });
+  const states = itemStates({ plan: input.plan, level: input.level, items: input.items });
   if (input.plan === 'MUNICIPAL') {
     const rate = planRate(input.level, input.quotedRateCents);
     const plan = label(`plan_${input.level}`);
@@ -56,10 +59,10 @@ export function monthlyLines(input: PricingInput, label: (key: string, vars?: Re
       }
     }
     if (lines.length)
-      for (const m of Object.keys(PUBLIC_EXTRAS) as Module[]) {
-        if (!input.modules.includes(m) || PUBLIC_PLANS[input.level].modules.includes(m)) continue;
-        const c = PUBLIC_EXTRAS[m]!;
-        lines.push({ kind: `module_${m}`, description: label(`module_${m}`), quantity: 1, unitCents: c, amountCents: c });
+      for (const it of states) {
+        if (it.on === it.standard || !it.cents) continue;
+        const amount = it.on ? it.cents : -it.cents;
+        lines.push({ kind: it.on ? `item_${it.key}` : `credit_${it.key}`, description: label(it.on ? 'itemAdded' : 'itemRemoved', { name: label(`item_${it.key}`) }), quantity: 1, unitCents: amount, amountCents: amount });
       }
   } else {
     lines.push({ kind: 'club_base', description: label('clubBase', { included: PRIVATE_INCLUDED_USERS }), quantity: 1, unitCents: PRIVATE_CORE_CENTS, amountCents: PRIVATE_CORE_CENTS });
@@ -67,10 +70,9 @@ export function monthlyLines(input: PricingInput, label: (key: string, vars?: Re
     if (seats) lines.push({ kind: 'staff_seats', description: label('staffSeats'), quantity: seats, unitCents: input.clubUserRateCents, amountCents: seats * input.clubUserRateCents });
     const extra = Math.max(0, input.activeUsers - PRIVATE_INCLUDED_USERS - seats);
     if (extra) lines.push({ kind: 'club_users', description: label('clubUsers', { active: input.activeUsers, included: PRIVATE_INCLUDED_USERS + seats }), quantity: extra, unitCents: input.clubUserRateCents, amountCents: extra * input.clubUserRateCents });
-    for (const m of MODULE_KEYS) {
-      if (!owned.has(m)) continue;
-      const c = PRIVATE_MODULE_CENTS[m];
-      lines.push({ kind: `module_${m}`, description: label(`module_${m}`), quantity: 1, unitCents: c, amountCents: c });
+    for (const it of states) {
+      if (!it.on || !it.cents) continue;
+      lines.push({ kind: `item_${it.key}`, description: label(`item_${it.key}`), quantity: 1, unitCents: it.cents, amountCents: it.cents });
     }
   }
   return lines;
@@ -89,15 +91,24 @@ const EN: Record<string, string> = {
   clubUsers: 'Active users beyond {included} ({active} active this month)',
   extraStaff: 'Active staff beyond the {included} included ({active} active this month)',
   staffSeats: 'Staff places added to the plan',
-  module_operations: 'Operations module',
-  module_programs: 'Programs and registration module',
-  module_fleetWinter: 'Fleet and winter operations module',
-  module_hrCompliance: 'HR Compliance module',
-  module_hrSuite: 'HR Suite module',
-  module_benchmarks: 'Benchmarks module',
-  module_sso: 'Single sign-on module',
-  module_bankConnection: 'Bank connection module',
-  module_union: 'Union hub',
+  item_poolChemistry: 'Water chemistry and closures',
+  item_incidents: 'Incident reports',
+  item_statusBoard: 'Front-desk status board',
+  item_rotations: 'Deck rotation',
+  item_registration: 'Programs and registration',
+  item_fleet: 'Fleet: inspections, licences, hours of service',
+  item_winter: 'Winter call-outs and patrols',
+  item_onboarding: 'Onboarding checks',
+  item_reliability: 'People review',
+  item_discipline: 'Discipline records',
+  item_accommodation: 'Accommodation cases',
+  item_hrSuite: 'HR Suite: leave, reviews, training, grievances, offboarding',
+  item_benchmarks: 'Benchmarks',
+  item_sso: 'Single sign-on',
+  item_bankConnection: 'Bank connection',
+  item_union: 'Union hub',
+  itemAdded: 'Added to the plan: {name}',
+  itemRemoved: 'Removed from the plan: {name}',
 };
 const FR: Record<string, string> = {
   plan_SMALL: 'Petit',
@@ -112,15 +123,24 @@ const FR: Record<string, string> = {
   clubUsers: 'Utilisateurs actifs au-delà de {included} ({active} actifs ce mois-ci)',
   extraStaff: 'Personnel actif au-delà des {included} inclus ({active} actifs ce mois-ci)',
   staffSeats: 'Places de personnel ajoutées au forfait',
-  module_operations: 'Module Opérations',
-  module_programs: 'Module Programmes et inscriptions',
-  module_fleetWinter: 'Module Parc de véhicules et opérations hivernales',
-  module_hrCompliance: 'Module Conformité RH',
-  module_hrSuite: 'Module Suite RH',
-  module_benchmarks: 'Module Comparaisons',
-  module_sso: 'Module Authentification unique',
-  module_bankConnection: 'Module Connexion bancaire',
-  module_union: 'Carrefour syndical',
+  item_poolChemistry: 'Chimie de l’eau et fermetures',
+  item_incidents: 'Rapports d’incident',
+  item_statusBoard: 'Tableau de l’accueil',
+  item_rotations: 'Rotation sur la plage',
+  item_registration: 'Programmes et inscriptions',
+  item_fleet: 'Véhicules : inspections, permis, heures de service',
+  item_winter: 'Rappels et patrouilles hivernales',
+  item_onboarding: 'Vérifications d’intégration',
+  item_reliability: 'Suivi du personnel',
+  item_discipline: 'Dossiers disciplinaires',
+  item_accommodation: 'Dossiers d’adaptation',
+  item_hrSuite: 'Suite RH : congés, évaluations, formation, griefs, départs',
+  item_benchmarks: 'Comparaisons',
+  item_sso: 'Authentification unique',
+  item_bankConnection: 'Connexion bancaire',
+  item_union: 'Carrefour syndical',
+  itemAdded: 'Ajouté au forfait : {name}',
+  itemRemoved: 'Retiré du forfait : {name}',
 };
 /** Invoice wording in the organization's language. */
 export const lineLabel = (locale: string) => (key: string, vars: Record<string, string | number> = {}) =>

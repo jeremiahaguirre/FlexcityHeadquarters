@@ -22,7 +22,7 @@ import {
 } from '../../services/billing/invoices.js';
 import { TAX_RATES_AS_OF, TAX_RATES_VERIFIED } from '../../services/billing/tax.js';
 import { billingState } from '../../services/billing/entitlements.js';
-import { catalog } from '../../services/billing/catalog.js';
+import { catalog, itemStates } from '../../services/billing/catalog.js';
 import { assertOpenPeriod } from '../../services/billing/books.js';
 import { h } from '../context.js';
 
@@ -116,6 +116,8 @@ billingRouter.get(
       estimate: account ? await estimate(tenantId, thisMonth()) : null,
       // The plans to choose from, with list prices and what each includes.
       catalog: catalog(),
+      // Every option for this organization: on or off, standard for the plan or not, and its price.
+      items: account ? itemStates(account) : null,
       // Where the organization stands: trial, overdue (warning) or suspended (read-only).
       state: await billingState(tenantId),
     });
