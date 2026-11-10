@@ -2063,24 +2063,9 @@
     "accountNew": "Configurez la facturation de {{name}}.",
     "accountSaved": "Compte de facturation enregistré",
     "plan": "Forfait",
-    "plans": {
-      "MUNICIPAL": "Municipal (par installation)",
-      "CLUB": "Club privé (par utilisateur actif)"
-    },
-    "facilityTiers": "Installations",
-    "tier": "Niveau",
     "notBilled": "Non facturée",
-    "tiers": {
-      "1": "Niveau 1, petite / saisonnière ({{price}})",
-      "2": "Niveau 2, centre récréatif ({{price}})",
-      "3": "Niveau 3, grand complexe ({{price}})"
-    },
     "contractRate": "Tarif contractuel ($/mois)",
-    "clubHelp": "99 $ par mois comprend 20 utilisateurs actifs (toute personne ayant un quart ou un pointage dans le mois). Chacun au-delà :",
     "clubRate": "Par utilisateur actif ($)",
-    "addOns": "Modules",
-    "addOnHr": "Conformité RH (+20 %)",
-    "addOnOps": "Opérations (+15 %)",
     "legalName": "Raison sociale sur la facture",
     "contactName": "À l'attention de",
     "email": "Courriel de facturation",
@@ -2099,8 +2084,7 @@
     "internalNotes": "Notes internes",
     "internalNotesHint": "Visibles par FH seulement.",
     "lineDescription": "Description",
-    "addOnUnion": "Espace syndical",
-    "addOnsLock": "Les fonctions des modules que l'organisation n'a pas sont verrouillées dans son application. Les RH les voient avec un cadenas et une note pour nous joindre.",
+    "addOnsLock": "Ce que le forfait n’inclut pas est verrouillé dans l’application de l’organisation; les RH le voient avec un cadenas et le module qui le débloquerait.",
     "accessTitle": "Accès et paiement",
     "trialEnds": "Essai : tout est activé jusqu'au",
     "trialEndsHint": "Laissez vide s'il n'y a pas d'essai.",
@@ -2136,7 +2120,31 @@
     "adjustDate": "Date",
     "adjustReason": "Motif",
     "credited": "Note de crédit enregistrée",
-    "writtenOff": "Radiée"
+    "writtenOff": "Radiée",
+    "chooseLevel": "Forfait",
+    "quotedRate": "Tarif soumis par installation standard ($/mois)",
+    "quotedRateHint": "Laissez vide pour le prix courant ({{price}}). La taille des installations l’ajuste.",
+    "includedStaff": "Personnel inclus selon la soumission (personnes actives)",
+    "includedStaffHint": "Laissez vide pour {{count}} par installation.",
+    "facilitySizes": "Installations",
+    "size": "Taille",
+    "included": "Inclus",
+    "modulesTitle": "Modules",
+    "modulesHelp": "Activez ou désactivez les modules, puis enregistrez. L’accès de l’organisation change dès l’enregistrement : les nouveaux écrans apparaissent pour son personnel, et ceux retirés se verrouillent sans rien supprimer.",
+    "modulesTrial": "Cette organisation est en période d’essai : toutes les fonctions sont actives pour l’instant. Les modules choisis ici s’appliqueront à la fin de l’essai.",
+    "willTurnOn": "S’active à l’enregistrement",
+    "willTurnOff": "Se désactive à l’enregistrement",
+    "liveNow": "Actif dans son application",
+    "privateMonthly_one": "Base plus {{count}} module, avant taxes, selon le personnel actif ce mois-ci",
+    "privateMonthly_other": "Base plus {{count}} modules, avant taxes, selon le personnel actif ce mois-ci",
+    "staffTitle": "Personnel ce mois-ci",
+    "seats": "Places de personnel ajoutées au forfait",
+    "seatsHint": "Facturées à l’organisation chaque mois à {{price}} chacune, utilisées ou non, et ajoutées à son allocation. Toute personne active au-delà est facturée au même tarif comme dépassement.",
+    "staffUsed": "{{active}} actifs sur {{cap}} au forfait",
+    "staffParts": "{{included}} inclus + {{seats}} ajoutés",
+    "staffOver": "{{count}} au-delà du forfait : {{amount}} sur la facture de ce mois",
+    "staffUnlimited_one": "{{count}} personne active ce mois-ci. Personnel illimité avec ce forfait.",
+    "staffUnlimited_other": "{{count}} personnes actives ce mois-ci. Personnel illimité avec ce forfait."
   },
   "people": {
     "title": "Suivi du personnel",
@@ -2732,10 +2740,6 @@
     "title": "Facturation",
     "description": "Votre forfait, vos factures de FlexcityHeadquarters et leur paiement.",
     "plan": "Votre forfait",
-    "planName": {
-      "MUNICIPAL": "Municipal : par installation, personnel illimité",
-      "CLUB": "Secteur privé : par personne active"
-    },
     "stage": {
       "unbilled": "En configuration",
       "trial": "Essai",
@@ -2744,22 +2748,10 @@
       "suspended": "Lecture seule"
     },
     "trialUntil": "Toutes les fonctions sont activées pendant votre essai, jusqu'au {{date}}.",
-    "base": "Base",
-    "baseIncludes": "Horaires et assistant de planification, babillard des quarts, horodateur, exportation de la paie, certifications et règles provinciales, cours de natation, comptages, rotation, prévisions, équité des heures supplémentaires, travail seul, soutien après un incident et conformité à tout moment.",
-    "addOn": {
-      "hr": "Conformité RH",
-      "ops": "Opérations",
-      "union": "Espace syndical"
-    },
-    "addOnIncludes": {
-      "hr": "Vérifications d'intégration (antécédents judiciaires, secteur vulnérable, formation), examen du personnel, dossiers disciplinaires et dossiers d'accommodement.",
-      "ops": "Registres de chimie de l'eau et fermetures, rapports d'incident et tableau d'état de l'accueil.",
-      "union": "L'espace de la section locale : discussions, documents et liste d'ancienneté."
-    },
     "notIncluded": "Pas dans votre forfait",
     "locked": "Pas dans votre forfait",
-    "lockedHint": "Inclus avec le module {{addOn}}",
-    "changePlan": "Pour ajouter ou modifier un module, écrivez-nous à {{contact}}. Les écrans verrouillés s'ouvrent dès l'ajout.",
+    "lockedHint": "Inclus avec {{addOn}}",
+    "changePlan": "Pour changer de forfait ou ajouter un module, écrivez-nous à {{contact}}. Les écrans verrouillés s’ouvrent dès l’ajout.",
     "howToPay": "Comment payer",
     "balance": "Solde : {{amount}}",
     "nothingOwing": "Aucun solde. Merci!",
@@ -2795,7 +2787,10 @@
     "overdue": "Une facture est en retard depuis le {{since}}. Payez avant le {{date}} pour garder l'accès complet; après cette date, l'application passe en lecture seule.",
     "suspendedPay": "Votre compte est en lecture seule en raison d'un solde en retard. Les dossiers de sécurité, l'horodateur et le paiement fonctionnent toujours. Payez maintenant pour tout rétablir.",
     "suspendedStaff": "Le compte de votre organisation est en lecture seule pour l'instant. Les dossiers de sécurité et l'horodateur fonctionnent toujours. Les RH savent comment le rétablir.",
-    "payNow": "Payer maintenant"
+    "payNow": "Payer maintenant",
+    "rate": "{{price}} par installation standard / mois",
+    "staff": "Personnel : {{text}}",
+    "addStaff": "Est active toute personne ayant un quart ou un pointage ce mois-ci. Vous grandissez? Écrivez-nous à {{contact}} pour ajouter des places de personnel à votre forfait, pour un montant mensuel stable."
   },
   "rolesPage": {
     "title": "Rôles",
@@ -4548,5 +4543,68 @@
     "blocked": "Les notifications sont bloquées pour ce site. Autorisez-les dans les réglages de votre navigateur ou de votre téléphone, puis revenez ici.",
     "unsupported": "Ce navigateur ne peut pas recevoir de notifications. Vous les verrez quand même dans l’application et par courriel.",
     "unavailable": "Les notifications sur appareil ne sont pas encore configurées pour votre organisation. Vous les verrez quand même dans l’application."
+  },
+  "plans": {
+    "sector": {
+      "MUNICIPAL": "Secteur public",
+      "CLUB": "Secteur privé"
+    },
+    "level": {
+      "SMALL": "Petit",
+      "BUSINESS": "Affaires",
+      "MULTI_COMPLEX": "Multicomplexe",
+      "ENTERPRISE": "Entreprise"
+    },
+    "levelFor": {
+      "SMALL": "Horaires, pointage et paie de base",
+      "BUSINESS": "Ajoute les opérations, les programmes, le parc de véhicules et l’hiver",
+      "MULTI_COMPLEX": "Ajoute le service RH complet, l’authentification unique et la connexion bancaire",
+      "ENTERPRISE": "Tout, avec le carrefour syndical et des engagements de service"
+    },
+    "core": "Base",
+    "coreIncludes": "Horaires et assistant d’horaire, babillard de quarts, disponibilités et congés, pointage, paie avec dépôt direct et exportations, certifications et règles provinciales, cours, comptes de baigneurs, équité des heures supplémentaires, règles de couverture, travail seul, déclarations de lésion, soutien après un incident, page carrières et notifications. Les outils de sécurité et de confidentialité sont toujours inclus.",
+    "module": {
+      "operations": "Opérations",
+      "programs": "Programmes et inscriptions",
+      "fleetWinter": "Parc de véhicules et opérations hivernales",
+      "hrCompliance": "Conformité RH",
+      "hrSuite": "Suite RH",
+      "benchmarks": "Comparaisons",
+      "sso": "Authentification unique",
+      "bankConnection": "Connexion bancaire",
+      "union": "Carrefour syndical"
+    },
+    "moduleIncludes": {
+      "operations": "Chimie de l’eau et fermetures, rapports d’incident, tableau de l’accueil et rotation sur la plage.",
+      "programs": "Campagnes de programmes, inscription en ligne, services aux membres, abonnements et liste de prix.",
+      "fleetWinter": "Inspections avant départ, permis et heures de service, rappels en cas de tempête et patrouilles hivernales.",
+      "hrCompliance": "Vérifications d’intégration, suivi du personnel, dossiers disciplinaires et dossiers d’adaptation.",
+      "hrSuite": "Soldes de congés, évaluations du rendement, formation, griefs et départs.",
+      "benchmarks": "Comparaisons anonymes avec des organisations semblables.",
+      "sso": "Connexion avec Microsoft Entra ID ou tout fournisseur SAML.",
+      "bankConnection": "Paie approuvée envoyée directement à votre banque par une connexion chiffrée.",
+      "union": "Le carrefour de la section locale : discussions, documents et liste d’ancienneté."
+    },
+    "size": {
+      "1": "Saisonnière ou extérieure",
+      "2": "Standard",
+      "3": "Grand complexe"
+    },
+    "service": {
+      "support": "Soutien par courriel et téléphone",
+      "prioritySupport": "Soutien prioritaire",
+      "successManager": "Gestionnaire de la réussite client",
+      "sla": "Engagement de disponibilité de 99,9 %",
+      "sandbox": "Organisation d’essai",
+      "priceLock": "Prix garanti sur plusieurs années"
+    },
+    "perFacility": "{{price}} par installation / mois",
+    "listFrom": "À partir de {{price}} par installation / mois",
+    "quotedNote": "Prix courant. Indiquez le tarif soumis ci-dessous.",
+    "staffIncluded": "{{count}} employés actifs inclus par installation",
+    "staffUnlimited": "Personnel illimité",
+    "extraStaff": "{{price}} par personne active de plus / mois",
+    "privateCore": "Base : {{price}} / mois avec {{count}} personnes actives, puis {{each}} chacune",
+    "perMonth": "{{price}} / mois"
   }
 }

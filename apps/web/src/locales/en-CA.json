@@ -2063,24 +2063,9 @@
     "accountNew": "Set up billing for {{name}}.",
     "accountSaved": "Billing account saved",
     "plan": "Plan",
-    "plans": {
-      "MUNICIPAL": "Municipal (per facility)",
-      "CLUB": "Private club (per active user)"
-    },
-    "facilityTiers": "Facilities",
-    "tier": "Tier",
     "notBilled": "Not billed",
-    "tiers": {
-      "1": "Tier 1, minor / seasonal ({{price}})",
-      "2": "Tier 2, recreation centre ({{price}})",
-      "3": "Tier 3, major complex ({{price}})"
-    },
     "contractRate": "Contract rate ($/month)",
-    "clubHelp": "$99 a month includes 20 active users (anyone with a shift or punch that month). Each one beyond that:",
     "clubRate": "Per active user ($)",
-    "addOns": "Add-ons",
-    "addOnHr": "HR Compliance (+20%)",
-    "addOnOps": "Operations (+15%)",
     "legalName": "Legal name on invoice",
     "contactName": "Attention",
     "email": "Billing email",
@@ -2099,8 +2084,7 @@
     "internalNotes": "Internal notes",
     "internalNotesHint": "Only FH sees these.",
     "lineDescription": "Description",
-    "addOnUnion": "Union hub",
-    "addOnsLock": "Features from add-ons the organization doesn't have are locked in its app. HR sees them with a lock and a note to contact us.",
+    "addOnsLock": "Whatever the plan doesn't include is locked in the organization's app; HR sees it with a lock and which module would unlock it.",
     "accessTitle": "Access and payment",
     "trialEnds": "Trial: everything on until",
     "trialEndsHint": "Leave empty for no trial.",
@@ -2136,7 +2120,31 @@
     "adjustDate": "Date",
     "adjustReason": "Reason",
     "credited": "Credit note recorded",
-    "writtenOff": "Written off"
+    "writtenOff": "Written off",
+    "chooseLevel": "Plan",
+    "quotedRate": "Quoted rate per standard facility ($/month)",
+    "quotedRateHint": "Leave empty for the list price ({{price}}). Facility sizes scale it.",
+    "includedStaff": "Quoted staff allowance (active people)",
+    "includedStaffHint": "Leave empty for {{count}} per facility.",
+    "facilitySizes": "Facilities",
+    "size": "Size",
+    "included": "Included",
+    "modulesTitle": "Modules",
+    "modulesHelp": "Switch modules on or off, then save. The organization's access changes as soon as you save: new screens appear for their staff, and removed ones lock without deleting anything.",
+    "modulesTrial": "This organization is in a trial, so every feature is on for now. The modules chosen here take over when the trial ends.",
+    "willTurnOn": "Turns on when saved",
+    "willTurnOff": "Turns off when saved",
+    "liveNow": "On in their app",
+    "privateMonthly_one": "Core plus {{count}} module, before tax, at this month's active staff",
+    "privateMonthly_other": "Core plus {{count}} modules, before tax, at this month's active staff",
+    "staffTitle": "Staff this month",
+    "seats": "Staff places added to the plan",
+    "seatsHint": "Billed to the organization every month at {{price}} each, used or not, and added to its allowance. Anyone active beyond that is billed at the same rate as overage.",
+    "staffUsed": "{{active}} active of {{cap}} on the plan",
+    "staffParts": "{{included}} included + {{seats}} added",
+    "staffOver": "{{count}} over the plan: {{amount}} on this month's invoice",
+    "staffUnlimited_one": "{{count}} active person this month. Unlimited staff on this plan.",
+    "staffUnlimited_other": "{{count}} active people this month. Unlimited staff on this plan."
   },
   "people": {
     "title": "People review",
@@ -2732,10 +2740,6 @@
     "title": "Billing",
     "description": "Your plan, your invoices from FlexcityHeadquarters, and paying them.",
     "plan": "Your plan",
-    "planName": {
-      "MUNICIPAL": "Municipal: per facility, unlimited staff",
-      "CLUB": "Private sector: per active person"
-    },
     "stage": {
       "unbilled": "Setting up",
       "trial": "Trial",
@@ -2744,22 +2748,10 @@
       "suspended": "Read-only"
     },
     "trialUntil": "Every feature is on during your trial, until {{date}}.",
-    "base": "Base",
-    "baseIncludes": "Scheduling and the scheduling assistant, shift board, timeclock, payroll export, certifications and provincial rules, swim lessons, headcounts, deck rotation, forecasts, overtime fairness, working alone, care after incidents, and compliance at any minute.",
-    "addOn": {
-      "hr": "HR Compliance",
-      "ops": "Operations",
-      "union": "Union hub"
-    },
-    "addOnIncludes": {
-      "hr": "Onboarding checks (criminal record, vulnerable sector, training), people review, discipline records and accommodation cases.",
-      "ops": "Water chemistry logs and closures, incident reports, and the front-desk status board.",
-      "union": "The union local's own hub: discussions, documents and the seniority list."
-    },
     "notIncluded": "Not in your plan",
     "locked": "Not in your plan",
-    "lockedHint": "Included with the {{addOn}} add-on",
-    "changePlan": "To add or change an add-on, contact us at {{contact}}. Locked screens open as soon as it's added.",
+    "lockedHint": "Included with {{addOn}}",
+    "changePlan": "To change your plan or add a module, contact us at {{contact}}. Locked screens open as soon as it's added.",
     "howToPay": "How to pay",
     "balance": "Owing: {{amount}}",
     "nothingOwing": "Nothing owing. Thank you!",
@@ -2795,7 +2787,10 @@
     "overdue": "An invoice has been overdue since {{since}}. Pay by {{date}} to keep full access; after that the app becomes read-only.",
     "suspendedPay": "Your account is read-only because of an overdue balance. Safety records, clocking in and out, and paying still work. Pay now to restore everything.",
     "suspendedStaff": "Your organization's account is read-only for now. Safety records and clocking in and out still work. HR has been told how to restore it.",
-    "payNow": "Pay now"
+    "payNow": "Pay now",
+    "rate": "{{price}} per standard facility / month",
+    "staff": "Staff: {{text}}",
+    "addStaff": "Active means a shift or punch this month. Growing? Ask us at {{contact}} to add staff places to your plan for a steady monthly amount."
   },
   "rolesPage": {
     "title": "Roles",
@@ -4548,5 +4543,68 @@
     "blocked": "Notifications are blocked for this site. Allow them in your browser or phone settings, then come back here.",
     "unsupported": "This browser can't receive notifications. You'll still see them in the app and by email.",
     "unavailable": "Notifications on devices aren't set up for your organization yet. You'll still see them in the app."
+  },
+  "plans": {
+    "sector": {
+      "MUNICIPAL": "Public sector",
+      "CLUB": "Private sector"
+    },
+    "level": {
+      "SMALL": "Small",
+      "BUSINESS": "Business",
+      "MULTI_COMPLEX": "Multi-complex",
+      "ENTERPRISE": "Enterprise"
+    },
+    "levelFor": {
+      "SMALL": "Core scheduling, timekeeping and payroll",
+      "BUSINESS": "Adds operations, programs, fleet and winter",
+      "MULTI_COMPLEX": "Adds the full HR department, single sign-on and the bank connection",
+      "ENTERPRISE": "Everything, with the union hub and service commitments"
+    },
+    "core": "Core",
+    "coreIncludes": "Scheduling and the scheduling assistant, shift board, availability and time off, timeclock, payroll with direct deposit and payroll exports, certifications and provincial rules, lessons, headcounts, overtime fairness, coverage rules, working alone, injury reports, care after incidents, the careers page and notifications. Security and privacy tools are always included.",
+    "module": {
+      "operations": "Operations",
+      "programs": "Programs and registration",
+      "fleetWinter": "Fleet and winter operations",
+      "hrCompliance": "HR Compliance",
+      "hrSuite": "HR Suite",
+      "benchmarks": "Benchmarks",
+      "sso": "Single sign-on",
+      "bankConnection": "Bank connection",
+      "union": "Union hub"
+    },
+    "moduleIncludes": {
+      "operations": "Water chemistry and closures, incident reports, the front-desk status board and deck rotation.",
+      "programs": "Program campaigns, online sign-up, member services, memberships and the price list.",
+      "fleetWinter": "Pre-trip inspections, licences and hours of service, storm call-outs and winter patrols.",
+      "hrCompliance": "Onboarding checks, people review, discipline records and accommodation cases.",
+      "hrSuite": "Leave balances, performance reviews, training, grievances and offboarding.",
+      "benchmarks": "Anonymous comparisons with similar organizations.",
+      "sso": "Sign-in with Microsoft Entra ID or any SAML provider.",
+      "bankConnection": "Approved payroll sent straight to your bank over an encrypted connection.",
+      "union": "The union local's own hub: discussions, documents and the seniority list."
+    },
+    "size": {
+      "1": "Seasonal or outdoor",
+      "2": "Standard",
+      "3": "Major complex"
+    },
+    "service": {
+      "support": "Email and phone support",
+      "prioritySupport": "Priority support",
+      "successManager": "Customer success manager",
+      "sla": "99.9% uptime commitment",
+      "sandbox": "Test organization",
+      "priceLock": "Multi-year price lock"
+    },
+    "perFacility": "{{price}} per facility / month",
+    "listFrom": "From {{price}} per facility / month",
+    "quotedNote": "List price. Set the quoted rate below.",
+    "staffIncluded": "{{count}} active staff included per facility",
+    "staffUnlimited": "Unlimited staff",
+    "extraStaff": "{{price}} per extra active person / month",
+    "privateCore": "Core: {{price}} / month with {{count}} active people, then {{each}} each",
+    "perMonth": "{{price}} / month"
   }
 }

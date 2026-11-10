@@ -17,14 +17,16 @@ import type { PadAgreement } from '@/lib/books';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
+import { StaffMeter, type StaffUsage } from '@/components/platform/BillingPanel';
+import { type Catalog, MODULES, type Module, type PlanLevel, cents } from '@/lib/plans';
 
-type AddOn = 'hr' | 'ops' | 'union';
 interface InvoiceRow { id: string; number: string | null; status: string; periodStart: string; periodEnd: string; issueDate: string | null; dueDate: string | null; totalCents: number; paidCents: number; balanceCents: number }
 interface InvoiceDetail extends InvoiceRow { subtotalCents: number; taxLines: Array<{ name: string; rate: string; amountCents: number }>; lines: Array<{ description: string; quantity: number; amountCents: number }>; payments: Array<{ amountCents: number; receivedOn: string; method: string }>; poNumber: string | null }
 interface Billing {
   state: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; balanceCents: number; overdueCents: number; overdueSince: string | null; suspendsOn: string | null; trialEndsAt: string | null };
-  plan: { legalName?: string; plan: 'MUNICIPAL' | 'CLUB'; addOns: Record<AddOn, boolean>; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
-  addOnFeatures: Record<AddOn, string[]>;
+  plan: { legalName?: string; plan: 'MUNICIPAL' | 'CLUB'; level: PlanLevel; rateCents: number | null; modules: Module[]; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
+  catalog: Catalog;
+  staff: StaffUsage | null;
   invoices: InvoiceRow[];
   payment: { online: boolean; remittance: string; payee: string; contact: string };
   pad?: { agreement: PadAgreement | null; terms: string[] };
@@ -42,7 +44,7 @@ export default function BillingPage() {
   const { run, busy } = useAction();
   const [open, setOpen] = useState<string | null>(null);
   const detail = useQuery<InvoiceDetail>(open ? `/api/billing/invoices/${open}` : null);
-  const [unlock, setUnlock] = useState<AddOn | null>(null);
+  const [unlock, setUnlock] = useState<Module | null>(null);
   const money = (c: number) => new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'CAD' }).format(c / 100);
   const date = (d: string | null) => (d ? dateFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
 
@@ -55,7 +57,7 @@ export default function BillingPage() {
     }
     if (p.get('cancelled')) toast(t('billingPage.cancelled'), 'warn');
     const u = p.get('unlock');
-    if (u === 'hr' || u === 'ops' || u === 'union') setUnlock(u);
+    if (u && (MODULES as string[]).includes(u)) setUnlock(u as Module);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -78,25 +80,41 @@ export default function BillingPage() {
               <CardBody className="grid gap-4 pt-2 text-small">
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusPill tone={STAGE_TONE[b.state.stage]}>{t(`billingPage.stage.${b.state.stage}`)}</StatusPill>
-                  {b.plan ? <span className="font-semibold">{t(`billingPage.planName.${b.plan.plan}`)}</span> : null}
+                  {b.plan ? <span className="font-semibold">{b.plan.plan === 'MUNICIPAL' ? `${t('plans.sector.MUNICIPAL')} · ${t(`plans.level.${b.plan.level}`)}` : t('plans.sector.CLUB')}</span> : null}
                 </div>
+                {b.plan?.plan === 'MUNICIPAL' && b.plan.rateCents !== null ? (
+                  <p className="text-caption text-muted">
+                    {t('billingPage.rate', { price: cents(b.plan.rateCents, i18n.language) })} ·{' '}
+                    {(() => {
+                      const pl = b.catalog.public[b.plan.level];
+                      return pl.staffPerFacility === null ? t('plans.staffUnlimited') : `${t('plans.staffIncluded', { count: pl.staffPerFacility })}, ${t('plans.extraStaff', { price: cents(pl.extraStaffCents, i18n.language, false) })}`;
+                    })()}
+                  </p>
+                ) : null}
+                {b.staff ? (
+                  <div className="rounded-xl bg-surface p-3">
+                    <p className="mb-2 text-caption font-semibold uppercase tracking-wide text-muted">{t('billing.staffTitle')}</p>
+                    <StaffMeter staff={b.staff} lng={i18n.language} />
+                    {b.staff.unlimited ? null : <p className="mt-2 text-caption text-muted">{t('billingPage.addStaff', { contact: b.payment.contact })}</p>}
+                  </div>
+                ) : null}
                 {b.state.trialEndsAt ? <p>{t('billingPage.trialUntil', { date: date(b.state.trialEndsAt.slice(0, 10)) })}</p> : null}
                 {b.state.stage === 'overdue' ? <p className="font-semibold text-warn">{t('billingPage.overdue', { since: date(b.state.overdueSince), date: date(b.state.suspendsOn) })}</p> : null}
                 {b.state.stage === 'suspended' ? <p className="font-semibold text-danger">{t('billingPage.suspendedPay')}</p> : null}
                 <ul className="grid gap-3">
                   <li className="flex gap-2">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
-                    <span><span className="font-semibold">{t('billingPage.base')}</span><span className="block text-caption text-muted">{t('billingPage.baseIncludes')}</span></span>
+                    <span><span className="font-semibold">{t('plans.core')}</span><span className="block text-caption text-muted">{t('plans.coreIncludes')}</span></span>
                   </li>
-                  {(['hr', 'ops', 'union'] as const).map((k) => {
-                    const owned = !b.plan || b.plan.addOns[k] || b.state.stage === 'trial';
+                  {MODULES.map((k) => {
+                    const owned = !b.plan || b.state.stage === 'trial' || (b.plan.plan === 'MUNICIPAL' ? b.catalog.public[b.plan.level].modules.includes(k) || b.plan.modules.includes(k) : b.plan.modules.includes(k));
                     return (
                       <li key={k} className={`flex gap-2 rounded-xl ${unlock === k ? 'bg-brand/10 p-2' : ''}`}>
                         {owned ? <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" /> : <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />}
                         <span>
-                          <span className="font-semibold">{t(`billingPage.addOn.${k}`)}</span>
+                          <span className="font-semibold">{t(`plans.module.${k}`)}</span>
                           {owned ? null : <span className="ml-2 text-caption text-muted">{t('billingPage.notIncluded')}</span>}
-                          <span className="block text-caption text-muted">{t(`billingPage.addOnIncludes.${k}`)}</span>
+                          <span className="block text-caption text-muted">{t(`plans.moduleIncludes.${k}`)}</span>
                         </span>
                       </li>
                     );
