@@ -1009,7 +1009,8 @@
       "rest.weeklyConsecutiveHours": "Repos hebdomadaire (h)",
       "vacation.tiers": "Paliers d'indemnité de vacances",
       "statutoryHoliday.workedMultiplier": "Multiplicateur, travail un jour férié"
-    }
+    },
+    "logoUploaded": "Le logo téléversé de votre organisation est utilisé. Collez un nouveau lien https seulement pour le remplacer."
   },
   "jobs": {
     "title": "Offres d'emploi",

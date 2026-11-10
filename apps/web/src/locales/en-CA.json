@@ -1009,7 +1009,8 @@
       "rest.weeklyConsecutiveHours": "Weekly rest (h)",
       "vacation.tiers": "Vacation pay tiers",
       "statutoryHoliday.workedMultiplier": "Stat holiday worked multiplier"
-    }
+    },
+    "logoUploaded": "Your organization’s uploaded logo is in use. Paste a new https link only to replace it."
   },
   "jobs": {
     "title": "Job postings",

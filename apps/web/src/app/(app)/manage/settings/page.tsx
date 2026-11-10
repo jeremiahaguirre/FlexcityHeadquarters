@@ -103,6 +103,8 @@ function Organization({ s, reload }: Props) {
   const { t } = useTranslation();
   const { run, busy } = useAction();
   const o = s.organization;
+  // Logos uploaded in the Dev console live on our own server, not at an https link.
+  const uploaded = !!o.logoUrl && !o.logoUrl.startsWith('https://');
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -113,7 +115,8 @@ function Organization({ s, reload }: Props) {
           method: 'PATCH',
           body: {
             name: str(f, 'name'),
-            logoUrl: str(f, 'logoUrl'),
+            // An uploaded logo (from the Dev console) stays unless a new link is typed.
+            ...(uploaded && !str(f, 'logoUrl') ? {} : { logoUrl: str(f, 'logoUrl') }),
             themeColors: { primary: str(f, 'primary') },
             defaultLocale: str(f, 'locale'),
             payWeekStartDay: num(f, 'payWeek'),
@@ -167,7 +170,7 @@ function Organization({ s, reload }: Props) {
             )}
           </Field>
         </div>
-        <Field label={t('settings.logoUrl')} hint={t('settings.logoUrlHint')}>{(p) => <Input {...p} name="logoUrl" type="url" placeholder="https://" defaultValue={o.logoUrl ?? ''} />}</Field>
+        <Field label={t('settings.logoUrl')} hint={uploaded ? t('settings.logoUploaded') : t('settings.logoUrlHint')}>{(p) => <Input {...p} name="logoUrl" type="url" placeholder="https://" defaultValue={uploaded ? '' : (o.logoUrl ?? '')} />}</Field>
         <Button type="submit" className="justify-self-start" loading={busy === 'org'}>
           {t('common.save')}
         </Button>
