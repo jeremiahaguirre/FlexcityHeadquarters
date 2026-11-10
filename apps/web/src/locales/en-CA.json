@@ -1692,7 +1692,8 @@
       "TOO_LARGE": "Résumés can be up to 5 MB.",
       "TOO_MANY_ATTEMPTS": "Too many applications from here. Try again later.",
       "ERROR": "Your application couldn't be sent. Please try again."
-    }
+    },
+    "notesSaveHint": "Saved when you leave the box."
   },
   "union": {
     "title": "Union hub",

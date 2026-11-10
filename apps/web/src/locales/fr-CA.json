@@ -1692,7 +1692,8 @@
       "TOO_LARGE": "Le CV peut faire jusqu’à 5 Mo.",
       "TOO_MANY_ATTEMPTS": "Trop de candidatures d’ici. Réessayez plus tard.",
       "ERROR": "Votre candidature n’a pas pu être envoyée. Réessayez."
-    }
+    },
+    "notesSaveHint": "Enregistrées quand vous quittez la zone."
   },
   "union": {
     "title": "Espace syndical",

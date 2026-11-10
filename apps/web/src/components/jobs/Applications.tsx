@@ -94,12 +94,12 @@ export function ApplicationsDialog({ job, onClose }: { job: { id: string; title:
                 {a.resume ? <Button size="sm" variant="secondary" icon={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void apiDownload(`/api/applications/${a.id}/resume`).then((r) => r.ok && saveBlob(r.blob, a.resume!.name))}>{t('jobs.resumeDownload')}</Button> : null}
                 {a.status !== 'HIRED' ? (
                   <>
-                    <Select aria-label={t('jobs.stage')} value={a.status} disabled={busy === a.id} onChange={(e) => void update(a.id, { status: e.target.value })} className="w-40">{STATUSES.map((s) => <option key={s} value={s}>{t(`jobs.appStatus.${s}`)}</option>)}</Select>
+                    <Field label={t('jobs.stage')} className="w-48">{(f) => <Select {...f} value={a.status} disabled={busy === a.id} onChange={(e) => void update(a.id, { status: e.target.value })}>{STATUSES.map((s) => <option key={s} value={s}>{t(`jobs.appStatus.${s}`)}</option>)}</Select>}</Field>
                     <Button size="sm" icon={<UserPlus className="h-4 w-4" aria-hidden="true" />} onClick={() => setHiring(a)}>{t('jobs.hire')}</Button>
                   </>
                 ) : null}
               </div>
-              <Textarea aria-label={t('jobs.notes')} defaultValue={a.notes ?? ''} placeholder={t('jobs.notesPlaceholder')} rows={2} onBlur={(e) => { if (e.target.value !== (a.notes ?? '')) void update(a.id, { notes: e.target.value || null }); }} />
+              <Field label={t('jobs.notes')} hint={t('jobs.notesSaveHint')}>{(f) => <Textarea {...f} defaultValue={a.notes ?? ''} placeholder={t('jobs.notesPlaceholder')} rows={2} onBlur={(e) => { if (e.target.value !== (a.notes ?? '')) void update(a.id, { notes: e.target.value || null }); }} />}</Field>
             </li>
           ))}
         </ul>
