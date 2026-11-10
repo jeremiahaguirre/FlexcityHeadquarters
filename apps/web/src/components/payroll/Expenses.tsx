@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { FileInput } from '@/components/ui/FileInput';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
@@ -112,7 +113,7 @@ export function MyExpenses() {
                 <>
                   <Field label={t('expenses.amount')}>{(f) => <Input {...f} type="number" min={0.01} step={0.01} value={l.amount} onChange={(e) => set(i, { amount: e.target.value })} required inputMode="decimal" />}</Field>
                   <Field label={t('expenses.salesTax')}>{(f) => <Input {...f} type="number" min={0} step={0.01} value={l.salesTax} onChange={(e) => set(i, { salesTax: e.target.value })} inputMode="decimal" />}</Field>
-                  <Field label={t('expenses.receipt')} hint={l.receipt?.fileName}>{(f) => <Input {...f} type="file" accept="application/pdf,image/png,image/jpeg,image/webp" capture="environment" onChange={(e) => attach(i, e.target.files?.[0])} />}</Field>
+                  <Field label={t('expenses.receipt')}>{(f) => <FileInput {...f} accept="application/pdf,image/png,image/jpeg,image/webp" fileName={l.receipt?.fileName} onFile={(file) => attach(i, file)} />}</Field>
                 </>
               )}
               {lines.length > 1 ? <Button size="sm" variant="ghost" className="justify-self-start sm:col-span-2" icon={<Trash2 className="h-4 w-4" aria-hidden="true" />} onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}>{t('expenses.removeLine')}</Button> : null}

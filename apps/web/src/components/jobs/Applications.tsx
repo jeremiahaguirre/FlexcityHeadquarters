@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { FileInput } from '@/components/ui/FileInput';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
@@ -56,7 +57,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       </div>
       <Field label={t('jobs.certs')} hint={t('jobs.certsHint')}>{(p) => <Input {...p} name="certs" maxLength={1000} />}</Field>
       <Field label={t('jobs.message')}>{(p) => <Textarea {...p} name="message" maxLength={4000} rows={4} />}</Field>
-      <Field label={t('jobs.resume')} hint={t('jobs.resumeHint')}>{(p) => <Input {...p} type="file" accept="application/pdf" onChange={(e) => pick(e.target.files?.[0])} />}</Field>
+      <Field label={t('jobs.resume')} hint={t('jobs.resumeHint')}>{(p) => <FileInput {...p} accept="application/pdf" onFile={pick} />}</Field>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       <label className="flex items-start gap-2 text-small text-ink"><input type="checkbox" name="consent" required className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" /><span>{t('jobs.consent')}</span></label>
       {error ? <p role="alert" className="text-small text-danger">{error}</p> : null}

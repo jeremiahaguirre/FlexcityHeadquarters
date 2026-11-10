@@ -125,7 +125,10 @@
     "ok": "OK",
     "choose": "Choose…",
     "optional": "Optional.",
-    "edit": "Edit"
+    "edit": "Edit",
+    "chooseFile": "Choose a file",
+    "chooseOther": "Choose another",
+    "noFile": "No file chosen"
   },
   "forgot": {
     "title": "Reset your password",

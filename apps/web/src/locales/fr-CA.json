@@ -125,7 +125,10 @@
     "ok": "OK",
     "choose": "Choisir…",
     "optional": "Facultatif.",
-    "edit": "Modifier"
+    "edit": "Modifier",
+    "chooseFile": "Choisir un fichier",
+    "chooseOther": "En choisir un autre",
+    "noFile": "Aucun fichier choisi"
   },
   "forgot": {
     "title": "Réinitialiser votre mot de passe",
