@@ -707,6 +707,7 @@ payrollRouter.post(
     const out = await withTenant(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
       requirePasskey(a, settings);
+      if (!(await tx.user.findUnique({ where: { id: userId }, select: { id: true } }))) throw notFound('Person');
       const f = await roeFigures(tx, userId);
       if (!f.periods.length) throw badRequest('This person has no approved pay in the last 53 weeks.');
       const tenant = await tx.tenant.findFirstOrThrow({ select: { name: true } });
@@ -751,6 +752,7 @@ payrollRouter.get(
     const userId = uuid.parse(req.params.userId);
     res.json(
       await withTenant(a.tenantId, async (tx) => {
+        if (!(await tx.user.findUnique({ where: { id: userId }, select: { id: true } }))) throw notFound('Person');
         await assertUserInScope(tx, a, userId);
         return roeFigures(tx, userId);
       }),
