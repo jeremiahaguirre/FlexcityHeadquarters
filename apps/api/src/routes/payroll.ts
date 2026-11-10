@@ -14,7 +14,8 @@ import { type AuthContext, authOf, requireFeature, requirePermission, requireRec
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
-import { type PayrollSettings, approveRun, buildRun, depositFile, readSettings, runInput, sealReturnsAccount } from '../services/payroll/payRuns.js';
+import { type BankLink, checkPgpKey, linkView, normalizeFingerprint, sealCredential, testBankLink } from '../services/payroll/bankLink.js';
+import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, roeFigures, t4s } from '../services/payroll/yearEnd.js';
 import { h } from './context.js';
@@ -113,6 +114,7 @@ payrollRouter.get(
       if (!run) throw notFound('Pay run');
       await assertRunInScope(tx, a, run.departmentId);
       const statements = await tx.payStatement.findMany({ where: { payRunId: id }, orderBy: { net: 'desc' } });
+      const transmissions = await tx.payTransmission.findMany({ where: { payRunId: id }, orderBy: { createdAt: 'desc' } });
       const [users, departments] = await Promise.all([
         tx.user.findMany({ where: { id: { in: statements.map((s) => s.userId) } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true } }),
         tx.department.findMany({ select: { id: true, name: true, nameFr: true } }),
@@ -129,6 +131,7 @@ payrollRouter.get(
       }
       return {
         run: runView(run),
+        transmissions: transmissions.map((t) => ({ id: t.id, at: t.createdAt, fileName: t.fileName, status: t.status, error: t.error, encrypted: t.encrypted, sha256: t.sha256 })),
         departments,
         byDepartment: [...byDepartment.values()].map((d) => ({ ...d, gross: Math.round(d.gross * 100) / 100, net: Math.round(d.net * 100) / 100, employerCost: Math.round(d.employerCost * 100) / 100 })),
         statements: statements.map((s) => {
@@ -173,9 +176,11 @@ payrollRouter.post(
       await assertRunInScope(tx, a, r.departmentId);
       const approved = await approveRun(tx, a.tenantId, id, a.userId, settings);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.approve', entity: 'PayRun', entityId: id, after: approved.totals as object });
-      return approved;
+      return { approved, settings };
     });
-    res.json(runView(run));
+    // Connected banks can receive the file the moment a run is approved.
+    const transmission = run.settings.bank?.autoSend ? await send(a, id, run.settings).catch((e: Error) => ({ status: 'FAILED' as const, error: e.message })) : null;
+    res.json({ ...runView(run.approved), transmission });
   }),
 );
 
@@ -198,6 +203,110 @@ payrollRouter.get(
     });
     res.setHeader('X-Deposit-Sha256', out.sha256);
     res.type('text/plain').attachment(`deposit-${String(out.fileCreationNumber).padStart(4, '0')}.txt`).send(out.file);
+  }),
+);
+
+/** Builds the file in one transaction, sends it outside it, and records the attempt in another. */
+async function send(a: AuthContext, runId: string, settings: PayrollSettings) {
+  const prepared = await withTenant(a.tenantId, (tx) => prepareBankFile(tx, a.tenantId, runId, settings));
+  const result = await sendToBank(a.tenantId, runId, a.userId, settings, prepared, (data) =>
+    withTenant(a.tenantId, async (tx) => {
+      await tx.payTransmission.create({ data });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: data.status === 'SENT' ? 'payroll.bank.sent' : 'payroll.bank.failed', entity: 'PayRun', entityId: runId, after: { fileName: data.fileName, sha256: data.sha256, encrypted: data.encrypted, error: data.error } });
+    }),
+  );
+  return result;
+}
+
+payrollRouter.post(
+  '/payroll/runs/:id/send',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const settings = await withTenant(a.tenantId, async (tx) => {
+      const s = await settingsOf(tx);
+      requirePasskey(a, s);
+      const r = await tx.payRun.findUnique({ where: { id } });
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      return s;
+    });
+    const out = await send(a, id, settings);
+    res.status(out.status === 'SENT' ? 200 : 502).json(out);
+  }),
+);
+
+// ------------------------------------------------------------- Bank connection
+payrollRouter.put(
+  '/payroll/bank-connection',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const b = z
+      .object({
+        host: z.string().trim().min(3).max(253).regex(/^[A-Za-z0-9.-]+$/, 'Enter the bank’s server name, e.g. sftp.yourbank.com.'),
+        port: z.number().int().min(1).max(65535).default(22),
+        username: z.string().trim().min(1).max(100),
+        remoteDir: z.string().trim().min(1).max(200).startsWith('/'),
+        hostKeySha256: z.string().trim().regex(/^(SHA256:)?[A-Za-z0-9+/]{43}=?$/, 'Paste the server’s SHA256 fingerprint from your bank, e.g. SHA256:abc…'),
+        pgpPublicKey: z.string().trim().max(20_000).nullable().optional(),
+        autoSend: z.boolean().default(false),
+        password: z.string().min(1).max(200).optional(),
+        privateKey: z.string().min(50).max(20_000).optional(),
+      })
+      .parse(req.body);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const settings = await settingsOf(tx);
+      requirePasskey(a, settings);
+      const prev = settings.bank;
+      const secret = b.privateKey ?? b.password;
+      if (!secret && !prev) throw new HttpError(400, 'BANK_CREDENTIAL', 'Enter the password or private key your bank gave you.');
+      const link: BankLink = {
+        host: b.host,
+        port: b.port,
+        username: b.username,
+        remoteDir: b.remoteDir,
+        hostKeySha256: normalizeFingerprint(b.hostKeySha256),
+        autoSend: b.autoSend,
+        ...(b.pgpPublicKey ? { pgpPublicKey: b.pgpPublicKey, pgpFingerprint: await checkPgpKey(b.pgpPublicKey) } : {}),
+        credentialKind: secret ? (b.privateKey ? 'privateKey' : 'password') : prev!.credentialKind,
+        credential: secret ? await sealCredential(a.tenantId, secret) : prev!.credential,
+      };
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify({ ...settings, bank: link })) } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank_connection', entity: 'Tenant', entityId: a.tenantId, after: { ...linkView(link), credentialChanged: !!secret } });
+      return link;
+    });
+    res.json(linkView(out));
+  }),
+);
+
+payrollRouter.delete(
+  '/payroll/bank-connection',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    await withTenant(a.tenantId, async (tx) => {
+      const { bank: _gone, ...rest } = await settingsOf(tx);
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify(rest)) } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank_connection.remove', entity: 'Tenant', entityId: a.tenantId });
+    });
+    res.status(204).end();
+  }),
+);
+
+payrollRouter.post(
+  '/payroll/bank-connection/test',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const settings = await withTenant(a.tenantId, settingsOf);
+    if (!settings.bank) throw conflict('BANK_NOT_CONNECTED', 'Connect your bank first.');
+    res.json(await testBankLink(a.tenantId, settings.bank));
   }),
 );
 
@@ -423,14 +532,15 @@ payrollRouter.get(
 );
 
 // ------------------------------------------------------------- Settings
-const settingsView = (s: PayrollSettings) => ({ ...s, returnsAccount: s.returnsAccount ? `••••${s.returnsAccount.last4}` : null, twoPersonApproval: s.twoPersonApproval !== false, requirePasskey: s.requirePasskey !== false });
+const settingsView = ({ bank, ...s }: PayrollSettings) => ({ ...s, bank: linkView(bank), returnsAccount: s.returnsAccount ? `••••${s.returnsAccount.last4}` : null, twoPersonApproval: s.twoPersonApproval !== false, requirePasskey: s.requirePasskey !== false });
 
 payrollRouter.get(
   '/payroll/settings',
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    res.json(settingsView(await withTenant(a.tenantId, settingsOf)));
+    const out = await withTenant(a.tenantId, async (tx) => ({ settings: await settingsOf(tx), payWeekStartDay: (await tx.tenant.findFirstOrThrow({ select: { payWeekStartDay: true } })).payWeekStartDay }));
+    res.json({ ...settingsView(out.settings), payWeekStartDay: out.payWeekStartDay });
   }),
 );
 

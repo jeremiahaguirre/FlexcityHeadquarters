@@ -2192,6 +2192,7 @@ model PayRun {
   depositFileSha256  String?
   createdAt          DateTime       @default(now()) @db.Timestamptz(3)
   statements         PayStatement[]
+  transmissions      PayTransmission[]
 
   @@index([tenantId, periodStart])
 }
@@ -2241,4 +2242,27 @@ model PayrollTaxTable {
   updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([year, jurisdiction])
+}
+
+enum TransmissionStatus {
+  SENT
+  FAILED
+}
+
+/// Every attempt to send a pay run's deposit file to the city's bank.
+model PayTransmission {
+  id         String             @id @default(uuid()) @db.Uuid
+  tenantId   String             @db.Uuid
+  payRunId   String             @db.Uuid
+  sentById   String?            @db.Uuid
+  method     String
+  fileName   String
+  sha256     String
+  encrypted  Boolean
+  status     TransmissionStatus
+  error      String?
+  createdAt  DateTime           @default(now()) @db.Timestamptz(3)
+  payRun     PayRun             @relation(fields: [payRunId], references: [id], onDelete: Cascade)
+
+  @@index([payRunId])
 }

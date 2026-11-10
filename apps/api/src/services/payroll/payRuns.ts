@@ -15,6 +15,7 @@ import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
 import { notify } from '../notifications/notifier.js';
 import { accountNumber } from './bank.js';
+import { type BankLink, encryptForBank, uploadToBank } from './bankLink.js';
 import { type Payment, buildCpa005 } from './cpa005.js';
 import { runPayroll } from './payrollRun.js';
 import { type Deductions, type YearToDate, calculateDeductions } from './tax.js';
@@ -35,6 +36,8 @@ export interface PayrollSettings {
   twoPersonApproval?: boolean;
   /** Approving and downloading deposit files needs a passkey sign-in (default on). */
   requirePasskey?: boolean;
+  /** Host-to-host connection to the city's bank. */
+  bank?: BankLink;
 }
 
 export const readSettings = (raw: unknown): PayrollSettings => (raw && typeof raw === 'object' ? (raw as PayrollSettings) : {});
@@ -294,4 +297,46 @@ export async function depositFile(tx: Tx, tenantId: string, runId: string, setti
   const sha256 = createHash('sha256').update(file).digest('hex');
   await tx.payRun.update({ where: { id: runId }, data: { fileCreationNumber: fcn, depositFileSha256: sha256 } });
   return { file, sha256, fileCreationNumber: fcn, count: payments.length, totalCents: payments.reduce((s, p) => s + p.amountCents, 0) };
+}
+
+/** Business days (Mon–Fri) from today until the pay date. Banks want payroll files a day or two ahead. */
+export function businessDaysUntil(payDate: string, today = new Date().toISOString().slice(0, 10)): number {
+  let n = 0;
+  for (let d = new Date(`${today}T12:00:00Z`); d.toISOString().slice(0, 10) < payDate; d = new Date(d.getTime() + 86_400_000)) {
+    const dow = new Date(d.getTime() + 86_400_000).getUTCDay();
+    if (dow !== 0 && dow !== 6) n += 1;
+  }
+  return n;
+}
+
+/** Builds (and if the bank asks, encrypts) the file to send. Inside a transaction; sends nothing. */
+export async function prepareBankFile(tx: Tx, tenantId: string, runId: string, settings: PayrollSettings) {
+  if (!settings.bank) throw conflict('BANK_NOT_CONNECTED', 'Connect your bank in payroll settings first, or download the deposit file.');
+  if (await tx.payTransmission.findFirst({ where: { payRunId: runId, status: 'SENT' } })) throw conflict('ALREADY_SENT', 'This pay run’s deposit file was already sent to the bank. Sending it again could pay people twice.');
+  const f = await depositFile(tx, tenantId, runId, settings);
+  const run = await tx.payRun.findUniqueOrThrow({ where: { id: runId }, select: { payDate: true } });
+  const encrypted = !!settings.bank.pgpPublicKey;
+  const base = `FH-PAY-${String(f.fileCreationNumber).padStart(4, '0')}-${run.payDate.toISOString().slice(0, 10).replace(/-/g, '')}.txt`;
+  const content = encrypted ? await encryptForBank(f.file, settings.bank.pgpPublicKey!) : Buffer.from(f.file, 'latin1');
+  return { ...f, fileName: encrypted ? `${base}.pgp` : base, content, encrypted, payDate: run.payDate.toISOString().slice(0, 10) };
+}
+
+/** Sends a prepared file and records the attempt, sent or failed. */
+export async function sendToBank(
+  tenantId: string,
+  runId: string,
+  sentById: string | null,
+  settings: PayrollSettings,
+  prepared: Awaited<ReturnType<typeof prepareBankFile>>,
+  record: (data: { tenantId: string; payRunId: string; sentById: string | null; method: string; fileName: string; sha256: string; encrypted: boolean; status: 'SENT' | 'FAILED'; error: string | null }) => Promise<unknown>,
+) {
+  try {
+    await uploadToBank(tenantId, settings.bank!, prepared.fileName, prepared.content);
+    await record({ tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted, status: 'SENT', error: null });
+    return { status: 'SENT' as const, fileName: prepared.fileName, deposits: prepared.count, totalCents: prepared.totalCents, late: businessDaysUntil(prepared.payDate) < 2 };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await record({ tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted, status: 'FAILED', error: message.slice(0, 500) });
+    return { status: 'FAILED' as const, fileName: prepared.fileName, error: message };
+  }
 }
