@@ -877,7 +877,7 @@
     "exported": "Téléchargé. Révisez-le avant de le communiquer; les renseignements sur des tiers peuvent devoir être retranchés."
   },
   "payroll": {
-    "title": "Exportation de la paie",
+    "title": "Paie",
     "description": "Heures approuvées, heures supplémentaires, jours fériés et indemnités de vacances, en CSV pour votre système de paie.",
     "period": "Période de paie",
     "periodHelp": "Seuls les pointages approuvés sont inclus. Vérifiez d'abord les pointages ouverts dans Approbations.",

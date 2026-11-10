@@ -229,7 +229,8 @@ async function capture(browser, role) {
   page.on('response', async (res) => {
     const u = new URL(res.url());
     if (!u.pathname.startsWith('/api/') || res.request().method() !== 'GET' || res.status() !== 200) return;
-    if (u.pathname.startsWith('/api/notifications/stream') || u.pathname.startsWith('/api/payroll')) return;
+    // Never record files or secrets: the bank deposit file, payroll register, CSV exports or a full SIN.
+    if (u.pathname.startsWith('/api/notifications/stream') || /\/(deposit-file|register\.csv|export|sin)$/.test(u.pathname)) return;
     try {
       responses[u.pathname + u.search] = await res.json();
     } catch {
@@ -269,6 +270,17 @@ async function capture(browser, role) {
     if (await page.locator('main [role=radiogroup][aria-label="Department"]').count()) {
       await page.locator('main [role=radiogroup][aria-label="Department"] [role=radio]').first().click().catch(() => {});
       await page.waitForTimeout(700);
+    }
+    if (href === '/manage/payroll') {
+      // Open a pay run and one person's statement, then the other tabs.
+      await page.locator('main [role=radiogroup] [role=radio]').first().click().catch(() => {});
+      await page.waitForTimeout(800);
+      await page.locator('main table button').first().click().catch(() => {});
+      await page.waitForTimeout(1500);
+      await page.locator('dialog[open] table button').first().click().catch(() => {});
+      await page.waitForTimeout(1200);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
     }
     if (href === '/union') {
       await page.locator('main [role=radiogroup] [role=radio]').first().click().catch(() => {});

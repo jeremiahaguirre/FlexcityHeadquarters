@@ -877,7 +877,7 @@
     "exported": "Downloaded. Review it before release; third-party information may need severing."
   },
   "payroll": {
-    "title": "Payroll export",
+    "title": "Payroll",
     "description": "Approved hours, overtime, stat holiday and vacation pay, as a CSV for your payroll system.",
     "period": "Pay period",
     "periodHelp": "Only approved punches are included. Review open punches in Approvals first.",
