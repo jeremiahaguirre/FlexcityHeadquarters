@@ -80,22 +80,31 @@ export async function customPermissions(tenantId: string, userId: string): Promi
 /**
  * Where a person's supervisory capabilities reach.
  * - HR administrators: every department.
- * - Built-in aquatic roles (supervisor, head lifeguard): the aquatic departments,
- *   or everything in a city that hasn't set up departments yet.
- * - Custom roles: their departments, positions and facilities; an unlimited one reaches everything.
+ * - Everyone else who supervises or manages: the departments HR chose them to
+ *   manage, plus the departments, positions or facilities their custom roles are
+ *   limited to. With none of those they reach no one; only HR sees all departments.
+ * - A city that hasn't set up departments yet keeps the old behaviour: built-in
+ *   leads and unlimited custom roles reach everyone.
  */
-export function scopeOf(builtIn: ReadonlySet<Permission>, access: CustomAccess, ctx: { roles?: readonly string[]; aquaticPositions?: string[] | null } = {}): Scope {
+export function scopeOf(builtIn: ReadonlySet<Permission>, access: CustomAccess, ctx: { roles?: readonly string[]; managed?: { hasDepartments: boolean; positionIds: string[]; aquatic: boolean } } = {}): Scope {
   if (ctx.roles?.includes('HR_ADMIN')) return null;
   const builtInLead = [...builtIn].some((p) => SUPERVISORY.has(p));
-  const aquatic = ctx.aquaticPositions ?? null;
-  if (builtInLead && aquatic === null) return null;
   const leads = access.roles.filter((r) => r.perms.some((p) => SUPERVISORY.has(p)));
-  if (leads.some((r) => !r.positionIds.length && !r.facilityIds.length)) return null;
-  if (!builtInLead && !leads.length) return null;
-  const positionIds = [...new Set([...(builtInLead ? (aquatic!.length ? aquatic! : [NO_POSITION]) : []), ...leads.flatMap((r) => r.positionIds)])];
-  // A built-in aquatic lead works at every facility; facility limits come only from custom roles.
-  const facilityIds = builtInLead ? [] : [...new Set(leads.flatMap((r) => r.facilityIds))];
-  return { positionIds, facilityIds, ...(builtInLead ? { accessRoles: AQUATIC_ACCESS_ROLES } : {}) };
+  if (!builtInLead && !leads.length) return null; // supervises no one: nothing to limit
+  const limited = leads.filter((r) => r.positionIds.length || r.facilityIds.length);
+  if (!ctx.managed?.hasDepartments) {
+    if (builtInLead || limited.length < leads.length) return null;
+    return { positionIds: [...new Set(limited.flatMap((r) => r.positionIds))], facilityIds: [...new Set(limited.flatMap((r) => r.facilityIds))] };
+  }
+  const managed = ctx.managed;
+  const positionIds = [...new Set([...managed.positionIds, ...limited.flatMap((r) => r.positionIds)])];
+  // A facility limit applies only when facilities are all the person was given.
+  const facilityIds = !positionIds.length ? [...new Set(limited.flatMap((r) => r.facilityIds))] : [];
+  return {
+    positionIds: positionIds.length || facilityIds.length ? positionIds : [NO_POSITION],
+    facilityIds,
+    ...(managed.aquatic ? { accessRoles: AQUATIC_ACCESS_ROLES } : {}),
+  };
 }
 
 export function forgetCustomPermissions(tenantId?: string): void {

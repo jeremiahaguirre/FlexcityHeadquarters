@@ -3111,7 +3111,7 @@
     "nameFr": "French name",
     "namePlaceholder": "Water Works",
     "aquatic": "Aquatics department",
-    "aquaticHelp": "Aquatic supervisors and head lifeguards manage the positions in this department and nothing else.",
+    "aquaticHelp": "Its managers also see pool staff who don’t have a position yet.",
     "aquaticPill": "Aquatics",
     "positions": "Positions in this department",
     "noPositions": "Add positions first, then put them in a department.",
@@ -3124,13 +3124,9 @@
     "delete": "Delete",
     "confirmDelete": "Delete this department? Its positions stay, with no department.",
     "managers": "Managed by",
-    "managersHelp": "Pick every role that supervises or manages this department. Those roles see only the departments they manage.",
-    "pickManagers": "Choose management roles",
-    "pickPositions": "Choose positions",
-    "builtInAquatic": "Aquatic supervisors and head lifeguards",
-    "builtIn": "Built-in",
-    "builtInAquaticHint": "Makes this an aquatics department.",
-    "wholeCityHint": "Reaches the whole city today; choosing it here limits it to the departments it manages."
+    "managersHelp": "Pick every supervisor and manager who runs this department; there can be several. They see only the departments they run. HR always sees every department.",
+    "pickManagers": "Choose supervisors and managers",
+    "pickPositions": "Choose positions"
   },
   "multiSelect": {
     "search": "Search",

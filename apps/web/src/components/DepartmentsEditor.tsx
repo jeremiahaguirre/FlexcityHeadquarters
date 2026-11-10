@@ -9,10 +9,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input } from '@/components/ui/Field';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { MultiSelect } from '@/components/ui/MultiSelect';
-import { AQUATIC_MANAGERS, type Department, type Departments } from '@/lib/departments';
+import type { Department, Departments } from '@/lib/departments';
 import { useAction } from '@/lib/useQuery';
 
-export interface DepartmentBody { name: string; nameFr: string | null; aquatic: boolean; positionIds: string[]; managerRoleIds: string[] }
+export interface DepartmentBody { name: string; nameFr: string | null; aquatic: boolean; positionIds: string[]; managerIds: string[] }
 
 /**
  * Departments and the positions in each. Supervisors and managers see only their
@@ -54,14 +54,12 @@ function DepartmentForm({ department, data, save, remove, reload, onCancel }: { 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const managerRoleIds = f.getAll('managers').map(String);
     const body: DepartmentBody = {
       name: String(f.get('name')).trim(),
       nameFr: String(f.get('nameFr') ?? '').trim() || null,
-      // The built-in aquatic leads manage it exactly when it's an aquatics department.
-      aquatic: managerRoleIds.includes(AQUATIC_MANAGERS),
+      aquatic: f.get('aquatic') === 'on',
       positionIds: f.getAll('positions').map(String),
-      managerRoleIds,
+      managerIds: f.getAll('managers').map(String),
     };
     const r = await run(`dept-${key}`, () => save(department?.id ?? null, body), t('departments.saved'));
     if (r !== undefined) await reload();
@@ -91,12 +89,12 @@ function DepartmentForm({ department, data, save, remove, reload, onCancel }: { 
             {...p}
             name="managers"
             placeholder={t('departments.pickManagers')}
-            defaultValue={[...(department?.aquatic ? [AQUATIC_MANAGERS] : []), ...(department?.managerRoleIds ?? [])]}
+            defaultValue={department?.managerIds ?? []}
             options={(data.managerOptions ?? []).map((o) => ({
               value: o.id,
-              label: o.builtIn ? t('departments.builtInAquatic') : name(o),
-              badge: o.builtIn ? t('departments.builtIn') : undefined,
-              hint: o.builtIn ? t('departments.builtInAquaticHint') : o.wholeCity ? t('departments.wholeCityHint') : undefined,
+              label: o.name,
+              // What makes them a manager: their built-in and custom roles.
+              hint: [...o.roles.map((r) => t(`roles.${r}`)), ...o.customRoles.map((r) => name(r))].join(' · '),
             }))}
           />
         )}
@@ -118,6 +116,13 @@ function DepartmentForm({ department, data, save, remove, reload, onCancel }: { 
           />
         )}
       </Field>
+      <label className="flex items-start gap-3 text-small">
+        <input type="checkbox" name="aquatic" defaultChecked={department?.aquatic ?? false} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />
+        <span>
+          <span className="font-semibold">{t('departments.aquatic')}</span>
+          <span className="block text-caption text-muted">{t('departments.aquaticHelp')}</span>
+        </span>
+      </label>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" size="sm" loading={busy === `dept-${key}`}>{department ? t('common.save') : t('departments.create')}</Button>
         {onCancel ? <Button size="sm" variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button> : null}

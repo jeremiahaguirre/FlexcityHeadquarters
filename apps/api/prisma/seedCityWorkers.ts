@@ -28,8 +28,6 @@ export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, pa
       nameFr: 'Chef d’équipe, entretien',
       description: 'Leads the facilities maintenance crew',
       permissions: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'users.read', 'schedule.write', 'timeoff.approve', 'timeclock.review'],
-      // Manages the Water Works department only.
-      scopeDepartmentIds: [waterWorks.id],
     },
   });
   for (const p of [
@@ -41,6 +39,8 @@ export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, pa
     });
     await prisma.userCustomRole.create({ data: { tenantId, userId: u.id, customRoleId: p.role } });
     for (const positionId of p.positions) await prisma.userPosition.create({ data: { tenantId, userId: u.id, positionId } });
+    // HR chose Jess to run Water Works.
+    if (p.role === lead.id) await prisma.departmentManager.create({ data: { tenantId, departmentId: waterWorks.id, userId: u.id } });
   }
   return plant;
 }

@@ -384,6 +384,7 @@ model User {
   onboarding        OnboardingRecord[]
   accommodations    AccommodationCase[]
   refreshTokens    RefreshToken[]
+  managesDepartments DepartmentManager[]
   authTokens       AuthToken[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
 
@@ -478,8 +479,23 @@ model Department {
   createdAt DateTime   @default(now()) @db.Timestamptz(3)
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   positions Position[]
+  managers  DepartmentManager[]
 
   @@unique([tenantId, name])
+}
+
+/// A supervisor or manager HR chose to run a department. A department can have several.
+model DepartmentManager {
+  id           String     @id @default(uuid()) @db.Uuid
+  tenantId     String     @db.Uuid
+  departmentId String     @db.Uuid
+  userId       String     @db.Uuid
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, userId])
+  @@index([userId])
 }
 
 /// Work restrictions from an accommodation or return-to-work plan. Holds the

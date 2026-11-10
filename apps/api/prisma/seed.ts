@@ -126,6 +126,10 @@ async function main() {
         weeklyMaxHours: p.employmentStatus === 'PART_TIME' ? 28 : null,
       },
     });
+    // HR chose the aquatic supervisor and head lifeguard to run Aquatics.
+    if (p.roles.some((r) => r === 'AQUATIC_SUPERVISOR' || r === 'HEAD_LIFEGUARD')) {
+      await prisma.departmentManager.create({ data: { tenantId: tenant.id, departmentId: aquatics.id, userId: u.id } });
+    }
     for (const positionId of p.positions) {
       await prisma.userPosition.create({ data: { tenantId: tenant.id, userId: u.id, positionId } });
       await prisma.payRate.create({ data: { tenantId: tenant.id, userId: u.id, positionId, hourlyRate: positionId === guard.id ? 22.5 : 24.75, effectiveFrom: new Date('2026-01-01') } });

@@ -56,7 +56,7 @@ describe('departments', () => {
 
   it('only HR sets up departments', async () => {
     expect((await call(tok.sup).post('/api/departments', { name: 'Aquatics', aquatic: true, positionIds: [pos.guard] })).status).toBe(403);
-    const a = await call(tok.hr).post('/api/departments', { name: 'Aquatics', aquatic: true, positionIds: [pos.guard] });
+    const a = await call(tok.hr).post('/api/departments', { name: 'Aquatics', aquatic: true, positionIds: [pos.guard], managerIds: [ids.sup, ids.head] });
     const w = await call(tok.hr).post('/api/departments', { name: 'Water Works', positionIds: [pos.water] });
     expect([a.status, w.status]).toEqual([201, 201]);
     dept.aquatics = a.body.id;
@@ -76,6 +76,15 @@ describe('departments', () => {
     // Their department list shows aquatics only.
     const d = (await call(tok.sup).get('/api/departments')).body;
     expect(d.departments.map((x: { name: string }) => x.name)).toEqual(['Aquatics']);
+  });
+
+  it('a supervisor HR hasn’t chosen to run a department sees no one', async () => {
+    const other = await mk(['AQUATIC_SUPERVISOR'], 'sup2');
+    const o = await sign(other, ['AQUATIC_SUPERVISOR']);
+    const people = names((await call(o).get('/api/users')).body);
+    expect(people).not.toContain(ids.guard);
+    expect(people).not.toContain(ids.water);
+    expect((await call(o).post('/api/shifts', shift(pos.guard))).status).toBe(403);
   });
 
   it('a head lifeguard can’t schedule water works either', async () => {
@@ -102,6 +111,15 @@ describe('departments', () => {
     expect(people).toContain(reader);
   });
 
+  it('a custom manager role with no department reaches no one: only HR sees every department', async () => {
+    const role = await call(tok.hr).post('/api/roles', { name: 'Floating Manager', permissions: ['schedule.read', 'users.read', 'discipline.read'] });
+    const who = await mk(['EMPLOYEE'], 'floater');
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: who, customRoleId: role.body.id } });
+    const people = names((await call(await sign(who, ['EMPLOYEE'])).get('/api/users')).body);
+    expect(people).not.toContain(ids.guard);
+    expect(people).not.toContain(ids.water);
+  });
+
   it('HR sees every department and can pick one at a time', async () => {
     const all = names((await call(tok.hr).get('/api/users')).body);
     expect(all).toEqual(expect.arrayContaining([ids.guard, ids.water, ids.casual]));
@@ -119,32 +137,35 @@ describe('departments', () => {
 });
 
 describe('department managers', () => {
-  it('HR picks one or more management roles for a department, and a role with every capability saves', async () => {
+  it('HR chooses several supervisors and managers to run a department, from everyone who can', async () => {
     const catalog = (await call(tok.hr).get('/api/roles')).body.catalog as Record<string, string[]>;
+    // Any type of role, including one with every capability.
     const everything = await call(tok.hr).post('/api/roles', { name: 'City Manager', permissions: Object.values(catalog).flat() });
     expect(everything.status).toBe(201);
-    const parks = await call(tok.hr).post('/api/roles', { name: 'Parks Supervisor', permissions: ['schedule.read', 'users.read', 'schedule.write'] });
-    const crew = await call(tok.hr).post('/api/roles', { name: 'Parks Crew', permissions: ['schedule.read', 'shifts.self'] });
-    // Any number of departments and positions.
+    const parksRole = await call(tok.hr).post('/api/roles', { name: 'Parks Supervisor', permissions: ['schedule.read', 'users.read', 'schedule.write'] });
+    const pat = await mk(['EMPLOYEE'], 'pat');
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: pat, customRoleId: parksRole.body.id } });
+    const options = (await call(tok.hr).get('/api/departments')).body.managerOptions.map((o: { id: string }) => o.id);
+    expect(options).toEqual(expect.arrayContaining([ids.sup, ids.head, pat]));
+    expect(options).not.toContain(ids.guard);
+    expect(options).not.toContain(ids.hr);
+    // Any number of positions, and several managers.
     const positions: string[] = [];
     for (let i = 0; i < 12; i++) positions.push((await owner.position.create({ data: { tenantId: t.tenant.id, name: `Parks Worker ${i}` } })).id);
-    const d = await call(tok.hr).post('/api/departments', { name: 'Parks', positionIds: positions, managerRoleIds: [parks.body.id, everything.body.id] });
+    const d = await call(tok.hr).post('/api/departments', { name: 'Parks', positionIds: positions, managerIds: [pat, ids.sup] });
     expect(d.status).toBe(201);
-    const list = (await call(tok.hr).get('/api/departments')).body;
-    const p = list.departments.find((x: { name: string }) => x.name === 'Parks');
-    expect(p.positions).toHaveLength(12);
-    expect(p.managerRoleIds.sort()).toEqual([parks.body.id, everything.body.id].sort());
-    expect(list.managerOptions.map((o: { name: string }) => o.name)).toEqual(expect.arrayContaining(['Parks Supervisor', 'City Manager']));
-    expect(list.managerOptions.map((o: { name: string }) => o.name)).not.toContain('Parks Crew');
-    // A worker role can't manage a department.
-    expect((await call(tok.hr).put(`/api/departments/${d.body.id}`, { name: 'Parks', positionIds: positions, managerRoleIds: [crew.body.id] })).status).toBe(400);
-    // Taking away a role's only department would widen it to the whole city: refused.
-    const r = await call(tok.hr).put(`/api/departments/${d.body.id}`, { name: 'Parks', positionIds: positions, managerRoleIds: [everything.body.id] });
-    expect(r.status).toBe(409);
-    expect(r.body.code).toBe('ROLE_WOULD_WIDEN');
-    expect((await call(tok.hr).delete(`/api/departments/${d.body.id}`)).status).toBe(409);
-    // Picking the built-in aquatic leads marks the department as aquatics.
-    expect((await call(tok.hr).put(`/api/departments/${d.body.id}`, { name: 'Parks', positionIds: positions, managerRoleIds: ['builtin:aquatic', parks.body.id, everything.body.id] })).status).toBe(200);
-    expect((await call(tok.hr).get('/api/departments')).body.departments.find((x: { name: string }) => x.name === 'Parks').aquatic).toBe(true);
+    const parks = (await call(tok.hr).get('/api/departments')).body.departments.find((x: { name: string }) => x.name === 'Parks');
+    expect(parks.positions).toHaveLength(12);
+    expect(parks.managerIds.sort()).toEqual([pat, ids.sup].sort());
+    // Pat now reaches Parks workers; the aquatic supervisor runs both of their departments.
+    const worker = await mk(['EMPLOYEE'], 'parky', positions[0]);
+    expect(names((await call(await sign(pat, ['EMPLOYEE'])).get('/api/users')).body)).toContain(worker);
+    const supSees = names((await call(tok.sup).get('/api/users')).body);
+    expect(supSees).toEqual(expect.arrayContaining([worker, ids.guard]));
+    // Someone who doesn't supervise can't be chosen.
+    expect((await call(tok.hr).put(`/api/departments/${d.body.id}`, { name: 'Parks', positionIds: positions, managerIds: [ids.guard] })).status).toBe(400);
+    // Taking the supervisor off Parks takes Parks away from them.
+    expect((await call(tok.hr).put(`/api/departments/${d.body.id}`, { name: 'Parks', positionIds: positions, managerIds: [pat] })).status).toBe(200);
+    expect(names((await call(tok.sup).get('/api/users')).body)).not.toContain(worker);
   });
 });

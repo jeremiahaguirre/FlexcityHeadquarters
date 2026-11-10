@@ -3,11 +3,10 @@
 import { useCallback, useState } from 'react';
 
 export interface DepartmentPosition { id: string; name: string; nameFr: string | null; staff: number }
-export interface Department { id: string; name: string; nameFr: string | null; aquatic: boolean; positions: DepartmentPosition[]; managerRoleIds?: string[] }
-/** A role that can manage departments; `builtin:aquatic` stands for the built-in aquatic leads. */
-export interface ManagerOption { id: string; name: string; nameFr: string | null; builtIn: boolean; wholeCity: boolean }
+export interface Department { id: string; name: string; nameFr: string | null; aquatic: boolean; positions: DepartmentPosition[]; managerIds?: string[] }
+/** A supervisor or manager who can be chosen to run a department. */
+export interface ManagerOption { id: string; name: string; roles: string[]; customRoles: Array<{ name: string; nameFr: string | null }> }
 export interface Departments { departments: Department[]; unassigned: DepartmentPosition[]; limited: boolean; managerOptions?: ManagerOption[] }
-export const AQUATIC_MANAGERS = 'builtin:aquatic';
 
 const KEY = 'fh-department-tab';
 
