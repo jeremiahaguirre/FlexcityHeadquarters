@@ -33,6 +33,9 @@ describe('background jobs', () => {
     expect(r.failed).toBe(0);
     expect(mailer.sent.some((m) => m.subject.includes('expires in 30 days'))).toBe(true);
     expect(await owner.emailOutbox.count({ where: { tenantId: t.tenant.id, sentAt: null } })).toBe(0);
+    // Sent emails keep no contents (names, sign-in links) in the database.
+    const sent = await owner.emailOutbox.findMany({ where: { tenantId: t.tenant.id } });
+    expect(sent.every((m) => JSON.stringify(m.params) === '{}')).toBe(true);
   });
 
   it('nudges forgotten clock-outs once', async () => {

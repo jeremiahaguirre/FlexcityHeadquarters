@@ -5,6 +5,7 @@
 import { EventEmitter } from 'node:events';
 import pg from 'pg';
 import { NOTIFY_CHANNEL } from './notifier.js';
+import { logError } from '../../lib/log.js';
 
 export interface LiveSignal {
   tenantId: string;
@@ -30,7 +31,7 @@ export async function startLiveHub(connectionString: string): Promise<() => Prom
     }
   });
   c.on('error', (err) => {
-    console.error('live hub connection error', err);
+    logError('live hub connection error', err);
     client = null;
     setTimeout(() => void startLiveHub(connectionString).catch(() => undefined), 5000);
   });

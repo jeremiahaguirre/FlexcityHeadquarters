@@ -12,6 +12,7 @@ import { platformRouter } from './routes/platform/index.js';
 import { marketingRouter } from './routes/marketing.js';
 import { passkeyAuthRouter } from './routes/passkeys.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
+import { logError } from './lib/log.js';
 
 export function createApp() {
   const app = express();
@@ -51,7 +52,7 @@ export function createApp() {
       res.status(400).json({ code: 'VALIDATION', message: 'Invalid request', details: err.issues });
       return;
     }
-    console.error(err);
+    logError(`${_req.method} ${_req.path}`, err);
     res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong' });
   });
   return app;

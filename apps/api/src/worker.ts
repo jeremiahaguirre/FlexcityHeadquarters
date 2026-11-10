@@ -14,6 +14,7 @@ import { patrolReminders } from './services/winter/patrols.js';
 import { coverageAlerts } from './services/coverage/gaps.js';
 import { injuryReminders } from './routes/injury.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
+import { logError } from './lib/log.js';
 
 const cfg = config();
 const lockClient = new pg.Client({ connectionString: cfg.APP_DATABASE_URL });
@@ -26,9 +27,11 @@ async function exclusive(name: string, fn: () => Promise<unknown>) {
   const started = Date.now();
   try {
     const result = await fn();
-    console.log(`[job] ${name} ok in ${Date.now() - started}ms`, result ?? '');
+    // Counts only: a job's result could otherwise carry people's details into the log.
+    const counts = typeof result === 'number' ? result : result && typeof result === 'object' ? Object.fromEntries(Object.entries(result).filter(([, v]) => typeof v === 'number')) : '';
+    console.log(`[job] ${name} ok in ${Date.now() - started}ms`, counts);
   } catch (err) {
-    console.error(`[job] ${name} failed`, err);
+    logError(`job ${name} failed`, err);
   } finally {
     await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [`fh-job:${name}`]);
   }

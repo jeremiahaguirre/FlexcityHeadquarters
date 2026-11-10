@@ -4,6 +4,7 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { tenantIds, withTenant } from '../../lib/db.js';
+import { maskEmail } from '../../lib/log.js';
 
 export interface Mail {
   to: string;
@@ -15,13 +16,20 @@ export interface Mailer {
   send(mail: Mail): Promise<void>;
 }
 
-/** Development / test transport: prints instead of sending. */
+/**
+ * Development / test transport: notes the send instead of sending. It never
+ * prints the message: subjects and bodies carry names, children's names and
+ * sign-in links (which would let a log reader into the account). A developer
+ * on their own machine can opt in with MAIL_LOG_BODY=1; production never does.
+ */
 export class ConsoleMailer implements Mailer {
   sent: Mail[] = [];
   constructor(private readonly quiet = false) {}
   async send(mail: Mail) {
     this.sent.push(mail);
-    if (!this.quiet) console.log(`[mail] to=${mail.to} subject="${mail.subject}"\n${mail.text}\n`);
+    if (this.quiet) return;
+    const local = process.env.MAIL_LOG_BODY === '1' && process.env.NODE_ENV !== 'production';
+    console.log(local ? `[mail] to=${mail.to} subject="${mail.subject}"\n${mail.text}\n` : `[mail] to=${maskEmail(mail.to)} (${mail.text.length} characters, contents not logged)`);
   }
 }
 
@@ -208,7 +216,13 @@ export async function deliverOutbox(prisma: PrismaClient, mailer: Mailer, batch 
       }
       await withTenant(
         tenantId,
-        (tx) => tx.emailOutbox.update({ where: { id: m.id }, data: error ? { attempts: { increment: 1 }, lastError: error } : { sentAt: new Date(), attempts: { increment: 1 } } }),
+        // Once sent (or given up on), the message's contents are dropped: sign-in links and names
+        // shouldn't sit in the database where anyone with database access could read them.
+        (tx) =>
+          tx.emailOutbox.update({
+            where: { id: m.id },
+            data: error ? { attempts: { increment: 1 }, lastError: error, ...(m.attempts + 1 >= 5 ? { params: {} } : {}) } : { sentAt: new Date(), attempts: { increment: 1 }, params: {}, lastError: null },
+          }),
         { prisma },
       );
     }

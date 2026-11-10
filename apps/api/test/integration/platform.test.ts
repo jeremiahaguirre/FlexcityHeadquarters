@@ -135,3 +135,25 @@ describe('cities', () => {
     expect((await dev().post(`/api/platform/tenants/${id}/import`, { csv })).body).toMatchObject({ created: 0, exists: 1 });
   });
 });
+
+describe('the Dev console sees no one’s personal information', () => {
+  it('shows a city’s setup and counts, never employees’ records', async () => {
+    const tid = existing.tenant.id;
+    const staff = existing.users[0]!;
+    // A city full of sensitive records.
+    await owner.user.update({ where: { id: staff.id }, data: { phone: '250-555-0199', dateOfBirth: new Date('2008-03-14'), employeeNumber: 'EMP-7781' } });
+    await owner.payRate.create({ data: { tenantId: tid, userId: staff.id, positionId: existing.position.id, hourlyRate: 31.37, effectiveFrom: new Date('2026-01-01') } });
+    await owner.grievance.create({ data: { tenantId: tid, number: 1, userId: staff.id, title: 'Harassment complaint about the night lead', filedOn: new Date('2026-10-01'), history: [], createdById: staff.id } });
+    await owner.emailOutbox.create({ data: { tenantId: tid, toEmail: staff.email, template: 'invite', params: { url: 'https://x/reset?token=never-show-this' } } });
+
+    const bodies: string[] = [];
+    for (const path of ['/tenants', `/tenants/${tid}`, `/tenants/${tid}/access`, `/billing/accounts/${tid}`, `/billing/invoices?tenantId=${tid}`, '/billing/summary', '/leads', '/payroll-tax', '/me']) {
+      const r = await dev().get(`/api/platform${path}`);
+      expect(r.status, path).toBeLessThan(500);
+      bodies.push(JSON.stringify(r.body));
+    }
+    const all = bodies.join('\n');
+    for (const secret of ['250-555-0199', '2008-03-14', 'EMP-7781', '31.37', 'Harassment', 'never-show-this', staff.email]) expect(all, secret).not.toContain(secret);
+    for (const key of ['"dateOfBirth"', '"phone"', '"hourlyRate"', '"sin"', '"passwordHash"', '"employeeNumber"']) expect(all, key).not.toContain(key);
+  });
+});
