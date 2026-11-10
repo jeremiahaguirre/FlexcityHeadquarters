@@ -40,17 +40,42 @@ const view = (j: JobPosting & { facility?: { name: string } | null }) => ({
 
 /** Public, no sign-in: mounted beside the auth routes (tenant from the subdomain). */
 export const publicJobsRouter = Router();
+const publicView = (r: Parameters<typeof view>[0], facility: { name: string; province: string } | null) => {
+  const { published: _p, ...j } = view({ ...r, facility });
+  // For search engines (JobPosting structured data): when it was posted and where.
+  return { ...j, postedOn: r.createdAt.toISOString().slice(0, 10), province: facility?.province ?? null };
+};
+
 publicJobsRouter.get(
   '/public/jobs',
   requireFeature('jobs'),
   h(async (req, res) => {
     const jobs = await withTenant(req.tenantId!, async (tx) => {
       const rows = await tx.jobPosting.findMany({ where: { published: true, closesOn: { gte: today() } }, orderBy: { closesOn: 'asc' } });
-      const facilities = await tx.facility.findMany({ where: { id: { in: rows.map((r) => r.facilityId).filter((x): x is string => !!x) } }, select: { id: true, name: true } });
-      return rows.map((r) => view({ ...r, facility: facilities.find((f) => f.id === r.facilityId) ?? null }));
+      const facilities = await tx.facility.findMany({ where: { id: { in: rows.map((r) => r.facilityId).filter((x): x is string => !!x) } }, select: { id: true, name: true, province: true } });
+      return rows.map((r) => publicView(r, facilities.find((f) => f.id === r.facilityId) ?? null));
     });
     res.setHeader('Cache-Control', 'public, max-age=300');
-    res.json(jobs.map(({ published: _p, ...j }) => j));
+    res.json(jobs);
+  }),
+);
+
+/** One open posting, for its own page (shareable, and indexable by search engines). */
+publicJobsRouter.get(
+  '/public/jobs/:id',
+  requireFeature('jobs'),
+  h(async (req, res) => {
+    const id = z.string().uuid().safeParse(req.params.id);
+    if (!id.success) throw notFound('Job');
+    const job = await withTenant(req.tenantId!, async (tx) => {
+      const r = await tx.jobPosting.findFirst({ where: { id: id.data, published: true, closesOn: { gte: today() } } });
+      if (!r) return null;
+      const f = r.facilityId ? await tx.facility.findUnique({ where: { id: r.facilityId }, select: { name: true, province: true } }) : null;
+      return publicView(r, f);
+    });
+    if (!job) throw notFound('Job');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json(job);
   }),
 );
 

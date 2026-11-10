@@ -1400,7 +1400,9 @@
     "applyBy": "Apply by {{date}}",
     "apply": "Apply",
     "noOpenings": "No openings right now",
-    "noOpeningsHelp": "Check back soon."
+    "noOpeningsHelp": "Check back soon.",
+    "allOpenings": "All openings",
+    "closed": "This posting has closed or isn’t available. See the other openings."
   },
   "union": {
     "title": "Union hub",

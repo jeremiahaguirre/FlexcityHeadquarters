@@ -1400,7 +1400,9 @@
     "applyBy": "Postulez d'ici le {{date}}",
     "apply": "Postuler",
     "noOpenings": "Aucun poste ouvert pour l'instant",
-    "noOpeningsHelp": "Revenez bientôt."
+    "noOpeningsHelp": "Revenez bientôt.",
+    "allOpenings": "Tous les postes",
+    "closed": "Cette offre est fermée ou n’est pas disponible. Consultez les autres postes."
   },
   "union": {
     "title": "Espace syndical",

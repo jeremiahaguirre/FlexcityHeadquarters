@@ -50,6 +50,21 @@ describe('job board', () => {
     expect(pub.body.map((j: { title: string }) => j.title)).toEqual(['Seasonal Lifeguard']);
     expect(pub.body[0]).toMatchObject({ facility: 'Rec Centre', payMin: '21.5', titleFr: 'Sauveteur saisonnier' });
     expect(pub.body[0].published).toBeUndefined();
+    // Where and when it was posted, for search engines.
+    expect(pub.body[0]).toMatchObject({ province: 'BC', postedOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
+  });
+
+  it('serves each open posting on its own, and nothing that isn’t public', async () => {
+    const all = (await request(server).get('/api/jobs').set('x-tenant-subdomain', SUB).auth(hr, { type: 'bearer' })).body as Array<{ id: string; title: string }>;
+    const open = all.find((j) => j.title === 'Seasonal Lifeguard')!;
+    const one = await request(server).get(`/api/public/jobs/${open.id}`).set('x-tenant-subdomain', SUB);
+    expect(one.status).toBe(200);
+    expect(one.body).toMatchObject({ id: open.id, title: 'Seasonal Lifeguard', facility: 'Rec Centre' });
+    expect(one.body.published).toBeUndefined();
+    for (const title of ['Draft posting', 'Closed posting']) {
+      expect((await request(server).get(`/api/public/jobs/${all.find((j) => j.title === title)!.id}`).set('x-tenant-subdomain', SUB)).status).toBe(404);
+    }
+    expect((await request(server).get('/api/public/jobs/not-a-uuid').set('x-tenant-subdomain', SUB)).status).toBe(404);
   });
 
   it('keeps management to HR and supervisors', async () => {

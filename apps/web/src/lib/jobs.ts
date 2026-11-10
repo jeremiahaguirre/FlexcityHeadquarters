@@ -12,6 +12,8 @@ export interface Job {
   closesOn: string;
   applyUrl: string;
   published?: boolean;
+  postedOn?: string;
+  province?: string | null;
 }
 
 export const jobTitle = (j: Job, lng: string) => (lng === 'fr-CA' && j.titleFr ? j.titleFr : j.title);

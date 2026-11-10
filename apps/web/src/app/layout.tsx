@@ -31,12 +31,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     ? normalizeLocale(tenant?.defaultLocale)
     : normalizeLocale((await cookies()).get(LOCALE_COOKIE)?.value ?? tenant?.defaultLocale ?? (await headers()).get('accept-language'));
   const t = createI18n(locale).t;
+  // Set by middleware: lets this one inline script run under the strict script policy.
+  const nonce = DEMO ? undefined : ((await headers()).get('x-nonce') ?? undefined);
 
   return (
     <html lang={locale} className={jakarta.variable} style={themeVars(tenant?.themeColors) as CSSProperties} suppressHydrationWarning>
       <head>
         {/* eslint-disable-next-line react/no-danger */}
-        <script dangerouslySetInnerHTML={{ __html: SCHEME_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SCHEME_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <Providers locale={locale}>

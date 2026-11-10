@@ -29,6 +29,8 @@ const nextConfig = DEMO
   : {
       reactStrictMode: true,
       poweredByHeader: false,
+      // "*.live.tsx" pages and middleware.live.ts need a server: only live builds include them.
+      pageExtensions: ['tsx', 'ts', 'live.tsx', 'live.ts'],
       // /api/* is proxied to the API so cookies stay first-party. In production the
       // load balancer normally routes /api/* to the API service before it reaches
       // Next; this rewrite keeps single-host deployments (and `next start`) working.
