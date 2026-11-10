@@ -198,10 +198,65 @@ async function prepareHr(hr, sup) {
   await hr.call('PUT', `/api/users/${guard.user.id}/leave`, { year, type: 'VACATION', hours: 80, carryover: 16, note: 'Article 21.01' });
 }
 
+/** Sample data for the newer screens: contacts, announcements, logbook, a policy, a claim, a contractor, a posting with an application, a saved report. */
+async function prepareNewFeatures() {
+  const guard = await apiAs('guard');
+  const sup = await apiAs('supervisor');
+  const hr = await apiAs('hr');
+  const water = await apiAs('waterworks');
+  const [facility] = await sup.call('GET', '/api/facilities');
+  const positions = await sup.call('GET', '/api/positions');
+  if (!(await guard.call('GET', '/api/me/emergency-contacts')).length) {
+    await guard.call('PUT', '/api/me/emergency-contacts', [{ name: 'Sam Rivera', relationship: 'Partner', phone: '250-555-0101' }, { name: 'Dana Rivera', relationship: 'Parent', phone: '250-555-0102' }]);
+  }
+  if (!(await sup.call('GET', '/api/announcements')).length) {
+    await sup.call('POST', '/api/announcements', { title: 'Annual shutdown starts Monday', body: 'The leisure pool closes Monday at 6 a.m. for two weeks of maintenance. Lane swim moves to the main tank. Check your schedule for changes.', pinned: true });
+    await hr.call('POST', '/api/announcements', { title: 'Benefits enrolment closes Friday', body: 'Make your dental and health choices in the app by Friday at 4:30 p.m.' });
+  }
+  if (facility && !(await sup.call('GET', `/api/logbook?facilityId=${facility.id}`)).length) {
+    await sup.call('POST', '/api/logbook', { facilityId: facility.id, category: 'MAINTENANCE', body: 'Waterslide closed: crack in the third flume section. Facilities work order 24-118 opened.' });
+    await guard.call('POST', '/api/logbook', { facilityId: facility.id, category: 'HANDOVER', body: 'Spare rescue tubes moved to the guard room. AED pads replaced; next expiry in March.' });
+    await guard.call('POST', '/api/logbook', { facilityId: facility.id, category: 'SAFETY', body: 'Wet floor by the family change room drain. Cones out, maintenance told.' });
+  }
+  if (!(await hr.call('GET', '/api/policies')).length) {
+    const guardPos = positions.find((p) => p.name === 'Lifeguard');
+    await hr.call('POST', '/api/policies', { title: 'Pool safety plan 2026', body: 'Every guard on deck carries a rescue tube and wears the guard uniform.\n\nRotate every 30 minutes; never leave a station unattended.\n\nReport every first-aid incident before the end of the shift.\n\nThe head guard checks the AED and first-aid kit at opening.', positionIds: guardPos ? [guardPos.id] : [], dueDays: 14 });
+    await hr.call('POST', '/api/policies', { title: 'Respectful workplace policy', body: 'Everyone has the right to a workplace free of harassment and violence. Report concerns to your supervisor or HR; reports are handled confidentially and promptly.', positionIds: [], dueDays: 30 });
+  }
+  if (!(await water.call('GET', '/api/me/expenses')).claims.length) {
+    const d = (n) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+    const c = await water.call('POST', '/api/me/expenses', { title: 'Water treatment course, Vernon', items: [{ date: d(9), category: 'MILEAGE', description: 'Lakeview to Vernon and back', km: 106 }, { date: d(9), category: 'MEALS', description: 'Lunch', amount: 18.5 }] });
+    if (c?.id) await sup.call('POST', `/api/expenses/${c.id}/decision`, { decision: 'APPROVE' });
+    await guard.call('POST', '/api/me/expenses', { title: 'First aid recertification', items: [{ date: d(3), category: 'PARKING', description: 'Parking at the training centre', amount: 12 }] });
+  }
+  if (!(await hr.call('GET', '/api/payees')).length) {
+    const p = await hr.call('POST', '/api/payees', { kind: 'PERSON', firstName: 'Jordan', lastName: 'Lee', sin: '130 692 544', address: { line1: '1435 Water St', city: 'Kelowna', province: 'BC', postalCode: 'V1Y 1J4' } });
+    const y = new Date().getFullYear();
+    if (p?.id) {
+      await hr.call('POST', `/api/payees/${p.id}/payments`, { paidOn: `${y}-03-15`, box: '048', amount: 450, description: 'Lifeguard instructor course, March' });
+      await hr.call('POST', `/api/payees/${p.id}/payments`, { paidOn: `${y}-07-15`, box: '048', amount: 450, description: 'Lifeguard instructor course, July' });
+    }
+    const b = await hr.call('POST', '/api/payees', { kind: 'PERSON', firstName: 'Morgan', lastName: 'Chen', address: { line1: '200 Bernard Ave', city: 'Kelowna', province: 'BC', postalCode: 'V1Y 6N2' } });
+    if (b?.id) await hr.call('POST', `/api/payees/${b.id}/payments`, { paidOn: `${y}-09-01`, box: '028', amount: 300, description: 'Parks advisory committee honorarium' });
+  }
+  const jobs = await hr.call('GET', '/api/jobs');
+  if (!jobs.some((j) => j.applyInApp)) {
+    const j = await hr.call('POST', '/api/jobs', { title: 'Lifeguard (summer)', titleFr: 'Sauveteur (été)', description: 'Guard the outdoor pool this summer. National Lifeguard and Standard First Aid required. Flexible part-time hours, evenings and weekends.', descriptionFr: 'Surveiller la piscine extérieure cet été. Sauveteur national et Secourisme général requis. Horaire à temps partiel flexible, soirs et fins de semaine.', facilityId: facility?.id ?? null, employmentStatus: 'CASUAL', payMin: '19.50', payMax: '22.00', closesOn: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10), applyInApp: true, published: true });
+    if (j?.id) {
+      await fetch(`${API}/api/public/jobs/${j.id}/apply`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-tenant-subdomain': 'kelowna' }, body: JSON.stringify({ firstName: 'Riley', lastName: 'Chen', email: 'riley.chen@example.ca', phone: '250-555-0110', certifications: 'National Lifeguard, Standard First Aid', message: 'I guarded at the YMCA last summer and would love to join your team.', consent: true, startedAt: Date.now() - 60_000 }) });
+    }
+  }
+  if (!(await sup.call('GET', '/api/reports/saved')).length) {
+    await sup.call('POST', '/api/reports/saved', { name: 'Hours worked', key: 'hours_worked', schedule: 'WEEKLY' });
+    await sup.call('POST', '/api/reports/saved', { name: 'Certifications expiring', key: 'certs_expiring', days: 60, schedule: 'MONTHLY' });
+  }
+}
+
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
   for (const who of Object.values(ROLES)) await apiAs(who);
   await prepareCityWorks();
+  await prepareNewFeatures();
   // The demo city's (placeholder) logo, uploaded through the Dev console API.
   const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });
   const cookie = String(login.headers.get('set-cookie')).split(';')[0];
