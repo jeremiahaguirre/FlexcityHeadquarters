@@ -225,9 +225,9 @@ const en = {
   },
   plans: {
     title: 'Plans and pricing',
-    hero: 'Four plans that grow with your city. Private employers choose module by module.',
+    hero: 'Four plans that grow with your city. Private employers choose option by option.',
     lead: 'Public-sector plans are priced per facility, each with a generous staff allowance. Small and Business have fixed prices; Multi-complex and Enterprise start from a list price and are confirmed in a written quote.',
-    metaDescription: 'Small, Business, Multi-complex and Enterprise plans, priced per facility with staff included. Private employers pick modules one by one.',
+    metaDescription: 'Small, Business, Multi-complex and Enterprise plans, priced per facility with staff included. Private employers pick options one by one.',
     chips: ['Prices in Canadian dollars', 'Staff included with every plan', 'Trials and pilots available'],
     cta: 'Get a quote',
     ctaNote: 'We reply within one business day.',
@@ -711,9 +711,9 @@ const fr: DeepString<Copy> = {
   },
   plans: {
     title: 'Forfaits et tarifs',
-    hero: 'Quatre forfaits qui grandissent avec votre ville. Les employeurs privés choisissent module par module.',
+    hero: 'Quatre forfaits qui grandissent avec votre ville. Les employeurs privés choisissent option par option.',
     lead: 'Les forfaits du secteur public sont établis par installation, chacun avec une généreuse allocation de personnel. Petit et Affaires ont des prix fixes; Multicomplexe et Entreprise partent d’un prix courant confirmé dans une soumission écrite.',
-    metaDescription: 'Forfaits Petit, Affaires, Multicomplexe et Entreprise, par installation, personnel inclus. Les employeurs privés choisissent leurs modules.',
+    metaDescription: 'Forfaits Petit, Affaires, Multicomplexe et Entreprise, par installation, personnel inclus. Les employeurs privés choisissent leurs options.',
     chips: ['Prix en dollars canadiens', 'Personnel inclus dans chaque forfait', 'Essais et projets pilotes offerts'],
     cta: 'Obtenir une soumission',
     ctaNote: 'Nous répondons en un jour ouvrable.',
