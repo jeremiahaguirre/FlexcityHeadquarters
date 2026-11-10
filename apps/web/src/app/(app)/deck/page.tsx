@@ -103,7 +103,7 @@ export default function DeckPage() {
                     </div>
                     {c ? (
                       <div className="h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true">
-                        <div className={`h-full rounded-full ${left < 0 ? 'bg-danger' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
+                        <div className={`fh-bar h-full rounded-full ${left < 0 ? 'bg-danger' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
                       </div>
                     ) : null}
                     <Field label={t('deck.onStation')}>

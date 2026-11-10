@@ -94,7 +94,7 @@ export default function BoardPage() {
         closeLabel={t('common.close')}
         footer={<Button onClick={() => setRefusal(null)}>{t('common.ok')}</Button>}
       >
-        <ul className="grid gap-2">
+        <ul className="fh-stagger grid gap-2">
           {refusal?.map((code) => (
             <li key={code} className="flex gap-2 rounded-xl bg-warn-bg px-3 py-2 text-small text-ink">
               <span aria-hidden="true" className="text-warn">

@@ -117,7 +117,7 @@ function LabourCost() {
                 </div>
                 {d.budget ? (
                   <div className="h-2 overflow-hidden rounded-full bg-surface" role="img" aria-label={t('accounting.used', { pct: d.used })}>
-                    <div className={`h-full rounded-full ${d.used! > 100 ? 'bg-danger' : d.used! > 85 ? 'bg-warn' : 'bg-[rgb(var(--brand))]'}`} style={{ width: `${Math.min(100, d.used!)}%` }} />
+                    <div className={`fh-bar h-full rounded-full ${d.used! > 100 ? 'bg-danger' : d.used! > 85 ? 'bg-warn' : 'bg-[rgb(var(--brand))]'}`} style={{ width: `${Math.min(100, d.used!)}%` }} />
                   </div>
                 ) : null}
                 <p className="text-caption text-muted">{t('accounting.split', { wages: formatMoney(d.wages, lng), employer: formatMoney(d.employerCosts, lng) })}</p>

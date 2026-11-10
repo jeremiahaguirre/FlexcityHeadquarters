@@ -56,7 +56,7 @@ export function Logbook() {
       {q.loading ? <ListSkeleton /> : !q.data?.length ? (
         <EmptyState icon={NotebookPen} title={t('logbook.emptyTitle')}>{t('logbook.emptyBody')}</EmptyState>
       ) : (
-        <ol className="grid gap-3">
+        <ol className="fh-stagger grid gap-3">
           {q.data.map((e) => (
             <li key={e.id} className="rounded-2xl border border-line bg-panel p-4">
               <div className="mb-1 flex flex-wrap items-center gap-2 text-small text-muted"><StatusPill tone={CAT_TONE[e.category]}>{t(`logbook.categories.${e.category}`)}</StatusPill><span>{when(e.createdAt)} · {e.author}</span></div>

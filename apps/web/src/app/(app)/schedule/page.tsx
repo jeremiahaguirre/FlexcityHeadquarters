@@ -87,7 +87,7 @@ export default function SchedulePage() {
           {groupByDay(list.data).map(([day, shifts]) => (
             <section key={day} aria-label={formatDate(`${day}T12:00:00`, i18n.language, 'long')}>
               <h2 className="mb-2 text-label uppercase text-muted">{formatDate(`${day}T12:00:00`, i18n.language, 'long')}</h2>
-              <div className="grid gap-3">
+              <div className="fh-stagger grid gap-3">
                 {shifts.map((s) => {
                   const isMine = s.assignee?.id === me?.id || view === 'mine';
                   return (

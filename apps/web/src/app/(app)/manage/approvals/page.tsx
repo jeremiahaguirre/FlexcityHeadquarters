@@ -94,7 +94,7 @@ export default function ApprovalsPage() {
             {t('approvals.claimsEmpty')}
           </EmptyState>
         ) : (
-          <div className="grid gap-3">
+          <div className="fh-stagger grid gap-3">
             {claims.data.map((c) => (
               <ShiftCard
                 key={c.id}
@@ -188,7 +188,7 @@ export default function ApprovalsPage() {
                 </Button>
               </div>
             </div>
-            <ul className="divide-y divide-line">
+            <ul className="fh-stagger divide-y divide-line">
               {punches.data.map((p) => (
                 <li key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <input

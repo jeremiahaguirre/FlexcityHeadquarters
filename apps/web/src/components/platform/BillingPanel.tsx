@@ -575,7 +575,7 @@ export function StaffMeter({ staff, lng }: { staff: StaffUsage; lng: string }) {
         <span className="text-caption text-muted">{t('billing.staffParts', { included: staff.included ?? 0, seats: staff.seats })}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-line" role="img" aria-label={t('billing.staffUsed', { active: staff.active, cap })}>
-        <div className={`h-full ${staff.over ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
+        <div className={`fh-bar h-full ${staff.over ? 'bg-warn' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
       </div>
       {staff.over ? <p className="text-small text-warn">{t('billing.staffOver', { count: staff.over, amount: cents(staff.over * staff.rateCents, lng, false) })}</p> : null}
     </div>

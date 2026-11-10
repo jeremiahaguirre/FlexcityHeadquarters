@@ -57,7 +57,7 @@ function Progress({ label, p }: { label: string; p: { total: number; done: numbe
   return (
     <div className="min-w-[7rem]">
       <p className="flex justify-between text-caption text-muted"><span>{label}</span><span className="tabular-nums">{p.done}/{p.total}</span></p>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface"><div className={`h-full rounded-full ${pct === 100 ? 'bg-ok' : 'bg-brand'}`} style={{ width: `${pct}%` }} /></div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface"><div className={`fh-bar h-full rounded-full ${pct === 100 ? 'bg-ok' : 'bg-brand'}`} style={{ width: `${pct}%` }} /></div>
     </div>
   );
 }

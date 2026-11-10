@@ -119,7 +119,7 @@ export default function StaffPage() {
       ) : !people.data?.length ? (
         <EmptyState icon={Users} title={t('staff.none')} />
       ) : (
-        <Card className="divide-y divide-line">
+        <Card className="fh-stagger divide-y divide-line">
           {people.data.map((p) => (
             <Link key={p.id} href={`/manage/staff/person?id=${p.id}`} className="flex flex-wrap items-center gap-4 px-4 py-3 hover:bg-surface/60">
               <Avatar name={p.name} />

@@ -28,7 +28,7 @@ export function BalanceTiles({ types }: { types: LeaveBalance[] }) {
             <p className="text-heading tabular-nums">{b.remaining != null ? t('leave.hoursLeft', { hours: formatHours(b.remaining, lng) }) : t('leave.hoursUsed', { hours: formatHours(b.used, lng) })}</p>
             {b.entitled != null ? (
               <>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true"><div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} /></div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true"><div className="fh-bar h-full rounded-full bg-brand" style={{ width: `${pct}%` }} /></div>
                 <p className="mt-1 text-caption text-muted">{t('leave.breakdown', { entitled: formatHours(b.entitled, lng), carry: formatHours(b.carryover, lng), used: formatHours(b.used, lng), pending: formatHours(b.pending, lng) })}</p>
               </>
             ) : null}

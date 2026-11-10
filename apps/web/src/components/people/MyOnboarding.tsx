@@ -49,7 +49,7 @@ export function MyOnboarding({ compact = false }: { compact?: boolean }) {
         <div className="min-w-[11rem] flex-1">
           <p className="text-body-strong">{t('onboarding.todayTitle', { count: shown.length })}</p>
           <div className="mt-1.5 flex items-center gap-3">
-            <div className="h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-surface" aria-hidden="true"><div className="h-full rounded-full bg-brand" style={{ width: `${Math.round((done / items.length) * 100)}%` }} /></div>
+            <div className="h-1.5 w-full max-w-[12rem] overflow-hidden rounded-full bg-surface" aria-hidden="true"><div className="fh-bar h-full rounded-full bg-brand" style={{ width: `${Math.round((done / items.length) * 100)}%` }} /></div>
             <span className="text-caption text-muted">{t('onboarding.progress', { done, total: items.length })}</span>
           </div>
         </div>
