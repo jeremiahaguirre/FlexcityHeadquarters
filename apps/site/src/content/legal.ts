@@ -11,7 +11,7 @@ type Doc = 'privacy' | 'accessibility' | 'terms';
 const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
   privacy: {
     en: {
-      updated: '2026-11-09',
+      updated: '2026-11-10',
       intro: 'This notice explains what personal information FlexcityHeadquarters collects through this website and through the FlexcityHeadquarters application, why, and the choices you have. It is written to meet the Personal Information Protection and Electronic Documents Act (PIPEDA), Quebec’s Act respecting the protection of personal information in the private sector (Law 25), and the privacy expectations of the public bodies we serve.',
       sections: [
         {
@@ -42,6 +42,13 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
           body: [
             'The application keeps an attendance score and lets supervisors write notes about conduct, performance and safety, including commendations. Employers use them to notice when a conversation may help and to document discipline.',
             'Nothing is decided automatically: a person makes every decision, sick days and protected leave never count, and being named in an incident report never counts. Employees can see their own file, ask for corrections, and add a written response to any record. Every time a manager opens a file, it is logged.',
+          ],
+        },
+        {
+          heading: 'Your agreement at first sign-in',
+          body: [
+            'The first time you sign in, the application explains what it collects, why and who sees it, and asks for your two optional permissions: notifications, and location (checked once at clock-in, and shared only during a working-alone session you start). You choose each one, then sign with your name and a drawn or typed signature.',
+            'A copy is kept as a record that you were informed: the exact version and language you saw with its fingerprint, your signature, your choices, the time, and your device’s internet address and browser. It can’t be changed. When the text changes, you are asked to read and sign the new version.',
           ],
         },
         {
@@ -76,7 +83,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
       ],
     },
     fr: {
-      updated: '2026-11-09',
+      updated: '2026-11-10',
       intro: 'Le présent avis explique quels renseignements personnels FlexcityHeadquarters recueille par ce site et par l’application FlexcityHeadquarters, pourquoi, et quels choix vous avez. Il vise à respecter la Loi sur la protection des renseignements personnels et les documents électroniques (LPRPDE), la Loi sur la protection des renseignements personnels dans le secteur privé du Québec (Loi 25) et les attentes des organismes publics que nous servons.',
       sections: [
         {
@@ -107,6 +114,13 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
           body: [
             'L’application tient un score d’assiduité et permet aux superviseurs de rédiger des notes sur la conduite, le rendement et la sécurité, y compris des mentions d’éloge. Les employeurs s’en servent pour voir quand une discussion pourrait aider et pour documenter la discipline.',
             'Rien n’est décidé automatiquement : une personne prend chaque décision, les congés de maladie et protégés ne comptent jamais, et être nommé dans un rapport d’incident ne compte jamais. Le personnel peut consulter son dossier, demander des corrections et ajouter une réponse écrite à tout dossier. Chaque consultation par un gestionnaire est consignée.',
+          ],
+        },
+        {
+          heading: 'Votre entente à la première connexion',
+          body: [
+            'À votre première connexion, l’application explique ce qu’elle recueille, pourquoi et qui y a accès, et vous demande vos deux autorisations facultatives : les notifications, et la position (vérifiée une fois au pointage, et partagée seulement pendant une séance de travail seul que vous commencez). Vous choisissez chacune, puis signez de votre nom et d’une signature dessinée ou tapée.',
+            'Une copie est conservée comme preuve que vous avez été informé : la version et la langue exactes affichées avec leur empreinte, votre signature, vos choix, l’heure, ainsi que l’adresse Internet et le navigateur de votre appareil. Elle ne peut pas être modifiée. Quand le texte change, on vous demande de lire et de signer la nouvelle version.',
           ],
         },
         {
@@ -193,24 +207,26 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
   },
   terms: {
     en: {
-      updated: '2026-11-09',
+      updated: '2026-11-10',
       intro: 'These terms cover your use of this website and the public demo. Use of the FlexcityHeadquarters application by an organization is governed by the subscription agreement signed with that organization, which prevails over these terms.',
       sections: [
         { heading: 'The demo', body: ['The demo uses invented people and a fictional city. Do not enter real personal information. Nothing you do in the demo is saved.'] },
         { heading: 'Information on this site', body: ['Prices and features are described in good faith and may change; a written quote or agreement is binding. Employment-standards and pool-safety information is general and is not legal advice. Each organization remains responsible for meeting the law that applies to it.'] },
         { heading: 'Acceptable use', body: ['Do not try to break, overload or probe the site or demo for weaknesses except through a responsible disclosure arranged with us through the contact page.'] },
         { heading: 'Liability', body: ['The site and demo are provided as is. To the extent permitted by law, we are not liable for indirect losses arising from their use.'] },
+        { heading: 'Copyright and trademarks', body: ['© 2026 FlexcityHeadquarters. All rights reserved. The FlexcityHeadquarters name, logo, application, screenshots and the text and design of this site are protected by copyright and may not be copied or reused without written permission. Organization names and logos shown belong to their owners.'] },
         { heading: 'Governing law', body: ['These terms are governed by the laws of the province of British Columbia and the federal laws of Canada that apply there, unless the law of your province requires otherwise.'] },
       ],
     },
     fr: {
-      updated: '2026-11-09',
+      updated: '2026-11-10',
       intro: 'Les présentes conditions encadrent l’utilisation de ce site et de la démo publique. L’utilisation de l’application FlexcityHeadquarters par une organisation est régie par l’entente d’abonnement conclue avec elle, qui a préséance sur les présentes.',
       sections: [
         { heading: 'La démo', body: ['La démo utilise des personnes inventées et une ville fictive. N’y entrez aucun renseignement personnel réel. Rien n’y est enregistré.'] },
         { heading: 'Information sur ce site', body: ['Les prix et fonctions sont décrits de bonne foi et peuvent changer; seule une soumission ou une entente écrite engage. L’information sur les normes du travail et la sécurité aquatique est générale et ne constitue pas un avis juridique. Chaque organisation demeure responsable de respecter la loi qui s’applique à elle.'] },
         { heading: 'Utilisation acceptable', body: ['N’essayez pas de briser, de surcharger ou de sonder le site ou la démo, sauf dans le cadre d’une divulgation responsable convenue avec nous par la page de contact.'] },
         { heading: 'Responsabilité', body: ['Le site et la démo sont fournis tels quels. Dans la mesure permise par la loi, nous ne sommes pas responsables des pertes indirectes découlant de leur utilisation.'] },
+        { heading: 'Droit d’auteur et marques', body: ['© 2026 FlexcityHeadquarters. Tous droits réservés. Le nom, le logo, l’application et les captures d’écran FlexcityHeadquarters ainsi que le texte et la conception de ce site sont protégés par le droit d’auteur et ne peuvent être copiés ni réutilisés sans autorisation écrite. Les noms et logos d’organisations affichés appartiennent à leurs propriétaires.'] },
         { heading: 'Droit applicable', body: ['Les présentes conditions sont régies par les lois de la Colombie-Britannique et les lois fédérales du Canada qui s’y appliquent, sauf si la loi de votre province en exige autrement. Au Québec, la version française prévaut.'] },
       ],
     },

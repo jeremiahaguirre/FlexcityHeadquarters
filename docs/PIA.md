@@ -48,6 +48,14 @@ describe the product; the city adds its own purposes, authorities and decisions.
    emails to staff. See [SUBPROCESSORS.md](SUBPROCESSORS.md).
 4. FH staff can't see employee records; support visits need the city's consent, are read-only and
    never open individual records.
+5. At first sign-in each person reads the information and consent agreement
+   (`apps/api/src/services/privacy/consent.ts`, EN/FR, versioned), chooses notifications and
+   location separately (the device's own prompts), and signs. The `ConsentRecord` keeps the version,
+   language, SHA-256 of the exact text, typed name, signature image and its SHA-256, choices, time,
+   IP address and browser. The application role has no UPDATE on the table and no route deletes it.
+   FH keeps the evidence in the Dev console (city → Signed agreements): a list, a CSV, and a PDF
+   certificate per record that re-checks both fingerprints; each export is in the platform audit log.
+   A new version (bump `CONSENT_VERSION`) is signed again at the next sign-in.
 
 ## 5. Risks and mitigations
 
@@ -57,7 +65,7 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Account takeover | MFA (HR by default, any access level by choice), passkeys, SSO, lockout, rate limits, common-password block | Require MFA broadly; use SSO |
 | Insider misuse | Audit log of changes and of views of sensitive records; no self-approval anywhere in pay or HR | Review the audit log; act on misuse |
 | Breach at the provider | Encryption in transit and at rest, per-city keys, Canadian hosting, tested backups, incident runbook | Contract terms: breach notice, audits |
-| Over-collection / monitoring | No continuous tracking; clock-in keeps on-site status only; notice in the app ("Your privacy") and [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) | Written monitoring policy (Ontario ESA Part XI.1) |
+| Over-collection / monitoring | No continuous tracking; clock-in keeps on-site status only; signed agreement at first sign-in with separate notification and location choices; notice in the app ("Your privacy") and [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) | Written monitoring policy (Ontario ESA Part XI.1) |
 | Kept too long | Retention schedule ([RETENTION.md](RETENTION.md)), automatic anonymization and deletion | Set periods to the records by-law |
 | Children's information | Collected only for registration; instructors see only their class list; families' files logged; inactive families anonymized | Program terms and consent wording |
 
