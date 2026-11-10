@@ -1,7 +1,8 @@
 'use client';
 
-import { ArrowLeftRight, CalendarDays, Gift } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, CalendarPlus, Gift } from 'lucide-react';
 import { MyTrades, TradeDialog } from '@/components/shiftboard/Trades';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
@@ -67,7 +68,12 @@ export default function SchedulePage() {
           />
         }
       />
-      {view === 'mine' ? <div className="mb-6"><MyTrades onChanged={() => void mine.reload()} /></div> : null}
+      {view === 'mine' ? (
+        <div className="mb-6 grid gap-3">
+          <MyTrades onChanged={() => void mine.reload()} />
+          <p className="text-small"><Link href="/profile#calendar" className="inline-flex items-center gap-1 font-semibold text-brand-text hover:underline"><CalendarPlus className="h-4 w-4" aria-hidden="true" />{t('calendarFeed.addToCalendar')}</Link></p>
+        </div>
+      ) : null}
       {list.loading ? (
         <ListSkeleton />
       ) : list.error ? (

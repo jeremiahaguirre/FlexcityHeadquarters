@@ -14,6 +14,7 @@ import { platformRouter } from './routes/platform/index.js';
 import { marketingRouter } from './routes/marketing.js';
 import { passkeyAuthRouter } from './routes/passkeys.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
+import { publicCalendarRouter } from './routes/calendar.js';
 import { logError } from './lib/log.js';
 
 export function createApp() {
@@ -38,6 +39,8 @@ export function createApp() {
 
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
   app.use('/api', publicLogoRouter);
+  // Calendar apps fetch a person's private shift feed by its link (routes/calendar.ts).
+  app.use('/api', publicCalendarRouter);
   app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, publicJobsRouter, publicSignupRouter);
   app.use('/api', api);
 

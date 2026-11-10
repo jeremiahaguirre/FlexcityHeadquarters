@@ -388,6 +388,9 @@ model User {
   /// The person agreed to bank overtime as time in lieu instead of being paid for it (where the city allows it).
   bankOvertime     Boolean   @default(false)
   bankOvertimeAt   DateTime? @db.Timestamptz(3)
+  /// Private calendar feed: SHA-256 of the link's secret (the link itself is shown once).
+  calendarTokenHash String?   @unique
+  calendarTokenAt   DateTime? @db.Timestamptz(3)
   /// The employer's HR/payroll system ID — used in payroll exports.
   employeeNumber   String?
   passwordHash     String?

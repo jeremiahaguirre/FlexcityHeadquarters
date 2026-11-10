@@ -5185,5 +5185,22 @@
     "deny": "Ne pas approuver",
     "approved": "Échange approuvé; les deux horaires sont à jour",
     "denied": "Échange non approuvé"
+  },
+  "calendarFeed": {
+    "title": "Vos quarts dans votre agenda",
+    "help": "Un lien privé qui affiche vos quarts dans Google Agenda, Outlook ou Calendrier d’Apple, et les tient à jour. Il ne contient que vos propres quarts.",
+    "on": "Activé",
+    "getLink": "Obtenir mon lien d’agenda",
+    "newLink": "Créer un nouveau lien",
+    "copyNow": "Copiez ce lien maintenant : pour votre confidentialité, il ne sera plus affiché.",
+    "link": "Lien d’agenda",
+    "copy": "Copier",
+    "copied": "Lien copié",
+    "copyManually": "Sélectionnez le lien et copiez-le.",
+    "howTo": "Google Agenda : Autres agendas › À partir de l’URL. Outlook : Ajouter un calendrier › S’abonner à partir du web. iPhone : Réglages › Calendrier › Comptes › Ajouter un calendrier avec abonnement.",
+    "turnOff": "Désactiver",
+    "turnedOff": "Lien d’agenda désactivé",
+    "lost": "Lien perdu? Créez-en un nouveau; l’ancien cessera de fonctionner.",
+    "addToCalendar": "Ajouter mes quarts à l’agenda de mon téléphone"
   }
 }

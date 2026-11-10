@@ -5185,5 +5185,22 @@
     "deny": "Don't approve",
     "approved": "Trade approved; both schedules updated",
     "denied": "Trade not approved"
+  },
+  "calendarFeed": {
+    "title": "Shifts in your calendar",
+    "help": "A private link that shows your shifts in Google Calendar, Outlook or Apple Calendar, and keeps them up to date. It holds your own shifts only.",
+    "on": "On",
+    "getLink": "Get my calendar link",
+    "newLink": "Make a new link",
+    "copyNow": "Copy this link now: for your privacy it isn't shown again.",
+    "link": "Calendar link",
+    "copy": "Copy",
+    "copied": "Link copied",
+    "copyManually": "Select the link and copy it.",
+    "howTo": "Google Calendar: Other calendars › From URL. Outlook: Add calendar › Subscribe from web. iPhone: Settings › Calendar › Accounts › Add subscribed calendar.",
+    "turnOff": "Turn off",
+    "turnedOff": "Calendar link turned off",
+    "lost": "Lost the link? Make a new one; the old one stops working.",
+    "addToCalendar": "Add my shifts to my phone's calendar"
   }
 }
