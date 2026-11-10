@@ -2,7 +2,7 @@
 const en = {
   meta: {
     title: 'FlexcityHeadquarters: workforce management, scheduling and time and attendance',
-    description: 'Employee scheduling, shift swaps, timeclock, payroll export and people review for HR, for every city department, from recreation and aquatics to parks, arenas and water works. Built around provincial employment standards and collective agreements, in English and French.',
+    description: 'Employee scheduling, shift swaps, timeclock, payroll with direct deposit and people review for HR, for every city department, from recreation and aquatics to parks, arenas and water works. Built around provincial employment standards and collective agreements, in English and French.',
   },
   nav: { product: 'Product', why: 'Why FH', privateSector: 'Private sector', plans: 'Plans', demo: 'Demo', help: 'Help', faq: 'FAQ', contact: 'Contact', tryDemo: 'Try the demo', language: 'Français', languageLabel: 'Lire en français', menu: 'Menu', close: 'Close' },
   home: {
@@ -53,7 +53,7 @@ const en = {
         { time: '6:00 a.m.', who: 'The opener', title: 'One slide, and the day starts', body: 'A lifeguard arrives to open the pool and slides to clock in to the right shift, with a quick on-site check. Her certification was verified before she was ever booked.' },
         { time: '10:40 a.m.', who: 'The operator working alone', title: 'Alone at the pump station, but not unnoticed', body: 'A water operator starts a working-alone session and checks in on a timer. Miss a check-in and the operator and the people monitoring are alerted. If there is still no answer 15 minutes later, it escalates to HR.' },
         { time: '2:15 p.m.', who: 'The supervisor', title: 'A sick call, covered before the evening', body: 'The supervisor posts tonight’s shift to the board. Eligible staff see what it pays before they claim it, and overtime goes out in agreement order, with a warning before anyone is skipped.' },
-        { time: '4:30 p.m.', who: 'HR and payroll', title: 'Payroll closed without retyping a thing', body: 'Approved hours, overtime and stat holiday pay leave as a CSV file for the payroll system. HR signed in with a second factor, as HR accounts do by default.' },
+        { time: '4:30 p.m.', who: 'HR and payroll', title: 'Payroll released without retyping a thing', body: 'Approved hours become pay with CPP, EI and tax worked out. A second person approves with their passkey, the bank deposit file goes to the bank, and everyone’s pay statement is waiting in the app.' },
       ],
     },
     alone: {
@@ -88,14 +88,14 @@ const en = {
       { icon: 'trees', title: 'Parks and outdoor crews', body: 'Seasonal hiring, crew schedules, and clock-in confirmed on site, without paper timesheets.', points: ['Seasonal staff imported from a spreadsheet', 'Storm call-outs offered in overtime order', 'Winter patrol records you can export as evidence'] },
       { icon: 'droplet', title: 'Water and wastewater', body: 'Required certificates checked before anyone is scheduled, with their own roles and no recreation clutter.', points: ['Required certificates checked at booking', 'An operator in charge always scheduled, with gap alerts', 'Working-alone check-ins at pump stations'] },
       { icon: 'wrench', title: 'Facilities and maintenance', body: 'Crew schedules, overtime offered in agreement order, and approved hours exported for payroll.', points: ['Overtime offered in agreement order', 'Pre-trip inspections; a major defect takes the vehicle out of service', 'Driver hours-of-service limits checked at booking'] },
-      { icon: 'users', title: 'HR, payroll and unions', body: 'One staff record, pay rates and payroll export, people review that flags who needs a conversation, and a union hub the local controls.', points: ['Roles for any department: supervisors and managers see only their crew', 'Multi-factor sign-in required for HR by default', 'A union hub managers can’t open'] },
+      { icon: 'users', title: 'HR, payroll and unions', body: 'One staff record, payroll with direct deposit by department, people review that flags who needs a conversation, and a union hub the local controls.', points: ['Supervisors see only their department, and only the HR records they were part of', 'Two-person payroll approval with a passkey; banking and SINs encrypted', 'A union hub managers can’t open'] },
     ],
     featuresTitle: 'Everything between the schedule and the paycheque',
     featuresLead: 'From the 6 a.m. opener to the HR administrator closing payroll, every person sees what they need, and nothing they don’t.',
     features: [
       { icon: 'calendar', title: 'Schedules that follow the rules', body: 'Build the week with an assistant that checks certifications, onboarding, availability, rest periods, young-worker limits and work restrictions before anyone is booked.' },
       { icon: 'repeat', title: 'A shift board with pay up front', body: 'Staff pick up shifts themselves and see an estimate of what each one pays first, overtime and holiday rates included. Overtime goes out in agreement order, with a warning before anyone is skipped.' },
-      { icon: 'clock', title: 'Clock in with a slide', body: 'One gesture clocks you into the right shift, with a quick on-site check. Punches go to review, then into a CSV file for your payroll system.' },
+      { icon: 'clock', title: 'Clock in with a slide', body: 'One gesture clocks you into the right shift, with a quick on-site check. Punches go to review, then straight into payroll.' },
       { icon: 'clipboard', title: 'Onboarding that gates the schedule', body: 'Criminal record and vulnerable sector checks, child protection training, policies to sign: switched on per position, and the ones you mark as required block scheduling until they are done.' },
       { icon: 'armchair', title: 'Deck rotation and fatigue limits', body: 'A chair plan moves guards along on time, applies the fatigue limits you set so nobody stays on deck too long, and keeps a rotation log.' },
       { icon: 'trending', title: 'Headcounts and forecasts', body: 'A tap counter for bathers against each pool’s capacity, and a forecast of guards needed each hour from your own history.' },
@@ -216,7 +216,7 @@ const en = {
     newBadge: 'New',
     base: [
       { icon: 'calendar', name: 'Scheduling and shifts', items: [{ t: 'Schedule builder with a scheduling assistant' }, { t: 'Shift board with a pay estimate before claiming' }, { t: 'Demand forecasts from your own history' }, { t: 'Overtime fairness ledger' }] },
-      { icon: 'clock', name: 'Time and payroll', items: [{ t: 'Slide-to-clock-in timeclock' }, { t: 'Punch review before payroll' }, { t: 'Payroll CSV export for your payroll system' }] },
+      { icon: 'clock', name: 'Time and payroll', items: [{ t: 'Slide-to-clock-in timeclock' }, { t: 'Punch review before payroll' }, { t: 'Payroll with CPP, EI and tax, direct deposit and pay statements', isNew: true }, { t: 'Remittance, T4 and ROE figures', isNew: true }, { t: 'Or a CSV export for your payroll provider' }] },
       { icon: 'badge', name: 'Rules and certifications', items: [{ t: 'Provincial rules engine: overtime, rest, young workers, stat holidays' }, { t: 'Certifications checked before anyone is booked' }, { t: 'Required coverage: certificates that must be on duty, with gap alerts', isNew: true }, { t: 'Compliance view at any past minute' }, { t: 'Anonymous benchmarks' }] },
       { icon: 'waves', name: 'Aquatics', items: [{ t: 'Lesson attendance on deck, even offline' }, { t: 'Bather headcounts' }, { t: 'Deck rotation with fatigue limits' }] },
       { icon: 'idcard', name: 'Programs and member services', items: [{ t: 'Lesson, club and camp campaigns, with Lifesaving Society, YMCA and CanSkate levels and their ages', isNew: true }, { t: 'Family registration with age checks and waitlists', isNew: true }, { t: 'Memberships by year or month, drop-ins and passes', isNew: true }, { t: 'Public sign-up page: families register and book spaces with no account', isNew: true }] },
@@ -241,7 +241,7 @@ const en = {
     notIncluded: 'Not in this column',
     compare: [
       { name: 'Scheduling and shifts', rows: [{ f: 'Scheduling and the scheduling assistant', col: 0 }, { f: 'Shift board with pay estimates', col: 0 }, { f: 'Demand forecasts', col: 0 }, { f: 'Overtime fairness ledger', col: 0 }] },
-      { name: 'Time, payroll and rules', rows: [{ f: 'Slide-to-clock-in timeclock', col: 0 }, { f: 'Payroll CSV export', col: 0 }, { f: 'Certifications and the provincial rules engine', col: 0 }, { f: 'Compliance at any past minute', col: 0 }, { f: 'Required coverage with gap alerts', col: 0 }, { f: 'Anonymous benchmarks', col: 0 }] },
+      { name: 'Time, payroll and rules', rows: [{ f: 'Slide-to-clock-in timeclock', col: 0 }, { f: 'Payroll with direct deposit, or a CSV export', col: 0 }, { f: 'Certifications and the provincial rules engine', col: 0 }, { f: 'Compliance at any past minute', col: 0 }, { f: 'Required coverage with gap alerts', col: 0 }, { f: 'Anonymous benchmarks', col: 0 }] },
       { name: 'Aquatics and operations', rows: [{ f: 'Swim lessons with offline attendance', col: 0 }, { f: 'Bather headcounts', col: 0 }, { f: 'Deck rotation with fatigue limits', col: 0 }, { f: 'Water chemistry logs and closures', col: 2 }, { f: 'Incident reports', col: 2 }, { f: 'Front-desk status board', col: 2 }] },
       { name: 'Programs and member services', rows: [{ f: 'Lesson, club and camp campaigns (swim, skate, any program)', col: 0 }, { f: 'Family registration with age checks and waitlists', col: 0 }, { f: 'Memberships, drop-ins and passes', col: 0 }, { f: 'Public sign-up and booking requests, no account needed', col: 0 }] },
       { name: 'Safety and people', rows: [{ f: 'Working-alone check-ins with escalation', col: 0 }, { f: 'Storm call-outs and winter patrol records', col: 0 }, { f: 'Pre-trip inspections, licences and hours of service', col: 0 }, { f: 'Injury reports to the compensation board, with deadlines', col: 0 }, { f: 'Roles for any department', col: 0 }, { f: 'Care after critical incidents', col: 0 }, { f: 'Onboarding checks', col: 1 }, { f: 'People review', col: 1 }, { f: 'Discipline records with fair process', col: 1 }, { f: 'Accommodation cases', col: 1 }] },
@@ -286,7 +286,7 @@ const en = {
       { id: 'STAFF', title: 'Lifeguard', body: 'Slide to clock in, count bathers, pick up a shift.' },
       { id: 'EMPLOYEE', title: 'Water works operator', body: 'A city worker outside recreation: own schedule, clock-in and time off, no pool screens.' },
       { id: 'AQUATIC_SUPERVISOR', title: 'Supervisor', body: 'Build the week, approve overtime, verify certifications.' },
-      { id: 'HR_ADMIN', title: 'HR administrator', body: 'People review with case files, staff records, payroll export and city settings.' },
+      { id: 'HR_ADMIN', title: 'HR administrator', body: 'Every department by tab: people review with case files, staff records, payroll and city settings.' },
       { id: 'FRONT_DESK', title: 'Front desk', body: 'Member services: families, program registration, memberships and drop-ins.' },
       { id: 'UNION_STEWARD', title: 'Union steward', body: 'Discussions and the seniority list.' },
       { id: 'DEV', title: 'Setting up a city', body: 'The console we use to set up your city, features and staff import.' },
@@ -310,7 +310,7 @@ const en = {
         name: 'Rules and payroll',
         items: [
           { q: 'Which provinces do you support?', a: 'All 13 provinces and territories: overtime, rest periods, statutory holidays and young-worker rules, with your collective agreement layered on top. Rules are effective-dated so changes don’t rewrite history. The rule values have not yet been reviewed by legal counsel, so you confirm them during setup.' },
-          { q: 'Do you run payroll?', a: 'No. We export approved hours, overtime, stat holiday and vacation pay as a CSV for your payroll system. Your payroll provider calculates deductions and issues T4s and RL-1s.' },
+          { q: 'Do you run payroll?', a: 'Yes, outside Quebec. Pay runs for the whole city or one department work out CPP, EI and income tax with CRA’s method, create a direct deposit file for your bank (CPA-005), and give everyone a pay statement in the app, plus remittance, T4 and ROE figures for HR to file. Each year’s rates are checked against CRA’s tables before use. Quebec staff (QPP, QPIP, RL-1) stay with your provider, and the CSV export is still there if you keep one.' },
           { q: 'What about young workers?', a: 'The scheduler knows each province’s age limits, school-day hours and your school calendar, and blocks shifts that fall outside those limits.' },
         ],
       },
@@ -400,7 +400,7 @@ type DeepString<T> = T extends string ? string : T extends number ? number : T e
 const fr: DeepString<Copy> = {
   meta: {
     title: 'FlexcityHeadquarters : gestion de la main-d’œuvre, horaires et pointage',
-    description: 'Horaires, échanges de quarts, pointage, exportation de la paie et suivi du personnel pour les RH, pour tous les services municipaux, des loisirs et de l’aquatique aux parcs, arénas et travaux publics. Conçu selon les normes du travail provinciales et les conventions collectives, en français et en anglais.',
+    description: 'Horaires, échanges de quarts, pointage, paie avec dépôt direct et suivi du personnel pour les RH, pour tous les services municipaux, des loisirs et de l’aquatique aux parcs, arénas et travaux publics. Conçu selon les normes du travail provinciales et les conventions collectives, en français et en anglais.',
   },
   nav: { product: 'Produit', why: 'Pourquoi FH', privateSector: 'Secteur privé', plans: 'Forfaits', demo: 'Démo', help: 'Aide', faq: 'FAQ', contact: 'Contact', tryDemo: 'Essayer la démo', language: 'English', languageLabel: 'Read in English', menu: 'Menu', close: 'Fermer' },
   home: {
@@ -451,7 +451,7 @@ const fr: DeepString<Copy> = {
         { time: '6 h', who: 'L’ouverture', title: 'Un glissement, et la journée commence', body: 'Une sauveteuse arrive pour ouvrir la piscine et pointe d’un glissement au bon quart, avec une vérification rapide sur place. Sa certification a été vérifiée bien avant son affectation.' },
         { time: '10 h 40', who: 'L’opérateur qui travaille seul', title: 'Seul à la station de pompage, mais jamais oublié', body: 'Un opérateur de l’eau potable commence une séance de travail seul et se manifeste à intervalles réguliers. S’il manque une vérification, lui et les personnes qui le surveillent sont alertés. Toujours sans réponse 15 minutes plus tard? Les RH sont avisées.' },
         { time: '14 h 15', who: 'La superviseure', title: 'Une absence, comblée avant la soirée', body: 'La superviseure affiche le quart de ce soir au babillard. Le personnel admissible voit ce qu’il rapporte avant de le prendre, et les heures supplémentaires suivent l’ordre de la convention, avec un avertissement avant de sauter quelqu’un.' },
-        { time: '16 h 30', who: 'Les RH et la paie', title: 'La paie fermée sans rien ressaisir', body: 'Les heures approuvées, les heures supplémentaires et les indemnités de jour férié partent dans un fichier CSV pour le système de paie. Les RH se sont connectées avec un deuxième facteur, comme le font par défaut les comptes RH.' },
+        { time: '16 h 30', who: 'Les RH et la paie', title: 'La paie versée sans rien ressaisir', body: 'Les heures approuvées deviennent la paie, RPC, AE et impôt calculés. Une deuxième personne approuve avec sa clé d’accès, le fichier de dépôt part à la banque et chacun trouve son relevé de paie dans l’application.' },
       ],
     },
     alone: {
@@ -486,14 +486,14 @@ const fr: DeepString<Copy> = {
       { icon: 'trees', title: 'Parcs et équipes extérieures', body: 'Embauche saisonnière, horaires d’équipe et pointage confirmé sur place, sans feuilles de temps papier.', points: ['Personnel saisonnier importé d’un chiffrier', 'Rappels en cas de tempête dans l’ordre des heures supplémentaires', 'Registres de patrouille hivernale exportables comme preuve'] },
       { icon: 'droplet', title: 'Eau potable et eaux usées', body: 'Les certificats requis sont vérifiés avant toute affectation, avec des rôles propres et sans écrans de loisirs.', points: ['Certificats requis vérifiés à l’affectation', 'Un opérateur responsable toujours à l’horaire, avec alertes', 'Vérifications de travail seul aux stations de pompage'] },
       { icon: 'wrench', title: 'Bâtiments et entretien', body: 'Horaires d’équipe, heures supplémentaires offertes selon l’ordre de la convention, et heures approuvées exportées pour la paie.', points: ['Heures supplémentaires offertes selon l’ordre de la convention', 'Inspections avant départ; une défectuosité majeure met le véhicule hors service', 'Heures de service des conducteurs vérifiées à l’affectation'] },
-      { icon: 'users', title: 'RH, paie et syndicats', body: 'Un seul dossier d’employé, les taux de salaire et l’exportation de la paie, un suivi du personnel qui signale qui a besoin d’une discussion, et un carrefour syndical géré par la section locale.', points: ['Des rôles pour chaque service : superviseurs et gestionnaires ne voient que leur équipe', 'Authentification multifacteur exigée par défaut pour les RH', 'Un carrefour syndical fermé à la direction'] },
+      { icon: 'users', title: 'RH, paie et syndicats', body: 'Un seul dossier d’employé, la paie avec dépôt direct par service, un suivi du personnel qui signale qui a besoin d’une discussion, et un carrefour syndical géré par la section locale.', points: ['Les superviseurs ne voient que leur service, et seulement les dossiers RH auxquels ils ont pris part', 'Approbation de la paie à deux personnes avec clé d’accès; données bancaires et NAS chiffrés', 'Un carrefour syndical fermé à la direction'] },
     ],
     featuresTitle: 'Tout, de l’horaire au chèque de paie',
     featuresLead: 'Du sauveteur qui ouvre à 6 h à l’administratrice RH qui ferme la paie, chacun voit ce dont il a besoin, et rien de plus.',
     features: [
       { icon: 'calendar', title: 'Des horaires conformes', body: 'Préparez la semaine avec un assistant qui vérifie les certifications, l’intégration, les disponibilités, les périodes de repos, les limites pour les jeunes et les restrictions de travail avant toute affectation.' },
       { icon: 'repeat', title: 'Un babillard qui affiche la paie', body: 'Le personnel prend des quarts lui-même et voit d’abord une estimation de ce que chacun rapporte, heures supplémentaires et jours fériés compris. Les heures supplémentaires suivent l’ordre de la convention, avec un avertissement avant de sauter quelqu’un.' },
-      { icon: 'clock', title: 'Pointer d’un glissement', body: 'Un seul geste vous pointe au bon quart, avec une vérification rapide sur place. Les pointages passent en revue, puis dans un fichier CSV pour votre système de paie.' },
+      { icon: 'clock', title: 'Pointer d’un glissement', body: 'Un seul geste vous pointe au bon quart, avec une vérification rapide sur place. Les pointages passent en revue, puis directement dans la paie.' },
       { icon: 'clipboard', title: 'Une intégration qui conditionne l’horaire', body: 'Vérifications du casier judiciaire et du secteur vulnérable, formation sur la protection de l’enfance, politiques à signer : activées par poste, et celles que vous rendez obligatoires bloquent l’horaire tant qu’elles ne sont pas faites.' },
       { icon: 'armchair', title: 'Rotation et limites de fatigue', body: 'Un plan des chaises fait avancer les sauveteurs à temps, applique les limites de fatigue que vous fixez pour que personne ne reste trop longtemps en poste, et tient un registre des rotations.' },
       { icon: 'trending', title: 'Dénombrements et prévisions', body: 'Un compteur de baigneurs selon la capacité de chaque bassin, et une prévision des sauveteurs requis chaque heure d’après votre propre historique.' },
@@ -614,7 +614,7 @@ const fr: DeepString<Copy> = {
     newBadge: 'Nouveau',
     base: [
       { icon: 'calendar', name: 'Horaires et quarts', items: [{ t: 'Préparation de l’horaire avec un assistant' }, { t: 'Babillard de quarts avec estimation de la paie avant de prendre un quart' }, { t: 'Prévisions de la demande d’après votre historique' }, { t: 'Registre d’équité des heures supplémentaires' }] },
-      { icon: 'clock', name: 'Temps et paie', items: [{ t: 'Pointage d’un glissement' }, { t: 'Révision des pointages avant la paie' }, { t: 'Exportation CSV pour votre système de paie' }] },
+      { icon: 'clock', name: 'Temps et paie', items: [{ t: 'Pointage d’un glissement' }, { t: 'Révision des pointages avant la paie' }, { t: 'Paie avec RPC, AE et impôt, dépôt direct et relevés de paie', isNew: true }, { t: 'Versements, T4 et données de RE', isNew: true }, { t: 'Ou une exportation CSV pour votre fournisseur de paie' }] },
       { icon: 'badge', name: 'Règles et certifications', items: [{ t: 'Moteur de règles provinciales : heures supplémentaires, repos, jeunes travailleurs, jours fériés' }, { t: 'Certifications vérifiées avant toute affectation' }, { t: 'Couverture requise : certificats qui doivent être en service, avec alertes', isNew: true }, { t: 'Vue de la conformité à toute minute passée' }, { t: 'Comparaisons anonymes' }] },
       { icon: 'waves', name: 'Aquatique', items: [{ t: 'Présences aux cours au bord de la piscine, même hors ligne' }, { t: 'Dénombrement des baigneurs' }, { t: 'Rotation des sauveteurs avec limites de fatigue' }] },
       { icon: 'idcard', name: 'Programmes et services aux membres', items: [{ t: 'Campagnes de cours, de clubs et de camps, avec les niveaux et âges de la Société de sauvetage, du YMCA et de Patinage Plus', isNew: true }, { t: 'Inscription des familles avec vérification de l’âge et liste d’attente', isNew: true }, { t: 'Abonnements à l’année ou au mois, entrées et cartes', isNew: true }, { t: 'Page publique d’inscription : les familles s’inscrivent et réservent sans compte', isNew: true }] },
@@ -639,7 +639,7 @@ const fr: DeepString<Copy> = {
     notIncluded: 'Pas dans cette colonne',
     compare: [
       { name: 'Horaires et quarts', rows: [{ f: 'Horaires et assistant de planification', col: 0 }, { f: 'Babillard de quarts avec estimation de la paie', col: 0 }, { f: 'Prévisions de la demande', col: 0 }, { f: 'Registre d’équité des heures supplémentaires', col: 0 }] },
-      { name: 'Temps, paie et règles', rows: [{ f: 'Pointage d’un glissement', col: 0 }, { f: 'Exportation CSV de la paie', col: 0 }, { f: 'Certifications et moteur de règles provinciales', col: 0 }, { f: 'Conformité à toute minute passée', col: 0 }, { f: 'Couverture requise avec alertes', col: 0 }, { f: 'Comparaisons anonymes', col: 0 }] },
+      { name: 'Temps, paie et règles', rows: [{ f: 'Pointage d’un glissement', col: 0 }, { f: 'Paie avec dépôt direct, ou exportation CSV', col: 0 }, { f: 'Certifications et moteur de règles provinciales', col: 0 }, { f: 'Conformité à toute minute passée', col: 0 }, { f: 'Couverture requise avec alertes', col: 0 }, { f: 'Comparaisons anonymes', col: 0 }] },
       { name: 'Aquatique et opérations', rows: [{ f: 'Cours de natation avec présences hors ligne', col: 0 }, { f: 'Dénombrement des baigneurs', col: 0 }, { f: 'Rotation des sauveteurs avec limites de fatigue', col: 0 }, { f: 'Registres de chimie de l’eau et fermetures', col: 2 }, { f: 'Rapports d’incident', col: 2 }, { f: 'Tableau d’état de l’accueil', col: 2 }] },
       { name: 'Programmes et services aux membres', rows: [{ f: 'Campagnes de cours, de clubs et de camps (natation, patinage, tout programme)', col: 0 }, { f: 'Inscription des familles avec vérification de l’âge et liste d’attente', col: 0 }, { f: 'Abonnements, entrées et cartes', col: 0 }, { f: 'Inscriptions publiques et demandes de réservation, sans compte', col: 0 }] },
       { name: 'Sécurité et personnel', rows: [{ f: 'Vérifications de travail seul avec escalade', col: 0 }, { f: 'Rappels en cas de tempête et registres de patrouille hivernale', col: 0 }, { f: 'Inspections avant départ, permis et heures de service', col: 0 }, { f: 'Déclarations de lésion à l’organisme d’indemnisation, avec échéances', col: 0 }, { f: 'Des rôles pour chaque service', col: 0 }, { f: 'Soutien après un incident critique', col: 0 }, { f: 'Vérifications d’intégration', col: 1 }, { f: 'Suivi du personnel', col: 1 }, { f: 'Dossiers disciplinaires avec procédure équitable', col: 1 }, { f: 'Dossiers de mesures d’adaptation', col: 1 }] },
@@ -684,7 +684,7 @@ const fr: DeepString<Copy> = {
       { id: 'STAFF', title: 'Sauveteur', body: 'Pointer d’un glissement, compter les baigneurs, prendre un quart.' },
       { id: 'EMPLOYEE', title: 'Opérateur, eau potable', body: 'Un employé municipal hors des loisirs : son horaire, son pointage et ses congés, sans écrans de piscine.' },
       { id: 'AQUATIC_SUPERVISOR', title: 'Superviseur', body: 'Préparer la semaine, approuver les heures supplémentaires, vérifier les certifications.' },
-      { id: 'HR_ADMIN', title: 'Administratrice RH', body: 'Suivi du personnel avec dossiers, fiches du personnel, exportation de la paie et paramètres de la ville.' },
+      { id: 'HR_ADMIN', title: 'Administratrice RH', body: 'Tous les services par onglet : suivi du personnel avec dossiers, fiches du personnel, paie et paramètres de la ville.' },
       { id: 'FRONT_DESK', title: 'Accueil', body: 'Services aux membres : familles, inscriptions aux programmes, abonnements et entrées.' },
       { id: 'UNION_STEWARD', title: 'Délégué syndical', body: 'Discussions et liste d’ancienneté.' },
       { id: 'DEV', title: 'Configurer une ville', body: 'La console qui sert à configurer votre ville, ses fonctions et l’importation du personnel.' },
@@ -708,7 +708,7 @@ const fr: DeepString<Copy> = {
         name: 'Règles et paie',
         items: [
           { q: 'Quelles provinces prenez-vous en charge?', a: 'Les 13 provinces et territoires : heures supplémentaires, repos, jours fériés et règles pour les jeunes, avec votre convention collective en plus. Les règles sont datées, alors un changement ne réécrit pas le passé. Leurs valeurs n’ont pas encore été révisées par un conseiller juridique : vous les confirmez à la mise en service.' },
-          { q: 'Faites-vous la paie?', a: 'Non. Nous exportons les heures approuvées, les heures supplémentaires, les jours fériés et l’indemnité de vacances en CSV pour votre système de paie, qui calcule les retenues et produit les T4 et RL-1.' },
+          { q: 'Faites-vous la paie?', a: 'Oui, hors Québec. Les paies pour toute la ville ou un service calculent le RPC, l’AE et l’impôt selon la méthode de l’ARC, créent un fichier de dépôt direct pour votre banque (CPA-005) et donnent à chacun un relevé de paie dans l’application, avec les données de versement, de T4 et de RE que les RH produisent. Les taux de chaque année sont vérifiés par rapport aux tables de l’ARC avant usage. Le personnel du Québec (RRQ, RQAP, RL-1) reste avec votre fournisseur, et l’exportation CSV demeure si vous en gardez un.' },
           { q: 'Et les jeunes travailleurs?', a: 'L’outil connaît les âges minimums de chaque province, les heures permises les jours d’école et votre calendrier scolaire, et bloque les quarts qui dépassent ces limites.' },
         ],
       },
