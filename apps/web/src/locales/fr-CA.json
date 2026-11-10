@@ -1841,6 +1841,10 @@
       "textAlerts": {
         "name": "Alertes par texto et téléphone",
         "help": "Textos et appels urgents : vérifications de travail isolé manquées, demandes d’aide, rappels d’hiver et quarts libres qui commencent dans la journée. Seulement aux personnes qui confirment leur numéro. Chaque message est facturé par le fournisseur."
+      },
+      "seniority": {
+        "name": "Ancienneté",
+        "help": "Les dates et heures d’ancienneté départagent les égalités dans l’ordre des heures supplémentaires, les rappels au travail et l’assistant d’horaire. L’organisation peut aussi changer ce choix dans ses paramètres."
       }
     },
     "positions": "Postes",
@@ -1937,7 +1941,11 @@
       "people": "Personnel",
       "money": "Facturation",
       "account": "Compte"
-    }
+    },
+    "sector": "Secteur",
+    "sectorHint": "Les entreprises privées commencent sans ancienneté; on peut changer ce choix plus tard.",
+    "sectorPublic": "Municipalité ou organisme public",
+    "sectorPrivate": "Entreprise privée"
   },
   "passkeys": {
     "title": "Clés d'accès",
@@ -5119,5 +5127,14 @@
     "monthsHint": "La norme de l’Ontario est de 3 mois, ou 12 par entente écrite.",
     "payoutHours": "Heures accumulées à payer",
     "payoutHoursHint": "Payées au taux habituel à la date de paie."
+  },
+  "seniority": {
+    "title": "Ancienneté",
+    "help": "Indique si l’ancienneté compte ici. Les villes syndiquées l’utilisent habituellement; bien des entreprises privées non.",
+    "use": "Utiliser l’ancienneté",
+    "onHelp": "Les dates et heures d’ancienneté départagent les égalités dans l’ordre des heures supplémentaires, les rappels au travail et l’assistant d’horaire, et paraissent aux dossiers.",
+    "offHelp": "Les égalités se règlent par le moins d’heures, puis par le nom. Les dates d’ancienneté sont conservées mais ni affichées ni utilisées.",
+    "turnedOn": "L’ancienneté est utilisée",
+    "turnedOff": "L’ancienneté n’est plus utilisée"
   }
 }

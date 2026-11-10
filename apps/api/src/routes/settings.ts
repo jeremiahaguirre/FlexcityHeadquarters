@@ -280,3 +280,34 @@ settingsRouter.put(
     res.json({ roles });
   }),
 );
+
+/**
+ * Whether the organization uses seniority: when it does, seniority dates and hours break ties in the
+ * overtime order, call-outs and the scheduling assistant, and show on people's records. The Dev console
+ * can switch it too (Features).
+ */
+settingsRouter.get(
+  '/settings/seniority',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const t = await withTenant(a.tenantId, (tx) => tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true } }));
+    res.json({ useSeniority: resolveFeatures(t.features).seniority });
+  }),
+);
+
+settingsRouter.put(
+  '/settings/seniority',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const { useSeniority } = z.object({ useSeniority: z.boolean() }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const t = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true } });
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { features: { ...(t.features as Record<string, boolean>), seniority: useSeniority } } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.seniority', entity: 'Tenant', entityId: a.tenantId, after: { useSeniority } });
+    });
+    forgetFeatures(a.tenantId);
+    res.json({ useSeniority });
+  }),
+);

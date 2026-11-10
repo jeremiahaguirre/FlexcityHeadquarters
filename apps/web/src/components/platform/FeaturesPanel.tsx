@@ -15,7 +15,7 @@ const GROUPS: Array<{ key: string; features: string[] }> = [
   { key: 'deck', features: ['poolChemistry', 'headcounts', 'rotations', 'statusBoard', 'incidents'] },
   { key: 'programs', features: ['lessons', 'registration'] },
   { key: 'safety', features: ['loneWork', 'injuryClaims', 'care', 'fleet', 'callOuts', 'patrols'] },
-  { key: 'people', features: ['onboarding', 'hrSuite', 'discipline', 'reliability', 'accommodation', 'jobs', 'union'] },
+  { key: 'people', features: ['onboarding', 'hrSuite', 'discipline', 'reliability', 'accommodation', 'jobs', 'seniority', 'union'] },
   { key: 'communication', features: ['emailNotifications', 'textAlerts', 'benchmarks'] },
 ];
 

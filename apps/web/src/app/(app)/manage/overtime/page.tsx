@@ -15,7 +15,7 @@ import { formatDate, dateFormat } from '@/lib/format';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Row { userId: string; name: string; chargedHours: number; acceptedHours: number; refusals: number; seniorityDate: string | null }
-interface Standings { policy: { countRefusals: boolean; clause: string | null; periodStartMonth: number }; periodFrom: string; rows: Row[] }
+interface Standings { policy: { countRefusals: boolean; clause: string | null; periodStartMonth: number }; useSeniority?: boolean; periodFrom: string; rows: Row[] }
 
 const localInput = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
@@ -75,7 +75,7 @@ export default function OvertimePage() {
               <Skeleton className="h-48" />
             ) : (
               <table className="w-full min-w-[34rem] text-left text-small">
-                <thead className="text-label uppercase text-muted"><tr><th className="py-2">#</th><th>{t('overtime.person')}</th><th className="text-right">{t('overtime.charged')}</th><th className="text-right">{t('overtime.refusals')}</th><th>{t('overtime.seniority')}</th><th /></tr></thead>
+                <thead className="text-label uppercase text-muted"><tr><th className="py-2">#</th><th>{t('overtime.person')}</th><th className="text-right">{t('overtime.charged')}</th><th className="text-right">{t('overtime.refusals')}</th>{data.data.useSeniority !== false ? <th>{t('overtime.seniority')}</th> : null}<th /></tr></thead>
                 <tbody className="divide-y divide-line">
                   {data.data.rows.map((r, i) => (
                     <tr key={r.userId}>
@@ -83,7 +83,7 @@ export default function OvertimePage() {
                       <td className="font-semibold">{r.name}</td>
                       <td className="text-right tabular-nums">{r.chargedHours.toFixed(2)} h</td>
                       <td className="text-right tabular-nums">{r.refusals}</td>
-                      <td>{r.seniorityDate ? formatDate(`${r.seniorityDate}T12:00:00`, lng, 'dated') : '—'}</td>
+                      {data.data?.useSeniority !== false ? <td>{r.seniorityDate ? formatDate(`${r.seniorityDate}T12:00:00`, lng, 'dated') : '—'}</td> : null}
                       <td className="text-right"><Button size="sm" variant="ghost" icon={<PhoneCall className="h-4 w-4" aria-hidden="true" />} onClick={() => setCalling(r)}>{t('overtime.call')}</Button></td>
                     </tr>
                   ))}

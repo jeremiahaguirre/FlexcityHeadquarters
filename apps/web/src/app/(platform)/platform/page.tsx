@@ -44,6 +44,7 @@ export default function CitiesPage() {
           name: s('name'),
           subdomain: s('subdomain').toLowerCase(),
           defaultLocale: s('locale'),
+          sector: s('sector') || 'public',
           facility: { name: s('facility'), province: s('province'), timezone: s('tz'), latitude: null, longitude: null, geoRadiusM: 150, costCenter: s('costCentre') || null },
           admin: adminEmail ? { firstName: s('adminFirst'), lastName: s('adminLast'), email: adminEmail } : null,
         },
@@ -107,6 +108,14 @@ export default function CitiesPage() {
                 <Select {...p} name="locale" defaultValue="en-CA">
                   <option value="en-CA">English</option>
                   <option value="fr-CA">Français</option>
+                </Select>
+              )}
+            </Field>
+            <Field label={t('platform.sector')} hint={t('platform.sectorHint')}>
+              {(p) => (
+                <Select {...p} name="sector" defaultValue="public">
+                  <option value="public">{t('platform.sectorPublic')}</option>
+                  <option value="private">{t('platform.sectorPrivate')}</option>
                 </Select>
               )}
             </Field>

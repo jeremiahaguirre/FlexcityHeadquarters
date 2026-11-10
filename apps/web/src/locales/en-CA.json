@@ -1841,6 +1841,10 @@
       "textAlerts": {
         "name": "Text and phone alerts",
         "help": "Urgent texts and calls: missed working-alone check-ins, calls for help, winter call-outs and open shifts starting within a day. Only to people who confirm their number. Each message is billed by the text provider."
+      },
+      "seniority": {
+        "name": "Seniority",
+        "help": "Seniority dates and hours break ties in the overtime order, call-outs and the scheduling assistant. The organization can also switch this in its settings."
       }
     },
     "positions": "Positions",
@@ -1937,7 +1941,11 @@
       "people": "People",
       "money": "Money",
       "account": "Account"
-    }
+    },
+    "sector": "Sector",
+    "sectorHint": "Private companies start without seniority; either can change it later.",
+    "sectorPublic": "Municipality or public body",
+    "sectorPrivate": "Private-sector company"
   },
   "passkeys": {
     "title": "Passkeys",
@@ -5119,5 +5127,14 @@
     "monthsHint": "Ontario's standard is 3 months, or 12 by written agreement.",
     "payoutHours": "Banked hours to pay out",
     "payoutHoursHint": "Paid at their regular rate on the pay date."
+  },
+  "seniority": {
+    "title": "Seniority",
+    "help": "Whether seniority counts here. Unionized cities usually use it; many private companies don't.",
+    "use": "Use seniority",
+    "onHelp": "Seniority dates and hours break ties in the overtime order, call-outs and the scheduling assistant, and show on people's records.",
+    "offHelp": "Ties go by fewest hours and then name. Seniority dates are kept but not shown or used.",
+    "turnedOn": "Seniority is used",
+    "turnedOff": "Seniority is no longer used"
   }
 }

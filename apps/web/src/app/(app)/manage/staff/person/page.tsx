@@ -229,7 +229,7 @@ function Person() {
                   )}
                 </Field>
                 <Field label={t('staff.hireDate')}>{(f) => <Input {...f} name="hireDate" type="date" defaultValue={p.hireDate ?? ''} />}</Field>
-                <Field label={t('staff.seniorityDate')}>{(f) => <Input {...f} name="seniorityDate" type="date" defaultValue={p.seniorityDate ?? ''} />}</Field>
+                {me?.features?.seniority !== false ? <Field label={t('staff.seniorityDate')}>{(f) => <Input {...f} name="seniorityDate" type="date" defaultValue={p.seniorityDate ?? ''} />}</Field> : null}
                 <Field label={t('staff.vsc')} hint={t('staff.vscHint')}>{(f) => <Input {...f} name="vsc" type="date" defaultValue={p.vscClearedDate ?? ''} />}</Field>
                 <Field label={t('staff.dob')}>{(f) => <Input {...f} name="dob" type="date" defaultValue={p.dateOfBirth ?? ''} />}</Field>
                 <Field label={t('staff.employeeNumber')}>{(f) => <Input {...f} name="employeeNumber" defaultValue={p.employeeNumber ?? ''} />}</Field>

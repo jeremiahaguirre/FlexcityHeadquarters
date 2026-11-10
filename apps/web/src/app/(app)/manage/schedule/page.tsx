@@ -58,7 +58,8 @@ export default function ScheduleBuilderPage() {
   const [adding, setAdding] = useState<string | null>(null);
   const [selected, setSelected] = useState<Shift | null>(null);
   const [assistant, setAssistant] = useState<Proposal | null>(null);
-  const [mode, setMode] = useState<'SENIORITY' | 'EGALITARIAN'>('SENIORITY');
+  const useSeniority = useSession().me?.features?.seniority !== false;
+  const [mode, setMode] = useState<'SENIORITY' | 'EGALITARIAN'>(useSeniority ? 'SENIORITY' : 'EGALITARIAN');
   // Plan every facility together, so staff shared between them are placed once, with travel time.
   const [together, setTogether] = useState(false);
   const [travel, setTravel] = useState(30);
@@ -292,7 +293,7 @@ export default function ScheduleBuilderPage() {
                   setAssistant(null);
                 }}
               >
-                <option value="SENIORITY">{t('builder.seniority')}</option>
+                {useSeniority ? <option value="SENIORITY">{t('builder.seniority')}</option> : null}
                 <option value="EGALITARIAN">{t('builder.egalitarian')}</option>
               </Select>
             )}

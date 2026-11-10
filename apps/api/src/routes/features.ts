@@ -263,7 +263,8 @@ api.post(
         // Same rules (incl. collective-agreement overrides) and school calendar as every other check.
         rules: bundles[0]?.rules ?? resolveRules(facility.province, localDate(body.from, facility.timezone)),
         payWeekStartDay: facility.tenant.payWeekStartDay,
-        distributionMode: body.distributionMode,
+        // By seniority only where the organization uses seniority.
+        distributionMode: (await tenantFeatures(a.tenantId)).seniority ? body.distributionMode : 'EGALITARIAN',
         useShadowTiers: body.useShadowTiers,
         schoolCalendar: bundles[0]?.schoolCalendar,
       });

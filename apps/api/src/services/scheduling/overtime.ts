@@ -4,6 +4,7 @@
  * seniority. Refused offers are often charged as if worked. This keeps the
  * ledger and warns before a supervisor skips someone who is next in line.
  */
+import { resolveFeatures } from '../platform/features.js';
 import type { Tx } from '../../lib/db.js';
 import { dec } from '../../lib/money.js';
 import { evaluateCandidate } from './eligibility.js';
@@ -35,8 +36,10 @@ export function rank(a: Standing, b: Standing): number {
 }
 
 export async function standings(tx: Tx, positionId: string, now = new Date()) {
-  const tenant = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } });
+  const tenant = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true, features: true } });
   const policy = parsePolicy(tenant.overtimePolicy);
+  // Organizations that don't use seniority: ties go by name, and no seniority is shown.
+  const useSeniority = resolveFeatures(tenant.features).seniority;
   const from = periodStart(now, policy.periodStartMonth);
   const users = await tx.user.findMany({
     where: { status: 'ACTIVE', anonymizedAt: null, positions: { some: { positionId } } },
@@ -53,11 +56,11 @@ export async function standings(tx: Tx, positionId: string, now = new Date()) {
       acceptedHours: accepted,
       chargedHours: accepted + (policy.countRefusals ? sum('REFUSED') + sum('NO_ANSWER') : 0),
       refusals: mine.filter((e) => e.kind !== 'ACCEPTED').length,
-      seniorityDate: u.seniorityDate ? u.seniorityDate.toISOString().slice(0, 10) : null,
-      seniorityHours: Number(u.seniorityHours),
+      seniorityDate: useSeniority && u.seniorityDate ? u.seniorityDate.toISOString().slice(0, 10) : null,
+      seniorityHours: useSeniority ? Number(u.seniorityHours) : 0,
     };
   });
-  return { policy, periodFrom: from.toISOString().slice(0, 10), rows: rows.sort(rank) };
+  return { policy, useSeniority, periodFrom: from.toISOString().slice(0, 10), rows: rows.sort(rank) };
 }
 
 /**

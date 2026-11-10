@@ -19,6 +19,8 @@ export interface Me {
   roles: string[];
   customRoles?: Array<{ id: string; name: string; nameFr: string | null }>;
   permissions: string[];
+  /** The organization's feature switches (seniority, text alerts…). */
+  features?: Record<string, boolean>;
   /** Menu items the city hid for this person's roles (Dev console). */
   hiddenMenu?: string[];
   /** The organization requires a passkey for this account and this session hasn't used one. */

@@ -30,6 +30,8 @@ export const FEATURES = {
   payroll: { default: true, permissions: ['payroll.export', 'payroll.approve', 'benefits.manage', 'accounting.manage'] },
   jobs: { default: true, permissions: ['jobs.manage'] },
   union: { default: false, permissions: ['union.hub', 'seniority.read'] },
+  /** Seniority dates and hours break ties in the overtime order, call-outs and the scheduling assistant. Each organization chooses (Settings), and so can the Dev console. */
+  seniority: { default: true, permissions: ['seniority.read'] },
   rotations: { default: true, permissions: ['deck.rotate'] },
   benchmarks: { default: true, permissions: [] },
   accommodation: { default: true, permissions: ['accommodation.manage'] },

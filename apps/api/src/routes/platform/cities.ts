@@ -83,6 +83,8 @@ const newCity = z.object({
   name: z.string().trim().min(2).max(120),
   subdomain,
   defaultLocale: z.enum(['en-CA', 'fr-CA']).default('en-CA'),
+  /** Private-sector companies start without seniority; cities with it (either can change it later). */
+  sector: z.enum(['public', 'private']).default('public'),
   facility: facilityBody,
   admin: z.object({ firstName: z.string().trim().min(1).max(60), lastName: z.string().trim().min(1).max(60), email: z.string().email().max(160) }).nullable().optional(),
 });
@@ -97,7 +99,7 @@ citiesRouter.post(
     try {
       await withTenant(id, async (tx) => {
         // New organizations start with a passkey required for HR, who can see everyone's records.
-        await tx.tenant.create({ data: { id, name: body.name, subdomain: body.subdomain, defaultLocale: body.defaultLocale, mfaRoles: ['HR_ADMIN'] } });
+        await tx.tenant.create({ data: { id, name: body.name, subdomain: body.subdomain, defaultLocale: body.defaultLocale, mfaRoles: ['HR_ADMIN'], ...(body.sector === 'private' ? { features: { seniority: false } } : {}) } });
         await tx.facility.create({ data: { ...body.facility, tenantId: id } });
         if (body.admin) {
           const u = await tx.user.create({
