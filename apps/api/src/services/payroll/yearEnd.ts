@@ -296,9 +296,29 @@ async function employerContributions(tx: Tx, year: number, rows: Array<{ userId:
       hsfRate: Math.round(rate * 1e6) / 1e6,
       hsf: r2(payroll * rate),
       cnt: r2(cntBase * q.employer.cntRate),
-      // Owed only above the threshold, less what was spent on eligible training (Form LE-39.0.2): not tracked here.
-      wsdrfBeforeTraining: payroll > q.employer.wsdrf.threshold ? r2(payroll * q.employer.wsdrf.rate) : 0,
+      ...(await workforceSkills(tx, year, payroll, q.employer.wsdrf)),
     },
+  };
+}
+
+/**
+ * Workforce skills (WSDRF): an employer whose payroll is over the threshold must spend the rate
+ * (1%) on eligible training, or pay the difference to the fund on the RLZ-1.S (Form LE-39.0.2).
+ * The spending comes from the training log (`TrainingSpend`).
+ */
+export async function workforceSkills(tx: Tx, year: number, payroll: number, wsdrf: { rate: number; threshold: number }) {
+  const subject = payroll > wsdrf.threshold;
+  const required = subject ? r2(payroll * wsdrf.rate) : 0;
+  const spent = r2(((await tx.trainingSpend.aggregate({ where: { year }, _sum: { amountCents: true } }))._sum.amountCents ?? 0) / 100);
+  return {
+    wsdrfSubject: subject,
+    wsdrfThreshold: wsdrf.threshold,
+    wsdrfBeforeTraining: required,
+    trainingSpent: spent,
+    /** What's left to pay the fund: the 1% less eligible training, never below zero. */
+    wsdrfOwed: r2(Math.max(0, required - spent)),
+    /** Spending beyond the 1% can be carried to later years. */
+    trainingSurplus: subject ? r2(Math.max(0, spent - required)) : 0,
   };
 }
 

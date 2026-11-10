@@ -2,7 +2,8 @@
  * Electronic filing files built from approved and paid pay statements:
  * - T4 return in CRA's XML format (T619 transmittal + T4 slips + T4 Summary),
  *   uploaded with CRA's Internet File Transfer;
- * - Record of Employment in Service Canada's ROE Web bulk XML format (W-2.0).
+ * - Record of Employment in Service Canada's ROE Web bulk XML format (W-2.0);
+ * - RL-1 slips in Revenu Québec's XML transmission format (Groupe01), for Quebec staff.
  *
  * Element names follow CRA's "T4 XML specification" and Service Canada's
  * "ROE Web XML specification". Run the first file of each kind through the
@@ -10,7 +11,7 @@
  * their schemas between years.
  */
 import type { MailingAddress } from './bank.js';
-import type { T4Slip } from './yearEnd.js';
+import type { Rl1Slip, T4Slip } from './yearEnd.js';
 
 export const esc = (v: unknown) =>
   String(v ?? '')
@@ -190,4 +191,94 @@ export function roeXml(o: {
     el('B18', cut(o.comments, 160)) +
     `</ROE></ROEHEADER>\n`
   );
+}
+
+/* ---------------- RL-1 (Revenu Québec) ---------------- */
+
+/**
+ * RL-1 slip numbers: Revenu Québec assigns each transmitter a range of 8-digit sequence numbers;
+ * the 9th digit is a check digit, the sequence's remainder when divided by 7.
+ */
+export function rl1SlipNumber(sequence: number): string {
+  const seq = String(sequence).padStart(8, '0').slice(-8);
+  return `${seq}${Number(seq) % 7}`;
+}
+
+export interface Rl1Transmitter {
+  /** Preparer number Revenu Québec assigns the transmitter (NP + 6 digits). */
+  preparerNumber: string;
+  /** The software's authorization number from Revenu Québec (it certifies each year's RL-1 software). */
+  certificationNumber: string;
+  /** First number of the range Revenu Québec assigned for this year's slips (8 digits). */
+  firstSlipSequence: number;
+}
+
+export interface Rl1Problem { code: 'NO_QC_NUMBER' | 'NO_PREPARER' | 'NO_CERTIFICATION' | 'NO_SLIP_RANGE' | 'NO_EMPLOYER_ADDRESS' | 'NO_CONTACT' | 'NO_SIN' | 'NO_ADDRESS'; name?: string }
+
+export function rl1Problems(o: { quebecNumber?: string | null; transmitter: Partial<Rl1Transmitter>; employer: Partial<Employer> }, people: Map<string, Person | null>, slips: Array<Pick<Rl1Slip, 'userId' | 'name'>>): Rl1Problem[] {
+  const out: Rl1Problem[] = [];
+  if (!o.quebecNumber) out.push({ code: 'NO_QC_NUMBER' });
+  if (!o.transmitter.preparerNumber) out.push({ code: 'NO_PREPARER' });
+  if (!o.transmitter.certificationNumber) out.push({ code: 'NO_CERTIFICATION' });
+  if (!o.transmitter.firstSlipSequence) out.push({ code: 'NO_SLIP_RANGE' });
+  if (!o.employer.address) out.push({ code: 'NO_EMPLOYER_ADDRESS' });
+  if (!o.employer.contact?.name || !o.employer.contact?.phone) out.push({ code: 'NO_CONTACT' });
+  for (const s of slips) {
+    const p = people.get(s.userId);
+    if (!p) out.push({ code: 'NO_SIN', name: s.name });
+    else if (!p.address) out.push({ code: 'NO_ADDRESS', name: s.name });
+  }
+  return out;
+}
+
+function rqAddr(a: MailingAddress | null) {
+  if (!a) return '';
+  return `<Adresse>${el('Ligne1', cut(a.line1, 30))}${el('Ligne2', cut(a.line2, 30))}${el('Ville', cut(a.city, 30))}${el('Province', a.province)}${el('CodePostal', a.postalCode.replace(/\s/g, ''))}</Adresse>`;
+}
+
+/**
+ * The year's RL-1 slips as one Revenu Québec XML transmission. Laid out after Revenu Québec's
+ * published RL-1 schema (Transmission / P / Groupe01 / R); like the CRA files, run the first one
+ * through Revenu Québec's test service, and confirm the schema version for the year.
+ * `kind` 'R' is an original; 'A' amends (each slip keeps its number), 'D' cancels.
+ */
+export function rl1Xml(o: { year: number; kind: 'R' | 'A' | 'D'; quebecNumber: string; employer: Employer; transmitter: Rl1Transmitter; slips: Rl1Slip[]; people: Map<string, Person>; software: { name: string; version: string } }) {
+  const money = (name: string, n: number) => (n ? el(name, n.toFixed(2)) : '');
+  const slips = o.slips.map((s, i) => {
+    const p = o.people.get(s.userId)!;
+    return (
+      '<R>' +
+      `<Identification>${el('Annee', o.year)}${el('NoReleve', rl1SlipNumber(o.transmitter.firstSlipSequence + i))}</Identification>` +
+      `<Employe>${el('NAS', digits(p.sin))}${el('NoRef', cut(p.employeeNumber, 20))}${el('Nom', cut(p.lastName, 30))}${el('Prenom', cut(p.firstName, 30))}${rqAddr(p.address)}</Employe>` +
+      '<Montants>' +
+      money('A_RevenuEmploi', s.boxA) +
+      money('B_CotisationRRQ', s.boxBA) +
+      money('B_B_CotisationRRQSupplementaire', s.boxBB) +
+      money('C_CotisationAssEmploi', s.boxC) +
+      money('D_CotisationRPA', s.boxD) +
+      money('E_ImpotQue', s.boxE) +
+      money('F_CotisationSyndicale', s.boxF) +
+      money('G_SalaireAdmisRRQ', s.boxG) +
+      money('H_CotisationRQAP', s.boxH) +
+      money('I_SalaireAdmisRQAP', s.boxI) +
+      money('L_AvantageImposable', s.boxL) +
+      '</Montants>' +
+      '</R>'
+    );
+  });
+  const c = o.employer.contact;
+  const phone = digits(c.phone);
+  const header =
+    '<P>' +
+    el('Annee', o.year) +
+    el('TypeEnvoi', o.kind === 'R' ? 1 : o.kind === 'A' ? 4 : 6) +
+    `<Preparateur>${el('No', o.transmitter.preparerNumber)}${el('Type', 1)}${el('Nom1', cut(o.employer.name, 30))}${rqAddr(o.employer.address)}</Preparateur>` +
+    `<Informatique>${el('Nom', cut(c.name, 30))}${el('IndRegional', phone.slice(0, 3))}${el('Tel', `${phone.slice(3, 6)}-${phone.slice(6, 10)}`)}${el('Courriel', c.email)}</Informatique>` +
+    `<Comptabilite>${el('Nom', cut(c.name, 30))}${el('IndRegional', phone.slice(0, 3))}${el('Tel', `${phone.slice(3, 6)}-${phone.slice(6, 10)}`)}</Comptabilite>` +
+    el('NoCertification', o.transmitter.certificationNumber) +
+    el('NomLogiciel', o.software.name) +
+    el('VersionLogiciel', o.software.version) +
+    '</P>';
+  const group = `<Groupe01>${el('NoId', o.quebecNumber.slice(0, 10))}${el('TypeDossier', 'RS')}${el('NoDossier', o.quebecNumber.slice(12))}${slips.join('')}</Groupe01>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<Transmission VersionSchema="${o.year}.1" pxmlns="http://www.mrq.gouv.qc.ca/T5">${header}${group}</Transmission>\n`;
 }

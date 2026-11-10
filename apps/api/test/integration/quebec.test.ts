@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { DOMParser } from '@xmldom/xmldom';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -16,6 +17,7 @@ const call = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
   put: (p: string, b: object = {}) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  del: (p: string) => request(server).delete(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
 });
 let runId = '';
 // A Quebec facility; the second guard lives and is employed in Ontario (pay profile).
@@ -133,5 +135,51 @@ describe('Quebec payroll', () => {
     expect(o.box17Qpp).toBe(0);
     // Box 22 on a Quebec T4 is federal tax only.
     expect(q.box22IncomeTax + s.boxE).toBeGreaterThan(q.box22IncomeTax);
+  });
+
+  it('builds the RL-1 file for Revenu Québec, only once the numbers it needs are set', async () => {
+    const missing = await call(tok.hr).get('/api/payroll/rl1.xml?year=2026');
+    expect(missing.body.code).toBe('FILING_INCOMPLETE');
+    expect(missing.body.details.problems.map((p: { code: string }) => p.code)).toEqual(expect.arrayContaining(['NO_PREPARER', 'NO_CERTIFICATION', 'NO_SLIP_RANGE', 'NO_SIN']));
+    expect((await call(tok.hr).put('/api/payroll/settings', { rqPreparerNumber: 'NP12' })).status).toBe(400);
+    expect((await call(tok.hr).put('/api/payroll/settings', {
+      rqPreparerNumber: 'NP123456', rqCertificationNumber: 'RQ-26-01-ABC', rl1FirstSlip: 10000014,
+      filingContact: { name: 'Paie Gatineau', phone: '819-555-0100' }, employerMailing: { line1: '25 rue Laurier', city: 'Gatineau', province: 'QC', postalCode: 'J8X 3Y3' },
+    })).status).toBe(200);
+    expect((await call(tok.hr).put(`/api/users/${quebecer()}/pay-profile`, { sin: '130692544', mailingAddress: { line1: '1 rue Principale', city: 'Gatineau', province: 'QC', postalCode: 'J8P 1A1' } })).status).toBeLessThan(300);
+    const r = await call(tok.hr).get('/api/payroll/rl1.xml?year=2026').buffer(true).parse((res, cb) => {
+      let x = '';
+      res.on('data', (c: Buffer) => (x += c.toString()));
+      res.on('end', () => cb(null, x));
+    });
+    expect(r.status).toBe(200);
+    const errors: string[] = [];
+    const doc = new DOMParser({ errorHandler: { error: (m: string) => void errors.push(m), fatalError: (m: string) => void errors.push(m) } }).parseFromString(r.body as string, 'application/xml');
+    expect(errors).toEqual([]);
+    const text = (n: string) => doc.getElementsByTagName(n)[0]?.textContent ?? null;
+    const slip = (await call(tok.hr).get('/api/payroll/rl1?year=2026')).body.slips[0];
+    expect(doc.getElementsByTagName('R')).toHaveLength(1);
+    expect(text('NAS')).toBe('130692544');
+    // Slip number: the sequence and its check digit (remainder by 7).
+    expect(text('NoReleve')).toBe(`10000014${10000014 % 7}`);
+    expect(text('NoId')).toBe('1234567890');
+    expect(text('NoDossier')).toBe('0001');
+    expect(text('NoCertification')).toBe('RQ-26-01-ABC');
+    expect(Number(text('A_RevenuEmploi'))).toBeCloseTo(slip.boxA, 2);
+    expect(Number(text('E_ImpotQue'))).toBeCloseTo(slip.boxE, 2);
+    expect(Number(text('H_CotisationRQAP'))).toBeCloseTo(slip.boxH, 2);
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.rl1.xml' } })).toBe(1);
+  });
+
+  it('logs training spending for the workforce skills contribution', async () => {
+    const add = await call(tok.hr).post('/api/payroll/quebec/training', { spentOn: '2026-04-15', category: 'COURSE_FEES', description: 'National Lifeguard recertification', amount: 1250.5 });
+    expect(add.status).toBe(201);
+    expect((await call(tok.hr).post('/api/payroll/quebec/training', { spentOn: '2026-04-15', category: 'NOPE', description: 'x', amount: 1 })).status).toBe(400);
+    const list = (await call(tok.hr).get('/api/payroll/quebec/training?year=2026')).body;
+    expect(list).toHaveLength(1);
+    const c = (await call(tok.hr).get('/api/payroll/rl1?year=2026')).body.summary.contributions;
+    // This small payroll is under the threshold: nothing owed, and nothing to carry over.
+    expect(c).toMatchObject({ wsdrfSubject: false, trainingSpent: 1250.5, wsdrfOwed: 0, trainingSurplus: 0 });
+    expect((await call(tok.hr).del(`/api/payroll/quebec/training/${add.body.id}`)).status).toBe(204);
   });
 });

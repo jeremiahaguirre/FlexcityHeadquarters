@@ -30,6 +30,10 @@ export interface PayrollSettings {
   quebecSector?: 'public' | 'private';
   /** Revenu Québec identification number (1234567890RS0001), for Quebec staff. */
   quebecNumber?: string;
+  /** RL-1 XML: Revenu Québec's preparer number (NP123456), the software authorization number, and the first number of the slip range it assigned. */
+  rqPreparerNumber?: string;
+  rqCertificationNumber?: string;
+  rl1FirstSlip?: number;
   originatorId?: string;
   originatorShortName?: string;
   originatorLongName?: string;

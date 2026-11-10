@@ -2818,3 +2818,31 @@ model ConsentRecord {
   @@index([tenantId, signedAt])
   @@index([userId, version])
 }
+
+/// Quebec workforce skills law (Loi sur les compétences, the 1% law): what an employer with a payroll
+/// over the threshold spent on eligible training in a year. It reduces the WSDRF contribution owed.
+model TrainingSpend {
+  id          String              @id @default(uuid()) @db.Uuid
+  tenantId    String              @db.Uuid
+  year        Int
+  spentOn     DateTime            @db.Date
+  category    TrainingSpendKind
+  description String
+  amountCents Int
+  /// Link to the training it paid for, when there is one.
+  trainingRecordId String?        @db.Uuid
+  createdById String              @db.Uuid
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, year])
+}
+
+enum TrainingSpendKind {
+  COURSE_FEES
+  TRAINER
+  WAGES_IN_TRAINING
+  TRAVEL
+  MATERIALS
+  OTHER
+}
+

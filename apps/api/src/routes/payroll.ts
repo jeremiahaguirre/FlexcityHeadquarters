@@ -19,7 +19,7 @@ import { type BankLink, checkPgpKey, linkView, normalizeFingerprint, sealCredent
 import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
-import { type Person, ROE_REASONS, type RoeReason, payPeriodType, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
+import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
 import type { MailingAddress } from '../services/payroll/bank.js';
 import { h } from './context.js';
 import { csvCell } from '../services/payroll/export.js';
@@ -564,6 +564,92 @@ payrollRouter.get(
   }),
 );
 
+/** The year's RL-1 slips as Revenu Québec XML. Contains full SINs: passkey and audit. */
+payrollRouter.get(
+  '/payroll/rl1.xml',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
+    const kind = z.enum(['R', 'A', 'D']).default('R').parse(req.query.type);
+    if (a.scope) throw forbidden('RL-1 slips cover the whole city and are for HR.');
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const settings = await settingsOf(tx);
+      requirePasskey(a, settings);
+      const r = await rl1s(tx, year);
+      if (!r.slips.length) throw badRequest('Nobody was paid as a Quebec employee in that year.');
+      const tenant = await tx.tenant.findFirstOrThrow({ select: { name: true } });
+      const employer = filingEmployer(tenant.name, settings);
+      const people = await filingPeople(tx, a.tenantId, r.slips.map((x) => x.userId));
+      const transmitter = { preparerNumber: settings.rqPreparerNumber, certificationNumber: settings.rqCertificationNumber, firstSlipSequence: settings.rl1FirstSlip };
+      const problems = rl1Problems({ quebecNumber: settings.quebecNumber, transmitter, employer }, people, r.slips);
+      if (problems.length) throw new HttpError(400, 'FILING_INCOMPLETE', 'Some details are missing before this file can be made.', { problems });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.rl1.xml', entity: 'Tenant', entityId: a.tenantId, after: { year, kind, slips: r.slips.length } });
+      return rl1Xml({ year, kind, quebecNumber: settings.quebecNumber!, employer, transmitter: transmitter as Rl1Transmitter, slips: r.slips, people: people as Map<string, Person>, software: { name: 'FlexcityHeadquarters', version: String(year) } });
+    });
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="RL-1-${year}.xml"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(out);
+  }),
+);
+
+/* Quebec workforce skills: the training spending log for the year (it reduces the WSDRF owed). */
+const spendView = (x: { id: string; year: number; spentOn: Date; category: string; description: string; amountCents: number; trainingRecordId: string | null }) => ({ ...x, spentOn: x.spentOn.toISOString().slice(0, 10), amount: x.amountCents / 100 });
+
+payrollRouter.get(
+  '/payroll/quebec/training',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
+    if (a.scope) throw forbidden('Workforce skills figures cover the whole city.');
+    const rows = await withTenant(a.tenantId, (tx) => tx.trainingSpend.findMany({ where: { year }, orderBy: { spentOn: 'desc' } }));
+    res.json(rows.map(spendView));
+  }),
+);
+
+payrollRouter.post(
+  '/payroll/quebec/training',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    if (a.scope) throw forbidden('Workforce skills figures cover the whole city.');
+    const b = z
+      .object({
+        spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        category: z.enum(['COURSE_FEES', 'TRAINER', 'WAGES_IN_TRAINING', 'TRAVEL', 'MATERIALS', 'OTHER']),
+        description: z.string().trim().min(2).max(200),
+        amount: z.number().positive().max(10_000_000),
+        trainingRecordId: uuid.nullable().optional(),
+      })
+      .parse(req.body);
+    const row = await withTenant(a.tenantId, async (tx) => {
+      const created = await tx.trainingSpend.create({ data: { tenantId: a.tenantId, year: Number(b.spentOn.slice(0, 4)), spentOn: new Date(`${b.spentOn}T00:00:00Z`), category: b.category, description: b.description, amountCents: Math.round(b.amount * 100), trainingRecordId: b.trainingRecordId ?? null, createdById: a.userId } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.training.add', entity: 'TrainingSpend', entityId: created.id, after: b });
+      return created;
+    });
+    res.status(201).json(spendView(row));
+  }),
+);
+
+payrollRouter.delete(
+  '/payroll/quebec/training/:id',
+  requirePermission('payroll.export'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    if (a.scope) throw forbidden('Workforce skills figures cover the whole city.');
+    const id = uuid.parse(req.params.id);
+    await withTenant(a.tenantId, async (tx) => {
+      const row = await tx.trainingSpend.findUnique({ where: { id } });
+      if (!row) throw notFound('Training expense');
+      await tx.trainingSpend.delete({ where: { id } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.training.remove', entity: 'TrainingSpend', entityId: id, before: spendView(row) });
+    });
+    res.status(204).end();
+  }),
+);
+
 /** Each person's details for a filing file, with the full SIN (unsealed only here, for the file). */
 async function filingPeople(tx: Parameters<Parameters<typeof withTenant>[1]>[0], tenantId: string, userIds: string[]) {
   const users = await tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: true } });
@@ -711,6 +797,9 @@ payrollRouter.put(
         employerMailing: z.object({ line1: z.string().trim().min(3).max(60), line2: z.string().trim().max(60).nullable().optional(), city: z.string().trim().min(2).max(40), province: z.enum(PROVINCES), postalCode: z.string().trim().regex(/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/, 'A postal code looks like A1A 1A1.') }).nullable().optional(),
         quebecSector: z.enum(['public', 'private']).nullable().optional(),
         quebecNumber: z.string().trim().regex(/^\d{10}RS\d{4}$/, 'A Revenu Québec identification number looks like 1234567890RS0001.').nullable().optional(),
+        rqPreparerNumber: z.string().trim().regex(/^NP\d{6}$/, 'A preparer number looks like NP123456.').nullable().optional(),
+        rqCertificationNumber: z.string().trim().regex(/^RQ-\d{2}-[0-9A-Z]{2}-[0-9A-Z]{3}$/, 'An authorization number looks like RQ-25-01-ABC.').nullable().optional(),
+        rl1FirstSlip: z.number().int().min(1).max(99_999_999).nullable().optional(),
         originatorId: z.string().trim().regex(/^[A-Za-z0-9]{1,10}$/).nullable().optional(),
         originatorShortName: z.string().trim().max(15).nullable().optional(),
         originatorLongName: z.string().trim().max(30).nullable().optional(),

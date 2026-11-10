@@ -406,3 +406,20 @@ describe('forecast gaps to draft shifts', async () => {
     expect(lessonsAt([{ ...c, swimmers: 4 }], '2026-08-18', 17, 'p').classes).toBe(0);
   });
 });
+
+describe('Quebec workforce skills (1% law)', async () => {
+  const { workforceSkills } = await import('../../src/services/payroll/yearEnd.js');
+  const { rl1SlipNumber } = await import('../../src/services/payroll/filingXml.js');
+  const tx = (cents: number) => ({ trainingSpend: { aggregate: async () => ({ _sum: { amountCents: cents } }) } }) as never;
+  const rule = { rate: 0.01, threshold: 2_000_000 };
+  it('owes 1% of payroll less eligible training, above the threshold only', async () => {
+    expect(await workforceSkills(tx(1_500_000), 2026, 3_000_000, rule)).toMatchObject({ wsdrfSubject: true, wsdrfBeforeTraining: 30_000, trainingSpent: 15_000, wsdrfOwed: 15_000, trainingSurplus: 0 });
+    expect(await workforceSkills(tx(4_000_000), 2026, 3_000_000, rule)).toMatchObject({ wsdrfOwed: 0, trainingSurplus: 10_000 });
+    expect(await workforceSkills(tx(0), 2026, 1_900_000, rule)).toMatchObject({ wsdrfSubject: false, wsdrfOwed: 0 });
+  });
+  it('numbers RL-1 slips with a check digit', () => {
+    expect(rl1SlipNumber(10000014)).toBe('100000143');
+    expect(rl1SlipNumber(12345678)).toBe(`12345678${12345678 % 7}`);
+    expect(rl1SlipNumber(1)).toBe('000000011');
+  });
+});
