@@ -131,7 +131,7 @@ const en = {
         { icon: 'building', title: 'Facilities and alerts', items: [
           { t: 'Logbook and announcements', b: 'Handover notes for the next shift at each facility, and notices to staff with a count of who has read them.' },
           { t: 'Saved reports', b: 'Save a report and have it emailed every week or month. Any report downloads as a CSV.' },
-          { t: 'Text and phone alerts', b: 'For urgent events only: a missed working-alone check-in calls and texts, winter call-outs, and last-minute open shifts for people who ask for them. Off until they're turned on for your organization; people confirm their number first.' },
+          { t: 'Text and phone alerts', b: 'For urgent events only: a missed working-alone check-in calls and texts, winter call-outs, and last-minute open shifts for people who ask for them. Off until they’re turned on for your organization; people confirm their number first.' },
         ] },
       ],
     },
