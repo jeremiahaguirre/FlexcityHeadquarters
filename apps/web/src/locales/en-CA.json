@@ -292,7 +292,14 @@
     "review_self": "Your {{cycle}} performance review is open. Add your self-assessment.",
     "review_manager": "A self-assessment is in for the {{cycle}} review. Your part is next.",
     "review_ready": "Your {{cycle}} review is ready to read and acknowledge.",
-    "lonework_due_soon": "Your working-alone check-in at {{location}} is due in 5 minutes."
+    "lonework_due_soon": "Your working-alone check-in at {{location}} is due in 5 minutes.",
+    "trade_proposed": "{{name}} asks to trade shifts with you.",
+    "trade_accepted": "{{name}} agreed to your trade. A supervisor will approve it.",
+    "trade_declined": "{{name}} declined your trade.",
+    "trade_cancelled": "A trade you agreed to was cancelled.",
+    "trade_to_approve": "A shift trade is waiting for your approval.",
+    "trade_approved": "Your shift trade was approved. Check your schedule.",
+    "trade_denied": "Your shift trade wasn't approved."
   },
   "today": {
     "morning": "Good morning",
@@ -773,7 +780,8 @@
     "tabs": {
       "claims": "Shift claims",
       "timeoff": "Time off",
-      "punches": "Punches"
+      "punches": "Punches",
+      "trades": "Trades"
     },
     "allClear": "Nothing waiting",
     "claimsEmpty": "Claims that would add overtime appear here.",
@@ -5136,5 +5144,46 @@
     "offHelp": "Ties go by fewest hours and then name. Seniority dates are kept but not shown or used.",
     "turnedOn": "Seniority is used",
     "turnedOff": "Seniority is no longer used"
+  },
+  "trades": {
+    "trade": "Trade",
+    "title": "Trade this shift",
+    "pickHelp": "Shifts you could take in exchange, within two weeks, where you're both eligible.",
+    "noOptions": "No one has a shift you could trade for right now.",
+    "note": "Message (optional)",
+    "notePlaceholder": "e.g. I have a family dinner that night",
+    "howItWorks": "They agree first, then a supervisor approves. Until then, both of you keep your own shifts.",
+    "ask": "Ask to trade",
+    "proposed": "Trade request sent",
+    "mine": "Shift trades",
+    "mineHelp": "Trades you asked for, and ones waiting for your answer.",
+    "fromThem": "{{name}} asks to trade",
+    "withThem": "Trade with {{name}}",
+    "youGive": "You give",
+    "youTake": "You take",
+    "supervisorSaid": "Supervisor: {{note}}",
+    "accept": "Agree",
+    "decline": "No thanks",
+    "accepted": "You agreed; a supervisor will approve it",
+    "declined": "Trade declined",
+    "cancel": "Cancel request",
+    "cancelled": "Trade cancelled",
+    "status": {
+      "PROPOSED": "Waiting for them",
+      "ACCEPTED": "Waiting for a supervisor",
+      "APPROVED": "Traded",
+      "DECLINED": "Declined",
+      "DENIED": "Not approved",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Closed: a shift changed"
+    },
+    "noneToApprove": "No trades to approve",
+    "noneToApproveBody": "When two people agree to swap shifts, the trade shows here for you to approve.",
+    "takes": "{{name}} takes",
+    "overtime": "{{h}} h overtime",
+    "approve": "Approve trade",
+    "deny": "Don't approve",
+    "approved": "Trade approved; both schedules updated",
+    "denied": "Trade not approved"
   }
 }

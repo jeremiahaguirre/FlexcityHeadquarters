@@ -1,6 +1,7 @@
 'use client';
 
-import { CalendarDays, Gift } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, Gift } from 'lucide-react';
+import { MyTrades, TradeDialog } from '@/components/shiftboard/Trades';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
@@ -44,6 +45,7 @@ export default function SchedulePage() {
   const everyone = useQuery<Shift[]>(view === 'everyone' ? `/api/shifts?${q}` : null);
   const { run, busy } = useAction();
   const list = view === 'mine' ? mine : everyone;
+  const [trading, setTrading] = useState<string | null>(null);
 
   const giveAway = (s: Shift) =>
     run(`give-${s.id}`, () => api(`/api/shifts/${s.id}/offer`, { method: 'POST' }), t('schedule.posted')).then(() => mine.reload());
@@ -65,6 +67,7 @@ export default function SchedulePage() {
           />
         }
       />
+      {view === 'mine' ? <div className="mb-6"><MyTrades onChanged={() => void mine.reload()} /></div> : null}
       {list.loading ? (
         <ListSkeleton />
       ) : list.error ? (
@@ -101,9 +104,14 @@ export default function SchedulePage() {
                       }
                       footer={
                         view === 'mine' && !s.offer && can('shiftboard.post') ? (
-                          <Button variant="secondary" size="sm" icon={<Gift className="h-4 w-4" aria-hidden="true" />} loading={busy === `give-${s.id}`} onClick={() => void giveAway(s)}>
-                            {t('schedule.giveAway')}
-                          </Button>
+                          <div className="flex flex-wrap gap-2">
+                            <Button variant="secondary" size="sm" icon={<Gift className="h-4 w-4" aria-hidden="true" />} loading={busy === `give-${s.id}`} onClick={() => void giveAway(s)}>
+                              {t('schedule.giveAway')}
+                            </Button>
+                            <Button variant="ghost" size="sm" icon={<ArrowLeftRight className="h-4 w-4" aria-hidden="true" />} onClick={() => setTrading(s.id)}>
+                              {t('trades.trade')}
+                            </Button>
+                          </div>
                         ) : undefined
                       }
                     />
@@ -114,6 +122,7 @@ export default function SchedulePage() {
           ))}
         </div>
       )}
+      <TradeDialog shiftId={trading} onClose={() => setTrading(null)} onDone={() => setTrading(null)} />
     </>
   );
 }

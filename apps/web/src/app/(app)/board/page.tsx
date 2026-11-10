@@ -10,6 +10,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { MyTrades } from '@/components/shiftboard/Trades';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
@@ -53,6 +54,7 @@ export default function BoardPage() {
   return (
     <>
       <PageHeader title={t('board.title')} description={t('board.description')} />
+      <div className="mb-6"><MyTrades /></div>
       {offers.loading ? (
         <ListSkeleton />
       ) : offers.error ? (

@@ -292,7 +292,14 @@
     "review_self": "Votre évaluation de rendement {{cycle}} est ouverte. Ajoutez votre autoévaluation.",
     "review_manager": "L’autoévaluation est remise pour l’évaluation {{cycle}}. C’est maintenant votre tour.",
     "review_ready": "Votre évaluation {{cycle}} est prête à lire et à confirmer.",
-    "lonework_due_soon": "Votre vérification de travail seul à {{location}} est due dans 5 minutes."
+    "lonework_due_soon": "Votre vérification de travail seul à {{location}} est due dans 5 minutes.",
+    "trade_proposed": "{{name}} propose d’échanger un quart avec vous.",
+    "trade_accepted": "{{name}} a accepté votre échange. Une personne superviseure l’approuvera.",
+    "trade_declined": "{{name}} a refusé votre échange.",
+    "trade_cancelled": "Un échange que vous aviez accepté a été annulé.",
+    "trade_to_approve": "Un échange de quarts attend votre approbation.",
+    "trade_approved": "Votre échange de quarts est approuvé. Consultez votre horaire.",
+    "trade_denied": "Votre échange de quarts n’a pas été approuvé."
   },
   "today": {
     "morning": "Bonjour",
@@ -773,7 +780,8 @@
     "tabs": {
       "claims": "Demandes de quarts",
       "timeoff": "Congés",
-      "punches": "Pointages"
+      "punches": "Pointages",
+      "trades": "Échanges"
     },
     "allClear": "Rien en attente",
     "claimsEmpty": "Les demandes qui ajouteraient des heures supplémentaires s'affichent ici.",
@@ -5136,5 +5144,46 @@
     "offHelp": "Les égalités se règlent par le moins d’heures, puis par le nom. Les dates d’ancienneté sont conservées mais ni affichées ni utilisées.",
     "turnedOn": "L’ancienneté est utilisée",
     "turnedOff": "L’ancienneté n’est plus utilisée"
+  },
+  "trades": {
+    "trade": "Échanger",
+    "title": "Échanger ce quart",
+    "pickHelp": "Les quarts que vous pourriez prendre en échange, dans les deux semaines, si vous êtes tous les deux admissibles.",
+    "noOptions": "Personne n’a de quart à échanger pour l’instant.",
+    "note": "Message (facultatif)",
+    "notePlaceholder": "p. ex. j’ai un souper de famille ce soir-là",
+    "howItWorks": "L’autre personne accepte d’abord, puis une personne superviseure approuve. D’ici là, chacun garde son quart.",
+    "ask": "Demander l’échange",
+    "proposed": "Demande d’échange envoyée",
+    "mine": "Échanges de quarts",
+    "mineHelp": "Les échanges que vous avez demandés, et ceux qui attendent votre réponse.",
+    "fromThem": "{{name}} propose un échange",
+    "withThem": "Échange avec {{name}}",
+    "youGive": "Vous donnez",
+    "youTake": "Vous prenez",
+    "supervisorSaid": "Supervision : {{note}}",
+    "accept": "Accepter",
+    "decline": "Non merci",
+    "accepted": "Vous avez accepté; une personne superviseure l’approuvera",
+    "declined": "Échange refusé",
+    "cancel": "Annuler la demande",
+    "cancelled": "Échange annulé",
+    "status": {
+      "PROPOSED": "En attente de l’autre personne",
+      "ACCEPTED": "En attente de la supervision",
+      "APPROVED": "Échangé",
+      "DECLINED": "Refusé",
+      "DENIED": "Non approuvé",
+      "CANCELLED": "Annulé",
+      "EXPIRED": "Fermé : un quart a changé"
+    },
+    "noneToApprove": "Aucun échange à approuver",
+    "noneToApproveBody": "Quand deux personnes acceptent d’échanger leurs quarts, l’échange paraît ici pour votre approbation.",
+    "takes": "{{name}} prend",
+    "overtime": "{{h}} h supplémentaires",
+    "approve": "Approuver l’échange",
+    "deny": "Ne pas approuver",
+    "approved": "Échange approuvé; les deux horaires sont à jour",
+    "denied": "Échange non approuvé"
   }
 }

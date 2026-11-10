@@ -132,7 +132,8 @@ export async function loadCandidates(
 }
 
 /** Build a context for one specific user, skipping the coarse filter (for claims). */
-export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string): Promise<CandidateContext | null> {
+/** `alsoFree`: shifts to treat as already given away (a trade's other half). */
+export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string, alsoFree: string[] = []): Promise<CandidateContext | null> {
   const from = new Date(bundle.shift.start.getTime() - NEIGHBOURHOOD_MS);
   const to = new Date(bundle.shift.end.getTime() + NEIGHBOURHOOD_MS);
   const u = await tx.user.findUnique({
@@ -143,7 +144,7 @@ export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string)
       onboarding: { orderBy: { recordedAt: 'desc' } },
       accommodations: { where: { status: 'ACTIVE' } },
       availability: true,
-      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { not: bundle.shift.id } } },
+      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { notIn: [bundle.shift.id, ...alsoFree] } } },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: to }, endsAt: { gt: from } } },
     },
   });

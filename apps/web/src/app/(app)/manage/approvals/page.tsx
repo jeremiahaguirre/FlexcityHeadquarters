@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
+import { TradeApprovals } from '@/components/shiftboard/Trades';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
@@ -32,7 +33,7 @@ interface Punch {
   hours: number | null;
   attention: string[];
 }
-type Tab = 'claims' | 'timeoff' | 'punches';
+type Tab = 'claims' | 'trades' | 'timeoff' | 'punches';
 const PROTECTED = new Set(['SICK', 'PROTECTED_LEAVE']);
 
 export default function ApprovalsPage() {
@@ -47,7 +48,8 @@ export default function ApprovalsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejecting, setRejecting] = useState<{ kind: 'punch' | 'timeoff'; ids: string[]; protectedLeave?: boolean } | null>(null);
 
-  const count = { claims: claims.data?.length ?? 0, timeoff: timeOff.data?.length ?? 0, punches: punches.data?.length ?? 0 };
+  const trades = useQuery<unknown[]>(can('shiftboard.approve') ? '/api/trades' : null);
+  const count = { claims: claims.data?.length ?? 0, trades: trades.data?.length ?? 0, timeoff: timeOff.data?.length ?? 0, punches: punches.data?.length ?? 0 };
   const decideClaim = (id: string, decision: 'APPROVE' | 'DENY') =>
     run(`${decision}-${id}`, () => api(`/api/offers/${id}/decision`, { method: 'POST', body: { decision } }), t(`approvals.claim.${decision}`)).then(() => claims.reload());
   const decideTimeOff = (id: string, decision: 'APPROVE' | 'DENY', note?: string) =>
@@ -78,6 +80,7 @@ export default function ApprovalsPage() {
               { value: 'claims', label: label('claims') },
               { value: 'timeoff', label: label('timeoff') },
               { value: 'punches', label: label('punches') },
+              ...(can('shiftboard.approve') ? [{ value: 'trades' as const, label: label('trades') }] : []),
             ]}
           />
         }
@@ -154,6 +157,8 @@ export default function ApprovalsPage() {
           </div>
         )
       ) : null}
+
+      {tab === 'trades' ? <TradeApprovals /> : null}
 
       {tab === 'punches' ? (
         punches.loading ? (

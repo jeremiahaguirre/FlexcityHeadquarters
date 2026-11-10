@@ -3007,3 +3007,41 @@ model LieuAdjustment {
 
   @@index([tenantId, userId])
 }
+
+enum TradeStatus {
+  /// Waiting for the other person.
+  PROPOSED
+  /// They agreed; waiting for a supervisor.
+  ACCEPTED
+  APPROVED
+  /// The other person said no.
+  DECLINED
+  /// A supervisor said no.
+  DENIED
+  CANCELLED
+  /// A shift started or changed before it was decided.
+  EXPIRED
+}
+
+/// Two people swap shifts: each takes the other's. Both must be eligible for the shift they take; a supervisor approves.
+model ShiftTrade {
+  id               String      @id @default(uuid()) @db.Uuid
+  tenantId         String      @db.Uuid
+  fromUserId       String      @db.Uuid
+  fromShiftId      String      @db.Uuid
+  toUserId         String      @db.Uuid
+  toShiftId        String      @db.Uuid
+  status           TradeStatus @default(PROPOSED)
+  note             String?
+  /// Each side's eligibility and overtime when last checked.
+  check            Json?
+  respondedAt      DateTime?   @db.Timestamptz(3)
+  decidedById      String?     @db.Uuid
+  decidedAt        DateTime?   @db.Timestamptz(3)
+  decisionNote     String?
+  createdAt        DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, status])
+  @@index([fromShiftId])
+  @@index([toShiftId])
+}
