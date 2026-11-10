@@ -23,8 +23,8 @@ export function ContactList({ contacts }: { contacts: Contact[] }) {
         <li key={c.id ?? i} className="rounded-xl border border-line p-3">
           <p className="font-semibold text-ink">{i + 1}. {c.name}{c.relationship ? <span className="font-normal text-muted"> · {c.relationship}</span> : null}</p>
           <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-small">
-            <a className="inline-flex items-center gap-1 text-brand underline-offset-2 hover:underline" href={`tel:${c.phone.replace(/[^\d+]/g, '')}`}><Phone className="h-3.5 w-3.5" aria-hidden="true" />{c.phone}</a>
-            {c.altPhone ? <a className="inline-flex items-center gap-1 text-brand underline-offset-2 hover:underline" href={`tel:${c.altPhone.replace(/[^\d+]/g, '')}`}><Phone className="h-3.5 w-3.5" aria-hidden="true" />{c.altPhone}</a> : null}
+            <a className="inline-flex items-center gap-1 text-brand-text underline-offset-2 hover:underline" href={`tel:${c.phone.replace(/[^\d+]/g, '')}`}><Phone className="h-3.5 w-3.5" aria-hidden="true" />{c.phone}</a>
+            {c.altPhone ? <a className="inline-flex items-center gap-1 text-brand-text underline-offset-2 hover:underline" href={`tel:${c.altPhone.replace(/[^\d+]/g, '')}`}><Phone className="h-3.5 w-3.5" aria-hidden="true" />{c.altPhone}</a> : null}
           </p>
         </li>
       ))}
