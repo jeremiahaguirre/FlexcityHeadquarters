@@ -9,6 +9,7 @@ import { PayRuns } from '@/components/payroll/PayRuns';
 import { BankConnection, PaySettings } from '@/components/payroll/PaySettings';
 import { ProviderConnections } from '@/components/payroll/ProviderConnections';
 import { useTranslation } from 'react-i18next';
+import { useSession } from '@/lib/session';
 import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Field, Input, Select } from '@/components/ui/Field';
@@ -196,7 +197,9 @@ export default function PayrollPage() {
 function PayrollTabs() {
   const { t } = useTranslation();
   const params = useSearchParams();
-  const tabs: Tab[] = ['runs', 'people', 'documents', 'settings', 'export'];
+  const { me } = useSession();
+  // Remittances, year-end slips, settings and the provider cover the whole organization: not for people limited to a department.
+  const tabs: Tab[] = me?.scoped ? ['runs', 'people'] : ['runs', 'people', 'documents', 'settings', 'export'];
   const [tab, setTab] = useState<Tab>(() => (tabs.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'runs'));
   return (
     <>

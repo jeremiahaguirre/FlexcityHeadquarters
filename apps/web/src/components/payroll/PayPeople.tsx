@@ -3,6 +3,7 @@
 import { Eye, Landmark } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSession } from '@/lib/session';
 import { OrdersEditor, SalaryEditor } from './PayrollExtras';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -96,6 +97,7 @@ export function PayPeople() {
 
 function EditPerson({ person, onClose, onSaved }: { person: Person; onClose: () => void; onSaved: () => Promise<void> }) {
   const { t } = useTranslation();
+  const { me, can } = useSession();
   const { run, busy } = useAction();
   const p = person.profile;
   async function saveProfile(e: FormEvent<HTMLFormElement>) {
@@ -160,8 +162,12 @@ function EditPerson({ person, onClose, onSaved }: { person: Person; onClose: () 
           <label className="flex items-start gap-2 text-small"><input type="checkbox" name="agree" required className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />{t('payroll.haveAuthorization')}</label>
           <div><Button type="submit" size="sm" variant="secondary" loading={busy === 'bank'}>{t('payroll.saveForVerification')}</Button></div>
         </form>
-        <SalaryEditor userId={person.id} />
-        <OrdersEditor userId={person.id} />
+        {!me?.scoped ? (
+          <>
+            <SalaryEditor userId={person.id} canChange={can('payroll.approve')} />
+            <OrdersEditor userId={person.id} canChange={can('payroll.approve')} />
+          </>
+        ) : null}
       </div>
     </Dialog>
   );

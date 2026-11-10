@@ -110,6 +110,8 @@ staffRouter.get(
       // The city requires a passkey for this access level and this session hasn't used one.
       mfaRequired: a.mfaPending,
       consentRequired: mustSign,
+      // Limited to some departments, positions or facilities: whole-organization screens (payroll documents, settings) don't apply.
+      scoped: !!a.scope,
       lockedMenu,
       billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: a.permissions.has('billing.manage') },
       // Offboarded: the app shows only the data export.

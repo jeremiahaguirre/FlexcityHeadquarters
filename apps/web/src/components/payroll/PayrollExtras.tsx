@@ -86,7 +86,7 @@ export function RunAdjustments({ runId, draft, onChanged }: { runId: string; dra
 }
 
 /** A salaried person's annual salary (paid evenly each period), or back to hourly. */
-export function SalaryEditor({ userId }: { userId: string }) {
+export function SalaryEditor({ userId, canChange }: { userId: string; canChange: boolean }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const list = useQuery<Array<{ id: string; positionId: string; annualAmount: number; weeklyHours: number; overtimeEligible: boolean; effectiveFrom: string; effectiveTo: string | null }>>(`/api/users/${userId}/salary`);
@@ -109,7 +109,7 @@ export function SalaryEditor({ userId }: { userId: string }) {
         <Field label={t('payroll.salary.from')}>{(p) => <Input {...p} name="from" type="date" required defaultValue={todayIso()} />}</Field>
       </div>
       <label className="flex items-center gap-2 text-small"><input type="checkbox" name="ot" defaultChecked={current?.overtimeEligible} className="h-5 w-5 accent-[rgb(var(--brand))]" />{t('payroll.salary.overtime')}</label>
-      <div className="flex flex-wrap gap-2">
+      <div className={canChange ? 'flex flex-wrap gap-2' : 'hidden'}>
         <Button type="submit" size="sm" loading={busy === 'salary'}>{t('payroll.salary.save')}</Button>
         {current ? <Button size="sm" variant="ghost" loading={busy === 'end'} onClick={() => void run('end', async () => { await api(`/api/users/${userId}/salary/end`, { method: 'POST', body: { lastDay: todayIso() } }); await list.reload(); }, t('payroll.salary.ended'))}>{t('payroll.salary.end')}</Button> : null}
       </div>
@@ -118,7 +118,7 @@ export function SalaryEditor({ userId }: { userId: string }) {
 }
 
 /** Court-ordered and CRA deductions: taken each pay, never over their share of net, until paid. */
-export function OrdersEditor({ userId }: { userId: string }) {
+export function OrdersEditor({ userId, canChange }: { userId: string; canChange: boolean }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const money = (n: number) => formatMoney(n, lng);
@@ -140,7 +140,7 @@ export function OrdersEditor({ userId }: { userId: string }) {
     <section className="grid gap-3 border-t border-line pt-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-body-strong"><Gavel className="h-5 w-5 text-brand-text" aria-hidden="true" />{t('payroll.orders.title')}</h3>
-        <Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} aria-expanded={open} onClick={() => setOpen((o) => !o)}>{t('payroll.orders.add')}</Button>
+        {canChange ? <Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} aria-expanded={open} onClick={() => setOpen((o) => !o)}>{t('payroll.orders.add')}</Button> : null}
       </div>
       <p className="text-caption text-muted">{t('payroll.orders.help')}</p>
       {open ? (
@@ -166,7 +166,7 @@ export function OrdersEditor({ userId }: { userId: string }) {
                   {o.amountPerPay != null ? t('payroll.orders.eachPay', { amount: money(o.amountPerPay) }) : t('payroll.orders.ofNet', { percent: o.percentOfNet })} · {t('payroll.orders.collected', { amount: money(o.collected) })}{o.totalOwed != null ? ` / ${money(o.totalOwed)}` : ''}{o.endsOn ? ` · ${t('payroll.orders.ended', { date: formatDate(o.endsOn, lng) })}` : ''}
                 </p>
               </div>
-              {!o.endsOn ? <Button size="sm" variant="ghost" loading={busy === o.id} onClick={() => void run(o.id, async () => { await api(`/api/users/${userId}/payroll-orders/${o.id}/end`, { method: 'POST', body: { endsOn: todayIso() } }); await list.reload(); })}>{t('payroll.orders.end')}</Button> : null}
+              {!o.endsOn && canChange ? <Button size="sm" variant="ghost" loading={busy === o.id} onClick={() => void run(o.id, async () => { await api(`/api/users/${userId}/payroll-orders/${o.id}/end`, { method: 'POST', body: { endsOn: todayIso() } }); await list.reload(); })}>{t('payroll.orders.end')}</Button> : null}
             </li>
           ))}
         </ul>

@@ -241,7 +241,7 @@ payrollRouter.post(
       return s;
     });
     const out = await send(a, id, settings);
-    res.status(out.status === 'SENT' ? 200 : 502).json(out);
+    res.status(out.status === 'SENT' ? 200 : 502).json(out.status === 'SENT' ? out : { ...out, code: 'BANK_SEND_FAILED', message: `The bank didn’t take the file: ${(out as { error?: string }).error ?? 'no answer'}` });
   }),
 );
 

@@ -25,6 +25,8 @@ export interface Me {
   mfaRequired?: boolean;
   /** This person hasn't signed the current information and consent agreement. */
   consentRequired?: boolean;
+  /** Limited to some departments, positions or facilities (whole-organization screens are hidden). */
+  scoped?: boolean;
   /** For whoever handles billing: screens their plan doesn't include yet, and the add-on that unlocks each. */
   lockedMenu?: Array<{ href: string; key: string; group: 'mine' | 'deck' | 'manage' | 'union'; addOn: 'hr' | 'ops' | 'union' }>;
   billing?: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; overdueSince: string | null; suspendsOn: string | null; trialEndsAt: string | null; canPay: boolean };

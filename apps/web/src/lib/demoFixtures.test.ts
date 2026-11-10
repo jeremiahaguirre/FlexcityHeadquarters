@@ -5,6 +5,9 @@ describe('demo fixtures', () => {
   it('ignores date range bounds when looking up a response', () => {
     expect(lookupKey('/api/me/shifts?from=2026-11-09T00%3A00%3A00.000Z&to=2026-11-10T00%3A00%3A00.000Z')).toBe('/api/me/shifts');
     expect(lookupKey('/api/users?status=ACTIVE&q=jo')).toBe('/api/users?q=jo&status=ACTIVE');
+    // Recorded in November 2026, still found in December and the next year.
+    expect(lookupKey('/api/payroll/remittance?month=2026-12')).toBe(lookupKey('/api/payroll/remittance?month=2026-11'));
+    expect(lookupKey('/api/payroll/t4?year=2027')).toBe('/api/payroll/t4');
   });
 
   it('moves dates by whole days and keeps the time and offset', () => {

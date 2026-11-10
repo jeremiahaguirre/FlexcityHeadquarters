@@ -194,7 +194,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
             ))}
             <div className="rounded-xl bg-surface p-3"><dt className="text-caption text-muted">{t('payroll.totals.employer')}</dt><dd className="text-body-strong tabular-nums">{money((d.run.totals.employerCpp ?? 0) + (d.run.totals.employerEi ?? 0) + (d.run.totals.employerQpip ?? 0))}</dd></div>
           </dl>
-          <RunAdjustments runId={id} draft={d.run.status === 'DRAFT'} onChanged={refresh} />
+          {!me?.scoped ? <RunAdjustments runId={id} draft={d.run.status === 'DRAFT'} onChanged={refresh} /> : null}
           {d.run.status === 'DRAFT' && d.run.blockers.length ? (
             <div className="rounded-2xl border border-danger/40 bg-danger/5 p-4">
               <p className="mb-2 flex items-center gap-2 text-body-strong"><AlertTriangle className="h-5 w-5 text-danger" aria-hidden="true" />{t('payroll.blockers')}</p>
@@ -220,7 +220,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
             {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') ? <Button size="sm" variant={settings.data?.bank.configured ? 'secondary' : 'primary'} icon={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/deposit-file`, 'deposit.txt', 'deposit')}>{t('payroll.depositFile')}</Button> : null}
             <Button size="sm" variant="secondary" icon={<FileSpreadsheet className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/register.csv`, 'payroll-register.csv', 'register')}>{t('payroll.register')}</Button>
             {d.run.status === 'APPROVED' && can('payroll.approve') ? <Button size="sm" variant="secondary" icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} loading={busy === 'paid'} onClick={() => void act('paid', `/api/payroll/runs/${id}/paid`, t('payroll.markedPaid'))}>{t('payroll.markPaid')}</Button> : null}
-            {d.run.status === 'DRAFT' || d.run.status === 'APPROVED' ? <Button size="sm" variant="ghost" onClick={() => setVoiding(true)}>{t('payroll.void')}</Button> : null}
+            {(d.run.status === 'DRAFT' || d.run.status === 'APPROVED') && can('payroll.approve') ? <Button size="sm" variant="ghost" onClick={() => setVoiding(true)}>{t('payroll.void')}</Button> : null}
           </div>
           {d.run.status === 'DRAFT' && d.run.preparedById === me?.id && settings.data?.twoPersonApproval !== false ? <p className="text-caption text-muted">{t('payroll.secondPerson')}</p> : null}
           {d.transmissions.length ? (

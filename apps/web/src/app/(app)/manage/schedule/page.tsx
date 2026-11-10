@@ -17,6 +17,7 @@ import { cn } from '@/lib/cn';
 import { formatDate, formatHours, formatTimeRange } from '@/lib/format';
 import { mondayOf, zonedToInstant } from '@/lib/tz';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
+import { useSession } from '@/lib/session';
 
 interface Facility { id: string; name: string; timezone: string }
 interface Position { id: string; name: string; nameFr: string | null }
@@ -43,7 +44,8 @@ export default function ScheduleBuilderPage() {
   const toast = useToast();
   const facilities = useQuery<Facility[]>('/api/facilities');
   const positions = useQuery<Position[]>('/api/positions');
-  const staff = useQuery<Array<{ id: string; name: string }>>('/api/users');
+  const { can } = useSession();
+  const staff = useQuery<Array<{ id: string; name: string }>>(can('users.read') ? '/api/users' : null);
   const [facilityId, setFacilityId] = useState('');
   const facility = facilities.data?.find((f) => f.id === facilityId) ?? facilities.data?.[0];
   const [week, setWeek] = useState(() => mondayOf(todayIso()));

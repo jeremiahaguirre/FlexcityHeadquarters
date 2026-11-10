@@ -3,6 +3,7 @@
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSession } from '@/lib/session';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -24,12 +25,15 @@ interface Labour { year: number; departments: Array<{ departmentId: string | nul
 /** Payroll accounting for finance: journal entries, labour cost against budget, and the chart of accounts. */
 export default function AccountingPage() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<Tab>('journal');
+  const { me } = useSession();
+  // Journal entries and the chart of accounts cover the whole organization; a department-limited lead sees labour cost.
+  const tabs: Tab[] = me?.scoped ? ['labour'] : ['journal', 'labour', 'accounts'];
+  const [tab, setTab] = useState<Tab>(me?.scoped ? 'labour' : 'journal');
   return (
     <>
       <PageHeader title={t('accounting.title')} description={t('accounting.description')} />
       <div className="mb-6 overflow-x-auto pb-1">
-        <Segmented label={t('accounting.title')} value={tab} onChange={setTab} options={(['journal', 'labour', 'accounts'] as const).map((x) => ({ value: x, label: t(`accounting.tabs.${x}`) }))} />
+        <Segmented label={t('accounting.title')} value={tab} onChange={setTab} options={tabs.map((x) => ({ value: x, label: t(`accounting.tabs.${x}`) }))} />
       </div>
       {tab === 'journal' ? <Journals /> : tab === 'labour' ? <LabourCost /> : <Accounts />}
     </>
@@ -135,7 +139,8 @@ function Accounts() {
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const body = Object.fromEntries((data.data?.keys ?? []).map((k) => [k, String(f.get(k) ?? '').trim()]));
+    // Blank optional accounts keep their defaults instead of failing.
+    const body = Object.fromEntries((data.data?.keys ?? []).map((k) => [k, String(f.get(k) ?? '').trim()]).filter(([, v]) => v));
     const r = await run('acc', () => api('/api/accounting/accounts', { method: 'PUT', body }), t('accounting.saved'));
     if (r !== undefined) await data.reload();
   }

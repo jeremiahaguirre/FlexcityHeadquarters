@@ -191,7 +191,7 @@ payrollProviderRouter.post(
       return { settings: p, run: await runPayroll(tx, a.tenantId, b.periodStart, b.weeks, null, null, options) };
     });
     if (!built.run.csv.ok) {
-      res.status(422).json({ code: 'EXPORT_INVALID', problems: built.run.csv.problems, warnings: built.run.warnings });
+      res.status(422).json({ code: 'EXPORT_INVALID', message: 'Some details are missing before this period can be sent.', details: { problems: built.run.csv.problems, warnings: built.run.warnings }, problems: built.run.csv.problems, warnings: built.run.warnings });
       return;
     }
     const csv = built.run.csv.csv;

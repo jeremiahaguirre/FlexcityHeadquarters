@@ -14,6 +14,7 @@ import { ApiError } from '@/lib/apiError';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { DEMO } from '@/lib/demo';
 import { formatDate } from '@/lib/format';
+import { type Issue, issueLabel } from '@/lib/payrollIssues';
 import { plusDays, todayIso, useQuery } from '@/lib/useQuery';
 
 type Provider = 'adp' | 'dayforce' | 'wagepoint';
@@ -238,7 +239,9 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
                   const r = await api<{ rows: number; reference: string | null }>(`/api/payroll/provider/${provider}/send`, { method: 'POST', body: { periodStart: start, weeks: Number(weeks) } });
                   setResult({ ok: true, text: t('payroll.connect.sent', { what: name, count: r.rows, ref: r.reference ?? '—' }) });
                 } catch (e) {
-                  setResult({ ok: false, text: e instanceof ApiError ? e.message : t('common.error') });
+                  // Missing details (like the file download): list them, in the reader's language.
+                  const problems = e instanceof ApiError ? ((e.details as { problems?: Array<Issue | string> } | undefined)?.problems ?? []) : [];
+                  setResult({ ok: false, text: problems.length ? `${e instanceof ApiError ? e.message : ''} ${problems.map((p) => issueLabel(t, p)).join(' · ')}` : e instanceof ApiError ? e.message : t('common.error') });
                 }
                 await reload();
               })}>{t('payroll.connect.send', { what: name })}</Button>

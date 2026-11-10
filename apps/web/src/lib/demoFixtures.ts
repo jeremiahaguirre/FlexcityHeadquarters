@@ -22,10 +22,17 @@ const loaders: Record<DemoRole | 'public' | 'platform', () => Promise<{ default:
 const DATE = /^(\d{4})-(\d{2})-(\d{2})(T.*)?$/;
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
 
-/** Query values that are dates (range bounds) aren't part of the lookup key. */
+/** A year (2026) or a month (2026-11) in a query, e.g. ?year= or ?month=. */
+const YEAR_OR_MONTH = /^\d{4}(-\d{2})?$/;
+
+/**
+ * Query values that are dates, months or years aren't part of the lookup key: the demo's sample
+ * data is recorded once and has to keep answering as the calendar moves on (next month's
+ * remittance, next year's T4s).
+ */
 export function lookupKey(url: string): string {
   const u = new URL(url, 'http://demo');
-  const params = [...u.searchParams.entries()].filter(([, v]) => !DATE.test(v)).sort(([a], [b]) => a.localeCompare(b));
+  const params = [...u.searchParams.entries()].filter(([, v]) => !DATE.test(v) && !YEAR_OR_MONTH.test(v)).sort(([a], [b]) => a.localeCompare(b));
   return params.length ? `${u.pathname}?${new URLSearchParams(params)}` : u.pathname;
 }
 
