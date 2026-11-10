@@ -19,6 +19,7 @@ import { formatDate, formatTime } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import { useQuery } from '@/lib/useQuery';
 import { PunchControl } from '@/components/punch/PunchControl';
+import { CountUp } from '@/components/ui/CountUp';
 
 interface Offer { id: string; status: string }
 interface Pool { id: string; name: string; status: 'OPEN' | 'CLOSURE_RECOMMENDED' | 'CLOSED' }
@@ -29,7 +30,7 @@ function Tile({ href, icon, label, value, tone }: { href: string; icon: ReactNod
     <Link href={href} className="fh-lift group flex items-center gap-4 rounded-xl2 border border-line bg-panel p-4 shadow-card hover:border-brand/40">
       <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${tone === 'warn' ? 'bg-warn-bg text-warn' : tone === 'new' ? 'bg-new-bg text-new' : 'bg-brand/10 text-brand-text'}`}>{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block text-heading tabular-nums text-ink">{value}</span>
+        <span className="block text-heading tabular-nums text-ink">{typeof value === 'number' ? <CountUp value={value} format={String} /> : value}</span>
         <span className="block text-small text-muted">{label}</span>
       </span>
       <ArrowRight className="h-5 w-5 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
@@ -107,7 +108,7 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section aria-label={t('today.atAGlance')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section aria-label={t('today.atAGlance')} className="fh-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {can('shiftboard.claim') ? (
           <Tile href="/board" icon={<Repeat className="h-5 w-5" aria-hidden="true" />} value={openCount} label={t('today.openShifts', { count: openCount })} tone={openCount ? 'new' : undefined} />
         ) : null}

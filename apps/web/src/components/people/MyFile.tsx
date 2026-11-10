@@ -1,5 +1,6 @@
 'use client';
 
+import { CountUp } from '@/components/ui/CountUp';
 import { Award, Info, MessageSquareWarning } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +42,7 @@ export function MyFile() {
         <div>
           <p className="text-label uppercase text-muted">{t('profile.reliability')}</p>
           <div className="mt-1 flex items-end gap-2">
-            <p className="text-stat tabular-nums">{f.score}</p>
+            <p className="text-stat tabular-nums"><CountUp value={f.score} format={String} /></p>
             <StatusPill tone={scoreTone(f.score)} className="mb-2">
               {t('profile.outOf100')}
             </StatusPill>

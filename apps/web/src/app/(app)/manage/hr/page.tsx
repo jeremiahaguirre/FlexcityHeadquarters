@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import type { HrOverview } from '@/lib/hr';
 import { useSession } from '@/lib/session';
 import { useQuery } from '@/lib/useQuery';
+import { CountUp } from '@/components/ui/CountUp';
 
 const TABS = ['overview', 'leave', 'reviews', 'policies', 'labour', 'offboarding'] as const;
 type Tab = (typeof TABS)[number];
@@ -132,7 +133,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
             // Only dt and dd inside each group, as a description list requires; the icon is placed by the grid.
             <div key={n.label} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 bg-panel px-4 py-4">
               <dt className="col-start-2 row-start-1 text-caption leading-snug text-muted break-words hyphens-auto">{n.label}</dt>
-              <dd className="col-start-2 row-start-2 text-heading tabular-nums">{new Intl.NumberFormat(lng).format(n.value)}</dd>
+              <dd className="col-start-2 row-start-2 text-heading tabular-nums"><CountUp value={n.value} format={(x) => new Intl.NumberFormat(lng).format(x)} /></dd>
               <dd aria-hidden="true" className={`col-start-1 row-span-2 row-start-1 grid h-10 w-10 place-items-center rounded-xl ${n.tint}`}><n.icon className="h-5 w-5" /></dd>
             </div>
           ))}
