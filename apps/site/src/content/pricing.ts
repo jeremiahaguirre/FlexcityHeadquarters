@@ -5,31 +5,45 @@
  */
 export type Level = 'SMALL' | 'BUSINESS' | 'MULTI_COMPLEX' | 'ENTERPRISE';
 export const LEVELS: Level[] = ['SMALL', 'BUSINESS', 'MULTI_COMPLEX', 'ENTERPRISE'];
-export type Module = 'core' | 'operations' | 'programs' | 'fleetWinter' | 'hrCompliance' | 'hrSuite' | 'benchmarks' | 'sso' | 'bankConnection' | 'union';
+export type Group = 'operations' | 'programs' | 'fleetWinter' | 'hr' | 'integration' | 'union';
+export const GROUPS: Group[] = ['operations', 'programs', 'fleetWinter', 'hr', 'integration', 'union'];
+export type Item =
+  | 'poolChemistry' | 'incidents' | 'statusBoard' | 'rotations' | 'registration' | 'fleet' | 'winter'
+  | 'onboarding' | 'reliability' | 'discipline' | 'accommodation' | 'hrSuite' | 'benchmarks' | 'sso' | 'bankConnection' | 'union';
 
-export const PUBLIC: Record<Level, { price: number; quoted: boolean; staff: number | null; extraStaff: number; modules: Module[] }> = {
-  SMALL: { price: 1900, quoted: false, staff: 40, extraStaff: 8, modules: [] },
-  BUSINESS: { price: 2800, quoted: false, staff: 75, extraStaff: 7, modules: ['operations', 'programs', 'fleetWinter'] },
-  MULTI_COMPLEX: { price: 3600, quoted: true, staff: 150, extraStaff: 6, modules: ['operations', 'programs', 'fleetWinter', 'hrCompliance', 'hrSuite', 'benchmarks', 'sso', 'bankConnection'] },
-  ENTERPRISE: { price: 4500, quoted: true, staff: null, extraStaff: 0, modules: ['operations', 'programs', 'fleetWinter', 'hrCompliance', 'hrSuite', 'benchmarks', 'sso', 'bankConnection', 'union'] },
+/** Each option: its group, the private-sector price, and the price to add it to a public plan without it. */
+export const ITEMS: Record<Item, { group: Group; private: number; public: number }> = {
+  poolChemistry: { group: 'operations', private: 39, public: 300 },
+  incidents: { group: 'operations', private: 29, public: 250 },
+  statusBoard: { group: 'operations', private: 19, public: 150 },
+  rotations: { group: 'operations', private: 19, public: 150 },
+  registration: { group: 'programs', private: 99, public: 600 },
+  fleet: { group: 'fleetWinter', private: 29, public: 250 },
+  winter: { group: 'fleetWinter', private: 19, public: 200 },
+  onboarding: { group: 'hr', private: 39, public: 300 },
+  reliability: { group: 'hr', private: 29, public: 250 },
+  discipline: { group: 'hr', private: 29, public: 250 },
+  accommodation: { group: 'hr', private: 19, public: 200 },
+  hrSuite: { group: 'hr', private: 69, public: 500 },
+  benchmarks: { group: 'hr', private: 29, public: 100 },
+  sso: { group: 'integration', private: 49, public: 300 },
+  bankConnection: { group: 'integration', private: 39, public: 300 },
+  union: { group: 'union', private: 150, public: 150 },
+};
+
+const BUSINESS: Item[] = ['poolChemistry', 'incidents', 'statusBoard', 'rotations', 'registration', 'fleet', 'winter'];
+const MULTI: Item[] = [...BUSINESS, 'onboarding', 'reliability', 'discipline', 'accommodation', 'hrSuite', 'benchmarks', 'sso', 'bankConnection'];
+
+export const PUBLIC: Record<Level, { price: number; quoted: boolean; staff: number | null; extraStaff: number; items: Item[] }> = {
+  SMALL: { price: 1900, quoted: false, staff: 40, extraStaff: 8, items: [] },
+  BUSINESS: { price: 2800, quoted: false, staff: 75, extraStaff: 7, items: BUSINESS },
+  MULTI_COMPLEX: { price: 3600, quoted: true, staff: 150, extraStaff: 6, items: MULTI },
+  ENTERPRISE: { price: 4500, quoted: true, staff: null, extraStaff: 0, items: [...MULTI, 'union'] },
 };
 /** Facility size scales the price and the staff allowance, in percent. */
 export const SIZE = { seasonal: 40, standard: 100, major: 200 };
-/** The union hub on a plan below Enterprise. */
-export const UNION_EXTRA = 150;
 
 export const PRIVATE = { core: 99, includedUsers: 20, perUser: 5 };
-export const PRIVATE_MODULES: Record<Exclude<Module, 'core'>, number> = {
-  operations: 79,
-  programs: 99,
-  fleetWinter: 39,
-  hrCompliance: 89,
-  hrSuite: 69,
-  benchmarks: 29,
-  sso: 49,
-  bankConnection: 39,
-  union: 150,
-};
 
-/** Whether a public plan includes a module. */
-export const has = (level: Level, m: Module) => m === 'core' || PUBLIC[level].modules.includes(m);
+/** Whether a public plan includes an option ('core' is in every plan). */
+export const has = (level: Level, i: Item | 'core') => i === 'core' || PUBLIC[level].items.includes(i);

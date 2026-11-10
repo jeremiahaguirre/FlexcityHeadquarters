@@ -6,7 +6,7 @@ import { type Lang, copy } from '@/content/copy';
 import { cn } from '@/lib/cn';
 import { reveal } from '@/lib/reveal';
 import { pageMeta } from '@/lib/seo';
-import { LEVELS, type Module, PRIVATE, PRIVATE_MODULES, PUBLIC, UNION_EXTRA, has } from '@/content/pricing';
+import { GROUPS, ITEMS, type Item, LEVELS, PRIVATE, PUBLIC, has } from '@/content/pricing';
 
 const Yes = ({ label }: { label: string }) => (
   <span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-ok-bg text-ok">
@@ -144,17 +144,24 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
           <div>
             <h4 className="text-subheading">{c.privateModulesTitle}</h4>
             <p className="mt-1 text-small text-muted">{c.privateModulesLead}</p>
-            <ul className="mt-4 divide-y divide-line rounded-2xl border border-line">
-              {c.modules.map((m) => (
-                <li key={m.key} className="flex items-start justify-between gap-4 px-4 py-3">
-                  <span className="min-w-0">
-                    <span className="block text-small font-semibold">{m.name}</span>
-                    <span className="block text-caption text-muted">{m.body}</span>
-                  </span>
-                  <span className="shrink-0 text-small font-semibold tabular-nums">+{money(PRIVATE_MODULES[m.key as keyof typeof PRIVATE_MODULES])}<span className="font-normal text-muted"> {c.perMonth}</span></span>
-                </li>
+            <div className="mt-4 grid gap-3">
+              {GROUPS.map((g) => (
+                <div key={g} className="overflow-hidden rounded-2xl border border-line">
+                  <p className="bg-surface px-4 py-2 text-label uppercase tracking-[0.12em] text-brand-text">{c.groupNames[g]}</p>
+                  <ul className="divide-y divide-line">
+                    {c.items.filter((it) => ITEMS[it.key as Item].group === g).map((it) => (
+                      <li key={it.key} className="flex items-start justify-between gap-4 px-4 py-2.5">
+                        <span className="min-w-0">
+                          <span className="block text-small font-semibold">{it.name}</span>
+                          <span className="block text-caption text-muted">{it.body}</span>
+                        </span>
+                        <span className="shrink-0 text-small font-semibold tabular-nums">+{money(ITEMS[it.key as Item].private)}<span className="font-normal text-muted"> {c.perMonth}</span></span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         </article>
       </Section>
@@ -190,6 +197,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
       {/* Comparison: a real table, scrolling sideways on phones */}
       <Section id="included">
         <SectionHead n="04" eyebrow={c.compareKicker} title={c.compareTitle} lead={c.compareLead} />
+        <p className="-mt-6 mb-6 text-small text-muted">{c.addHint}</p>
         <div className="relative overflow-x-auto rounded-3xl border border-line bg-panel shadow-card">
           <table className="w-full min-w-[46rem] border-collapse text-left text-small">
             <caption className="sr-only">{c.compareTitle}</caption>
@@ -223,19 +231,31 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
                 <tr>
                   <th scope="colgroup" colSpan={6} className="border-t border-line bg-page/70 px-6 py-3 text-label uppercase tracking-[0.12em] text-brand-text">{g.name}</th>
                 </tr>
-                {g.rows.map((r) => {
-                  const m = r.m as Module;
+                {g.rows.map((r) => (
+                  <tr key={r.f} className="border-t border-line hover:bg-surface/50">
+                    <th scope="row" className="px-6 py-3.5 font-medium text-ink">{r.f}</th>
+                    {LEVELS.map((l) => <td key={l} className="px-3 py-3.5 text-center"><Yes label={c.included} /></td>)}
+                    <td className="border-l border-line px-3 py-3.5 text-center"><Yes label={c.privateCore} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            ))}
+            {GROUPS.map((g) => (
+              <tbody key={g}>
+                <tr>
+                  <th scope="colgroup" colSpan={6} className="border-t border-line bg-page/70 px-6 py-3 text-label uppercase tracking-[0.12em] text-brand-text">{c.groupNames[g]}</th>
+                </tr>
+                {c.items.filter((it) => ITEMS[it.key as Item].group === g).map((it) => {
+                  const k = it.key as Item;
                   return (
-                    <tr key={r.f} className="border-t border-line hover:bg-surface/50">
-                      <th scope="row" className="px-6 py-3.5 font-medium text-ink">{r.f}</th>
+                    <tr key={k} className="border-t border-line hover:bg-surface/50">
+                      <th scope="row" className="px-6 py-3.5 font-medium text-ink">{it.name}</th>
                       {LEVELS.map((l) => (
                         <td key={l} className="px-3 py-3.5 text-center">
-                          {has(l, m) ? <Yes label={c.included} /> : m === 'union' ? <span className="text-caption font-semibold tabular-nums">{c.unionExtra.replace('{price}', money(UNION_EXTRA))}</span> : <No label={c.notIncluded} />}
+                          {has(l, k) ? <Yes label={c.included} /> : <span className="text-caption font-semibold tabular-nums text-muted">{c.addFor.replace('{price}', money(ITEMS[k].public))}</span>}
                         </td>
                       ))}
-                      <td className="border-l border-line px-3 py-3.5 text-center">
-                        {m === 'core' ? <Yes label={c.privateCore} /> : <span className="text-caption font-semibold tabular-nums">+{money(PRIVATE_MODULES[m])}</span>}
-                      </td>
+                      <td className="border-l border-line px-3 py-3.5 text-center"><span className="text-caption font-semibold tabular-nums">+{money(ITEMS[k].private)}</span></td>
                     </tr>
                   );
                 })}
