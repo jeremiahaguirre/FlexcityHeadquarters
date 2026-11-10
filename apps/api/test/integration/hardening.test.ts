@@ -182,3 +182,22 @@ describe('need to know', () => {
     expect(after.members[0]).toMatchObject({ firstName: 'Former', dateOfBirth: null, safetyNote: null });
   });
 });
+
+describe('the published schedule, for staff', () => {
+  it('shows a staff member only their own department’s shifts', async () => {
+    const aquatics = await owner.department.create({ data: { tenantId: t.tenant.id, name: 'Aquatics' } });
+    const parks = await owner.department.create({ data: { tenantId: t.tenant.id, name: 'Parks' } });
+    await owner.position.update({ where: { id: t.position.id }, data: { departmentId: aquatics.id } });
+    const instructor = await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Instructor', departmentId: aquatics.id } });
+    const mower = await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Mower operator', departmentId: parks.id } });
+    const mk = (positionId: string, day: string) => owner.shift.create({ data: { tenantId: t.tenant.id, facilityId: t.facility.id, positionId, startsAt: new Date(`${day}T15:00:00Z`), endsAt: new Date(`${day}T23:00:00Z`), status: 'PUBLISHED' } });
+    const sameDept = await mk(instructor.id, '2027-04-05');
+    const otherDept = await mk(mower.id, '2027-04-06');
+    // Guard0 holds the lifeguard position (Aquatics).
+    const r = await call(tok.staff).get('/api/shifts?from=2027-04-01T00:00:00Z&to=2027-04-10T00:00:00Z');
+    expect(r.status).toBe(200);
+    const ids = r.body.map((s: { id: string }) => s.id);
+    expect(ids).toContain(sameDept.id);
+    expect(ids).not.toContain(otherDept.id);
+  });
+});

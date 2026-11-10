@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { assertShiftInScope, assertUserInScope, shiftsWhere } from '../services/people/scope.js';
 import { Router } from 'express';
 import { z } from 'zod';
+import type { Tx } from '../lib/db.js';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
@@ -49,6 +50,17 @@ schedulingRouter.get(
   }),
 );
 
+/**
+ * The positions in a person's department(s): every position in each department one of their
+ * positions belongs to. A position outside any department stands alone.
+ */
+async function departmentPositions(tx: Tx, userId: string): Promise<string[]> {
+  const mine = await tx.userPosition.findMany({ where: { userId }, select: { position: { select: { id: true, departmentId: true } } } });
+  const departments = [...new Set(mine.map((m) => m.position.departmentId).filter((d): d is string => !!d))];
+  const inDepartments = departments.length ? await tx.position.findMany({ where: { departmentId: { in: departments } }, select: { id: true } }) : [];
+  return [...new Set([...mine.map((m) => m.position.id), ...inDepartments.map((p) => p.id)])];
+}
+
 const range = z.object({ from: z.coerce.date(), to: z.coerce.date(), facilityId: uuid.optional() });
 
 schedulingRouter.get(
@@ -59,14 +71,16 @@ schedulingRouter.get(
     const q = range.parse(req.query);
     if (q.to <= q.from || q.to.getTime() - q.from.getTime() > 62 * 86_400_000) throw badRequest('Choose a range of up to 62 days.');
     const manager = a.permissions.has('schedule.write');
-    const where: Prisma.ShiftWhereInput = {
-      startsAt: { gte: q.from, lt: q.to },
-      ...(q.facilityId ? { facilityId: q.facilityId } : {}),
-      ...(manager ? { status: { not: 'CANCELLED' } } : { status: 'PUBLISHED' }),
-      // A department supervisor builds their own department's schedule.
-      ...(manager ? shiftsWhere(a.scope) : {}),
-    };
-    const shifts = await withTenant(a.tenantId, (tx) => tx.shift.findMany({ where, include: shiftInclude, orderBy: { startsAt: 'asc' } }));
+    const shifts = await withTenant(a.tenantId, async (tx) => {
+      const where: Prisma.ShiftWhereInput = {
+        startsAt: { gte: q.from, lt: q.to },
+        ...(q.facilityId ? { facilityId: q.facilityId } : {}),
+        ...(manager ? { status: { not: 'CANCELLED' } } : { status: 'PUBLISHED' }),
+        // A department supervisor builds their own department's schedule; everyone else sees their department's.
+        ...(manager ? shiftsWhere(a.scope) : a.roles.includes('UNION_STEWARD') ? {} : { OR: [{ userId: a.userId }, { positionId: { in: await departmentPositions(tx, a.userId) } }] }),
+      };
+      return tx.shift.findMany({ where, include: shiftInclude, orderBy: { startsAt: 'asc' } });
+    });
     res.json(shifts.map((s) => shiftView(s, { fullNames: manager })));
   }),
 );

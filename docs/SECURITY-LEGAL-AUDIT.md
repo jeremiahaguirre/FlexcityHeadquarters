@@ -272,7 +272,7 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 
 | Role | Personal information | Reach |
 | --- | --- | --- |
-| Staff, lifeguards, instructors, employees | Their own file (profile, pay, documents, discipline, accommodations); published shifts (first name, last initial); class lists for classes they teach (child's name, safety note) | Own record; schedule as published |
+| Staff, lifeguards, instructors, employees | Their own file (profile, pay, documents, discipline, accommodations); their department's published shifts (first name, last initial); class lists for classes they teach (child's name, safety note) | Own record; schedule as published |
 | Head lifeguard | Staff view, deck rotation, lesson registrations | Facility work |
 | Front desk | Families: contacts, children's ages and safety notes, purchases. Every opening of a family's file is logged | City-wide (they serve every facility) |
 | Supervisor / department lead | Their people's profiles, time off, punches, availability, leave; only the discipline, notes, accommodations and injury claims they recorded; department-shared documents. Never medical notes, police-check results or HR's notes on them; union membership only if they write discipline records (to offer a steward) | Their department (a facility-limited role reaches only people who work there) |
@@ -297,7 +297,6 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 
 **Accepted, by design**
 
-- Staff see every published shift with first name and last initial, so they can swap and pick up shifts across facilities. A city that wants narrower visibility can hide the schedule for an access level in the Dev console.
 - Front desk reaches every family, because families use every facility; access is logged instead.
 - [counsel] Electronic monitoring: what the product collects is listed in [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) for cities' written policies (Ontario ESA Part XI.1).
 
