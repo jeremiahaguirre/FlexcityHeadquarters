@@ -127,5 +127,5 @@ Screenshots on the site come from the demo (`apps/site/public/screens`). Retake 
 - [Security and legal audit](docs/SECURITY-LEGAL-AUDIT.md) — findings, fixes and the Canadian legal mapping
 - [Security operations runbook](docs/SECURITY-OPERATIONS.md) — backups, patching, access reviews, incident response
 - [Pricing](docs/PRICING.md)
-- [Roadmap](docs/ROADMAP.md)
+- [Roadmap](docs/ROADMAP.md) and the [feature audit](docs/FEATURE-AUDIT.md) of what to add next
 - [How the spec review was resolved](docs/REVIEW-RESOLUTION.md) and the [brand guide](brand/README.md)

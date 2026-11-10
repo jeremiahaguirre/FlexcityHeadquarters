@@ -1,0 +1,60 @@
+# Feature audit — November 2026
+
+What FH is missing, or could do better, after the payroll, isolation and scale work. Each item says what was checked in the code, why it matters to a Canadian city, and roughly how big it is (S = days, M = a week or two, L = several weeks). Items already on the [roadmap](ROADMAP.md) are marked.
+
+The [launch blockers on the roadmap](ROADMAP.md#before-the-first-customer) still come first: legal review of the provincial rules and the consent agreement, provider API access, and Revenu Québec's RL-1 authorization. Nothing below replaces them.
+
+## 1. Fix first: safety and day-one requests
+
+| # | What | What the code does today | Why it matters | Size |
+| --- | --- | --- | --- | --- |
+| 1.1 | **Emergency contacts** on each person | `User` has a phone but no emergency contact. Working-alone escalation and incident reports have no one outside work to call. | Every city asks for this on day one. It's also part of a working-alone procedure (BC OHS Reg. 4.21, Alberta OHS Code Part 28). Contacts would be kept privately, shown only to HR and to the person monitoring an escalated session. | S |
+| 1.2 | **Text and phone alerts** for working-alone escalation, winter call-outs and urgent shift fills | Escalation and call-outs go to in-app, email and web push only (`services/safety/loneWork.ts`, `services/winter/callOuts.ts`). There is no SMS or voice provider. | A missed check-in at 2 a.m. or a snow call-out at 4 a.m. needs a phone that rings. Push can be silenced, and monitors may be off shift. Would use a Canadian-hosted provider, added to `SUBPROCESSORS.md`. | M |
+| 1.3 | **Time in lieu (banked overtime)** | Overtime is always paid. Leave balances have no lieu bank, and payroll can't convert overtime hours into banked time. | Most municipal collective agreements (CUPE and others) let staff bank overtime at 1.5×. Cities without it will keep a spreadsheet beside FH. Needs a choice at approval (pay or bank), a balance with a cap, a payout at year-end or on leaving, and the ESA rules on taking banked time (e.g. Ontario: within 3 months, or 12 with agreement). | M |
+| 1.4 | **Shift trade between two people** | `ShiftOffer` with `source: 'SWAP'` puts your own shift on the board for anyone eligible to pick up. There is no "I take your Tuesday, you take my Thursday" where both people agree and a supervisor approves. | It's the most-asked scheduling feature among staff and is already in collective agreements. Both halves would run through the existing eligibility and overtime checks. | M |
+| 1.5 | **Shared timeclock kiosk** at a facility | Punching needs each person's own signed-in phone or computer. | Public works yards, arenas and young staff without data plans need a wall tablet: punch with a PIN or by scanning a badge QR, plus a photo where the city's monitoring policy allows it. The geofence would be replaced by the kiosk's own fixed location. | M |
+
+## 2. Next: expected by HR and payroll
+
+| # | What | Today | Why | Size |
+| --- | --- | --- | --- | --- |
+| 2.1 | **Expense and mileage claims** | Payroll has a `REIMBURSEMENT` adjustment, but staff can't submit a claim with a receipt, and there's no mileage rate. | Instructors, inspectors and drivers claim mileage every period. A claim with an encrypted receipt, approved by a lead, would become a reimbursement on the next run. CRA's per-km rate would be kept as a yearly table, like the tax tables. | M |
+| 2.2 | **Calendar feed** for My schedule | No `.ics` feed. | Staff want shifts in Google, Outlook or Apple Calendar. The feed would be a private, revocable link per person, showing only their own shifts and no other names. | S |
+| 2.3 | **Job applications** in the app | Postings link to an outside `applyUrl`. | Seasonal hiring (lifeguards, day camp) runs at volume. An application form, a résumé upload and certification checks would feed straight into onboarding. Would need its own retention period and privacy notice. | L |
+| 2.4 | **Read-and-sign policies** | The first-sign-in agreement is one-off. There's no general "read and acknowledge" for a new pool safety plan, code of conduct or respectful workplace policy. | OHS programs and the Bill 168-style workplace harassment and violence duties expect proof that staff read the policy. Can reuse the consent agreement's fingerprint and signature design. | S |
+| 2.5 | **T4A** for contractors and honoraria | Only T4 and RL-1. | Contract instructors and council or committee honoraria are reported on a T4A. | M |
+| 2.6 | **Scheduled and saved reports** | Each screen exports what it shows. There's no saved report or weekly email (overtime by department, certifications expiring, cost against budget). | Department heads and council ask for the same figures monthly. | M |
+| 2.7 | **Facility safety checks** | Pre-trip inspections exist for vehicles only. | Daily checks of the AED, first-aid kit, rescue equipment and spinal board are required by pool regulations and Lifesaving Society standards. The pre-trip checklist design can be reused for facilities, with a failed item opening a closure or work request. | S |
+| 2.8 | **Deck logbook and staff announcements** | There's a front-desk page alert, but no supervisor's shift log or notice board per facility. | Handover notes ("slide closed, chlorine feeder serviced") and notices to all staff at a facility are daily habits. Today they live on paper. | S |
+
+## 3. Later: larger capabilities
+
+| # | What | Notes | Size |
+| --- | --- | --- | --- |
+| 3.1 | Weather and special events in the forecast | On the roadmap. Environment Canada's open data is enough for the weather. | M |
+| 3.2 | **Public API and webhooks** for a city's own systems (ERP, GIS, HRIS) | Cities on Tempest, Amanda or SAP will ask for this. It would use per-city API keys with their own scopes and the same row-level security, plus an audit entry per call. | L |
+| 3.3 | Reporting lines (who reports to whom) and an org chart | Departments have managers, but there is no `reportsTo`. Reviews and approvals then route by department only. | M |
+| 3.4 | Offline punching | Offline works for lesson attendance only. The timeclock needs a connection, which arenas and outdoor sites don't always have. It would keep the punch time and location on the device and send it later, flagged for review. | M |
+| 3.5 | Constraint-solver scheduling | On the roadmap. | L |
+
+## 4. Engineering improvements
+
+| # | What | Today | Suggested |
+| --- | --- | --- | --- |
+| 4.1 | **Error tracking and metrics** | Logs (`lib/log.ts`) and `/healthz`, which doesn't touch the database. | A readiness check that runs `SELECT 1`. Request, latency and pool metrics in Prometheus or OpenTelemetry format. Error reports to a Canadian-region service, with personal information scrubbed. |
+| 4.2 | **Notifications that survive a crash** | Domain events are published in memory after the transaction commits (`lib/events.ts`). If the process stops between the commit and `handleEvent`, that notification is lost. | Write the event to an outbox table in the same transaction and let the worker deliver it. Live delivery already uses `pg_notify`, which works across instances. |
+| 4.3 | **More than one API process** | One process holds steady at a realistic pace (p99 under 200 ms). With all 9,030 load-test workers acting at the same moment it slows to 1.5–3 s, without errors. | Run `WEB_CONCURRENCY` (one per core) or several instances behind PgBouncer in transaction mode, and size `DB_POOL_SIZE` to stay under `max_connections`. Details will be in `docs/SCALABILITY.md`. |
+| 4.4 | Labels built at run time | Fixed in this pass: a test now fails when a feature switch or journal account has no English or French label. | Do the same wherever a key is built from server data, such as notification types and reason codes. |
+| 4.5 | French bottom bar on small phones | At 390 px some French tab labels are cut short ("Aujourd'…", "Approba…"). | Use shorter French labels for the bottom bar, kept separate from the page titles. |
+
+## What was checked and is in good shape
+
+- **One city can't see another's data**:
+  - row-level security and a policy on every table with a city or invoice id;
+  - a sweep of 2,944 requests over 382 routes using the other city's ids found nothing returned or changed;
+  - benchmarks are published only as quartiles, only from cities that share, and only once five or more do.
+- **Payroll**:
+  - hourly and salaried pay, adjustments, off-cycle runs, orders, two positions, multiple facilities, all 13 jurisdictions;
+  - two-person approval, and provider mode that locks out in-app approval.
+- **SQL injection**: no SQL is built from values (enforced by a CI guard), the database role has least privilege, and statements have time limits.
+- **App, Dev console and website**: a live click-through of every role in English and French. Its findings were fixed in this pass.
