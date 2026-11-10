@@ -18,7 +18,7 @@ export function SeniorityCard() {
     <Card>
       <CardHeader title={t('seniority.title')} description={t('seniority.help')} />
       <CardBody className="pt-2">
-        <label className="flex items-start gap-3 text-body text-ink">
+        <label className="flex items-start gap-3 text-small text-ink">
           <input
             type="checkbox"
             className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]"
@@ -26,7 +26,7 @@ export function SeniorityCard() {
             disabled={busy === 'save'}
             onChange={(e) => void run('save', () => api('/api/settings/seniority', { method: 'PUT', body: { useSeniority: e.target.checked } }), e.target.checked ? t('seniority.turnedOn') : t('seniority.turnedOff')).then(async () => { await q.reload(); await reload(); })}
           />
-          <span>{t('seniority.use')}<span className="block text-small text-muted">{on ? t('seniority.onHelp') : t('seniority.offHelp')}</span></span>
+          <span><span className="font-semibold">{t('seniority.use')}</span><span className="block text-caption text-muted">{on ? t('seniority.onHelp') : t('seniority.offHelp')}</span></span>
         </label>
       </CardBody>
     </Card>

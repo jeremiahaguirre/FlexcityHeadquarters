@@ -45,7 +45,7 @@ export function Logbook() {
       ) : null}
       <Card>
         <CardHeader title={t('logbook.add')} description={t('logbook.addHelp')} />
-        <CardBody className="pt-2">
+        <CardBody className="pt-4">
           <form onSubmit={(e) => void add(e)} className="grid gap-3">
             <Field label={t('logbook.category')}>{(p) => <Select {...p} name="category" defaultValue="HANDOVER" className="max-w-xs">{CATEGORIES.map((c) => <option key={c} value={c}>{t(`logbook.categories.${c}`)}</option>)}</Select>}</Field>
             <Field label={t('logbook.note')}>{(p) => <Textarea {...p} name="body" required minLength={3} maxLength={4000} rows={3} placeholder={t('logbook.placeholder')} />}</Field>
@@ -59,7 +59,7 @@ export function Logbook() {
         <ol className="grid gap-3">
           {q.data.map((e) => (
             <li key={e.id} className="rounded-2xl border border-line bg-panel p-4">
-              <div className="mb-1 flex flex-wrap items-center gap-2 text-small text-muted"><StatusPill tone={CAT_TONE[e.category]}>{t(`logbook.categories.${e.category}`)}</StatusPill><span>{when(e.createdAt)}</span><span>· {e.author}</span></div>
+              <div className="mb-1 flex flex-wrap items-center gap-2 text-small text-muted"><StatusPill tone={CAT_TONE[e.category]}>{t(`logbook.categories.${e.category}`)}</StatusPill><span>{when(e.createdAt)} · {e.author}</span></div>
               <p className="whitespace-pre-wrap text-body text-ink">{e.body}</p>
             </li>
           ))}

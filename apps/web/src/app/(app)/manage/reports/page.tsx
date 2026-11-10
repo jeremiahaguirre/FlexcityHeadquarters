@@ -93,7 +93,7 @@ export default function ReportsPage() {
         <div className="grid content-start gap-6">
           <Card>
             <CardHeader title={t('reports.saveTitle')} description={t('reports.saveHelp')} />
-            <CardBody className="pt-2">
+            <CardBody className="pt-4">
               <form onSubmit={(e) => void save(e)} className="grid gap-3">
                 <Field label={t('reports.name')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={80} defaultValue={t(`reports.names.${k}`)} key={k} />}</Field>
                 <Field label={t('reports.email')}>{(p) => <Select {...p} name="schedule" defaultValue="WEEKLY">{(['NONE', 'WEEKLY', 'MONTHLY'] as const).map((s) => <option key={s} value={s}>{t(`reports.schedules.${s}`)}</option>)}</Select>}</Field>
@@ -108,8 +108,8 @@ export default function ReportsPage() {
                 {saved.data.map((s) => (
                   <div key={s.id} className="grid gap-2 rounded-xl border border-line p-3 text-small">
                     <button type="button" className="text-left font-semibold text-brand-text hover:underline" onClick={() => { setKey(s.key); if (s.params.days) setDays(s.params.days); void go(s.key); }}>{s.name}</button>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Select aria-label={t('reports.email')} value={s.schedule} className="w-40" onChange={(e) => void run(s.id, () => api(`/api/reports/saved/${s.id}`, { method: 'PATCH', body: { schedule: e.target.value } })).then(() => saved.reload())}>{(['NONE', 'WEEKLY', 'MONTHLY'] as const).map((x) => <option key={x} value={x}>{t(`reports.schedules.${x}`)}</option>)}</Select>
+                    <div className="flex items-center gap-2">
+                      <Select aria-label={t('reports.email')} value={s.schedule} className="min-w-0 flex-1" onChange={(e) => void run(s.id, () => api(`/api/reports/saved/${s.id}`, { method: 'PATCH', body: { schedule: e.target.value } })).then(() => saved.reload())}>{(['NONE', 'WEEKLY', 'MONTHLY'] as const).map((x) => <option key={x} value={x}>{t(`reports.schedules.${x}`)}</option>)}</Select>
                       <Button size="sm" variant="ghost" aria-label={t('reports.remove', { name: s.name })} icon={<Trash2 className="h-4 w-4" aria-hidden="true" />} onClick={() => void run(s.id, () => api(`/api/reports/saved/${s.id}`, { method: 'DELETE' })).then(() => saved.reload())} />
                     </div>
                   </div>
