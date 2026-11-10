@@ -16,7 +16,7 @@ import { cn } from '@/lib/cn';
 import { papi, usePlatformQuery } from '@/lib/platform';
 import { PROVINCES } from '@/lib/regions';
 import { InvoiceList } from './InvoiceList';
-import { type Catalog, GROUPS, type ItemKey, type ItemState, PLAN_LEVELS, type PlanLevel, cents } from '@/lib/plans';
+import { type Catalog, type Cycle, GROUPS, TERM_CHOICES, type ItemKey, standardDiscount, type ItemState, PLAN_LEVELS, type PlanLevel, cents } from '@/lib/plans';
 import type { PanelProps } from './types';
 
 type Sector = 'MUNICIPAL' | 'CLUB';
@@ -38,6 +38,10 @@ interface Account {
   quotedRateCents: number | null;
   includedStaff: number | null;
   extraStaffSeats: number;
+  billingCycle: Cycle;
+  termMonths: number | null;
+  termStart: string | null;
+  discountPercent: string | number | null;
   trialEndsAt: string | null;
   graceDays: number;
   suspensionHoldUntil: string | null;
@@ -46,7 +50,7 @@ interface Account {
   notes: string | null;
 }
 export interface StaffUsage { active: number; included: number | null; seats: number; unlimited: boolean; over: number; rateCents: number }
-interface Estimate { lines: Array<{ description: string; quantity: number; amountCents: number }>; subtotalCents: number; taxLines: TaxLine[]; totalCents: number; activeUsers: number; staff: StaffUsage }
+interface Estimate { lines: Array<{ description: string; quantity: number; amountCents: number }>; subtotalCents: number; taxLines: TaxLine[]; totalCents: number; activeUsers: number; staff: StaffUsage; prepaidMonths: number }
 interface Facility { id: string; name: string; province: string; tier: number | null; customCents: number | null }
 interface BillingData { catalog: Catalog; organization: { name: string }; account: Account | null; items: ItemState[] | null; facilities: Facility[]; estimate: Estimate | null; state?: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; overdueCents: number; overdueSince: string | null; suspendsOn: string | null } }
 
@@ -104,6 +108,11 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
   const [quoted, setQuoted] = useState(toDollars(a?.quotedRateCents ?? cat.public[a?.level ?? 'BUSINESS'].listCents));
   const [staffQuote, setStaffQuote] = useState(a?.includedStaff != null ? String(a.includedStaff) : '');
   const [seatsText, setSeatsText] = useState(String(a?.extraStaffSeats ?? 0));
+  const [cycle, setCycle] = useState<Cycle>(a?.billingCycle ?? 'MONTHLY');
+  const [termText, setTermText] = useState(a?.termMonths ? String(a.termMonths) : '');
+  const [startMonth, setStartMonth] = useState(a?.termStart ? a.termStart.slice(0, 7) : '');
+  // Null: the standard discount for the term (shown filled in); a string once changed.
+  const [discountText, setDiscountText] = useState<string | null>(a?.discountPercent != null ? String(Number(a.discountPercent)) : null);
   const [userRate, setUserRate] = useState(toDollars(a?.clubUserRateCents ?? cat.private.userCents));
   const [fac, setFac] = useState(() => Object.fromEntries(d.facilities.map((f) => [f.id, { tier: f.tier, custom: f.customCents !== null ? toDollars(f.customCents) : '' }])));
   // Each option: an explicit on/off (else the plan's standard) and its price text (else the standard price).
@@ -150,6 +159,16 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
   const staffCents = allowance === null ? 0 : (seats + Math.max(0, active - allowance - seats)) * perPerson;
   const optionsCents = rows.reduce((n, r) => n + (p === 'CLUB' ? (r.on ? r.price : 0) : r.effect), 0);
   const monthly = (p === 'CLUB' ? cat.private.coreCents : facLines.reduce((n, c) => n + c, 0)) + staffCents + optionsCents;
+  // Billing terms: usage (active staff beyond the plan) is monthly and never discounted.
+  const overageCents = allowance === null ? 0 : Math.max(0, active - allowance - seats) * perPerson;
+  const fixedCents = monthly - overageCents;
+  const termMonths = termText.trim() ? Math.max(1, Math.min(120, Number(termText) || 0)) || null : null;
+  const stdDiscount = standardDiscount(cycle, termMonths);
+  const discount = discountText === null ? stdDiscount : Math.max(0, Math.min(50, Number(discountText.replace(',', '.')) || 0));
+  const hasStart = !!startMonth;
+  const effDiscount = hasStart ? discount : 0;
+  const fixedAfter = Math.round(fixedCents * (1 - effDiscount / 100));
+  const perInvoiceMonths = cycle === 'MONTHLY' || !hasStart ? 1 : cycle === 'ANNUAL' ? 12 : termMonths ?? 1;
   const unsaved = rows.filter((r) => r.changes).length;
 
   async function save(e: FormEvent<HTMLFormElement>) {
@@ -174,6 +193,10 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
       quotedRateCents: chosen.quoted ? toCents(quoted) : null,
       includedStaff: chosen.quoted && chosen.staffPerFacility !== null && staffQuote.trim() ? Number(staffQuote) : null,
       extraStaffSeats: seats,
+      billingCycle: cycle,
+      termMonths,
+      termStart: startMonth ? `${startMonth}-01` : null,
+      discountPercent: discountText === null ? null : discount,
       items: Object.fromEntries(rows.map((r) => [r.k, { on: r.on, cents: r.custom ? r.price : null }])),
       trialEndsOn: s('trialEnds'),
       graceDays: Number(s('grace') ?? 30),
@@ -394,6 +417,58 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
               </Part>
             ) : null}
 
+            <Part n={++n} title={t('billing.termsTitle')} hint={t('billing.termsHint')}>
+              <Segmented<Cycle>
+                label={t('billing.cycle')}
+                value={cycle}
+                onChange={setCycle}
+                options={(['MONTHLY', 'ANNUAL', 'TERM'] as const).map((c) => ({ value: c, label: t(`billing.cycles.${c}`) }))}
+              />
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field label={t('billing.term')} hint={cycle === 'TERM' ? t('billing.termRequired') : t('billing.termHint')}>
+                  {(fp) => (
+                    <Select {...fp} value={TERM_CHOICES.includes(Number(termText)) || !termText ? termText : 'custom'} onChange={(e) => setTermText(e.target.value === 'custom' ? '18' : e.target.value)}>
+                      <option value="">{t('billing.monthToMonth')}</option>
+                      {TERM_CHOICES.map((m) => <option key={m} value={String(m)}>{t('billing.years', { count: m / 12 })}</option>)}
+                      <option value="custom">{t('billing.customTerm')}</option>
+                    </Select>
+                  )}
+                </Field>
+                {termText && !TERM_CHOICES.includes(Number(termText)) ? (
+                  <Field label={t('billing.termMonths')}>{(fp) => <Input {...fp} type="number" min={1} max={120} inputMode="numeric" value={termText} onChange={(e) => setTermText(e.target.value)} />}</Field>
+                ) : null}
+                <Field label={t('billing.termStart')} hint={t('billing.termStartHint')}>{(fp) => <Input {...fp} type="month" value={startMonth} onChange={(e) => setStartMonth(e.target.value)} />}</Field>
+                <Field label={t('billing.discount')} hint={t('billing.discountHint', { percent: stdDiscount })}>
+                  {(fp) => (
+                    <div className="flex items-center gap-2">
+                      <Input {...fp} inputMode="decimal" value={discountText ?? String(stdDiscount)} onChange={(e) => setDiscountText(e.target.value)} />
+                      <span className="text-small text-muted">%</span>
+                      {discountText !== null ? (
+                        <button type="button" onClick={() => setDiscountText(null)} className="rounded-md p-1 text-muted hover:text-ink" aria-label={t('billing.standardDiscount', { percent: stdDiscount })} title={t('billing.standardDiscount', { percent: stdDiscount })}>
+                          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </Field>
+              </div>
+              {!hasStart && cycle !== 'MONTHLY' ? <p className="rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">{t('billing.needStart')}</p> : null}
+              <dl className="grid gap-3 rounded-xl bg-surface p-4 sm:grid-cols-4">
+                {[
+                  { k: t('billing.perInvoice', { count: perInvoiceMonths }), v: money(fixedAfter * perInvoiceMonths) },
+                  { k: t('billing.monthlyEquivalent'), v: money(fixedAfter) },
+                  { k: t('billing.perYear'), v: money(fixedAfter * 12) },
+                  { k: t('billing.contractTotal'), v: termMonths ? money(fixedAfter * termMonths) : t('billing.noTerm') },
+                ].map((x) => (
+                  <div key={x.k}>
+                    <dt className="text-caption text-muted">{x.k}</dt>
+                    <dd className="text-body-strong tabular-nums">{x.v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="text-caption text-muted">{t('billing.termsFoot')}</p>
+            </Part>
+
             <Part n={++n} title={t('billing.accessTitle')}>
             <div className="grid gap-3">
               {d.state ? (
@@ -469,7 +544,8 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
             <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-5 -mb-5 flex md:bottom-0 flex-wrap items-center justify-between gap-3 rounded-b-xl2 border-t border-line bg-panel/95 px-5 py-3 backdrop-blur">
               <div className="text-small">
                 <span className="text-muted">{t('billing.liveEstimate')}</span>{' '}
-                <span className="text-body-strong tabular-nums">{money(monthly)}</span>
+                <span className="text-body-strong tabular-nums">{money(fixedAfter + overageCents)}</span>
+                {effDiscount ? <span className="ml-1 text-caption text-muted">({t('billing.afterDiscount', { percent: effDiscount })})</span> : null}
                 {unsaved ? <span className="ml-2 text-caption text-warn">{t('billing.unsaved', { count: unsaved })}</span> : null}
               </div>
               <Button type="submit" loading={busy === 'save'}>{t('billing.saveAndApply')}</Button>

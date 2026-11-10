@@ -27,6 +27,7 @@ interface Billing {
   plan: { legalName?: string; plan: 'MUNICIPAL' | 'CLUB'; level: PlanLevel; rateCents: number | null; items: ItemState[]; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
   catalog: Catalog;
   staff: StaffUsage | null;
+  term: { cycle: 'MONTHLY' | 'ANNUAL' | 'TERM'; termMonths: number | null; termStart: string | null; termEnd: string | null; discountPercent: number; perInvoiceFixedCents: number; perInvoiceMonths: number; nextFixedInvoice: string | null } | null;
   invoices: InvoiceRow[];
   payment: { online: boolean; remittance: string; payee: string; contact: string };
   pad?: { agreement: PadAgreement | null; terms: string[] };
@@ -89,6 +90,14 @@ export default function BillingPage() {
                       const pl = b.catalog.public[b.plan.level];
                       return pl.staffPerFacility === null ? t('plans.staffUnlimited') : `${t('plans.staffIncluded', { count: pl.staffPerFacility })}, ${t('plans.extraStaff', { price: cents(pl.extraStaffCents, i18n.language, false) })}`;
                     })()}
+                  </p>
+                ) : null}
+                {b.term ? (
+                  <p className="rounded-xl border border-line px-3 py-2 text-caption">
+                    <span className="font-semibold">{t(`billing.cycles.${b.term.cycle}`)}</span>
+                    {b.term.termMonths ? ` · ${t('billingPage.termTo', { length: t('billing.years', { count: Math.round(b.term.termMonths / 12) }), end: date(b.term.termEnd) })}` : ` · ${t('billing.monthToMonth')}`}
+                    {b.term.discountPercent ? ` · ${t('billingPage.termDiscount', { percent: b.term.discountPercent })}` : ''}
+                    {b.term.perInvoiceMonths > 1 && b.term.nextFixedInvoice ? <span className="block text-muted">{t('billingPage.nextPrepaid', { months: b.term.perInvoiceMonths, amount: cents(b.term.perInvoiceFixedCents, i18n.language, false), month: b.term.nextFixedInvoice })}</span> : null}
                   </p>
                 ) : null}
                 {b.staff ? (

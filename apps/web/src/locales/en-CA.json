@@ -2164,7 +2164,37 @@
     "unsaved_one": "{{count}} access change not saved",
     "unsaved_other": "{{count}} access changes not saved",
     "saveAndApply": "Save and apply",
-    "chosen": "Chosen"
+    "chosen": "Chosen",
+    "termsTitle": "Billing terms",
+    "termsHint": "How often fixed charges are invoiced, and for how long the organization commits. Prices are held for the term.",
+    "cycle": "Invoice",
+    "cycles": {
+      "MONTHLY": "Monthly",
+      "ANNUAL": "Yearly in advance",
+      "TERM": "Whole term up front"
+    },
+    "term": "Term",
+    "termHint": "A committed term earns its discount and holds prices.",
+    "termRequired": "Choose a term to invoice it all at once.",
+    "monthToMonth": "Month to month",
+    "years_one": "{{count}} year",
+    "years_other": "{{count}} years",
+    "customTerm": "Other length…",
+    "termMonths": "Term (months)",
+    "termStart": "Term starts",
+    "termStartHint": "Yearly invoices fall in this month.",
+    "discount": "Term discount",
+    "discountHint": "Standard for these terms: {{percent}}%. On fixed charges only.",
+    "standardDiscount": "Back to the standard discount ({{percent}}%)",
+    "needStart": "Choose when the term starts to invoice in advance.",
+    "perInvoice_one": "Each invoice (monthly)",
+    "perInvoice_other": "Each invoice ({{count}} months)",
+    "monthlyEquivalent": "Monthly equivalent",
+    "perYear": "Per year",
+    "contractTotal": "Contract total",
+    "noTerm": "No term",
+    "termsFoot": "Before tax and before usage: active staff beyond the plan are billed each month for that month. After the term, billing continues month to month at the same rates until renewed.",
+    "afterDiscount": "after {{percent}}% term discount"
   },
   "people": {
     "title": "People review",
@@ -2810,7 +2840,10 @@
     "payNow": "Pay now",
     "rate": "{{price}} per standard facility / month",
     "staff": "Staff: {{text}}",
-    "addStaff": "Active means a shift or punch this month. Growing? Ask us at {{contact}} to add staff places to your plan for a steady monthly amount."
+    "addStaff": "Active means a shift or punch this month. Growing? Ask us at {{contact}} to add staff places to your plan for a steady monthly amount.",
+    "termTo": "{{length}} term, to {{end}}",
+    "termDiscount": "{{percent}}% term discount",
+    "nextPrepaid": "Next invoice in advance: {{months}} months, {{amount}} before tax ({{month}})."
   },
   "rolesPage": {
     "title": "Roles",

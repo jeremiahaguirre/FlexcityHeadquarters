@@ -2164,7 +2164,37 @@
     "unsaved_one": "{{count}} changement d’accès non enregistré",
     "unsaved_other": "{{count}} changements d’accès non enregistrés",
     "saveAndApply": "Enregistrer et appliquer",
-    "chosen": "Choisi"
+    "chosen": "Choisi",
+    "termsTitle": "Modalités de facturation",
+    "termsHint": "La fréquence de facturation des frais fixes et la durée de l’engagement de l’organisation. Les prix sont garantis pendant la durée.",
+    "cycle": "Facture",
+    "cycles": {
+      "MONTHLY": "Mensuelle",
+      "ANNUAL": "Annuelle d’avance",
+      "TERM": "Toute la durée d’avance"
+    },
+    "term": "Durée",
+    "termHint": "Un engagement donne droit à sa remise et garantit les prix.",
+    "termRequired": "Choisissez une durée pour la facturer en une fois.",
+    "monthToMonth": "Au mois",
+    "years_one": "{{count}} an",
+    "years_other": "{{count}} ans",
+    "customTerm": "Autre durée…",
+    "termMonths": "Durée (mois)",
+    "termStart": "Début de la durée",
+    "termStartHint": "Les factures annuelles tombent ce mois-là.",
+    "discount": "Remise pour engagement",
+    "discountHint": "Standard pour ces modalités : {{percent}} %. Sur les frais fixes seulement.",
+    "standardDiscount": "Revenir à la remise standard ({{percent}} %)",
+    "needStart": "Choisissez le début de la durée pour facturer d’avance.",
+    "perInvoice_one": "Chaque facture (mensuelle)",
+    "perInvoice_other": "Chaque facture ({{count}} mois)",
+    "monthlyEquivalent": "Équivalent mensuel",
+    "perYear": "Par année",
+    "contractTotal": "Total du contrat",
+    "noTerm": "Sans durée",
+    "termsFoot": "Avant taxes et avant l’utilisation : le personnel actif au-delà du forfait est facturé chaque mois pour ce mois. Après la durée, la facturation continue au mois aux mêmes tarifs jusqu’au renouvellement.",
+    "afterDiscount": "après une remise de {{percent}} %"
   },
   "people": {
     "title": "Suivi du personnel",
@@ -2810,7 +2840,10 @@
     "payNow": "Payer maintenant",
     "rate": "{{price}} par installation standard / mois",
     "staff": "Personnel : {{text}}",
-    "addStaff": "Est active toute personne ayant un quart ou un pointage ce mois-ci. Vous grandissez? Écrivez-nous à {{contact}} pour ajouter des places de personnel à votre forfait, pour un montant mensuel stable."
+    "addStaff": "Est active toute personne ayant un quart ou un pointage ce mois-ci. Vous grandissez? Écrivez-nous à {{contact}} pour ajouter des places de personnel à votre forfait, pour un montant mensuel stable.",
+    "termTo": "engagement de {{length}}, jusqu’au {{end}}",
+    "termDiscount": "remise de {{percent}} % pour engagement",
+    "nextPrepaid": "Prochaine facture d’avance : {{months}} mois, {{amount}} avant taxes ({{month}})."
   },
   "rolesPage": {
     "title": "Rôles",
