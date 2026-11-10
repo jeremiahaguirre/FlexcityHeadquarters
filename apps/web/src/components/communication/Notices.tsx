@@ -118,7 +118,9 @@ export function AnnouncementsAdmin() {
   const now = Date.now();
   return (
     <div className="grid gap-4">
-      <div><Button icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setOpen(true)}>{t('announcements.new')}</Button></div>
+      <div className="flex justify-end">
+        <Button icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setOpen(true)}>{t('announcements.new')}</Button>
+      </div>
       {q.loading ? <ListSkeleton /> : !q.data?.length ? (
         <EmptyState icon={BellRing} title={t('announcements.noneTitle')}>{t('announcements.noneBody')}</EmptyState>
       ) : (

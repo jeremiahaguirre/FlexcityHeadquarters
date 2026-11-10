@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUp, Phone, Plus, Trash2 } from 'lucide-react';
+import { ArrowUp, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -55,7 +55,7 @@ export function EmergencyContactsCard({ path, own }: { path: string; own: boolea
       <CardHeader
         title={t('emergency.title')}
         description={own ? t('emergency.helpOwn') : t('emergency.helpHr')}
-        action={!editing ? <Button size="sm" variant="secondary" onClick={() => setRows(q.data?.length ? q.data.map((c) => ({ ...c, relationship: c.relationship ?? '', altPhone: c.altPhone ?? '' })) : [blank()])}>{q.data?.length ? t('common.edit') : t('emergency.add')}</Button> : null}
+        action={!editing ? <Button size="sm" variant="secondary" icon={q.data?.length ? <Pencil className="h-4 w-4" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setRows(q.data?.length ? q.data.map((c) => ({ ...c, relationship: c.relationship ?? '', altPhone: c.altPhone ?? '' })) : [blank()])}>{q.data?.length ? t('common.edit') : t('emergency.add')}</Button> : null}
       />
       <CardBody className="pt-3">
         {!editing ? (

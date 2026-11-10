@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, KeyRound, Tablet, Trash2 } from 'lucide-react';
+import { Copy, KeyRound, Plus, Tablet, Trash2 } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -61,7 +61,7 @@ export function KiosksCard() {
         <form onSubmit={(e) => void add(e)} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <Field label={t('kiosk.facility')}>{(p) => <Select {...p} name="facilityId" required>{facilities.data?.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>}</Field>
           <Field label={t('kiosk.name')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={60} placeholder={t('kiosk.namePlaceholder')} />}</Field>
-          <Button type="submit" loading={busy === 'add'}>{t('kiosk.add')}</Button>
+          <Button type="submit" loading={busy === 'add'} icon={<Plus className="h-4 w-4" aria-hidden="true" />}>{t('kiosk.add')}</Button>
         </form>
       </CardBody>
     </Card>
