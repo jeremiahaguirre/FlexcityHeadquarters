@@ -12,7 +12,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { AddressFields, type MailingAddress, readAddress } from './AddressFields';
 
 interface BankLinkView { configured: boolean; host?: string; port?: number; username?: string; remoteDir?: string; hostKeySha256?: string; pgpFingerprint?: string | null; autoSend?: boolean; credentialKind?: 'password' | 'privateKey' }
-interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; quebecSector?: 'public' | 'private'; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean }
+interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; rqPreparerNumber?: string; rqCertificationNumber?: string; rl1FirstSlip?: number; quebecSector?: 'public' | 'private'; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean }
 
 /** CRA payroll account and the direct deposit details the city's bank provides. */
 export function PaySettings() {
@@ -36,6 +36,9 @@ export function PaySettings() {
           body: {
             businessNumber: v('businessNumber'),
             quebecNumber: v('quebecNumber'),
+            rqPreparerNumber: v('rqPreparerNumber'),
+            rqCertificationNumber: v('rqCertificationNumber'),
+            rl1FirstSlip: v('rl1FirstSlip') ? Number(v('rl1FirstSlip')) : null,
             quebecSector: v('quebecSector'),
             transmitterNumber: v('transmitterNumber'),
             ...(v('contactName') || v('contactPhone') ? { filingContact: { name: v('contactName') ?? '', phone: v('contactPhone') ?? '', email: v('contactEmail') } } : {}),
@@ -87,6 +90,11 @@ export function PaySettings() {
             <Field label={t('payroll.contactEmail')}>{(p) => <Input {...p} name="contactEmail" type="email" defaultValue={s.filingContact?.email ?? ''} disabled={!editable} />}</Field>
           </div>
           <div className="sm:max-w-xs">{field('transmitterNumber', t('payroll.transmitterNumber'), { placeholder: 'MM123456' })}</div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {field('rqPreparerNumber', t('payroll.rqPreparerNumber'), { placeholder: 'NP123456' })}
+            {field('rqCertificationNumber', t('payroll.rqCertificationNumber'), { placeholder: 'RQ-26-01-ABC' })}
+            <Field label={t('payroll.rl1FirstSlip')} hint={t('payroll.rl1FirstSlipHint')}>{(p) => <Input {...p} name="rl1FirstSlip" inputMode="numeric" pattern="\d{1,8}" defaultValue={s.rl1FirstSlip ?? ''} disabled={!editable} />}</Field>
+          </div>
         </CardBody>
       </Card>
       <Card>

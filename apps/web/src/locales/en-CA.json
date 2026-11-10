@@ -1172,7 +1172,7 @@
       "help": "For staff employed in Quebec. File with Revenu Québec and give each person their slip by the end of February.",
       "noNumber": "Add your Revenu Québec identification number in Payroll settings before filing.",
       "summary": "{{slips}} slips · employment income {{income}} · QPP {{qpp}} (both shares) · QPIP {{qpip}} (both shares) · Quebec tax {{tax}}",
-      "contributions": "Employer contributions for the year (RLZ-1.S): Health Services Fund {{hsf}} at {{rate}}% · labour standards (CNT) {{cnt}} · workforce skills {{wsdrf}} before eligible training spending."
+      "contributions": "Employer contributions for the year (RLZ-1.S): Health Services Fund {{hsf}} at {{rate}}% · labour standards (CNT) {{cnt}} · workforce skills {{wsdrf}} after eligible training spending."
     },
     "filingTitle": "Electronic filing",
     "filingHelp": "Used in the T4 file for CRA and Record of Employment files for Service Canada.",
@@ -1220,8 +1220,15 @@
         "NO_EMPLOYER_ADDRESS": "The employer mailing address in Payroll settings",
         "NO_CONTACT": "A filing contact name and 10-digit phone in Payroll settings",
         "NO_SIN": "{{name}}: Social Insurance Number",
-        "NO_ADDRESS": "{{name}}: home mailing address"
-      }
+        "NO_ADDRESS": "{{name}}: home mailing address",
+        "NO_QC_NUMBER": "Your Revenu Québec identification number (1234567890RS0001) in Payroll settings",
+        "NO_PREPARER": "Revenu Québec’s preparer number (NP123456) in Payroll settings",
+        "NO_CERTIFICATION": "The RL-1 software authorization number in Payroll settings",
+        "NO_SLIP_RANGE": "The first number of your RL-1 slip range in Payroll settings"
+      },
+      "rl1Xml": "RL-1 file for Revenu Québec (XML)",
+      "rl1Amended": "Amended RL-1 file",
+      "rl1Hint": "Send with Revenu Québec’s online transmission service. Test your first file there first."
     },
     "provider": {
       "label": "Payroll provider",
@@ -1238,6 +1245,38 @@
     "sector": {
       "public": "Public sector (municipality, public body)",
       "private": "Private sector"
+    },
+    "rqPreparerNumber": "Revenu Québec preparer number",
+    "rqCertificationNumber": "RL-1 software authorization number",
+    "rl1FirstSlip": "First RL-1 slip number",
+    "rl1FirstSlipHint": "The first 8-digit number of the range Revenu Québec gave you this year; the check digit is added for you.",
+    "training": {
+      "title": "Workforce skills: training spending",
+      "help": "Quebec employers with a payroll over {{threshold}} spend 1% of it on eligible training, or pay the rest to the workforce skills fund (WSDRF) with the RLZ-1.S. Log each eligible expense here.",
+      "add": "Add an expense",
+      "required": "1% of payroll",
+      "notSubject": "Not required (under the threshold)",
+      "spent": "Eligible training spent",
+      "owed": "Left to pay the fund",
+      "surplus": "Surplus to carry forward",
+      "date": "Date",
+      "category": "Kind",
+      "description": "What it was for",
+      "amount": "Amount ($)",
+      "save": "Add expense",
+      "added": "Expense added",
+      "failed": "The expense couldn’t be added. Try again.",
+      "remove": "Remove {{what}}",
+      "none": "No training expenses for this year yet.",
+      "note": "Keep receipts and the training plan: Revenu Québec and the Commission des partenaires du marché du travail can ask for them. Spending counts in the year it was paid.",
+      "kind": {
+        "COURSE_FEES": "Course or certification fees",
+        "TRAINER": "Trainer or training firm",
+        "WAGES_IN_TRAINING": "Wages while in training",
+        "TRAVEL": "Travel and lodging for training",
+        "MATERIALS": "Training materials",
+        "OTHER": "Other eligible expense"
+      }
     }
   },
   "settings": {

@@ -12,11 +12,12 @@ import { apiDownload, saveBlob } from '@/lib/api';
 import { DEMO } from '@/lib/demo';
 import { formatDate, formatMoney } from '@/lib/format';
 import { todayIso, useQuery } from '@/lib/useQuery';
+import { QuebecTraining, type Skills } from './QuebecTraining';
 
 interface RevenuQuebec { grossPayroll: number; qppEmployee: number; qppEmployer: number; qpipEmployee: number; qpipEmployer: number; quebecTax: number; total: number; due: string; hsf?: { rate: number; sector: string; estimatedAnnualPayroll: number; amount: number } | null }
 interface Remittance { month: string; due: string; statements: number; employeesLastPay: number; grossPayroll: number; cppEmployee: number; cppEmployer: number; eiEmployee: number; eiEmployer: number; incomeTax: number; total: number; revenuQuebec?: RevenuQuebec | null }
 interface Rl1Slip { userId: string; name: string; sin: string | null; boxA: number; boxBA: number; boxBB: number; boxC: number; boxD: number; boxE: number; boxF: number; boxG: number; boxH: number; boxI: number; boxL: number }
-interface Rl1 { year: number; slips: Rl1Slip[]; summary: { slips: number; boxA: number; boxBA: number; boxE: number; boxH: number; employerQpp: number; employerQpip: number; missingSin: string[]; contributions?: { sector: string; payroll: number; hsfRate: number; hsf: number; cnt: number; wsdrfBeforeTraining: number } | null }; employer: { name: string; quebecNumber: string | null } }
+interface Rl1 { year: number; slips: Rl1Slip[]; summary: { slips: number; boxA: number; boxBA: number; boxE: number; boxH: number; employerQpp: number; employerQpip: number; missingSin: string[]; contributions?: ({ sector: string; payroll: number; hsfRate: number; hsf: number; cnt: number } & Skills) | null }; employer: { name: string; quebecNumber: string | null } }
 interface Slip { userId: string; name: string; sin: string | null; province: string; box14EmploymentIncome: number; box16Cpp: number; box16aCpp2: number; box17Qpp?: number; box55Ppip?: number; box18Ei: number; box22IncomeTax: number; box24EiInsurable: number; box26CppPensionable: number }
 interface T4 { year: number; slips: Slip[]; summary: { slips: number; box14: number; box16: number; box16a: number; box18: number; box19EmployerEi: number; box22: number; box27EmployerCpp: number; missingSin: string[] }; employer: { name: string; businessNumber: string | null } }
 interface Roe { periods: Array<{ periodStart: string; periodEnd: string; insurableEarnings: number; hours: number }>; totalInsurableEarnings: number; totalInsurableHours: number; firstDay: string | null; lastPaidDay: string | null }
@@ -50,7 +51,7 @@ export function PayDocuments() {
         saveBlob(r.blob, name);
         toast(t('payroll.filing.saved'), 'ok');
       } else if (r.error.code === 'FILING_INCOMPLETE') {
-        setProblems({ key: key === 'roe' ? 'roe' : 't4', list: (r.error.details as { problems?: Array<{ code: string; name?: string }> } | undefined)?.problems ?? [] });
+        setProblems({ key: key.startsWith('rl1') ? 'rl1' : key === 'roe' ? 'roe' : 't4', list: (r.error.details as { problems?: Array<{ code: string; name?: string }> } | undefined)?.problems ?? [] });
       } else toast(String(r.error.message ?? t('common.error')), 'warn');
     } finally {
       setBusy(null);
@@ -133,6 +134,12 @@ export function PayDocuments() {
           <CardBody className="grid gap-3 pt-2">
             {!rl1.data.employer.quebecNumber ? <p className="rounded-xl bg-warn/10 px-3 py-2 text-small">{t('payroll.rl1.noNumber')}</p> : null}
             {rl1.data.summary.missingSin.length ? <p className="rounded-xl bg-warn/10 px-3 py-2 text-small">{t('payroll.missingSin', { names: rl1.data.summary.missingSin.join(', ') })}</p> : null}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="secondary" icon={<FileDown className="h-4 w-4" aria-hidden="true" />} loading={busy === 'rl1'} onClick={() => void file('rl1', `/api/payroll/rl1.xml?year=${year}`, `RL-1-${year}.xml`)}>{t('payroll.filing.rl1Xml')}</Button>
+              <Button size="sm" variant="ghost" loading={busy === 'rl1a'} onClick={() => void file('rl1a', `/api/payroll/rl1.xml?year=${year}&type=A`, `RL-1-${year}-amended.xml`)}>{t('payroll.filing.rl1Amended')}</Button>
+              <span className="text-caption text-muted">{t('payroll.filing.rl1Hint')}</span>
+            </div>
+            {problemList('rl1')}
             <div className="overflow-x-auto">
               <table className="w-full min-w-[46rem] text-small tabular-nums">
                 <thead className="text-left text-caption text-muted"><tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th>{(['A', 'B.A', 'B.B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as const).map((b) => <th key={b} className="py-1.5 text-right font-semibold">{b}</th>)}</tr></thead>
@@ -147,12 +154,13 @@ export function PayDocuments() {
               </table>
             </div>
             {rl1.data.summary.contributions ? (
-              <p className="text-small">{t('payroll.rl1.contributions', { hsf: money(rl1.data.summary.contributions.hsf), rate: (rl1.data.summary.contributions.hsfRate * 100).toFixed(2), cnt: money(rl1.data.summary.contributions.cnt), wsdrf: money(rl1.data.summary.contributions.wsdrfBeforeTraining) })}</p>
+              <p className="text-small">{t('payroll.rl1.contributions', { hsf: money(rl1.data.summary.contributions.hsf), rate: (rl1.data.summary.contributions.hsfRate * 100).toFixed(2), cnt: money(rl1.data.summary.contributions.cnt), wsdrf: money(rl1.data.summary.contributions.wsdrfOwed ?? rl1.data.summary.contributions.wsdrfBeforeTraining) })}</p>
             ) : null}
             <p className="text-caption text-muted">{t('payroll.rl1.summary', { slips: rl1.data.summary.slips, income: money(rl1.data.summary.boxA), qpp: money(rl1.data.summary.boxBA + rl1.data.summary.employerQpp), qpip: money(rl1.data.summary.boxH + rl1.data.summary.employerQpip), tax: money(rl1.data.summary.boxE) })}</p>
           </CardBody>
         </Card>
       ) : null}
+      {rl1.data?.slips.length && rl1.data.summary.contributions ? <QuebecTraining year={year} skills={rl1.data.summary.contributions} onChange={() => void rl1.reload()} /> : null}
       <Card>
         <CardHeader title={t('payroll.roe')} description={t('payroll.roeHelp')} />
         <CardBody className="grid gap-3 pt-2">

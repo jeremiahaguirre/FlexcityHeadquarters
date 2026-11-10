@@ -1172,7 +1172,7 @@
       "help": "Pour le personnel employé au Québec. Produisez-les auprès de Revenu Québec et remettez à chaque personne son relevé avant la fin de février.",
       "noNumber": "Ajoutez votre numéro d’identification de Revenu Québec dans les paramètres de paie avant de produire.",
       "summary": "{{slips}} relevés · revenus d’emploi {{income}} · RRQ {{qpp}} (deux parts) · RQAP {{qpip}} (deux parts) · impôt du Québec {{tax}}",
-      "contributions": "Cotisations de l’employeur pour l’année (RLZ-1.S) : Fonds des services de santé {{hsf}} à {{rate}} % · normes du travail (CNT) {{cnt}} · développement de la main-d’œuvre {{wsdrf}} avant les dépenses de formation admissibles."
+      "contributions": "Cotisations de l’employeur pour l’année (RLZ-1.S) : Fonds des services de santé {{hsf}} au taux de {{rate}} % · normes du travail (CNT) {{cnt}} · développement de la main-d’œuvre {{wsdrf}} après les dépenses de formation admissibles."
     },
     "filingTitle": "Transmission électronique",
     "filingHelp": "Utilisé dans le fichier T4 pour l’ARC et les fichiers de relevé d’emploi pour Service Canada.",
@@ -1220,8 +1220,15 @@
         "NO_EMPLOYER_ADDRESS": "L’adresse postale de l’employeur dans les paramètres de paie",
         "NO_CONTACT": "Le nom et le téléphone à 10 chiffres d’une personne-ressource dans les paramètres de paie",
         "NO_SIN": "{{name}} : numéro d’assurance sociale",
-        "NO_ADDRESS": "{{name}} : adresse postale à domicile"
-      }
+        "NO_ADDRESS": "{{name}} : adresse postale à domicile",
+        "NO_QC_NUMBER": "Votre numéro d’identification de Revenu Québec (1234567890RS0001) dans les réglages de paie",
+        "NO_PREPARER": "Le numéro de préparateur de Revenu Québec (NP123456) dans les réglages de paie",
+        "NO_CERTIFICATION": "Le numéro d’autorisation du logiciel RL-1 dans les réglages de paie",
+        "NO_SLIP_RANGE": "Le premier numéro de votre plage de relevés 1 dans les réglages de paie"
+      },
+      "rl1Xml": "Fichier des relevés 1 pour Revenu Québec (XML)",
+      "rl1Amended": "Fichier de relevés 1 modifiés",
+      "rl1Hint": "Transmettez-le avec le service de transmission en ligne de Revenu Québec. Testez-y d’abord votre premier fichier."
     },
     "provider": {
       "label": "Fournisseur de paie",
@@ -1238,6 +1245,38 @@
     "sector": {
       "public": "Secteur public (municipalité, organisme public)",
       "private": "Secteur privé"
+    },
+    "rqPreparerNumber": "Numéro de préparateur de Revenu Québec",
+    "rqCertificationNumber": "Numéro d’autorisation du logiciel (RL-1)",
+    "rl1FirstSlip": "Premier numéro de relevé 1",
+    "rl1FirstSlipHint": "Le premier numéro à 8 chiffres de la plage que Revenu Québec vous a attribuée cette année; le chiffre de contrôle est ajouté pour vous.",
+    "training": {
+      "title": "Compétences de la main-d’œuvre : dépenses de formation",
+      "help": "Les employeurs québécois dont la masse salariale dépasse {{threshold}} consacrent 1 % de celle-ci à de la formation admissible, ou versent le reste au Fonds de développement et de reconnaissance des compétences de la main-d’œuvre (FDRCMO) avec le RLZ-1.S. Inscrivez ici chaque dépense admissible.",
+      "add": "Ajouter une dépense",
+      "required": "1 % de la masse salariale",
+      "notSubject": "Non requis (sous le seuil)",
+      "spent": "Formation admissible dépensée",
+      "owed": "Reste à verser au Fonds",
+      "surplus": "Excédent à reporter",
+      "date": "Date",
+      "category": "Type",
+      "description": "Objet",
+      "amount": "Montant ($)",
+      "save": "Ajouter la dépense",
+      "added": "Dépense ajoutée",
+      "failed": "La dépense n’a pas pu être ajoutée. Réessayez.",
+      "remove": "Retirer {{what}}",
+      "none": "Aucune dépense de formation pour cette année.",
+      "note": "Conservez les reçus et le plan de formation : Revenu Québec et la Commission des partenaires du marché du travail peuvent les demander. Une dépense compte l’année où elle est payée.",
+      "kind": {
+        "COURSE_FEES": "Frais de cours ou de certification",
+        "TRAINER": "Formateur ou firme de formation",
+        "WAGES_IN_TRAINING": "Salaires pendant la formation",
+        "TRAVEL": "Déplacement et hébergement pour la formation",
+        "MATERIALS": "Matériel de formation",
+        "OTHER": "Autre dépense admissible"
+      }
     }
   },
   "settings": {
