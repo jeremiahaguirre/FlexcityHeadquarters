@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { todayIso, useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 interface Row { dayOfWeek: number; startMinute: number; endMinute: number; effectiveTo: string | null }
 type Window = { start: string; end: string };
@@ -35,7 +36,7 @@ export default function AvailabilityPage() {
     setDays(next);
   }, [rows.data]);
 
-  const dayName = (d: number) => new Intl.DateTimeFormat(i18n.language, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 4 + d)));
+  const dayName = (d: number) => dateFormat(i18n.language, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 4 + d)));
   const set = (d: number, w: Window[]) => setDays((x) => ({ ...x, [d]: w }));
 
   async function save() {

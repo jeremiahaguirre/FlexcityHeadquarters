@@ -1010,6 +1010,11 @@
       "vacation.tiers": "Paliers d'indemnité de vacances",
       "statutoryHoliday.workedMultiplier": "Multiplicateur, travail un jour férié"
     },
+    "timeFormat": "Format de l’heure",
+    "timeFormatHint": "Comment les heures s’affichent pour tout le monde dans l’organisation, y compris la page d’inscription publique.",
+    "timeFormatAuto": "Automatique (selon la langue)",
+    "timeFormat12": "12 heures ({{example}})",
+    "timeFormat24": "24 heures ({{example}})",
     "logoUploaded": "Le logo téléversé de votre organisation est utilisé. Collez un nouveau lien https seulement pour le remplacer."
   },
   "jobs": {

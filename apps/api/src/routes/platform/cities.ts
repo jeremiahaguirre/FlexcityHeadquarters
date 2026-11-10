@@ -138,6 +138,7 @@ citiesRouter.get(
           name: t.name,
           subdomain: t.subdomain,
           defaultLocale: t.defaultLocale,
+          timeFormat: t.timeFormat,
           themeColors: t.themeColors,
           logoUrl: t.logoUrl,
           payWeekStartDay: t.payWeekStartDay,
@@ -166,6 +167,7 @@ const cityPatch = z
   .object({
     name: z.string().trim().min(2).max(120),
     defaultLocale: z.enum(['en-CA', 'fr-CA']),
+    timeFormat: z.enum(['auto', '12h', '24h']),
     themeColors: z.object({ primary: hex, primaryHover: hex, primaryContrast: hex, accent: hex }).partial(),
     payWeekStartDay: z.number().int().min(0).max(6),
     vacationPayMode: z.enum(['PAY_EACH_PERIOD', 'ACCRUE']),

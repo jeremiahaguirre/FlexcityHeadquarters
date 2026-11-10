@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import { formatDate, dateFormat } from '@/lib/format';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Row { userId: string; name: string; chargedHours: number; acceptedHours: number; refusals: number; seniorityDate: string | null }
@@ -50,7 +50,7 @@ export default function OvertimePage() {
     await run('policy', () => api('/api/overtime/policy', { method: 'PUT', body: { countRefusals: f.get('refusals') === 'on', clause: String(f.get('clause') || '') || null, periodStartMonth: Number(f.get('month')) } }), t('overtime.policySaved'));
     await Promise.all([policy.reload(), data.reload()]);
   }
-  const months = Array.from({ length: 12 }, (_, i) => new Intl.DateTimeFormat(lng, { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, i, 1))));
+  const months = Array.from({ length: 12 }, (_, i) => dateFormat(lng, { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, i, 1))));
 
   return (
     <div className="grid gap-6">

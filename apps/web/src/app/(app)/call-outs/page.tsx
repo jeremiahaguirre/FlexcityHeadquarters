@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 interface Offer { id: string; reason: string; startsAt: string; endsAt: string; facility: string; answerBy: string }
 
@@ -17,7 +18,7 @@ export default function MyCallOuts() {
   const { t, i18n } = useTranslation();
   const q = useQuery<Offer[]>('/api/me/call-outs');
   const { run, busy } = useAction();
-  const when = (iso: string, timeOnly = false) => new Intl.DateTimeFormat(i18n.language, timeOnly ? { timeStyle: 'short' } : { weekday: 'short', dateStyle: undefined, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  const when = (iso: string, timeOnly = false) => dateFormat(i18n.language, timeOnly ? { timeStyle: 'short' } : { weekday: 'short', dateStyle: undefined, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
   const answer = (o: Offer, a: 'ACCEPTED' | 'DECLINED') => void run(`${o.id}${a}`, () => api(`/api/me/call-outs/${o.id}`, { method: 'POST', body: { answer: a } }), t(a === 'ACCEPTED' ? 'myCallOuts.accepted' : 'myCallOuts.declined')).then(() => q.reload());
   return (
     <div className="grid gap-6">

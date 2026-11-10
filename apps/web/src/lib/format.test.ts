@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { formatDate, formatHours, formatMoney, formatNumber, formatTime, formatTimeRange } from './format';
+import { afterEach, describe, expect, it } from 'vitest';
+import { dateFormat, formatDate, formatHours, formatMoney, formatNumber, formatTime, formatTimeRange, setTimeFormat } from './format';
 
 const NBSP = ' ';
 const at = '2026-11-14T06:30:00.000-07:00';
@@ -30,5 +30,25 @@ describe('format helpers (FH Typography doc examples)', () => {
   });
   it('ignores the offset: wall-clock time is what the facility sees', () => {
     expect(formatTime('2026-11-14T06:30:00.000-05:00', 'en-CA')).toBe(`6:30${NBSP}a.m.`);
+  });
+});
+
+describe('city time format', () => {
+  afterEach(() => setTimeFormat('auto'));
+  const at = '2026-11-14T14:30:00.000-07:00';
+  it('follows the language by default', () => {
+    expect(formatTime(at, 'en-CA')).toBe('2:30 p.m.');
+    expect(formatTime(at, 'fr-CA')).toBe('14 h 30');
+  });
+  it('uses the city’s 24-hour or 12-hour choice in either language', () => {
+    setTimeFormat('24h');
+    expect(formatTime(at, 'en-CA')).toBe('14:30');
+    expect(dateFormat('en-CA', { timeStyle: 'short', timeZone: 'UTC' }).format(new Date('2026-11-14T14:30:00Z'))).toBe('14:30');
+    setTimeFormat('12h');
+    expect(formatTime(at, 'fr-CA')).toMatch(/^2 h 30/);
+  });
+  it('leaves dates alone', () => {
+    setTimeFormat('24h');
+    expect(dateFormat('en-CA', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date('2026-11-14T12:00:00Z'))).toBe('Nov 14');
   });
 });

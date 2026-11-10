@@ -14,7 +14,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { formatTime } from '@/lib/format';
+import { formatTime, dateFormat } from '@/lib/format';
 import { POOL_TONE, type PoolView } from '@/lib/pools';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
@@ -42,7 +42,7 @@ export default function StatusPage() {
     <>
       <PageHeader
         title={t('status.title')}
-        description={t('status.updated', { time: new Intl.DateTimeFormat(i18n.language, { timeStyle: 'short' }).format(updated) })}
+        description={t('status.updated', { time: dateFormat(i18n.language, { timeStyle: 'short' }).format(updated) })}
         actions={
           can('ops.page_head_guard') ? (
             <Button icon={<BellRing className="h-5 w-5" aria-hidden="true" />} onClick={() => setPaging(true)}>

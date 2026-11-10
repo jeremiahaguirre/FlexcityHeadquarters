@@ -61,7 +61,7 @@ export interface CitySummary { id: string; name: string; subdomain: string; logo
 export interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null }
 export interface PositionRow { id: string; name: string; nameFr: string | null; minimumAge: number | null; hoursOfService?: { maxDailyHours?: number | null; minRestHours?: number | null; maxHoursIn7Days?: number | null } | null; requiredCertificationIds: string[]; staff: number }
 export interface CityDetail {
-  organization: { id: string; name: string; subdomain: string; defaultLocale: string; themeColors: { primary?: string } | null; logoUrl: string | null; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number; createdAt: string; signInUrl: string };
+  organization: { id: string; name: string; subdomain: string; defaultLocale: string; timeFormat?: string; themeColors: { primary?: string } | null; logoUrl: string | null; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number; createdAt: string; signInUrl: string };
   features: Record<string, boolean>;
   featureDefaults: Record<string, boolean>;
   facilities: Facility[];

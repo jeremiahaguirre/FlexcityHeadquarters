@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { type InvoiceRow, STATUS_TONE, cad } from '@/lib/billing';
-import { formatDate } from '@/lib/format';
+import { formatDate, dateFormat } from '@/lib/format';
 
 export function InvoiceList({ invoices, showOrg = true }: { invoices: InvoiceRow[]; showOrg?: boolean }) {
   const { t, i18n } = useTranslation();
@@ -34,7 +34,7 @@ export function InvoiceList({ invoices, showOrg = true }: { invoices: InvoiceRow
                 </Link>
               </td>
               {showOrg ? <td className="py-2.5">{i.organization?.name ?? '—'}</td> : null}
-              <td className="py-2.5 tabular-nums">{new Intl.DateTimeFormat(lng, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${i.periodStart}T12:00:00Z`))}</td>
+              <td className="py-2.5 tabular-nums">{dateFormat(lng, { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${i.periodStart}T12:00:00Z`))}</td>
               <td className="py-2.5 tabular-nums">{d(i.dueDate)}</td>
               <td className="py-2.5 text-right tabular-nums">{cad(i.totalCents, lng)}</td>
               <td className="py-2.5 text-right font-semibold tabular-nums">{cad(i.balanceCents, lng)}</td>

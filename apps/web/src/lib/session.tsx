@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError, api, logout } from './api';
+import { setTimeFormat } from './format';
 import { LOCALE_COOKIE } from './i18n';
 
 export interface Me {
@@ -13,6 +14,8 @@ export interface Me {
   email: string;
   phone: string | null;
   locale: 'en-CA' | 'fr-CA';
+  /** The city's clock: "auto" (the language's usual style), "12h" or "24h". */
+  timeFormat?: 'auto' | '12h' | '24h';
   roles: string[];
   customRoles?: Array<{ id: string; name: string; nameFr: string | null }>;
   permissions: string[];
@@ -47,6 +50,7 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
   const reload = useCallback(async () => {
     try {
       const m = await api<Me>('/api/me');
+      setTimeFormat(m.timeFormat);
       setMe(m);
       // Use the person's own language unless they picked one on this device.
       const chosen = document.cookie.includes(`${LOCALE_COOKIE}=`);

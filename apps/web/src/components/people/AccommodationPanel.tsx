@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { Field, Input } from '@/components/ui/Field';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import { formatDate, dateFormat } from '@/lib/format';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 export interface Restriction { id: string; status: 'ACTIVE' | 'CLOSED'; label: string; startsOn: string; endsOn: string | null; reviewOn: string | null; maxShiftHours: number | null; maxWeeklyHours: number | null; noStartBefore: number | null; noEndAfter: number | null; daysOff: number[]; excludedPositionIds: string[] }
@@ -25,7 +25,7 @@ const toMin = (v: FormDataEntryValue | null) => {
 /** Plain-language summary of the restrictions, for HR and for the employee. */
 export function RestrictionSummary({ r }: { r: Restriction }) {
   const { t, i18n } = useTranslation();
-  const days = (n: number) => new Intl.DateTimeFormat(i18n.language, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + n)));
+  const days = (n: number) => dateFormat(i18n.language, { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + n)));
   const parts = [
     r.maxShiftHours !== null ? t('accommodation.maxShift', { h: r.maxShiftHours }) : null,
     r.maxWeeklyHours !== null ? t('accommodation.maxWeek', { h: r.maxWeeklyHours }) : null,
@@ -110,7 +110,7 @@ export function AccommodationPanel({ userId, positions }: { userId: string; posi
             <legend className="mb-1 text-small font-semibold">{t('accommodation.daysOff')}</legend>
             <div className="flex flex-wrap gap-3">
               {[1, 2, 3, 4, 5, 6, 0].map((n) => (
-                <label key={n} className="flex items-center gap-1.5 text-small"><input type="checkbox" name={`day${n}`} className="h-5 w-5 accent-[rgb(var(--brand))]" />{new Intl.DateTimeFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + n)))}</label>
+                <label key={n} className="flex items-center gap-1.5 text-small"><input type="checkbox" name={`day${n}`} className="h-5 w-5 accent-[rgb(var(--brand))]" />{dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + n)))}</label>
               ))}
             </div>
           </fieldset>

@@ -45,7 +45,7 @@ staffRouter.get(
           where: { id: a.userId },
           include: { positions: { include: { position: { select: { id: true, name: true, nameFr: true } } } }, certifications: { include: certInclude } },
         }),
-        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true, roleOverrides: true } }),
+        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true, roleOverrides: true, timeFormat: true } }),
         tx.userCustomRole.findMany({ where: { userId: a.userId }, include: { customRole: { select: { id: true, name: true, nameFr: true } } } }),
       ]),
     );
@@ -71,6 +71,7 @@ staffRouter.get(
       email: me.email,
       phone: me.phone,
       locale: me.locale,
+      timeFormat: tenant.timeFormat,
       roles: me.roles,
       customRoles: myRoles.map((r) => r.customRole),
       permissions: [...permissions].sort(),

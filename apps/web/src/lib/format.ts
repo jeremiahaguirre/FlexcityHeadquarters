@@ -12,7 +12,26 @@ function wallClock(localIso: string): Date {
   return new Date(`${wall[1]}T${wall[2] ?? '00:00'}:${wall[3] ?? '00'}Z`);
 }
 
-const fmt = (locale: Locale, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { ...opts, timeZone: 'UTC' });
+export type TimeFormat = 'auto' | '12h' | '24h';
+let clock: TimeFormat = 'auto';
+
+/** The city's choice of 12-hour or 24-hour times; "auto" follows the language. */
+export function setTimeFormat(f: string | null | undefined): void {
+  clock = f === '12h' || f === '24h' ? f : 'auto';
+}
+
+/** Adds the city's 12/24-hour choice to any options that show a time of day. */
+export function withClock(opts: Intl.DateTimeFormatOptions = {}): Intl.DateTimeFormatOptions {
+  if (clock === 'auto' || (opts.hour === undefined && opts.timeStyle === undefined)) return opts;
+  return { ...opts, hourCycle: clock === '12h' ? 'h12' : 'h23' };
+}
+
+/** Use instead of `new Intl.DateTimeFormat` so times follow the city's setting. */
+export function dateFormat(locale: Locale, opts?: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(locale, withClock(opts));
+}
+
+const fmt = (locale: Locale, opts: Intl.DateTimeFormatOptions) => dateFormat(locale, { ...opts, timeZone: 'UTC' });
 
 /** Keep "6 h 30" / "6:30 a.m." on one line. */
 const glue = (s: string) => s.replace(/ /g, '\u00a0');

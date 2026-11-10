@@ -17,6 +17,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { type Campaign, type LessonSet, PATTERNS, type SwimLevel, addDaysIso, ageRange, hhmm, money, toMinutes } from '@/lib/programs';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 const STATUS_TONE: Record<Campaign['status'], Tone> = { DRAFT: 'neutral', PUBLISHED: 'ok', CLOSED: 'warn' };
 const DOW = [0, 1, 2, 3, 4, 5, 6];
@@ -49,7 +50,7 @@ function Campaigns() {
   const list = useQuery<Campaign[]>('/api/campaigns');
   const { run, busy } = useAction();
   const [open, setOpen] = useState(false);
-  const date = (d: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
+  const date = (d: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -117,8 +118,8 @@ function CampaignDetail({ id }: { id: string }) {
   const [days, setDays] = useState<number[]>([1]);
   const [roster, setRoster] = useState<LessonSet | null>(null);
   const list = useQuery<Array<{ id: string; swimmerName: string; status: string; safetyNote: string | null; ageOverride: string | null }>>(roster ? `/api/registrations?setId=${roster.id}` : null);
-  const date = (d: string) => new Intl.DateTimeFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
-  const dow = (d: number) => new Intl.DateTimeFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
+  const date = (d: string) => dateFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
+  const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
   const label = (x: { name: string; nameFr: string | null }) => (lng === 'fr-CA' && x.nameFr ? x.nameFr : x.name);
 
   async function addSet(e: FormEvent<HTMLFormElement>) {

@@ -46,6 +46,14 @@ describe('organization settings', () => {
     expect(bad.status).toBe(400);
   });
 
+  it('lets the city choose 12-hour or 24-hour times for everyone', async () => {
+    expect((await call(hr).patch('/api/settings', { timeFormat: '13h' })).status).toBe(400);
+    expect((await call(hr).patch('/api/settings', { timeFormat: '24h' })).status).toBe(200);
+    expect((await call(hr).get('/api/settings')).body.organization.timeFormat).toBe('24h');
+    expect((await call(await guardToken(0)).get('/api/me')).body.timeFormat).toBe('24h');
+    expect((await call(hr).patch('/api/settings', { timeFormat: 'auto' })).status).toBe(200);
+  });
+
   it('keeps settings away from staff', async () => {
     expect((await call(await guardToken(0)).get('/api/settings')).status).toBe(403);
   });

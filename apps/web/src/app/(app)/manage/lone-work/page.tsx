@@ -14,6 +14,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { type LoneSession, type LoneStatus, mapLink } from '@/lib/loneWork';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 const TONE: Record<LoneStatus, Tone> = { HELP: 'danger', ESCALATED: 'danger', OVERDUE: 'warn', ACTIVE: 'ok', ENDED: 'neutral' };
 
@@ -28,7 +29,7 @@ export default function LoneWorkMonitor() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const time = (iso: string) => new Intl.DateTimeFormat(i18n.language, { timeStyle: 'short' }).format(new Date(iso));
+  const time = (iso: string) => dateFormat(i18n.language, { timeStyle: 'short' }).format(new Date(iso));
   const open = (q.data ?? []).filter((s) => s.status !== 'ENDED');
   const ended = (q.data ?? []).filter((s) => s.status === 'ENDED');
 

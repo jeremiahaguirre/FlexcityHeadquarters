@@ -12,11 +12,12 @@ import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { ApiError, api } from '@/lib/api';
 import { ageRange, hhmm, money } from '@/lib/programs';
+import { dateFormat, setTimeFormat } from '@/lib/format';
 
 interface PublicSet { id: string; name: string; facility: string; daysOfWeek: number[]; startMinute: number; endMinute: number; startsOn: string; endsOn: string; sessions: number; minAgeMonths: number | null; maxAgeMonths: number | null; priceCents: number | null; spotsLeft: number }
 interface Program { id: string; name: string; nameFr: string | null; kind: string; open: boolean; opensAt: string | null; sets: PublicSet[] }
 interface Service { id: string; name: string; nameFr: string | null; description: string | null; descriptionFr: string | null; facility: string; durationMinutes: number; priceCents: number; maxPartySize: number | null; daysOfWeek: number[]; leadDays: number }
-interface Portal { enabled: boolean; organization?: string; terms?: string; termsFr?: string; payment?: string; paymentFr?: string; privacyContact?: string; programs?: Program[]; services?: Service[] }
+interface Portal { enabled: boolean; organization?: string; timeFormat?: string; terms?: string; termsFr?: string; payment?: string; paymentFr?: string; privacyContact?: string; programs?: Program[]; services?: Service[] }
 
 /** Public: sign up for programs or request a facility booking. No account needed. */
 export default function SignupPage() {
@@ -31,11 +32,11 @@ export default function SignupPage() {
   const [done, setDone] = useState<{ reference: string; status?: string; kind: 'program' | 'booking' } | null>(null);
   const load = () => {
     setFailed(false);
-    api<Portal>('/api/public/signup', {}, false).then(setData, () => setFailed(true));
+    api<Portal>('/api/public/signup', {}, false).then((p) => { setTimeFormat(p.timeFormat); setData(p); }, () => setFailed(true));
   };
   useEffect(load, []);
-  const date = (d: string) => new Intl.DateTimeFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
-  const dow = (d: number) => new Intl.DateTimeFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
+  const date = (d: string) => dateFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
+  const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
   const pick = (k: string, f: string | null) => (fr && f ? f : k);
 
   if (failed) return <ErrorNotice onRetry={load} />;
@@ -72,7 +73,7 @@ export default function SignupPage() {
           !data.programs?.length ? <EmptyState icon={CalendarCheck} title={t('signup.noPrograms')}>{t('signup.noProgramsHelp')}</EmptyState> : data.programs.map((p) => (
             <section key={p.id} className="grid gap-3">
               <h2 className="text-heading">{pick(p.name, p.nameFr)}</h2>
-              {!p.open ? <p className="text-small font-semibold text-warn">{p.opensAt && new Date(p.opensAt) > new Date() ? t('signup.opensOn', { date: new Intl.DateTimeFormat(lng, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(p.opensAt)) }) : t('signup.regClosed')}</p> : null}
+              {!p.open ? <p className="text-small font-semibold text-warn">{p.opensAt && new Date(p.opensAt) > new Date() ? t('signup.opensOn', { date: dateFormat(lng, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(p.opensAt)) }) : t('signup.regClosed')}</p> : null}
               <div className="grid gap-3 sm:grid-cols-2">
                 {p.sets.map((s) => (
                   <Card key={s.id}>

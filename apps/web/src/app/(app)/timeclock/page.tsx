@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { formatDate, formatHours, formatTime, formatTimeRange } from '@/lib/format';
+import { formatDate, formatHours, formatTime, formatTimeRange, dateFormat } from '@/lib/format';
 import { useQuery } from '@/lib/useQuery';
 import { PunchControl } from '@/components/punch/PunchControl';
 import { usePunch } from '@/components/punch/PunchProvider';
@@ -51,9 +51,9 @@ export default function TimeclockPage() {
         <Card className="flex flex-col gap-5 p-6 sm:p-8">
           <div className="text-center">
             <p className="text-stat tabular-nums" aria-live="off">
-              {new Intl.DateTimeFormat(lng, { hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(now)}
+              {dateFormat(lng, { hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(now)}
             </p>
-            <p className="mt-1 text-small text-muted">{new Intl.DateTimeFormat(lng, { weekday: 'long', month: 'long', day: 'numeric' }).format(now)}</p>
+            <p className="mt-1 text-small text-muted">{dateFormat(lng, { weekday: 'long', month: 'long', day: 'numeric' }).format(now)}</p>
           </div>
           {!punch || punch.loading ? <Skeleton className="h-24 w-full" /> : <PunchControl variant="large" />}
           {punch && !punch.open ? (

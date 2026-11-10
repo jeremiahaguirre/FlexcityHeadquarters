@@ -14,6 +14,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { type InvoiceRow, cad, recentMonths, thisMonth } from '@/lib/billing';
 import { papi, usePlatformQuery } from '@/lib/platform';
+import { dateFormat } from '@/lib/format';
 
 interface Summary {
   month: string;
@@ -114,7 +115,7 @@ export default function BillingPage() {
                   <Select aria-label={t('billing.month')} value={month} onChange={(e) => setMonth(e.target.value)}>
                     {recentMonths().map((m) => (
                       <option key={m} value={m}>
-                        {new Intl.DateTimeFormat(lng, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${m}-15T12:00:00Z`))}
+                        {dateFormat(lng, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${m}-15T12:00:00Z`))}
                       </option>
                     ))}
                   </Select>

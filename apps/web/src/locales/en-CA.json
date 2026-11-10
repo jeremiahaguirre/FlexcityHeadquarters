@@ -1010,6 +1010,11 @@
       "vacation.tiers": "Vacation pay tiers",
       "statutoryHoliday.workedMultiplier": "Stat holiday worked multiplier"
     },
+    "timeFormat": "Time format",
+    "timeFormatHint": "How clock times appear for everyone in this organization, including the public sign-up page.",
+    "timeFormatAuto": "Automatic (by language)",
+    "timeFormat12": "12-hour ({{example}})",
+    "timeFormat24": "24-hour ({{example}})",
     "logoUploaded": "Your organization’s uploaded logo is in use. Paste a new https link only to replace it."
   },
   "jobs": {

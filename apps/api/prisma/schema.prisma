@@ -232,6 +232,8 @@ model Tenant {
   /// { primary, primaryHover, primaryContrast, accent } — injected as CSS variables
   themeColors     Json            @default("{}")
   defaultLocale   String          @default("en-CA")
+  /// How clock times are shown: "auto" (the language's usual style), "12h" or "24h".
+  timeFormat      String          @default("auto")
   /// 0 = Sunday ... 6 = Saturday, in each facility's local time
   payWeekStartDay Int             @default(0)
   vacationPayMode VacationPayMode @default(PAY_EACH_PERIOD)

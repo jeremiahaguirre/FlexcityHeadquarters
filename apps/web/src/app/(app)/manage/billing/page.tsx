@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 type AddOn = 'hr' | 'ops' | 'union';
 interface InvoiceRow { id: string; number: string | null; status: string; periodStart: string; periodEnd: string; issueDate: string | null; dueDate: string | null; totalCents: number; paidCents: number; balanceCents: number }
@@ -40,7 +41,7 @@ export default function BillingPage() {
   const detail = useQuery<InvoiceDetail>(open ? `/api/billing/invoices/${open}` : null);
   const [unlock, setUnlock] = useState<AddOn | null>(null);
   const money = (c: number) => new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'CAD' }).format(c / 100);
-  const date = (d: string | null) => (d ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
+  const date = (d: string | null) => (d ? dateFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);

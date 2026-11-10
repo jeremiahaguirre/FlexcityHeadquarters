@@ -35,8 +35,8 @@ export function parseSignup(stored: unknown): SignupSettings {
 }
 
 async function settingsOf(tx: Tx) {
-  const t = await tx.tenant.findFirstOrThrow({ select: { name: true, signupSettings: true, defaultLocale: true } });
-  return { name: t.name, locale: t.defaultLocale, ...parseSignup(t.signupSettings) };
+  const t = await tx.tenant.findFirstOrThrow({ select: { name: true, signupSettings: true, defaultLocale: true, timeFormat: true } });
+  return { name: t.name, locale: t.defaultLocale, timeFormat: t.timeFormat, ...parseSignup(t.signupSettings) };
 }
 
 /** Bots fill hidden fields and submit instantly; people don't. */
@@ -72,6 +72,7 @@ publicSignupRouter.get(
       return {
         enabled: true,
         organization: s.name,
+        timeFormat: s.timeFormat,
         terms: s.terms,
         termsFr: s.termsFr,
         payment: s.payment,

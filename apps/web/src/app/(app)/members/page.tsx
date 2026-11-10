@@ -17,6 +17,7 @@ import { ApiError, api } from '@/lib/api';
 import { type Fee, type LessonSet, PAYMENT_METHODS, ageLabel, ageRange, hhmm, money } from '@/lib/programs';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { useToast } from '@/components/ui/Toast';
+import { dateFormat } from '@/lib/format';
 
 interface Member { id: string; role: 'GUARDIAN' | 'CHILD' | 'ADULT'; firstName: string; lastName: string; dateOfBirth: string | null; ageMonths: number | null; email: string | null; phone: string | null; safetyNote: string | null }
 interface Family {
@@ -180,7 +181,7 @@ function OnlineSignups() {
           <ul className="divide-y divide-line text-small">
             {due.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                <Link href={`/members?id=${r.householdId}`} className="min-w-0 hover:underline"><span className="font-semibold">{r.swimmerName}</span><span className="block text-caption text-muted">{r.set} · {r.reference} · {new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(r.createdAt))}</span></Link>
+                <Link href={`/members?id=${r.householdId}`} className="min-w-0 hover:underline"><span className="font-semibold">{r.swimmerName}</span><span className="block text-caption text-muted">{r.set} · {r.reference} · {dateFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(r.createdAt))}</span></Link>
                 <Button size="sm" loading={busy === r.id} icon={<CreditCard className="h-4 w-4" aria-hidden="true" />} onClick={() => void run(r.id, () => api(`/api/online-registrations/${r.id}/pay`, { method: 'POST', body: { paymentMethod: pay } }), t('members.sold')).then(() => q.reload())}>{t('members.takePayment', { price: money(r.priceCents, i18n.language) })}</Button>
               </li>
             ))}
@@ -203,8 +204,8 @@ function FamilyView({ id }: { id: string }) {
   const [selling, setSelling] = useState(false);
   const [override, setOverride] = useState<{ set: LessonSet; pay: string } | null>(null);
   const [pay, setPay] = useState<string>('DEBIT');
-  const date = (d: string | null) => (d ? new Intl.DateTimeFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
-  const dow = (d: number) => new Intl.DateTimeFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
+  const date = (d: string | null) => (d ? dateFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
+  const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
 
   async function register(set: LessonSet, ageOverride?: string) {
     try {

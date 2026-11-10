@@ -13,6 +13,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { type CallOut, type CallOutContact, toLocalInput } from '@/lib/winter';
+import { dateFormat } from '@/lib/format';
 
 const TONE: Record<CallOutContact['status'], Tone> = { WAITING: 'neutral', OFFERED: 'new', ACCEPTED: 'ok', DECLINED: 'warn', NO_ANSWER: 'warn', SKIPPED: 'neutral', NOT_NEEDED: 'neutral' };
 
@@ -28,7 +29,7 @@ export default function CallOutsPage() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const when = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
   const label = (p: { name: string; nameFr: string | null }) => (i18n.language === 'fr-CA' && p.nameFr ? p.nameFr : p.name);
 
   async function create(e: FormEvent<HTMLFormElement>) {
@@ -98,7 +99,7 @@ export default function CallOutsPage() {
                     {x.status === 'OFFERED' && c.status === 'OPEN' ? (
                       <div className="flex flex-wrap items-center gap-2">
                         {x.phone ? <a href={`tel:${x.phone}`} className="inline-flex items-center gap-1 font-semibold text-brand-text hover:underline"><Phone className="h-4 w-4" aria-hidden="true" />{x.phone}</a> : null}
-                        <span className="text-caption text-muted">{t('callOuts.answerBy', { time: new Intl.DateTimeFormat(i18n.language, { timeStyle: 'short' }).format(new Date(new Date(x.offeredAt!).getTime() + c.responseMinutes * 60_000)) })}</span>
+                        <span className="text-caption text-muted">{t('callOuts.answerBy', { time: dateFormat(i18n.language, { timeStyle: 'short' }).format(new Date(new Date(x.offeredAt!).getTime() + c.responseMinutes * 60_000)) })}</span>
                         <Button size="sm" loading={busy === `${x.id}ACCEPTED`} onClick={() => record(c, x, 'ACCEPTED')}>{t('callOuts.yes')}</Button>
                         <Button size="sm" variant="secondary" loading={busy === `${x.id}DECLINED`} onClick={() => record(c, x, 'DECLINED')}>{t('callOuts.no')}</Button>
                         <Button size="sm" variant="ghost" loading={busy === `${x.id}NO_ANSWER`} onClick={() => record(c, x, 'NO_ANSWER')}>{t('callOuts.noAnswer')}</Button>

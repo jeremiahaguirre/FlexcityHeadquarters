@@ -4,7 +4,7 @@ import { Clock, MapPin } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
-import { formatHours, formatTimeRange } from '@/lib/format';
+import { formatHours, formatTimeRange, dateFormat } from '@/lib/format';
 
 export interface ShiftLike {
   localStartsAt: string;
@@ -19,9 +19,9 @@ export function ShiftCard({ shift, aside, footer, highlight }: { shift: ShiftLik
   const { i18n } = useTranslation();
   const lng = i18n.language;
   const wall = new Date(`${shift.localStartsAt.slice(0, 10)}T12:00:00Z`);
-  const weekday = new Intl.DateTimeFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(wall);
-  const dayNum = new Intl.DateTimeFormat(lng, { day: 'numeric', timeZone: 'UTC' }).format(wall);
-  const month = new Intl.DateTimeFormat(lng, { month: 'short', timeZone: 'UTC' }).format(wall);
+  const weekday = dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(wall);
+  const dayNum = dateFormat(lng, { day: 'numeric', timeZone: 'UTC' }).format(wall);
+  const month = dateFormat(lng, { month: 'short', timeZone: 'UTC' }).format(wall);
   const hours = (Date.parse(shift.localEndsAt) - Date.parse(shift.localStartsAt)) / 3_600_000;
   const position = lng === 'fr-CA' && shift.position.nameFr ? shift.position.nameFr : shift.position.name;
   return (

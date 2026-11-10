@@ -7,6 +7,7 @@ import { CityBrand, CoBrand } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { TimeFormatField } from '@/components/TimeFormatField';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { papi } from '@/lib/platform';
 import { useAction } from '@/lib/useQuery';
@@ -32,6 +33,7 @@ export function OrganizationPanel({ id, city, reload }: PanelProps) {
           body: {
             name: String(f.get('name')).trim(),
             defaultLocale: f.get('locale'),
+            timeFormat: f.get('timeFormat'),
             themeColors: { primary: f.get('primary') },
             payWeekStartDay: Number(f.get('payWeek')),
             vacationPayMode: f.get('vacation'),
@@ -105,6 +107,7 @@ export function OrganizationPanel({ id, city, reload }: PanelProps) {
                   </Select>
                 )}
               </Field>
+              <TimeFormatField value={o.timeFormat} />
               <Field label={t('settings.payWeek')}>
                 {(p) => (
                   <Select {...p} name="payWeek" defaultValue={String(o.payWeekStartDay)}>

@@ -14,6 +14,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useAction, useQuery, todayIso } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 type Status = 'PENDING' | 'APPROVED' | 'DENIED' | 'CANCELLED';
 interface Request {
@@ -41,12 +42,12 @@ export default function TimeOffPage() {
   const [partial, setPartial] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fmt = (iso: string) => new Intl.DateTimeFormat(lng, { weekday: 'short', month: 'short', day: 'numeric', ...(partial ? {} : {}) }).format(new Date(iso));
+  const fmt = (iso: string) => dateFormat(lng, { weekday: 'short', month: 'short', day: 'numeric', ...(partial ? {} : {}) }).format(new Date(iso));
   const fmtRange = (r: Request) => {
     const s = new Date(r.startsAt);
     const e = new Date(new Date(r.endsAt).getTime() - 1);
     const sameDay = s.toDateString() === e.toDateString();
-    const timeFmt = new Intl.DateTimeFormat(lng, { hour: 'numeric', minute: '2-digit' });
+    const timeFmt = dateFormat(lng, { hour: 'numeric', minute: '2-digit' });
     const allDay = s.getHours() === 0 && s.getMinutes() === 0 && new Date(r.endsAt).getHours() === 0;
     if (sameDay && !allDay) return `${fmt(r.startsAt)} · ${timeFmt.format(s)}–${timeFmt.format(new Date(r.endsAt))}`;
     return sameDay ? fmt(r.startsAt) : `${fmt(r.startsAt)} – ${fmt(e.toISOString())}`;

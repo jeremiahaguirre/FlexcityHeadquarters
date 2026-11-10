@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toast';
 import { api } from '@/lib/api';
 import { hhmm, money, toMinutes } from '@/lib/programs';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 interface Settings { enabled: boolean; terms: string; termsFr: string; payment: string; paymentFr: string; privacyContact: string }
 interface Service { id: string; facilityId: string; name: string; nameFr: string | null; description: string | null; durationMinutes: number; priceCents: number; capacity: number; maxPartySize: number | null; daysOfWeek: number[]; openMinute: number; closeMinute: number; leadDays: number; active: boolean }
@@ -35,8 +36,8 @@ export default function BookingsPage() {
   const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5, 6, 0]);
   const [url, setUrl] = useState('');
   useEffect(() => setUrl(`${window.location.origin}/signup`), []);
-  const dow = (d: number) => new Intl.DateTimeFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
-  const when = (iso: string, timeZone?: string) => new Intl.DateTimeFormat(lng, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(new Date(iso));
+  const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
+  const when = (iso: string, timeZone?: string) => dateFormat(lng, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(new Date(iso));
 
   async function saveSettings(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

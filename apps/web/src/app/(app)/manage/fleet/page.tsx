@@ -14,6 +14,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { STATUS_TONE, type Vehicle } from '@/lib/fleet';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 interface Inspection { id: string; at: string; result: 'PASS' | 'MINOR' | 'MAJOR'; driver: string; odometerKm: number | null; items: Array<{ item: string; ok: boolean; severity: string | null; note: string | null }>; notes: string | null; repairNote: string | null }
 
@@ -28,7 +29,7 @@ export default function FleetPage() {
   const [repairing, setRepairing] = useState<Vehicle | null>(null);
   const [history, setHistory] = useState<Vehicle | null>(null);
   const hist = useQuery<Inspection[]>(history ? `/api/vehicles/${history.id}/inspections` : null);
-  const when = (iso: string) => new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
   const certName = (id: string | null) => certs.data?.find((c) => c.id === id)?.name ?? '';
 
   async function add(e: FormEvent<HTMLFormElement>) {

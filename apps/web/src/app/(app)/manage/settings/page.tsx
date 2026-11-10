@@ -8,13 +8,14 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorNotice } from '@/components/ui/ErrorNotice';
+import { TimeFormatField } from '@/components/TimeFormatField';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import { formatDate, setTimeFormat } from '@/lib/format';
 import { PROVINCES, TIMEZONES } from '@/lib/regions';
 import { DeckStations } from '@/components/pools/DeckStations';
 import { PoolsEditor } from '@/components/pools/PoolsEditor';
@@ -27,7 +28,7 @@ interface Facility { id: string; name: string; province: string; timezone: strin
 interface Override { id: string; province: string | null; ruleKey: string; value: unknown; effectiveFrom: string; effectiveTo: string | null; source: string }
 interface Period { kind: 'TERM' | 'BREAK'; name: string; startsOn: string; endsOn: string }
 interface Settings {
-  organization: { name: string; subdomain: string; logoUrl: string | null; themeColors: { primary?: string } | null; defaultLocale: string; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number };
+  organization: { name: string; subdomain: string; logoUrl: string | null; themeColors: { primary?: string } | null; defaultLocale: string; timeFormat?: string; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number };
   facilities: Facility[];
   payCodes: Array<{ key: string; positionId: string | null; code: string }>;
   ruleOverrides: Override[];
@@ -119,6 +120,7 @@ function Organization({ s, reload }: Props) {
             ...(uploaded && !str(f, 'logoUrl') ? {} : { logoUrl: str(f, 'logoUrl') }),
             themeColors: { primary: str(f, 'primary') },
             defaultLocale: str(f, 'locale'),
+            timeFormat: str(f, 'timeFormat'),
             payWeekStartDay: num(f, 'payWeek'),
             vacationPayMode: str(f, 'vacation'),
             payrollRetentionYears: num(f, 'retention'),
@@ -126,6 +128,7 @@ function Organization({ s, reload }: Props) {
         }),
       t('profile.saved'),
     );
+    setTimeFormat(str(f, 'timeFormat'));
     await reload();
   }
   const days = Array.from({ length: 7 }, (_, i) => i);
@@ -142,6 +145,7 @@ function Organization({ s, reload }: Props) {
               </Select>
             )}
           </Field>
+          <TimeFormatField value={o.timeFormat} />
           <Field label={t('settings.payWeek')} hint={t('settings.payWeekHint')}>
             {(p) => (
               <Select {...p} name="payWeek" defaultValue={String(o.payWeekStartDay)}>

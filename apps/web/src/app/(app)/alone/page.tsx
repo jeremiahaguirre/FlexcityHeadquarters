@@ -13,6 +13,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { INTERVALS, type LoneSession, currentPosition } from '@/lib/loneWork';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 /** Working alone: start a session, check in on a timer, or ask for help. */
 export default function AlonePage() {
@@ -34,7 +35,7 @@ export default function AlonePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const s = q.data;
-  const time = (iso: string) => new Intl.DateTimeFormat(i18n.language, { timeStyle: 'short' }).format(new Date(iso));
+  const time = (iso: string) => dateFormat(i18n.language, { timeStyle: 'short' }).format(new Date(iso));
   const where = () => (share ? currentPosition() : Promise.resolve(null));
 
   async function start(e: FormEvent<HTMLFormElement>) {

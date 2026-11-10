@@ -10,6 +10,7 @@ import { Field, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useQuery } from '@/lib/useQuery';
+import { dateFormat } from '@/lib/format';
 
 interface Forecast {
   weekStart: string;
@@ -43,8 +44,8 @@ export default function ForecastPage() {
   }, [facilities.data, positions.data, facilityId, positionId]);
   const data = useQuery<Forecast>(facilityId && positionId ? `/api/forecast?facilityId=${facilityId}&weekStart=${week}&positionId=${positionId}` : null);
   const hours = data.data?.days[0]?.hours.map((h) => h.hour) ?? [];
-  const label = (iso: string) => new Intl.DateTimeFormat(lng, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`));
-  const hh = (h: number) => new Intl.DateTimeFormat(lng, { hour: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 1, h)));
+  const label = (iso: string) => dateFormat(lng, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`));
+  const hh = (h: number) => dateFormat(lng, { hour: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 1, h)));
   const gaps = data.data?.days.flatMap((d) => d.hours).reduce((s, h) => s + h.gap, 0) ?? 0;
 
   return (
