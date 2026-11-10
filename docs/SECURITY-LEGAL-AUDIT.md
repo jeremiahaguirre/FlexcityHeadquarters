@@ -332,5 +332,19 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 10. Procurement thresholds and cooperative purchasing options.
 11. Union hub: whether union-controlled content inside an employer-paid system raises labour-relations issues in any province.
 12. Insurance: cyber liability and technology errors & omissions limits typical in municipal contracts.
+13. The first-sign-in information and consent agreement (EN/FR) and whether its signature record meets each province's electronic-signature and evidence rules.
+14. Court and CRA order handling: provincial exemption limits for garnishments and support orders, and the order of priority between several orders.
+15. Payroll provider connections: the data-sharing terms between the city, FH and ADP, Dayforce or Wagepoint.
+
+## Addendum (November 2026)
+
+| Change | Security and legal effect |
+| --- | --- |
+| SQL injection defences (bound parameters only, `ident()`, a build-failing guard test, runtime roles without schema rights or temp tables, statement time limits, a startup refusal of over-powered roles, attack tests) | Lowers the chance and the impact of injection; see [SECURITY.md](../SECURITY.md) |
+| First-sign-in agreement enforced by the API, records the app can't change, certificates in the Dev console | Evidence of notice and of optional choices (PIPEDA, provincial acts, Law 25); text still needs counsel (item 13) |
+| Union Hub as its own service (`UNION_HUB_MODE=separate`) | The main API can hold no union credentials at all |
+| Payroll provider connections (secrets sealed, addresses held to the provider's domain, every send recorded) | No open outbound requests (SSRF); credentials readable by no one at FH |
+| Full in-app payroll (salaries, one-time items, off-cycle runs, court and CRA orders) and Dev console payroll set-up | Same controls as pay runs (two-person approval, passkey, audit); orders need legal review (item 14) |
+
 
 See also: [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md) (runbook), [COMPLIANCE.md](COMPLIANCE.md) (rules and privacy notes).

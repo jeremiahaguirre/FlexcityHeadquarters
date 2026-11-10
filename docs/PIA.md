@@ -27,6 +27,8 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Health | Accommodation limits (no diagnosis), injury claims, medical notes (HR only), care check-ins after critical incidents | Accommodation, injury, documents, care | **Yes** |
 | Location | Working-alone location the person chooses to share during a session: latest position only, while the app is open (deleted when sharing is turned off, otherwise after 30 days) | Lone work | **Yes** |
 | Device push addresses | Browser push endpoint and keys for devices where the person turned notifications on | Notifications | No |
+| Pay changes and orders | Salaries, one-time payments and deductions, court and CRA orders (payee, reference, amounts) | Payroll | **Yes** (orders can reveal family or debt matters; HR and payroll only) |
+| Signed agreement | Version and language seen, typed name, drawn signature, notification and location choices, time, device address and browser | Always (first sign-in) | No — kept as evidence, can't be changed |
 | Union | Union membership (HR, discipline writers), union hub content (union only) | Union hub | **Yes** |
 | Public: families and children | Guardian contacts, children's names, ages, safety notes | Programs | **Yes** (minors) |
 

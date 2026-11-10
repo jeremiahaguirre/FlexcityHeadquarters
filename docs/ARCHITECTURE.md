@@ -55,6 +55,17 @@ post (holder or supervisor) ──► OPEN ──claim──► eligible, no OT 
 
 Punches are split at local midnight and grouped into work days. Daily thresholds are applied, then weekly thresholds per pay week, using the province's method ('stacked' never counts daily-OT hours toward the weekly threshold; Alberta pays the greater of daily or weekly OT). Rates are looked up per position and date. Money uses decimal arithmetic. The Shift Board's overtime warning calls the same engine, so the warning and the pay stub can't disagree.
 
+### Payroll runs (`services/payroll/payRuns.ts`)
+
+A regular run takes the period's approved hours from the pay engine, adds salaried staff (the annual
+amount ÷ pay periods, prorated by days), and works out each statement: CPP/QPP, EI, QPIP and income
+tax by the T4127 method, benefits and union dues, then the run's one-time items (bonuses, retro pay
+and vacation payouts by the bonus method in `lumpSum.ts`; allowances; untaxed reimbursements; after-
+tax recoveries) and court or CRA orders, capped by their share of net and what's still owed.
+Off-cycle runs carry only their one-time items. A second person approves; the deposit file
+(CPA-005) goes to the city's bank over SFTP or by download. With a payroll provider instead
+(`providers.ts`), each period's approved hours go to ADP, Dayforce or Wagepoint over their API.
+
 ### Operations
 
 Chemical readings are checked against each pool's configured thresholds; there are no built-in defaults. Out-of-range readings **recommend** closure, and a Head Lifeguard or Supervisor confirms or dismisses with a note.
@@ -65,13 +76,15 @@ Chemical readings are checked against each pool's configured thresholds; there a
 | --- | --- |
 | Incident narratives | AES-256-GCM per record; data key wrapped by the tenant's KMS key; bound to the record with AAD; every read logged with a purpose |
 | Union messages | Separate schema and DB role; sealed with the union local's own key |
-| SIN | **Not stored.** Payroll providers hold it. |
+| SIN, bank accounts, provider and bank credentials | Sealed with the city's own key (envelope encryption, AAD-bound); a SIN is unsealed only into a filing file, with a passkey, and audited |
+| Signed agreements | The application role can't update them; fingerprints of the text and signature are re-checked on each certificate |
 | Refresh tokens | Stored as SHA-256 hashes; reuse of a rotated token revokes the whole family |
-| Location | Captured only at punch time; scrubbed on anonymization |
+| Location | At punch time, only whether the person was on site and how far; during a working-alone session the person shares, the latest position only |
+| SQL | Values are always bound parameters; identifiers only through `ident()`; a test fails the build on SQL built from values; runtime roles can't change the schema (see [SECURITY.md](../SECURITY.md)) |
 
 ## Events
 
-Domain events (`src/lib/events.ts`) are published only after the transaction commits. Notifications are written to the database and announced with `pg_notify`; browsers listen over server-sent events (`/api/notifications/stream`) and emails go out through an outbox the worker drains. Push notifications (see roadmap) will subscribe to the same events.
+Domain events (`src/lib/events.ts`) are published only after the transaction commits. Notifications are written to the database and announced with `pg_notify`; browsers listen over server-sent events (`/api/notifications/stream`) and emails go out through an outbox the worker drains. Web push to phones and computers subscribes to the same notifications (`services/notifications/push.ts`); the lock screen shows a short heading only.
 
 ## Union Hub access
 
@@ -105,11 +118,24 @@ Each organization has fifteen switches (`src/services/platform/features.ts`), se
 
 Menus are driven by permissions, never role names (`apps/web/src/lib/nav.ts`). Two permissions exist only to shape menus: `shifts.self` (works shifts: Today, My schedule) and `lessons.teach`. HR administrators and union stewards don't have them, so they don't see personal shift screens; a steward's menu is just the Union hub. `nav.test.ts` pins the menu for every role against the API's permission matrix.
 
+## First-sign-in agreement
+
+Each person reads the information and consent agreement (`services/privacy/consent.ts`, EN/FR,
+`CONSENT_VERSION`), chooses notifications and location with the device's own prompts, and signs.
+Until the current version is signed, `requireConsent` answers every API request with
+`428 CONSENT_REQUIRED` except reading and signing it, sign-in essentials, the data export and a
+working-alone call for help; the web app opens the agreement when it sees that.
+
 ## FH Dev console
 
 FH staff (`PlatformAdmin`) are not users of any organization. They sign in at the bare FH address with an opaque, revocable session in an HTTP-only, SameSite=Strict cookie scoped to `/api/platform`; every console request must also send `x-fh-platform: 1`. Organization tokens are refused there and console sessions are refused by organization routes. The console still reads and writes an organization's data only through `withTenant`, so row-level security applies. Every change is written to `PlatformAudit` and to the organization's own audit trail (`platform.*` actions, no user as actor).
 
 Uploaded logos (PNG, JPEG, WebP; content-checked; SVG refused) live in `TenantLogo` and are served publicly at `/api/public/logo/:tenantId?v=<hash>`. The web app always shows the FH logo and places the city's logo beside or below it.
+
+Beyond city set-up, the console holds plans and billing (monthly, yearly or multi-year terms, per-
+option prices), FH's own books, payroll tax tables, a city's in-app payroll set-up (deposit details
+and bank connection), signed agreements with certificates, consented support visits, offboarding and
+website enquiries. Sensitive actions ask for a passkey again (`requirePlatformStepUp`).
 
 Staff import parses CSV on the server (`staffImport.ts`), returns a row-by-row preview with problem codes the web app translates, then creates only valid rows in one transaction, optionally sending invitations.
 

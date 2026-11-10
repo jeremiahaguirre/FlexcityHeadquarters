@@ -38,19 +38,28 @@ PIPEDA generally does **not** apply to employee information of provincially regu
 
 - **Retention:** payroll records are kept for `Tenant.payrollRetentionYears` (default 7) after the tax year; erasure is deferred until then, with processing restricted immediately.
 - **Automated decisions (Law 25 s.12.1):** the reliability score is advisory, never an input to scheduling or discipline, and fully explainable to the employee.
-- **Minimization:** no SIN; date of birth only for young-worker rules; location only at punch time.
+- **Minimization:** SINs only for payroll, sealed with the city's key and unsealed only into filing files; date of birth only for young-worker rules; location only at punch time and during a working-alone session the person chooses to share.
+- **Notice and consent:** each person reads the information and consent agreement at first sign-in (EN/FR, versioned), chooses notifications and location separately, and signs; the API holds everything else back until they do, and a new version is signed again. Records can't be changed by the application; FH keeps them as evidence (Dev console, Signed agreements). **The text is a draft for counsel to review.**
 - **Access logging:** incident report reads require a stated purpose and are logged.
 
 ## Data residency
 
 - Primary data and backups: AWS `ca-central-1`. The API refuses to start in production with a non-Canadian region.
-- **Subprocessors carry personal data too.** Before launch, list and assess: push notifications (FCM/APNs), email, error tracking, analytics, SMS. Municipal buyers will ask for this list.
+- **Subprocessors carry personal data too.** The list and the checks are in [SUBPROCESSORS.md](SUBPROCESSORS.md); the email provider is still to be chosen.
 
 ## Procurement requirements to plan for
 
-- **SSO** (SAML / Entra ID) — expected by most cities.
+- **SSO** (SAML / Entra ID) — built; expected by most cities.
 - **Accessibility:** WCAG 2.1 AA (AODA in Ontario). Current UI uses labelled inputs, visible focus, skip link, live regions, contrast-corrected tenant colours, and never colour alone for status.
 - **French:** Quebec's Charter of the French Language (Bill 96) requires French to be at least equivalent, including notifications and documents. A test enforces EN/FR key parity.
+
+## Payroll filing and remittances
+
+- FH prepares the files; the city files and pays: T4 XML (CRA Internet File Transfer), RL-1 XML (Revenu Québec's transmission service), ROE Web XML, and the remittance totals for CRA and Revenu Québec.
+- **Revenu Québec** certifies RL-1 software each year: FH needs that year's authorization number, and each city enters its preparer number and slip range before the RL-1 file can be made.
+- **Workforce skills (Quebec, 1% rule):** employers over the payroll threshold log eligible training spending; what's left of the 1% is shown as owed with the RLZ-1.S. Keep receipts and the training plan.
+- **Court and CRA orders** are taken as entered; check each order's exemption limit (it varies by province and order).
+- **Payroll providers:** when a city keeps ADP, Dayforce or Wagepoint, the approved hours go to the provider; filing and remittances are then the provider's job.
 
 ## Aquatic operations
 

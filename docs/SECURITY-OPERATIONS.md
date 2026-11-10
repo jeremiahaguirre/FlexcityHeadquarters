@@ -24,7 +24,9 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
    - 5xx rate over 2%;
    - database CPU over 80% for 10 minutes;
    - more than 3 records exports in a day for one city;
-   - any change to the audit log grants.
+   - any change to the audit log grants;
+   - a payroll provider send or bank transmission that failed;
+   - a server refusing to start because its database role is too powerful.
 2. **Backups confirmed:** last night's automated snapshot completed; point-in-time recovery window intact.
 3. **Threat feeds skimmed:** GitHub security advisories for this repository, Dependabot pull requests, CCCS alerts, AWS security bulletins, Node.js and Next.js releases, PostgreSQL security releases.
 
@@ -48,6 +50,9 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
   - ask each city to review its HR and supervisor accounts.
 - Re-run [SECURITY-LEGAL-AUDIT.md](SECURITY-LEGAL-AUDIT.md) section 3 and update statuses.
 - Tabletop exercise (below), rotating scenarios.
+- Ask cities to rotate their bank (SFTP) and payroll provider credentials; check the Union Hub service
+  and the main API still hold separate secrets (the API must not have `UNION_DATABASE_URL` when the hub
+  runs on its own).
 
 ## Yearly
 
@@ -55,6 +60,9 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
 - Review policies: acceptable use, remote work, data retention, incident response, this runbook.
 - Review subprocessors and their SOC 2 reports; update the published list.
 - Accessibility re-test (WCAG 2.1 AA) and update the conformance report.
+- Payroll: verify the new year's tax tables (T4127, Revenu Québec) before January's first run, renew
+  Revenu Québec's RL-1 software authorization, and confirm each provider's import endpoint still works.
+- Re-read the information and consent agreement with counsel; when it changes, bump `CONSENT_VERSION`.
 
 ## De-provisioning
 

@@ -11,6 +11,8 @@ added only after the checks below; each city is told 30 days before a new one is
 | Browser push services (Google FCM, Apple Push, Mozilla, Microsoft WNS) | Delivering notifications to devices where the person turned them on | An encrypted message (end to end, RFC 8291: the push service can't read it) and the device's push address; lock-screen text is a short heading, never sensitive details | Global (operated by the person's browser maker) | Chosen by the person's browser, not FH; optional per person and per device; no readable personal information reaches them |
 | The city's own bank | Payroll deposit files, sent by the city's own SFTP connection | Employees' names, deposit amounts, account numbers | Canada | The city's contract, not FH's subprocessor |
 | The city's identity provider (Entra ID, SAML) | Single sign-on | Work email, sign-in assertion | The city's tenant | The city's contract |
+| The city's payroll provider, if it keeps one (ADP, Ceridian Dayforce, Wagepoint) | Receiving each period's approved hours over the provider's API | Employee numbers, hours, pay codes, rates and amounts | The provider's region | The city's contract with its provider; credentials are the city's, sealed with its key. Not used when the city runs payroll in the app |
+| Revenu Québec, CRA, Service Canada | Filing files (T4, RL-1, ROE) the city uploads itself | Slip and ROE contents | Canada | Government agencies, not subprocessors; FH prepares the files, the city files them |
 
 ## Checks before a vendor is used
 

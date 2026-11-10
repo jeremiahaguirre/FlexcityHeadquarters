@@ -17,6 +17,9 @@ with their records retention by-law.
 | Device push subscriptions | Until the person signs out on that device or turns notifications off; dropped when the push service reports the device gone, or after 10 failed sends | Deleted | Immediately / each send |
 | Sign-in sessions and one-time links | 30 days after they end or are used | Deleted | Hourly job |
 | Audit log | For the life of the account | Deleted with the organization | Append-only while the account exists |
+| Signed information and consent agreements (name, signature, choices, time, device address and browser) | For the life of the account: evidence of what each person was told | Deleted with the organization | The app can't change or delete them; FH can download a certificate per record |
+| Payroll provider sends (period, file fingerprint, status, provider's reference) | With payroll records | Deleted with the organization | The file itself isn't kept, only its SHA-256 |
+| Salaries, one-time pay items, court and CRA orders | With payroll records | Anonymized with the person | Same job as payroll |
 | Incident reports | The city's retention (OHS and insurance) | Deleted with the organization, or on request | Narratives sealed with the city's key |
 | Everything, after offboarding | Until the deletion date in the agreement (90 days by default); the city can download a full export until then | Deleted | `npm run tenant:purge`; FH's own invoices are kept 6 years (CRA) |
 

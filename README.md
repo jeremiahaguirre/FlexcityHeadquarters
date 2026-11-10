@@ -14,25 +14,28 @@ Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and 
 
 | Area | Status |
 | --- | --- |
-| Multi-tenant data model with Postgres row-level security | Done, integration-tested |
+| Multi-tenant data model with Postgres row-level security; least-privilege database roles | Done, integration-tested |
 | Provincial employment-standards rules (13 jurisdictions), effective-dated, collective-agreement overrides | Done — **values pending legal review** |
 | Pay engine: daily/weekly OT (stacked and Alberta greater-of), double time, stat holidays, premiums, vacation pay, DST-safe | Done, unit-tested |
 | Shift eligibility: certifications, overlaps, time off, rest periods, young-worker limits and school calendar, availability, weekly caps | Done, unit-tested |
-| Scheduling: schedule builder with assistant, shift board with overtime approval, my schedule, availability, time off | Done (API + web) |
-| Timeclock with geofence, punch review, payroll CSV export with holiday and vacation pay | Done (API + web) |
-| Pool deck: chemical log with closure workflow, live status board, sealed incident reports | Done (API + web) |
-| People: staff directory, invitations, roles, pay rates, verified certifications, discipline records with signature | Done (API + web) |
-| Swim lessons with offline attendance | Done (API + web) |
-| Union Hub on a separate database role, per-local encryption | Done (API + web) |
-| Job postings and public careers page | Done (API + web) |
-| Notifications: in-app (live), email outbox, reminders | Done |
-| Menus tailored to each role (e.g. a union steward sees only the Union hub) | Done, tested per role |
-| **FH Dev console**: create cities, switch 15 features per city, facilities, positions, city logo upload, CSV staff import with preview | Done (API + web) |
-| City logo shown beside the FH logo (never replacing it) | Done |
-| **Passkeys** (Windows Hello, Face ID / Touch ID, Android fingerprint or face) for sign-in, and "confirm it's you" before sensitive changes | Done, tested with a virtual authenticator |
-| English and French throughout, tenant theming | Done |
+| Scheduling: schedule builder with a multi-facility assistant, shift board with overtime approval and pay preview, availability, time off | Done (API + web) |
+| Demand forecast from headcounts, facility opening hours (minimum on deck) and lesson registrations, with draft shifts for the gaps | Done (API + web) |
+| Timeclock with geofence, punch review | Done (API + web) |
+| **Payroll in the app, no provider needed**: hourly and salaried staff; bonuses, retro pay and vacation payouts (CRA bonus method); allowances, reimbursements, recoveries; off-cycle runs; court and CRA orders; CPP/QPP, EI, QPIP and income tax in all 13 jurisdictions; benefits and union dues; two-person approval; direct deposit from the city's own bank (CPA-005, sent over SFTP); remittances, T4 XML, RL-1 XML, ROE Web XML; general-ledger journal | Done (API + web) — **tax tables verified by FH each year** |
+| Or keep ADP, Dayforce or Wagepoint: each period sent over their API, or as a file in their layout | Done — **API access is granted by each provider** |
+| Quebec: QPP, QPIP, Quebec tax, HSF, CNT, workforce skills (1%) training log | Done (API + web) |
+| Pool deck: rotations with fatigue limits, headcounts, chemical log with closure workflow, sealed incident reports | Done (API + web) |
+| Safety: working alone with check-ins and location sharing, injury-report deadlines, care after critical incidents, required coverage | Done (API + web) |
+| People and HR: directory, roles, pay rates, certifications, onboarding, reliability, discipline with signatures, accommodation, leave balances, reviews, training, grievances, offboarding, encrypted documents | Done (API + web) |
+| Programs: lessons with offline attendance, registration campaigns, members, facility bookings, public sign-up | Done (API + web) |
+| Union Hub on a separate database role and per-local keys; can run as its own service | Done (API + web) |
+| First-sign-in information and consent agreement (notifications and location choices, signature), enforced by the API, certified in the Dev console | Done — **text pending legal review** |
+| Notifications: in-app (live), email, web push on phones; installable app | Done |
+| **FH Dev console**: cities, features, menus per role, plans and billing (monthly, yearly or multi-year terms), FH's books, payroll set-up for a city, signed agreements, support visits, offboarding and data export | Done (API + web) |
+| Passkeys, single sign-on (Entra ID, SAML), multi-factor sign-in, audit log, privacy tools | Done |
+| English and French throughout; light and dark mode; mobile and accessibility checked | Done |
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for what is not built yet.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for what is not built yet and what needs people (legal, accounting, providers) before launch.
 
 ## Getting started
 
@@ -72,7 +75,9 @@ npm run dev --workspace apps/api
 npm run dev --workspace apps/web
 ```
 
-Open http://kelowna.localhost:3000 and sign in as any demo user, e.g. `guard@kelowna.test`, `supervisor@kelowna.test`, `hr@kelowna.test`, `frontdesk@kelowna.test` or `steward@kelowna.test`. The password for all of them is `flexcity-dev`.
+Open http://kelowna.localhost:3000 and sign in as any demo user, e.g. `guard@kelowna.test`, `supervisor@kelowna.test`, `hr@kelowna.test`, `frontdesk@kelowna.test` or `steward@kelowna.test`. The password for all of them is `flexcity-dev`. Each person signs the information and consent agreement at their first sign-in.
+
+Background jobs (reminders, retention, working-alone escalation) run with `npm run worker --workspace apps/api`. To try the Union Hub as its own service, start the API with `UNION_HUB_MODE=separate` and no `UNION_DATABASE_URL`, run `npm run dev:union --workspace apps/api`, and start the web app with `UNION_URL=http://localhost:4100` (see [Architecture](docs/ARCHITECTURE.md)).
 
 The **FH Dev console** (for FlexcityHeadquarters staff, not city staff) is at the bare address, http://localhost:3000. Sign in as `dev@flexcity.dev` / `flexcity-dev`. In production, create Dev accounts with:
 
@@ -94,7 +99,7 @@ Integration tests need a scratch database and the roles above:
 DATABASE_URL=postgresql://postgres@localhost:5432/flexcity_test APP_DATABASE_URL=postgresql://flexcity_app:change-me@localhost:5432/flexcity_test JWT_SECRET=dev-only-secret-dev-only-secret-0000 npm run test:integration --workspace apps/api
 ```
 
-CI runs typecheck, unit tests, a migration-drift check and the integration tests on every push.
+CI runs typecheck, unit tests (including a guard that fails on SQL built from values), a migration-drift check, the integration tests and dependency and secret scans on every push.
 
 ## Marketing website
 
@@ -114,10 +119,13 @@ Screenshots on the site come from the demo (`apps/site/public/screens`). Retake 
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [How the spec review was resolved](docs/REVIEW-RESOLUTION.md)
+- [Architecture](docs/ARCHITECTURE.md) — tenancy, flows, the Union Hub service, the Dev console
 - [Compliance notes](docs/COMPLIANCE.md) — read before production use
+- [Payroll verification](docs/PAYROLL-VERIFICATION.md) — how FH checks each year's tax tables and the payroll maths
+- [Privacy impact assessment](docs/PIA.md), [electronic monitoring](docs/ELECTRONIC-MONITORING.md), [retention schedule](docs/RETENTION.md) and [subprocessors](docs/SUBPROCESSORS.md)
+- [Security policy](SECURITY.md) — reporting, how the product is checked, SQL injection defences
 - [Security and legal audit](docs/SECURITY-LEGAL-AUDIT.md) — findings, fixes and the Canadian legal mapping
 - [Security operations runbook](docs/SECURITY-OPERATIONS.md) — backups, patching, access reviews, incident response
 - [Pricing](docs/PRICING.md)
 - [Roadmap](docs/ROADMAP.md)
+- [How the spec review was resolved](docs/REVIEW-RESOLUTION.md) and the [brand guide](brand/README.md)

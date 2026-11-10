@@ -12,6 +12,7 @@ own policy; FlexcityHeadquarters is the tool, the city decides how it's used.
 | Push notifications | Only on devices where the person turned them on | Which devices (browser push address and keys, a label such as "iPhone · Safari"), when the last one was sent | Nobody but the system | Delivering the person's own notifications; removed when they sign out on that device, turn them off, or the browser drops it |
 | Activity in the app | Changes to records | Who changed what, when (audit log) | HR (audit log permission) | Accountability; privacy and access-to-information requests |
 | Sign-in | Each sign-in | Time, method (password, passkey, single sign-on), failed attempts | HR (audit log), security monitoring | Protecting accounts |
+| The information and consent agreement | Once at first sign-in, and again when its text changes | The version and language shown, the typed name and signature, the notification and location choices, the time, the device's internet address and browser | FH (Dev console) as evidence for the organization | Showing each person was told what's collected and chose the optional permissions themselves |
 
 **Not collected:** location outside a working-alone session the person started and chose to share, location while the app is in the background (browsers don't allow it), browsing, keystrokes, screenshots, camera or microphone, messages
 outside the app. Attendance and reliability figures are advisory; no decision about a person is made by
