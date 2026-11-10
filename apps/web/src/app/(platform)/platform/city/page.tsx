@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { CityBrand } from '@/components/CoBrand';
 import { AccessPanel } from '@/components/platform/AccessPanel';
 import { BillingPanel } from '@/components/platform/BillingPanel';
+import { PadPanel } from '@/components/platform/PadPanel';
 import { FacilitiesPanel } from '@/components/platform/FacilitiesPanel';
 import { FeaturesPanel } from '@/components/platform/FeaturesPanel';
 import { ImportPanel } from '@/components/platform/ImportPanel';
@@ -103,7 +104,12 @@ function City() {
           />
         ) : null}
         {tab === 'import' ? <ImportPanel {...props} /> : null}
-        {tab === 'billing' ? <BillingPanel {...props} /> : null}
+        {tab === 'billing' ? (
+          <div className="grid gap-6">
+            <BillingPanel {...props} />
+            <PadPanel id={id} payor={c.organization.name} />
+          </div>
+        ) : null}
       </div>
     </div>
   );

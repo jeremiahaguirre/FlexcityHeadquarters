@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, KeyRound, LogOut, Receipt, Terminal, Landmark } from 'lucide-react';
+import { BookOpen, Building2, KeyRound, LogOut, Receipt, Terminal, Landmark } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -34,21 +34,29 @@ function SignedIn({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <div className="flex items-center gap-2">
-            <Link href="/platform" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
+            <Link href="/platform" className="hidden items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink md:flex">
               <Building2 className="h-4 w-4" aria-hidden="true" />
               {t('platform.cities')}
             </Link>
-            <Link href="/platform/billing" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
+            <Link href="/platform/billing" className="hidden items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink md:flex">
               <Receipt className="h-4 w-4" aria-hidden="true" />
               {t('billing.title')}
             </Link>
-            <Link href="/platform/payroll-tax" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink sm:flex">
+            <Link href="/platform/debits" className="hidden items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink md:flex">
+              <Landmark className="h-4 w-4" aria-hidden="true" />
+              {t('debits.nav')}
+            </Link>
+            <Link href="/platform/books" className="hidden items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink md:flex">
+              <BookOpen className="h-4 w-4" aria-hidden="true" />
+              {t('books.nav')}
+            </Link>
+            <Link href="/platform/payroll-tax" className="hidden items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-2 text-small font-semibold text-muted hover:bg-surface hover:text-ink md:flex">
               <Landmark className="h-4 w-4" aria-hidden="true" />
               {t('payTax.nav')}
             </Link>
             <Link href="/platform/account" className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-small font-semibold text-muted hover:bg-surface hover:text-ink" title={t('platform.account')}>
               <KeyRound className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">{t('platform.account')}</span>
+              <span className="hidden xl:inline">{t('platform.account')}</span>
             </Link>
             <AuthLanguageSwitch />
             <button
@@ -58,7 +66,7 @@ function SignedIn({ children }: { children: ReactNode }) {
               title={me.data ? `${me.data.name} · ${me.data.email}` : undefined}
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">{t('platform.signOut')}</span>
+              <span className="hidden xl:inline">{t('platform.signOut')}</span>
             </button>
           </div>
         </div>

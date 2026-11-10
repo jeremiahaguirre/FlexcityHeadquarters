@@ -82,3 +82,19 @@ export interface ImportPreview {
   unknownColumns: string[];
   summary: { create: number; exists: number; error: number };
 }
+
+/** Downloads a file from the Dev console API (bank files, CSV exports) and saves it. */
+export async function pdownload(path: string, fallbackName: string): Promise<void> {
+  const res = await fetch(`/api/platform${path}`, { credentials: 'include', headers: { 'x-fh-platform': '1' } });
+  if (!res.ok) {
+    const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string };
+    throw new ApiError(res.status, b.code ?? 'ERROR', b.message ?? res.statusText);
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

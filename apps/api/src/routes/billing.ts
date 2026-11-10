@@ -40,7 +40,7 @@ billingRouter.get(
     const pad = acct ? await activeAgreement(a.tenantId) : null;
     res.json({
       state: settings.billing,
-      plan: acct ? { plan: acct.plan, addOns: { hr: acct.addOnHr, ops: acct.addOnOps, union: acct.addOnUnion }, paymentTermsDays: acct.paymentTermsDays, preferredPayment: acct.preferredPayment, poNumber: acct.poNumber } : null,
+      plan: acct ? { legalName: acct.legalName, plan: acct.plan, addOns: { hr: acct.addOnHr, ops: acct.addOnOps, union: acct.addOnUnion }, paymentTermsDays: acct.paymentTermsDays, preferredPayment: acct.preferredPayment, poNumber: acct.poNumber } : null,
       addOnFeatures: ADD_ON_FEATURES,
       invoices: invoices.map((i) => ({
         id: i.id,

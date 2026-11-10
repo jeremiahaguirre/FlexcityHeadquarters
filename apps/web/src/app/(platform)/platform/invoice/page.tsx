@@ -31,7 +31,7 @@ function Invoice() {
   const id = useSearchParams().get('id') ?? '';
   const inv = usePlatformQuery<Detail>(id ? `/billing/invoices/${id}` : null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<'pay' | 'void' | 'send' | null>(null);
+  const [dialog, setDialog] = useState<'pay' | 'void' | 'send' | 'credit' | 'writeoff' | null>(null);
   const [lines, setLines] = useState<EditLine[] | null>(null);
   const i = inv.data;
   useEffect(() => {
@@ -87,6 +87,8 @@ function Invoice() {
               <Button variant="ghost" icon={<Ban className="h-4 w-4" aria-hidden="true" />} disabled={i.paidCents > 0} onClick={() => setDialog('void')}>
                 {t('billing.void')}
               </Button>
+              <Button variant="ghost" onClick={() => setDialog('credit')}>{t('billing.credit')}</Button>
+              <Button variant="ghost" onClick={() => setDialog('writeoff')}>{t('billing.writeOff')}</Button>
               <Button icon={<Banknote className="h-4 w-4" aria-hidden="true" />} onClick={() => setDialog('pay')}>
                 {t('billing.recordPayment')}
               </Button>
@@ -276,6 +278,25 @@ function Invoice() {
           <Button type="submit" loading={busy === 'pay'} icon={<Banknote className="h-4 w-4" aria-hidden="true" />}>
             {t('billing.recordPayment')}
           </Button>
+        </form>
+      </Dialog>
+
+      <Dialog open={dialog === 'credit' || dialog === 'writeoff'} onClose={() => setDialog(null)} title={dialog === 'writeoff' ? t('billing.writeOffTitle', { number: i.number }) : t('billing.creditTitle', { number: i.number })} description={dialog === 'writeoff' ? t('billing.writeOffHelp', { amount: cad(i.balanceCents, lng) }) : t('billing.creditHelp')} closeLabel={t('common.close')}>
+        <form
+          className="grid gap-4"
+          onSubmit={(e: FormEvent<HTMLFormElement>) => {
+            e.preventDefault();
+            const f = new FormData(e.currentTarget);
+            const body = { reason: String(f.get('reason')).trim(), date: String(f.get('on')), ...(dialog === 'credit' ? { amountCents: Math.round(Number(String(f.get('amount')).replace(',', '.')) * 100) } : {}) };
+            void act('adjust', () => papi(`/billing/invoices/${id}/${dialog === 'writeoff' ? 'write-off' : 'credit'}`, { method: 'POST', body }), dialog === 'writeoff' ? t('billing.writtenOff') : t('billing.credited'));
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            {dialog === 'credit' ? <Field label={t('billing.creditAmount')} hint={t('billing.inclTax')}>{(p) => <Input {...p} name="amount" inputMode="decimal" required defaultValue={(i.balanceCents / 100).toFixed(2)} />}</Field> : null}
+            <Field label={t('billing.adjustDate')}>{(p) => <Input {...p} name="on" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />}</Field>
+          </div>
+          <Field label={t('billing.adjustReason')}>{(p) => <Input {...p} name="reason" required minLength={3} maxLength={120} />}</Field>
+          <Button type="submit" variant={dialog === 'writeoff' ? 'danger' : 'primary'} loading={busy === 'adjust'}>{dialog === 'writeoff' ? t('billing.writeOff') : t('billing.credit')}</Button>
         </form>
       </Dialog>
 

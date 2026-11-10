@@ -11,7 +11,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
+import { AutoDebitCard } from '@/components/billing/AutoDebitCard';
 import { api } from '@/lib/api';
+import type { PadAgreement } from '@/lib/books';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
@@ -21,10 +23,11 @@ interface InvoiceRow { id: string; number: string | null; status: string; period
 interface InvoiceDetail extends InvoiceRow { subtotalCents: number; taxLines: Array<{ name: string; rate: string; amountCents: number }>; lines: Array<{ description: string; quantity: number; amountCents: number }>; payments: Array<{ amountCents: number; receivedOn: string; method: string }>; poNumber: string | null }
 interface Billing {
   state: { stage: 'unbilled' | 'trial' | 'ok' | 'overdue' | 'suspended'; balanceCents: number; overdueCents: number; overdueSince: string | null; suspendsOn: string | null; trialEndsAt: string | null };
-  plan: { plan: 'MUNICIPAL' | 'CLUB'; addOns: Record<AddOn, boolean>; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
+  plan: { legalName?: string; plan: 'MUNICIPAL' | 'CLUB'; addOns: Record<AddOn, boolean>; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
   addOnFeatures: Record<AddOn, string[]>;
   invoices: InvoiceRow[];
   payment: { online: boolean; remittance: string; payee: string; contact: string };
+  pad?: { agreement: PadAgreement | null; terms: string[] };
 }
 
 const STATUS_TONE: Record<string, Tone> = { SENT: 'new', PARTIAL: 'warn', OVERDUE: 'danger', PAID: 'ok', VOID: 'neutral' };
@@ -35,7 +38,7 @@ export default function BillingPage() {
   const { t, i18n } = useTranslation();
   const toast = useToast();
   const { reload } = useSession();
-  const q = useQuery<Billing>('/api/billing');
+  const q = useQuery<Billing>(`/api/billing?lang=${i18n.language}`);
   const { run, busy } = useAction();
   const [open, setOpen] = useState<string | null>(null);
   const detail = useQuery<InvoiceDetail>(open ? `/api/billing/invoices/${open}` : null);
@@ -111,7 +114,7 @@ export default function BillingPage() {
                 </div>
                 <div className="flex gap-3">
                   <Landmark className="mt-0.5 h-5 w-5 shrink-0 text-brand-text" aria-hidden="true" />
-                  <p><span className="font-semibold">{t('billingPage.pad')}</span><span className="block text-muted">{b.payment.online ? t('billingPage.padHelp') : t('billingPage.onlineOff')}</span></p>
+                  <p><span className="font-semibold">{t('billingPage.pad')}</span><span className="block text-muted">{b.pad?.agreement ? t('pad.onFile', { account: b.pad.agreement.account }) : b.payment.online ? t('billingPage.padHelp') : t('pad.offerSetUp')}</span></p>
                 </div>
                 <div className="flex gap-3">
                   <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-brand-text" aria-hidden="true" />
@@ -120,6 +123,7 @@ export default function BillingPage() {
               </CardBody>
             </Card>
           </div>
+          {b.plan && b.pad ? <AutoDebitCard pad={b.pad} payor={b.plan.legalName ?? ''} reload={q.reload} /> : null}
           <Card>
             <CardHeader title={t('billingPage.invoices')} />
             <CardBody className="pt-2">
