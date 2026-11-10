@@ -33,8 +33,10 @@ describe('site content', () => {
     }
   });
 
-  it('demo links sign in as the role, in the reader’s language', () => {
-    expect(demoLink('AQUATIC_SUPERVISOR', 'fr')).toMatch(/\/login\/\?as=AQUATIC_SUPERVISOR&lang=fr$/);
+  it('demo links sign in as the role, in the reader’s language, with the way back to this site', () => {
+    const u = new URL(demoLink('AQUATIC_SUPERVISOR', 'fr'));
+    expect(u.pathname).toMatch(/\/login\/$/);
+    expect(Object.fromEntries(u.searchParams)).toEqual({ as: 'AQUATIC_SUPERVISOR', lang: 'fr', back: 'http://localhost:3100/fr/' });
   });
 
   it('demo roles match the accounts the demo knows', () => {
