@@ -174,7 +174,8 @@
     "members": "Member services",
     "programs": "Lessons & programs",
     "fees": "Prices",
-    "bookings": "Bookings & sign-up"
+    "bookings": "Bookings & sign-up",
+    "coverage": "Required coverage"
   },
   "navGroups": {
     "mine": "My work",
@@ -241,7 +242,8 @@
     "callout_exhausted": "Everyone eligible has been asked for the call-out: {{reason}}. Fill it another way.",
     "callout_cancelled": "The call-out was cancelled: {{reason}}. Nothing to do.",
     "patrol_overdue": "Patrol overdue on {{route}}.",
-    "booking_requested": "Booking request: {{service}} on {{when}} from {{name}}."
+    "booking_requested": "Booking request: {{service}} on {{when}} from {{name}}.",
+    "coverage_gap": "Coverage gap: {{rule}} isn't covered in the next two days."
   },
   "today": {
     "morning": "Good morning",
@@ -1442,7 +1444,8 @@
       "members.manage": "Member services",
       "lessons.plan": "Plan lessons and swim club",
       "fees.manage": "Set prices",
-      "bookings.manage": "Online sign-up and bookings"
+      "bookings.manage": "Online sign-up and bookings",
+      "coverage.manage": "Set required coverage"
     },
     "limits": "You can give a role only what you can do yourself, within your own department.",
     "anything": "Supervisory capabilities follow a role's department: people holding its positions, and shifts at its facilities. The union hub isn't offered; it follows union membership.",
@@ -2908,5 +2911,41 @@
     "bookingNext": "This is a request, not a confirmation. Staff will confirm by email.",
     "emailed": "We've emailed you the details.",
     "another": "Sign up for something else"
+  },
+  "coverage": {
+    "title": "Required coverage",
+    "description": "Certificates that must be on duty, like a refrigeration plant operator while the ice plant runs or a water treatment operator at the plant, checked against the schedule.",
+    "add": "Add a rule",
+    "addHelp": "Pick the certificate, the facility and when it must be covered.",
+    "gaps": "Gaps in the next 7 days",
+    "gapsHelp": "Where the published schedule doesn't have enough people holding a valid, verified certificate.",
+    "noRulesYet": "Add a rule to check the schedule.",
+    "allCovered": "Everything is covered for the next 7 days.",
+    "have": "{{have}} of {{need}}",
+    "rules": "Rules",
+    "none": "No rules yet",
+    "noneHelp": "Add one for each certificate that must be on site.",
+    "atLeast_one": "{{count}} {{cert}}",
+    "atLeast_other": "{{count}} × {{cert}}",
+    "nextDay": "(next day)",
+    "pause": "Pause",
+    "resume": "Resume",
+    "foot": "People with this permission are alerted once a day when there's a gap in the next two days. Only verified certificates that are valid that day count. Confirm the requirements with your province's regulator.",
+    "templates": {
+      "icePlant": "Ice plant: refrigeration operator on site",
+      "waterOro": "Water treatment: operator in charge",
+      "wastewaterOro": "Wastewater: operator in charge",
+      "poolLead": "Pool: certified lifeguard on deck"
+    },
+    "name": "Rule name",
+    "cert": "Certificate",
+    "certHint": "From your certifications list.",
+    "from": "From",
+    "to": "To",
+    "toHint": "Earlier than From = past midnight.",
+    "min": "At least",
+    "note": "Note",
+    "noteHint": "Optional, e.g. the regulation or permit condition.",
+    "added": "Rule added"
   }
 }

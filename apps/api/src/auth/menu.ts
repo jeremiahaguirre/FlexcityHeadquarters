@@ -36,6 +36,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/winter', key: 'winter', group: 'manage', permissions: ['winter.manage', 'winter.records'] },
   { href: '/manage/people', key: 'people', group: 'manage', permissions: ['reliability.read'] },
   { href: '/manage/compliance', key: 'compliance', group: 'manage', permissions: ['compliance.report'] },
+  { href: '/manage/coverage', key: 'coverage', group: 'manage', permissions: ['coverage.manage', 'schedule.write'] },
   { href: '/manage/benchmarks', key: 'benchmarks', group: 'manage', permissions: ['tenant.configure', 'reliability.read'] },
   { href: '/manage/certifications', key: 'certifications', group: 'manage', permissions: ['certs.verify'] },
   { href: '/manage/jobs', key: 'jobs', group: 'manage', permissions: ['jobs.manage'] },

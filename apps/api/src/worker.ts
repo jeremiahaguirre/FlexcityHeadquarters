@@ -11,6 +11,7 @@ import { anonymizeDue, certificationReminders, accommodationReviews, detectNoSho
 import { loneWorkChecks } from './services/safety/loneWork.js';
 import { callOutTimeouts } from './services/winter/callOuts.js';
 import { patrolReminders } from './services/winter/patrols.js';
+import { coverageAlerts } from './services/coverage/gaps.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 
 const cfg = config();
@@ -46,6 +47,7 @@ const minutely = async () => {
 };
 const hourly = async () => {
   await exclusive('patrols', () => perTenant((tx) => patrolReminders(tx)));
+  await exclusive('coverage', () => perTenant((tx) => coverageAlerts(tx)));
   await exclusive('clock-out', () => perTenant((tx) => forgottenClockOuts(tx)));
   await exclusive('cert-reminders', () => perTenant((tx) => certificationReminders(tx)));
   await exclusive('onboarding-reminders', () => perTenant((tx) => onboardingReminders(tx)));

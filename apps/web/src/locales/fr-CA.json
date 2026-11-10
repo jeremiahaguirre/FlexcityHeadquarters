@@ -174,7 +174,8 @@
     "members": "Services aux membres",
     "programs": "Cours et programmes",
     "fees": "Tarifs",
-    "bookings": "Réservations et inscriptions"
+    "bookings": "Réservations et inscriptions",
+    "coverage": "Couverture requise"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -241,7 +242,8 @@
     "callout_exhausted": "Toutes les personnes admissibles ont été sollicitées pour le rappel : {{reason}}. Comblez-le autrement.",
     "callout_cancelled": "Le rappel au travail est annulé : {{reason}}. Rien à faire.",
     "patrol_overdue": "Patrouille en retard sur {{route}}.",
-    "booking_requested": "Demande de réservation : {{service}} le {{when}}, de {{name}}."
+    "booking_requested": "Demande de réservation : {{service}} le {{when}}, de {{name}}.",
+    "coverage_gap": "Couverture manquante : {{rule}} n'est pas couvert dans les deux prochains jours."
   },
   "today": {
     "morning": "Bonjour",
@@ -1442,7 +1444,8 @@
       "members.manage": "Services aux membres",
       "lessons.plan": "Planifier cours et club de natation",
       "fees.manage": "Fixer les tarifs",
-      "bookings.manage": "Inscriptions en ligne et réservations"
+      "bookings.manage": "Inscriptions en ligne et réservations",
+      "coverage.manage": "Définir la couverture requise"
     },
     "limits": "Vous pouvez seulement donner à un rôle ce que vous pouvez faire vous-même, dans votre propre service.",
     "anything": "Les capacités de supervision suivent le service du rôle : les personnes qui occupent ses postes et les quarts dans ses installations. L'espace syndical n'est pas offert; il suit l'adhésion syndicale.",
@@ -2908,5 +2911,41 @@
     "bookingNext": "Il s'agit d'une demande, pas d'une confirmation. Le personnel confirmera par courriel.",
     "emailed": "Nous vous avons envoyé les détails par courriel.",
     "another": "S'inscrire à autre chose"
+  },
+  "coverage": {
+    "title": "Couverture requise",
+    "description": "Les certificats qui doivent être en service, comme un opérateur de système de réfrigération pendant le fonctionnement de la glace ou un opérateur de traitement de l'eau à l'usine, vérifiés selon l'horaire.",
+    "add": "Ajouter une règle",
+    "addHelp": "Choisissez le certificat, l'installation et quand il doit être couvert.",
+    "gaps": "Trous dans les 7 prochains jours",
+    "gapsHelp": "Là où l'horaire publié ne compte pas assez de personnes détenant un certificat valide et vérifié.",
+    "noRulesYet": "Ajoutez une règle pour vérifier l'horaire.",
+    "allCovered": "Tout est couvert pour les 7 prochains jours.",
+    "have": "{{have}} sur {{need}}",
+    "rules": "Règles",
+    "none": "Aucune règle pour l'instant",
+    "noneHelp": "Ajoutez-en une pour chaque certificat qui doit être sur place.",
+    "atLeast_one": "{{count}} {{cert}}",
+    "atLeast_other": "{{count}} × {{cert}}",
+    "nextDay": "(lendemain)",
+    "pause": "Suspendre",
+    "resume": "Reprendre",
+    "foot": "Les personnes ayant cette permission sont alertées une fois par jour s'il y a un trou dans les deux prochains jours. Seuls les certificats vérifiés et valides ce jour-là comptent. Confirmez les exigences auprès de l'organisme de réglementation de votre province.",
+    "templates": {
+      "icePlant": "Glace : opérateur de réfrigération sur place",
+      "waterOro": "Traitement de l'eau : opérateur responsable",
+      "wastewaterOro": "Eaux usées : opérateur responsable",
+      "poolLead": "Piscine : sauveteur certifié au bord du bassin"
+    },
+    "name": "Nom de la règle",
+    "cert": "Certificat",
+    "certHint": "De votre liste de certifications.",
+    "from": "De",
+    "to": "À",
+    "toHint": "Plus tôt que De = après minuit.",
+    "min": "Au moins",
+    "note": "Note",
+    "noteHint": "Facultatif, p. ex. le règlement ou la condition du permis.",
+    "added": "Règle ajoutée"
   }
 }

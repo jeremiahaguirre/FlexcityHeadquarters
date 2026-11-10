@@ -43,6 +43,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/winter', key: 'winter', icon: Snowflake, group: 'manage', permission: ['winter.manage', 'winter.records'], ready: true },
   { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', permission: 'reliability.read', ready: true },
   { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', permission: 'compliance.report', ready: true },
+  { href: '/manage/coverage', key: 'coverage', icon: BadgeCheck, group: 'manage', permission: ['coverage.manage', 'schedule.write'], ready: true },
   { href: '/manage/benchmarks', key: 'benchmarks', icon: BarChart3, group: 'manage', permission: ['tenant.configure', 'reliability.read'], ready: true },
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', permission: 'certs.verify', ready: true },
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', permission: 'jobs.manage', ready: true },

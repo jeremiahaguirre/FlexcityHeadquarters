@@ -64,6 +64,7 @@ export const PERMISSIONS = [
   'members.manage', // member services: families on file, registrations, memberships and drop-ins
   'fees.manage', // the facility price list
   'bookings.manage', // public sign-up settings, bookable facility services, booking requests
+  'coverage.manage', // required coverage rules (certificates that must be on duty)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -112,6 +113,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'winter.records',
     'fees.manage',
     'bookings.manage',
+    'coverage.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -152,6 +154,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'members.manage',
     'fees.manage',
     'bookings.manage',
+    'coverage.manage',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,

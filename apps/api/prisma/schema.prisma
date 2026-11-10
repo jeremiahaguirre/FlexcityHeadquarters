@@ -1940,3 +1940,25 @@ model BookingRequest {
   @@index([tenantId, serviceId, startsAt])
   @@index([tenantId, status])
 }
+
+/// A certificate that must be on duty at a facility at set times, e.g. a
+/// refrigeration plant operator while an arena's ice plant runs, or a water
+/// treatment operator (ORO) at a plant. The schedule is checked against it.
+model CoverageRule {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  facilityId      String    @db.Uuid
+  name            String
+  certificationId String    @db.Uuid
+  minCount        Int       @default(1)
+  daysOfWeek      Int[]
+  startMinute     Int
+  /// Up to 2880: a window can run past midnight (e.g. 22:00 to 06:00).
+  endMinute       Int
+  note            String?
+  active          Boolean   @default(true)
+  lastAlertedAt   DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, facilityId])
+}

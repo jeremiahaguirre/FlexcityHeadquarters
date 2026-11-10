@@ -10,7 +10,7 @@ GRANT USAGE ON SCHEMA public TO flexcity_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO flexcity_app;
 -- No DELETE for the app role on payroll-bearing tables; deletes are limited below.
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM flexcity_app;
-GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole", "InvoiceLine", "Invoice", "PositionOnboarding", "RateLimitHit", "SwimLevel", "LessonCampaign", "Member", "FeeItem" TO flexcity_app;
+GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole", "InvoiceLine", "Invoice", "PositionOnboarding", "RateLimitHit", "SwimLevel", "LessonCampaign", "Member", "FeeItem", "CoverageRule" TO flexcity_app;
 -- Shared rate limiter: insert needs its id sequence.
 GRANT USAGE, SELECT ON SEQUENCE "RateLimitHit_id_seq" TO flexcity_app;
 -- Audit and access logs are append-only for the app.
@@ -32,7 +32,7 @@ DECLARE
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
     'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
-    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest'
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP
