@@ -2,6 +2,7 @@
  * Live notification fan-out across API instances: one LISTEN connection per
  * process relays pg_notify payloads to in-process subscribers (SSE streams).
  */
+import { ident } from '../../lib/sqlIdent.js';
 import { EventEmitter } from 'node:events';
 import pg from 'pg';
 import { NOTIFY_CHANNEL } from './notifier.js';
@@ -35,7 +36,7 @@ export async function startLiveHub(connectionString: string): Promise<() => Prom
     client = null;
     setTimeout(() => void startLiveHub(connectionString).catch(() => undefined), 5000);
   });
-  await c.query(`LISTEN ${NOTIFY_CHANNEL}`);
+  await c.query(`LISTEN ${ident(NOTIFY_CHANNEL)}`);
   client = c;
   return stopLiveHub;
 }

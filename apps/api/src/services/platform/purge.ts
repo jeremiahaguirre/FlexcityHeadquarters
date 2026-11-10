@@ -9,6 +9,7 @@
  * Run by FH operations with the database owner's connection (npm run tenant:purge).
  */
 import type { PrismaClient } from '@prisma/client';
+import { ident, qualified } from '../../lib/sqlIdent.js';
 
 /** FH's records about the customer, kept after offboarding (CRA: six years from the end of the tax year). */
 const KEEP = new Set(['Invoice', 'InvoiceLine', 'InvoicePayment', 'BillingAccount', 'PadAgreement', 'PadDebit', 'PlatformAudit', 'SupportSession', 'Tenant']);
@@ -20,7 +21,7 @@ export async function purgePlan(owner: PrismaClient, tenantId: string) {
   const tables = cols.filter((c) => !(c.schema === 'public' && KEEP.has(c.table)));
   const counts: Array<{ table: string; rows: number }> = [];
   for (const t of tables) {
-    const [r] = await owner.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM "${t.schema}"."${t.table}" WHERE "${t.col}" = $1::uuid`, tenantId);
+    const [r] = await owner.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM ${qualified(t.schema, t.table)} WHERE ${ident(t.col)} = $1::uuid`, tenantId);
     if (Number(r?.n ?? 0)) counts.push({ table: `${t.schema}.${t.table}`, rows: Number(r!.n) });
   }
   return { tables, counts };
@@ -42,7 +43,7 @@ export async function purgeTenant(owner: PrismaClient, tenantId: string, opts: {
         for (const t of remaining) {
           try {
             await tx.$executeRawUnsafe('SAVEPOINT purge_step');
-            deleted += await tx.$executeRawUnsafe(`DELETE FROM "${t.schema}"."${t.table}" WHERE "${t.col}" = $1::uuid`, tenantId);
+            deleted += await tx.$executeRawUnsafe(`DELETE FROM ${qualified(t.schema, t.table)} WHERE ${ident(t.col)} = $1::uuid`, tenantId);
             await tx.$executeRawUnsafe('RELEASE SAVEPOINT purge_step');
           } catch {
             await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT purge_step');

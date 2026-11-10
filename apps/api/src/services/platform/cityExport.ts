@@ -12,6 +12,7 @@
  *   client secret, bank-connection credentials), FH's own billing and support records, and
  *   the union hub, which belongs to the union local, not the employer.
  */
+import { qualified } from '../../lib/sqlIdent.js';
 import { createHash } from 'node:crypto';
 import { Zip, ZipDeflate } from 'fflate';
 import { audit, withTenant } from '../../lib/db.js';
@@ -66,7 +67,7 @@ export async function exportSummary(tenantId: string): Promise<ExportSummary> {
   const out: ExportSummary = { tables: [], files: 0 };
   await withTenant(tenantId, async (tx) => {
     for (const t of tables) {
-      const [r] = await tx.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM "public"."${t}" WHERE "tenantId" = $1::uuid`, tenantId);
+      const [r] = await tx.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM ${qualified('public', t)} WHERE "tenantId" = $1::uuid`, tenantId);
       const rows = Number(r?.n ?? 0);
       if (rows) out.tables.push({ table: t, rows });
     }
@@ -103,7 +104,7 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
   add('organization.json', enc.encode(JSON.stringify(scrub({ ...tenant }), null, 2)));
 
   for (const table of tables) {
-    const rows = await withTenant(tenantId, (tx) => tx.$queryRawUnsafe<Row[]>(`SELECT * FROM "public"."${table}" WHERE "tenantId" = $1::uuid`, tenantId), { timeoutMs: 120_000 });
+    const rows = await withTenant(tenantId, (tx) => tx.$queryRawUnsafe<Row[]>(`SELECT * FROM ${qualified('public', table)} WHERE "tenantId" = $1::uuid`, tenantId), { timeoutMs: 120_000 });
     if (!rows.length) continue;
     const out: Row[] = [];
     for (const r of rows) {

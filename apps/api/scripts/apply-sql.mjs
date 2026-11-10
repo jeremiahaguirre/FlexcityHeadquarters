@@ -14,6 +14,7 @@ await client.connect();
 try {
   for (const file of process.argv.slice(2)) {
     const sql = await readFile(file, 'utf8');
+    // sql-safety: trusted — the repository's own migration files, run by an operator, never request input.
     await client.query(sql);
     console.log(`applied ${file}`);
   }

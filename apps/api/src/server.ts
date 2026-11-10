@@ -4,8 +4,11 @@ import { subscribe } from './lib/events.js';
 import { startLiveHub } from './services/notifications/liveHub.js';
 import { handleEvent } from './services/notifications/notifier.js';
 import { logError } from './lib/log.js';
+import { assertLeastPrivilege } from './lib/dbRole.js';
 
 const cfg = config();
+// A subverted query can do no more than the connection's role allows: refuse a powerful one.
+await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
 
 // Domain events → stored notifications (+ queued emails).
 subscribe((e) => {

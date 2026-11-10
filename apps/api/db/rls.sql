@@ -90,3 +90,23 @@ CREATE OR REPLACE FUNCTION all_tenant_ids() RETURNS SETOF uuid
 $$ SELECT id FROM "Tenant" $$;
 REVOKE ALL ON FUNCTION all_tenant_ids() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION all_tenant_ids() TO flexcity_app;
+
+-- SQL injection, defence in depth: even if a query were ever subverted, the runtime roles can't
+-- change the schema, create objects or temporary tables, run a statement for long, or sit in an
+-- open transaction holding locks. (Row-level security above already keeps each city to its rows.)
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+REVOKE CREATE ON SCHEMA public FROM flexcity_app;
+DO $$
+BEGIN
+  EXECUTE format('REVOKE CREATE, TEMPORARY ON DATABASE %I FROM PUBLIC', current_database());
+  EXECUTE format('REVOKE CREATE, TEMPORARY ON DATABASE %I FROM flexcity_app', current_database());
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'flexcity_union') THEN
+    EXECUTE format('REVOKE CREATE, TEMPORARY ON DATABASE %I FROM flexcity_union', current_database());
+    REVOKE CREATE ON SCHEMA public FROM flexcity_union;
+    ALTER ROLE flexcity_union SET statement_timeout = '30s';
+    ALTER ROLE flexcity_union SET idle_in_transaction_session_timeout = '2min';
+  END IF;
+END $$;
+-- The full data export reads whole tables, so the cap allows a couple of minutes.
+ALTER ROLE flexcity_app SET statement_timeout = '120s';
+ALTER ROLE flexcity_app SET idle_in_transaction_session_timeout = '3min';
