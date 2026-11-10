@@ -28,7 +28,7 @@ export function Field({
   const hintId = hint ? `${id}-hint` : undefined;
   const errId = error ? `${id}-err` : undefined;
   return (
-    <div className={cn('grid gap-1.5', className)}>
+    <div className={cn('grid content-start gap-1.5', className)}>
       <label htmlFor={id} className="text-small font-semibold text-ink">
         {label}
       </label>
