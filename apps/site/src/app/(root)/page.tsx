@@ -4,6 +4,7 @@ import { SITE_URL } from '@/lib/seo';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: 'FlexcityHeadquarters',
+  description: 'Scheduling, timeclock, payroll and HR for Canadian cities · Horaires, pointage, paie et RH pour les villes canadiennes.',
   alternates: { canonical: '/en/', languages: { 'en-CA': '/en/', 'fr-CA': '/fr/', 'x-default': '/en/' } },
 };
 

@@ -21,7 +21,7 @@ export default async function Faq(props: { params: Promise<{ lang: Lang }> }) {
   return (
     <Section>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
-      <SectionHead title={c.title} />
+      <SectionHead as="h1" title={c.title} />
       <div className="grid gap-10 lg:grid-cols-[14rem_1fr]">
         <nav aria-label={c.title} className="hidden lg:block">
           <ul className="sticky top-24 grid gap-1 text-small">

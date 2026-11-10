@@ -21,7 +21,7 @@ export function Kicker({ n, children, dark = false }: { n?: string; children: Re
   );
 }
 
-export function SectionHead({ eyebrow, n, title, lead, center = false, dark = false }: { eyebrow?: string; n?: string; title: string; lead?: string; center?: boolean; dark?: boolean }) {
+export function SectionHead({ eyebrow, n, title, lead, center = false, dark = false, as: Heading = 'h2' }: { eyebrow?: string; n?: string; title: string; lead?: string; center?: boolean; dark?: boolean; as?: 'h1' | 'h2' }) {
   return (
     <div className={cn('mb-10 max-w-4xl md:mb-14', center && 'mx-auto text-center')}>
       {eyebrow ? (
@@ -29,7 +29,7 @@ export function SectionHead({ eyebrow, n, title, lead, center = false, dark = fa
           <Kicker n={n} dark={dark}>{eyebrow}</Kicker>
         </div>
       ) : null}
-      <h2 className="text-title [text-wrap:balance]">{title}</h2>
+      <Heading className="text-title [text-wrap:balance]">{title}</Heading>
       {lead ? <p className={cn('mt-4 max-w-2xl text-[1.0625rem] leading-7', center && 'mx-auto', dark ? 'text-white/80' : 'text-muted')}>{lead}</p> : null}
     </div>
   );

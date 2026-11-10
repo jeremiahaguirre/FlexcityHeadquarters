@@ -10,7 +10,7 @@ import { demoLink } from '@/lib/site';
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang).privateSector;
-  return pageMeta(params.lang, 'private-sector/', c.title, c.lead);
+  return pageMeta(params.lang, 'private-sector/', c.title, c.metaDescription);
 }
 
 const ICONS = ['waves', 'users', 'trees', 'wrench'];

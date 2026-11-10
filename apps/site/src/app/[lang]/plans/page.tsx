@@ -10,7 +10,7 @@ import { pageMeta } from '@/lib/seo';
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang).plans;
-  return pageMeta(params.lang, 'plans/', c.title, c.lead);
+  return pageMeta(params.lang, 'plans/', c.title, c.metaDescription);
 }
 
 export default async function Plans(props: { params: Promise<{ lang: Lang }> }) {

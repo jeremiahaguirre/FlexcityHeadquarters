@@ -1,4 +1,4 @@
-import { pageMeta } from '@/lib/seo';
+import { SITE_URL, pageMeta } from '@/lib/seo';
 import { ArrowLeft, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -20,8 +20,23 @@ export default async function Article(props: { params: Promise<{ lang: Lang; slu
   if (!a) notFound();
   const b = articleIn(a, params.lang);
   const c = copy(params.lang);
+  const url = `${SITE_URL}/${params.lang}/help/${a.slug}/`;
+  // Structured data: the steps as a how-to, and where the page sits in the site.
+  const ld = [
+    { '@context': 'https://schema.org', '@type': 'HowTo', name: b.title, description: b.summary, inLanguage: params.lang === 'fr' ? 'fr-CA' : 'en-CA', url, step: b.steps.map((text, i) => ({ '@type': 'HowToStep', position: i + 1, text })) },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'FlexcityHeadquarters', item: `${SITE_URL}/${params.lang}/` },
+        { '@type': 'ListItem', position: 2, name: c.help.title, item: `${SITE_URL}/${params.lang}/help/` },
+        { '@type': 'ListItem', position: 3, name: b.title, item: url },
+      ],
+    },
+  ];
   return (
     <Section>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
       <div className="mx-auto max-w-2xl">
         <Link href={`/${params.lang}/help/`} className="mb-6 inline-flex items-center gap-1.5 text-small font-semibold text-brand-text hover:underline">
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />

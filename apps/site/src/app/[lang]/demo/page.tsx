@@ -18,7 +18,7 @@ export default async function Demo(props: { params: Promise<{ lang: Lang }> }) {
   return (
     <>
       <Section>
-        <SectionHead title={c.title} lead={c.lead} />
+        <SectionHead as="h1" title={c.title} lead={c.lead} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {c.roles.map((r, i) => (
             <a key={r.id} href={demoLink(r.id, params.lang)} {...reveal(i)} className="lift group flex flex-col rounded-2xl border border-line bg-panel p-6 shadow-card">

@@ -12,14 +12,46 @@ export const ARTICLES: Article[] = [
     en: {
       title: 'Your first sign-in',
       summary: 'Set your password from the invitation and add a passkey.',
-      steps: ['Open the invitation email from your organization and choose a password (the link works for 7 days).', 'Sign in at your organization’s web address (it’s in the invitation email).', 'When asked, set up a passkey so next time you can sign in with Face ID, your fingerprint or Windows Hello.', 'Add the site to your home screen for one-tap access.'],
+      steps: ['Open the invitation email from your organization and choose a password (the link works for 7 days).', 'Sign in at your organization’s web address (it’s in the invitation email).', 'When asked, set up a passkey so next time you can sign in with Face ID, your fingerprint or Windows Hello.', 'On your phone, tap Get the app on your phone on the sign-in page to add it to your home screen (no app store).'],
       tip: 'Invitation expired? Ask your supervisor to resend it from Staff.',
     },
     fr: {
       title: 'Votre première connexion',
       summary: 'Choisissez votre mot de passe depuis l’invitation et ajoutez une clé d’accès.',
-      steps: ['Ouvrez le courriel d’invitation de votre organisation et choisissez un mot de passe (le lien est valide 7 jours).', 'Connectez-vous à l’adresse Web de votre organisation (elle figure dans le courriel d’invitation).', 'Si on vous le propose, configurez une clé d’accès pour vous connecter avec Face ID, votre empreinte ou Windows Hello.', 'Ajoutez le site à votre écran d’accueil pour y accéder d’un geste.'],
+      steps: ['Ouvrez le courriel d’invitation de votre organisation et choisissez un mot de passe (le lien est valide 7 jours).', 'Connectez-vous à l’adresse Web de votre organisation (elle figure dans le courriel d’invitation).', 'Si on vous le propose, configurez une clé d’accès pour vous connecter avec Face ID, votre empreinte ou Windows Hello.', 'Sur votre téléphone, touchez Installer l’application sur votre téléphone à la page de connexion pour l’ajouter à votre écran d’accueil (sans boutique d’applications).'],
       tip: 'Invitation expirée? Demandez à votre superviseur de la renvoyer depuis Personnel.',
+    },
+  },
+  {
+    slug: 'install-the-app',
+    audience: 'staff',
+    en: {
+      title: 'Installing the app and turning on notifications',
+      summary: 'Put FlexcityHeadquarters on your phone’s home screen without an app store, then get shift offers and reminders as notifications.',
+      steps: ['Open your organization’s sign-in page on your phone and tap Get the app on your phone.', 'Android: tap Install in the box that appears. iPhone or iPad: in Safari, tap Share, then Add to Home Screen, then Add.', 'Open the app from your home screen and sign in. It opens full screen like any other app.', 'Go to your profile and, under Notifications on this device, tap Turn on notifications, then Allow.', 'To stop them on that device, turn them off there or sign out.'],
+      tip: 'On iPhone and iPad, notifications only work in the installed app (iOS 16.4 or later). Your lock screen shows a short heading only, never pay, health or discipline details.',
+    },
+    fr: {
+      title: 'Installer l’application et activer les notifications',
+      summary: 'Placez FlexcityHeadquarters sur l’écran d’accueil de votre téléphone sans boutique d’applications, puis recevez offres de quarts et rappels en notifications.',
+      steps: ['Ouvrez la page de connexion de votre organisation sur votre téléphone et touchez Installer l’application sur votre téléphone.', 'Android : touchez Installer dans la fenêtre qui s’affiche. iPhone ou iPad : dans Safari, touchez Partager, puis Sur l’écran d’accueil, puis Ajouter.', 'Ouvrez l’application depuis votre écran d’accueil et connectez-vous. Elle s’ouvre en plein écran comme toute autre application.', 'Allez à votre profil et, sous Notifications sur cet appareil, touchez Activer les notifications, puis Autoriser.', 'Pour les arrêter sur cet appareil, désactivez-les au même endroit ou déconnectez-vous.'],
+      tip: 'Sur iPhone et iPad, les notifications ne fonctionnent que dans l’application installée (iOS 16.4 ou plus récent). L’écran verrouillé n’affiche qu’un court titre, jamais de détails sur la paie, la santé ou la discipline.',
+    },
+  },
+  {
+    slug: 'working-alone',
+    audience: 'staff',
+    en: {
+      title: 'Working alone: check-ins, help and location',
+      summary: 'Start a working-alone session, check in on a timer, ask for help, and choose whether to share your location with your monitors.',
+      steps: ['Open Working alone from the menu, say where you are and how often you’ll check in.', 'Leave Share my location on if you want your monitors to see where you are during this session, or turn it off.', 'Your phone reminds you 5 minutes before each check-in. Tap I’m OK to reset the timer.', 'In trouble? Tap I need help: your monitors and HR are alerted at once. In an emergency, call 911 first.', 'Tap I’m done working alone at the end. Sharing stops with the session.'],
+      tip: 'Phones stop sharing a web app’s location when it’s in the background or the screen is locked. Turn on Keep the screen on if your monitors need your live position; a missed check-in alerts them either way.',
+    },
+    fr: {
+      title: 'Travail seul : vérifications, aide et position',
+      summary: 'Commencez une séance de travail seul, faites vos vérifications, demandez de l’aide et choisissez de partager ou non votre position.',
+      steps: ['Ouvrez Travail seul dans le menu, indiquez où vous êtes et à quelle fréquence vous ferez vos vérifications.', 'Laissez Partager ma position activé si vous voulez que vos superviseurs voient où vous êtes pendant cette séance, ou désactivez-le.', 'Votre téléphone vous rappelle chaque vérification 5 minutes avant. Touchez Tout va bien pour relancer la minuterie.', 'En difficulté? Touchez J’ai besoin d’aide : vos superviseurs et les RH sont alertés aussitôt. En cas d’urgence, composez d’abord le 911.', 'À la fin, touchez J’ai fini de travailler seul. Le partage s’arrête avec la séance.'],
+      tip: 'Les téléphones cessent de partager la position d’une application Web en arrière-plan ou écran verrouillé. Activez Garder l’écran allumé si vos superviseurs ont besoin de votre position en direct; une vérification manquée les alerte de toute façon.',
     },
   },
   {

@@ -14,7 +14,7 @@ export default async function Help(props: { params: Promise<{ lang: Lang }> }) {
   const c = copy(params.lang).help;
   return (
     <Section>
-      <SectionHead title={c.title} lead={c.lead} />
+      <SectionHead as="h1" title={c.title} lead={c.lead} />
       <HelpIndex lang={params.lang} />
     </Section>
   );

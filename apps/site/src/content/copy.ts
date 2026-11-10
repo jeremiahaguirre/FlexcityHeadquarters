@@ -1,8 +1,8 @@
 /** All marketing copy, English and French. French must have every English key (checked by the type). */
 const en = {
   meta: {
-    title: 'FlexcityHeadquarters: workforce management, scheduling and time and attendance',
-    description: 'Employee scheduling, shift swaps, timeclock, payroll with direct deposit and people review for HR, for every city department, from recreation and aquatics to parks, arenas and water works. Built around provincial employment standards and collective agreements, in English and French.',
+    title: 'FlexcityHeadquarters: scheduling, timekeeping and HR for cities',
+    description: 'Scheduling, timeclock, payroll and HR for every city department, from aquatics and arenas to water works. Built for Canadian labour law, in English and French.',
   },
   nav: { product: 'Product', why: 'Why FH', privateSector: 'Private sector', plans: 'Plans', demo: 'Demo', help: 'Help', faq: 'FAQ', contact: 'Contact', tryDemo: 'Try the demo', language: 'Français', languageLabel: 'Lire en français', menu: 'Menu', close: 'Close' },
   home: {
@@ -62,9 +62,9 @@ const en = {
       lead: 'Working-alone check-ins for city crews: the operator at a pump station, the attendant closing an arena at night, the parks patrol at dusk.',
       steps: [
         { title: 'Start a session', body: 'Say where you are and how often you’ll check in, from every 15 minutes to every 2 hours.' },
-        { title: 'Check in with a tap', body: 'A timer counts down to the next check-in. One tap says you’re OK.' },
+        { title: 'Check in with a tap', body: 'A timer counts down to the next check-in, and your phone reminds you 5 minutes before. One tap says you’re OK.' },
         { title: 'A missed check-in is noticed', body: 'You and the people who monitor lone workers are alerted. Still no answer after 15 minutes? It escalates to HR by email.' },
-        { title: '“I need help” reaches everyone', body: 'One button alerts your monitors and HR at once, with the location you entered.' },
+        { title: '“I need help” reaches everyone', body: 'One button alerts your monitors and HR at once, with the location you entered, or your live position if you chose to share it for this session.' },
       ],
       placesTitle: 'Made for',
       places: ['Pump stations', 'Arenas at night', 'Parks patrols'],
@@ -78,7 +78,7 @@ const en = {
       { k: '13', v: 'provinces and territories in the rules engine' },
       { k: '2', v: 'official languages, everywhere' },
       { k: '1 slide', v: 'to clock in for your shift' },
-      { k: '0', v: 'apps to install: it runs in the browser' },
+      { k: '0', v: 'app stores: install it from the sign-in page' },
     ],
     departmentsTitle: 'One platform for every department',
     departmentsLead: 'Each department gets the screens it needs and nothing it doesn’t. Your city defines the roles, and you switch features on or off per organization.',
@@ -93,7 +93,7 @@ const en = {
     featuresTitle: 'Everything between the schedule and the paycheque',
     featuresLead: 'From the 6 a.m. opener to the HR administrator closing payroll, every person sees what they need, and nothing they don’t.',
     features: [
-      { icon: 'calendar', title: 'Schedules that follow the rules', body: 'Build the week with an assistant that checks certifications, onboarding, availability, rest periods, young-worker limits and work restrictions before anyone is booked, across all your facilities at once, with time to travel between sites.' },
+      { icon: 'calendar', title: 'Schedules that follow the rules', body: 'Build the week with an assistant that checks certifications, onboarding, availability, rest periods, young-worker limits and work restrictions before anyone is booked, across all your facilities at once, with time to travel between sites. Staff see their own shifts and their department’s published schedule, nothing more.' },
       { icon: 'repeat', title: 'A shift board with pay up front', body: 'Staff pick up shifts themselves and see an estimate of what each one pays first, overtime and holiday rates included. Overtime goes out in agreement order, with a warning before anyone is skipped.' },
       { icon: 'clock', title: 'Clock in with a slide', body: 'One gesture clocks you into the right shift, with a quick on-site check. Punches go to review, then straight into payroll.' },
       { icon: 'clipboard', title: 'Onboarding that gates the schedule', body: 'Criminal record and vulnerable sector checks, child protection training, policies to sign: switched on per position, and the ones you mark as required block scheduling until they are done.' },
@@ -151,7 +151,7 @@ const en = {
     trust: [
       { title: 'Built for Canadian hosting', body: 'Designed to be hosted in Canada, with the location confirmed in your contract. Each organization’s data is walled off by the database itself, not just by our code.' },
       { title: 'Passkeys and multi-factor sign-in', body: 'Sign in with Face ID, a fingerprint or Windows Hello. HR accounts require multi-factor sign-in by default, payroll and other sensitive changes ask you to confirm it’s you, and single sign-on with Microsoft Entra ID or SAML is built in.' },
-      { title: 'Built for procurement', body: 'Audit logs, role-based access, retention periods you set, and a records export for privacy and access-to-information requests.' },
+      { title: 'Built for procurement', body: 'Audit logs, role-based access, retention periods you set, a privacy notice in the app that tells each person what’s kept and who sees it, and a records export for privacy and access-to-information requests.' },
       { title: 'Accessible and bilingual', body: 'Designed to WCAG 2.1 AA (not yet independently audited), in English and French, on any phone or computer.' },
     ],
     ctaTitle: 'See it with your own departments in mind',
@@ -160,6 +160,7 @@ const en = {
   privateSector: {
     title: 'Scheduling and timekeeping for private employers',
     lead: 'Swim schools, aquatic and fitness clubs, camps and private recreation facilities get the same platform we build for Canadian cities, priced for a smaller team.',
+    metaDescription: 'Scheduling, timeclock and payroll export for swim schools, clubs, camps and private recreation, under your province’s employment standards.',
     whoTitle: 'Who it’s for',
     who: [
       { title: 'Swim schools and clubs', body: 'Instructors, coaches and lifeguards, lessons with offline attendance, and certifications that block a booking when they lapse.' },
@@ -174,7 +175,7 @@ const en = {
       'Onboarding per position: criminal record and vulnerable sector checks, child protection training, policies to sign (HR Compliance add-on)',
       'One-slide clock-in with an on-site check, then a payroll export',
       'Time off, availability and certifications in one staff record',
-      'English and French, on any phone, no app to install',
+      'English and French, on any phone: install it from the sign-in page, no app store',
       'People review: flags with reasons, documentation drafted from the facts, and fair-process steps for discipline (HR Compliance add-on)',
       'Working-alone check-ins with escalation for people on site by themselves',
       'Passkey sign-in, with multi-factor sign-in required for HR by default',
@@ -188,6 +189,7 @@ const en = {
     title: 'Plans and pricing',
     hero: 'One plan with everything. Two add-ons. A quote that fits your city.',
     lead: 'Municipal plans are priced per facility with unlimited staff, so seasonal hiring never changes your bill. The prices below are starting points: every facility is quoted individually, because no two cities are set up the same way.',
+    metaDescription: 'Municipal plans priced per facility with unlimited staff, so seasonal hiring never changes the bill. Every facility is quoted individually.',
     chips: ['Prices in Canadian dollars', 'Unlimited staff for municipalities', 'Trials and pilots available'],
     cta: 'Get a quote',
     ctaNote: 'We reply within one business day.',
@@ -222,8 +224,8 @@ const en = {
       { icon: 'badge', name: 'Rules and certifications', items: [{ t: 'Provincial rules engine: overtime, rest, young workers, stat holidays' }, { t: 'Certifications checked before anyone is booked' }, { t: 'Required coverage: certificates that must be on duty, with gap alerts', isNew: true }, { t: 'Compliance view at any past minute' }, { t: 'Anonymous benchmarks' }] },
       { icon: 'waves', name: 'Aquatics', items: [{ t: 'Lesson attendance on deck, even offline' }, { t: 'Bather headcounts' }, { t: 'Deck rotation with fatigue limits' }] },
       { icon: 'idcard', name: 'Programs and member services', items: [{ t: 'Lesson, club and camp campaigns, with Lifesaving Society, YMCA and CanSkate levels and their ages', isNew: true }, { t: 'Family registration with age checks and waitlists', isNew: true }, { t: 'Memberships by year or month, drop-ins and passes', isNew: true }, { t: 'Public sign-up page: families register and book spaces with no account', isNew: true }] },
-      { icon: 'heart', name: 'Safety and care', items: [{ t: 'Working-alone check-ins with escalation', isNew: true }, { t: 'Storm call-outs and winter patrol records', isNew: true }, { t: 'Pre-trip vehicle inspections, licences and hours of service for drivers', isNew: true }, { t: 'Injury reports to WSIB, WorkSafeBC or your board, with deadline reminders', isNew: true }, { t: 'Care after critical incidents' }] },
-      { icon: 'shield', name: 'Platform and sign-in', items: [{ t: 'English and Canadian French, per person' }, { t: 'Passkey sign-in' }, { t: 'Multi-factor sign-in required for HR by default', isNew: true }, { t: 'Single sign-on with Microsoft Entra ID or SAML', isNew: true }, { t: 'Careers page that shows up in job searches', isNew: true }, { t: 'Departments with their own managers; HR sees all, by tab', isNew: true }, { t: 'Runs in the browser, no app to install' }] },
+      { icon: 'heart', name: 'Safety and care', items: [{ t: 'Working-alone check-ins with escalation, reminders and optional live location', isNew: true }, { t: 'Storm call-outs and winter patrol records', isNew: true }, { t: 'Pre-trip vehicle inspections, licences and hours of service for drivers', isNew: true }, { t: 'Injury reports to WSIB, WorkSafeBC or your board, with deadline reminders', isNew: true }, { t: 'Care after critical incidents' }] },
+      { icon: 'shield', name: 'Platform and sign-in', items: [{ t: 'English and Canadian French, per person' }, { t: 'Passkey sign-in' }, { t: 'Multi-factor sign-in required for HR by default', isNew: true }, { t: 'Single sign-on with Microsoft Entra ID or SAML', isNew: true }, { t: 'Careers page that shows up in job searches', isNew: true }, { t: 'Departments with their own managers; HR sees all, by tab', isNew: true }, { t: 'Installs on phones from the sign-in page, no app store', isNew: true }, { t: 'Notifications on phones and computers', isNew: true }] },
     ],
     addOnsKicker: 'Add-ons',
     addOnsTitle: 'Add what your organization needs',
@@ -305,7 +307,9 @@ const en = {
         items: [
           { q: 'How long does setup take?', a: 'We plan for two to three weeks for a single-site private employer and four to eight for a municipality, most of it payroll code mapping and a parallel payroll run.' },
           { q: 'Can we import our staff?', a: 'Yes. Upload a spreadsheet (CSV) and you’ll see every row checked before anything is created: missing emails, unknown positions, bad dates. Invitations are optional.' },
-          { q: 'Do staff need to install an app?', a: 'No. It works in any modern browser on phones, tablets and computers, and can be added to the home screen like an app.' },
+          { q: 'Do staff need to install an app?', a: 'No app store is involved. It works in any modern browser on phones, tablets and computers, and the sign-in page offers Get the app on your phone: on Android it installs in one tap, on iPhone and iPad it shows how to add it to the home screen. It then opens full screen like any other app.' },
+          { q: 'Do people get notifications on their phone?', a: 'Yes, if they turn them on for that phone or computer: shift offers, schedule changes, approvals and working-alone reminders arrive even when the app is closed. The lock screen shows only a short heading, never details about pay, health, discipline or documents, and signing out stops them on that device. On iPhone and iPad they work in the installed app (iOS 16.4 or later).' },
+          { q: 'Does working alone track my location?', a: 'Only if you choose to share it for that session. Your position then updates while the app is open on screen, at most every 30 seconds, and only the people who monitor lone workers see it. Turning sharing off removes it at once; otherwise it’s deleted 30 days after the session. Phones don’t let web apps share location in the background, so the check-in timer and reminders remain the safety net.' },
         ],
       },
       {
@@ -404,8 +408,8 @@ type DeepString<T> = T extends string ? string : T extends number ? number : T e
 
 const fr: DeepString<Copy> = {
   meta: {
-    title: 'FlexcityHeadquarters : gestion de la main-d’œuvre, horaires et pointage',
-    description: 'Horaires, échanges de quarts, pointage, paie avec dépôt direct et suivi du personnel pour les RH, pour tous les services municipaux, des loisirs et de l’aquatique aux parcs, arénas et travaux publics. Conçu selon les normes du travail provinciales et les conventions collectives, en français et en anglais.',
+    title: 'FlexcityHeadquarters : horaires, pointage et RH municipaux',
+    description: 'Horaires, pointage, paie et RH pour tous les services municipaux, de l’aquatique aux travaux publics. Conçu pour le droit du travail canadien, bilingue.',
   },
   nav: { product: 'Produit', why: 'Pourquoi FH', privateSector: 'Secteur privé', plans: 'Forfaits', demo: 'Démo', help: 'Aide', faq: 'FAQ', contact: 'Contact', tryDemo: 'Essayer la démo', language: 'English', languageLabel: 'Read in English', menu: 'Menu', close: 'Fermer' },
   home: {
@@ -465,9 +469,9 @@ const fr: DeepString<Copy> = {
       lead: 'Des vérifications de travail seul pour les équipes municipales : l’opérateur à la station de pompage, le préposé qui ferme l’aréna le soir, la patrouille des parcs à la brunante.',
       steps: [
         { title: 'Commencez une séance', body: 'Indiquez où vous êtes et à quelle fréquence vous vous manifesterez, de toutes les 15 minutes à toutes les 2 heures.' },
-        { title: 'Confirmez d’un toucher', body: 'Une minuterie décompte jusqu’à la prochaine vérification. Un toucher confirme que tout va bien.' },
+        { title: 'Confirmez d’un toucher', body: 'Une minuterie décompte jusqu’à la prochaine vérification, et votre téléphone vous la rappelle 5 minutes avant. Un toucher confirme que tout va bien.' },
         { title: 'Une vérification manquée ne passe pas inaperçue', body: 'Vous et les personnes qui surveillent les travailleurs isolés êtes alertés. Toujours sans réponse après 15 minutes? Les RH sont avisées par courriel.' },
-        { title: '« J’ai besoin d’aide » rejoint tout le monde', body: 'Un seul bouton alerte immédiatement vos surveillants et les RH, avec l’endroit que vous avez indiqué.' },
+        { title: '« J’ai besoin d’aide » rejoint tout le monde', body: 'Un seul bouton alerte immédiatement vos surveillants et les RH, avec l’endroit que vous avez indiqué, ou votre position en direct si vous avez choisi de la partager pour cette séance.' },
       ],
       placesTitle: 'Conçu pour',
       places: ['Stations de pompage', 'Arénas le soir', 'Patrouilles des parcs'],
@@ -481,7 +485,7 @@ const fr: DeepString<Copy> = {
       { k: '13', v: 'provinces et territoires dans le moteur de règles' },
       { k: '2', v: 'langues officielles, partout' },
       { k: '1 glissement', v: 'pour pointer au début du quart' },
-      { k: '0', v: 'application à installer : tout se fait dans le navigateur' },
+      { k: '0', v: 'boutique d’applications : on l’installe depuis la page de connexion' },
     ],
     departmentsTitle: 'Une plateforme pour tous les services',
     departmentsLead: 'Chaque service a les écrans dont il a besoin, et rien de plus. Votre ville définit les rôles et active ou désactive les fonctions selon l’organisation.',
@@ -496,7 +500,7 @@ const fr: DeepString<Copy> = {
     featuresTitle: 'Tout, de l’horaire au chèque de paie',
     featuresLead: 'Du sauveteur qui ouvre à 6 h à l’administratrice RH qui ferme la paie, chacun voit ce dont il a besoin, et rien de plus.',
     features: [
-      { icon: 'calendar', title: 'Des horaires conformes', body: 'Préparez la semaine avec un assistant qui vérifie les certifications, l’intégration, les disponibilités, les périodes de repos, les limites pour les jeunes et les restrictions de travail avant toute affectation, pour toutes vos installations à la fois, avec le temps de se déplacer entre les sites.' },
+      { icon: 'calendar', title: 'Des horaires conformes', body: 'Préparez la semaine avec un assistant qui vérifie les certifications, l’intégration, les disponibilités, les périodes de repos, les limites pour les jeunes et les restrictions de travail avant toute affectation, pour toutes vos installations à la fois, avec le temps de se déplacer entre les sites. Le personnel voit ses propres quarts et l’horaire publié de son service, rien de plus.' },
       { icon: 'repeat', title: 'Un babillard qui affiche la paie', body: 'Le personnel prend des quarts lui-même et voit d’abord une estimation de ce que chacun rapporte, heures supplémentaires et jours fériés compris. Les heures supplémentaires suivent l’ordre de la convention, avec un avertissement avant de sauter quelqu’un.' },
       { icon: 'clock', title: 'Pointer d’un glissement', body: 'Un seul geste vous pointe au bon quart, avec une vérification rapide sur place. Les pointages passent en revue, puis directement dans la paie.' },
       { icon: 'clipboard', title: 'Une intégration qui conditionne l’horaire', body: 'Vérifications du casier judiciaire et du secteur vulnérable, formation sur la protection de l’enfance, politiques à signer : activées par poste, et celles que vous rendez obligatoires bloquent l’horaire tant qu’elles ne sont pas faites.' },
@@ -554,7 +558,7 @@ const fr: DeepString<Copy> = {
     trust: [
       { title: 'Conçu pour un hébergement canadien', body: 'Conçu pour être hébergé au Canada, lieu confirmé dans votre contrat. Les données de chaque organisation sont isolées par la base de données elle-même, pas seulement par notre code.' },
       { title: 'Clés d’accès et authentification multifacteur', body: 'Connectez-vous avec Face ID, une empreinte ou Windows Hello. Les comptes RH exigent par défaut l’authentification multifacteur, la paie et les autres changements sensibles demandent de confirmer votre identité, et l’authentification unique avec Microsoft Entra ID ou SAML est intégrée.' },
-      { title: 'Conçu pour l’approvisionnement', body: 'Journaux d’audit, accès selon le rôle, durées de conservation que vous fixez, et exportation des dossiers pour les demandes d’accès à l’information.' },
+      { title: 'Conçu pour l’approvisionnement', body: 'Journaux d’audit, accès selon le rôle, durées de conservation que vous fixez, un avis de confidentialité dans l’application qui indique à chacun ce qui est conservé et qui le voit, et exportation des dossiers pour les demandes d’accès à l’information.' },
       { title: 'Accessible et bilingue', body: 'Conçu selon les WCAG 2.1 AA (pas encore vérifié de façon indépendante), en français et en anglais, sur tout téléphone ou ordinateur.' },
     ],
     ctaTitle: 'Voyez-le en pensant à vos services',
@@ -563,6 +567,7 @@ const fr: DeepString<Copy> = {
   privateSector: {
     title: 'Horaires et pointage pour les employeurs privés',
     lead: 'Écoles de natation, clubs aquatiques et de conditionnement physique, camps et installations récréatives privées profitent de la même plateforme que celle conçue pour les villes canadiennes, à un prix adapté à une plus petite équipe.',
+    metaDescription: 'Horaires, pointage et exportation de la paie pour écoles de natation, clubs, camps et loisirs privés, selon les normes de votre province.',
     whoTitle: 'Pour qui',
     who: [
       { title: 'Écoles et clubs de natation', body: 'Moniteurs, entraîneurs et sauveteurs, cours avec présences hors ligne, et certifications qui bloquent l’affectation à leur échéance.' },
@@ -577,7 +582,7 @@ const fr: DeepString<Copy> = {
       'Intégration par poste : vérifications du casier judiciaire et du secteur vulnérable, protection de l’enfance, politiques à signer (module Conformité RH)',
       'Pointage d’un glissement avec vérification sur place, puis exportation de la paie',
       'Congés, disponibilités et certifications dans un seul dossier',
-      'Français et anglais, sur tout téléphone, sans application à installer',
+      'Français et anglais, sur tout téléphone : installation depuis la page de connexion, sans boutique d’applications',
       'Suivi du personnel : signalements motivés, documentation rédigée à partir des faits et étapes d’équité pour la discipline (module Conformité RH)',
       'Vérifications de travail seul avec escalade pour les personnes seules sur place',
       'Connexion par clé d’accès, et authentification multifacteur exigée par défaut pour les RH',
@@ -591,6 +596,7 @@ const fr: DeepString<Copy> = {
     title: 'Forfaits et tarifs',
     hero: 'Un forfait qui comprend tout. Deux modules. Une soumission à la mesure de votre ville.',
     lead: 'Les forfaits municipaux sont établis par installation, personnel illimité : l’embauche saisonnière ne change jamais la facture. Les prix ci-dessous sont des prix de départ : chaque installation fait l’objet d’une soumission, car aucune ville n’est organisée comme une autre.',
+    metaDescription: 'Forfaits municipaux par installation, personnel illimité : l’embauche saisonnière ne change pas la facture. Chaque installation est soumissionnée.',
     chips: ['Prix en dollars canadiens', 'Personnel illimité pour les municipalités', 'Essais et projets pilotes offerts'],
     cta: 'Obtenir une soumission',
     ctaNote: 'Nous répondons en un jour ouvrable.',
@@ -625,8 +631,8 @@ const fr: DeepString<Copy> = {
       { icon: 'badge', name: 'Règles et certifications', items: [{ t: 'Moteur de règles provinciales : heures supplémentaires, repos, jeunes travailleurs, jours fériés' }, { t: 'Certifications vérifiées avant toute affectation' }, { t: 'Couverture requise : certificats qui doivent être en service, avec alertes', isNew: true }, { t: 'Vue de la conformité à toute minute passée' }, { t: 'Comparaisons anonymes' }] },
       { icon: 'waves', name: 'Aquatique', items: [{ t: 'Présences aux cours au bord de la piscine, même hors ligne' }, { t: 'Dénombrement des baigneurs' }, { t: 'Rotation des sauveteurs avec limites de fatigue' }] },
       { icon: 'idcard', name: 'Programmes et services aux membres', items: [{ t: 'Campagnes de cours, de clubs et de camps, avec les niveaux et âges de la Société de sauvetage, du YMCA et de Patinage Plus', isNew: true }, { t: 'Inscription des familles avec vérification de l’âge et liste d’attente', isNew: true }, { t: 'Abonnements à l’année ou au mois, entrées et cartes', isNew: true }, { t: 'Page publique d’inscription : les familles s’inscrivent et réservent sans compte', isNew: true }] },
-      { icon: 'heart', name: 'Sécurité et soutien', items: [{ t: 'Vérifications de travail seul avec escalade', isNew: true }, { t: 'Rappels en cas de tempête et registres de patrouille hivernale', isNew: true }, { t: 'Inspections avant départ, permis et heures de service des conducteurs', isNew: true }, { t: 'Déclarations de lésion à la CNESST, à la WSIB ou à votre organisme, avec rappels d’échéance', isNew: true }, { t: 'Soutien après un incident critique' }] },
-      { icon: 'shield', name: 'Plateforme et connexion', items: [{ t: 'Français canadien et anglais, selon la personne' }, { t: 'Connexion par clé d’accès' }, { t: 'Authentification multifacteur exigée par défaut pour les RH', isNew: true }, { t: 'Authentification unique avec Microsoft Entra ID ou SAML', isNew: true }, { t: 'Page carrières visible dans les recherches d’emploi', isNew: true }, { t: 'Des services avec leurs propres gestionnaires; les RH voient tout, par onglet', isNew: true }, { t: 'Dans le navigateur, sans application à installer' }] },
+      { icon: 'heart', name: 'Sécurité et soutien', items: [{ t: 'Vérifications de travail seul avec escalade, rappels et position en direct facultative', isNew: true }, { t: 'Rappels en cas de tempête et registres de patrouille hivernale', isNew: true }, { t: 'Inspections avant départ, permis et heures de service des conducteurs', isNew: true }, { t: 'Déclarations de lésion à la CNESST, à la WSIB ou à votre organisme, avec rappels d’échéance', isNew: true }, { t: 'Soutien après un incident critique' }] },
+      { icon: 'shield', name: 'Plateforme et connexion', items: [{ t: 'Français canadien et anglais, selon la personne' }, { t: 'Connexion par clé d’accès' }, { t: 'Authentification multifacteur exigée par défaut pour les RH', isNew: true }, { t: 'Authentification unique avec Microsoft Entra ID ou SAML', isNew: true }, { t: 'Page carrières visible dans les recherches d’emploi', isNew: true }, { t: 'Des services avec leurs propres gestionnaires; les RH voient tout, par onglet', isNew: true }, { t: 'S’installe sur les téléphones depuis la page de connexion, sans boutique d’applications', isNew: true }, { t: 'Notifications sur téléphones et ordinateurs', isNew: true }] },
     ],
     addOnsKicker: 'Modules',
     addOnsTitle: 'Ajoutez ce dont votre organisation a besoin',
@@ -708,7 +714,9 @@ const fr: DeepString<Copy> = {
         items: [
           { q: 'Combien de temps prend la mise en route?', a: 'Nous prévoyons de deux à trois semaines pour un employeur privé à un seul site et de quatre à huit pour une municipalité, surtout pour la correspondance des codes de paie et une paie en parallèle.' },
           { q: 'Pouvons-nous importer notre personnel?', a: 'Oui. Téléversez un chiffrier (CSV) : chaque ligne est vérifiée avant toute création (courriels manquants, postes inconnus, dates invalides). Les invitations sont facultatives.' },
-          { q: 'Le personnel doit-il installer une application?', a: 'Non. Tout fonctionne dans un navigateur récent sur téléphone, tablette et ordinateur, et peut être ajouté à l’écran d’accueil comme une application.' },
+          { q: 'Le personnel doit-il installer une application?', a: 'Aucune boutique d’applications. Tout fonctionne dans un navigateur récent sur téléphone, tablette et ordinateur, et la page de connexion offre Installer l’application sur votre téléphone : sur Android, l’installation se fait d’un toucher; sur iPhone et iPad, on vous montre comment l’ajouter à l’écran d’accueil. Elle s’ouvre ensuite en plein écran comme toute autre application.' },
+          { q: 'Reçoit-on des notifications sur son téléphone?', a: 'Oui, si on les active sur ce téléphone ou cet ordinateur : offres de quarts, changements d’horaire, approbations et rappels de travail seul arrivent même quand l’application est fermée. L’écran verrouillé n’affiche qu’un court titre, jamais de détails sur la paie, la santé, la discipline ou les documents, et la déconnexion les arrête sur cet appareil. Sur iPhone et iPad, elles fonctionnent dans l’application installée (iOS 16.4 ou plus récent).' },
+          { q: 'Le travail seul suit-il ma position?', a: 'Seulement si vous choisissez de la partager pour cette séance. Votre position est alors mise à jour pendant que l’application est ouverte à l’écran, au plus toutes les 30 secondes, et seules les personnes qui surveillent le travail seul la voient. Désactiver le partage la supprime aussitôt; sinon, elle est effacée 30 jours après la séance. Les téléphones ne permettent pas aux applications Web de partager la position en arrière-plan : la minuterie et les rappels restent le filet de sécurité.' },
         ],
       },
       {

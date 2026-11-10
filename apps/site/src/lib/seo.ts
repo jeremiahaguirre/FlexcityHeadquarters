@@ -17,7 +17,9 @@ const LOCALE = { en: 'en_CA', fr: 'fr_CA' } as const;
 export const PAGES = ['', 'private-sector/', 'plans/', 'demo/', 'faq/', 'help/', 'contact/', 'privacy/', 'accessibility/', 'terms/'];
 
 /** Title, description, canonical, hreflang alternates and social cards for one page. */
-export function pageMeta(lang: Lang, path: string, title: string | undefined, description: string): Metadata {
+export function pageMeta(lang: Lang, path: string, title: string | undefined, text: string): Metadata {
+  // Search results show about 160 characters: cut at a word, not mid-word.
+  const description = text.length > 160 ? `${text.slice(0, text.lastIndexOf(' ', 157)).replace(/[,;:.]$/, '')}…` : text;
   const url = `/${lang}/${path}`;
   return {
     ...(title ? { title } : {}),
