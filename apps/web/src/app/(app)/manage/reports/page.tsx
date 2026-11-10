@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { formatMoney } from '@/lib/format';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 
@@ -32,7 +33,8 @@ export default function ReportsPage() {
   const k = current?.key ?? '';
   const qs = (x = k) => `key=${x}&from=${from}&to=${to}&days=${days}`;
   const label = (c: string) => t(`reports.columns.${c}`, { defaultValue: c });
-  const cell = (v: string | number | null) => (typeof v === 'number' ? v.toLocaleString(lng) : v === 'SICK' || v === 'VACATION' || v === 'PROTECTED_LEAVE' || v === 'UNPAID_PERSONAL' || v === 'OTHER' || v === 'LIEU' ? t(`timeOff.types.${v}`) : (v ?? '—'));
+  const MONEY = new Set(['gross', 'employerCosts', 'total']);
+  const cell = (c: string, v: string | number | null) => (v === null || v === '' ? '—' : typeof v === 'number' ? (MONEY.has(c) ? formatMoney(v, lng) : v.toLocaleString(lng)) : c === 'type' ? t(`timeOff.types.${v}`, { defaultValue: v }) : c === 'category' ? t(`incidents.categories.${v}`, { defaultValue: v }) : v);
   const go = (x = k) => run('run', () => api<Result>(`/api/reports/run?${qs(x)}`)).then((r) => r && setResult(r));
   async function csv() {
     const labels = encodeURIComponent(JSON.stringify(Object.fromEntries((result?.columns ?? []).map((c) => [c, label(c)]))));
@@ -79,8 +81,8 @@ export default function ReportsPage() {
                 {!result.rows.length ? <p className="text-small text-muted">{t('reports.empty')}</p> : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-small">
-                      <thead className="text-caption uppercase text-muted"><tr>{result.columns.map((c) => <th key={c} className="py-2 pr-3 font-semibold">{label(c)}</th>)}</tr></thead>
-                      <tbody className="divide-y divide-line">{result.rows.map((r, i) => <tr key={i}>{result.columns.map((c) => <td key={c} className={`py-2 pr-3 ${typeof r[c] === 'number' ? 'tabular-nums' : ''}`}>{cell(r[c] ?? null)}</td>)}</tr>)}</tbody>
+                      <thead className="text-caption uppercase text-muted"><tr>{result.columns.map((c) => <th key={c} className={`py-2 pr-3 font-semibold ${typeof result.rows[0]?.[c] === 'number' ? 'text-right' : 'text-left'}`}>{label(c)}</th>)}</tr></thead>
+                      <tbody className="divide-y divide-line">{result.rows.map((r, i) => <tr key={i}>{result.columns.map((c) => <td key={c} className={`py-2 pr-3 ${typeof r[c] === 'number' ? 'text-right tabular-nums' : ''}`}>{cell(c, r[c] ?? null)}</td>)}</tr>)}</tbody>
                     </table>
                   </div>
                 )}
