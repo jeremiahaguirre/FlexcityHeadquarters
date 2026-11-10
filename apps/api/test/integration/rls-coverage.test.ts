@@ -12,7 +12,7 @@ describe('row-level security coverage', () => {
     // Platform-level tables that hold a tenantId for the Dev console only (never read under a city session).
     // WebAuthnChallenge is used before anyone is signed in (no city session yet); it holds
     // only single-use random challenges that expire within minutes.
-    const platformOnly = new Set(['PlatformAudit', 'BillingAccount', 'Invoice', 'InvoiceLine', 'InvoicePayment', 'InvoiceCounter', 'Tenant', 'WebAuthnChallenge']);
+    const platformOnly = new Set(['PlatformAudit', 'BillingAccount', 'Invoice', 'InvoiceLine', 'InvoicePayment', 'InvoiceCounter', 'PadAgreement', 'PadDebit', 'Tenant', 'WebAuthnChallenge']);
     const rows = await owner.$queryRaw<Array<{ relname: string; relrowsecurity: boolean; relforcerowsecurity: boolean }>>`
       SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class WHERE relkind = 'r' AND relnamespace = 'public'::regnamespace`;
     const missing = tenantTables.filter((t) => !platformOnly.has(t)).filter((t) => {

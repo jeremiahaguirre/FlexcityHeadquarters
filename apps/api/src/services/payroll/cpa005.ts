@@ -62,11 +62,11 @@ const account = (a: string) => {
   return a.padEnd(12, ' ');
 };
 
-function segment(o: Originator, p: Payment, dueDate: string): string {
+function segment(o: Originator, p: Payment, dueDate: string, code: string): string {
   const s = [
-    PAYROLL_DEPOSIT, // 01-03 transaction type
+    num(code, 3), // 01-03 transaction type
     num(p.amountCents, 10), // 04-13 amount in cents
-    julian(dueDate), // 14-19 date funds available
+    julian(dueDate), // 14-19 date funds available (credits) or due to be withdrawn (debits)
     institutionId(p.institution, p.transit), // 20-28
     account(p.account), // 29-40 payee account
     '0'.repeat(22), // 41-62 item trace number
@@ -87,22 +87,32 @@ function segment(o: Originator, p: Payment, dueDate: string): string {
   return s;
 }
 
+/** Credits ("C" records: deposits such as payroll) or debits ("D" records: pre-authorized debits). */
+export interface FileKind {
+  kind: 'C' | 'D';
+  /** CPA transaction code; the bank confirms which one to use. */
+  transactionCode: string;
+}
+
 /** Builds the file. Every record is 1464 characters, separated by CRLF. */
-export function buildCpa005(o: Originator, payments: Payment[], dueDate: string, createdOn: string): string {
+export function buildCpa005(o: Originator, payments: Payment[], dueDate: string, createdOn: string, file: FileKind = { kind: 'C', transactionCode: PAYROLL_DEPOSIT }): string {
   if (!/^[A-Za-z0-9]{1,10}$/.test(o.originatorId)) throw new Error('The originator ID is up to 10 letters or digits.');
   if (o.fileCreationNumber < 1 || o.fileCreationNumber > 9999) throw new Error('File creation numbers run from 1 to 9999.');
-  if (payments.some((p) => p.amountCents <= 0)) throw new Error('Every deposit must be more than $0.');
+  if (payments.some((p) => p.amountCents <= 0)) throw new Error('Every payment must be more than $0.');
   const fcn = num(o.fileCreationNumber, 4);
   const id = alpha(o.originatorId, 10);
   const records: string[] = [];
   const head = (type: string) => `${type}${num(records.length + 1, 9)}${id}${fcn}`;
   records.push(`${head('A')}${julian(createdOn)}${num(o.destinationDataCentre, 5)}${' '.repeat(20)}CAD`.padEnd(RECORD, ' '));
   for (let i = 0; i < payments.length; i += 6) {
-    const segs = payments.slice(i, i + 6).map((p) => segment(o, p, dueDate));
-    records.push(`${head('C')}${segs.join('')}`.padEnd(RECORD, ' '));
+    const segs = payments.slice(i, i + 6).map((p) => segment(o, p, dueDate, file.transactionCode));
+    records.push(`${head(file.kind)}${segs.join('')}`.padEnd(RECORD, ' '));
   }
   const total = payments.reduce((s, p) => s + p.amountCents, 0);
-  records.push(`${head('Z')}${num(0, 14)}${num(0, 8)}${num(total, 14)}${num(payments.length, 8)}${num(0, 14)}${num(0, 8)}${num(0, 14)}${num(0, 8)}`.padEnd(RECORD, ' '));
+  // Trailer: total value and count of debits, then of credits, then two error-correction pairs.
+  const debits = file.kind === 'D' ? `${num(total, 14)}${num(payments.length, 8)}` : `${num(0, 14)}${num(0, 8)}`;
+  const credits = file.kind === 'C' ? `${num(total, 14)}${num(payments.length, 8)}` : `${num(0, 14)}${num(0, 8)}`;
+  records.push(`${head('Z')}${debits}${credits}${num(0, 14)}${num(0, 8)}${num(0, 14)}${num(0, 8)}`.padEnd(RECORD, ' '));
   for (const r of records) if (r.length !== RECORD) throw new Error(`CPA-005 record is ${r.length} characters, not ${RECORD}.`);
   return `${records.join('\r\n')}\r\n`;
 }

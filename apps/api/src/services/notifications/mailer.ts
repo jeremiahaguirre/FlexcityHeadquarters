@@ -172,11 +172,21 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   invoice: {
     'en-CA': (p) => ({
       subject: `Invoice ${p.number} from ${p.from}: ${p.total}`,
-      text: `Hello ${p.organization},\n\nInvoice ${p.number} for ${p.period} is ${p.total}, due ${p.dueDate}.\n\n${p.remittance}\n\nQuestions about this invoice: ${p.contact}`,
+      text: `Hello ${p.organization},\n\nInvoice ${p.number} for ${p.period} is ${p.total}, due ${p.dueDate}.\n\n${p.padAccount ? `Under your pre-authorized debit agreement, ${p.total} will be debited from account ${p.padAccount} on or after ${p.dueDate}. Nothing else to do.` : p.remittance}\n\nQuestions about this invoice: ${p.contact}`,
     }),
     'fr-CA': (p) => ({
       subject: `Facture ${p.number} de ${p.from} : ${p.total}`,
-      text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période du ${p.period} s'élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.remittance}\n\nQuestions sur cette facture : ${p.contact}`,
+      text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période du ${p.period} s'élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.padAccount ? `Selon votre entente de débit préautorisé, ${p.total} sera prélevé du compte ${p.padAccount} à compter du ${p.dueDate}. Vous n'avez rien d'autre à faire.` : p.remittance}\n\nQuestions sur cette facture : ${p.contact}`,
+    }),
+  },
+  pad_confirmation: {
+    'en-CA': (p) => ({
+      subject: `Pre-authorized debit agreement confirmed: ${p.payee}`,
+      text: `This confirms the business pre-authorized debit agreement between ${p.payor} and ${p.payee}, authorized on ${p.date} by ${p.signer}.\n\nAccount: ${p.account}\n\n${p.terms}\n\nKeep this email for your records. To change or cancel the agreement: ${p.contact}`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `Entente de débit préautorisé confirmée : ${p.payee}`,
+      text: `Ceci confirme l'entente de débit préautorisé d'entreprise entre ${p.payor} et ${p.payee}, autorisée le ${p.date} par ${p.signer}.\n\nCompte : ${p.account}\n\n${p.terms}\n\nConservez ce courriel dans vos dossiers. Pour modifier ou annuler l'entente : ${p.contact}`,
     }),
   },
 };

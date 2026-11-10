@@ -246,7 +246,7 @@ model Tenant {
   payrollSettings       Json            @default("{}")
   /// General-ledger accounts payroll posts to: { wages, employerCpp, employerEi, employerBenefits,
   /// cppPayable, eiPayable, taxPayable, pensionPayable, unionDuesPayable, benefitsPayable, netPayClearing }.
-  accountingSettings Json @default("{}")
+  accountingSettings    Json            @default("{}")
   /// Feature switches set from the FH Dev console: { featureKey: boolean }.
   /// Missing keys use the defaults in src/services/platform/features.ts.
   features              Json            @default("{}")
@@ -483,20 +483,20 @@ model Position {
 /// A part of the city's workforce: Aquatics, Water Works, Parks… Supervisors and
 /// managers see only their departments; HR sees every department.
 model Department {
-  id        String              @id @default(uuid()) @db.Uuid
-  tenantId  String              @db.Uuid
-  name      String
-  nameFr    String?
+  id           String              @id @default(uuid()) @db.Uuid
+  tenantId     String              @db.Uuid
+  name         String
+  nameFr       String?
   /// The built-in aquatic roles (supervisor, head lifeguard) manage this department.
-  aquatic   Boolean             @default(false)
+  aquatic      Boolean             @default(false)
   /// General-ledger segment (cost centre) its labour costs post to.
   glCode       String?
   /// Labour budget for the year, for budget-to-actual.
-  labourBudget Decimal? @db.Decimal(14, 2)
-  createdAt DateTime            @default(now()) @db.Timestamptz(3)
-  tenant    Tenant              @relation(fields: [tenantId], references: [id])
-  positions Position[]
-  managers  DepartmentManager[]
+  labourBudget Decimal?            @db.Decimal(14, 2)
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+  tenant       Tenant              @relation(fields: [tenantId], references: [id])
+  positions    Position[]
+  managers     DepartmentManager[]
 
   @@unique([tenantId, name])
 }
@@ -1561,6 +1561,8 @@ model InvoiceLine {
   invoiceId   String  @db.Uuid
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   position    Int
+  /// facility | club_base | club_users | addon_hr | addon_ops | credit | other: decides the revenue account.
+  kind        String  @default("other")
   description String
   quantity    Decimal @db.Decimal(10, 2)
   unitCents   Int
@@ -2180,27 +2182,27 @@ model BankAccount {
 
 /// One pay run: a pay period for the whole city or one department.
 model PayRun {
-  id                 String         @id @default(uuid()) @db.Uuid
-  tenantId           String         @db.Uuid
-  departmentId       String?        @db.Uuid
-  periodStart        DateTime       @db.Date
-  periodEnd          DateTime       @db.Date
-  payDate            DateTime       @db.Date
+  id                 String            @id @default(uuid()) @db.Uuid
+  tenantId           String            @db.Uuid
+  departmentId       String?           @db.Uuid
+  periodStart        DateTime          @db.Date
+  periodEnd          DateTime          @db.Date
+  payDate            DateTime          @db.Date
   periodsPerYear     Int
-  status             PayRunStatus   @default(DRAFT)
-  preparedById       String         @db.Uuid
-  approvedById       String?        @db.Uuid
-  approvedAt         DateTime?      @db.Timestamptz(3)
-  paidAt             DateTime?      @db.Timestamptz(3)
-  voidedAt           DateTime?      @db.Timestamptz(3)
+  status             PayRunStatus      @default(DRAFT)
+  preparedById       String            @db.Uuid
+  approvedById       String?           @db.Uuid
+  approvedAt         DateTime?         @db.Timestamptz(3)
+  paidAt             DateTime?         @db.Timestamptz(3)
+  voidedAt           DateTime?         @db.Timestamptz(3)
   /// { gross, deductions, net, employerCpp, employerEi, people, deposits, cheques }
-  totals             Json           @default("{}")
+  totals             Json              @default("{}")
   /// Problems that must be fixed before approval.
-  blockers           Json           @default("[]")
-  warnings           Json           @default("[]")
+  blockers           Json              @default("[]")
+  warnings           Json              @default("[]")
   fileCreationNumber Int?
   depositFileSha256  String?
-  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+  createdAt          DateTime          @default(now()) @db.Timestamptz(3)
   statements         PayStatement[]
   transmissions      PayTransmission[]
 
@@ -2261,18 +2263,18 @@ enum TransmissionStatus {
 
 /// Every attempt to send a pay run's deposit file to the city's bank.
 model PayTransmission {
-  id         String             @id @default(uuid()) @db.Uuid
-  tenantId   String             @db.Uuid
-  payRunId   String             @db.Uuid
-  sentById   String?            @db.Uuid
-  method     String
-  fileName   String
-  sha256     String
-  encrypted  Boolean
-  status     TransmissionStatus
-  error      String?
-  createdAt  DateTime           @default(now()) @db.Timestamptz(3)
-  payRun     PayRun             @relation(fields: [payRunId], references: [id], onDelete: Cascade)
+  id        String             @id @default(uuid()) @db.Uuid
+  tenantId  String             @db.Uuid
+  payRunId  String             @db.Uuid
+  sentById  String?            @db.Uuid
+  method    String
+  fileName  String
+  sha256    String
+  encrypted Boolean
+  status    TransmissionStatus
+  error     String?
+  createdAt DateTime           @default(now()) @db.Timestamptz(3)
+  payRun    PayRun             @relation(fields: [payRunId], references: [id], onDelete: Cascade)
 
   @@index([payRunId])
 }
@@ -2469,4 +2471,108 @@ model Offboarding {
   completedAt DateTime? @db.Timestamptz(3)
   createdById String    @db.Uuid
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+enum PadStatus {
+  ACTIVE
+  CANCELLED
+}
+
+/// A city's authorization for FH to debit its bank account for plan charges (business PAD, Payments Canada Rule H1).
+model PadAgreement {
+  id               String     @id @default(uuid()) @db.Uuid
+  tenantId         String     @db.Uuid
+  status           PadStatus  @default(ACTIVE)
+  /// The account holder: the city or organization.
+  payorName        String
+  signerName       String
+  signerTitle      String
+  institution      String
+  transit          String
+  accountLast4     String
+  /// The full account number, sealed with the organization's key.
+  accountSealed    Json
+  agreementVersion String
+  /// Business PAD payors may waive the 10-day pre-notification; invoices still go out before any debit.
+  waivedPreNotice  Boolean    @default(false)
+  /// DEV_CONSOLE (signed form on file) or ORGANIZATION (authorized in the app).
+  channel          String
+  authorizedBy     String
+  authorizedAt     DateTime   @default(now()) @db.Timestamptz(3)
+  cancelledAt      DateTime?  @db.Timestamptz(3)
+  cancelReason     String?
+  debits           PadDebit[]
+
+  @@index([tenantId, status])
+}
+
+enum PadBatchStatus {
+  CREATED
+  SENT
+  SETTLED
+}
+
+/// One debit file to FH's bank.
+model PadBatch {
+  id          String         @id @default(uuid()) @db.Uuid
+  /// CPA-005 file creation number, 1–9999, one higher every file.
+  fileNumber  Int
+  debitDate   DateTime       @db.Date
+  status      PadBatchStatus @default(CREATED)
+  totalCents  Int
+  count       Int
+  createdById String         @db.Uuid
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+  sentAt      DateTime?      @db.Timestamptz(3)
+  settledAt   DateTime?      @db.Timestamptz(3)
+  debits      PadDebit[]
+}
+
+enum PadDebitStatus {
+  PENDING
+  SETTLED
+  RETURNED
+}
+
+model PadDebit {
+  id           String         @id @default(uuid()) @db.Uuid
+  batchId      String         @db.Uuid
+  batch        PadBatch       @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  agreementId  String         @db.Uuid
+  agreement    PadAgreement   @relation(fields: [agreementId], references: [id], onDelete: Restrict)
+  invoiceId    String         @db.Uuid
+  tenantId     String         @db.Uuid
+  amountCents  Int
+  status       PadDebitStatus @default(PENDING)
+  returnReason String?
+  returnedOn   DateTime?      @db.Date
+
+  @@index([invoiceId])
+}
+
+/// FH's own books: chart of accounts, PAD originator details, fiscal settings. One row.
+model FhBooks {
+  id              Int       @id @default(1)
+  /// { ar: "1200", bank: "1000", ... } overrides of the default chart.
+  accounts        Json      @default("{}")
+  /// { originatorId, dataCentre, shortName, longName, transactionCode, returns: { institution, transit, last4, sealed } }
+  padOriginator   Json?
+  lastFileNumber  Int       @default(0)
+  /// First month of FH's fiscal year (1–12).
+  fiscalYearStart Int       @default(1)
+  /// Entries on or before this date can't change (books closed).
+  closedThrough   DateTime? @db.Date
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+/// Adjustments FH's accountant posts by hand (bank fees, interest, accruals). Each balances.
+model FhJournalEntry {
+  id          String   @id @default(uuid()) @db.Uuid
+  date        DateTime @db.Date
+  memo        String
+  /// [{ account: "6100", debitCents: 1500, creditCents: 0 }]
+  lines       Json
+  reference   String?
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
 }

@@ -22,6 +22,7 @@ import {
 } from '../../services/billing/invoices.js';
 import { TAX_RATES_AS_OF, TAX_RATES_VERIFIED } from '../../services/billing/tax.js';
 import { billingState } from '../../services/billing/entitlements.js';
+import { assertOpenPeriod } from '../../services/billing/books.js';
 import { h } from '../context.js';
 
 export const billingRouter = Router();
@@ -204,6 +205,7 @@ billingRouter.post(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const body = paymentBody.parse(req.body);
+    await assertOpenPeriod(body.receivedOn);
     const inv = await recordPayment(id, p.adminId, body);
     await audit(p.adminId, inv.tenantId, 'invoice.payment', { id, ...body });
     res.status(201).json({ status: inv.status, paidCents: inv.paidCents });

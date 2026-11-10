@@ -4,13 +4,14 @@
  */
 import express, { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { config } from '../config.js';
-import { db } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { ADD_ON_FEATURES } from '../services/billing/entitlements.js';
 import { ONLINE_PAYMENT_ACTOR, displayStatus, recordPayment } from '../services/billing/invoices.js';
 import { createCheckout, onlinePaymentsEnabled, verifyWebhook } from '../services/billing/stripe.js';
+import { activeAgreement, agreementBody, agreementTerms, agreementView, cancelAgreement, createAgreement } from '../services/billing/pad.js';
+import { audit, db, withTenant } from '../lib/db.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { appUrl } from '../auth/authTokens.js';
 import { h, subdomainOf } from './context.js';
@@ -36,6 +37,7 @@ billingRouter.get(
       db().invoice.findMany({ where: { tenantId: a.tenantId, status: { not: 'DRAFT' } }, orderBy: { issueDate: 'desc' }, take: 36 }),
       tenantSettings(a.tenantId),
     ]);
+    const pad = acct ? await activeAgreement(a.tenantId) : null;
     res.json({
       state: settings.billing,
       plan: acct ? { plan: acct.plan, addOns: { hr: acct.addOnHr, ops: acct.addOnOps, union: acct.addOnUnion }, paymentTermsDays: acct.paymentTermsDays, preferredPayment: acct.preferredPayment, poNumber: acct.poNumber } : null,
@@ -53,6 +55,7 @@ billingRouter.get(
         balanceCents: i.status === 'SENT' ? i.totalCents - i.paidCents : 0,
       })),
       payment: { online: onlinePaymentsEnabled(), remittance: config().BILLING_REMITTANCE, payee: config().BILLING_LEGAL_NAME, contact: config().BILLING_EMAIL },
+      pad: { agreement: pad ? agreementView(pad) : null, terms: agreementTerms(String(req.query.lang ?? 'en-CA')) },
     });
   }),
 );
@@ -146,5 +149,34 @@ stripeWebhookRouter.post(
       }
     }
     res.json({ received: true });
+  }),
+);
+
+/** The billing administrator authorizes FH to debit the city's account for each invoice (business PAD). */
+billingRouter.post(
+  '/billing/pad',
+  requirePermission('billing.manage'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = agreementBody.parse(req.body);
+    const created = await createAgreement(a.tenantId, body, 'ORGANIZATION', a.userId);
+    await withTenant(a.tenantId, (tx) => audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'billing.pad.authorize', entity: 'PadAgreement', entityId: created.id, after: { account: `${body.institution}-${body.transit} •••${body.account.slice(-4)}`, signer: body.signerName, title: body.signerTitle } }));
+    res.status(201).json(agreementView(created));
+  }),
+);
+
+billingRouter.post(
+  '/billing/pad/cancel',
+  requirePermission('billing.manage'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const { reason } = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
+    const current = await activeAgreement(a.tenantId);
+    if (!current) throw notFound('Agreement');
+    await cancelAgreement(current.id, reason);
+    await withTenant(a.tenantId, (tx) => audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'billing.pad.cancel', entity: 'PadAgreement', entityId: current.id, after: { reason } }));
+    res.json({ ok: true });
   }),
 );

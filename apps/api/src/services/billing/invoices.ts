@@ -144,14 +144,14 @@ export async function generateDraft(tenantId: string, month: string, adminId: st
       billTo: billToOf(account!),
       poNumber: account!.poNumber,
       createdById: adminId,
-      lines: { create: est.lines.map((l, i) => ({ position: i, description: l.description, quantity: l.quantity, unitCents: l.unitCents, amountCents: l.amountCents })) },
+      lines: { create: est.lines.map((l, i) => ({ position: i, kind: l.kind, description: l.description, quantity: l.quantity, unitCents: l.unitCents, amountCents: l.amountCents })) },
     },
   });
   return 'created';
 }
 
 export const draftPatch = z.object({
-  lines: z.array(z.object({ description: z.string().trim().min(1).max(200), quantity: z.number().min(0.01).max(100_000), unitCents: z.number().int().min(-100_000_000).max(100_000_000) })).min(1).max(50).optional(),
+  lines: z.array(z.object({ kind: z.enum(['facility', 'club_base', 'club_users', 'addon_hr', 'addon_ops', 'credit', 'other']).optional(), description: z.string().trim().min(1).max(200), quantity: z.number().min(0.01).max(100_000), unitCents: z.number().int().min(-100_000_000).max(100_000_000) })).min(1).max(50).optional(),
   notes: z.string().trim().max(1000).nullable().optional(),
   poNumber: z.string().trim().max(60).nullable().optional(),
 });
@@ -163,7 +163,9 @@ export async function updateDraft(id: string, patch: z.infer<typeof draftPatch>)
   const bill = inv.billTo as { province: string; taxExempt: boolean };
   await db().$transaction(async (tx) => {
     if (patch.lines) {
-      const lines = patch.lines.map((l, i) => ({ position: i, description: l.description, quantity: l.quantity, unitCents: l.unitCents, amountCents: Math.round(l.quantity * l.unitCents) }));
+      // Each line keeps its kind (it decides the revenue account): given, or the one at the same position, or a credit if negative.
+      const before = await tx.invoiceLine.findMany({ where: { invoiceId: id }, orderBy: { position: 'asc' } });
+      const lines = patch.lines.map((l, i) => ({ position: i, kind: l.unitCents < 0 ? 'credit' : (l.kind ?? before[i]?.kind ?? 'other'), description: l.description, quantity: l.quantity, unitCents: l.unitCents, amountCents: Math.round(l.quantity * l.unitCents) }));
       const t = totals(lines, bill.province, bill.taxExempt);
       await tx.invoiceLine.deleteMany({ where: { invoiceId: id } });
       await tx.invoiceLine.createMany({ data: lines.map((l) => ({ ...l, invoiceId: id })) });
@@ -191,6 +193,8 @@ export async function sendInvoice(id: string) {
     return tx.invoice.update({ where: { id }, data: { number, status: 'SENT', issueDate: day(isoDay(today)), dueDate: due, sentAt: today, billTo: billToOf(account) } });
   });
   const tenant = await withTenant(inv.tenantId, (tx) => tx.tenant.findUniqueOrThrow({ where: { id: inv.tenantId } }));
+  // For organizations paying by pre-authorized debit, the invoice is also the debit notice.
+  const pad = await db().padAgreement.findFirst({ where: { tenantId: inv.tenantId, status: 'ACTIVE' } });
   await withTenant(inv.tenantId, (tx) =>
     tx.emailOutbox.create({
       data: {
@@ -208,6 +212,7 @@ export async function sendInvoice(id: string) {
           remittance: config().BILLING_REMITTANCE,
           contact: config().BILLING_EMAIL,
           url: appUrl(tenant.subdomain, ''),
+          ...(pad ? { padAccount: `${pad.institution}-${pad.transit} •••${pad.accountLast4}` } : {}),
         },
       },
     }),
