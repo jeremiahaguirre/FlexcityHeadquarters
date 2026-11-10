@@ -5,6 +5,7 @@ dist/
 .env.*
 !.env.example
 coverage/
+!apps/api/src/services/coverage/
 *.log
 .DS_Store
 *.tsbuildinfo
