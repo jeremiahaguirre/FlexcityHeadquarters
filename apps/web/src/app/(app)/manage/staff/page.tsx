@@ -129,7 +129,7 @@ export default function StaffPage() {
                   {t(`staff.employment.${p.employmentStatus}`)} · {p.positions.map(posName).join(', ') || t('staff.noPositions')}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex basis-full flex-wrap items-center gap-1.5 pl-14 empty:hidden sm:basis-auto sm:pl-0">
                 {p.invited ? <StatusPill tone="new">{t('staff.pendingInvite')}</StatusPill> : null}
                 {p.unverifiedCerts ? <StatusPill tone="neutral">{t('staff.toVerify', { count: p.unverifiedCerts })}</StatusPill> : null}
                 {p.certAttention ? <StatusPill tone="warn">{t('staff.certSoon')}</StatusPill> : null}

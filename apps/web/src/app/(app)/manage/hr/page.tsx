@@ -131,7 +131,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
           {numbers.map((n) => (
             // Only dt and dd inside each group, as a description list requires; the icon is placed by the grid.
             <div key={n.label} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 bg-panel px-4 py-4">
-              <dt className="col-start-2 row-start-1 truncate text-caption text-muted">{n.label}</dt>
+              <dt className="col-start-2 row-start-1 text-caption leading-snug text-muted break-words hyphens-auto">{n.label}</dt>
               <dd className="col-start-2 row-start-2 text-heading tabular-nums">{new Intl.NumberFormat(lng).format(n.value)}</dd>
               <dd aria-hidden="true" className={`col-start-1 row-span-2 row-start-1 grid h-10 w-10 place-items-center rounded-xl ${n.tint}`}><n.icon className="h-5 w-5" /></dd>
             </div>

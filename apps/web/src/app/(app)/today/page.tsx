@@ -98,11 +98,11 @@ export default function TodayPage() {
         ) : (
           <Card className="flex flex-wrap items-center gap-4 p-4">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface text-muted"><CalendarOff className="h-5 w-5" aria-hidden="true" /></span>
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[12rem] flex-1">
               <p className="text-body-strong">{t('today.noShiftsTitle')}</p>
               <p className="text-small text-muted">{t('today.noShiftsBody')}</p>
             </div>
-            {can('shiftboard.claim') ? <ButtonLink href="/board" size="sm" variant="secondary">{t('today.findShift')}</ButtonLink> : null}
+            {can('shiftboard.claim') ? <ButtonLink href="/board" size="sm" variant="secondary" className="ml-14 sm:ml-0">{t('today.findShift')}</ButtonLink> : null}
           </Card>
         )}
       </section>
