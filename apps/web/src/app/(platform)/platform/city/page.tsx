@@ -80,7 +80,7 @@ function City() {
         <div className="sticky top-24 grid gap-5">
           {SECTIONS.map((g) => (
             <div key={g.key}>
-              <p className="mb-1 px-3 text-label uppercase text-muted/80">{t(`platform.railGroups.${g.key}`)}</p>
+              <p className="mb-1 px-3 text-label uppercase text-muted">{t(`platform.railGroups.${g.key}`)}</p>
               <div className="grid gap-0.5">
                 {g.tabs.map((x) => (
                   <button key={x} type="button" aria-current={tab === x ? 'page' : undefined} onClick={() => setTab(x)} className={`rounded-lg px-3 py-1.5 text-left text-small font-semibold transition-colors ${tab === x ? 'bg-brand/10 text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>

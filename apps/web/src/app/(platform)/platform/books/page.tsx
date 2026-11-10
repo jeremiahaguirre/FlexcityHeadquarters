@@ -60,8 +60,8 @@ function Range({ from, to, setFrom, setTo }: { from: string; to: string; setFrom
   const { t } = useTranslation();
   return (
     <div className="flex flex-wrap gap-2">
-      <div className="w-44"><Input aria-label={t('books.from')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
-      <div className="w-44"><Input aria-label={t('books.to')} type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+      <div className="min-w-0 flex-1 sm:w-44 sm:flex-none"><Input aria-label={t('books.from')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+      <div className="min-w-0 flex-1 sm:w-44 sm:flex-none"><Input aria-label={t('books.to')} type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
     </div>
   );
 }

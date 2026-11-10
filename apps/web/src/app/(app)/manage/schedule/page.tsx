@@ -135,11 +135,11 @@ export default function ScheduleBuilderPage() {
       />
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" size="sm" aria-label={t('builder.prevWeek')} onClick={() => setWeek(plusDays(week, -7))}>
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
-          <p className="min-w-[12rem] text-center text-body-strong">
+          <p className="text-center text-body-strong sm:min-w-[12rem]">
             {formatDate(`${week}T12:00:00`, lng)} – {formatDate(`${plusDays(week, 6)}T12:00:00`, lng)}
           </p>
           <Button variant="secondary" size="sm" aria-label={t('builder.nextWeek')} onClick={() => setWeek(plusDays(week, 7))}>
@@ -198,7 +198,7 @@ export default function ScheduleBuilderPage() {
                       {s.conflictReason && !s.assignee ? <p className="mt-1 line-clamp-2 text-[0.75rem] leading-4 text-warn">{s.conflictReason}</p> : null}
                     </button>
                   ))}
-                  {!list.length ? <p className="px-1.5 py-2 text-caption text-muted/80">{t('builder.noShifts')}</p> : null}
+                  {!list.length ? <p className="px-1.5 py-2 text-caption text-muted">{t('builder.noShifts')}</p> : null}
                 </div>
               </section>
             );

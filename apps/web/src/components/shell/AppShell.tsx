@@ -180,7 +180,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
             if (!list.length) return null;
             return (
               <div key={sec ?? 'mine'}>
-                <p className="mb-1 px-3 text-label uppercase text-muted/80">{sec ? t(`navSections.${sec}`) : t('navGroups.mine')}</p>
+                <p className="mb-1 px-3 text-label uppercase text-muted">{sec ? t(`navSections.${sec}`) : t('navGroups.mine')}</p>
                 <div className="grid gap-0.5">{list.map((n) => link(n, () => setMoreOpen(false)))}</div>
               </div>
             );

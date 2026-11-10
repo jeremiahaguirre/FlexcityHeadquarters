@@ -54,7 +54,7 @@ export function SideNav({ items, locked, activeHref, link, lockedLink }: { items
         if (!long) {
           return (
             <div key={g}>
-              <p className="mb-1.5 px-3 text-label uppercase text-muted/80">{t(`navGroups.${g}`)}</p>
+              <p className="mb-1.5 px-3 text-label uppercase text-muted">{t(`navGroups.${g}`)}</p>
               {body}
             </div>
           );
@@ -66,7 +66,7 @@ export function SideNav({ items, locked, activeHref, link, lockedLink }: { items
               type="button"
               aria-expanded={isOpen}
               onClick={() => toggle(g)}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-label uppercase text-muted/80 transition-colors hover:bg-surface hover:text-ink"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-label uppercase text-muted transition-colors hover:bg-surface hover:text-ink"
             >
               <span className="flex-1">{t(`navGroups.${g}`)}</span>
               {!isOpen ? <span className="rounded-full bg-surface px-1.5 normal-case tracking-normal tabular-nums">{list.length}</span> : null}

@@ -126,12 +126,11 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
       <section aria-label={t('hr.numbers')}>
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-4">
           {numbers.map((n) => (
-            <div key={n.label} className="flex items-center gap-3 bg-panel px-4 py-4">
-              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${n.tint}`}><n.icon className="h-5 w-5" aria-hidden="true" /></span>
-              <div className="min-w-0">
-                <dt className="truncate text-caption text-muted">{n.label}</dt>
-                <dd className="text-heading tabular-nums">{new Intl.NumberFormat(lng).format(n.value)}</dd>
-              </div>
+            // Only dt and dd inside each group, as a description list requires; the icon is placed by the grid.
+            <div key={n.label} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 bg-panel px-4 py-4">
+              <dt className="col-start-2 row-start-1 truncate text-caption text-muted">{n.label}</dt>
+              <dd className="col-start-2 row-start-2 text-heading tabular-nums">{new Intl.NumberFormat(lng).format(n.value)}</dd>
+              <dd aria-hidden="true" className={`col-start-1 row-span-2 row-start-1 grid h-10 w-10 place-items-center rounded-xl ${n.tint}`}><n.icon className="h-5 w-5" /></dd>
             </div>
           ))}
         </dl>

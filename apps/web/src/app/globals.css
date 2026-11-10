@@ -144,6 +144,11 @@ body {
   .fh-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgb(var(--overlay) / 0.25); }
 }
 
+/* A grid with no column setting is one column that never grows past its container, so a long
+   row (a toolbar, a wide label) wraps or scrolls inside it instead of widening the page on a
+   phone. :where() keeps this weaker than any grid-cols-* utility. */
+:where(.grid) { grid-template-columns: minmax(0, 1fr); }
+
 @media (prefers-reduced-motion: reduce) {
   .fh-bubble, .fh-ripple, .animate-nudge { display: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

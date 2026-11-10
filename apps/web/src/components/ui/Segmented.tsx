@@ -12,7 +12,7 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
     if (el) setPill({ left: el.offsetLeft, width: el.offsetWidth });
   }, [value, options.length, options.map((o) => o.label).join('|')]);
   return (
-    <div ref={wrap} role="radiogroup" aria-label={label} className="relative inline-flex rounded-xl bg-surface p-1">
+    <div ref={wrap} role="radiogroup" aria-label={label} className="relative inline-flex max-w-full overflow-x-auto rounded-xl bg-surface p-1">
       {pill ? (
         <span
           aria-hidden="true"
