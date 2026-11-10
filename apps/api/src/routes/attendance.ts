@@ -60,7 +60,7 @@ attendanceRouter.get(
 );
 
 // ---------------------------------------------------------------- Time off
-const timeOffType = z.enum(['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER']);
+const timeOffType = z.enum(['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER', 'LIEU']);
 
 attendanceRouter.get(
   '/me/time-off',

@@ -28,7 +28,7 @@ interface Request {
   decisionNote: string | null;
 }
 const TONE: Record<Status, Tone> = { PENDING: 'neutral', APPROVED: 'ok', DENIED: 'warn', CANCELLED: 'neutral' };
-const TYPES = ['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER'] as const;
+const TYPES = ['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER', 'LIEU'] as const;
 
 /** Local date + optional time on this device → instant. Staff request time off in their own time zone. */
 const toInstant = (date: string, time: string) => new Date(`${date}T${time || '00:00'}:00`).toISOString();
@@ -37,6 +37,9 @@ export default function TimeOffPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const list = useQuery<Request[]>('/api/me/time-off');
+  // Time in lieu shows only where the city uses it.
+  const lieu = useQuery<{ policy: { enabled: boolean }; available: number }>('/api/me/lieu');
+  const types = TYPES.filter((x) => x !== 'LIEU' || lieu.data?.policy.enabled);
   const { run, busy } = useAction();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<(typeof TYPES)[number]>('VACATION');
@@ -120,10 +123,10 @@ export default function TimeOffPage() {
 
       <Dialog open={open} onClose={() => setOpen(false)} title={t('timeOff.request')} closeLabel={t('common.close')}>
         <form onSubmit={(e) => void submit(e)} className="grid gap-4">
-          <Field label={t('timeOff.type')} hint={type === 'SICK' || type === 'PROTECTED_LEAVE' ? t('timeOff.protectedHint') : undefined}>
+          <Field label={t('timeOff.type')} hint={type === 'SICK' || type === 'PROTECTED_LEAVE' ? t('timeOff.protectedHint') : type === 'LIEU' ? t('timeOff.lieuHint', { n: Math.max(0, lieu.data?.available ?? 0) }) : undefined}>
             {(p) => (
               <Select {...p} value={type} onChange={(e) => setType(e.target.value as (typeof TYPES)[number])}>
-                {TYPES.map((x) => (
+                {types.map((x) => (
                   <option key={x} value={x}>
                     {t(`timeOff.types.${x}`)}
                   </option>

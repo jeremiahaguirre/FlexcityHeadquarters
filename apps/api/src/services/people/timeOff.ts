@@ -10,7 +10,9 @@
  */
 import type { TimeOffType } from '@prisma/client';
 import { type Tx, audit } from '../../lib/db.js';
-import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { lieuAvailable, lieuPolicy } from '../payroll/lieu.js';
+import { readSettings } from '../payroll/payRuns.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { addDays } from '../../lib/time.js';
 import { usersWithRoles } from '../notifications/notifier.js';
@@ -65,6 +67,13 @@ export async function requestTimeOff(
     where: { userId, status: { in: ['PENDING', 'APPROVED'] }, startsAt: { lt: input.endsAt }, endsAt: { gt: input.startsAt } },
   });
   if (overlapping) throw conflict('TIME_OFF_OVERLAPS', 'You already have time off requested for part of this period.');
+  if (input.type === 'LIEU') {
+    const policy = lieuPolicy(readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings));
+    if (!policy.enabled) throw badRequest('Your organization doesn’t use time in lieu.');
+    const want = leaveHoursFrom({ startsAt: input.startsAt, endsAt: input.endsAt }, await scheduledShifts(tx, [userId], input.startsAt, input.endsAt)).hours;
+    const have = await lieuAvailable(tx, userId);
+    if (want > have + 0.001) throw new HttpError(400, 'LIEU_SHORT', `This needs ${want} hours of banked time; you have ${Math.max(0, have)}.`, { need: want, have: Math.max(0, have) });
+  }
 
   const req = await tx.timeOffRequest.create({ data: { tenantId, userId, ...input, note: input.note ?? null } });
   const affected = await tx.shift.findMany({
@@ -108,6 +117,10 @@ export async function decideTimeOff(
   const status = decision === 'APPROVE' ? 'APPROVED' : 'DENIED';
   // Measured now, from the shifts it takes them off, before those shifts are released below.
   const charged = status === 'APPROVED' ? leaveHoursFrom(r, await scheduledShifts(tx, [r.userId], r.startsAt, r.endsAt)) : null;
+  if (charged && r.type === 'LIEU') {
+    const have = await lieuAvailable(tx, r.userId, r.id);
+    if (charged.hours > have + 0.001) throw new HttpError(409, 'LIEU_SHORT', `This needs ${charged.hours} hours of banked time; they have ${Math.max(0, have)}.`, { need: charged.hours, have: Math.max(0, have) });
+  }
   await tx.timeOffRequest.update({
     where: { id },
     data: { status, decisionNote: note ?? null, decidedById: actor.userId, decidedAt: new Date(), ...(charged ? { chargedHours: charged.hours, chargedBasis: charged.basis } : {}) },

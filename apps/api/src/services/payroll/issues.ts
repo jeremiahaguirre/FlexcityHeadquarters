@@ -33,6 +33,10 @@ const EN: Record<string, (p: Record<string, string | number>) => string> = {
   OTHER_DEPARTMENT_HOURS: (p) => `${p.name} also worked in another department this period. Pay this period in one city-wide run, so tax, CPP and EI are worked out once on all their pay.`,
   DEDUCTION_WITHOUT_PAY: (p) => `${p.name} has a one-time deduction but no pay in this run; it was left out. Add it to a run where they're paid.`,
   NO_HOURS: () => 'No approved hours in this period. Approve punches first, then recalculate.',
+  LIEU_SHORT: (p) => `${p.name} is taking or being paid more banked time than they have (${p.hours} hours). Check their time-in-lieu days off and payouts.`,
+  LIEU_NO_RATE: (p) => `${p.name} has time in lieu to be paid but no hourly rate. Add their pay rate.`,
+  LIEU_EXPIRED: (p) => `${p.name} has ${p.hours} hours of banked overtime older than ${p.months} months. Schedule it as time off or pay it out.`,
+  LIEU_OWED: (p) => `${p.name} is leaving with ${p.hours} hours of banked overtime. Pay it out on their final pay.`,
 };
 
 /** English text for an issue; older pay runs stored plain strings, which pass through. */

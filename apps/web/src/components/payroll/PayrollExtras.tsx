@@ -11,7 +11,7 @@ import { api } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { todayIso, useQuery } from '@/lib/useQuery';
 
-const KINDS = ['BONUS', 'RETRO', 'VACATION_PAYOUT', 'ALLOWANCE', 'OTHER_EARNING', 'REIMBURSEMENT', 'RECOVERY', 'OTHER_DEDUCTION'] as const;
+const KINDS = ['BONUS', 'RETRO', 'VACATION_PAYOUT', 'LIEU_PAYOUT', 'ALLOWANCE', 'OTHER_EARNING', 'REIMBURSEMENT', 'RECOVERY', 'OTHER_DEDUCTION'] as const;
 const ORDER_KINDS = ['SUPPORT_ORDER', 'GARNISHMENT', 'CRA_REQUIREMENT', 'OTHER'] as const;
 
 function useRun() {
@@ -38,15 +38,16 @@ function useRun() {
 export function RunAdjustments({ runId, draft, onChanged }: { runId: string; draft: boolean; onChanged: () => Promise<void> }) {
   const { t, i18n } = useTranslation();
   const money = (n: number) => formatMoney(n, i18n.language);
-  const list = useQuery<Array<{ id: string; userId: string; kind: (typeof KINDS)[number]; description: string; amount: number }>>(`/api/payroll/runs/${runId}/adjustments`);
+  const list = useQuery<Array<{ id: string; userId: string; kind: (typeof KINDS)[number]; description: string; amount: number; hours?: number | null }>>(`/api/payroll/runs/${runId}/adjustments`);
   const people = useQuery<{ people: Array<{ id: string; name: string }> }>(draft ? '/api/payroll/people' : null);
   const { run, busy } = useRun();
   const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<(typeof KINDS)[number]>('BONUS');
   const name = (id: string) => people.data?.people.find((p) => p.id === id)?.name ?? '';
   async function add(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const ok = await run('add', () => api(`/api/payroll/runs/${runId}/adjustments`, { method: 'POST', body: { userId: String(f.get('userId')), kind: String(f.get('kind')), description: String(f.get('description')).trim(), amount: Number(f.get('amount')) } }), t('payroll.extras.added'));
+    const ok = await run('add', () => api(`/api/payroll/runs/${runId}/adjustments`, { method: 'POST', body: { userId: String(f.get('userId')), kind, description: String(f.get('description')).trim(), ...(kind === 'LIEU_PAYOUT' ? { hours: Number(f.get('hours')) } : { amount: Number(f.get('amount')) }) } }), t('payroll.extras.added'));
     if (ok) {
       setOpen(false);
       await list.reload();
@@ -64,9 +65,13 @@ export function RunAdjustments({ runId, draft, onChanged }: { runId: string; dra
       {open ? (
         <form onSubmit={(e) => void add(e)} className="grid gap-3 sm:grid-cols-2">
           <Field label={t('payroll.employee')}>{(p) => <Select {...p} name="userId" required>{people.data?.people.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>}</Field>
-          <Field label={t('payroll.extras.kind')}>{(p) => <Select {...p} name="kind" defaultValue="BONUS">{KINDS.map((k) => <option key={k} value={k}>{t(`payroll.extras.kinds.${k}`)}</option>)}</Select>}</Field>
+          <Field label={t('payroll.extras.kind')}>{(p) => <Select {...p} name="kind" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number])}>{KINDS.map((k) => <option key={k} value={k}>{t(`payroll.extras.kinds.${k}`)}</option>)}</Select>}</Field>
           <Field label={t('payroll.extras.description')}>{(p) => <Input {...p} name="description" required minLength={2} maxLength={120} />}</Field>
-          <Field label={t('payroll.extras.amount')}>{(p) => <Input {...p} name="amount" type="number" min={0.01} step={0.01} required inputMode="decimal" />}</Field>
+          {kind === 'LIEU_PAYOUT' ? (
+            <Field label={t('lieu.payoutHours')} hint={t('lieu.payoutHoursHint')}>{(p) => <Input {...p} name="hours" type="number" min={0.25} step={0.25} required inputMode="decimal" />}</Field>
+          ) : (
+            <Field label={t('payroll.extras.amount')}>{(p) => <Input {...p} name="amount" type="number" min={0.01} step={0.01} required inputMode="decimal" />}</Field>
+          )}
           <div className="sm:col-span-2"><Button type="submit" size="sm" loading={busy === 'add'}>{t('payroll.extras.save')}</Button></div>
         </form>
       ) : null}
@@ -74,7 +79,7 @@ export function RunAdjustments({ runId, draft, onChanged }: { runId: string; dra
         <ul className="divide-y divide-line text-small">
           {list.data.map((x) => (
             <li key={x.id} className="flex flex-wrap items-center gap-2 py-2">
-              <span className="min-w-0 flex-1"><span className="font-semibold">{name(x.userId) || t('payroll.employee')}</span> · {t(`payroll.extras.kinds.${x.kind}`)} · {x.description}</span>
+              <span className="min-w-0 flex-1"><span className="font-semibold">{name(x.userId) || t('payroll.employee')}</span> · {t(`payroll.extras.kinds.${x.kind}`)} · {x.description}{x.hours ? ` · ${t('lieu.hours', { n: x.hours })}` : ''}</span>
               <span className="tabular-nums">{['RECOVERY', 'OTHER_DEDUCTION'].includes(x.kind) ? '−' : ''}{money(x.amount)}</span>
               {draft ? <Button size="sm" variant="ghost" aria-label={t('payroll.extras.remove', { what: x.description })} loading={busy === x.id} icon={<Trash2 className="h-4 w-4" aria-hidden="true" />} onClick={() => void run(x.id, async () => { await api(`/api/payroll/runs/${runId}/adjustments/${x.id}`, { method: 'DELETE' }); await list.reload(); await onChanged(); })} /> : null}
             </li>

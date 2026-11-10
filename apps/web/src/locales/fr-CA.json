@@ -474,7 +474,8 @@
       "SICK": "Congé de maladie",
       "PROTECTED_LEAVE": "Congé protégé (famille, deuil, juré…)",
       "UNPAID_PERSONAL": "Congé personnel non payé",
-      "OTHER": "Autre"
+      "OTHER": "Autre",
+      "LIEU": "Congé compensatoire (heures accumulées)"
     },
     "protectedHint": "Les normes du travail vous donnent droit à ce congé. Vous n'avez pas à donner de détails médicaux.",
     "partOfDay": "Seulement une partie de la journée",
@@ -494,7 +495,8 @@
       "APPROVED": "Approuvé",
       "DENIED": "Refusé",
       "CANCELLED": "Retiré"
-    }
+    },
+    "lieuHint": "Vous pouvez demander jusqu’à {{n}} heures."
   },
   "availability": {
     "title": "Disponibilités",
@@ -1037,7 +1039,10 @@
       "STAT_WORKED": "Travail un jour férié",
       "STAT_HOLIDAY_PAY": "Indemnité de jour férié",
       "SHIFT_PREMIUM": "Prime de quart",
-      "VACATION_PAY": "Indemnité de vacances"
+      "VACATION_PAY": "Indemnité de vacances",
+      "LIEU_TAKEN": "Congé compensatoire pris",
+      "LIEU_PAYOUT": "Temps accumulé payé",
+      "SALARY": "Salaire"
     },
     "d": {
       "cpp": "Cotisations au RPC",
@@ -1363,7 +1368,8 @@
         "OTHER_EARNING": "Autre gain",
         "REIMBURSEMENT": "Remboursement de dépenses (non imposé)",
         "RECOVERY": "Recouvrer un trop-payé",
-        "OTHER_DEDUCTION": "Autre retenue"
+        "OTHER_DEDUCTION": "Autre retenue",
+        "LIEU_PAYOUT": "Paiement du temps accumulé"
       }
     },
     "salary": {
@@ -4567,7 +4573,11 @@
     "NO_HOURS": "Aucune heure approuvée pour cette période. Approuvez d’abord les pointages, puis recalculez.",
     "ADP_COMPANY_CODE": "Entrez votre code d’entreprise ADP à trois caractères ci-dessus.",
     "DEDUCTION_WITHOUT_PAY": "{{name}} a une retenue ponctuelle mais aucune paie dans cette paie; elle a été laissée de côté. Ajoutez-la à une paie où la personne est payée.",
-    "OTHER_DEPARTMENT_HOURS": "{{name}} a aussi travaillé dans un autre service pendant cette période. Payez cette période en une seule paie pour toute la ville, afin que l’impôt, le RPC et l’AE soient calculés une seule fois sur toute sa paie."
+    "OTHER_DEPARTMENT_HOURS": "{{name}} a aussi travaillé dans un autre service pendant cette période. Payez cette période en une seule paie pour toute la ville, afin que l’impôt, le RPC et l’AE soient calculés une seule fois sur toute sa paie.",
+    "LIEU_SHORT": "{{name}} prend ou se fait payer plus de temps accumulé qu’il n’en a ({{hours}} heures). Vérifiez ses congés compensatoires et ses paiements.",
+    "LIEU_NO_RATE": "{{name}} a des congés compensatoires à payer mais aucun taux horaire. Ajoutez son taux de rémunération.",
+    "LIEU_EXPIRED": "{{name}} a {{hours}} heures supplémentaires accumulées depuis plus de {{months}} mois. Planifiez-les en congé ou payez-les.",
+    "LIEU_OWED": "{{name}} quitte avec {{hours}} heures supplémentaires accumulées. Payez-les sur sa dernière paie."
   },
   "documents": {
     "title": "Documents",
@@ -5064,5 +5074,50 @@
     "code": "Code",
     "confirm": "Confirmer",
     "verified": "Numéro confirmé"
+  },
+  "lieu": {
+    "title": "Heures accumulées (congé compensatoire)",
+    "help": "Les heures supplémentaires accumulées sont mises de côté en congé payé à leur taux majoré : une heure à taux et demi donne 1,5 heure. Vous pouvez en accumuler jusqu’à {{cap}} heures; prenez-les dans les {{months}} mois, sinon elles sont payées.",
+    "banking": "Accumule ses heures",
+    "balance": "Accumulé",
+    "available": "Vous pouvez demander",
+    "hours": "{{n}} h",
+    "expiring": "{{n}} heures datent de plus de {{months}} mois. Prenez-les en congé, sinon elles seront payées.",
+    "startBanking": "Accumuler mes heures supplémentaires au lieu d’être payé",
+    "stopBanking": "Payer mes heures supplémentaires à la place",
+    "nowBanking": "Vos heures supplémentaires seront accumulées dès la prochaine paie",
+    "nowPaid": "Vos heures supplémentaires seront payées dès la prochaine paie",
+    "agreeTitle": "Accumuler vos heures supplémentaires en congé?",
+    "agreeText": "Dès votre prochaine paie, vos heures supplémentaires sont accumulées en congé payé à leur taux majoré au lieu d’être payées, jusqu’à {{cap}} heures; l’excédent est payé. Réservez-les à l’écran Congés. Le temps non pris dans les {{months}} mois, et ce qui reste à votre départ, est payé à votre taux habituel. Vous pouvez changer d’avis pour les heures futures en tout temps.",
+    "agree": "J’accepte, accumuler mes heures",
+    "kinds": {
+      "BANKED": "Heures supplémentaires accumulées",
+      "TAKEN": "Congé pris",
+      "PAID_OUT": "Payé",
+      "ADJUSTED": "Correction par les RH"
+    },
+    "hrTitle": "Heures accumulées",
+    "hrHelp": "Les personnes qui accumulent leurs heures supplémentaires, et leurs soldes. Jusqu’à {{cap}} heures chacune; le temps de plus de {{months}} mois est signalé sur les paies.",
+    "hrOff": "Le congé compensatoire est désactivé dans les paramètres de paie. Les soldes existants sont ci-dessous.",
+    "nobody": "Personne n’accumule d’heures pour l’instant.",
+    "person": "Personne",
+    "tooOld": "Trop ancien",
+    "adjust": "Corriger",
+    "adjustTitle": "Corriger le temps accumulé de {{name}}",
+    "adjustHours": "Heures à ajouter ou retirer",
+    "adjustHoursHint": "Mettez un signe moins pour retirer, p. ex. -4.",
+    "reason": "Motif",
+    "adjusted": "Temps accumulé corrigé",
+    "payoutHint": "Pour payer du temps accumulé, ajoutez « Paiement du temps accumulé » à une paie en préparation.",
+    "settingsTitle": "Congé compensatoire",
+    "settingsHelp": "Permettre d’accumuler les heures supplémentaires en congé payé au lieu de les payer (si votre convention collective ou les normes du travail le permettent).",
+    "settingsOn": "Permettre d’accumuler les heures supplémentaires",
+    "settingsOnHelp": "Chaque personne choisit à son écran de paie; son accord est consigné.",
+    "cap": "Maximum d’heures par personne",
+    "capHint": "Les heures au-delà sont payées.",
+    "months": "À prendre dans les (mois)",
+    "monthsHint": "La norme de l’Ontario est de 3 mois, ou 12 par entente écrite.",
+    "payoutHours": "Heures accumulées à payer",
+    "payoutHoursHint": "Payées au taux habituel à la date de paie."
   }
 }

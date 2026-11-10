@@ -12,7 +12,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { AddressFields, type MailingAddress, readAddress } from './AddressFields';
 
 interface BankLinkView { configured: boolean; host?: string; port?: number; username?: string; remoteDir?: string; hostKeySha256?: string; pgpFingerprint?: string | null; autoSend?: boolean; credentialKind?: 'password' | 'privateKey' }
-interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; rqPreparerNumber?: string; rqCertificationNumber?: string; rl1FirstSlip?: number; quebecSector?: 'public' | 'private'; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean }
+interface Settings { bank: BankLinkView; businessNumber?: string; quebecNumber?: string; rqPreparerNumber?: string; rqCertificationNumber?: string; rl1FirstSlip?: number; quebecSector?: 'public' | 'private'; transmitterNumber?: string; filingContact?: { name: string; phone: string; email?: string | null } | null; employerMailing?: MailingAddress | null; originatorId?: string; originatorShortName?: string; originatorLongName?: string; destinationDataCentre?: string; returnsInstitution?: string; returnsTransit?: string; returnsAccount: string | null; employerAddress?: string; twoPersonApproval: boolean; requirePasskey: boolean; lieu?: { enabled?: boolean; capHours?: number; takeWithinMonths?: number } }
 
 /** CRA payroll account and the direct deposit details the city's bank provides. */
 export function PaySettings() {
@@ -53,6 +53,7 @@ export function PaySettings() {
             ...(account ? { returnsAccount: account } : {}),
             twoPersonApproval: f.get('twoPerson') === 'on',
             requirePasskey: f.get('passkey') === 'on',
+            lieu: { enabled: f.get('lieuOn') === 'on', capHours: Number(f.get('lieuCap') || 80), takeWithinMonths: Number(f.get('lieuMonths') || 12) },
           },
         }),
       t('profile.saved'),
@@ -114,6 +115,14 @@ export function PaySettings() {
         <CardBody className="grid gap-3 pt-2 text-small">
           <label className="flex items-start gap-2"><input type="checkbox" name="twoPerson" defaultChecked={s.twoPersonApproval} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('payroll.twoPerson')}</span><span className="block text-caption text-muted">{t('payroll.twoPersonHelp')}</span></span></label>
           <label className="flex items-start gap-2"><input type="checkbox" name="passkey" defaultChecked={s.requirePasskey} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('payroll.passkey')}</span><span className="block text-caption text-muted">{t('payroll.passkeyHelp')}</span></span></label>
+        </CardBody>
+      </Card>
+      <Card>
+        <CardHeader title={t('lieu.settingsTitle')} description={t('lieu.settingsHelp')} />
+        <CardBody className="grid gap-4 pt-2 text-small sm:grid-cols-2">
+          <label className="flex items-start gap-2 sm:col-span-2"><input type="checkbox" name="lieuOn" defaultChecked={s.lieu?.enabled ?? false} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('lieu.settingsOn')}</span><span className="block text-caption text-muted">{t('lieu.settingsOnHelp')}</span></span></label>
+          <Field label={t('lieu.cap')} hint={t('lieu.capHint')}>{(p) => <Input {...p} name="lieuCap" type="number" min={1} max={1000} step={1} defaultValue={s.lieu?.capHours ?? 80} disabled={!editable} />}</Field>
+          <Field label={t('lieu.months')} hint={t('lieu.monthsHint')}>{(p) => <Input {...p} name="lieuMonths" type="number" min={1} max={36} step={1} defaultValue={s.lieu?.takeWithinMonths ?? 12} disabled={!editable} />}</Field>
         </CardBody>
       </Card>
       {editable ? <div><Button type="submit" loading={busy === 'save'}>{t('common.save')}</Button></div> : null}

@@ -474,7 +474,8 @@
       "SICK": "Sick day",
       "PROTECTED_LEAVE": "Protected leave (family, bereavement, jury duty…)",
       "UNPAID_PERSONAL": "Unpaid personal day",
-      "OTHER": "Other"
+      "OTHER": "Other",
+      "LIEU": "Time in lieu (banked overtime)"
     },
     "protectedHint": "You're entitled to this leave under employment standards. You don't need to share medical details.",
     "partOfDay": "Only part of a day",
@@ -494,7 +495,8 @@
       "APPROVED": "Approved",
       "DENIED": "Declined",
       "CANCELLED": "Withdrawn"
-    }
+    },
+    "lieuHint": "You can ask for up to {{n}} hours."
   },
   "availability": {
     "title": "Availability",
@@ -1037,7 +1039,10 @@
       "STAT_WORKED": "Worked on a statutory holiday",
       "STAT_HOLIDAY_PAY": "Statutory holiday pay",
       "SHIFT_PREMIUM": "Shift premium",
-      "VACATION_PAY": "Vacation pay"
+      "VACATION_PAY": "Vacation pay",
+      "LIEU_TAKEN": "Time in lieu taken",
+      "LIEU_PAYOUT": "Banked time paid out",
+      "SALARY": "Salary"
     },
     "d": {
       "cpp": "CPP contributions",
@@ -1363,7 +1368,8 @@
         "OTHER_EARNING": "Other earning",
         "REIMBURSEMENT": "Expense reimbursement (not taxed)",
         "RECOVERY": "Recover an overpayment",
-        "OTHER_DEDUCTION": "Other deduction"
+        "OTHER_DEDUCTION": "Other deduction",
+        "LIEU_PAYOUT": "Banked time payout"
       }
     },
     "salary": {
@@ -4567,7 +4573,11 @@
     "NO_HOURS": "No approved hours in this period. Approve punches first, then recalculate.",
     "ADP_COMPANY_CODE": "Enter your three-character ADP company code above.",
     "DEDUCTION_WITHOUT_PAY": "{{name}} has a one-time deduction but no pay in this run; it was left out. Add it to a run where they’re paid.",
-    "OTHER_DEPARTMENT_HOURS": "{{name}} also worked in another department this period. Pay this period in one city-wide run, so tax, CPP and EI are worked out once on all their pay."
+    "OTHER_DEPARTMENT_HOURS": "{{name}} also worked in another department this period. Pay this period in one city-wide run, so tax, CPP and EI are worked out once on all their pay.",
+    "LIEU_SHORT": "{{name}} is taking or being paid more banked time than they have ({{hours}} hours). Check their time-in-lieu days off and payouts.",
+    "LIEU_NO_RATE": "{{name}} has time in lieu to be paid but no hourly rate. Add their pay rate.",
+    "LIEU_EXPIRED": "{{name}} has {{hours}} hours of banked overtime older than {{months}} months. Schedule it as time off or pay it out.",
+    "LIEU_OWED": "{{name}} is leaving with {{hours}} hours of banked overtime. Pay it out on their final pay."
   },
   "documents": {
     "title": "Documents",
@@ -5064,5 +5074,50 @@
     "code": "Code",
     "confirm": "Confirm",
     "verified": "Number confirmed"
+  },
+  "lieu": {
+    "title": "Banked overtime (time in lieu)",
+    "help": "Overtime you bank is saved as paid time off at its premium: an hour at time and a half banks 1.5 hours. You can hold up to {{cap}} hours; take it within {{months}} months or it's paid out.",
+    "banking": "Banking overtime",
+    "balance": "Banked",
+    "available": "You can ask for",
+    "hours": "{{n}} h",
+    "expiring": "{{n}} hours are older than {{months}} months. Book them as time off, or they'll be paid out.",
+    "startBanking": "Bank my overtime instead of being paid",
+    "stopBanking": "Pay my overtime instead",
+    "nowBanking": "Your overtime will be banked from the next pay",
+    "nowPaid": "Your overtime will be paid from the next pay",
+    "agreeTitle": "Bank overtime as time off?",
+    "agreeText": "From your next pay, overtime is banked as paid time off at its premium instead of being paid, up to {{cap}} hours; anything beyond that is paid. Book it on the Time off screen. Time not taken within {{months}} months, and anything left when you leave, is paid out at your regular rate. You can change your mind for future overtime at any time.",
+    "agree": "I agree, bank my overtime",
+    "kinds": {
+      "BANKED": "Overtime banked",
+      "TAKEN": "Time off taken",
+      "PAID_OUT": "Paid out",
+      "ADJUSTED": "Correction by HR"
+    },
+    "hrTitle": "Banked overtime",
+    "hrHelp": "People who bank overtime, and their balances. Up to {{cap}} hours each; time older than {{months}} months is flagged on pay runs.",
+    "hrOff": "Time in lieu is turned off in payroll settings. Existing balances are below.",
+    "nobody": "Nobody banks overtime yet.",
+    "person": "Person",
+    "tooOld": "Too old",
+    "adjust": "Correct",
+    "adjustTitle": "Correct {{name}}'s banked time",
+    "adjustHours": "Hours to add or remove",
+    "adjustHoursHint": "Use a minus sign to remove, e.g. -4.",
+    "reason": "Reason",
+    "adjusted": "Banked time corrected",
+    "payoutHint": "To pay banked time out, add “Banked time payout” to a draft pay run.",
+    "settingsTitle": "Time in lieu",
+    "settingsHelp": "Let people bank overtime as paid time off instead of being paid for it (where your collective agreement or employment standards allow).",
+    "settingsOn": "Allow people to bank overtime",
+    "settingsOnHelp": "Each person chooses for themselves on their pay screen; their agreement is recorded.",
+    "cap": "Most hours a person may hold",
+    "capHint": "Overtime beyond this is paid.",
+    "months": "Take it within (months)",
+    "monthsHint": "Ontario's standard is 3 months, or 12 by written agreement.",
+    "payoutHours": "Banked hours to pay out",
+    "payoutHoursHint": "Paid at their regular rate on the pay date."
   }
 }

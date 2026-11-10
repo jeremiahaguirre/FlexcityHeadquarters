@@ -7,6 +7,7 @@ import { type ReactNode, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GrievancesPanel } from '@/components/hr/Grievances';
 import { LeavePanel } from '@/components/hr/LeaveBalances';
+import { LieuBalances } from '@/components/payroll/BankedTime';
 import { OffboardingPanel } from '@/components/hr/Offboarding';
 import { ReviewsPanel } from '@/components/hr/Reviews';
 import { Card } from '@/components/ui/Card';
@@ -41,7 +42,7 @@ function HrInner() {
     <div className="grid gap-6">
       {tab !== 'overview' ? <PageHeader title={t('hr.title')} description={t('hr.description')} /> : null}
       {tab !== 'overview' ? tabs : null}
-      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <LeavePanel canEdit /> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
+      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <div className="grid gap-6"><LeavePanel canEdit /><LieuBalances /></div> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { type Payment, buildCpa005 } from './cpa005.js';
 import { runPayroll } from './payrollRun.js';
 import { type Deductions, type YearToDate, calculateDeductions, calculateQuebecDeductions } from './tax.js';
 import { loadTaxTables } from './taxTables.js';
+import { banks as lieuBanksOf, bankOvertime, expiredHours, lieuPolicy, regularRate, type StatementLieu } from './lieu.js';
 import { withBonusMethod } from './lumpSum.js';
 import { type Issue, IssueSet, issue } from './issues.js';
 
@@ -60,6 +61,8 @@ export interface PayrollSettings {
   payrollProvider?: import('./providers.js').ProviderSettings;
   /** Host-to-host connection to the city's bank. */
   bank?: BankLink;
+  /** Time in lieu (lieu.ts): whether people may bank overtime, the most they may hold, how long they may keep it. */
+  lieu?: { enabled?: boolean; capHours?: number; takeWithinMonths?: number };
 }
 
 export const readSettings = (raw: unknown): PayrollSettings => (raw && typeof raw === 'object' ? (raw as PayrollSettings) : {});
@@ -116,7 +119,7 @@ export interface RunInput {
 }
 
 /** One-time items: which are taxed as a lump sum (bonus method), which as regular pay, which not at all, which come off after tax. */
-export const LUMP_SUM_KINDS = new Set(['BONUS', 'RETRO', 'VACATION_PAYOUT']);
+export const LUMP_SUM_KINDS = new Set(['BONUS', 'RETRO', 'VACATION_PAYOUT', 'LIEU_PAYOUT']);
 export const REGULAR_EARNING_KINDS = new Set(['ALLOWANCE', 'OTHER_EARNING']);
 export const REIMBURSEMENT_KINDS = new Set(['REIMBURSEMENT']);
 export const DEDUCTION_KINDS = new Set(['RECOVERY', 'OTHER_DEDUCTION']);
@@ -163,6 +166,16 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       ? []
       : await tx.salary.findMany({ where: { effectiveFrom: { lte: new Date(periodEnd) }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date(input.periodStart) } }], ...(positions ? { positionId: { in: positions } } : {}) }, orderBy: { effectiveFrom: 'asc' } });
   const adjustments = runId ? await tx.payAdjustment.findMany({ where: { payRunId: runId } }) : [];
+  // Time in lieu: approved days off from the bank that start in this period are paid here.
+  const policy = lieuPolicy(readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings));
+  let lieuOff =
+    kind === 'OFF_CYCLE'
+      ? []
+      : await tx.timeOffRequest.findMany({ where: { type: 'LIEU', status: 'APPROVED', startsAt: { gte: new Date(`${input.periodStart}T00:00:00Z`), lt: new Date(`${addDays(periodEnd, 1)}T00:00:00Z`) } }, select: { userId: true, chargedHours: true } });
+  if (positions && lieuOff.length) {
+    const inDept = new Set((await tx.userPosition.findMany({ where: { userId: { in: lieuOff.map((r) => r.userId) }, positionId: { in: positions } }, select: { userId: true } })).map((u) => u.userId));
+    lieuOff = lieuOff.filter((r) => inDept.has(r.userId));
+  }
   const orders = await tx.payDeductionOrder.findMany({ where: { startsOn: { lte: new Date(input.payDate) }, OR: [{ endsOn: null }, { endsOn: { gte: new Date(input.payDate) } }] } });
   const year = Number(input.payDate.slice(0, 4));
   const P = periodsPerYear(input.weeks);
@@ -172,7 +185,10 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   if (!tables.federal) blockers.add(issue('NO_FEDERAL_TABLE', { year }));
   else if (!tables.federal.verified) blockers.add(issue('FEDERAL_UNVERIFIED', { year }));
 
-  const runUsers = [...new Set([...results.map((r) => r.userId), ...salaries.map((x) => x.userId), ...adjustments.map((x) => x.userId)])];
+  const runUsers = [...new Set([...results.map((r) => r.userId), ...salaries.map((x) => x.userId), ...adjustments.map((x) => x.userId), ...lieuOff.map((r) => r.userId)])];
+  const lieuBanks = await lieuBanksOf(tx, runUsers, { excludeRunId: runId });
+  const bankers = new Set(policy.enabled && kind === 'REGULAR' ? (await tx.user.findMany({ where: { id: { in: runUsers }, bankOvertime: true }, select: { id: true } })).map((u) => u.id) : []);
+  const leaving = new Set((await tx.offboarding.findMany({ where: { userId: { in: runUsers }, lastDay: { lte: new Date(periodEnd) } }, select: { userId: true } })).map((o) => o.userId));
   // Someone who also worked in another department this period has to be paid in one run (city-wide), so
   // tax and CPP/EI are worked out once on all their pay, not twice on halves.
   if (kind === 'REGULAR' && input.departmentId && positions && runUsers.length) {
@@ -240,6 +256,37 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     }
     // One-time items on this run.
     const mine = adjustments.filter((x) => x.userId === userId);
+    // Time in lieu: overtime into the bank (up to the cap), days off from it paid, payouts counted.
+    const lieuBank = lieuBanks.get(userId)!;
+    const lieu: StatementLieu = { banked: 0, otHours: 0, taken: 0, paidOut: 0 };
+    if (bankers.has(userId)) {
+      const b = bankOvertime(lines, policy.capHours - lieuBank.balance);
+      lines = b.lines;
+      lieu.banked = b.banked;
+      lieu.otHours = b.otHours;
+      hours = r2(hours - b.otHours);
+    }
+    const takenHours = r2(lieuOff.filter((r) => r.userId === userId).reduce((a, r) => a + Number(r.chargedHours ?? 0), 0));
+    if (takenHours > 0) {
+      lieu.taken = takenHours;
+      // A salary already continues through days off; hourly staff are paid the hours at their regular rate.
+      if (!mySalaries.length) {
+        const mainPos = [...lines].sort((a, b) => b.hours - a.hours)[0]?.positionId ?? null;
+        const rate = await regularRate(tx, userId, periodEnd, mainPos);
+        if (rate == null) blockers.add(issue('LIEU_NO_RATE', { name: name(userId) }));
+        else {
+          lines.push({ code: 'LIEU_TAKEN', positionId: mainPos, hours: takenHours, rate, amount: r2(takenHours * rate), description: undefined });
+          hours = r2(hours + takenHours);
+        }
+      }
+    }
+    lieu.paidOut = r2(mine.filter((x) => x.kind === 'LIEU_PAYOUT').reduce((a, x) => a + Number(x.hours ?? 0), 0));
+    const used = r2(lieu.taken + lieu.paidOut);
+    if (used > r2(lieuBank.balance + lieu.banked) + 0.001) blockers.add(issue('LIEU_SHORT', { name: name(userId), hours: r2(lieuBank.balance + lieu.banked) }));
+    const stale = r2(expiredHours(lieuBank, policy, input.payDate) - used);
+    if (policy.enabled && stale > 0) warnings.add(issue('LIEU_EXPIRED', { name: name(userId), hours: stale, months: policy.takeWithinMonths }));
+    const after = r2(lieuBank.balance + lieu.banked - used);
+    if (leaving.has(userId) && after > 0) warnings.add(issue('LIEU_OWED', { name: name(userId), hours: after }));
     const amt = (k: Set<string>) => r2(mine.filter((x) => k.has(x.kind)).reduce((a, x) => a + Number(x.amount), 0));
     for (const x of mine.filter((y) => LUMP_SUM_KINDS.has(y.kind) || REGULAR_EARNING_KINDS.has(y.kind))) lines.push({ code: x.kind, positionId: x.positionId, hours: 0, rate: 0, amount: r2(Number(x.amount)), description: x.description });
     // On an off-cycle run every earning is extra to the person's usual pay: all of it by the bonus method.
@@ -330,7 +377,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       payDate: new Date(input.payDate),
       hours,
       earnings: lines,
-      deductions: { ...d, benefits, rpp, unionDues, afterTax, taxableBenefit, employerBenefits, lumpSum: lump, reimbursements, oneTimeDeductions, oneTime: mine.filter((x) => REIMBURSEMENT_KINDS.has(x.kind) || DEDUCTION_KINDS.has(x.kind)).map((x) => ({ kind: x.kind, description: x.description, amount: Number(x.amount) })), orders: orderLines } as unknown as Prisma.InputJsonValue,
+      deductions: { ...d, benefits, rpp, unionDues, afterTax, taxableBenefit, employerBenefits, lumpSum: lump, reimbursements, oneTimeDeductions, oneTime: mine.filter((x) => REIMBURSEMENT_KINDS.has(x.kind) || DEDUCTION_KINDS.has(x.kind)).map((x) => ({ kind: x.kind, description: x.description, amount: Number(x.amount) })), orders: orderLines, ...(lieu.banked || lieu.taken || lieu.paidOut ? { lieu } : {}) } as unknown as Prisma.InputJsonValue,
       gross,
       totalDeductions,
       net,

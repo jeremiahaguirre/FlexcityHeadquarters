@@ -3,7 +3,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { conflict, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
+import { banks as lieuBanks, regularRate } from '../services/payroll/lieu.js';
 import { ADJUSTMENT_KINDS, buildRun, runInput } from '../services/payroll/payRuns.js';
 import { h } from './context.js';
 
@@ -97,7 +98,7 @@ payrollFullRouter.get(
     wholeCity(a.scope);
     const payRunId = uuid.parse(req.params.id);
     const rows = await withTenant(a.tenantId, (tx) => tx.payAdjustment.findMany({ where: { payRunId }, orderBy: { createdAt: 'asc' } }));
-    res.json(rows.map((x) => ({ id: x.id, userId: x.userId, kind: x.kind, description: x.description, amount: Number(x.amount), positionId: x.positionId })));
+    res.json(rows.map((x) => ({ id: x.id, userId: x.userId, kind: x.kind, description: x.description, amount: Number(x.amount), hours: x.hours == null ? null : Number(x.hours), positionId: x.positionId })));
   }),
 );
 
@@ -108,11 +109,23 @@ payrollFullRouter.post(
     const a = authOf(req);
     wholeCity(a.scope);
     const payRunId = uuid.parse(req.params.id);
-    const b = z.object({ userId: uuid, kind: z.enum(ADJUSTMENT_KINDS), description: z.string().trim().min(2).max(120), amount: money(1_000_000), positionId: uuid.nullable().optional() }).parse(req.body);
+    const b = z
+      .object({ userId: uuid, kind: z.enum(ADJUSTMENT_KINDS), description: z.string().trim().min(2).max(120), amount: money(1_000_000).optional(), hours: z.number().positive().max(2000).optional(), positionId: uuid.nullable().optional() })
+      .refine((x) => (x.kind === 'LIEU_PAYOUT' ? x.hours != null : x.amount != null), { message: 'Give the amount (or, for banked time, the hours).', path: ['amount'] })
+      .parse(req.body);
     const run = await payrollTx(a.tenantId, async (tx) => {
       const r = await draftRun(tx, payRunId);
       await person(tx, b.userId);
-      const x = await tx.payAdjustment.create({ data: { tenantId: a.tenantId, payRunId, ...b, positionId: b.positionId ?? null, createdById: a.userId } });
+      let amount = b.amount ?? 0;
+      if (b.kind === 'LIEU_PAYOUT') {
+        // Banked time is paid at the person's regular rate on the pay date, up to what they have.
+        const bank = (await lieuBanks(tx, [b.userId])).get(b.userId)!;
+        if (b.hours! > bank.balance + 0.001) throw new HttpError(400, 'LIEU_SHORT', `They have ${bank.balance} hours banked.`, { have: bank.balance });
+        const rate = await regularRate(tx, b.userId, r.payDate.toISOString().slice(0, 10), b.positionId ?? null);
+        if (rate == null) throw badRequest('This person has no hourly rate to pay banked time at.');
+        amount = Math.round(b.hours! * rate * 100) / 100;
+      }
+      const x = await tx.payAdjustment.create({ data: { tenantId: a.tenantId, payRunId, userId: b.userId, kind: b.kind, description: b.description, amount, hours: b.kind === 'LIEU_PAYOUT' ? b.hours! : null, positionId: b.positionId ?? null, createdById: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.adjustment.add', entity: 'PayAdjustment', entityId: x.id, after: b });
       return buildRun(tx, a.tenantId, r.preparedById, runInput(r), r.id);
     });

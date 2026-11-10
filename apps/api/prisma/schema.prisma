@@ -159,6 +159,8 @@ enum TimeOffType {
   PROTECTED_LEAVE // family responsibility, bereavement, jury duty, etc.
   UNPAID_PERSONAL
   OTHER
+  /// Taken from banked overtime (time in lieu).
+  LIEU
 }
 
 enum RequestStatus {
@@ -383,6 +385,9 @@ model User {
   smsVerifiedAt    DateTime? @db.Timestamptz(3)
   /// Also text me about open shifts starting within the next 24 hours.
   smsUrgentShifts  Boolean   @default(false)
+  /// The person agreed to bank overtime as time in lieu instead of being paid for it (where the city allows it).
+  bankOvertime     Boolean   @default(false)
+  bankOvertimeAt   DateTime? @db.Timestamptz(3)
   /// The employer's HR/payroll system ID — used in payroll exports.
   employeeNumber   String?
   passwordHash     String?
@@ -2913,6 +2918,8 @@ model PayAdjustment {
   kind        String
   description String
   amount      Decimal  @db.Decimal(12, 2)
+  /// LIEU_PAYOUT: the banked hours paid out.
+  hours       Decimal? @db.Decimal(8, 2)
   positionId  String?  @db.Uuid
   createdById String   @db.Uuid
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
@@ -2984,4 +2991,19 @@ model SmsOutbox {
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, sentAt])
+}
+
+/// HR's corrections to a person's banked overtime (an opening balance, a correction). Everything else
+/// in the bank comes from approved pay runs: hours banked, taken as time off, or paid out.
+model LieuAdjustment {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  userId      String   @db.Uuid
+  /// Positive adds to the bank, negative takes away.
+  hours       Decimal  @db.Decimal(8, 2)
+  note        String
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, userId])
 }

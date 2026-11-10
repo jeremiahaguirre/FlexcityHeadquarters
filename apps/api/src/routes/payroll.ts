@@ -801,6 +801,7 @@ payrollRouter.put(
         employerAddress: z.string().trim().max(200).nullable().optional(),
         twoPersonApproval: z.boolean().optional(),
         requirePasskey: z.boolean().optional(),
+        lieu: z.object({ enabled: z.boolean(), capHours: z.number().min(1).max(1000), takeWithinMonths: z.number().int().min(1).max(36) }).optional(),
       })
       .parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {

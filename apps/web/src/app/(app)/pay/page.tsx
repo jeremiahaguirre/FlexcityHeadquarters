@@ -19,6 +19,7 @@ import { formatDate, formatMoney } from '@/lib/format';
 import type { MyPay, Statement } from '@/lib/payroll';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { AddressFields, readAddress } from '@/components/payroll/AddressFields';
+import { MyBankedTime } from '@/components/payroll/BankedTime';
 
 export default function MyPayPage() {
   return (
@@ -70,6 +71,7 @@ function MyPayInner() {
         </Card>
         <div className="grid content-start gap-6">
           <DirectDeposit data={d} reload={data.reload} />
+          <MyBankedTime />
           <MyBenefits />
           <TaxCredits data={d} reload={data.reload} />
         </div>
