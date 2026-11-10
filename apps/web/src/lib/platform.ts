@@ -4,14 +4,14 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from './apiError';
 import { DEMO } from './demo';
+import { demoPlatformApi } from './demoApi';
 
 /**
  * FH Dev console client. The session is an HTTP-only cookie the browser sends
  * by itself; the x-fh-platform header is the API's guard against cross-site requests.
  */
 export async function papi<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
-  // The Dev console is FH's own tool: it isn't part of the public demo.
-  if (DEMO) throw new ApiError(404, 'NOT_IN_DEMO', 'Not available in the demo.');
+  if (DEMO) return demoPlatformApi<T>(path, init);
   const res = await fetch(`/api/platform${path}`, {
     method: init.method ?? 'GET',
     credentials: 'include',
