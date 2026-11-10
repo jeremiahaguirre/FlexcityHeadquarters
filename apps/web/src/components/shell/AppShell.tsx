@@ -1,6 +1,6 @@
 'use client';
 
-import { Lock, MoreHorizontal } from 'lucide-react';
+import { Lock, MoreHorizontal, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -21,9 +21,9 @@ import { PunchControl } from '@/components/punch/PunchControl';
 import { PunchProvider } from '@/components/punch/PunchProvider';
 import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
-import { ManageNav, SECTION_THRESHOLD } from './ManageNav';
+import { CommandMenu, type Destination } from './CommandMenu';
+import { SideNav } from './SideNav';
 
-const GROUPS: Array<NavItem['group']> = ['mine', 'deck', 'manage', 'union'];
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -36,6 +36,10 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   const [moreOpen, setMoreOpen] = useState(false);
   const items = visibleNav(can, me?.hiddenMenu ?? []);
   const { tabs, more } = phoneTabs(items);
+  const destinations: Destination[] = [
+    ...items.map((n) => ({ href: n.href, label: t(`nav.${n.key}`), group: n.section ? t(`navSections.${n.section}`) : t(`navGroups.${n.group}`), icon: n.icon })),
+    { href: '/profile', label: t('jump.profile'), group: t('navGroups.mine'), icon: UserRound },
+  ];
 
   const link = (n: NavItem, onClick?: () => void) => {
     const active = isActive(pathname, n.href);
@@ -86,26 +90,8 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
             <CityBrand org={organization} showName={!!organization.logoUrl} />
           </div>
         </div>
-        <nav aria-label={t('shell.mainNav')} className="flex-1 space-y-6 overflow-y-auto px-3 pb-6">
-          {GROUPS.map((g) => {
-            const list = items.filter((n) => n.group === g);
-            const locked = (me?.lockedMenu ?? []).filter((l) => l.group === g);
-            if (!list.length) return null;
-            const sectioned = g === 'manage' && list.length + locked.length >= SECTION_THRESHOLD;
-            return (
-              <div key={g}>
-                <p className="mb-1.5 px-3 text-label uppercase text-muted/80">{t(`navGroups.${g}`)}</p>
-                {sectioned ? (
-                  <ManageNav items={list} locked={locked} activeHref={list.find((n) => isActive(pathname, n.href))?.href ?? null} link={(n) => link(n)} lockedLink={lockedLink} />
-                ) : (
-                  <div className="grid gap-0.5">
-                    {list.map((n) => link(n))}
-                    {locked.map((l) => lockedLink(l))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <nav aria-label={t('shell.mainNav')} className="flex-1 overflow-y-auto px-3 pb-6">
+          <SideNav items={items} locked={me?.lockedMenu ?? []} activeHref={items.find((n) => isActive(pathname, n.href))?.href ?? null} link={(n) => link(n)} lockedLink={lockedLink} />
         </nav>
         <div className="border-t border-line p-3">
           <UserMenu placement="up" />
@@ -119,8 +105,9 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
             <Link href="/" className="min-w-0 rounded-xl md:hidden" aria-label={`FlexcityHeadquarters · ${organization.name}`}>
               <CoBrand org={organization} logoSize={30} citySize="sm" />
             </Link>
-            <span className="hidden md:block" />
+            <div className="hidden flex-1 md:block"><CommandMenu destinations={destinations} /></div>
             <div className="flex items-center gap-1.5">
+              <div className="md:hidden"><CommandMenu destinations={destinations} compact /></div>
               <PunchControl />
               <NotificationBell />
               <div className="md:hidden">

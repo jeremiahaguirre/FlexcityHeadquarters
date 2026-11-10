@@ -1575,7 +1575,13 @@
     "hosHelp": "Vide = aucune limite. Un quart qui dépasserait une limite ne peut pas être attribué ni réclamé.",
     "hosDaily": "Heures max par jour",
     "hosRest": "Heures de repos min entre",
-    "hosWeek": "Heures max sur 7 jours"
+    "hosWeek": "Heures max sur 7 jours",
+    "railGroups": {
+      "setup": "Configuration",
+      "access": "Accès",
+      "people": "Personnel",
+      "money": "Facturation"
+    }
   },
   "passkeys": {
     "title": "Clés d'accès",
@@ -2349,7 +2355,12 @@
     "affected_one": "{{count}} personne de ce poste ne peut pas être à l’horaire tant que les RH ne l’ont pas consigné.",
     "affected_other": "{{count}} personnes de ce poste ne peuvent pas être à l’horaire tant que les RH ne l’ont pas consigné.",
     "othersOpen_one": "Les RH ou votre superviseur ont encore {{count}} élément à terminer.",
-    "othersOpen_other": "Les RH ou votre superviseur ont encore {{count}} éléments à terminer."
+    "othersOpen_other": "Les RH ou votre superviseur ont encore {{count}} éléments à terminer.",
+    "todayTitle_one": "{{count}} élément d’intégration à terminer",
+    "todayTitle_other": "{{count}} éléments d’intégration à terminer",
+    "progress": "{{done}} sur {{total}} terminés",
+    "signNext": "Signer le suivant",
+    "seeAll": "Tout voir"
   },
   "overtime": {
     "title": "Heures supplémentaires",
@@ -3447,7 +3458,8 @@
     "attest": "J’ai comparé chaque nombre de cette table avec la source ci-dessus.",
     "verify": "Marquer comme vérifiée",
     "verifiedDone": "Vérifiée. Les paies peuvent maintenant l’utiliser.",
-    "verifiedBy": "Vérifiée par {{who}} le {{when}}."
+    "verifiedBy": "Vérifiée par {{who}} le {{when}}.",
+    "navShort": "Tables"
   },
   "benefits": {
     "title": "Avantages sociaux",
@@ -4023,5 +4035,12 @@
     "safety": "Santé et sécurité",
     "programs": "Programmes et membres",
     "organization": "Organisation"
+  },
+  "jump": {
+    "open": "Aller à un écran",
+    "placeholder": "Aller à…",
+    "title": "Aller à",
+    "none": "Aucun écran ne correspond.",
+    "profile": "Mon profil"
   }
 }

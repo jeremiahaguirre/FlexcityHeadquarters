@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Plus } from 'lucide-react';
+import { Building2, ChevronRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
@@ -78,17 +78,18 @@ export default function CitiesPage() {
       ) : (
         <Card className="divide-y divide-line">
           {shown.map((c) => (
-            <Link key={c.id} href={`/platform/city?id=${c.id}`} className="flex flex-wrap items-center gap-4 px-4 py-4 hover:bg-surface/60">
-              <div className="grid h-12 w-28 shrink-0 place-items-center rounded-xl bg-surface px-2">
-                {c.logoUrl ? <CityBrand org={c} size="sm" /> : <Building2 className="h-6 w-6 text-muted" aria-hidden="true" />}
+            <Link key={c.id} href={`/platform/city?id=${c.id}`} className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-surface/60 sm:gap-4">
+              <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface sm:w-24 sm:px-2">
+                {c.logoUrl ? <CityBrand org={c} size="sm" /> : <Building2 className="h-5 w-5 text-muted" aria-hidden="true" />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-body-strong">{c.name}</p>
+                <p className="truncate text-body-strong">{c.name}</p>
                 <p className="truncate text-small text-muted">
-                  {c.subdomain} · {t('platform.staffCount', { count: c.staff })} · {t('platform.facilityCount', { count: c.facilities })} · {t('platform.since', { date: formatDate(c.createdAt, lng, 'dated') })}
+                  {t('platform.staffCount', { count: c.staff })} · {t('platform.facilityCount', { count: c.facilities })}<span className="hidden sm:inline"> · {c.subdomain} · {t('platform.since', { date: formatDate(c.createdAt, lng, 'dated') })}</span>
                 </p>
               </div>
-              <StatusPill tone="brand">{t('platform.featuresOn', { on: c.featuresOn, total: c.featuresTotal })}</StatusPill>
+              <span className="hidden text-caption text-muted sm:inline">{t('platform.featuresOn', { on: c.featuresOn, total: c.featuresTotal })}</span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
           ))}
         </Card>

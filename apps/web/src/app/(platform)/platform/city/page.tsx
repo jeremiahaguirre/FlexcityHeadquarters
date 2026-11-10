@@ -15,22 +15,27 @@ import { ImportPanel } from '@/components/platform/ImportPanel';
 import { OrganizationPanel } from '@/components/platform/OrganizationPanel';
 import { PositionsPanel } from '@/components/platform/PositionsPanel';
 import { ErrorNotice } from '@/components/ui/ErrorNotice';
-import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { RoleEditor } from '@/components/roles/RoleEditor';
 import { type CityDetail, papi, usePlatformQuery } from '@/lib/platform';
 import { DepartmentsEditor } from '@/components/DepartmentsEditor';
+import { Select } from '@/components/ui/Field';
 
 type Tab = 'org' | 'features' | 'access' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing';
-const TABS: Tab[] = ['org', 'features', 'access', 'facilities', 'pools', 'positions', 'roles', 'import', 'billing'];
+const SECTIONS: Array<{ key: string; tabs: Tab[] }> = [
+  { key: 'setup', tabs: ['org', 'facilities', 'pools', 'positions'] },
+  { key: 'access', tabs: ['features', 'access', 'roles'] },
+  { key: 'people', tabs: ['import'] },
+  { key: 'money', tabs: ['billing'] },
+];
 
 function City() {
   const { t } = useTranslation();
   const params = useSearchParams();
   const id = params.get('id') ?? '';
   const city = usePlatformQuery<CityDetail>(id ? `/tenants/${id}` : null);
-  const [tab, setTab] = useState<Tab>(() => (TABS.includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'org'));
+  const [tab, setTab] = useState<Tab>(() => (SECTIONS.flatMap((g) => g.tabs).includes(params.get('tab') as Tab) ? (params.get('tab') as Tab) : 'org'));
   if (city.error) return <ErrorNotice onRetry={city.reload} />;
   if (!city.data) return <Skeleton className="h-96" />;
   const c = city.data;
@@ -58,10 +63,34 @@ function City() {
           {c.organization.signInUrl.replace(/^https?:\/\//, '').replace(/\/login$/, '')}
         </a>
       </header>
-      <div className="overflow-x-auto pb-1">
-        <Segmented label={t('settings.section')} value={tab} onChange={setTab} options={TABS.map((x) => ({ value: x, label: t(`platform.tabs.${x}`) }))} />
+      {/* Phones: one menu. Wider screens: a settings rail beside the page, grouped. */}
+      <div className="lg:hidden">
+        <Select aria-label={t('settings.section')} value={tab} onChange={(e) => setTab(e.target.value as Tab)}>
+          {SECTIONS.map((g) => (
+            <optgroup key={g.key} label={t(`platform.railGroups.${g.key}`)}>
+              {g.tabs.map((x) => <option key={x} value={x}>{t(`platform.tabs.${x}`)}</option>)}
+            </optgroup>
+          ))}
+        </Select>
       </div>
-      <div className="max-w-4xl">
+      <div className="grid gap-8 lg:grid-cols-[12rem_minmax(0,1fr)]">
+      <nav aria-label={t('settings.section')} className="hidden lg:block">
+        <div className="sticky top-24 grid gap-5">
+          {SECTIONS.map((g) => (
+            <div key={g.key}>
+              <p className="mb-1 px-3 text-label uppercase text-muted/80">{t(`platform.railGroups.${g.key}`)}</p>
+              <div className="grid gap-0.5">
+                {g.tabs.map((x) => (
+                  <button key={x} type="button" aria-current={tab === x ? 'page' : undefined} onClick={() => setTab(x)} className={`rounded-lg px-3 py-1.5 text-left text-small font-semibold transition-colors ${tab === x ? 'bg-brand/10 text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>
+                    {t(`platform.tabs.${x}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </nav>
+      <div className="min-w-0 max-w-4xl">
         {tab === 'org' ? <OrganizationPanel {...props} /> : null}
         {tab === 'features' ? <FeaturesPanel {...props} /> : null}
         {tab === 'access' ? <AccessPanel {...props} /> : null}
@@ -110,6 +139,7 @@ function City() {
             <PadPanel id={id} payor={c.organization.name} />
           </div>
         ) : null}
+      </div>
       </div>
     </div>
   );

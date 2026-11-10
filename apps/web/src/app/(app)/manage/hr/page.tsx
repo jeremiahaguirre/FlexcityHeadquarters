@@ -10,6 +10,7 @@ import { LeavePanel } from '@/components/hr/LeaveBalances';
 import { OffboardingPanel } from '@/components/hr/Offboarding';
 import { ReviewsPanel } from '@/components/hr/Reviews';
 import { Card } from '@/components/ui/Card';
+import { Hero } from '@/components/ui/Hero';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -35,11 +36,12 @@ function HrInner() {
   const raw = params.get('tab');
   const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : 'overview';
   const setTab = (v: Tab) => router.replace(v === 'overview' ? '/manage/hr' : `/manage/hr?tab=${v}`, { scroll: false });
+  const tabs = <div className="overflow-x-auto"><Segmented label={t('hr.title')} value={tab} onChange={setTab} options={TABS.map((v) => ({ value: v, label: t(`hr.tabs.${v}`) }))} /></div>;
   return (
     <div className="grid gap-6">
-      <PageHeader title={t('hr.title')} description={tab === 'overview' ? undefined : t('hr.description')} />
-      <div className="overflow-x-auto"><Segmented label={t('hr.title')} value={tab} onChange={setTab} options={TABS.map((v) => ({ value: v, label: t(`hr.tabs.${v}`) }))} /></div>
-      {tab === 'overview' ? <Overview onTab={setTab} /> : tab === 'leave' ? <LeavePanel canEdit /> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
+      {tab !== 'overview' ? <PageHeader title={t('hr.title')} description={t('hr.description')} /> : null}
+      {tab !== 'overview' ? tabs : null}
+      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <LeavePanel canEdit /> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
     </div>
   );
 }
@@ -48,7 +50,7 @@ function HrInner() {
  * HR's home. Calm by default: what needs action first (and only that), four
  * numbers, then a quiet directory of every HR area.
  */
-function Overview({ onTab }: { onTab: (t: Tab) => void }) {
+function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const { can, me } = useSession();
@@ -76,20 +78,22 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
   const go = (a: Area, children: ReactNode, className: string) =>
     a.href ? <Link href={a.href} className={className}>{children}</Link> : <button type="button" onClick={() => onTab(a.tab!)} className={`${className} w-full text-left`}>{children}</button>;
   const numbers = [
-    { label: t('hr.num.staff'), value: d.staff },
-    { label: t('hr.num.enrolled'), value: d.enrolled },
-    { label: t('hr.num.reviews'), value: d.reviewsOpen },
-    { label: t('hr.num.jobs'), value: d.openJobs },
+    { label: t('hr.num.staff'), value: d.staff, icon: Users, tint: 'bg-brand/10 text-brand-text' },
+    { label: t('hr.num.enrolled'), value: d.enrolled, icon: HeartPulse, tint: 'bg-new-bg text-new' },
+    { label: t('hr.num.reviews'), value: d.reviewsOpen, icon: ClipboardCheck, tint: 'bg-ok-bg text-ok' },
+    { label: t('hr.num.jobs'), value: d.openJobs, icon: Briefcase, tint: 'bg-surface text-ink' },
   ];
+  // A gentle colour per area so the directory isn't a wall of grey icons.
+  const TINTS = ['bg-brand/10 text-brand-text', 'bg-new-bg text-new', 'bg-ok-bg text-ok', 'bg-surface text-ink'];
   return (
     <div className="grid gap-8">
       <section aria-labelledby="hr-today" className="grid gap-4">
-        <div>
-          <h2 id="hr-today" className="text-heading">{greeting}{me?.firstName ? `, ${me.firstName}` : ''}</h2>
-          <p className="text-body text-muted">
-            {new Intl.DateTimeFormat(lng, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())} · {todo.length ? t('hr.attentionCount', { count: todo.length }) : t('hr.allClear')}
-          </p>
-        </div>
+        <Hero
+          eyebrow={new Intl.DateTimeFormat(lng, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}
+          title={<span id="hr-today">{greeting}{me?.firstName ? `, ${me.firstName}` : ''}</span>}
+          aside={<span className={`rounded-full px-3 py-1.5 text-small font-semibold ${todo.length ? 'bg-warn-bg text-warn' : 'bg-ok-bg text-ok'}`}>{todo.length ? t('hr.attentionCount', { count: todo.length }) : t('hr.allClear')}</span>}
+        />
+        {tabs}
         {todo.length ? (
           <Card>
             <ul className="divide-y divide-line">
@@ -122,9 +126,12 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
       <section aria-label={t('hr.numbers')}>
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-4">
           {numbers.map((n) => (
-            <div key={n.label} className="bg-panel px-4 py-4">
-              <dt className="text-caption text-muted">{n.label}</dt>
-              <dd className="mt-1 text-stat tabular-nums">{new Intl.NumberFormat(lng).format(n.value)}</dd>
+            <div key={n.label} className="flex items-center gap-3 bg-panel px-4 py-4">
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${n.tint}`}><n.icon className="h-5 w-5" aria-hidden="true" /></span>
+              <div className="min-w-0">
+                <dt className="truncate text-caption text-muted">{n.label}</dt>
+                <dd className="text-heading tabular-nums">{new Intl.NumberFormat(lng).format(n.value)}</dd>
+              </div>
             </div>
           ))}
         </dl>
@@ -138,7 +145,7 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
               {go(
                 a,
                 <>
-                  <a.icon className="h-[18px] w-[18px] shrink-0 text-muted group-hover:text-brand-text" aria-hidden="true" />
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${TINTS[areas.indexOf(a) % TINTS.length]}`}><a.icon className="h-4 w-4" aria-hidden="true" /></span>
                   <span className="flex-1 text-small font-semibold">{t(`hr.areas.${a.key}`)}</span>
                   {a.todo ? <span className="h-2 w-2 rounded-full bg-warn" aria-label={t('hr.needsAttention')} /> : null}
                 </>,

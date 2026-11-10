@@ -19,7 +19,7 @@ export function MyStation() {
     <div className="flex items-center gap-3 rounded-2xl border border-brand/30 bg-brand/5 px-4 py-3">
       <Armchair className="h-6 w-6 shrink-0 text-brand-text" aria-hidden="true" />
       <p className="text-small">
-        {d.station && d.dueAt ? t('deck.yourStation', { station: d.station, time: time(d.dueAt) }) : t('deck.onBreak')}
+        {d.station && d.dueAt ? t('deck.yourStation', { station: d.station, time: time(d.dueAt) }).replace(/\.\.$/, '.') : t('deck.onBreak')}
       </p>
     </div>
   );

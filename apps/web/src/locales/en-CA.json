@@ -1575,7 +1575,13 @@
     "hosHelp": "Blank = no limit. A shift that would break a limit can't be booked or claimed.",
     "hosDaily": "Max hours a day",
     "hosRest": "Min hours off between",
-    "hosWeek": "Max hours in 7 days"
+    "hosWeek": "Max hours in 7 days",
+    "railGroups": {
+      "setup": "Set-up",
+      "access": "Access",
+      "people": "People",
+      "money": "Money"
+    }
   },
   "passkeys": {
     "title": "Passkeys",
@@ -2349,7 +2355,12 @@
     "affected_one": "{{count}} person in this position can’t be scheduled until HR records it.",
     "affected_other": "{{count}} people in this position can’t be scheduled until HR records it.",
     "othersOpen_one": "HR or your supervisor has {{count}} more item to finish.",
-    "othersOpen_other": "HR or your supervisor have {{count}} more items to finish."
+    "othersOpen_other": "HR or your supervisor have {{count}} more items to finish.",
+    "todayTitle_one": "{{count}} onboarding item to finish",
+    "todayTitle_other": "{{count}} onboarding items to finish",
+    "progress": "{{done}} of {{total}} done",
+    "signNext": "Sign the next one",
+    "seeAll": "See all"
   },
   "overtime": {
     "title": "Overtime",
@@ -3447,7 +3458,8 @@
     "attest": "I compared every number in this table with the source above.",
     "verify": "Mark verified",
     "verifiedDone": "Verified. Pay runs can now use it.",
-    "verifiedBy": "Verified by {{who}} on {{when}}."
+    "verifiedBy": "Verified by {{who}} on {{when}}.",
+    "navShort": "Tax tables"
   },
   "benefits": {
     "title": "Benefits",
@@ -4023,5 +4035,12 @@
     "safety": "Health and safety",
     "programs": "Programs and members",
     "organization": "Organization"
+  },
+  "jump": {
+    "open": "Jump to a screen",
+    "placeholder": "Jump to…",
+    "title": "Jump to",
+    "none": "No screen matches that.",
+    "profile": "My profile"
   }
 }

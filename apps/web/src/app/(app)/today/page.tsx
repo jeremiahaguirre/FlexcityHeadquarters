@@ -3,14 +3,14 @@
 import { MyStation } from '@/components/punch/MyStation';
 import { MyCare } from '@/components/people/MyCare';
 import { MyOnboarding } from '@/components/people/MyOnboarding';
-import { ArrowRight, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
+import { ArrowRight, CalendarOff, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
 import { ButtonLink } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { EmptyState } from '@/components/ui/EmptyState';
+import { Hero } from '@/components/ui/Hero';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { formatDate, formatTime } from '@/lib/format';
@@ -60,12 +60,7 @@ export default function TodayPage() {
 
   return (
     <div className="grid gap-8">
-      <header>
-        <p className="text-label uppercase text-muted">{formatDate(new Date().toISOString(), i18n.language, 'long')}</p>
-        <h1 className="mt-1 text-title">
-          {greeting}, {me?.firstName}
-        </h1>
-      </header>
+      <Hero eyebrow={formatDate(new Date().toISOString(), i18n.language, 'long')} title={`${greeting}, ${me?.firstName ?? ''}`} />
       <MyCare />
       <MyStation />
       <MyOnboarding compact />
@@ -97,9 +92,14 @@ export default function TodayPage() {
             }
           />
         ) : (
-          <EmptyState icon={Repeat} title={t('today.noShiftsTitle')} action={can('shiftboard.claim') ? <ButtonLink href="/board">{t('today.findShift')}</ButtonLink> : undefined}>
-            {t('today.noShiftsBody')}
-          </EmptyState>
+          <Card className="flex flex-wrap items-center gap-4 p-4">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface text-muted"><CalendarOff className="h-5 w-5" aria-hidden="true" /></span>
+            <div className="min-w-0 flex-1">
+              <p className="text-body-strong">{t('today.noShiftsTitle')}</p>
+              <p className="text-small text-muted">{t('today.noShiftsBody')}</p>
+            </div>
+            {can('shiftboard.claim') ? <ButtonLink href="/board" size="sm" variant="secondary">{t('today.findShift')}</ButtonLink> : null}
+          </Card>
         )}
       </section>
 

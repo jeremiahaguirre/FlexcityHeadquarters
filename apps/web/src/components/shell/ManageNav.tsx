@@ -19,7 +19,7 @@ function readOpen(): ManageSection[] {
   }
 }
 
-type Locked = { href: string; key: string; addOn: string };
+type Locked = { href: string; key: string; addOn: string; group?: string };
 
 /**
  * The "Manage" part of the sidebar as collapsible sections. The section with

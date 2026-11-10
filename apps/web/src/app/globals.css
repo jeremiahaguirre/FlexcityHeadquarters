@@ -8,13 +8,14 @@
  * Balance: soft neutrals ~70%, teal ~20%, accents < 10% and only with a meaning.
  */
 :root {
-  --page: 243 247 246;        /* app background */
-  --panel: 255 255 255;       /* cards, sheets */
-  --surface: 234 241 239;     /* subtle fills: hover, table headers */
+  /* Softer than paper white: a muted sage ground with off-white cards, easier on the eyes all shift long. */
+  --page: 226 233 231;        /* app background */
+  --panel: 245 248 247;       /* cards, sheets (not pure white) */
+  --surface: 216 225 223;     /* subtle fills: hover, table headers */
   --ink: 11 31 34;
-  --muted: 86 105 107;        /* 5.4:1 on page */
-  --line: 217 227 225;
-  --brand-text: 15 118 110;   /* teal text */
+  --muted: 74 92 94;          /* 5.2:1 on page, 4.8:1 on surface */
+  --line: 201 213 210;
+  --brand-text: 12 106 99;    /* teal text: 5.0:1 on page */
   --ok: 77 124 15;            /* chartreuse text: confirmed, open */
   --ok-bg: 241 251 211;
   --warn: 180 35 24;          /* vermilion text: needs attention */
@@ -67,7 +68,12 @@
 }
 
 body {
-  background: rgb(var(--page));
+  /* A soft ground with a little colour in it: a teal glow top right, a chartreuse one bottom left. */
+  background-color: rgb(var(--page));
+  background-image:
+    radial-gradient(60rem 28rem at 85% -6rem, rgb(var(--brand) / 0.10), transparent 70%),
+    radial-gradient(48rem 24rem at -10% 110%, rgb(var(--chartreuse) / 0.14), transparent 70%);
+  background-attachment: fixed;
   color: rgb(var(--ink));
   -webkit-tap-highlight-color: transparent;
 }
