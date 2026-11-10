@@ -47,8 +47,10 @@ async function assertRunInScope(tx: Parameters<Parameters<typeof withTenant>[1]>
 
 const settingsOf = async (tx: Parameters<Parameters<typeof withTenant>[1]>[0]) => readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings);
 
-const runView = (r: { id: string; departmentId: string | null; periodStart: Date; periodEnd: Date; payDate: Date; status: string; totals: unknown; blockers: unknown; warnings: unknown; preparedById: string; approvedById: string | null; approvedAt: Date | null; paidAt: Date | null; fileCreationNumber: number | null; depositFileSha256: string | null; createdAt: Date }) => ({
+const runView = (r: { id: string; kind?: string; note?: string | null; departmentId: string | null; periodStart: Date; periodEnd: Date; payDate: Date; status: string; totals: unknown; blockers: unknown; warnings: unknown; preparedById: string; approvedById: string | null; approvedAt: Date | null; paidAt: Date | null; fileCreationNumber: number | null; depositFileSha256: string | null; createdAt: Date }) => ({
   id: r.id,
+  kind: r.kind ?? 'REGULAR',
+  note: r.note ?? null,
   departmentId: r.departmentId,
   periodStart: r.periodStart.toISOString().slice(0, 10),
   periodEnd: r.periodEnd.toISOString().slice(0, 10),
@@ -90,7 +92,7 @@ payrollRouter.get(
   }),
 );
 
-const runBody = z.object({ departmentId: uuid.nullable(), periodStart: isoDate, weeks: z.number().int().min(1).max(5), payDate: isoDate });
+const runBody = z.object({ departmentId: uuid.nullable(), periodStart: isoDate, weeks: z.number().int().min(1).max(5), payDate: isoDate, kind: z.enum(['REGULAR', 'OFF_CYCLE']).default('REGULAR'), note: z.string().trim().max(200).nullable().optional() });
 
 payrollRouter.post(
   '/payroll/runs',

@@ -449,3 +449,24 @@ describe('Union Hub deployment settings', () => {
     vi.resetModules();
   });
 });
+
+describe('bonus method for one-time payments', async () => {
+  const { withBonusMethod } = await import('../../src/services/payroll/lumpSum.js');
+  // A flat 20% tax above $500 a period, and 5% CPP, to see the method's arithmetic.
+  const calc = (g: number) => {
+    const tax = Math.max(0, g - 500) * 0.2;
+    return { cpp: g * 0.05, cpp2: 0, ei: 0, federalTax: tax, provincialTax: 0, extraTax: 0, total: g * 0.05 + tax, employerCpp: g * 0.05, employerEi: 0, pensionable: g, insurable: g };
+  };
+  it('taxes the bonus as if spread over the year, and CPP on the whole amount', () => {
+    const d = withBonusMethod(calc, 2000, 2600, 26);
+    // P × (tax(2000 + 100) − tax(2000)) = 26 × 20 = 520, plus the regular 300.
+    expect(d.federalTax).toBeCloseTo(820, 2);
+    expect(d.cpp).toBeCloseTo(230, 2);
+    // Taxing it as one big pay would have been 20% of 2,600 more as well here, but with brackets it'd climb; never less than the regular pay's tax.
+    expect(d.federalTax).toBeGreaterThan(calc(2000).federalTax);
+  });
+  it('on an off-cycle run, uses the last regular pay as the estimate', () => {
+    const d = withBonusMethod(calc, 0, 1300, 26, 2000);
+    expect(d.federalTax).toBeCloseTo(26 * (calc(2050).federalTax - calc(2000).federalTax), 2);
+  });
+});

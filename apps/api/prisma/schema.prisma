@@ -2288,6 +2288,10 @@ model PayRun {
   warnings           Json              @default("[]")
   fileCreationNumber Int?
   depositFileSha256  String?
+  /// REGULAR (hours and salaries for the period) or OFF_CYCLE (one-time payments only: a bonus run, final pay, a correction).
+  kind               String            @default("REGULAR")
+  /// Why an off-cycle run was made.
+  note               String?
   createdAt          DateTime          @default(now()) @db.Timestamptz(3)
   statements         PayStatement[]
   transmissions      PayTransmission[]
@@ -2865,5 +2869,68 @@ model PayrollSync {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, createdAt])
+}
+
+/// A salaried person's annual salary, paid evenly each pay period instead of by hours.
+model Salary {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  userId        String    @db.Uuid
+  /// Where the cost goes (the position's department).
+  positionId    String    @db.Uuid
+  annualAmount  Decimal   @db.Decimal(12, 2)
+  /// Normal hours a week, for insurable hours on the ROE.
+  weeklyHours   Decimal   @default(37.5) @db.Decimal(5, 2)
+  /// Overtime hours are still paid on top (for overtime-eligible salaried staff).
+  overtimeEligible Boolean @default(false)
+  effectiveFrom DateTime  @db.Date
+  effectiveTo   DateTime? @db.Date
+  createdById   String    @db.Uuid
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, userId, effectiveFrom])
+}
+
+/// A one-time payment or deduction on one pay run: a bonus, retroactive pay, an allowance, a
+/// reimbursement (not taxed), or a deduction such as recovering an overpayment.
+model PayAdjustment {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  payRunId    String   @db.Uuid
+  userId      String   @db.Uuid
+  /// BONUS, RETRO, ALLOWANCE, VACATION_PAYOUT, OTHER_EARNING (taxable); REIMBURSEMENT (not taxable); RECOVERY, OTHER_DEDUCTION (after tax).
+  kind        String
+  description String
+  amount      Decimal  @db.Decimal(12, 2)
+  positionId  String?  @db.Uuid
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, payRunId])
+}
+
+/// A deduction a court, the Family Responsibility Office or CRA orders the employer to take each pay
+/// and send on, until the total is paid.
+model PayDeductionOrder {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @db.Uuid
+  userId       String    @db.Uuid
+  /// GARNISHMENT, SUPPORT_ORDER, CRA_REQUIREMENT, OTHER.
+  kind         String
+  payee        String
+  reference    String?
+  /// A fixed amount each pay, or a percent of net pay (one of the two).
+  amountPerPay Decimal?  @db.Decimal(12, 2)
+  percentOfNet Decimal?  @db.Decimal(5, 2)
+  /// Never more than this share of net pay (provincial exemptions; 50% unless the order says otherwise).
+  maxPercentOfNet Decimal @default(50) @db.Decimal(5, 2)
+  /// Stops once this much has been taken (null = until ended).
+  totalOwed    Decimal?  @db.Decimal(12, 2)
+  startsOn     DateTime  @db.Date
+  endsOn       DateTime? @db.Date
+  createdById  String    @db.Uuid
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, userId])
 }
 

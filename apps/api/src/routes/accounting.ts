@@ -33,7 +33,7 @@ accountingRouter.put(
     const a = authOf(req);
     if (a.scope) throw forbidden('The chart of accounts is set by HR and finance.');
     // Quebec accounts only matter for cities with Quebec staff; left out, they keep the defaults.
-    const OPTIONAL = new Set<string>(['employerQpip', 'quebecPayable']);
+    const OPTIONAL = new Set<string>(['employerQpip', 'quebecPayable', 'reimbursements', 'ordersPayable', 'recoveries']);
     const parsed = z.object(Object.fromEntries(ACCOUNT_KEYS.map((k) => [k, OPTIONAL.has(k) ? z.string().trim().min(1).max(40).optional() : z.string().trim().min(1).max(40)]))).parse(req.body);
     const accounts = Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined));
     await withTenant(a.tenantId, async (tx) => {

@@ -20,6 +20,7 @@ import { type Payment, buildCpa005 } from './cpa005.js';
 import { runPayroll } from './payrollRun.js';
 import { type Deductions, type YearToDate, calculateDeductions, calculateQuebecDeductions } from './tax.js';
 import { loadTaxTables } from './taxTables.js';
+import { withBonusMethod } from './lumpSum.js';
 import { type Issue, IssueSet, issue } from './issues.js';
 
 export interface PayrollSettings {
@@ -107,7 +108,23 @@ export interface RunInput {
   periodStart: string;
   weeks: number;
   payDate: string;
+  /** REGULAR: the period's hours and salaries. OFF_CYCLE: only the one-time payments added to it. */
+  kind?: 'REGULAR' | 'OFF_CYCLE';
+  note?: string | null;
 }
+
+/** One-time items: which are taxed as a lump sum (bonus method), which as regular pay, which not at all, which come off after tax. */
+export const LUMP_SUM_KINDS = new Set(['BONUS', 'RETRO', 'VACATION_PAYOUT']);
+export const REGULAR_EARNING_KINDS = new Set(['ALLOWANCE', 'OTHER_EARNING']);
+export const REIMBURSEMENT_KINDS = new Set(['REIMBURSEMENT']);
+export const DEDUCTION_KINDS = new Set(['RECOVERY', 'OTHER_DEDUCTION']);
+export const ADJUSTMENT_KINDS = [...LUMP_SUM_KINDS, ...REGULAR_EARNING_KINDS, ...REIMBURSEMENT_KINDS, ...DEDUCTION_KINDS] as const;
+
+const overlapDays = (aFrom: string, aTo: string, bFrom: string, bTo: string | null) => {
+  const from = aFrom > bFrom ? aFrom : bFrom;
+  const to = bTo && bTo < aTo ? bTo : aTo;
+  return from > to ? 0 : Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
+};
 
 /** Works out every statement for a run. Replaces a draft's statements when `runId` is given. */
 export async function buildRun(tx: Tx, tenantId: string, preparedById: string, input: RunInput, runId?: string) {
@@ -120,13 +137,23 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     positions = d.positions.map((p) => p.id);
     if (!positions.length) throw badRequest('This department has no positions yet.');
   }
-  // One live run per department (or city-wide) per period.
-  const clash = await tx.payRun.findFirst({
-    where: { departmentId: input.departmentId, periodStart: new Date(input.periodStart), status: { not: 'VOID' }, ...(runId ? { id: { not: runId } } : {}) },
-  });
-  if (clash) throw conflict('RUN_EXISTS', 'There is already a pay run for this department and period. Open it, or void it first.');
+  const kind = input.kind ?? 'REGULAR';
+  // One live regular run per department (or city-wide) per period; off-cycle runs can be added any time.
+  if (kind === 'REGULAR') {
+    const clash = await tx.payRun.findFirst({
+      where: { kind: 'REGULAR', departmentId: input.departmentId, periodStart: new Date(input.periodStart), status: { not: 'VOID' }, ...(runId ? { id: { not: runId } } : {}) },
+    });
+    if (clash) throw conflict('RUN_EXISTS', 'There is already a pay run for this department and period. Open it, or void it first.');
+  }
 
-  const { results, warnings: calcWarnings } = await runPayroll(tx, tenantId, input.periodStart, input.weeks, null, positions);
+  const { results, warnings: calcWarnings } = kind === 'OFF_CYCLE' ? { results: [] as Awaited<ReturnType<typeof runPayroll>>['results'], warnings: [] } : await runPayroll(tx, tenantId, input.periodStart, input.weeks, null, positions);
+  // Salaried staff: an even share of the annual salary each period (prorated when it starts or ends inside it).
+  const salaries =
+    kind === 'OFF_CYCLE'
+      ? []
+      : await tx.salary.findMany({ where: { effectiveFrom: { lte: new Date(periodEnd) }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: new Date(input.periodStart) } }], ...(positions ? { positionId: { in: positions } } : {}) }, orderBy: { effectiveFrom: 'asc' } });
+  const adjustments = runId ? await tx.payAdjustment.findMany({ where: { payRunId: runId } }) : [];
+  const orders = await tx.payDeductionOrder.findMany({ where: { startsOn: { lte: new Date(input.payDate) }, OR: [{ endsOn: null }, { endsOn: { gte: new Date(input.payDate) } }] } });
   const year = Number(input.payDate.slice(0, 4));
   const P = periodsPerYear(input.weeks);
   const tables = await loadTaxTables(tx, year);
@@ -135,16 +162,16 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   if (!tables.federal) blockers.add(issue('NO_FEDERAL_TABLE', { year }));
   else if (!tables.federal.verified) blockers.add(issue('FEDERAL_UNVERIFIED', { year }));
 
-  const runUsers = [...new Set(results.map((r) => r.userId))];
-  const enrollments = await tx.benefitEnrollment.findMany({
+  const runUsers = [...new Set([...results.map((r) => r.userId), ...salaries.map((x) => x.userId), ...adjustments.map((x) => x.userId)])];
+  const enrollments = kind === 'OFF_CYCLE' ? [] : await tx.benefitEnrollment.findMany({
     where: { userId: { in: runUsers }, startsOn: { lte: new Date(periodEnd) }, OR: [{ endsOn: null }, { endsOn: { gte: new Date(input.periodStart) } }], plan: { active: true } },
     include: { plan: true },
   });
   const [facilities, people, profiles, banks, departments] = await Promise.all([
     tx.facility.findMany({ select: { id: true, province: true } }),
-    tx.user.findMany({ where: { id: { in: [...new Set(results.map((r) => r.userId))] } }, select: { id: true, firstName: true, lastName: true } }),
-    tx.payProfile.findMany({ where: { userId: { in: [...new Set(results.map((r) => r.userId))] } } }),
-    tx.bankAccount.findMany({ where: { userId: { in: [...new Set(results.map((r) => r.userId))] }, status: 'ACTIVE' } }),
+    tx.user.findMany({ where: { id: { in: runUsers } }, select: { id: true, firstName: true, lastName: true } }),
+    tx.payProfile.findMany({ where: { userId: { in: runUsers } } }),
+    tx.bankAccount.findMany({ where: { userId: { in: runUsers }, status: 'ACTIVE' } }),
     tx.position.findMany({ select: { id: true, departmentId: true } }),
   ]);
   const name = (id: string) => {
@@ -153,18 +180,52 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   };
 
   const byUser = new Map<string, typeof results>();
-  for (const r of results) byUser.set(r.userId, [...(byUser.get(r.userId) ?? []), r]);
+  for (const u of runUsers) byUser.set(u, []);
+  for (const r of results) byUser.get(r.userId)!.push(r);
+  // What each court order has already collected (approved or paid runs), so it stops at the total owed.
+  const collected = new Map<string, number>();
+  if (orders.length) {
+    const prior = await tx.payStatement.findMany({ where: { userId: { in: [...new Set(orders.map((o) => o.userId))] }, payRun: { status: { in: ['APPROVED', 'PAID'] } }, ...(runId ? { payRunId: { not: runId } } : {}) }, select: { deductions: true } });
+    for (const st of prior) for (const o of ((st.deductions as { orders?: Array<{ id: string; amount: number }> }).orders ?? [])) collected.set(o.id, (collected.get(o.id) ?? 0) + o.amount);
+  }
+  const lastRegular = async (userId: string) => Number((await tx.payStatement.findFirst({ where: { userId, year: Number(input.payDate.slice(0, 4)), payRun: { kind: 'REGULAR', status: { not: 'VOID' } } }, orderBy: { payDate: 'desc' }, select: { gross: true } }))?.gross ?? 0);
+  const periodDays = input.weeks * 7;
 
   const statements: Prisma.PayStatementCreateManyInput[] = [];
-  const totals = { gross: 0, deductions: 0, net: 0, employerCpp: 0, employerEi: 0, people: 0, deposits: 0, cheques: 0, cpp: 0, cpp2: 0, ei: 0, tax: 0, benefits: 0, employerBenefits: 0, qpip: 0, employerQpip: 0, quebecTax: 0 };
+  const totals = { gross: 0, deductions: 0, net: 0, employerCpp: 0, employerEi: 0, people: 0, deposits: 0, cheques: 0, cpp: 0, cpp2: 0, ei: 0, tax: 0, benefits: 0, employerBenefits: 0, qpip: 0, employerQpip: 0, quebecTax: 0, reimbursements: 0, oneTimeDeductions: 0, orders: 0 };
   for (const [userId, rs] of byUser) {
-    const lines = rs.flatMap((r) => r.result.lines.map((l) => ({ code: l.code, positionId: l.positionId, hours: Number(l.hours), rate: Number(l.rate), amount: Number(l.amount) })));
+    let lines = rs.flatMap((r) => r.result.lines.map((l) => ({ code: l.code as string, positionId: l.positionId as string | null, hours: Number(l.hours), rate: Number(l.rate), amount: Number(l.amount), description: undefined as string | undefined })));
+    let hours = r2(lines.filter((l) => l.code !== 'VACATION_PAY' && l.code !== 'STAT_HOLIDAY_PAY').reduce((s, l) => s + l.hours, 0));
+    // Salaried: the salary replaces hours pay (overtime stays for those eligible for it).
+    const mySalaries = salaries.filter((x) => x.userId === userId);
+    if (mySalaries.length) {
+      const keepOt = mySalaries.some((x) => x.overtimeEligible);
+      lines = lines.filter((l) => keepOt && l.code.startsWith('OVERTIME'));
+      hours = 0;
+      for (const sal of mySalaries) {
+        const days = overlapDays(input.periodStart, periodEnd, sal.effectiveFrom.toISOString().slice(0, 10), sal.effectiveTo?.toISOString().slice(0, 10) ?? null);
+        if (!days) continue;
+        const share = days / periodDays;
+        const amount = r2((Number(sal.annualAmount) / P) * share);
+        const h = r2(Number(sal.weeklyHours) * input.weeks * share);
+        hours += h;
+        lines.push({ code: 'SALARY', positionId: sal.positionId, hours: h, rate: r2(Number(sal.annualAmount)), amount, description: undefined });
+      }
+      hours = r2(hours + lines.filter((l) => l.code.startsWith('OVERTIME')).reduce((a, l) => a + l.hours, 0));
+    }
+    // One-time items on this run.
+    const mine = adjustments.filter((x) => x.userId === userId);
+    const amt = (k: Set<string>) => r2(mine.filter((x) => k.has(x.kind)).reduce((a, x) => a + Number(x.amount), 0));
+    for (const x of mine.filter((y) => LUMP_SUM_KINDS.has(y.kind) || REGULAR_EARNING_KINDS.has(y.kind))) lines.push({ code: x.kind, positionId: x.positionId, hours: 0, rate: 0, amount: r2(Number(x.amount)), description: x.description });
+    const lump = amt(LUMP_SUM_KINDS);
+    const reimbursements = amt(REIMBURSEMENT_KINDS);
+    const oneTimeDeductions = amt(DEDUCTION_KINDS);
     const gross = r2(lines.reduce((s, l) => s + l.amount, 0));
-    if (gross <= 0) continue;
-    const hours = r2(lines.filter((l) => l.code !== 'VACATION_PAY' && l.code !== 'STAT_HOLIDAY_PAY').reduce((s, l) => s + l.hours, 0));
-    const main = [...rs].sort((a, b) => Number(b.result.grossWages) - Number(a.result.grossWages))[0]!;
+    if (gross <= 0 && reimbursements <= 0) continue;
+    const main = [...rs].sort((a, b) => Number(b.result.grossWages) - Number(a.result.grossWages))[0];
+    const mainFacility = main?.facilityId ?? null;
     const profile = profiles.find((p) => p.userId === userId);
-    const province = (profile?.province ?? facilities.find((f) => f.id === main.facilityId)?.province ?? 'ON') as Province;
+    const province = (profile?.province ?? facilities.find((f) => f.id === mainFacility)?.province ?? facilities[0]?.province ?? 'ON') as Province;
     const quebec = province === 'QC';
     const prov = quebec ? null : tables.provincial.get(province);
     if (quebec) {
@@ -201,18 +262,30 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       unionDues,
       taxableBenefit,
     };
-    const d: Deductions = !tables.federal
-      ? ZERO_D
-      : quebec
-        ? tables.quebec
-          ? calculateQuebecDeductions({ ...common, federal: tables.federal.data, quebec: tables.quebec.data })
-          : ZERO_D
-        : prov
-          ? { ...calculateDeductions({ ...common, federal: tables.federal.data, provincial: prov.data }), plan: 'CPP' }
-          : ZERO_D;
+    const federal = tables.federal?.data;
+    const qc = tables.quebec?.data;
+    const calc = (g: number): Deductions =>
+      !federal ? ZERO_D : quebec ? (qc ? calculateQuebecDeductions({ ...common, gross: g, federal, quebec: qc }) : ZERO_D) : prov ? { ...calculateDeductions({ ...common, gross: g, federal, provincial: prov.data }), plan: 'CPP' } : ZERO_D;
+    // Lump sums by CRA's bonus method; everything else as the period's pay.
+    const d: Deductions = lump > 0 ? withBonusMethod(calc, r2(gross - lump), lump, P, await lastRegular(userId)) : calc(gross);
     const benefitDeductions = r2(rpp + unionDues + afterTax);
-    const totalDeductions = r2(d.total + benefitDeductions);
-    const net = r2(gross - totalDeductions);
+    let totalDeductions = r2(d.total + benefitDeductions + oneTimeDeductions);
+    // Court and CRA orders, after everything else, never above their share of net pay or the total owed.
+    const netBefore = r2(gross - totalDeductions);
+    const orderLines: Array<{ id: string; kind: string; payee: string; amount: number }> = [];
+    let taken = 0;
+    for (const o of orders.filter((x) => x.userId === userId)) {
+      const want = o.amountPerPay != null ? Number(o.amountPerPay) : (Number(o.percentOfNet ?? 0) / 100) * netBefore;
+      const cap = (Number(o.maxPercentOfNet) / 100) * netBefore - taken;
+      const left = o.totalOwed != null ? Number(o.totalOwed) - (collected.get(o.id) ?? 0) : Infinity;
+      const amount = r2(Math.max(0, Math.min(want, cap, left)));
+      if (!amount) continue;
+      taken += amount;
+      orderLines.push({ id: o.id, kind: o.kind, payee: o.payee, amount });
+    }
+    const ordersTotal = r2(taken);
+    totalDeductions = r2(totalDeductions + ordersTotal);
+    const net = r2(gross - totalDeductions + reimbursements);
     if (net < 0) blockers.add(issue('NEGATIVE_NET', { name: name(userId) }));
     const bank = banks.find((b) => b.userId === userId);
     if (!bank) warnings.add(issue('NO_BANK', { name: name(userId) }));
@@ -228,7 +301,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       payDate: new Date(input.payDate),
       hours,
       earnings: lines,
-      deductions: { ...d, benefits, rpp, unionDues, afterTax, taxableBenefit, employerBenefits } as unknown as Prisma.InputJsonValue,
+      deductions: { ...d, benefits, rpp, unionDues, afterTax, taxableBenefit, employerBenefits, lumpSum: lump, reimbursements, oneTimeDeductions, oneTime: mine.filter((x) => REIMBURSEMENT_KINDS.has(x.kind) || DEDUCTION_KINDS.has(x.kind)).map((x) => ({ kind: x.kind, description: x.description, amount: Number(x.amount) })), orders: orderLines } as unknown as Prisma.InputJsonValue,
       gross,
       totalDeductions,
       net,
@@ -250,6 +323,9 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       depositLast4: bank?.last4 ?? null,
     });
     totals.gross += gross;
+    totals.reimbursements += reimbursements;
+    totals.oneTimeDeductions += oneTimeDeductions;
+    totals.orders += ordersTotal;
     totals.deductions += totalDeductions;
     totals.benefits += benefitDeductions;
     totals.employerBenefits += employerBenefits;
@@ -275,6 +351,8 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     periodEnd: new Date(periodEnd),
     payDate: new Date(input.payDate),
     periodsPerYear: P,
+    kind,
+    note: input.note ?? null,
     totals,
     blockers: blockers.list() as unknown as Prisma.InputJsonValue,
     warnings: warnings.list() as unknown as Prisma.InputJsonValue,
@@ -285,10 +363,10 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   return run;
 }
 
-export function runInput(run: { departmentId: string | null; periodStart: Date; periodEnd: Date; payDate: Date }): RunInput {
+export function runInput(run: { departmentId: string | null; periodStart: Date; periodEnd: Date; payDate: Date; kind?: string; note?: string | null }): RunInput {
   const start = run.periodStart.toISOString().slice(0, 10);
   const days = Math.round((run.periodEnd.getTime() - run.periodStart.getTime()) / 86_400_000) + 1;
-  return { departmentId: run.departmentId, periodStart: start, weeks: Math.round(days / 7), payDate: run.payDate.toISOString().slice(0, 10) };
+  return { departmentId: run.departmentId, periodStart: start, weeks: Math.round(days / 7), payDate: run.payDate.toISOString().slice(0, 10), kind: run.kind === 'OFF_CYCLE' ? 'OFF_CYCLE' : 'REGULAR', note: run.note ?? null };
 }
 
 /** A second person checks and releases the run. It's recalculated first so year-to-date figures are current. */

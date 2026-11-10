@@ -14,7 +14,7 @@ import type { Tx } from '../../lib/db.js';
 import type { Deductions } from './tax.js';
 import { csvCell } from './export.js';
 
-export const ACCOUNT_KEYS = ['wages', 'employerCpp', 'employerEi', 'employerBenefits', 'employerQpip', 'cppPayable', 'eiPayable', 'taxPayable', 'pensionPayable', 'unionDuesPayable', 'benefitsPayable', 'quebecPayable', 'netPayClearing'] as const;
+export const ACCOUNT_KEYS = ['wages', 'employerCpp', 'employerEi', 'employerBenefits', 'employerQpip', 'cppPayable', 'eiPayable', 'taxPayable', 'pensionPayable', 'unionDuesPayable', 'benefitsPayable', 'quebecPayable', 'netPayClearing', 'reimbursements', 'ordersPayable', 'recoveries'] as const;
 export type AccountKey = (typeof ACCOUNT_KEYS)[number];
 export type Accounts = Partial<Record<AccountKey, string>>;
 
@@ -33,6 +33,9 @@ export const DEFAULT_ACCOUNTS: Record<AccountKey, string> = {
   benefitsPayable: '2260',
   quebecPayable: '2235',
   netPayClearing: '1010',
+  reimbursements: '5140',
+  ordersPayable: '2270',
+  recoveries: '1290',
 };
 
 export const readAccounts = (raw: unknown): Record<AccountKey, string> => ({ ...DEFAULT_ACCOUNTS, ...((raw && typeof raw === 'object' ? (raw as { accounts?: Accounts }).accounts : {}) ?? {}) });
@@ -49,7 +52,7 @@ export interface JournalLine {
 
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-type Extra = Deductions & { benefits?: Array<{ kind: string; employee: number; employer: number }> };
+type Extra = Deductions & { benefits?: Array<{ kind: string; employee: number; employer: number }>; reimbursements?: number; oneTimeDeductions?: number; orders?: Array<{ amount: number }> };
 
 export async function payrollJournal(tx: Tx, runId: string) {
   const run = await tx.payRun.findUniqueOrThrow({ where: { id: runId } });
@@ -64,18 +67,21 @@ export async function payrollJournal(tx: Tx, runId: string) {
   const period = `${run.periodStart.toISOString().slice(0, 10)} to ${run.periodEnd.toISOString().slice(0, 10)}`;
 
   // Expenses by department.
-  const byDept = new Map<string, { departmentId: string | null; wages: number; cpp: number; ei: number; qpip: number; benefits: number }>();
-  const credits = { cppPayable: 0, eiPayable: 0, taxPayable: 0, quebecPayable: 0, pensionPayable: 0, unionDuesPayable: 0, benefitsPayable: 0, netPayClearing: 0 };
+  const byDept = new Map<string, { departmentId: string | null; wages: number; cpp: number; ei: number; qpip: number; benefits: number; reimbursements: number }>();
+  const credits = { cppPayable: 0, eiPayable: 0, taxPayable: 0, quebecPayable: 0, pensionPayable: 0, unionDuesPayable: 0, benefitsPayable: 0, ordersPayable: 0, recoveries: 0, netPayClearing: 0 };
   for (const s of statements) {
     const d = s.deductions as unknown as Extra;
     const k = s.departmentId ?? 'none';
-    const row = byDept.get(k) ?? { departmentId: s.departmentId, wages: 0, cpp: 0, ei: 0, qpip: 0, benefits: 0 };
+    const row = byDept.get(k) ?? { departmentId: s.departmentId, wages: 0, cpp: 0, ei: 0, qpip: 0, benefits: 0, reimbursements: 0 };
     const employerBenefits = (d.benefits ?? []).reduce((a, b) => a + b.employer, 0);
     row.wages += Number(s.gross);
     row.cpp += Number(s.employerCpp);
     row.ei += Number(s.employerEi);
     row.benefits += employerBenefits;
     row.qpip += d.employerQpip ?? 0;
+    row.reimbursements += d.reimbursements ?? 0;
+    credits.ordersPayable += (d.orders ?? []).reduce((a, o) => a + o.amount, 0);
+    credits.recoveries += d.oneTimeDeductions ?? 0;
     byDept.set(k, row);
     credits.eiPayable += d.ei + Number(s.employerEi);
     if (d.plan === 'QPP') {
@@ -104,6 +110,7 @@ export async function payrollJournal(tx: Tx, runId: string) {
     debit('employerEi', row.departmentId, row.ei, 'Employer EI');
     debit('employerQpip', row.departmentId, row.qpip, 'Employer QPIP');
     debit('employerBenefits', row.departmentId, row.benefits, 'Employer benefits');
+    debit('reimbursements', row.departmentId, row.reimbursements, 'Expense reimbursements');
   }
   const LABELS: Record<keyof typeof credits, string> = {
     cppPayable: 'CPP owing to CRA',
@@ -113,6 +120,8 @@ export async function payrollJournal(tx: Tx, runId: string) {
     pensionPayable: 'Pension contributions owing',
     unionDuesPayable: 'Union dues owing',
     benefitsPayable: 'Benefit premiums owing',
+    ordersPayable: 'Court and CRA orders owing to payees',
+    recoveries: 'Amounts recovered from employees',
     netPayClearing: 'Net pay to employees',
   };
   for (const [key, amount] of Object.entries(credits) as Array<[keyof typeof credits, number]>) {
