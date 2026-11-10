@@ -4050,5 +4050,41 @@
     "light": "Light",
     "dark": "Dark",
     "system": "Device"
+  },
+  "enquiries": {
+    "nav": "Enquiries",
+    "navShort": "Leads",
+    "title": "Website enquiries",
+    "description": "Messages from the website's contact form: sales questions, demo requests and support. Follow each one up and record where it stands.",
+    "filter": {
+      "OPEN": "Open",
+      "ALL": "All"
+    },
+    "status": {
+      "NEW": "New",
+      "CONTACTED": "Contacted",
+      "WON": "Won",
+      "CLOSED": "Closed"
+    },
+    "kind": {
+      "SALES": "Sales",
+      "DEMO": "Demo request",
+      "SUPPORT": "Support"
+    },
+    "facilities_one": "{{count}} facility",
+    "facilities_other": "{{count}} facilities",
+    "none": "Nothing here",
+    "noneHelp": "New messages from the website's contact form appear here.",
+    "email": "Email",
+    "role": "Role",
+    "language": "Language",
+    "marketing": "Marketing email",
+    "consentYes": "Agreed (CASL consent recorded)",
+    "consentNo": "Not agreed: reply to this enquiry only",
+    "notes": "Notes",
+    "saveNotes": "Save notes",
+    "statusLabel": "Status",
+    "saved": "Saved",
+    "replyHint": "Reply from your own email; copy the address above."
   }
 }

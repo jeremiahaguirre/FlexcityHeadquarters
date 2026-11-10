@@ -399,7 +399,7 @@ async function capturePlatform(browser) {
     }
   }
   // Billing, pre-authorized debits, FH's books (every tab) and payroll tax tables.
-  for (const path of ['/platform/billing', '/platform/debits', '/platform/books', '/platform/payroll-tax']) {
+  for (const path of ['/platform/billing', '/platform/debits', '/platform/books', '/platform/enquiries', '/platform/payroll-tax']) {
     await page.goto(`${CONSOLE}${path}`);
     await page.locator('main h1').first().waitFor();
     await page.waitForTimeout(1200);

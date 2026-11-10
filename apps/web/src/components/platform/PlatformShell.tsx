@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, Building2, KeyRound, Landmark, LogOut, Receipt, Scale, Terminal } from 'lucide-react';
+import { BookOpen, Building2, Inbox, KeyRound, Landmark, LogOut, Receipt, Scale, Terminal } from 'lucide-react';
 import { CommandMenu, type Destination } from '@/components/shell/CommandMenu';
 import { SchemePicker } from '@/components/shell/SchemePicker';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ const NAV = [
   { href: '/platform/billing', key: 'billing.title', icon: Receipt },
   { href: '/platform/debits', key: 'debits.nav', icon: Landmark },
   { href: '/platform/books', key: 'books.nav', icon: BookOpen },
+  { href: '/platform/enquiries', key: 'enquiries.nav', icon: Inbox },
   { href: '/platform/payroll-tax', key: 'payTax.nav', icon: Scale },
 ] as const;
 
@@ -96,7 +97,7 @@ function SignedIn({ children }: { children: ReactNode }) {
 
       {/* Phone: every console page one tap away. */}
       <nav aria-label={t('platform.badge')} className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">
-        <ul className="grid grid-cols-5">
+        <ul className="grid grid-cols-6">
           {NAV.map((n) => {
             const on = active(n);
             return (

@@ -4050,5 +4050,41 @@
     "light": "Clair",
     "dark": "Sombre",
     "system": "Appareil"
+  },
+  "enquiries": {
+    "nav": "Demandes",
+    "navShort": "Demandes",
+    "title": "Demandes du site Web",
+    "description": "Messages du formulaire de contact du site : questions commerciales, demandes de démo et soutien. Faites le suivi de chacun et notez où il en est.",
+    "filter": {
+      "OPEN": "Ouvertes",
+      "ALL": "Toutes"
+    },
+    "status": {
+      "NEW": "Nouvelle",
+      "CONTACTED": "Contactée",
+      "WON": "Conclue",
+      "CLOSED": "Fermée"
+    },
+    "kind": {
+      "SALES": "Ventes",
+      "DEMO": "Demande de démo",
+      "SUPPORT": "Soutien"
+    },
+    "facilities_one": "{{count}} installation",
+    "facilities_other": "{{count}} installations",
+    "none": "Rien ici",
+    "noneHelp": "Les nouveaux messages du formulaire de contact du site apparaissent ici.",
+    "email": "Courriel",
+    "role": "Fonction",
+    "language": "Langue",
+    "marketing": "Courriels de marketing",
+    "consentYes": "Accepté (consentement LCAP enregistré)",
+    "consentNo": "Non accepté : répondre à cette demande seulement",
+    "notes": "Notes",
+    "saveNotes": "Enregistrer les notes",
+    "statusLabel": "Statut",
+    "saved": "Enregistré",
+    "replyHint": "Répondez depuis votre propre courriel; copiez l’adresse ci-dessus."
   }
 }
