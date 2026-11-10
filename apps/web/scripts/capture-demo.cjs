@@ -27,6 +27,7 @@ const RENAME = [
   ['@kelowna.test', '@demo.flexcity'],
   ['Kelowna', 'Lakeview'],
   ['kelowna', 'lakeview'],
+  ['KELOWNA', 'LAKEVIEW'],
 ];
 // Logos are served by the API, which the static demo doesn't have: the demo embeds its own.
 const rename = (s) => RENAME.reduce((acc, [a, b]) => acc.split(a).join(b), s).replace(/\/api\/public\/logo\/[0-9a-f-]+\?v=[0-9a-f]+/g, '__DEMO_LOGO__');
