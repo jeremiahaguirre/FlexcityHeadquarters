@@ -11,6 +11,19 @@ with their records retention by-law.
 | Time punches | With payroll records | Anonymized with the person | Clock-in never stores coordinates or IP |
 | In-app notifications | 2 years (*set by the city*) | Deleted | Hourly job |
 | Email log (address, kind of email; never contents) | 90 days (*set by the city*) | Deleted | Hourly job; contents cleared as soon as an email is sent |
+| Texts and calls (number, kind of alert; contents only until sent) | Same period as the email log (*set by the city*) | Deleted | Hourly job; contents dropped as soon as a text or call is sent, or after 5 failed tries |
+| Mobile number for text alerts | Until the person removes it from their profile | Removed | On request (also cancels texts not yet sent); removed when the person is anonymized |
+| Emergency contacts (other people's names and numbers) | While the person keeps them | Deleted | Replaced whenever the person or HR edits the list; deleted as soon as erasure is requested, without waiting for payroll retention |
+| Calendar feed link (a hash of its secret) | Until the person makes a new link or turns it off | Removed | On request; removed as soon as erasure is requested |
+| Kiosk PIN (a hash only) | While the account exists | — | Replaced when the person sets a new one; cleared when the person is anonymized, and refused at the kiosk once they aren't active |
+| Expense and mileage claims, receipts | With payroll records | Anonymized with the person | Receipts are encrypted employee documents and follow the employee file |
+| Time in lieu bank and corrections | With payroll records | Anonymized with the person | Same job as payroll |
+| T4A payees (name or business, SIN sealed, address) and payments | With payroll records | Deleted with the organization | SIN sealed with the city's key; only the last 3 digits are shown |
+| Job applications (contact details, message, certifications, résumé, notes) | 1 year after the application's last change | Deleted; for people hired, the résumé and message are wiped | Hourly job; résumés encrypted with the city's key |
+| Signed policies (typed name, time, fingerprint of the text) | For the life of the account: evidence the person read the policy | Deleted with the organization | The app can't change them; in the person's records export |
+| Facility logbook entries | For the life of the account | Deleted with the organization | The app can't change them; a correction is a new entry |
+| Announcements and who read them | For the life of the account | Deleted with the organization | — |
+| Saved reports | Until the owner deletes them | Deleted | Emailing stops when the owner loses access to the report |
 | Families and children (program registrations) | Until 3 years without a registration or purchase (*set by the city*) | Personal details removed | Names, birth dates, contacts, safety notes removed; payment records kept as "Former family" |
 | Facility booking requests | 2 years after the booking (*set by the city*) | Contact details removed | Hourly job |
 | Working-alone check-in locations | Deleted when the person turns sharing off; otherwise 30 days after the session | Deleted | On request; hourly job |
@@ -25,8 +38,8 @@ with their records retention by-law.
 
 ## Secure disposal
 
-- **Database:** rows are deleted or overwritten in place, not flagged. Sealed values (SINs, bank
-  accounts, incident narratives, documents) are encrypted with a per-record key wrapped by the
+- **Database:** rows are deleted or overwritten in place, not flagged. Sealed values (SINs, T4A payees' included, bank
+  accounts, incident narratives, documents and receipts, applicants' résumés) are encrypted with a per-record key wrapped by the
   city's own key in AWS KMS (`alias/flexcity-tenant-<id>`). After a purge, operations schedule that
   key for deletion (the purge script prints the command), which makes any remaining copy, backups
   included, unreadable (crypto-shredding).

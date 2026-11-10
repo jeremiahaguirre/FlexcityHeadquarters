@@ -6,6 +6,11 @@
 - [ ] **Legal review of the first-sign-in agreement** (`apps/api/src/services/privacy/consent.ts`, EN/FR) and the website's privacy page and terms.
 - [ ] **Payroll provider API access**: each city gets API credentials from ADP (Marketplace, with its mutual-TLS certificate), Dayforce or Wagepoint, and FH confirms each provider's import endpoint and layout against the first real send (they're pre-filled from the providers' published addresses).
 - [ ] **Revenu Québec**: FH's RL-1 software authorization number for the year, and the first RL-1 XML run through Revenu Québec's test service.
+- [ ] **T4A**: run the first T4A XML (`services/payroll/t4a.ts`) through CRA's validation before a city files it.
+- [ ] **Text provider**: confirm Twilio or choose another, sign its DPA and get its SOC 2 report (`SUBPROCESSORS.md`); consider a Canadian-hosted provider, since Twilio is in the US. Buy the sending number (`SMS_FROM`).
+- [ ] **Time in lieu**: counsel to confirm that the in-app choice to bank overtime (time-stamped and audited) counts as the written agreement the ESA asks for, and the default of 12 months to take banked time (Ontario: 3 months, or 12 by agreement).
+- [ ] **Mileage rates**: confirm CRA's reasonable per-km rates each January and update the default (`services/payroll/expenses.ts`, today 72¢ / 66¢ after 5,000 km); remind cities to update theirs in payroll settings.
+- [ ] **Job applications**: counsel to review the applicant privacy notice (EN/FR) and the one-year retention.
 
 ## Next
 
@@ -59,6 +64,20 @@
 - Payroll in the app, or with ADP, Dayforce or Wagepoint over their API (sealed credentials, connection test, send and history), with the file download kept as the fallback.
 - Union Hub as its own service (`UNION_HUB_MODE=separate`): the main API then holds no union credentials.
 - Copyright notices in the app and on the website.
+- Emergency contacts: up to three per person, kept by the person or HR; a working-alone monitor sees them only once a session escalates or the person asks for help; every look audited.
+- Text and phone alerts (city switch, off by default): a confirmed mobile number, then a call and a text when a working-alone session escalates or someone asks for help, and texts for missed check-ins, call-out offers and open shifts starting within a day. Sent by the worker through Twilio; no links, contents dropped once sent.
+- Time in lieu: each person chooses to bank overtime at its premium up to the city's cap; days off from the bank, payouts, HR corrections with a reason, and pay-run flags for old balances and people leaving.
+- Seniority as a switch per organization (Settings and the Dev console): on, it breaks ties in the overtime order, call-outs and the assistant; off, ties go by fewest hours. Private-sector companies start with it off.
+- Shift trades between two people: both eligible for the other's shift, the other person agrees, a supervisor approves, both shifts swap together or not at all.
+- Calendar feed (iCalendar) of your own shifts by a private link; only its hash is stored.
+- Facility kiosk: a shared tablet registered by a supervisor; staff punch with their employee number and a PIN; wrong PINs lock the number for 15 minutes.
+- Expense and mileage claims: receipts encrypted, a supervisor in the department approves (never their own), paid as untaxed reimbursements on the next pay run, two-tier per-km rate.
+- Read-and-sign policies: HR publishes to everyone or some positions with days to sign; signatures keep a fingerprint of the exact text and can't be changed.
+- Facility logbook (append-only) and announcements to everyone, some positions or some facilities, with read counts.
+- Job applications on the careers page: privacy notice, PDF résumé encrypted, stages and notes, hire into an invitation; deleted a year after the last change unless hired.
+- T4A for contractors and honoraria: payees (SIN sealed), payments by box (048, 028, 020, tax withheld in 022), slips over $500 or with tax withheld, CRA XML with a passkey.
+- Reports: nine built-in reports by department, CSV (formula-like text neutralized, downloads audited), saved and emailed weekly or monthly with the owner's current access.
+- Website: Vercel Web Analytics (cookieless).
 
 ## Deliberately out of scope
 

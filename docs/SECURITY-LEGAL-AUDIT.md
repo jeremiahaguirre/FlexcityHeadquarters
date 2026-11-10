@@ -335,6 +335,8 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 13. The first-sign-in information and consent agreement (EN/FR) and whether its signature record meets each province's electronic-signature and evidence rules.
 14. Court and CRA order handling: provincial exemption limits for garnishments and support orders, and the order of priority between several orders.
 15. Payroll provider connections: the data-sharing terms between the city, FH and ADP, Dayforce or Wagepoint.
+16. Time in lieu: whether the in-app choice to bank overtime is the written agreement each province requires, and the take-within and payout rules ([COMPLIANCE.md](COMPLIANCE.md)).
+17. The job applicant privacy notice (EN/FR) and the one-year retention of applications.
 
 ## Addendum (November 2026)
 
@@ -345,6 +347,11 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 | Union Hub as its own service (`UNION_HUB_MODE=separate`) | The main API can hold no union credentials at all |
 | Payroll provider connections (secrets sealed, addresses held to the provider's domain, every send recorded) | No open outbound requests (SSRF); credentials readable by no one at FH |
 | Full in-app payroll (salaries, one-time items, off-cycle runs, court and CRA orders) and Dev console payroll set-up | Same controls as pay runs (two-person approval, passkey, audit); orders need legal review (item 14) |
+| Calendar feed and facility kiosk: two ways in without a person's session | Only SHA-256 hashes of the link and kiosk secrets are stored, shown once, replaceable or revoked at once; the feed is rate-limited and an unknown link looks like no feed; kiosk PINs hashed with scrypt, easy ones refused, a number locked 15 minutes after 5 wrong PINs, the tablet slowed after more; nothing about anyone stays on the tablet's screen |
+| Text and phone alerts (Twilio) | Opt-in per city and per person; codes are stored as an HMAC keyed with the server secret, expire in 10 minutes and are rate-limited; texts carry no links; contents dropped once sent. Twilio is a US subprocessor: DPA before launch ([SUBPROCESSORS.md](SUBPROCESSORS.md)) |
+| Emergency contacts, job applicants, T4A payees | Third parties and the public in the system: contacts shown to a monitor only after escalation, every look audited, deleted on erasure; résumés and payee SINs sealed with the city's key; applications deleted after a year unless hired; T4A XML needs a passkey |
+| Read-and-sign policies and the facility logbook | The app role can't update signatures or entries; a signature keeps a SHA-256 of the exact text, which answers M1 for policies |
+| Reports and their CSV downloads | Each report needs its own permission and follows the reader's department; cells starting with `=`, `+`, `-`, `@`, tab or carriage return are prefixed so spreadsheets don't run them; downloads audited; scheduled emails stop when the owner loses access |
 
 
 See also: [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md) (runbook), [COMPLIANCE.md](COMPLIANCE.md) (rules and privacy notes).

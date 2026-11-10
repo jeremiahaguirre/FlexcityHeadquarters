@@ -21,13 +21,22 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | --- | --- | --- | --- |
 | Identity and contact | Name, work email, phone, employee number, language | Always | — |
 | Employment | Positions, hire and seniority dates, availability, schedule, certifications | Always | — |
-| Time and attendance | Punch times, on-site status and distance (no coordinates), attendance events | Timeclock | — |
+| Time and attendance | Punch times, on-site status and distance (no coordinates), attendance events; which kiosk a punch came from, and a hashed kiosk PIN | Timeclock | — |
+| Emergency contacts | Names, relationship and phone numbers of up to three people outside work (third parties, who aren't told by the app) | Always | **Yes** (seen by the person, HR, and a working-alone monitor only once a session escalates or help is asked for; every look by someone else audited) |
+| Mobile number for alerts | A confirmed mobile number, whether the person wants last-minute shift texts, and the outbox of texts and calls (contents only until sent) | Text alerts | No (sent to the text provider, see [SUBPROCESSORS.md](SUBPROCESSORS.md)) |
+| Calendar feed | A hash of the person's private link; the feed shows only their own shifts (times, position, facility), no other names | Always (the person chooses) | No |
+| Expenses | Claims, kilometres driven, receipts (encrypted like other documents) | Expenses | No |
+| Time in lieu | Each person's choice to bank overtime (time-stamped), balances, HR corrections with reasons | Payroll | No |
 | Pay | Pay rates, deductions, TD1 claims, home mailing address, SIN, bank account | Payroll | **Yes** (SIN, banking sealed with the city's key) |
 | HR files | Reviews, training, onboarding, conduct notes, discipline, grievances | HR suite | **Yes** |
 | Health | Accommodation limits (no diagnosis), injury claims, medical notes (HR only), care check-ins after critical incidents | Accommodation, injury, documents, care | **Yes** |
 | Location | Working-alone location the person chooses to share during a session: latest position only, while the app is open (deleted when sharing is turned off, otherwise after 30 days) | Lone work | **Yes** |
 | Device push addresses | Browser push endpoint and keys for devices where the person turned notifications on | Notifications | No |
 | Pay changes and orders | Salaries, one-time payments and deductions, court and CRA orders (payee, reference, amounts) | Payroll | **Yes** (orders can reveal family or debt matters; HR and payroll only) |
+| Signed policies | Typed name, time, and a fingerprint of the policy text signed | HR suite | No (kept as evidence, can't be changed) |
+| Logbook and announcements | Handover, maintenance and safety notes per facility (author, time); who read each announcement | Logbook, Announcements | No (logbook entries can't be changed) |
+| Job applicants | Name, email, phone, message, certifications typed in, a PDF résumé (encrypted with the city's key), HR's notes and stage | Jobs | No (public; deleted a year after the last change unless hired) |
+| T4A payees | Contractors and honoraria recipients: name or business, SIN or business number, address, amounts by box | Payroll | **Yes** (SIN sealed with the city's key, last 3 digits shown; full SIN only in the T4A XML, with a passkey, audited) |
 | Signed agreement | Version and language seen, typed name, drawn signature, notification and location choices, time, device address and browser | Always (first sign-in) | No — kept as evidence, can't be changed |
 | Union | Union membership (HR, discipline writers), union hub content (union only) | Union hub | **Yes** |
 | Public: families and children | Guardian contacts, children's names, ages, safety notes | Programs | **Yes** (minors) |
@@ -47,7 +56,7 @@ describe the product; the city adds its own purposes, authorities and decisions.
    security; sensitive fields additionally sealed with the city's own KMS key.
 3. Leaves the system only when the city sends it: the bank deposit file (city's SFTP), T4/RL-1/ROE
    files (uploaded by the city to CRA, Revenu Québec, Service Canada), payroll provider exports,
-   emails to staff. See [SUBPROCESSORS.md](SUBPROCESSORS.md).
+   emails to staff, and, where the city turns text alerts on, urgent texts and calls through the text provider (the number and the alert's words; no links). See [SUBPROCESSORS.md](SUBPROCESSORS.md).
 4. FH staff can't see employee records; support visits need the city's consent, are read-only and
    never open individual records.
 5. At first sign-in each person reads the information and consent agreement
@@ -69,6 +78,9 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Breach at the provider | Encryption in transit and at rest, per-city keys, Canadian hosting, tested backups, incident runbook | Contract terms: breach notice, audits |
 | Over-collection / monitoring | No continuous tracking; clock-in keeps on-site status only; signed agreement at first sign-in with separate notification and location choices; notice in the app ("Your privacy") and [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) | Written monitoring policy (Ontario ESA Part XI.1) |
 | Kept too long | Retention schedule ([RETENTION.md](RETENTION.md)), automatic anonymization and deletion | Set periods to the records by-law |
+| Other people's details (emergency contacts) | Kept only for emergencies; a monitor sees them only once a session escalates; deleted as soon as erasure is requested | Tell staff to ask their contacts first |
+| Applicants' information | Short privacy notice the applicant agrees to; résumés encrypted, each download logged; deleted a year after the last change unless hired | Review the notice; a public body keeps information used for a decision at least a year |
+| Shared kiosk tablets | No one's details stay on screen; PINs hashed, easy ones refused; a number locks for 15 minutes after 5 wrong PINs; removing a kiosk stops it at once | Mount tablets where the screen can't be overlooked |
 | Children's information | Collected only for registration; instructors see only their class list; families' files logged; inactive families anonymized | Program terms and consent wording |
 
 ## 6. Residual risk and sign-off

@@ -79,12 +79,31 @@ Chemical readings are checked against each pool's configured thresholds; there a
 | SIN, bank accounts, provider and bank credentials | Sealed with the city's own key (envelope encryption, AAD-bound); a SIN is unsealed only into a filing file, with a passkey, and audited |
 | Signed agreements | The application role can't update them; fingerprints of the text and signature are re-checked on each certificate |
 | Refresh tokens | Stored as SHA-256 hashes; reuse of a rotated token revokes the whole family |
+| Calendar feed links, kiosk secrets | Only a SHA-256 hash of each secret is stored; the link or set-up address is shown once |
+| Kiosk PINs | Hashed with scrypt like passwords; easy PINs refused |
+| Text-message codes | 6 digits, 10 minutes, stored as an HMAC keyed with the server secret (a plain hash of 6 digits could be reversed) |
+| Résumés, receipts, T4A payees' SINs | Sealed with the city's own key like other documents and SINs; each résumé download is audited |
+| Policy signatures, logbook entries | The application role can't update them; a policy signature keeps a SHA-256 of the exact text signed |
 | Location | At punch time, only whether the person was on site and how far; during a working-alone session the person shares, the latest position only |
 | SQL | Values are always bound parameters; identifiers only through `ident()`; a test fails the build on SQL built from values; runtime roles can't change the schema (see [SECURITY.md](../SECURITY.md)) |
 
 ## Events
 
-Domain events (`src/lib/events.ts`) are published only after the transaction commits. Notifications are written to the database and announced with `pg_notify`; browsers listen over server-sent events (`/api/notifications/stream`) and emails go out through an outbox the worker drains. Web push to phones and computers subscribes to the same notifications (`services/notifications/push.ts`); the lock screen shows a short heading only.
+Domain events (`src/lib/events.ts`) are published only after the transaction commits. Notifications are written to the database and announced with `pg_notify`; browsers listen over server-sent events (`/api/notifications/stream`) and emails, texts and calls go out through outboxes the worker drains. Web push to phones and computers subscribes to the same notifications (`services/notifications/push.ts`); the lock screen shows a short heading only.
+
+## Routes without a sign-in
+
+Most of `/api` needs a signed-in person. These don't (`src/app.ts`):
+
+- **Calendar feed** (`GET /api/calendar/:tenantId/:secret.ics`, `routes/calendar.ts`): the secret in the link is the key; the API looks up its hash. Rate-limited by address; an unknown link, a disabled organization or an inactive person all look like no feed.
+- **Facility kiosk** (`/api/kiosk`, `/api/kiosk/punch`, `routes/kiosk.ts`): the tablet sends its own token in `x-kiosk-token` (organization id and secret, stored hashed), not a person's session. A person is identified by employee number and PIN; wrong PINs are limited per number (5 in 15 minutes) and per tablet. Revoking a kiosk stops it at once.
+- **Job applications** (`POST /api/public/jobs/:id/apply`, `routes/applications.ts`): on the organization's subdomain, for postings that take applications in the app, with the same bot checks and rate limits as public sign-up.
+
+They sit beside the older public routes: the city logo, the careers page, public sign-up and the sign-in routes.
+
+## Background worker
+
+`npm run worker --workspace apps/api` (`src/worker.ts`) runs each job under a Postgres advisory lock, so several worker processes never run the same job at once. Every minute: working-alone escalation, call-out timeouts, rotation alerts, and delivery of email, texts and calls (`deliverSms`: Twilio, or logged when `SMS_PROVIDER=console`; up to 5 tries) and web push. Every hour: reminders, anonymization, retention, scheduled reports (`services/reports/scheduled.ts`: each saved report is run with its owner's access at that moment and emailed weekly or monthly; someone who lost access stops getting it), and benchmarks.
 
 ## Union Hub access
 
@@ -112,7 +131,7 @@ Locally: `npm run dev:union --workspace apps/api` beside `npm run dev`.
 
 ## Feature switches
 
-Each organization has a switch per feature (thirty today) (`src/services/platform/features.ts`), set only from the Dev console. A switched-off feature removes its permissions for everyone in that organization when the access token is checked, so menus hide it and permission checks refuse it; features without their own permission (lessons, union hub, public job page) also have a route guard. Notification emails follow their own switch; invitations and password resets always send.
+Each organization has a switch per feature (thirty-five today) (`src/services/platform/features.ts`), set from the Dev console. The one exception is `seniority`, which the organization can also set in Settings (`/settings/seniority`). Text alerts (`textAlerts`) are off by default because messages cost money. A switched-off feature removes its permissions for everyone in that organization when the access token is checked, so menus hide it and permission checks refuse it; features without their own permission (lessons, union hub, public job page) also have a route guard. Notification emails follow their own switch; invitations and password resets always send.
 
 ## Menus per role
 

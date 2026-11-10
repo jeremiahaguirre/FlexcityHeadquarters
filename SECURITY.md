@@ -61,3 +61,15 @@ Layered, so no single slip opens the database:
   cities contribute; no city, person or count of people is identifiable. A city that opts out
   neither contributes nor sees them.
 
+## Secrets, shared tablets and texts
+
+- **Links and devices that act without a sign-in** (a person's calendar feed, a facility kiosk) carry a
+  long random secret. Only its SHA-256 hash is stored, it's shown once, and making a new one or
+  removing it stops the old one at once (`apps/api/src/routes/calendar.ts`, `routes/kiosk.ts`).
+- **Kiosk PINs** are hashed with scrypt like passwords; easy PINs are refused. Five wrong PINs lock
+  an employee number for 15 minutes, and a tablet with too many tries is slowed down.
+- **Text-message codes** are 6 digits, so a plain hash could be reversed: they're stored as an HMAC
+  keyed with the server secret, expire in 10 minutes, and sending and checking are rate-limited.
+- **CSV downloads** from Reports prefix any cell that starts with `=`, `+`, `-`, `@`, a tab or a
+  carriage return, so a spreadsheet won't run it as a formula
+  (`apps/api/src/services/reports/catalog.ts`).
