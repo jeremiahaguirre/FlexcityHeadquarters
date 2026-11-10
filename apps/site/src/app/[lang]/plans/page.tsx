@@ -7,7 +7,8 @@ import { type Lang, copy } from '@/content/copy';
 import { cn } from '@/lib/cn';
 import { reveal } from '@/lib/reveal';
 import { pageMeta } from '@/lib/seo';
-import { GROUPS, ITEMS, type Item, LEVELS, PRIVATE, PUBLIC, has } from '@/content/pricing';
+import { GROUPS, ITEMS, type Item, LEVELS, PRIVATE, PUBLIC, TERM_DISCOUNTS, UPFRONT_BONUS, YEARLY_DISCOUNT, has, yearlyMonthly } from '@/content/pricing';
+import { PeriodToggle } from '@/components/PeriodToggle';
 
 const Yes = ({ label }: { label: string }) => (
   <span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-ok-bg text-ok">
@@ -86,7 +87,8 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
       {/* Public-sector plans */}
       <Section className="wash">
         <SectionHead n="01" eyebrow={c.plansKicker} title={c.publicTitle} lead={c.publicLead} />
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <PeriodToggle target="plan-cards" label={c.periodLabel} monthly={c.monthly} yearly={c.yearly} save={c.save.replace('{n}', String(YEARLY_DISCOUNT))} />
+        <div id="plan-cards" data-period="month" className="group/period grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {LEVELS.map((key, i) => {
             const t = c.levels[i]!;
             const p = PUBLIC[key];
@@ -101,8 +103,13 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
                 <p className="mt-2 min-h-[3rem] text-small leading-6 text-muted">{t.desc}</p>
                 <p className="mt-5 text-label uppercase tracking-[0.14em] text-muted">{p.quoted ? c.from : '\u00a0'}</p>
                 <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
-                  <span className="font-display text-[2.75rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums">{money(p.price)}</span>
+                  <span className="font-display text-[2.75rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums group-data-[period=year]/period:hidden">{money(p.price)}</span>
+                  <span className="hidden font-display text-[2.75rem] font-extrabold leading-none tracking-[-0.04em] tabular-nums group-data-[period=year]/period:inline">{money(yearlyMonthly(p.price))}</span>
                   <span className="text-small text-muted">{c.perFacility}</span>
+                </p>
+                <p className="mt-1 min-h-[1.25rem] text-caption text-muted">
+                  <span className="group-data-[period=year]/period:hidden">{c.billedMonthly}</span>
+                  <span className="hidden group-data-[period=year]/period:inline">{c.billedYearly.replace('{price}', money(yearlyMonthly(p.price) * 12))}</span>
                 </p>
                 <p className="mt-4 text-small font-semibold">{p.staff === null ? c.staffUnlimited : c.staffIncluded.replace('{n}', String(p.staff))}</p>
                 <p className="text-caption text-muted">{p.staff === null ? c.noExtra : c.extraStaff.replace('{price}', money(p.extraStaff))}</p>
@@ -133,6 +140,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
           </div>
         </div>
         <p className="mt-5 text-small text-muted">{c.quotedNote}</p>
+        <p className="mt-2 text-small text-muted">{c.termsNote.replace('{five}', String(TERM_DISCOUNTS[60])).replace('{upfront}', String(TERM_DISCOUNTS[60]! + UPFRONT_BONUS))}</p>
 
         {/* Private sector */}
         <article {...reveal()} className="mt-12 grid gap-8 rounded-3xl border border-line bg-panel p-7 shadow-card md:p-10 lg:grid-cols-[1fr_1.3fr]">

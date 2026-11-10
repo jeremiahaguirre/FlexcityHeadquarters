@@ -47,3 +47,12 @@ export const PRIVATE = { core: 99, includedUsers: 20, perUser: 5 };
 
 /** Whether a public plan includes an option ('core' is in every plan). */
 export const has = (level: Level, i: Item | 'core') => i === 'core' || PUBLIC[level].items.includes(i);
+
+/** Commitment discounts on fixed charges, in percent, by term length in months (apps/api/src/services/billing/terms.ts). */
+export const TERM_DISCOUNTS: Record<number, number> = { 12: 4, 24: 6, 36: 8, 48: 10, 60: 12 };
+/** Paying the whole term up front adds this many points. */
+export const UPFRONT_BONUS = 2;
+/** Yearly billing is a one-year commitment. */
+export const YEARLY_DISCOUNT = TERM_DISCOUNTS[12]!;
+/** Monthly price when billed yearly, rounded to the dollar. */
+export const yearlyMonthly = (monthly: number) => Math.round(monthly * (1 - YEARLY_DISCOUNT / 100));

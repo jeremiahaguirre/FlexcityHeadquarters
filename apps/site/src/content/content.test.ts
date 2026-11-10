@@ -3,7 +3,7 @@ import { demoLink } from '../lib/site';
 import { copy } from './copy';
 import { ARTICLES } from './help';
 import { legalDoc } from './legal';
-import { ITEMS, LEVELS, PRIVATE, PUBLIC, SIZE } from './pricing';
+import { ITEMS, LEVELS, PRIVATE, PUBLIC, SIZE, TERM_DISCOUNTS, UPFRONT_BONUS } from './pricing';
 
 /** Same keys and array lengths in both languages, and no empty strings. */
 function shape(v: unknown, path = ''): string[] {
@@ -57,6 +57,13 @@ describe('prices', () => {
     for (const [k, v] of Object.entries(ITEMS)) expect(cat.items[k], k).toMatchObject({ group: v.group, privateCents: v.private * 100, publicCents: v.public * 100 });
     expect(cat.private).toEqual({ coreCents: PRIVATE.core * 100, includedUsers: PRIVATE.includedUsers, userCents: PRIVATE.perUser * 100 });
     expect(cat.sizePercent).toEqual({ 1: SIZE.seasonal, 2: SIZE.standard, 3: SIZE.major });
+    // Term discounts match the app's.
+    const termsPath = '../../../api/src/services/billing/terms.ts';
+    const terms = (await import(/* @vite-ignore */ termsPath)) as { standardDiscount: (c: string, m: number | null) => number };
+    for (const [months, pct] of Object.entries(TERM_DISCOUNTS)) {
+      expect(terms.standardDiscount('MONTHLY', Number(months)), months).toBe(pct);
+      expect(terms.standardDiscount('TERM', Number(months)), months).toBe(pct + UPFRONT_BONUS);
+    }
     // Every option described on the page, in both languages.
     for (const lang of ['en', 'fr'] as const) expect(copy(lang).plans.items.map((m) => m.key).sort()).toEqual(Object.keys(ITEMS).sort());
   });
