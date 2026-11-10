@@ -19,7 +19,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     },
   });
   const w = { where: { userId } };
-  const [positions, certifications, payRates, availability, timeOff, shifts, punches, reliability, conduct, discipline, onboarding, accommodation, care, overtime, notifications, incidentsReported, auditAbout] = await Promise.all([
+  const [positions, certifications, payRates, availability, timeOff, shifts, punches, reliability, conduct, discipline, onboarding, accommodation, care, overtime, notifications, incidentsReported, auditAbout, documents] = await Promise.all([
     tx.userPosition.findMany({ ...w, include: { position: { select: { name: true } } } }),
     tx.userCertification.findMany({ ...w, include: { certification: { select: { name: true } } } }),
     tx.payRate.findMany(w),
@@ -37,6 +37,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     tx.notification.findMany({ ...w, select: { type: true, params: true, createdAt: true, readAt: true } }),
     tx.incidentReport.findMany({ where: { reportedById: userId }, select: { id: true, category: true, occurredAt: true, facilityId: true } }),
     tx.auditLog.findMany({ where: { OR: [{ entityId: userId }, { actorId: userId }] }, select: { action: true, entity: true, entityId: true, actorId: true, at: true }, orderBy: { at: 'asc' } }),
+    tx.employeeDocument.findMany({ where: { userId, deletedAt: null }, select: { title: true, kind: true, fileName: true, size: true, sha256: true, createdAt: true } }),
   ]);
   return {
     generatedAt: new Date().toISOString(),
@@ -45,6 +46,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
       'Union Hub discussions and seniority list (held for the union local, its own controller).',
       'Incident report narratives (sealed). Reports this person filed are listed by id; open each with a stated purpose to review for release.',
       'Signature images on discipline acknowledgements (the date signed is included).',
+      'The contents of documents on file (each is listed; download them from the person’s record to include them).',
     ],
     person: user,
     positions: positions.map((p) => p.position.name),
@@ -63,6 +65,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     overtime,
     notifications,
     incidentReportsFiled: incidentsReported,
+    documents,
     auditTrail: auditAbout,
   };
 }

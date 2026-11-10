@@ -4111,5 +4111,51 @@
     "PUNCHES_OPEN": "{{count}} pointage(s) sans heure de sortie ont été exclus.",
     "NO_HIRE_DATE": "{{name}} n’a pas de date d’embauche; l’admissibilité à l’indemnité de jour férié a été présumée.",
     "NO_HOURS": "Aucune heure approuvée pour cette période. Approuvez d’abord les pointages, puis recalculez."
+  },
+  "documents": {
+    "title": "Documents",
+    "mine": "Mes documents",
+    "mineHelp": "Billets médicaux, certificats et autres pièces pour votre dossier. Seuls vous et les RH voyez les billets médicaux.",
+    "hrHelp": "Fichiers au dossier de cette personne. Les billets médicaux sont réservés aux RH.",
+    "leadHelp": "Fichiers partagés avec le service de cette personne, comme les certificats. Les billets médicaux restent aux RH.",
+    "add": "Ajouter un document",
+    "addHelp": "PDF ou photo (PNG, JPEG, WebP), jusqu’à 10 Mo.",
+    "kind": "Type",
+    "docTitle": "Titre",
+    "file": "Fichier",
+    "fileHint": "PDF, PNG, JPEG ou WebP, jusqu’à 10 Mo",
+    "pickFile": "Choisissez un fichier.",
+    "tooBig": "Ce fichier dépasse 10 Mo.",
+    "upload": "Téléverser",
+    "uploaded": "Document ajouté",
+    "none": "Aucun document pour l’instant.",
+    "download": "Télécharger",
+    "remove": "Retirer",
+    "removeTitle": "Retirer « {{title}} »?",
+    "removeHelp": "Le fichier est supprimé. Qui l’a retiré, quand et pourquoi restent au dossier.",
+    "reason": "Motif",
+    "removed": "Document retiré",
+    "hrOnly": "RH seulement",
+    "department": "Service",
+    "medicalPrivate": "Les billets médicaux sont toujours privés : seuls vous et les RH les voyez, jamais votre superviseur.",
+    "share": "Partager aussi avec les superviseurs du service de cette personne",
+    "leadShared": "Partagé avec les RH et les superviseurs du service.",
+    "security": "Les fichiers sont chiffrés avec la clé de votre organisation, et chaque consultation est consignée.",
+    "kinds": {
+      "MEDICAL_NOTE": "Billet médical",
+      "CERTIFICATE": "Certificat",
+      "IDENTIFICATION": "Pièce d’identité",
+      "CONTRACT": "Contrat",
+      "POLICY": "Politique signée",
+      "OTHER": "Autre"
+    },
+    "placeholder": {
+      "MEDICAL_NOTE": "Billet du médecin, 3 nov.",
+      "CERTIFICATE": "Carte de Sauveteur national",
+      "IDENTIFICATION": "Permis de conduire",
+      "CONTRACT": "Contrat d’été 2026",
+      "POLICY": "Politique de sécurité signée",
+      "OTHER": "Description"
+    }
   }
 }

@@ -7,6 +7,7 @@ import type { AccessRole } from '@prisma/client';
 export const PERMISSIONS = [
   'users.read',
   'users.write', // hire dates, pay rates, VSC, terminations
+  'documents.manage', // files on employees' records (HR: all; supervisors: their department's, never medical)
   'users.privacy', // erasure requests
   'certs.verify',
   'schedule.read',
@@ -96,6 +97,7 @@ const STAFF_BASE: Permission[] = [
 
 export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   HR_ADMIN: [
+    'documents.manage',
     'users.read',
     'users.write',
     'users.privacy',
@@ -139,6 +141,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'jobs.manage',
   ],
   AQUATIC_SUPERVISOR: [
+    'documents.manage',
     ...STAFF_BASE,
     'users.read',
     'certs.verify',

@@ -2579,3 +2579,46 @@ model FhJournalEntry {
   createdById String   @db.Uuid
   createdAt   DateTime @default(now()) @db.Timestamptz(3)
 }
+
+enum DocumentKind {
+  MEDICAL_NOTE
+  CERTIFICATE
+  IDENTIFICATION
+  CONTRACT
+  POLICY
+  OTHER
+}
+
+enum DocumentVisibility {
+  /// HR only (and the employee): medical notes always.
+  HR
+  /// HR, the employee and the supervisors of their department.
+  DEPARTMENT
+}
+
+/// A file kept on an employee's record (a doctor's note, a certificate, a contract). Encrypted with the organization's key.
+model EmployeeDocument {
+  id            String             @id @default(uuid()) @db.Uuid
+  tenantId      String             @db.Uuid
+  userId        String             @db.Uuid
+  uploadedById  String             @db.Uuid
+  kind          DocumentKind
+  visibility    DocumentVisibility @default(HR)
+  title         String
+  fileName      String
+  contentType   String
+  size          Int
+  /// SHA-256 of the original file, to show it hasn't changed.
+  sha256        String
+  ciphertext    Bytes
+  iv            Bytes
+  authTag       Bytes
+  wrappedKey    Bytes
+  kekId         String
+  createdAt     DateTime           @default(now()) @db.Timestamptz(3)
+  deletedAt     DateTime?          @db.Timestamptz(3)
+  deletedById   String?            @db.Uuid
+  deletedReason String?
+
+  @@index([tenantId, userId])
+}

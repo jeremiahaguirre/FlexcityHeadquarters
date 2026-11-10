@@ -21,6 +21,7 @@ import { useSession } from '@/lib/session';
 import type { CustomRole } from '@/lib/customRoles';
 import { EMPLOYMENT, type Position, ROLES, TIERS } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { DocumentsCard } from '@/components/people/DocumentsCard';
 
 interface Detail {
   id: string;
@@ -310,6 +311,7 @@ function Person() {
           </Section>
         ) : null}
 
+        {can('documents.manage') ? <DocumentsCard userId={p.id} mode={me?.roles.includes('HR_ADMIN') ? 'hr' : 'lead'} /> : null}
         {can('users.privacy') ? (
           <Section title={t('staff.privacy')} description={t('staff.privacyHelp')}>
             <div className="flex flex-wrap gap-2">

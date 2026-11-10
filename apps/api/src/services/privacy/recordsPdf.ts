@@ -42,6 +42,7 @@ const L = {
       overtime: 'Overtime',
       notifications: 'Notifications',
       incidentReportsFiled: 'Incident reports filed',
+      documents: 'Documents on file',
       auditTrail: 'Audit trail',
     } as Record<string, string>,
   },
@@ -76,12 +77,13 @@ const L = {
       overtime: 'Heures supplémentaires',
       notifications: 'Notifications',
       incidentReportsFiled: 'Rapports d’incident déposés',
+      documents: 'Documents au dossier',
       auditTrail: 'Journal d’audit',
     } as Record<string, string>,
   },
 };
 
-const ORDER = ['person', 'positions', 'certifications', 'payRates', 'availability', 'timeOff', 'shifts', 'punches', 'attendanceEvents', 'conductNotes', 'disciplineRecords', 'onboarding', 'workRestrictions', 'careCheckIns', 'overtime', 'notifications', 'incidentReportsFiled', 'auditTrail'] as const;
+const ORDER = ['person', 'positions', 'certifications', 'payRates', 'availability', 'timeOff', 'shifts', 'punches', 'attendanceEvents', 'conductNotes', 'disciplineRecords', 'onboarding', 'workRestrictions', 'careCheckIns', 'overtime', 'notifications', 'incidentReportsFiled', 'documents', 'auditTrail'] as const;
 // Internal ids add length without meaning for the reader.
 const HIDDEN = new Set(['tenantId', 'userId', 'id', 'positionId', 'facilityId', 'recordedById', 'issuedById', 'createdById', 'decidedById', 'acknowledgementSignature']);
 

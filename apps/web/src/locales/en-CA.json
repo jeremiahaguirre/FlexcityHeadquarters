@@ -4111,5 +4111,51 @@
     "PUNCHES_OPEN": "{{count}} punch(es) have no clock-out and were left out.",
     "NO_HIRE_DATE": "{{name}} has no hire date; holiday pay eligibility was assumed.",
     "NO_HOURS": "No approved hours in this period. Approve punches first, then recalculate."
+  },
+  "documents": {
+    "title": "Documents",
+    "mine": "My documents",
+    "mineHelp": "Doctor’s notes, certificates and other papers for your file. Medical notes are seen only by you and HR.",
+    "hrHelp": "Files on this person’s record. Medical notes are HR-only.",
+    "leadHelp": "Files shared with this person’s department, such as certificates. Medical notes stay with HR.",
+    "add": "Add a document",
+    "addHelp": "PDF or a photo (PNG, JPEG, WebP), up to 10 MB.",
+    "kind": "Kind",
+    "docTitle": "Title",
+    "file": "File",
+    "fileHint": "PDF, PNG, JPEG or WebP, up to 10 MB",
+    "pickFile": "Choose a file.",
+    "tooBig": "That file is over 10 MB.",
+    "upload": "Upload",
+    "uploaded": "Document added",
+    "none": "No documents yet.",
+    "download": "Download",
+    "remove": "Remove",
+    "removeTitle": "Remove “{{title}}”?",
+    "removeHelp": "The file is deleted. Who removed it, when and why stay on record.",
+    "reason": "Reason",
+    "removed": "Document removed",
+    "hrOnly": "HR only",
+    "department": "Department",
+    "medicalPrivate": "Medical notes are always private: only you and HR can see them, never your supervisor.",
+    "share": "Also share with this person’s department supervisors",
+    "leadShared": "Shared with HR and the department’s supervisors.",
+    "security": "Files are encrypted with your organization’s key, and every opening is logged.",
+    "kinds": {
+      "MEDICAL_NOTE": "Medical note",
+      "CERTIFICATE": "Certificate",
+      "IDENTIFICATION": "Identification",
+      "CONTRACT": "Contract",
+      "POLICY": "Signed policy",
+      "OTHER": "Other"
+    },
+    "placeholder": {
+      "MEDICAL_NOTE": "Doctor’s note, Nov 3",
+      "CERTIFICATE": "National Lifeguard card",
+      "IDENTIFICATION": "Driver’s licence",
+      "CONTRACT": "2026 summer contract",
+      "POLICY": "Signed safety policy",
+      "OTHER": "Description"
+    }
   }
 }
