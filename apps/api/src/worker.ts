@@ -15,6 +15,7 @@ import { coverageAlerts } from './services/coverage/gaps.js';
 import { injuryReminders } from './routes/injury.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 import { logError } from './lib/log.js';
+import { applyRetention } from './services/privacy/retention.js';
 
 const cfg = config();
 const lockClient = new pg.Client({ connectionString: cfg.APP_DATABASE_URL });
@@ -61,6 +62,7 @@ const hourly = async () => {
   await exclusive('reliability', () => perTenant((tx) => recomputeReliability(tx)));
   await exclusive('people-review', () => perTenant((tx) => flagForReview(tx)));
   await exclusive('anonymize', () => perTenant((tx) => anonymizeDue(tx)));
+  await exclusive('retention', () => perTenant((tx) => applyRetention(tx)));
   await exclusive('benchmarks', () => computeBenchmarks(db()));
 };
 

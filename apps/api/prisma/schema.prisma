@@ -256,6 +256,8 @@ model Tenant {
   /// General-ledger accounts payroll posts to: { wages, employerCpp, employerEi, employerBenefits,
   /// cppPayable, eiPayable, taxPayable, pensionPayable, unionDuesPayable, benefitsPayable, netPayClearing }.
   accountingSettings    Json            @default("{}")
+  /// How long routine records are kept: { notificationsDays, emailLogDays }. Missing = the defaults.
+  retentionSettings     Json            @default("{}")
   /// Feature switches set from the FH Dev console: { featureKey: boolean }.
   /// Missing keys use the defaults in src/services/platform/features.ts.
   features              Json            @default("{}")

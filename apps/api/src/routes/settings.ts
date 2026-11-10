@@ -7,6 +7,7 @@ import { badRequest, notFound } from '../lib/errors.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
 import { h } from './context.js';
 import { resolveFeatures, tenantSettings } from '../services/platform/features.js';
+import { RETENTION_DEFAULTS, RETENTION_LIMITS, readRetention } from '../services/privacy/retention.js';
 
 export const settingsRouter = Router();
 settingsRouter.use('/settings', requirePermission('tenant.configure'));
@@ -210,5 +211,36 @@ settingsRouter.put(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'schoolcalendar.replace', entity: 'Tenant', entityId: a.tenantId, after: periods });
     });
     res.json({ ok: true, count: periods.length });
+  }),
+);
+
+/** How long routine records are kept (notifications, the email log). */
+settingsRouter.get(
+  '/settings/retention',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const t = await withTenant(a.tenantId, (tx) => tx.tenant.findFirstOrThrow({ select: { retentionSettings: true } }));
+    res.json({ ...readRetention(t.retentionSettings), defaults: RETENTION_DEFAULTS, limits: RETENTION_LIMITS });
+  }),
+);
+
+settingsRouter.put(
+  '/settings/retention',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const b = z
+      .object({
+        notificationsDays: z.number().int().min(RETENTION_LIMITS.notificationsDays[0]).max(RETENTION_LIMITS.notificationsDays[1]),
+        emailLogDays: z.number().int().min(RETENTION_LIMITS.emailLogDays[0]).max(RETENTION_LIMITS.emailLogDays[1]),
+      })
+      .parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenant.findFirstOrThrow({ select: { retentionSettings: true } });
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { retentionSettings: b } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.retention', entity: 'Tenant', entityId: a.tenantId, before: readRetention(before.retentionSettings), after: b });
+    });
+    res.json(b);
   }),
 );

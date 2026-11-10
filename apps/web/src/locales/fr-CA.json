@@ -4423,5 +4423,14 @@
     "closedNoDate": "Téléchargez vos données avant leur suppression.",
     "signIn": "Connectez-vous comme administrateur pour télécharger les données de votre organisation.",
     "forbidden": "Seuls les administrateurs de votre organisation peuvent télécharger ses données."
+  },
+  "retention": {
+    "title": "Durée de conservation des dossiers",
+    "help": "Les dossiers courants sont supprimés automatiquement après ces périodes. Réglez-les selon votre règlement sur la conservation des documents.",
+    "notifications": "Notifications dans l’application (jours)",
+    "emailLog": "Journal des courriels (jours)",
+    "range": "Entre {{min}} et {{max}} jours.",
+    "fixed": "Les sessions de connexion terminées et les liens utilisés sont supprimés après 30 jours. Les dossiers du personnel, la paie, les incidents et le journal d’audit suivent leur propre conservation légale et ne sont pas touchés ici.",
+    "saved": "Durées de conservation enregistrées"
   }
 }

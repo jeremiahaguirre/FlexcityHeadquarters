@@ -4423,5 +4423,14 @@
     "closedNoDate": "Download your data before it's deleted.",
     "signIn": "Sign in as an administrator to download your organization's data.",
     "forbidden": "Only your organization's administrators can download its data."
+  },
+  "retention": {
+    "title": "How long records are kept",
+    "help": "Routine records are deleted automatically after these periods. Set them to match your records retention by-law.",
+    "notifications": "In-app notifications (days)",
+    "emailLog": "Email log (days)",
+    "range": "Between {{min}} and {{max}} days.",
+    "fixed": "Ended sign-in sessions and used links are removed after 30 days. Staff records, pay, incidents and the audit log follow their own legal retention and aren’t affected here.",
+    "saved": "Retention periods saved"
   }
 }

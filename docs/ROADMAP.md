@@ -46,6 +46,7 @@
 - Filing files: T4 return as CRA XML and Records of Employment as ROE Web XML (full SINs only with a passkey, audited, refused while details are missing); home mailing address with the TD1.
 - Payroll exports laid out for ADP Workforce Now, Ceridian Dayforce and Wagepoint.
 - Dev console: turn a city off or on, offboard it with a retention period (billing records kept) and a full data export for the city until deletion, consent-based read-only support visits, passkey step-up for its most sensitive actions; website enquiries inbox.
+- Retention schedule per city for notifications and the email log; ended sessions and used links cleared after 30 days.
 - Full data export for each city (every record as CSV and JSON, documents as files) from Settings.
 - Payroll problems and warnings in English and French; printable PDF of a person's records; encrypted employee document uploads; fingerprints of what was signed on discipline records.
 - Scheduling assistant across several facilities: hardest-to-fill shifts first, repair pass, travel time between sites, each shift under its own province's rules.
