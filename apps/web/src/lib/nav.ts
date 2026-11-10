@@ -1,4 +1,4 @@
-import { ReceiptText, Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Wallet, HeartPulse, Building2 } from 'lucide-react';
+import { BellRing, NotebookPen, ReceiptText, Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
 export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
 export type ManageSection = (typeof MANAGE_SECTIONS)[number];
@@ -32,6 +32,7 @@ export const NAV: NavItem[] = [
   { href: '/pretrip', key: 'pretrip', icon: Truck, group: 'mine', permission: 'fleet.inspect', ready: true },
   { href: '/pay', key: 'myPay', icon: Wallet, group: 'mine', permission: 'timeclock.punch', ready: true },
   { href: '/expenses', key: 'expenses', icon: ReceiptText, group: 'mine', permission: 'expenses.self', ready: true },
+  { href: '/logbook', key: 'logbook', icon: NotebookPen, group: 'mine', permission: 'logbook.write', ready: true },
   { href: '/headcount', key: 'headcount', icon: Calculator, group: 'deck', permission: 'ops.headcount.record', tab: 3, ready: true },
   { href: '/deck', key: 'deck', icon: Armchair, group: 'deck', permission: 'deck.rotate', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
@@ -65,6 +66,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/accounting', key: 'accounting', icon: Calculator, group: 'manage', section: 'pay', permission: 'accounting.manage', ready: true },
   { href: '/manage/fees', key: 'fees', icon: Tags, group: 'manage', section: 'programs', permission: 'fees.manage', ready: true },
   { href: '/manage/bookings', key: 'bookings', icon: Globe, group: 'manage', section: 'programs', permission: 'bookings.manage', ready: true },
+  { href: '/manage/announcements', key: 'announcements', icon: BellRing, group: 'manage', section: 'organization', permission: 'announcements.post', ready: true },
   { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', section: 'organization', permission: 'roles.manage', ready: true },
   { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', section: 'organization', permission: 'billing.manage', ready: true },
   { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', section: 'organization', permission: ['tenant.configure', 'ops.configure'], ready: true },

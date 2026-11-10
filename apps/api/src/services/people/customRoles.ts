@@ -15,14 +15,14 @@ import { type Tx, withTenant } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 
 export const CUSTOM_ROLE_PERMISSIONS = {
-  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'expenses.self'],
+  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'expenses.self', 'logbook.write'],
   shiftBoard: ['shiftboard.claim', 'shiftboard.post'],
   safety: ['incidents.create', 'ops.headcount.record'],
   memberServices: ['members.manage', 'lessons.plan', 'fees.manage', 'bookings.manage'],
   winter: ['winter.patrol', 'winter.callout', 'winter.records', 'winter.manage'],
   fleet: ['fleet.inspect', 'fleet.manage'],
   aquatics: ['lessons.teach', 'ops.chemical.record', 'ops.chemical.signoff', 'ops.pool.close', 'ops.status.read', 'ops.page_head_guard', 'deck.rotate', 'ops.configure'],
-  lead: ['training.manage', 'users.read', 'users.scheduling', 'schedule.write', 'schedule.assist', 'shiftboard.approve', 'shiftboard.assign_emergency', 'timeoff.approve', 'timeclock.review', 'certs.verify', 'lonework.monitor', 'onboarding.lead', 'overtime.manage', 'coverage.manage', 'expenses.approve'],
+  lead: ['training.manage', 'users.read', 'users.scheduling', 'schedule.write', 'schedule.assist', 'shiftboard.approve', 'shiftboard.assign_emergency', 'timeoff.approve', 'timeclock.review', 'certs.verify', 'lonework.monitor', 'onboarding.lead', 'overtime.manage', 'coverage.manage', 'expenses.approve', 'announcements.post'],
   manager: ['documents.manage', 'accounting.manage', 'performance.manage', 'grievances.manage', 'injury.manage', 'reliability.read', 'reliability.write', 'discipline.read', 'discipline.write', 'incidents.read', 'care.manage', 'compliance.report', 'payroll.export', 'positions.manage', 'jobs.manage', 'roles.manage'],
   admin: ['policies.manage', 'payroll.approve', 'benefits.manage', 'leave.manage', 'users.write', 'users.privacy', 'audit.read', 'onboarding.hr', 'onboarding.configure', 'accommodation.manage', 'tenant.configure', 'billing.manage'],
 } as const satisfies Record<string, readonly Permission[]>;

@@ -17,24 +17,24 @@ describe('menus per role', () => {
 
   it('lifeguard / instructor: their own work and the pool deck tasks', () => {
     expect(menu('STAFF')).toEqual({
-      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/lessons', '/alone', '/pay', '/expenses', '/headcount', '/ops', '/incidents'],
+      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/lessons', '/alone', '/pay', '/expenses', '/logbook', '/headcount', '/ops', '/incidents'],
       home: '/today',
     });
   });
 
   it('front desk: shifts, clock, their pay and the live pool board, nothing else', () => {
-    expect(menu('FRONT_DESK').items).toEqual(['/today', '/schedule', '/timeclock', '/pay', '/status', '/members', '/manage/bookings']);
+    expect(menu('FRONT_DESK').items).toEqual(['/today', '/schedule', '/timeclock', '/pay', '/logbook', '/status', '/members', '/manage/bookings']);
   });
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/training', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/people', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/expenses', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/roles', '/manage/billing', '/manage/settings'],
+      items: ['/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/training', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/people', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/expenses', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/announcements', '/manage/roles', '/manage/billing', '/manage/settings'],
       home: '/manage/hr',
     });
   });
 
   it('general employee (water works, maintenance…): their own work, no pool screens at all', () => {
-    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/alone', '/patrol', '/pretrip', '/pay', '/expenses'], home: '/today' });
+    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/alone', '/patrol', '/pretrip', '/pay', '/expenses', '/logbook'], home: '/today' });
   });
 
   it('people review is for HR and supervisors only', () => {

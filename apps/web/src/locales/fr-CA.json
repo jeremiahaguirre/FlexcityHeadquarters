@@ -213,7 +213,9 @@
     "hr": "RH",
     "training": "Formation",
     "expenses": "Dépenses",
-    "manageExpenses": "Demandes de remboursement"
+    "manageExpenses": "Demandes de remboursement",
+    "logbook": "Registre",
+    "announcements": "Annonces"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -305,7 +307,8 @@
     "expense_submitted": "{{name}} a soumis une demande de remboursement.",
     "expense_approved": "Votre demande « {{title}} » est approuvée. Elle sera payée sur votre prochaine paie.",
     "expense_rejected": "Votre demande « {{title}} » n’a pas été approuvée.",
-    "policy_to_sign": "À lire et à signer : {{title}}."
+    "policy_to_sign": "À lire et à signer : {{title}}.",
+    "announcement": "Nouvelle annonce : {{title}}"
   },
   "today": {
     "morning": "Bonjour",
@@ -1863,6 +1866,14 @@
       "expenses": {
         "name": "Dépenses et kilométrage",
         "help": "Le personnel réclame ses kilomètres et ses frais avec reçus; la supervision approuve; le remboursement, non imposable, se fait sur la paie suivante."
+      },
+      "logbook": {
+        "name": "Registre de l’installation",
+        "help": "Un registre de quart par installation : notes de relève, d’entretien et de sécurité, conservées telles quelles."
+      },
+      "announcements": {
+        "name": "Annonces",
+        "help": "Avis à tout le personnel, à certains postes ou à certaines installations, avec qui les a lus."
       }
     },
     "positions": "Postes",
@@ -5367,5 +5378,53 @@
     "signedCount_one": "{{count}} a signé",
     "signedCount_other": "{{count}} ont signé",
     "overdue": "En retard"
+  },
+  "logbook": {
+    "title": "Registre",
+    "help": "Le registre de quart de l’installation : ce que le prochain quart doit savoir.",
+    "facility": "Installation",
+    "add": "Ajouter une note",
+    "addHelp": "Les notes restent telles quelles. Pour en corriger une, ajoutez-en une autre.",
+    "category": "Type",
+    "note": "Note",
+    "placeholder": "p. ex. Glissade fermée : fissure dans la troisième section, entretien appelé",
+    "save": "Ajouter au registre",
+    "added": "Ajouté au registre",
+    "emptyTitle": "Rien au registre pour l’instant",
+    "emptyBody": "Les notes de relève, d’entretien et de sécurité paraissent ici, les plus récentes en premier.",
+    "foot": "Toutes les personnes qui travaillent à cette installation peuvent lire le registre.",
+    "categories": {
+      "HANDOVER": "Relève",
+      "MAINTENANCE": "Entretien",
+      "SAFETY": "Sécurité",
+      "OTHER": "Autre"
+    }
+  },
+  "announcements": {
+    "title": "Annonces",
+    "pinned": "Épinglée",
+    "gotIt": "Compris",
+    "manageTitle": "Annonces",
+    "manageHelp": "Avis au personnel : tout le monde, certains postes ou certaines installations. Les personnes les voient à Aujourd’hui et reçoivent une notification.",
+    "new": "Nouvelle annonce",
+    "noneTitle": "Aucune annonce pour l’instant",
+    "noneBody": "Publiez un avis pour le personnel : une fermeture, un changement d’horaire, un rappel.",
+    "some": "Une partie du personnel",
+    "everyone": "Tout le monde",
+    "allFacilities": "Toutes les installations",
+    "ended": "Terminée",
+    "readCount": "{{read}} sur {{of}} l’ont lue",
+    "end": "Terminer maintenant",
+    "endedOk": "Annonce terminée",
+    "titleField": "Titre",
+    "body": "Message",
+    "positions": "Postes",
+    "facilities": "Installations",
+    "facilitiesHint": "Les personnes ayant des quarts à cet endroit dans les 30 derniers ou prochains jours.",
+    "until": "Afficher jusqu’au (facultatif)",
+    "untilHint": "Laissez vide pour l’afficher jusqu’à ce que vous la terminiez.",
+    "pin": "L’épingler en haut",
+    "post": "Publier",
+    "posted": "Annonce publiée; le personnel a été avisé"
   }
 }

@@ -213,7 +213,9 @@
     "hr": "HR",
     "training": "Training",
     "expenses": "Expenses",
-    "manageExpenses": "Expense claims"
+    "manageExpenses": "Expense claims",
+    "logbook": "Logbook",
+    "announcements": "Announcements"
   },
   "navGroups": {
     "mine": "My work",
@@ -305,7 +307,8 @@
     "expense_submitted": "{{name}} submitted an expense claim.",
     "expense_approved": "Your expense claim “{{title}}” was approved. It'll be paid on your next pay.",
     "expense_rejected": "Your expense claim “{{title}}” wasn't approved.",
-    "policy_to_sign": "Please read and sign: {{title}}."
+    "policy_to_sign": "Please read and sign: {{title}}.",
+    "announcement": "New announcement: {{title}}"
   },
   "today": {
     "morning": "Good morning",
@@ -1863,6 +1866,14 @@
       "expenses": {
         "name": "Expense and mileage claims",
         "help": "Staff claim kilometres and costs with receipts; supervisors approve; claims are paid back, untaxed, on the next pay run."
+      },
+      "logbook": {
+        "name": "Facility logbook",
+        "help": "A shift log per facility: handover, maintenance and safety notes, kept as written."
+      },
+      "announcements": {
+        "name": "Announcements",
+        "help": "Notices to all staff, some positions or some facilities, with who has read them."
       }
     },
     "positions": "Positions",
@@ -5367,5 +5378,53 @@
     "signedCount_one": "{{count}} signed",
     "signedCount_other": "{{count}} signed",
     "overdue": "Overdue"
+  },
+  "logbook": {
+    "title": "Logbook",
+    "help": "The facility's shift log: what the next shift needs to know.",
+    "facility": "Facility",
+    "add": "Add a note",
+    "addHelp": "Notes stay as written. To correct one, add another.",
+    "category": "Type",
+    "note": "Note",
+    "placeholder": "e.g. Slide closed: crack in the third section, maintenance called",
+    "save": "Add to the log",
+    "added": "Added to the log",
+    "emptyTitle": "Nothing in the log yet",
+    "emptyBody": "Handover notes, maintenance and safety issues show here, newest first.",
+    "foot": "Everyone who works at this facility can read the log.",
+    "categories": {
+      "HANDOVER": "Handover",
+      "MAINTENANCE": "Maintenance",
+      "SAFETY": "Safety",
+      "OTHER": "Other"
+    }
+  },
+  "announcements": {
+    "title": "Announcements",
+    "pinned": "Pinned",
+    "gotIt": "Got it",
+    "manageTitle": "Announcements",
+    "manageHelp": "Notices to staff: everyone, some positions or some facilities. People see them on Today and get a notification.",
+    "new": "New announcement",
+    "noneTitle": "No announcements yet",
+    "noneBody": "Post a notice for staff: a closure, a schedule change, a reminder.",
+    "some": "Some staff",
+    "everyone": "Everyone",
+    "allFacilities": "All facilities",
+    "ended": "Ended",
+    "readCount": "{{read}} of {{of}} read",
+    "end": "End now",
+    "endedOk": "Announcement ended",
+    "titleField": "Title",
+    "body": "Message",
+    "positions": "Positions",
+    "facilities": "Facilities",
+    "facilitiesHint": "People with shifts there in the last or next 30 days.",
+    "until": "Show until (optional)",
+    "untilHint": "Leave empty to show it until you end it.",
+    "pin": "Pin it to the top",
+    "post": "Post",
+    "posted": "Announcement posted; staff were notified"
   }
 }

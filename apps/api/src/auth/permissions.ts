@@ -79,6 +79,8 @@ export const PERMISSIONS = [
   'expenses.self', // claim expenses and mileage
   'expenses.approve', // approve expense and mileage claims (their department)
   'policies.manage', // publish policies staff read and sign, and see who has
+  'logbook.write', // read and add to the facility shift log
+  'announcements.post', // post notices to staff
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -97,6 +99,7 @@ const STAFF_BASE: Permission[] = [
   'incidents.create',
   'lonework.self',
   'expenses.self',
+  'logbook.write',
 ];
 
 export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
@@ -141,6 +144,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'injury.manage',
     'expenses.approve',
     'policies.manage',
+    'announcements.post',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -185,6 +189,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'coverage.manage',
     'injury.manage',
     'expenses.approve',
+    'announcements.post',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
@@ -198,10 +203,10 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   ],
   STAFF: STAFF_BASE,
   // Front desk is member services: families, registrations, memberships and drop-ins.
-  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage'],
+  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage', 'logbook.write'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {

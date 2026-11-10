@@ -14,6 +14,7 @@ GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "Rule
 -- Signed consent agreements are evidence: added, never changed or deleted by the app.
 REVOKE UPDATE ON "ConsentRecord" FROM flexcity_app;
 REVOKE UPDATE ON "PolicyAck" FROM flexcity_app;
+REVOKE UPDATE ON "LogEntry" FROM flexcity_app;
 -- Shared rate limiter: insert needs its id sequence.
 GRANT USAGE, SELECT ON SEQUENCE "RateLimitHit_id_seq" TO flexcity_app;
 -- Audit and access logs are append-only for the app.
@@ -35,7 +36,7 @@ DECLARE
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
     'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
-    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument', 'SupportGrant', 'SsoConnection', 'PushSubscription', 'ConsentRecord', 'FacilityHours', 'TrainingSpend', 'PayrollSync', 'Salary', 'PayAdjustment', 'PayDeductionOrder', 'PolicyAck', 'Policy', 'ExpenseItem', 'ExpenseClaim', 'Kiosk', 'ShiftTrade', 'LieuAdjustment', 'SmsOutbox', 'EmergencyContact'
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument', 'SupportGrant', 'SsoConnection', 'PushSubscription', 'ConsentRecord', 'FacilityHours', 'TrainingSpend', 'PayrollSync', 'Salary', 'PayAdjustment', 'PayDeductionOrder', 'AnnouncementRead', 'Announcement', 'LogEntry', 'PolicyAck', 'Policy', 'ExpenseItem', 'ExpenseClaim', 'Kiosk', 'ShiftTrade', 'LieuAdjustment', 'SmsOutbox', 'EmergencyContact'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP

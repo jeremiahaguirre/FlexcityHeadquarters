@@ -50,6 +50,8 @@ export const FEATURES = {
   expenses: { default: true, permissions: ['expenses.self', 'expenses.approve'] },
   onboarding: { default: true, permissions: ['onboarding.hr', 'onboarding.lead', 'onboarding.configure'] },
   emailNotifications: { default: true, permissions: [] },
+  logbook: { default: true, permissions: ['logbook.write'] },
+  announcements: { default: true, permissions: ['announcements.post'] },
   /** Urgent texts and calls (working alone, call-outs, last-minute shifts). Off until the city turns it on: messages cost money. */
   textAlerts: { default: false, permissions: [] },
 } as const satisfies Record<string, { default: boolean; permissions: readonly Permission[] }>;

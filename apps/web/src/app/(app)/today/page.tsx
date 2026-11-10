@@ -3,6 +3,7 @@
 import { MyStation } from '@/components/punch/MyStation';
 import { MyCare } from '@/components/people/MyCare';
 import { PoliciesBanner } from '@/components/hr/Policies';
+import { MyAnnouncements } from '@/components/communication/Notices';
 import { MyOnboarding } from '@/components/people/MyOnboarding';
 import { ArrowRight, CalendarOff, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
@@ -64,6 +65,7 @@ export default function TodayPage() {
       <Hero eyebrow={formatDate(new Date().toISOString(), i18n.language, 'long')} title={`${greeting}, ${me?.firstName ?? ''}`} />
       <MyCare />
       <PoliciesBanner />
+      <MyAnnouncements />
       <MyStation />
       <MyOnboarding compact />
 
