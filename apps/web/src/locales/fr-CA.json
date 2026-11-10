@@ -889,8 +889,9 @@
     "erasureHelp": "Le nom et les coordonnées sont retirés après la période de conservation légale. Les totaux de paie restent. Action irréversible.",
     "confirmErasure": "Effacer {{name}}",
     "certifications": "Certifications",
-    "exportRecords": "Exporter le dossier (demande d’accès ou d’AIPRP)",
-    "exported": "Téléchargé. Révisez-le avant de le communiquer; les renseignements sur des tiers peuvent devoir être retranchés."
+    "exportRecords": "Exporter les dossiers (fichier de données)",
+    "exported": "Téléchargé. Révisez-le avant de le communiquer; les renseignements sur des tiers peuvent devoir être retranchés.",
+    "exportPdf": "PDF imprimable"
   },
   "payroll": {
     "title": "Paie",

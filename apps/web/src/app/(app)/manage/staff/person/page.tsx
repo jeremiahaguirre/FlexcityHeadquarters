@@ -328,6 +328,21 @@ function Person() {
             >
               {t('staff.exportRecords')}
             </Button>
+            <Button
+              variant="secondary"
+              icon={<FileDown className="h-4 w-4" aria-hidden="true" />}
+              loading={busy === 'exportPdf'}
+              onClick={() =>
+                void run('exportPdf', async () => {
+                  const r = await apiDownload(`/api/users/${p.id}/records-export.pdf?lang=${i18n.language.startsWith('fr') ? 'fr' : 'en'}`);
+                  if (!r.ok) throw new Error('export');
+                  saveBlob(r.blob, `records-${p.lastName}-${p.firstName}.pdf`);
+                  return true;
+                }, t('staff.exported'))
+              }
+            >
+              {t('staff.exportPdf')}
+            </Button>
             <Button variant="danger" icon={<ShieldOff className="h-4 w-4" aria-hidden="true" />} onClick={() => setDialog('erase')}>
               {t('staff.requestErasure')}
             </Button>

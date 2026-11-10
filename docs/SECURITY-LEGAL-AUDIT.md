@@ -61,7 +61,7 @@ Severity reflects risk to cities and their staff if the product launched today.
 | # | Finding | Recommendation |
 | --- | --- | --- |
 | M1 | **Fixed.** Signed discipline records now keep a SHA-256 fingerprint of exactly what was signed (and of the signature image); each view recomputes it and shows whether the record is unchanged. Policy acknowledgements record a fingerprint of the policy text. | Keep the audit log (append-only) as the second copy of each fingerprint. |
-| M2 | Personal records have no export format other than JSON. | Add a printable PDF of the records export for FOI and access responses. |
+| M2 | **Fixed.** The records export also comes as a printable PDF (English or French): cover page with what's excluded, contents, every record grouped by kind, page numbers and a confidentiality footer. Logged like the data export. | Review and sever third-party information before release, as before. |
 | M3 | No published Accessibility Conformance Report (VPAT 2.5 / EN 301 549). Ontario and BC municipalities increasingly require one in procurement. | Commission an independent WCAG 2.1 AA audit and publish the ACR. |
 | M4 | Subprocessors (email, push notifications, error tracking) are not chosen or listed. | Choose Canadian-hosted or contractually bound providers; publish a subprocessor list; include it in privacy impact assessments. |
 | M5 | No content security policy for scripts on the web app (only framing, base and form limits). | Add a nonce-based `script-src` CSP once the Next.js upgrade lands. |

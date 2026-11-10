@@ -55,5 +55,19 @@ describe('records for an access or freedom-of-information request', () => {
     expect(body.excluded.join(' ')).toMatch(/Union Hub/);
     expect(Object.keys(body)).toEqual(expect.arrayContaining(['shifts', 'punches', 'disciplineRecords', 'onboarding', 'workRestrictions', 'auditTrail']));
     expect(await owner.auditLog.count({ where: { action: 'privacy.records_export', entityId: t.users[0]!.id } })).toBe(1);
+
+    // The same records as a printable PDF, in French too; also logged.
+    for (const lang of ['en', 'fr']) {
+      const pdf = await request(server).get(`${path}.pdf?lang=${lang}`).auth(hr, { type: 'bearer' }).set('x-tenant-subdomain', SUB).buffer(true).parse((res, cb) => {
+        const parts: Buffer[] = [];
+        res.on('data', (c: Buffer) => parts.push(c));
+        res.on('end', () => cb(null, Buffer.concat(parts)));
+      });
+      expect(pdf.status).toBe(200);
+      expect(pdf.headers['content-type']).toMatch(/application\/pdf/);
+      expect((pdf.body as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
+      expect((pdf.body as Buffer).length).toBeGreaterThan(3000);
+    }
+    expect(await owner.auditLog.count({ where: { action: 'privacy.records_export', entityId: t.users[0]!.id } })).toBe(3);
   });
 });

@@ -1,4 +1,5 @@
 import { exportPersonRecords } from '../services/privacy/recordsExport.js';
+import { recordsPdf } from '../services/privacy/recordsPdf.js';
 import { assertShiftInScope, hrRecordsBy, incidentsWhere, peopleInScope, userInScope } from '../services/people/scope.js';
 import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
@@ -425,6 +426,27 @@ api.get(
       return data;
     });
     res.attachment(`records-${userId}.json`).type('application/json').send(JSON.stringify(out, null, 2));
+  }),
+);
+
+/** The same records as a printable PDF, in English or French. */
+api.get(
+  '/users/:id/records-export.pdf',
+  requirePermission('users.privacy'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const userId = uuid.parse(req.params.id);
+    const lang = req.query.lang === 'fr' ? 'fr' : 'en';
+    const { data, organization, preparedBy } = await withTenant(a.tenantId, async (tx) => {
+      const data = await exportPersonRecords(tx, userId);
+      const [org, me] = await Promise.all([tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { name: true } }), tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { firstName: true, lastName: true } })]);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'privacy.records_export', entity: 'User', entityId: userId, after: { format: 'pdf' } });
+      return { data, organization: org.name, preparedBy: `${me.firstName} ${me.lastName}` };
+    });
+    const pdf = await recordsPdf(data, { organization, preparedBy, lang });
+    res.setHeader('Cache-Control', 'no-store');
+    res.attachment(`records-${userId}.pdf`).type('application/pdf').send(pdf);
   }),
 );
 

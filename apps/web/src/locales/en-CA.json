@@ -889,8 +889,9 @@
     "erasureHelp": "Their name and contact details are removed after the legal retention period. Payroll totals stay. This can't be undone.",
     "confirmErasure": "Erase {{name}}",
     "certifications": "Certifications",
-    "exportRecords": "Export records (access or FOI request)",
-    "exported": "Downloaded. Review it before release; third-party information may need severing."
+    "exportRecords": "Export records (data file)",
+    "exported": "Downloaded. Review it before release; third-party information may need severing.",
+    "exportPdf": "Printable PDF"
   },
   "payroll": {
     "title": "Payroll",
