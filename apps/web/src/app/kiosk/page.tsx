@@ -1,6 +1,6 @@
 'use client';
 
-import { Delete, LogIn, LogOut, Tablet } from 'lucide-react';
+import { Delete, LogIn, LogOut } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Logo } from '@/components/Logo';
@@ -97,7 +97,7 @@ export default function KioskPage() {
     return (
       <main id="main" className="grid min-h-screen place-items-center bg-page p-6 text-center">
         <div className="grid max-w-md justify-items-center gap-4">
-          <Tablet className="h-12 w-12 text-muted" aria-hidden="true" />
+          <Logo size={40} />
           <h1 className="text-title text-ink">{t('kiosk.notSetUp')}</h1>
           <p className="text-body text-muted">{problem === 'KIOSK_OFF' ? t('kiosk.off') : t('kiosk.notSetUpHelp')}</p>
         </div>
