@@ -5,12 +5,12 @@ import { useId } from 'react';
  * lighter layer behind for depth) beside a soft white disc holding the city —
  * an H-shaped twin tower joined by a skybridge. Source of truth: /brand/fh-mark.svg.
  */
-export function LogoMark({ size = 40, className }: { size?: number; className?: string }) {
+export function LogoMark({ size = 40, className, animate }: { size?: number; className?: string; animate?: 'intro' | 'loop' }) {
   const p = useId().replace(/:/g, '');
   const F =
     'M37 110C24 88 19 60 26 40 33 20 53 10 76 8.5 87 8 95 9.5 101 12.5 85 14.5 69 18.5 58 25.5 47.5 32.5 42.5 44 42.5 58 42.5 76 41.5 94 37 110Z';
   return (
-    <svg width={size} height={size} viewBox="0 0 120 120" aria-hidden="true" className={className}>
+    <svg width={size} height={size} viewBox="0 0 120 120" aria-hidden="true" className={[animate ? `fh-mark fh-mark-${animate}` : '', className ?? ''].join(' ').trim() || undefined}>
       <defs>
         <linearGradient id={`${p}m`} x1="30" y1="112" x2="96" y2="10" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#0B3B3C" />
@@ -35,11 +35,11 @@ export function LogoMark({ size = 40, className }: { size?: number; className?: 
           <circle cx="77" cy="86" r="22" />
         </clipPath>
       </defs>
-      <path transform="translate(-5 -4)" fill={`url(#${p}b)`} d={F} />
-      <path fill={`url(#${p}m)`} d={F} />
-      <path fill={`url(#${p}a)`} d="M42.5 60C53 50 69 47 88 48 75 52 63 56 52 64 47.5 67 43.5 64.5 42.5 60Z" />
-      <circle cx="77" cy="86" r="22" fill={`url(#${p}d)`} />
-      <g clipPath={`url(#${p}c)`}>
+      <g className="fh-p fh-p1"><path transform="translate(-5 -4)" fill={`url(#${p}b)`} d={F} /></g>
+      <path className="fh-p fh-p2" fill={`url(#${p}m)`} d={F} />
+      <path className="fh-p fh-p3" fill={`url(#${p}a)`} d="M42.5 60C53 50 69 47 88 48 75 52 63 56 52 64 47.5 67 43.5 64.5 42.5 60Z" />
+      <circle className="fh-p fh-p4" cx="77" cy="86" r="22" fill={`url(#${p}d)`} />
+      <g className="fh-p fh-p5" clipPath={`url(#${p}c)`}>
         <g fill="#0B3B3C">
           <rect x="66" y="72" width="6.6" height="38" rx="1.5" />
           <rect x="79.4" y="77" width="6.6" height="33" rx="1.5" />
@@ -65,18 +65,18 @@ export function LogoMark({ size = 40, className }: { size?: number; className?: 
  * Long form. `horizontal`: mark + "FlexcityHeadquarters" on one line.
  * `stacked`: mark above "Flexcity / HEADQUARTERS". `mark`: the mark alone.
  */
-export function Logo({ variant = 'horizontal', size = 40 }: { variant?: 'horizontal' | 'stacked' | 'mark'; size?: number }) {
+export function Logo({ variant = 'horizontal', size = 40, animate }: { variant?: 'horizontal' | 'stacked' | 'mark'; size?: number; animate?: 'intro' | 'loop' }) {
   if (variant === 'mark') {
     return (
       <span role="img" aria-label="FlexcityHeadquarters" className="inline-flex">
-        <LogoMark size={size} />
+        <LogoMark size={size} animate={animate} />
       </span>
     );
   }
   if (variant === 'stacked') {
     return (
       <span role="img" aria-label="FlexcityHeadquarters" className="inline-flex flex-col items-center gap-3 text-center">
-        <LogoMark size={size} />
+        <LogoMark size={size} animate={animate} />
         <span aria-hidden="true" className="font-display leading-none">
           <span className="block text-3xl font-extrabold tracking-[-0.035em] text-ink">Flexcity</span>
           <span className="mt-2 block pl-[0.32em] text-xs font-semibold uppercase tracking-[0.32em] text-brand-text">Headquarters</span>
@@ -86,7 +86,7 @@ export function Logo({ variant = 'horizontal', size = 40 }: { variant?: 'horizon
   }
   return (
     <span role="img" aria-label="FlexcityHeadquarters" className="inline-flex min-w-0 items-center gap-2">
-      <LogoMark size={size} className="shrink-0" />
+      <LogoMark size={size} animate={animate} className="shrink-0" />
       <span aria-hidden="true" className="truncate font-display text-[19px] leading-none tracking-[-0.035em]">
         <span className="font-extrabold text-ink">Flexcity</span>
         <span className="font-medium text-brand-text">Headquarters</span>

@@ -148,3 +148,29 @@ body {
   .fh-bubble, .fh-ripple, .animate-nudge { display: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* The FH mark, drawn in part by part: back leaf, leaf, arm, the circle, then the buildings rise.
+   .fh-mark-intro plays once (website header); .fh-mark-loop repeats (loading screens). */
+.fh-mark .fh-p { transform-box: fill-box; transform-origin: 50% 50%; }
+.fh-mark .fh-p1, .fh-mark .fh-p2 { transform-origin: 30% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fhm-leaf { from { opacity: 0; transform: rotate(-30deg) scale(0.7); } to { opacity: 1; transform: none; } }
+  @keyframes fhm-arm { from { opacity: 0; transform: translateX(-16px) scaleX(0.4); } to { opacity: 1; transform: none; } }
+  @keyframes fhm-pop { 0% { opacity: 0; transform: scale(0); } 70% { opacity: 1; transform: scale(1.1); } 100% { opacity: 1; transform: none; } }
+  @keyframes fhm-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  .fh-mark-intro .fh-p1 { animation: fhm-leaf 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .fh-mark-intro .fh-p2 { animation: fhm-leaf 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both; }
+  .fh-mark-intro .fh-p3 { animation: fhm-arm 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 420ms both; }
+  .fh-mark-intro .fh-p4 { animation: fhm-pop 600ms cubic-bezier(0.3, 1.4, 0.5, 1) 560ms both; }
+  .fh-mark-intro .fh-p5 { animation: fhm-rise 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 820ms both; }
+  /* Loop: build (first ~40%), hold, fade out, repeat. */
+  @keyframes fhml-leaf { 0% { opacity: 0; transform: rotate(-30deg) scale(0.7); } 22%, 82% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; transform: none; } }
+  @keyframes fhml-arm { 0%, 10% { opacity: 0; transform: translateX(-16px) scaleX(0.4); } 28%, 82% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+  @keyframes fhml-pop { 0%, 16% { opacity: 0; transform: scale(0); } 30% { opacity: 1; transform: scale(1.1); } 36%, 82% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+  @keyframes fhml-rise { 0%, 26% { opacity: 0; transform: translateY(16px); } 42%, 82% { opacity: 1; transform: none; } 96%, 100% { opacity: 0; } }
+  .fh-mark-loop .fh-p1 { animation: fhml-leaf 2.6s ease-in-out infinite; }
+  .fh-mark-loop .fh-p2 { animation: fhml-leaf 2.6s ease-in-out infinite; animation-delay: 80ms; }
+  .fh-mark-loop .fh-p3 { animation: fhml-arm 2.6s ease-in-out infinite; }
+  .fh-mark-loop .fh-p4 { animation: fhml-pop 2.6s ease-in-out infinite; }
+  .fh-mark-loop .fh-p5 { animation: fhml-rise 2.6s ease-in-out infinite; }
+}

@@ -29,7 +29,7 @@ export function SiteHeader({ lang }: { lang: Lang }) {
     <header className="sticky top-0 z-40 border-b border-line/70 bg-page/85 backdrop-blur supports-[backdrop-filter]:bg-page/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
         <Link href={`/${lang}/`} className="rounded-xl" aria-label="FlexcityHeadquarters">
-          <Logo size={32} />
+          <Logo size={32} animate="intro" />
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-1 lg:flex">
           {links.map((l) => (
