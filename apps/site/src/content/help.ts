@@ -168,12 +168,60 @@ export const ARTICLES: Article[] = [
     en: {
       title: 'Building and publishing the schedule',
       summary: 'Draft the week, fill it with the assistant, then publish.',
-      steps: ['Open Schedule builder and choose the facility and week.', 'Add shifts on each day, or copy from a past week.', 'Tap Fill with assistant: it proposes people and explains each pick against the rules.', 'Publish. Staff are notified and open shifts go to the board.'],
+      steps: ['Open Schedule builder and choose the facility and week.', 'Add shifts on each day, or copy from a past week.', 'Tap Fill the schedule: it proposes people for the open shifts and explains each pick against the rules.', 'Publish. Staff are notified and open shifts go to the board.'],
     },
     fr: {
       title: 'Préparer et publier l’horaire',
       summary: 'Ébauchez la semaine, remplissez-la avec l’assistant, puis publiez.',
-      steps: ['Ouvrez Préparation d’horaire et choisissez l’installation et la semaine.', 'Ajoutez des quarts chaque jour, ou copiez une semaine passée.', 'Touchez Remplir avec l’assistant : il propose des personnes et justifie chaque choix selon les règles.', 'Publiez. Le personnel est avisé et les quarts ouverts vont au babillard.'],
+      steps: ['Ouvrez Préparation d’horaire et choisissez l’installation et la semaine.', 'Ajoutez des quarts chaque jour, ou copiez une semaine passée.', 'Touchez Remplir l’horaire : l’assistant propose des personnes pour les quarts ouverts et justifie chaque choix selon les règles.', 'Publiez. Le personnel est avisé et les quarts ouverts vont au babillard.'],
+    },
+  },
+  {
+    slug: 'fill-the-schedule',
+    audience: 'leads',
+    en: {
+      title: 'Fill the schedule with the assistant',
+      summary: 'Fill a department’s open shifts for a week, two weeks, a month or three months at once, fairly and within every rule, then review before anything changes.',
+      steps: [
+        'Open Schedule builder and tap Fill the schedule.',
+        'Choose the department (yours is preselected) and, if you like, one facility. Pick how far ahead: it starts on your Plan ahead window. If some people haven’t confirmed their availability, you can send them a reminder here.',
+        'Optional: add shifts from the forecast first, for the weeks where it expects more people than are scheduled.',
+        'Check the usual choices: keep shifts already assigned, avoid overtime, spread weekends and evenings fairly, keep people at the same facility. Adjust priorities lets you say what matters most (and save it for your department).',
+        'Tap Fill the schedule. The summary says how many shifts were filled, any overtime, and how many need you. Tap a name to see why (“qualified Lifeguard, available, 18 h so far this week”) or swap for one of the next three people.',
+        'For a shift no one could take, see why (“3 qualified: 2 on time off, 1 at their weekly hours”) and post it to the shift board, ask the person who could do it with overtime, or leave it open.',
+        'Tap Accept all, Accept week or Accept day. Accepted shifts are drafts: staff don’t see them yet, and Undo puts them back. Then tap Publish.',
+      ],
+      tip: 'Only people in your department, or who hold a position in it, are proposed, and their shifts in other departments count, so no one is double-booked. Weeks beyond your Plan ahead window are marked tentative, and people who confirmed their availability are preferred there. Seniority is used only if your organization (and department) uses it.',
+    },
+    fr: {
+      title: 'Remplir l’horaire avec l’assistant',
+      summary: 'Remplissez les quarts ouverts d’un service pour une semaine, deux semaines, un mois ou trois mois d’un coup, équitablement et selon toutes les règles, puis revoyez avant que rien ne change.',
+      steps: [
+        'Ouvrez Préparation d’horaire et touchez Remplir l’horaire.',
+        'Choisissez le service (le vôtre est déjà choisi) et, si vous voulez, une installation. Choisissez jusqu’où : on part de votre période de planification. Si des personnes n’ont pas confirmé leurs disponibilités, vous pouvez leur envoyer un rappel ici.',
+        'Facultatif : ajoutez d’abord les quarts de la prévision, pour les semaines où elle prévoit plus de personnes que prévu à l’horaire.',
+        'Vérifiez les choix habituels : garder les quarts déjà attribués, éviter les heures supplémentaires, répartir équitablement les fins de semaine et les soirs, garder les gens à la même installation. Ajuster les priorités vous permet de dire ce qui compte le plus (et de l’enregistrer pour votre service).',
+        'Touchez Remplir l’horaire. Le résumé indique combien de quarts sont remplis, les heures supplémentaires et combien ont besoin de vous. Touchez un nom pour voir pourquoi (« qualifié·e Sauveteur, disponible, 18 h jusqu’ici cette semaine ») ou échanger avec l’une des trois personnes suivantes.',
+        'Pour un quart que personne ne pouvait prendre, voyez pourquoi (« 3 personnes qualifiées : 2 en congé, 1 au maximum de ses heures ») et affichez-le au tableau des quarts, demandez à la personne qui pourrait le faire en heures supplémentaires, ou laissez-le ouvert.',
+        'Touchez Tout accepter, Accepter la semaine ou Accepter la journée. Les quarts acceptés sont des brouillons : le personnel ne les voit pas encore, et Annuler les remet comme avant. Puis touchez Publier.',
+      ],
+      tip: 'Seules les personnes de votre service, ou qui y occupent un poste, sont proposées, et leurs quarts dans d’autres services comptent : personne n’est inscrit deux fois. Les semaines au-delà de votre période de planification sont marquées provisoires, et les personnes qui ont confirmé leurs disponibilités y sont privilégiées. L’ancienneté n’est utilisée que si votre organisation (et votre service) l’utilise.',
+    },
+  },
+  {
+    slug: 'confirm-your-availability',
+    audience: 'staff',
+    en: {
+      title: 'Keeping your availability current',
+      summary: 'Your organization plans a set time ahead; confirm your usual availability or update it so you’re scheduled when you can work.',
+      steps: ['Open Availability. The top says how far ahead your organization plans and how far your availability is set.', 'Still available as usual? Tap I’m available as usual through the date shown.', 'Something changed? Update your days and times and save: that counts as confirming too.'],
+      tip: 'A supervisor may send you a reminder when your availability isn’t confirmed far enough ahead.',
+    },
+    fr: {
+      title: 'Garder vos disponibilités à jour',
+      summary: 'Votre organisation planifie un certain temps à l’avance; confirmez vos disponibilités habituelles ou mettez-les à jour pour être planifié quand vous pouvez travailler.',
+      steps: ['Ouvrez Disponibilités. Le haut de la page indique jusqu’où votre organisation planifie et jusqu’à quand vos disponibilités sont établies.', 'Toujours disponible comme d’habitude? Touchez Je suis disponible comme d’habitude jusqu’à la date indiquée.', 'Quelque chose a changé? Modifiez vos jours et heures et enregistrez : cela compte aussi comme une confirmation.'],
+      tip: 'Un superviseur peut vous envoyer un rappel si vos disponibilités ne sont pas confirmées assez loin à l’avance.',
     },
   },
   {
