@@ -9,6 +9,7 @@ import { HeroConsole } from '@/components/Mock';
 import { Kicker, Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
 import { SITE_URL, pageMeta } from '@/lib/seo';
+import { keepHyphenated } from '@/lib/keepWords';
 import { demoLink } from '@/lib/site';
 
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
@@ -52,7 +53,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
         </div>
         <div className="relative mx-auto grid max-w-7xl items-start gap-12 px-4 pb-14 pt-12 md:px-6 md:pb-20 md:pt-20 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
           <div className="rise">
-            <h1 className="text-hero2 [text-wrap:balance]">{h.title}</h1>
+            <h1 className="text-hero2 [text-wrap:balance]">{keepHyphenated(h.title)}</h1>
             <p className="mt-6 max-w-xl text-[1.125rem] leading-8 text-white/85">{h.lead}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href={demoLink('STAFF', params.lang)} className={btnLight}>

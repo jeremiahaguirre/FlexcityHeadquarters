@@ -139,9 +139,10 @@ export function LoneMock({ m, className }: { m: M; className?: string }) {
           <span className="block text-[0.75rem] font-semibold text-white/75">{m.aloneEvery}</span>
         </span>
       </div>
-      <div className="mt-3.5 grid grid-cols-2 gap-2 text-center text-[0.8125rem] font-bold">
-        <span className="rounded-xl bg-[#C5F23A] px-2 py-2.5 text-[#1A2A04]">{m.ok}</span>
-        <span className="rounded-xl border border-[#FF8A7A]/60 bg-[#FF8A7A]/10 px-2 py-2.5 text-[#FFC2B8]">{m.help}</span>
+      {/* Side by side when both labels fit on one line; otherwise one per row, never wrapped inside a button. */}
+      <div className="mt-3.5 flex flex-wrap gap-2 text-center text-[0.8125rem] font-bold">
+        <span className="flex-[1_1_40%] whitespace-nowrap rounded-xl bg-[#C5F23A] px-2 py-2.5 text-[#1A2A04]">{m.ok}</span>
+        <span className="flex-[1_1_40%] whitespace-nowrap rounded-xl border border-[#FF8A7A]/60 bg-[#FF8A7A]/10 px-2 py-2.5 text-[#FFC2B8]">{m.help}</span>
       </div>
     </div>
   );
