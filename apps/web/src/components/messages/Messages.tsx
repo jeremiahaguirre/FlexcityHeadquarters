@@ -193,7 +193,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
   const lastMine = [...c.messages].reverse().find((m) => m.mine && !m.removed);
 
   return (
-    <div className="flex h-[calc(100dvh-13rem)] min-h-[26rem] flex-col overflow-hidden rounded-xl2 border border-line bg-panel shadow-card md:h-[calc(100dvh-12rem)]">
+    <div className="flex h-[calc(100dvh-23rem)] min-h-[22rem] flex-col overflow-hidden rounded-xl2 border border-line bg-panel shadow-card md:h-[calc(100dvh-17rem)] md:min-h-[26rem]">
       <header className="flex items-center gap-2 border-b border-line px-2 py-2 sm:px-4">
         <Button variant="ghost" size="sm" className="md:hidden" onClick={onBack} aria-label={t('messages.back')} icon={<ArrowLeft className="h-5 w-5" aria-hidden="true" />} />
         <div className="min-w-0 flex-1">

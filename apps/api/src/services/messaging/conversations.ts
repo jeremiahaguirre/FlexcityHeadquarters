@@ -34,7 +34,7 @@ export type ReadOnly = null | 'archived' | 'safeguarding' | 'inactive' | 'alone'
 /** Refused by the rule of two: the same words whoever asks, never an age. */
 export class MinorRuleError extends HttpError {
   constructor(readonly what: string, readonly entityId: string | null) {
-    super(403, 'MINOR_RULE', 'One-to-one messages aren’t available with this person. Start a group with a supervisor instead.');
+    super(403, 'MINOR_RULE', 'One-to-one messages aren’t available with this person. A supervisor can start a group that includes you both.');
   }
 }
 async function minorRule(_tx: Tx, _a: AuthContext, what: string, entityId: string | null): Promise<never> {

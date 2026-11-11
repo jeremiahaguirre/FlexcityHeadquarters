@@ -170,12 +170,13 @@ function Editor({ start, choices, onClose, onSaved }: { start: { row?: SurveyRow
 
 /** Horizontal bars in the app's chart style: label, count and share beside each bar. */
 function Bars({ counts, total, label }: { counts: Record<string, number>; total: number; label: (k: string) => string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const pct = (n: number) => `${share(n, total)}${i18n.language.startsWith('fr') ? '\u00a0%' : '%'}`;
   return (
     <ul className="grid gap-2">
       {Object.entries(counts).map(([k, n]) => (
         <li key={k}>
-          <span className="flex items-baseline justify-between gap-3 text-small"><span className="min-w-0 [overflow-wrap:anywhere]">{label(k)}</span><span className="shrink-0 tabular-nums text-muted"><span className="font-semibold text-ink">{n}</span> · {share(n, total)} %</span></span>
+          <span className="flex items-baseline justify-between gap-3 text-small"><span className="min-w-0 [overflow-wrap:anywhere]">{label(k)}</span><span className="shrink-0 tabular-nums text-muted"><span className="font-semibold text-ink">{n}</span> · {pct(n)}</span></span>
           <span className="mt-1 block h-2.5 overflow-hidden rounded-full bg-surface" role="meter" aria-valuemin={0} aria-valuemax={total} aria-valuenow={n} aria-label={t('surveyAdmin.barLabel', { label: label(k), n, total })}>
             <span className="block h-full rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-700" style={{ width: `${share(n, total)}%` }} />
           </span>

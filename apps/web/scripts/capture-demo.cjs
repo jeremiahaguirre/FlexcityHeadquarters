@@ -22,7 +22,6 @@ const PASSWORD = 'flexcity-dev';
 const OUT = join(__dirname, '../src/lib/demo-fixtures');
 const ROLES = { guard: 'guard', supervisor: 'supervisor', hr: 'hr', frontdesk: 'frontdesk', steward: 'steward', waterworks: 'waterworks' };
 /** Accounts that only answer surveys and post messages for the sample data (never recorded). */
-const EXTRA = ['head', 'casual', 'maintenance'];
 
 const RENAME = [
   ['City of Kelowna (demo)', 'City of Lakeview (demo)'],
