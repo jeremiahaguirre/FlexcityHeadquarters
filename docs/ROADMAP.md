@@ -26,6 +26,7 @@
 
 ## Done
 
+- Shift bidding by seniority (only where seniority is on): rounds for shifts or season lines from a weekly template, rankings, awards in seniority order with a reason for every choice, manager review with reasoned overrides, union steward read-only view; unawarded shifts to the Shift Board.
 - Team messaging: one to one, shift, department and group conversations sealed with the organization's key, read receipts, unread counts, edit and remove, files, mute, reports to HR and audited investigations, the rule of two for minors, live updates, retention and exports.
 - Staff surveys: anonymous pulse check-ins (participation kept apart from answers, minimum group with complementary suppression, results after closing, trend across repeats, CSV) and named exit surveys from offboarding, with two reminders at most.
 - Weekly shift templates (a department's standard week by season, applied to future weeks as drafts, idempotent, closures skipped, undo per application, optional automatic drafts ahead) and stated shift preferences (prefer/avoid, preferred weekly hours and days) weighed softly by Fill the schedule and shown in the planner.
