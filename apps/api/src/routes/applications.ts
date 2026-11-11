@@ -20,6 +20,7 @@ import { notify, usersWithPermission } from '../services/notifications/notifier.
 import { sha256 } from '../services/people/fingerprint.js';
 import { h, keys, subdomainOf, tenantKekId } from './context.js';
 import { sniff } from './documents.js';
+import { workAge } from '../services/legal/ages.js';
 
 export const publicApplicationsRouter = Router();
 export const applicationsRouter = Router();
@@ -45,11 +46,19 @@ publicApplicationsRouter.post(
         certifications: z.string().trim().max(1000).nullable().optional(),
         resume: z.object({ fileName: z.string().trim().min(1).max(160), data: z.string().regex(/^data:[\w.+/-]+;base64,/).max(Math.ceil((MAX_BYTES * 4) / 3) + 200) }).nullable().optional(),
         consent: z.literal(true, { message: 'Agree to how your information is used to apply.' }),
+        /**
+         * Working age, without a birth date: ADULT = at least the age to apply alone (16); YOUNG =
+         * 14 or 15, applying with a parent's or guardian's consent (named). Under 14 isn't taken online.
+         */
+        age: z.enum(['ADULT', 'YOUNG'], { message: 'Confirm your age to apply.' }),
+        guardianConsent: z.boolean().optional().default(false),
+        guardianName: z.string().trim().max(120).optional().default(''),
         website: z.string().max(500).optional().default(''),
         startedAt: z.number().int(),
       })
       .parse(req.body);
     if (b.website) throw new HttpError(400, 'REJECTED', 'This form couldn’t be sent.');
+    if (b.age === 'YOUNG' && (!b.guardianConsent || b.guardianName.length < 2)) throw new HttpError(400, 'GUARDIAN_CONSENT', 'Applicants under 16 need a parent’s or guardian’s consent: give their name and tick the box.');
     if (Date.now() - b.startedAt < 3000) throw new HttpError(400, 'TOO_FAST', 'Please take a moment to check the form, then send it again.');
     if (!(await allow(`apply:${req.ip}:${req.tenantId}`, 10, 3_600_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many applications from here. Try again later.');
     const tenantId = req.tenantId!;
@@ -65,13 +74,20 @@ publicApplicationsRouter.post(
       const dup = await tx.jobApplication.findFirst({ where: { postingId: p.id, email: b.email.toLowerCase(), status: { notIn: ['WITHDRAWN', 'DECLINED'] } } });
       if (dup) throw conflict('ALREADY_APPLIED', 'You’ve already applied to this job. We’ll be in touch.');
       const id = randomUUID();
+      const where = p.facilityId ? await tx.facility.findUnique({ where: { id: p.facilityId }, select: { province: true } }) : await tx.facility.findFirst({ select: { province: true }, orderBy: { name: 'asc' } });
+      const ages = workAge(where?.province);
+      const now = new Date();
+      const ageNote = b.age === 'ADULT'
+        ? `Applicant confirmed they are ${ages.adultAge} or older.`
+        : `Applicant is ${ages.minAge}–${ages.adultAge - 1}: parent or guardian ${b.guardianName} consented on ${now.toISOString().slice(0, 10)}. Check the province’s young-worker rules before hiring.`;
       const sealed = file ? await seal(keys(), tenantKekId(tenantId), file.toString('base64'), aad(tenantId, id)) : null;
       await tx.jobApplication.create({
         data: {
-          id, tenantId, postingId: p.id, firstName: b.firstName, lastName: b.lastName, email: b.email.toLowerCase(), phone: b.phone ?? null, message: b.message ?? null, certifications: b.certifications ?? null, consentAt: new Date(),
+          id, tenantId, postingId: p.id, firstName: b.firstName, lastName: b.lastName, email: b.email.toLowerCase(), phone: b.phone ?? null, message: b.message ?? null, certifications: b.certifications ?? null, consentAt: now, notes: ageNote,
           ...(file && sealed ? { resumeName: b.resume!.fileName.replace(/[^\w.\- ()]/g, '_'), resumeType: 'application/pdf', resumeSize: file.length, resumeSha256: sha256(file), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId } : {}),
         },
       });
+      await audit(tx, { tenantId, actorId: null, action: 'application.received', entity: 'JobApplication', entityId: id, after: { postingId: p.id, age: b.age, guardianConsent: b.age === 'YOUNG', province: ages.province, consentAt: now.toISOString() } });
       const hr = await usersWithPermission(tx, tenantId, 'jobs.manage');
       await notify(tx, tenantId, hr.map((userId) => ({ userId, type: 'application_received', params: { title: p.title, name: `${b.firstName} ${b.lastName}` }, link: '/manage/jobs' })));
     });

@@ -27,7 +27,7 @@ const form = (over: object = {}) => ({
   guardian: { firstName: 'Marie', lastName: 'Tremblay', email: 'Marie@Example.ca', phone: '250-555-0199' },
   emergency: { name: 'Luc Tremblay', phone: '250-555-0123' },
   participant: { firstName: 'Léa', lastName: 'Tremblay', dateOfBirth: yearsAgo(4.5), safetyNote: 'Asthma: inhaler in bag' },
-  consents: { terms: true, privacy: true, photo: false },
+  consents: { terms: true, privacy: true, photo: false, adult: true, guardian: true },
   ...over,
 });
 
@@ -61,6 +61,22 @@ describe('public sign-up portal', () => {
     expect(baby.body.code).toBe('AGE_OUTSIDE_LEVEL');
   });
 
+  it('age gate: the person filling the form is an adult, and a parent or guardian for a child', async () => {
+    // No adult confirmation: refused, nothing stored.
+    const before = await owner.household.count({ where: { tenantId: t.tenant.id } });
+    expect((await pub.post('/api/public/registrations', form({ consents: { terms: true, privacy: true } }))).status).toBe(400);
+    expect((await pub.post('/api/public/registrations', form({ consents: { terms: true, privacy: true, adult: false, guardian: true } }))).status).toBe(400);
+    // A child without the parent-or-guardian consent.
+    expect((await pub.post('/api/public/registrations', form({ consents: { terms: true, privacy: true, adult: true } }))).body.code).toBe('GUARDIAN_CONSENT');
+    // A 17-year-old can't register themself (BC: majority is 19).
+    const teen = await pub.post('/api/public/registrations', form({ participant: { firstName: 'Max', lastName: 'Tremblay', dateOfBirth: yearsAgo(17.5), self: true } }));
+    expect(teen.body.code).toBe('MINOR_SELF');
+    expect(await owner.household.count({ where: { tenantId: t.tenant.id } })).toBe(before);
+    // The portal tells the form the age of majority where each program runs.
+    const s = (await pub.get('/api/public/signup')).body;
+    expect(s.programs[0].sets[0].majorityAge).toBe(19);
+  });
+
   it('a family signs up with no account; a second child joins the waitlist', async () => {
     const r = await pub.post('/api/public/registrations', form());
     expect(r.status).toBe(201);
@@ -80,6 +96,10 @@ describe('public sign-up portal', () => {
     const hh = (await staff(desk).get(`/api/households/${mine.householdId}`)).body;
     expect(hh.members.map((m: { role: string; firstName: string }) => `${m.role}:${m.firstName}`)).toEqual(['GUARDIAN:Marie', 'CHILD:Léa']);
     expect(hh.emergencyName).toBe('Luc Tremblay');
+    // The consent is on record: the household note and the audit log.
+    expect(hh.notes).toMatch(/or older; parent or guardian consent given/);
+    const log = await owner.auditLog.findFirst({ where: { tenantId: t.tenant.id, action: 'registration.online' }, orderBy: { at: 'asc' } });
+    expect(log?.after).toMatchObject({ consents: { adult: true, guardian: true } });
   });
 
   it('facility bookings: free times, a request, then staff confirm', async () => {
@@ -91,7 +111,8 @@ describe('public sign-up portal', () => {
     const slots = (await pub.get(`/api/public/services/${serviceId}/slots?date=${day}`)).body;
     expect(slots.map((s: { startMinute: number }) => s.startMinute)).toEqual([600, 720, 840, 960]);
     expect((await pub.get(`/api/public/services/${serviceId}/slots?date=${inDays(1)}`)).body).toEqual([]); // too soon
-    const book = (start: number, size = 12) => pub.post('/api/public/bookings', { serviceId, date: day, startMinute: start, partySize: size, startedAt: Date.now() - 30_000, contact: { name: 'Sam Lee', email: 'sam@example.ca', phone: '250-555-0177' }, notes: 'Birthday, 7 years old', consents: { terms: true, privacy: true } });
+    const book = (start: number, size = 12) => pub.post('/api/public/bookings', { serviceId, date: day, startMinute: start, partySize: size, startedAt: Date.now() - 30_000, contact: { name: 'Sam Lee', email: 'sam@example.ca', phone: '250-555-0177' }, notes: 'Birthday, 7 years old', consents: { terms: true, privacy: true, adult: true } });
+    expect((await pub.post('/api/public/bookings', { serviceId, date: day, startMinute: 720, startedAt: Date.now() - 30_000, contact: { name: 'Sam Lee', email: 'sam@example.ca', phone: '250-555-0177' }, consents: { terms: true, privacy: true } })).status).toBe(400);
     expect((await book(720, 40)).body.code).toBe('PARTY_TOO_BIG');
     const r = await book(720);
     expect(r.body.reference).toMatch(/^B-/);

@@ -18,6 +18,7 @@ import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { ageInMonths, fitsAge } from '../services/programs/levels.js';
 import { sessionDates } from '../services/lessons/lessons.js';
+import { ageOfMajority, yearsOld } from '../services/legal/ages.js';
 import { h } from './context.js';
 
 const uuid = z.string().uuid();
@@ -65,10 +66,12 @@ publicSignupRouter.get(
       const sets = await tx.lessonClass.findMany({ where: { campaignId: { in: campaigns.map((c) => c.id) } }, orderBy: [{ startsOn: 'asc' }, { startMinute: 'asc' }] });
       const counts = await tx.lessonEnrollment.groupBy({ by: ['classId'], where: { classId: { in: sets.map((x) => x.id) }, status: 'ENROLLED' }, _count: true });
       const [facilities, services] = await Promise.all([
-        tx.facility.findMany({ select: { id: true, name: true } }),
+        tx.facility.findMany({ select: { id: true, name: true, province: true } }),
         tx.bookableService.findMany({ where: { active: true }, orderBy: { name: 'asc' } }),
       ]);
       const fac = (id: string) => facilities.find((f) => f.id === id)?.name ?? '';
+      // The person filling the form must be an adult where the program runs (19 in BC, NB, NL, NS, NT, NU, YT).
+      const majority = (id: string) => ageOfMajority(facilities.find((f) => f.id === id)?.province);
       return {
         enabled: true,
         organization: s.name,
@@ -94,6 +97,7 @@ publicSignupRouter.get(
                 id: x.id,
                 name: x.name,
                 facility: fac(x.facilityId),
+                majorityAge: majority(x.facilityId),
                 daysOfWeek: x.daysOfWeek.length ? x.daysOfWeek : [x.dayOfWeek],
                 startMinute: x.startMinute,
                 endMinute: x.endMinute,
@@ -109,7 +113,7 @@ publicSignupRouter.get(
               };
             }),
         })),
-        services: services.map((v) => ({ id: v.id, name: v.name, nameFr: v.nameFr, description: v.description, descriptionFr: v.descriptionFr, facility: fac(v.facilityId), durationMinutes: v.durationMinutes, priceCents: v.priceCents, maxPartySize: v.maxPartySize, daysOfWeek: v.daysOfWeek, leadDays: v.leadDays })),
+        services: services.map((v) => ({ id: v.id, name: v.name, nameFr: v.nameFr, description: v.description, descriptionFr: v.descriptionFr, facility: fac(v.facilityId), majorityAge: majority(v.facilityId), durationMinutes: v.durationMinutes, priceCents: v.priceCents, maxPartySize: v.maxPartySize, daysOfWeek: v.daysOfWeek, leadDays: v.leadDays })),
       };
     });
     res.setHeader('Cache-Control', 'no-store');
@@ -125,7 +129,12 @@ const registrationBody = humanCheck.extend({
   emergency: z.object({ name: z.string().trim().min(2).max(80), phone: z.string().trim().min(7).max(30) }),
   /** The person taking part: a child, or the adult registering themself. */
   participant: z.object({ ...person, dateOfBirth: isoDate, safetyNote: z.string().trim().max(200).optional().default(''), self: z.boolean().default(false) }),
-  consents: z.object({ terms: z.literal(true), privacy: z.literal(true), photo: z.boolean().default(false) }),
+  /**
+   * adult: the person filling the form is of the age of majority; guardian: they are the parent or
+   * legal guardian of the child they register, and consent to the child's information being
+   * collected (required unless they register themself).
+   */
+  consents: z.object({ terms: z.literal(true), privacy: z.literal(true), photo: z.boolean().default(false), adult: z.literal(true, { message: 'Confirm you are an adult to sign up.' }), guardian: z.boolean().default(false) }),
   locale: z.enum(['en-CA', 'fr-CA']).default('en-CA'),
 });
 
@@ -146,13 +155,18 @@ publicSignupRouter.post(
       if ((c.registrationOpensAt && c.registrationOpensAt > now) || (c.registrationClosesAt && c.registrationClosesAt <= now)) throw conflict('REGISTRATION_CLOSED', 'Registration for this program isn’t open.');
       const age = ageInMonths(b.participant.dateOfBirth, iso(set.startsOn));
       if (age < 0) throw new HttpError(400, 'BAD_BIRTH_DATE', 'Check the birth date.');
+      const fac = await tx.facility.findUnique({ where: { id: set.facilityId }, select: { province: true } });
+      const majorityAge = ageOfMajority(fac?.province);
+      // Someone under the age of majority is registered by a parent or guardian, never by themself.
+      if (b.participant.self && yearsOld(b.participant.dateOfBirth, today()) < majorityAge) throw new HttpError(409, 'MINOR_SELF', `Participants under ${majorityAge} are registered by a parent or guardian.`);
+      if (!b.participant.self && !b.consents.guardian) throw new HttpError(400, 'GUARDIAN_CONSENT', 'Confirm you are the participant’s parent or guardian and consent to their information being collected.');
       if (!fitsAge(age, set.minAgeMonths, set.maxAgeMonths)) throw new HttpError(409, 'AGE_OUTSIDE_LEVEL', 'The participant’s age doesn’t fit this program. Pick another, or call the facility.');
       // The same person in the same program twice (a double click, a second parent).
       const swimmerName = `${b.participant.firstName} ${b.participant.lastName}`;
       const dup = await tx.lessonEnrollment.findFirst({ where: { classId: set.id, swimmerName: { equals: swimmerName, mode: 'insensitive' }, status: { not: 'CANCELLED' }, source: 'ONLINE' } });
       if (dup) throw conflict('ALREADY_REGISTERED', 'This person is already signed up for this program.');
       const household = await tx.household.create({
-        data: { tenantId: req.tenantId!, name: b.guardian.lastName, address: b.address || null, emergencyName: b.emergency.name, emergencyPhone: b.emergency.phone, source: 'ONLINE', notes: `Signed up online ${now.toISOString().slice(0, 10)}; terms and privacy accepted${b.consents.photo ? '; photo consent given' : ''}.` },
+        data: { tenantId: req.tenantId!, name: b.guardian.lastName, address: b.address || null, emergencyName: b.emergency.name, emergencyPhone: b.emergency.phone, source: 'ONLINE', notes: `Signed up online ${now.toISOString().slice(0, 10)}; terms and privacy accepted; confirmed ${majorityAge} or older${b.participant.self ? '' : '; parent or guardian consent given for the child'}${b.consents.photo ? '; photo consent given' : ''}.` },
       });
       const guardian = await tx.member.create({ data: { tenantId: req.tenantId!, householdId: household.id, role: b.participant.self ? 'ADULT' : 'GUARDIAN', firstName: b.guardian.firstName, lastName: b.guardian.lastName, email: b.guardian.email.toLowerCase(), phone: b.guardian.phone, ...(b.participant.self ? { dateOfBirth: new Date(b.participant.dateOfBirth), safetyNote: b.participant.safetyNote || null, photoConsent: b.consents.photo } : {}) } });
       const participant = b.participant.self
@@ -187,7 +201,7 @@ publicSignupRouter.post(
           },
         },
       });
-      await audit(tx, { tenantId: req.tenantId!, actorId: null, action: 'registration.online', entity: 'LessonEnrollment', entityId: e.id, after: { setId: set.id, status: e.status, consents: b.consents } });
+      await audit(tx, { tenantId: req.tenantId!, actorId: null, action: 'registration.online', entity: 'LessonEnrollment', entityId: e.id, after: { setId: set.id, status: e.status, consents: b.consents, majorityAge, consentAt: now.toISOString() } });
       return { reference: ref, status: e.status, priceCents: set.priceCents ?? 0 };
     });
     res.status(201).json(out);
@@ -240,7 +254,7 @@ publicSignupRouter.post(
         contact: z.object({ name: z.string().trim().min(2).max(80), email: z.string().email().max(160), phone: z.string().trim().min(7).max(30) }),
         organization: z.string().trim().max(120).optional().default(''),
         notes: z.string().trim().max(1000).optional().default(''),
-        consents: z.object({ terms: z.literal(true), privacy: z.literal(true) }),
+        consents: z.object({ terms: z.literal(true), privacy: z.literal(true), adult: z.literal(true, { message: 'Confirm you are an adult to book.' }) }),
         locale: z.enum(['en-CA', 'fr-CA']).default('en-CA'),
       })
       .parse(req.body);
@@ -259,6 +273,7 @@ publicSignupRouter.post(
       const when = DateTime.fromJSDate(slot.startsAt, { zone: timezone }).setLocale(b.locale).toLocaleString(DateTime.DATETIME_MED);
       const name = b.locale === 'fr-CA' && service.nameFr ? service.nameFr : service.name;
       await tx.emailOutbox.create({ data: { tenantId: req.tenantId!, toEmail: r.email, template: 'booking_received', locale: b.locale, params: { service: name, when, reference: ref } } });
+      await audit(tx, { tenantId: req.tenantId!, actorId: null, action: 'booking.online', entity: 'BookingRequest', entityId: r.id, after: { serviceId: service.id, consents: b.consents, consentAt: new Date().toISOString() } });
       const staff = await usersWithPermission(tx, req.tenantId!, 'bookings.manage');
       await notify(tx, req.tenantId!, staff.map((userId) => ({ userId, type: 'booking_requested', params: { service: service.name, when, name: b.contact.name }, link: '/manage/bookings' })));
       return { reference: ref };

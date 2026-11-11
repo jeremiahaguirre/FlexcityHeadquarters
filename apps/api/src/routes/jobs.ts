@@ -1,6 +1,7 @@
 import type { JobPosting } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
+import { workAge } from '../services/legal/ages.js';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
@@ -46,7 +47,7 @@ export const publicJobsRouter = Router();
 const publicView = (r: Parameters<typeof view>[0], facility: { name: string; province: string } | null) => {
   const { published: _p, ...j } = view({ ...r, facility });
   // For search engines (JobPosting structured data): when it was posted and where.
-  return { ...j, postedOn: r.createdAt.toISOString().slice(0, 10), province: facility?.province ?? null };
+  return { ...j, postedOn: r.createdAt.toISOString().slice(0, 10), province: facility?.province ?? null, workAge: workAge(facility?.province) };
 };
 
 publicJobsRouter.get(

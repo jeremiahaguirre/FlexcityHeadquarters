@@ -20,7 +20,7 @@ const as = () => ({
   patch: (p: string, b: object) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(hr, { type: 'bearer' }).send(b),
 });
 const PDF = `data:application/pdf;base64,${Buffer.from('%PDF-1.4\n% résumé\n').toString('base64')}`;
-const apply = (b: object) => request(server).post(`/api/public/jobs/${postingId}/apply`).set('x-tenant-subdomain', SUB).send({ startedAt: Date.now() - 10_000, consent: true, ...b });
+const apply = (b: object) => request(server).post(`/api/public/jobs/${postingId}/apply`).set('x-tenant-subdomain', SUB).send({ startedAt: Date.now() - 10_000, consent: true, age: 'ADULT', ...b });
 
 beforeAll(async () => {
   t = await seedTenant(SUB, 0);
@@ -51,7 +51,23 @@ describe('job applications in the app', () => {
     expect((await apply({ firstName: 'Riley', lastName: 'Chen', email: 'riley@example.ca' })).body.code).toBe('ALREADY_APPLIED');
     expect(await owner.notification.count({ where: { type: 'application_received' } })).toBe(1);
     const stored = await owner.jobApplication.findFirstOrThrow({ where: { postingId } });
+    expect(stored.notes).toBe('Applicant confirmed they are 16 or older.');
     expect(Buffer.from(stored.ciphertext!).toString('latin1')).not.toContain('%PDF');
+  });
+
+  it('age gate: an age is confirmed (no birth date), and under 16 needs a parent or guardian', async () => {
+    const job = (await request(server).get(`/api/public/jobs/${postingId}`).set('x-tenant-subdomain', SUB)).body;
+    expect(job.workAge).toMatchObject({ adultAge: 16, minAge: 14 });
+    expect((await apply({ firstName: 'Kai', lastName: 'Ng', email: 'kai@example.ca', age: undefined })).status).toBe(400);
+    expect((await apply({ firstName: 'Kai', lastName: 'Ng', email: 'kai@example.ca', age: 'YOUNG' })).body.code).toBe('GUARDIAN_CONSENT');
+    expect((await apply({ firstName: 'Kai', lastName: 'Ng', email: 'kai@example.ca', age: 'YOUNG', guardianConsent: true })).body.code).toBe('GUARDIAN_CONSENT');
+    expect(await owner.jobApplication.count({ where: { postingId, email: 'kai@example.ca' } })).toBe(0);
+    expect((await apply({ firstName: 'Kai', lastName: 'Ng', email: 'kai@example.ca', age: 'YOUNG', guardianConsent: true, guardianName: 'Lin Ng' })).status).toBe(201);
+    const a = await owner.jobApplication.findFirstOrThrow({ where: { postingId, email: 'kai@example.ca' } });
+    expect(a.notes).toMatch(/^Applicant is 14–15: parent or guardian Lin Ng consented on \d{4}-\d{2}-\d{2}/);
+    const log = await owner.auditLog.findFirst({ where: { tenantId: t.tenant.id, action: 'application.received', entityId: a.id } });
+    expect(log?.after).toMatchObject({ age: 'YOUNG', guardianConsent: true });
+    await owner.jobApplication.delete({ where: { id: a.id } });
   });
 
   it('HR reads it, moves it along, and hires: an account and an invitation', async () => {
