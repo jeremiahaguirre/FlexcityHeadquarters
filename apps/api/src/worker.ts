@@ -38,6 +38,7 @@ import { sharedListener } from './lib/listen.js';
 import { runMonitors, pruneTrustHistory } from './services/trust/monitors.js';
 import { snapshot } from './services/trust/posture.js';
 import { deliverTrustAlerts, runReminders } from './services/trust/reminders.js';
+import { sendRenewalReminders } from './services/billing/renewal.js';
 import { ensureTrustSeeded } from './services/trust/seed.js';
 import { checkOverdueSafety, enableInlineUrgent, kickUrgent, tenantsWithDueSms, URGENT_CHANNEL } from './services/notifications/urgent.js';
 
@@ -146,6 +147,7 @@ const hourly = async () => {
   await exclusive('anonymize', () => perTenant((tx) => anonymizeDue(tx)));
   await exclusive('retention', () => perTenant((tx) => applyRetention(tx)));
   await exclusive('scheduled-reports', () => perTenant((tx) => sendScheduledReports(tx)));
+  await exclusive('renewal-reminders', () => sendRenewalReminders(db()));
   await exclusive('benchmarks', () => computeBenchmarks(db()));
   await exclusive('trust-reminders', () => runReminders(db()));
   await exclusive('trust-prune', () => pruneTrustHistory(db()));
