@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';
-import { audit, withTenant } from '../lib/db.js';
+import { audit, replica, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { REPORTS, REPORT_KEYS, canRun, runReport, toCsv } from '../services/reports/catalog.js';
 import { h } from './context.js';
@@ -30,7 +30,8 @@ reportsRouter.get(
     const p = params.parse(req.query);
     const w = window(p);
     if (w.from > w.to) throw forbidden('The start date is after the end date.');
-    res.json({ ...w, ...(await withTenant(a.tenantId, (tx) => runReport(tx, a, p.key, w))) });
+    // Reports read from the replica when there is one (they can be a few seconds behind).
+    res.json({ ...w, ...(await withTenant(a.tenantId, (tx) => runReport(tx, a, p.key, w), { readOnly: true, prisma: replica() })) });
   }),
 );
 
@@ -42,11 +43,9 @@ reportsRouter.get(
     const p = params.parse(req.query);
     const labels = z.record(z.string(), z.string().max(80)).catch({}).parse(JSON.parse(String(req.query.labels ?? '{}')));
     const w = window(p);
-    const out = await withTenant(a.tenantId, async (tx) => {
-      const r = await runReport(tx, a, p.key, w);
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'report.export', entity: 'Tenant', entityId: a.tenantId, after: { key: p.key, ...w, rows: r.rows.length } });
-      return r;
-    });
+    // Read from the replica, then record the export on the primary.
+    const out = await withTenant(a.tenantId, (tx) => runReport(tx, a, p.key, w), { readOnly: true, prisma: replica() });
+    await withTenant(a.tenantId, (tx) => audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'report.export', entity: 'Tenant', entityId: a.tenantId, after: { key: p.key, ...w, rows: out.rows.length } }));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${p.key}-${w.from}-${w.to}.csv"`);
     res.setHeader('Cache-Control', 'no-store');

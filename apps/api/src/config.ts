@@ -24,6 +24,12 @@ const schema = z.object({
    * PgBouncer pool in session mode: transaction pooling drops LISTEN. Defaults to APP_DATABASE_URL.
    */
   LISTEN_DATABASE_URL: z.string().url().optional(),
+  /**
+   * A read replica (RDS read replica, same roles and row-level security as the primary) for heavy
+   * reads that can be a few seconds behind: running reports. Unset, they read from APP_DATABASE_URL.
+   * Connect as the app role, never the owner. Must stay in Canada like the primary.
+   */
+  READ_REPLICA_URL: z.string().url().optional(),
   /** Domain events: delivery tries before an event is set aside as dead (lib/outbox.ts). */
   EVENT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(8),
   /** Webhooks (services/integrations/webhooks.ts): tries per delivery, failed tries in a row before an endpoint is turned off, and how long to wait for an answer. */
@@ -144,7 +150,7 @@ export function config(): Config {
     }
     // Encryption in transit to the database, not just to the browser.
     if (parsed.data.NODE_ENV === 'production') {
-      for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL]] as const) {
+      for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL], ['LISTEN_DATABASE_URL', parsed.data.LISTEN_DATABASE_URL], ['READ_REPLICA_URL', parsed.data.READ_REPLICA_URL]] as const) {
         if (url && !/[?&]sslmode=(require|verify-ca|verify-full)\b/.test(url)) throw new Error(`${name} must use TLS in production (sslmode=verify-full)`);
       }
     }

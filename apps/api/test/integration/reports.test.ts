@@ -37,6 +37,24 @@ afterAll(async () => {
 });
 
 describe('reports', () => {
+  it('every report runs in a read-only transaction (as on the read replica)', async () => {
+    for (const who of ['sup', 'hr']) {
+      const keys = ((await as(who).get('/api/reports')).body as Array<{ key: string }>).map((r) => r.key);
+      expect(keys.length).toBeGreaterThan(0);
+      for (const key of keys) {
+        const r = await as(who).get(`/api/reports/run?key=${key}`);
+        expect(r.status, `${who} ${key}`).toBe(200);
+      }
+    }
+  });
+
+  it('a read-only transaction refuses writes, and the CSV export is still recorded', async () => {
+    await expect(withTenant(t.tenant.id, (tx) => tx.savedReport.create({ data: { tenantId: t.tenant.id, ownerId: t.users[0]!.id, name: 'nope', reportKey: 'hours_worked', params: {}, schedule: 'NONE' } }), { readOnly: true })).rejects.toThrow(/read-only/);
+    const before = await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'report.export' } });
+    expect((await as('sup').get('/api/reports/run.csv?key=hours_worked')).status).toBe(200);
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'report.export' } })).toBe(before + 1);
+  });
+
   it('each person sees only the reports their access allows', async () => {
     expect((await as('guard').get('/api/reports')).body).toEqual([]);
     const sup = (await as('sup').get('/api/reports')).body.map((r: { key: string }) => r.key);

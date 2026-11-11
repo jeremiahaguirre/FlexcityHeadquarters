@@ -3,24 +3,38 @@ import { config } from '../config.js';
 import { dbQueryDuration, dbSlowQueries } from './metrics.js';
 
 let client: PrismaClient | undefined;
+let replicaClient: PrismaClient | undefined;
 
 /** Prisma client connected as the non-owner app role (RLS enforced). */
 export function db(): PrismaClient {
-  if (!client) {
-    // With metrics on (METRICS_TOKEN), each query's duration goes to fh_db_query_duration_seconds.
-    // Queries slower than SLOW_QUERY_MS are logged and counted: the SQL text only (it has $1-style
-    // placeholders), never the parameters, which can hold personal information.
-    const timed = !!config().METRICS_TOKEN;
-    const slowMs = config().SLOW_QUERY_MS;
-    const listen = timed || slowMs > 0;
-    const c = new PrismaClient({ datasources: { db: { url: pooled(config().APP_DATABASE_URL) } }, ...(listen ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
-    if (listen) (c as unknown as PrismaClient<Prisma.PrismaClientOptions, 'query'>).$on('query', (e) => onQuery(e.duration, e.query, timed, slowMs));
-    client = c;
-  }
+  if (!client) client = connect(config().APP_DATABASE_URL);
   return client;
 }
 
-/** One query finished: time it, and log it if slow (text only, trimmed; never its parameters). */
+/**
+ * The read replica (READ_REPLICA_URL), for heavy reads that may lag the primary by a few seconds,
+ * such as running reports. Without one configured it is the primary. Use it through
+ * withTenant(…, { readOnly: true, prisma: replica() }) so a write fails the same way on both.
+ */
+export function replica(): PrismaClient {
+  const url = config().READ_REPLICA_URL;
+  if (!url) return db();
+  if (!replicaClient) replicaClient = connect(url);
+  return replicaClient;
+}
+
+function connect(url: string): PrismaClient {
+  // With metrics on (METRICS_TOKEN), each query's duration goes to fh_db_query_duration_seconds.
+  // Queries slower than SLOW_QUERY_MS are logged and counted: the SQL text only (it has $1-style
+  // placeholders), never the parameters, which can hold personal information.
+  const timed = !!config().METRICS_TOKEN;
+  const slowMs = config().SLOW_QUERY_MS;
+  const listen = timed || slowMs > 0;
+  const c = new PrismaClient({ datasources: { db: { url: pooled(url) } }, ...(listen ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
+  if (listen) (c as unknown as PrismaClient<Prisma.PrismaClientOptions, 'query'>).$on('query', (e) => onQuery(e.duration, e.query, timed, slowMs));
+  return c;
+}
+
 /**
  * The query as logged: whitespace collapsed and Prisma's long column list shortened to "SELECT …",
  * so the FROM and WHERE (what explains a slow query) fit in the 400 characters kept.
@@ -29,6 +43,7 @@ export function shortSql(sql: string): string {
   return sql.replace(/\s+/g, ' ').replace(/^SELECT (?:(?!\bFROM\b).)+? FROM /, 'SELECT … FROM ').slice(0, 400);
 }
 
+/** One query finished: time it, and log it if slow (text only, trimmed; never its parameters). */
 export function onQuery(durationMs: number, sql: string, timed: boolean, slowMs: number) {
   if (timed) dbQueryDuration.observe({}, durationMs / 1000);
   if (slowMs > 0 && durationMs >= slowMs) {
@@ -58,7 +73,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function withTenant<T>(
   tenantId: string,
   fn: (tx: Tx) => Promise<T>,
-  opts: { isolationLevel?: Prisma.TransactionIsolationLevel; prisma?: PrismaClient; timeoutMs?: number } = {},
+  opts: { isolationLevel?: Prisma.TransactionIsolationLevel; prisma?: PrismaClient; timeoutMs?: number; readOnly?: boolean } = {},
 ): Promise<T> {
   if (!UUID.test(tenantId)) throw new Error('Invalid tenant id');
   const prisma = opts.prisma ?? db();
@@ -66,6 +81,8 @@ export async function withTenant<T>(
   const result = await prisma.$transaction(
     async (tx) => {
       commitHooks.set(tx, hooks);
+      // Must come before any other statement in the transaction.
+      if (opts.readOnly) await tx.$executeRaw`SET TRANSACTION READ ONLY`;
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       return fn(tx);
     },
