@@ -67,7 +67,7 @@ export interface CandidateContext {
   /** certificationId → latest expiry (null = never expires) */
   certExpiry: ReadonlyMap<string, string | null>;
   /** Assigned, non-cancelled shifts near the target shift. */
-  existingShifts: Array<Interval & { positionId: string; facilityId?: string }>;
+  existingShifts: Array<Interval & { positionId: string; facilityId?: string; id?: string }>;
   approvedTimeOff: Interval[];
   /** Active work restrictions (accommodation / return to work). */
   restrictions?: Restriction[];
@@ -386,7 +386,8 @@ function sumHoursWithin(intervals: Interval[], from: Date, to: Date): number {
   }, 0);
 }
 
-function isAvailable(windows: CandidateContext['availability'], shift: ShiftSpec): boolean {
+/** Within the person's submitted availability (a hard rule for generated schedules, a warning for manual ones). */
+export function isAvailable(windows: CandidateContext['availability'], shift: Pick<ShiftSpec, 'start' | 'end' | 'timezone'>): boolean {
   const day = localDate(shift.start, shift.timezone);
   const dow = dayOfWeek(day);
   const dayStartMs = startOfLocalDay(day, shift.timezone).getTime();

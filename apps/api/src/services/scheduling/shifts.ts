@@ -66,10 +66,12 @@ export async function updateShift(
   actor: Actor,
   shiftId: string,
   expectedVersion: number,
-  patch: Partial<Omit<ShiftInput, 'facilityId'>>,
+  patch: Partial<ShiftInput>,
 ) {
   const before = await tx.shift.findUnique({ where: { id: shiftId } });
   if (!before) throw notFound('Shift');
+  // Moving to another facility (the schedule builder's drag between rows); the route checks scope.
+  if (patch.facilityId && patch.facilityId !== before.facilityId && !(await tx.facility.findUnique({ where: { id: patch.facilityId } }))) throw notFound('Facility');
   if (before.status === 'CANCELLED') throw conflict('SHIFT_CANCELLED', 'This shift was cancelled.');
   const startsAt = patch.startsAt ?? before.startsAt;
   const endsAt = patch.endsAt ?? before.endsAt;
@@ -80,6 +82,7 @@ export async function updateShift(
     data: {
       startsAt,
       endsAt,
+      facilityId: patch.facilityId ?? before.facilityId,
       positionId: patch.positionId ?? before.positionId,
       shiftType: patch.shiftType ?? before.shiftType,
       customTitle: patch.customTitle === undefined ? before.customTitle : patch.customTitle,
