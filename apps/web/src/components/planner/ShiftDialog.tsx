@@ -27,7 +27,7 @@ export interface DialogShift {
   customTitle: string | null;
   assignee: { id: string; name: string } | null;
 }
-interface Candidate { user: { id: string; firstName: string; lastName: string; employmentStatus: string }; eligible: boolean; overtimeHours: string; weeklyHoursAfter: string; blocks: Array<{ code: string }> }
+interface Candidate { user: { id: string; firstName: string; lastName: string; employmentStatus: string }; eligible: boolean; overtimeHours: string; weeklyHoursAfter: string; blocks: Array<{ code: string }>; flags?: Array<{ code: string }> }
 
 export function ShiftDialog({ shift, onClose, onChanged }: { shift: DialogShift; onClose: () => void; onChanged: (change?: { from: string | null; to: string | null }) => void }) {
   const { t, i18n } = useTranslation();
@@ -41,8 +41,10 @@ export function ShiftDialog({ shift, onClose, onChanged }: { shift: DialogShift;
   async function assign(userId: string | null, acknowledgeOvertime = false) {
     setBusy(userId ?? 'none');
     try {
-      await api(`/api/shifts/${shift.id}/assign`, { method: 'POST', body: { userId, expectedVersion: candidates.data?.shiftVersion ?? shift.version, acknowledgeOvertime } });
-      toast(userId ? t('builder.assigned') : t('builder.unassigned'), 'ok');
+      const r = await api<{ flags?: Array<{ code: string }> }>(`/api/shifts/${shift.id}/assign`, { method: 'POST', body: { userId, expectedVersion: candidates.data?.shiftVersion ?? shift.version, acknowledgeOvertime } });
+      // Assigned, but young-worker rules couldn't be checked without a date of birth.
+      if (userId && r.flags?.some((f) => f.code === 'DATE_OF_BIRTH_MISSING')) toast(t('builder.assignedNoDob'), 'warn');
+      else toast(userId ? t('builder.assigned') : t('builder.unassigned'), 'ok');
       onChanged({ from: shift.assignee?.id ?? null, to: userId });
       onClose();
     } catch (e) {
@@ -110,6 +112,7 @@ export function ShiftDialog({ shift, onClose, onChanged }: { shift: DialogShift;
                       <p className="truncate text-caption text-muted">
                         {c.eligible ? t('builder.weekHours', { hours: formatHours(c.weeklyHoursAfter, lng) }) : c.blocks.map((b) => t(`blocks.${b.code}`)).join(' ')}
                       </p>
+                      {c.eligible && c.flags?.some((f) => f.code === 'DATE_OF_BIRTH_MISSING') ? <p className="text-caption text-warn">{t('planner.reasons.DATE_OF_BIRTH_MISSING')}</p> : null}
                     </div>
                     {c.eligible ? (
                       <Button size="sm" variant={ot ? 'secondary' : 'primary'} icon={<UserCheck className="h-4 w-4" aria-hidden="true" />} loading={busy === c.user.id} onClick={() => void assign(c.user.id)}>

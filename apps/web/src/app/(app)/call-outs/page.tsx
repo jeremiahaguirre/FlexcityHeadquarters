@@ -2,6 +2,7 @@
 
 import { Check, PhoneCall, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -19,7 +20,13 @@ export default function MyCallOuts() {
   const q = useQuery<Offer[]>('/api/me/call-outs');
   const { run, busy } = useAction();
   const when = (iso: string, timeOnly = false) => dateFormat(i18n.language, timeOnly ? { timeStyle: 'short' } : { weekday: 'short', dateStyle: undefined, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
-  const answer = (o: Offer, a: 'ACCEPTED' | 'DECLINED') => void run(`${o.id}${a}`, () => api(`/api/me/call-outs/${o.id}`, { method: 'POST', body: { answer: a } }), t(a === 'ACCEPTED' ? 'myCallOuts.accepted' : 'myCallOuts.declined')).then(() => q.reload());
+  const toast = useToast();
+  // An acceptance is re-checked: if they can no longer take it (another shift since), they're told and the next person is asked.
+  const answer = (o: Offer, a: 'ACCEPTED' | 'DECLINED') =>
+    void run(`${o.id}${a}`, () => api<{ accepted?: boolean; skippedReason?: string | null }>(`/api/me/call-outs/${o.id}`, { method: 'POST', body: { answer: a } })).then((r) => {
+      if (r) toast(a === 'ACCEPTED' && r.accepted === false ? t('myCallOuts.noLongerEligible', { reason: t(`callOuts.skip.${r.skippedReason}`, { defaultValue: t('callOuts.skip.OTHER') }) }) : t(a === 'ACCEPTED' ? 'myCallOuts.accepted' : 'myCallOuts.declined'), a === 'ACCEPTED' && r.accepted === false ? 'warn' : 'ok');
+      return q.reload();
+    });
   return (
     <div className="grid gap-6">
       <PageHeader title={t('myCallOuts.title')} description={t('myCallOuts.description')} />

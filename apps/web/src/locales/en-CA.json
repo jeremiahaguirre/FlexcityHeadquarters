@@ -106,7 +106,10 @@
     "NOT_AVAILABLE": "This is outside your availability.",
     "OVER_PERSONAL_WEEKLY_MAX": "This would exceed your weekly hour cap.",
     "ONBOARDING_INCOMPLETE": "Onboarding isn’t finished for this position (for example a criminal record check or required training).",
-    "ACCOMMODATION": "Outside your work restrictions."
+    "ACCOMMODATION": "Outside your work restrictions.",
+    "DAILY_HOURS": "This would be more than the most hours allowed in a day.",
+    "CONSECUTIVE_DAYS": "This would be too many days in a row.",
+    "WEEKLY_REST": "You wouldn’t get the required weekly rest."
   },
   "demo": {
     "banner": "Demo with sample data — nothing you do here is saved.",
@@ -496,7 +499,8 @@
     "SCOPE_NOT_YOURS": "You can only give a key access to data you can see yourself.",
     "TOO_MANY_KEYS": "Your organization has the most keys it can have. Revoke one you no longer use.",
     "TOO_MANY_ENDPOINTS": "Your organization has the most webhooks it can have.",
-    "HOST_NOT_PUBLIC": "That address must be on the public internet."
+    "HOST_NOT_PUBLIC": "That address must be on the public internet.",
+    "PUBLISH_WARNINGS": "Publishing would leave coverage gaps or shifts someone can’t work. Review them and confirm to publish anyway."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -875,7 +879,8 @@
     "summary": "{{filled}} filled, {{open}} left open.",
     "repaired_one": "1 filled by moving someone from another shift.",
     "repaired_other": "{{count}} filled by moving someone from another shift.",
-    "otherSites": "The list shows this facility; other sites are included in the totals."
+    "otherSites": "The list shows this facility; other sites are included in the totals.",
+    "assignedNoDob": "Assigned. No date of birth is on file, so young-worker rules weren’t checked."
   },
   "approvals": {
     "title": "Approvals",
@@ -3564,10 +3569,14 @@
       "ON_APPROVED_TIME_OFF": "on time off",
       "DAILY_REST": "too little rest",
       "CERTIFICATION_EXPIRES": "certificate expires",
-      "NOT_QUALIFIED_FOR_POSITION": "not approved for the position"
+      "NOT_QUALIFIED_FOR_POSITION": "not approved for the position",
+      "WEEKLY_REST": "too little weekly rest",
+      "DAILY_HOURS": "too many hours that day",
+      "CONSECUTIVE_DAYS": "too many days in a row"
     },
     "foot": "Every acceptance, refusal and non-answer is charged on the overtime ledger as your settings say. The response time and rest rules are set on Winter operations.",
-    "starts": "Starts"
+    "starts": "Starts",
+    "skippedAtAccept": "They can no longer take it ({{reason}}). Skipped, and the next person was asked."
   },
   "myCallOuts": {
     "title": "Call-outs",
@@ -3579,7 +3588,8 @@
     "no": "Can’t this time",
     "accepted": "Thanks! It’s on your schedule.",
     "declined": "Got it. It goes to the next person.",
-    "fairness": "Your answer is recorded on the overtime ledger, as your agreement counts it."
+    "fairness": "Your answer is recorded on the overtime ledger, as your agreement counts it.",
+    "noLongerEligible": "You can’t take this one now ({{reason}}). It’s been offered to the next person."
   },
   "patrol": {
     "title": "Winter patrol",
@@ -6177,7 +6187,7 @@
     "reminded_one": "Reminder sent to {{count}} person.",
     "reminded_other": "Reminder sent to {{count}} people.",
     "forecast": "Add shifts from the forecast first",
-    "forecastHint": "Where the forecast needs more people than are scheduled, open draft shifts are added before filling (staff don’t see drafts).",
+    "forecastHint": "Where the forecast needs more people than are scheduled, it suggests shifts (at least the minimum shift length). They’re proposed with the rest and created only when you accept them.",
     "forecastNone": "No, fill the shifts already there",
     "keepInMind": "Anything to keep in mind? The usual choices are already set.",
     "toggle": {
@@ -6254,7 +6264,9 @@
       "FEWEST_OVERTIME": "least overtime so far",
       "SENIORITY": "most senior available",
       "CONFIRMED": "confirmed their availability",
-      "TENTATIVE": "availability not yet confirmed"
+      "TENTATIVE": "availability not yet confirmed",
+      "DOB_MISSING": "no date of birth on file (young-worker rules not checked)",
+      "STAT_HOLIDAY": "statutory holiday (paid at the holiday rate)"
     },
     "block": {
       "OTHER_one": "{{count}} other reason",
@@ -6304,7 +6316,9 @@
       "HOS_REST_one": "{{count}} needs rest from driving",
       "HOS_REST_other": "{{count}} need rest from driving",
       "HOS_WEEKLY_one": "{{count}} weekly driving limit",
-      "HOS_WEEKLY_other": "{{count}} weekly driving limits"
+      "HOS_WEEKLY_other": "{{count}} weekly driving limits",
+      "WEEKLY_REST_one": "{{count}} would break weekly rest",
+      "WEEKLY_REST_other": "{{count}} would break weekly rest"
     },
     "weight": {
       "fairness": "Share hours fairly",
@@ -6336,8 +6350,27 @@
       "planAhead": "Plan ahead",
       "planAheadHelp": "Staff are asked to keep availability current at least this far ahead.",
       "maxDays": "Most days in a row",
-      "maxHours": "Most hours in a day"
-    }
+      "maxHours": "Most hours in a day",
+      "maxDaysHelp": "Applies everywhere: assigning by hand, the Shift Board, trades, call-outs and Fill. At most 12 (a day off each week).",
+      "maxHoursHelp": "The longest shift, and the most hours in one day (in BC and Alberta, the 24 hours from the start of a shift past midnight).",
+      "fullTimeTarget": "Full-time weekly hours",
+      "fullTimeTargetHelp": "What full-time staff without contracted hours aim for. Hours go to full-time first, then part-time, then casual and on-call staff.",
+      "minShift": "Shortest shift the forecast suggests (hours)",
+      "minShiftHelp": "A short gap becomes a shift at least this long.",
+      "travel": "Travel time between facilities (minutes)",
+      "travelHelp": "Fill never books someone at two facilities closer together than this.",
+      "federal": "Federally regulated (Canada Labour Code)",
+      "federalHelp": "Schedule under the federal rules (overtime after 8 h a day or 40 h a week, 8 h between shifts, a day off each week, 96 hours’ notice). Payroll still follows the province.",
+      "holidayClosed": "Closed on statutory holidays",
+      "holidayClosedHelp": "The forecast suggests no shifts at these facilities on statutory holidays."
+    },
+    "newPill": "New from forecast",
+    "holidayPill": "Holiday",
+    "createOpen": "Create as open shift",
+    "dontCreate": "Don’t create",
+    "createdOpen": "Open draft shift created.",
+    "undoneLeftOpen_one": "Undone: {{count}} shift put back; {{open}} left open because that person can no longer work it.",
+    "undoneLeftOpen_other": "Undone: {{count}} shifts put back; {{open}} left open because those people can no longer work them."
   },
   "planner": {
     "description": "Schedule by hand — drag people onto shifts in a month, week or day view — or let Fill the schedule propose a draft. Every assignment follows the same rules as the shift board, and nothing changes for staff until you publish.",
@@ -6499,7 +6532,10 @@
       "RULES_UNVERIFIED": "Provincial rules pending review",
       "TRAVEL": "Not enough time to travel between facilities",
       "OVERTIME_REQUIRES_ACK": "Adds overtime",
-      "NOT_FOUND": "Not found"
+      "NOT_FOUND": "Not found",
+      "DAILY_HOURS": "{{a}} h in a day (limit {{b}} h)",
+      "CONSECUTIVE_DAYS": "{{a}} days in a row (limit {{b}})",
+      "WEEKLY_REST": "Only {{a}} h off in a row that week ({{b}} h needed)"
     },
     "reasonsPlain": {
       "OVERLAPPING_SHIFT": "Already working at that time",
@@ -6512,7 +6548,10 @@
       "HOS_WEEKLY": "Over the 7-day driving limit",
       "OVERTIME": "Adds overtime",
       "MISSING_CERTIFICATION": "Missing a required certification",
-      "CERTIFICATION_EXPIRES": "A required certification expires before the shift ends"
+      "CERTIFICATION_EXPIRES": "A required certification expires before the shift ends",
+      "DAILY_HOURS": "Over the most hours in a day",
+      "CONSECUTIVE_DAYS": "Too many days in a row",
+      "WEEKLY_REST": "Not enough weekly rest"
     }
   },
   "trust": {
@@ -7029,5 +7068,22 @@
       "attention": "Being worked on",
       "footer": "Report a security issue: security@flexcityhq.example"
     }
+  },
+  "publishCheck": {
+    "title": "Publish the schedule",
+    "ready_one": "{{count}} draft shift will be published. Staff are told once each; open shifts go on the Shift Board.",
+    "ready_other": "{{count}} draft shifts will be published. Staff are told once each; open shifts go on the Shift Board.",
+    "checking": "Checking required coverage and certifications…",
+    "allClear": "Required coverage is met and everyone can work their shift.",
+    "gapsTitle": "Required coverage would be short",
+    "gap": "{{rule}} · {{date}}, {{time}}: {{have}} of {{need}}",
+    "more_one": "and {{count}} more",
+    "more_other": "and {{count}} more",
+    "ineligibleTitle": "Can no longer work their shift",
+    "federal_one": "{{count}} shift starts within {{hours}} hours. The Canada Labour Code asks for {{hours}} hours’ notice of a schedule.",
+    "federal_other": "{{count}} shifts start within {{hours}} hours. The Canada Labour Code asks for {{hours}} hours’ notice of a schedule.",
+    "confirm": "I’ve reviewed these and want to publish anyway (this is recorded).",
+    "publish": "Publish",
+    "publishAnyway": "Publish anyway"
   }
 }

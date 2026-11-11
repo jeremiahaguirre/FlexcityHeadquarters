@@ -35,6 +35,9 @@ export interface FillSlot {
   hours: number;
   currentUserId: string | null;
   tentative: boolean;
+  statHoliday?: boolean;
+  /** A forecast shift not created yet (the slot id starts with "new:"): accepting creates it. */
+  newShift?: { startsAt: string; endsAt: string } | null;
 }
 export interface FillPerson { name: string; fromDepartment: { name: string; nameFr: string | null } | null }
 export interface FillWeek {
@@ -46,8 +49,11 @@ export interface FillWeek {
   coverageGaps: Array<{ needId: string; name: string; shortHours: number }>;
   slots: FillSlot[];
   people: Record<string, FillPerson>;
-  carry: Array<{ shiftId: string; userId: string }>;
+  carry: CarryItem[];
 }
+export interface CarryItem { shiftId: string; userId: string; startsAt?: string; endsAt?: string; positionId?: string; facilityId?: string }
+/** A forecast shift to propose (nothing is created until it's accepted). */
+export interface NewShift { key: string; facilityId: string; positionId: string; startsAt: string; endsAt: string }
 export interface Toggles { keepAssigned: boolean; avoidOvertime: boolean; spreadWeekends: boolean; sameFacility: boolean }
 export interface Weights { fairness: number; overtime: number; continuity: number; targetHours: number; spread: number; preferences: number; seniority: number }
 export const WEIGHT_KEYS: Array<keyof Weights> = ['fairness', 'targetHours', 'overtime', 'spread', 'continuity', 'preferences', 'seniority'];
@@ -120,11 +126,42 @@ export function summarize(weeks: FillWeek[], items: Item[], r: ReviewState) {
   return { total, filled, needYou, overtimeHours, overtimeCost, tentative };
 }
 
+export type AcceptBody =
+  | { shiftId: string; userId: string; expectedVersion: number; previousUserId: string | null }
+  | { newShift: { facilityId: string; positionId: string; startsAt: string; endsAt: string }; key: string; userId: string | null };
+
+/** One item's accept request: an existing draft, or a forecast shift to create (open when userId is null). */
+export function acceptItem(slot: FillSlot, userId: string | null): AcceptBody {
+  if (slot.newShift) return { newShift: { facilityId: slot.facilityId, positionId: slot.positionId, startsAt: slot.newShift.startsAt, endsAt: slot.newShift.endsAt }, key: slot.id, userId };
+  return { shiftId: slot.id, userId: userId!, expectedVersion: slot.version, previousUserId: slot.currentUserId };
+}
+
+/** The slot id an accept request is for. */
+export const slotIdOf = (b: AcceptBody) => ('shiftId' in b ? b.shiftId : b.key);
+
 /** What to send to accept the chosen items (those not declined or already accepted). */
-export function acceptBody(items: Item[], r: ReviewState) {
-  return items
-    .filter((i) => i.proposal && !r.declined[i.slot.id] && !r.accepted[i.slot.id])
-    .map((i) => ({ shiftId: i.slot.id, userId: r.choice[i.slot.id] ?? i.proposal!.userId, expectedVersion: i.slot.version, previousUserId: i.slot.currentUserId }));
+export function acceptBody(items: Item[], r: ReviewState): AcceptBody[] {
+  return items.filter((i) => i.proposal && !r.declined[i.slot.id] && !r.accepted[i.slot.id]).map((i) => acceptItem(i.slot, r.choice[i.slot.id] ?? i.proposal!.userId));
+}
+
+/**
+ * Undo works one accept at a time, latest first: each entry remembers its undo ids (one per week
+ * accepted) and which items it accepted, so undoing it un-marks only those.
+ */
+export interface UndoEntry { undoIds: string[]; slotIds: string[] }
+export function pushUndo(stack: UndoEntry[], e: UndoEntry): UndoEntry[] {
+  return e.undoIds.length ? [...stack, e] : stack;
+}
+export function popUndo(stack: UndoEntry[], r: ReviewState): { stack: UndoEntry[]; entry: UndoEntry | null; review: ReviewState } {
+  const entry = stack.at(-1) ?? null;
+  if (!entry) return { stack, entry, review: r };
+  const accepted = { ...r.accepted };
+  const handled = { ...r.handled };
+  for (const id of entry.slotIds) {
+    delete accepted[id];
+    delete handled[id];
+  }
+  return { stack: stack.slice(0, -1), entry, review: { ...r, accepted, handled } };
 }
 
 /** The people named anywhere in the run. */

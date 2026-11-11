@@ -26,20 +26,27 @@ import {
   type Horizon,
   HORIZONS,
   type Item,
+  type NewShift,
   type ReviewState,
   type Toggles,
+  type UndoEntry,
   WEIGHT_KEYS,
   type Weights,
   type Why,
   acceptBody,
+  acceptItem,
   beyondWindow,
   emptyReview,
   grouped,
   itemsOf,
   peopleOf,
+  popUndo,
+  pushUndo,
+  slotIdOf,
   summarize,
   weeksOf,
 } from '@/lib/fill';
+import { type PublishGroup, PublishDialog } from '@/components/PublishDialog';
 import { formatDate, formatHours, formatMoney, formatTimeRange } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import { plusDays, useQuery } from '@/lib/useQuery';
@@ -67,7 +74,11 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
   const [weeks, setWeeks] = useState<FillWeek[]>([]);
   const [review, setReview] = useState<ReviewState>(emptyReview());
   const [openItem, setOpenItem] = useState<string | null>(null);
-  const [undoId, setUndoId] = useState<string | null>(null);
+  // One entry per accept, latest last: undo takes back one accept at a time.
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
+  // Forecast shifts created on accept: slot id ("new:…") → the real shift.
+  const [created, setCreated] = useState<Record<string, string>>({});
+  const [publishGroups, setPublishGroups] = useState<{ groups: PublishGroup[]; slotIds: string[]; key: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const cancelled = useRef(false);
@@ -96,7 +107,8 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
       setStep('setup');
       setWeeks([]);
       setReview(emptyReview());
-      setUndoId(null);
+      setUndoStack([]);
+      setCreated({});
       setError(null);
       cancelled.current = true;
     } else cancelled.current = false;
@@ -121,14 +133,17 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
     try {
       for (let i = 0; i < starts.length; i++) {
         if (cancelled.current) return;
+        // The forecast's suggested shifts are a preview: proposed with the rest, created only on accept.
+        const newShifts: NewShift[] = [];
         if (forecastPosition) {
           for (const f of facilityId ? o.facilities.filter((x) => x.id === facilityId) : o.facilities) {
-            await api('/api/forecast/draft-shifts', { method: 'POST', body: { facilityId: f.id, weekStart: starts[i], positionId: forecastPosition } }).catch(() => undefined);
+            const r = await api<{ shifts: Array<{ facilityId: string; positionId: string; startsAt: string; endsAt: string }> }>('/api/forecast/preview-shifts', { method: 'POST', body: { facilityId: f.id, weekStart: starts[i], positionId: forecastPosition } }).catch(() => ({ shifts: [] }));
+            r.shifts.forEach((x, k) => newShifts.push({ ...x, key: `${i}-${f.id.slice(0, 8)}-${k}` }));
           }
         }
         const w = await api<FillWeek>('/api/schedule/fill/run', {
           method: 'POST',
-          body: { departmentId, facilityIds, weekStart: starts[i], horizonStart: weekStart, weekIndex: i, horizonWeeks: horizon, carry, toggles, weights },
+          body: { departmentId, facilityIds, weekStart: starts[i], horizonStart: weekStart, weekIndex: i, horizonWeeks: horizon, carry, toggles, weights, newShifts },
         });
         out.push(w);
         carry = [...carry, ...w.carry];
@@ -137,11 +152,24 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
       setWeeks(out);
       setReview(emptyReview());
       setStep('review');
-      if (forecastPosition) onChanged();
     } catch (e) {
       setError(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'));
       setStep('priorities');
     }
+  }
+
+  type AcceptResult = { applied: number; skipped: Array<{ shiftId: string; code: string }>; undoIds: string[]; created: Array<{ key: string; shiftId: string }> };
+  /** Sends accept requests; marks what went through, remembers created shifts, and pushes one undo entry. */
+  async function send(body: ReturnType<typeof acceptBody>, allowOvertime: boolean, mark: 'accepted' | 'handled') {
+    const r = await api<AcceptResult>('/api/schedule/fill/accept', { method: 'POST', body: { items: body, allowOvertime } });
+    const skipped = new Set(r.skipped.map((x) => x.shiftId));
+    const ok = body.map(slotIdOf).filter((id) => !skipped.has(id));
+    const made = Object.fromEntries(r.created.map((c) => [c.key, c.shiftId]));
+    setCreated((x) => ({ ...x, ...made }));
+    // A forecast shift nobody could take was still created, open: it needs the scheduler.
+    setReview((x) => ({ ...x, [mark]: { ...x[mark], ...Object.fromEntries(ok.map((id) => [id, true as const])) } }));
+    setUndoStack((st) => pushUndo(st, { undoIds: r.undoIds, slotIds: [...new Set([...ok, ...Object.keys(made)])] }));
+    return r;
   }
 
   async function accept(filter: (i: Item) => boolean, key: string) {
@@ -149,10 +177,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
     if (!body.length) return;
     setBusy(key);
     try {
-      const r = await api<{ applied: number; skipped: Array<{ shiftId: string; code: string }>; undoId: string | null }>('/api/schedule/fill/accept', { method: 'POST', body: { items: body, allowOvertime: !toggles?.avoidOvertime } });
-      const skipped = new Set(r.skipped.map((s) => s.shiftId));
-      setReview((x) => ({ ...x, accepted: { ...x.accepted, ...Object.fromEntries(body.filter((b) => !skipped.has(b.shiftId)).map((b) => [b.shiftId, true as const])) } }));
-      setUndoId(r.undoId);
+      const r = await send(body, !toggles?.avoidOvertime, 'accepted');
       toast(r.skipped.length ? t('fill.acceptedSome', { count: r.applied, skipped: r.skipped.length }) : t('fill.accepted', { count: r.applied }), r.skipped.length ? 'warn' : 'ok');
       onChanged();
     } catch (e) {
@@ -162,14 +187,17 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
     }
   }
 
+  /** Takes back the latest accept only (earlier ones stay). */
   async function undo() {
-    if (!undoId) return;
+    const { stack, entry, review: next } = popUndo(undoStack, review);
+    if (!entry) return;
     setBusy('undo');
     try {
-      const r = await api<{ restored: number }>('/api/schedule/fill/undo', { method: 'POST', body: { undoId } });
-      setReview((x) => ({ ...x, accepted: {} }));
-      setUndoId(null);
-      toast(t('fill.undone', { count: r.restored }), 'ok');
+      const r = await api<{ restored: number; leftOpen: number }>('/api/schedule/fill/undo', { method: 'POST', body: { undoIds: entry.undoIds } });
+      setUndoStack(stack);
+      setReview(next);
+      setCreated((x) => Object.fromEntries(Object.entries(x).filter(([k]) => !entry.slotIds.includes(k))));
+      toast(r.leftOpen ? t('fill.undoneLeftOpen', { count: r.restored, open: r.leftOpen }) : t('fill.undone', { count: r.restored }), r.leftOpen ? 'warn' : 'ok');
       onChanged();
     } catch {
       toast(t('common.error'), 'warn');
@@ -178,30 +206,67 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
     }
   }
 
-  /** Publishes what was accepted (and only that), facility by facility, through the usual step. */
-  async function publish(ids: string[], key = 'publish') {
+  /** Publishes what was accepted (and only that), facility by facility, after the publish check. */
+  function publish(ids: string[], key = 'publish') {
     if (!o || !ids.length) return;
-    setBusy(key);
-    try {
-      const byFacility = new Map<string, string[]>();
-      for (const it of items.filter((i) => ids.includes(i.slot.id))) byFacility.set(it.slot.facilityId, [...(byFacility.get(it.slot.facilityId) ?? []), it.slot.id]);
-      let published = 0;
-      let posted = 0;
-      for (const [fid, shiftIds] of byFacility) {
+    const byFacility = new Map<string, string[]>();
+    for (const it of items.filter((i) => ids.includes(i.slot.id))) {
+      const real = it.slot.newShift ? created[it.slot.id] : it.slot.id;
+      if (real) byFacility.set(it.slot.facilityId, [...(byFacility.get(it.slot.facilityId) ?? []), real]);
+    }
+    if (!byFacility.size) return;
+    setPublishGroups({
+      key,
+      slotIds: ids,
+      groups: [...byFacility].map(([fid, shiftIds]) => {
         const tz = o.facilities.find((f) => f.id === fid)?.timezone ?? 'America/Toronto';
-        const r = await api<{ published: number; postedToBoard: number }>('/api/shifts/publish', {
-          method: 'POST',
-          body: { facilityId: fid, from: zonedToInstant(weekStart, '00:00', tz).toISOString(), to: zonedToInstant(plusDays(weekStart, horizon * 7), '00:00', tz).toISOString(), shiftIds },
+        return { facilityId: fid, timezone: tz, shiftIds, from: zonedToInstant(weekStart, '00:00', tz).toISOString(), to: zonedToInstant(plusDays(weekStart, horizon * 7), '00:00', tz).toISOString() };
+      }),
+    });
+  }
+  function published(r: { published: number; posted: number }) {
+    const done = publishGroups;
+    setPublishGroups(null);
+    setUndoStack([]);
+    if (done?.key.startsWith('post-')) setReview((x) => ({ ...x, handled: { ...x.handled, ...Object.fromEntries(done.slotIds.map((id) => [id, true as const])) } }));
+    toast(t('builder.published', { count: r.published, open: r.posted }), 'ok');
+    onChanged();
+  }
+
+  /** An open shift onto the Shift Board: a forecast one is created (open) first. */
+  async function post(it: Item) {
+    if (it.slot.newShift && !created[it.slot.id]) {
+      setBusy(`post-${it.slot.id}`);
+      try {
+        const r = await send([acceptItem(it.slot, null)], false, 'handled');
+        const id = r.created[0]?.shiftId;
+        if (!id) return;
+        setReview((x) => {
+          const handled = { ...x.handled };
+          delete handled[it.slot.id];
+          return { ...x, handled };
         });
-        published += r.published;
-        posted += r.postedToBoard;
+        const tz = o?.facilities.find((f) => f.id === it.slot.facilityId)?.timezone ?? 'America/Toronto';
+        setPublishGroups({ key: `post-${it.slot.id}`, slotIds: [it.slot.id], groups: [{ facilityId: it.slot.facilityId, timezone: tz, shiftIds: [id], from: zonedToInstant(weekStart, '00:00', tz).toISOString(), to: zonedToInstant(plusDays(weekStart, horizon * 7), '00:00', tz).toISOString() }] });
+      } catch (e) {
+        toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      } finally {
+        setBusy(null);
       }
-      setUndoId(null);
-      toast(t('builder.published', { count: published, open: posted }), 'ok');
+      return;
+    }
+    publish([it.slot.id], `post-${it.slot.id}`);
+  }
+
+  /** A forecast shift nobody could take: create it as an open draft to deal with later. */
+  async function createOpen(it: Item) {
+    setBusy(`open-${it.slot.id}`);
+    try {
+      await send([acceptItem(it.slot, null)], false, 'handled');
+      toast(t('fill.createdOpen'), 'ok');
       onChanged();
-      return true;
-    } catch {
-      toast(t('common.error'), 'warn');
+    } catch (e) {
+      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
     } finally {
       setBusy(null);
     }
@@ -210,8 +275,13 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
   async function askWithOvertime(it: Item, userId: string) {
     setBusy(`ask-${it.slot.id}`);
     try {
-      await api(`/api/shifts/${it.slot.id}/assign`, { method: 'POST', body: { userId, expectedVersion: it.slot.version, acknowledgeOvertime: true } });
-      setReview((x) => ({ ...x, handled: { ...x.handled, [it.slot.id]: true } }));
+      if (it.slot.newShift) {
+        const r = await send([acceptItem(it.slot, userId)], true, 'handled');
+        if (r.skipped.length) throw new ApiError(422, r.skipped[0]!.code, t(`fill.block.${r.skipped[0]!.code}`, { count: 1, defaultValue: t('common.error') }));
+      } else {
+        await api(`/api/shifts/${it.slot.id}/assign`, { method: 'POST', body: { userId, expectedVersion: it.slot.version, acknowledgeOvertime: true } });
+        setReview((x) => ({ ...x, handled: { ...x.handled, [it.slot.id]: true } }));
+      }
       toast(t('builder.assigned'), 'ok');
       onChanged();
     } catch (e) {
@@ -401,11 +471,11 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
                   </Button>
                 ) : null}
                 {acceptedIds.length ? (
-                  <Button size="sm" variant={pendingCount ? 'secondary' : 'primary'} icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={busy === 'publish'} onClick={() => void publish(acceptedIds)}>
+                  <Button size="sm" variant={pendingCount ? 'secondary' : 'primary'} icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={publishGroups?.key === 'publish'} onClick={() => publish(acceptedIds)}>
                     {t('fill.publish', { count: acceptedIds.length })}
                   </Button>
                 ) : null}
-                {undoId ? (
+                {undoStack.length ? (
                   <Button size="sm" variant="ghost" icon={<Undo2 className="h-4 w-4" aria-hidden="true" />} loading={busy === 'undo'} onClick={() => void undo()}>
                     {t('fill.undo')}
                   </Button>
@@ -453,7 +523,8 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
                             else delete declined[it.slot.id];
                             return { ...x, declined };
                           })}
-                          onPost={() => void publish([it.slot.id], `post-${it.slot.id}`).then((ok) => ok && setReview((x) => ({ ...x, handled: { ...x.handled, [it.slot.id]: true } })))}
+                          onPost={() => void post(it)}
+                          onCreateOpen={() => void createOpen(it)}
                           onAsk={(userId) => void askWithOvertime(it, userId)}
                           onLeave={() => setReview((x) => ({ ...x, handled: { ...x.handled, [it.slot.id]: true } }))}
                         />
@@ -466,6 +537,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
           </div>
         )
       ) : null}
+      <PublishDialog open={!!publishGroups} groups={publishGroups?.groups ?? []} onClose={() => setPublishGroups(null)} onPublished={published} />
     </Dialog>
   );
 }
@@ -483,6 +555,7 @@ function ReviewItem({
   onSwap,
   onDecline,
   onPost,
+  onCreateOpen,
   onAsk,
   onLeave,
 }: {
@@ -498,6 +571,7 @@ function ReviewItem({
   onSwap: (userId: string) => void;
   onDecline: (on: boolean) => void;
   onPost: () => void;
+  onCreateOpen: () => void;
   onAsk: (userId: string) => void;
   onLeave: () => void;
 }) {
@@ -528,6 +602,8 @@ function ReviewItem({
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
             {accepted ? <StatusPill tone="ok">{t('fill.acceptedPill')}</StatusPill> : null}
+            {s.newShift ? <StatusPill tone="new">{t('fill.newPill')}</StatusPill> : null}
+            {s.statHoliday ? <StatusPill tone="neutral">{t('fill.holidayPill')}</StatusPill> : null}
             {p.tentative ? <StatusPill tone="neutral">{t('fill.tentative')}</StatusPill> : null}
             {(alt?.overtimeHours ?? p.overtimeHours) > 0 ? <StatusPill tone="warn">{t('fill.overtimePill')}</StatusPill> : null}
             <ChevronDown className={cn('h-4 w-4 text-muted transition-transform', open && 'rotate-180')} aria-hidden="true" />
@@ -570,7 +646,10 @@ function ReviewItem({
   const blocked = u.counts.map((c) => t(`fill.block.${c.code}`, { count: c.count, defaultValue: t('fill.block.OTHER', { count: c.count }) })).join(', ');
   return (
     <li className={cn('rounded-xl border px-3 py-2', handled ? 'border-line bg-panel opacity-70' : 'border-warn/40 bg-warn-bg/50')}>
-      <p className="text-caption tabular-nums text-muted">{when} · {what}</p>
+      <p className="flex flex-wrap items-center gap-1.5 text-caption tabular-nums text-muted">
+        {when} · {what}
+        {s.newShift ? <StatusPill tone="new">{t('fill.newPill')}</StatusPill> : null}
+      </p>
       <p className="text-small font-semibold text-warn">{handled ? t('fill.handled') : t('fill.needsYou')}</p>
       <p className="text-caption text-muted">{u.qualified ? t('fill.whyOpen', { count: u.qualified, reasons: blocked }) : t('fill.noneQualified')}</p>
       {!handled ? (
@@ -581,7 +660,10 @@ function ReviewItem({
               {t('fill.askWithOvertime', { name: nameOf(u.overtimeOption.userId), hours: formatHours(u.overtimeOption.overtimeHours, lng) })}
             </Button>
           ) : null}
-          <Button size="sm" variant="ghost" onClick={onLeave}>{t('fill.leaveOpen')}</Button>
+          {s.newShift ? (
+            <Button size="sm" variant="secondary" loading={busy === `open-${s.id}`} onClick={onCreateOpen}>{t('fill.createOpen')}</Button>
+          ) : null}
+          <Button size="sm" variant="ghost" onClick={onLeave}>{s.newShift ? t('fill.dontCreate') : t('fill.leaveOpen')}</Button>
         </div>
       ) : null}
     </li>

@@ -67,6 +67,7 @@ import { type DragItem, type PointerInfo, type Target, coarsePointer, targetKey,
 import { PeoplePanel } from './PeoplePanel';
 import { type CreateRequest, type Draft, QuickCreate } from './QuickCreate';
 import { ShiftDialog } from './ShiftDialog';
+import { type PublishGroup, PublishDialog } from '@/components/PublishDialog';
 import { reasonsFromError, reasonsText } from './text';
 import { MonthView, WeekView, posLabel } from './views';
 
@@ -295,6 +296,8 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
     if (!r) return false;
     push({ kind: 'assign', shiftId: shift.id, from: shift.userId, to: userId, label: userId ? t('planner.ops.assign', { name: nameOf(userId) }) : t('planner.ops.unassign', { name: nameOf(shift.userId) }) });
     done(userId ? t('planner.done.assigned', { name: nameOf(userId), when: whenOf(shift) }) : t('planner.done.unassigned', { name: nameOf(shift.userId) }));
+    // Young-worker rules couldn't be checked: say so (amber), as the drop target did.
+    if (userId && (r.value as { flags?: Array<{ code: string }> } | undefined)?.flags?.some((f) => f.code === 'DATE_OF_BIRTH_MISSING')) toast(t('builder.assignedNoDob'), 'warn');
     await after([shift.userId, userId], [shift.id]);
     return true;
   }
@@ -675,28 +678,28 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
 
   // ---------------------------------------------------------------- publish
   const drafts = board?.shifts.filter((s) => s.status === 'DRAFT') ?? [];
-  const [publishing, setPublishing] = useState(false);
-  async function publish() {
+  const [publishGroups, setPublishGroups] = useState<PublishGroup[] | null>(null);
+  /** Opens the publish check: coverage gaps, people who can no longer work a draft, federal notice. */
+  function publish() {
     if (!drafts.length) return;
-    setPublishing(true);
-    try {
-      let published = 0;
-      let posted = 0;
-      const byFacility = new Map<string, BoardShift[]>();
-      for (const s of drafts) byFacility.set(s.facilityId, [...(byFacility.get(s.facilityId) ?? []), s]);
-      for (const [fid, list] of byFacility) {
+    const byFacility = new Map<string, BoardShift[]>();
+    for (const s of drafts) byFacility.set(s.facilityId, [...(byFacility.get(s.facilityId) ?? []), s]);
+    setPublishGroups(
+      [...byFacility].map(([fid, list]) => {
         const starts = list.map((s) => new Date(s.localStartsAt).getTime());
-        const r = await api<{ published: number; postedToBoard: number }>('/api/shifts/publish', { method: 'POST', body: { facilityId: fid, from: new Date(Math.min(...starts)).toISOString(), to: new Date(Math.max(...starts) + 60_000).toISOString(), shiftIds: list.map((s) => s.id) } });
-        published += r.published ?? 0;
-        posted += r.postedToBoard ?? 0;
-      }
-      done(t('builder.published', { count: published, open: posted }));
-      setHistory(emptyHistory());
-      await after([], drafts.map((s) => s.id));
+        return { facilityId: fid, timezone: list[0]!.facility.timezone, from: new Date(Math.min(...starts)).toISOString(), to: new Date(Math.max(...starts) + 60_000).toISOString(), shiftIds: list.map((s) => s.id) };
+      }),
+    );
+  }
+  async function published(r: { published: number; posted: number }) {
+    const ids = publishGroups?.flatMap((g) => g.shiftIds) ?? [];
+    setPublishGroups(null);
+    done(t('builder.published', { count: r.published, open: r.posted }));
+    setHistory(emptyHistory());
+    try {
+      await after([], ids);
     } catch (e) {
       report(e);
-    } finally {
-      setPublishing(false);
     }
   }
 
@@ -854,7 +857,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
           <Button variant="ghost" size="sm" onClick={onOpenFill}>
             {t('fill.open')}
           </Button>
-          <Button size="sm" icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={publishing} disabled={!drafts.length} onClick={() => void publish()}>
+          <Button size="sm" icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={!!publishGroups} disabled={!drafts.length} onClick={publish}>
             {t('builder.publish', { count: drafts.length })}
           </Button>
         </div>
@@ -942,6 +945,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
         />
       ) : null}
       {board ? <QuickCreate draft={draft} board={board} onClose={() => setDraft(null)} onCreate={create} /> : null}
+      <PublishDialog open={!!publishGroups} groups={publishGroups ?? []} onClose={() => setPublishGroups(null)} onPublished={(r) => void published(r)} />
 
       <Dialog
         open={!!otAsk}

@@ -106,7 +106,10 @@
     "NOT_AVAILABLE": "Ce quart est en dehors de vos disponibilités.",
     "OVER_PERSONAL_WEEKLY_MAX": "Cela dépasserait votre plafond d’heures hebdomadaire.",
     "ONBOARDING_INCOMPLETE": "L’intégration n’est pas terminée pour ce poste (par exemple une vérification du casier judiciaire ou une formation requise).",
-    "ACCOMMODATION": "En dehors de vos restrictions de travail."
+    "ACCOMMODATION": "En dehors de vos restrictions de travail.",
+    "DAILY_HOURS": "Ce serait plus que le maximum d’heures permis dans une journée.",
+    "CONSECUTIVE_DAYS": "Ce serait trop de jours d’affilée.",
+    "WEEKLY_REST": "Vous n’auriez pas le repos hebdomadaire requis."
   },
   "demo": {
     "banner": "Démonstration avec des données fictives — rien n’est enregistré.",
@@ -496,7 +499,8 @@
     "SCOPE_NOT_YOURS": "Vous ne pouvez donner à une clé que l’accès aux données que vous voyez vous-même.",
     "TOO_MANY_KEYS": "Votre organisation a atteint le nombre maximal de clés. Révoquez-en une que vous n’utilisez plus.",
     "TOO_MANY_ENDPOINTS": "Votre organisation a atteint le nombre maximal de webhooks.",
-    "HOST_NOT_PUBLIC": "Cette adresse doit être sur Internet public."
+    "HOST_NOT_PUBLIC": "Cette adresse doit être sur Internet public.",
+    "PUBLISH_WARNINGS": "La publication laisserait des trous de couverture ou des quarts qu’une personne ne peut pas faire. Vérifiez-les et confirmez pour publier quand même."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -875,7 +879,8 @@
     "summary": "{{filled}} comblés, {{open}} restés ouverts.",
     "repaired_one": "1 comblé en déplaçant quelqu’un d’un autre quart.",
     "repaired_other": "{{count}} comblés en déplaçant quelqu’un d’un autre quart.",
-    "otherSites": "La liste montre cette installation; les autres sites sont inclus dans les totaux."
+    "otherSites": "La liste montre cette installation; les autres sites sont inclus dans les totaux.",
+    "assignedNoDob": "Affecté. Aucune date de naissance au dossier : les règles pour jeunes travailleurs n’ont pas été vérifiées."
   },
   "approvals": {
     "title": "Approbations",
@@ -3564,10 +3569,14 @@
       "ON_APPROVED_TIME_OFF": "en congé",
       "DAILY_REST": "repos insuffisant",
       "CERTIFICATION_EXPIRES": "certificat qui expire",
-      "NOT_QUALIFIED_FOR_POSITION": "non approuvé pour le poste"
+      "NOT_QUALIFIED_FOR_POSITION": "non approuvé pour le poste",
+      "WEEKLY_REST": "pas assez de repos hebdomadaire",
+      "DAILY_HOURS": "trop d’heures dans la journée",
+      "CONSECUTIVE_DAYS": "trop de jours d’affilée"
     },
     "foot": "Chaque acceptation, refus et absence de réponse est inscrit au registre des heures supplémentaires selon vos paramètres. Le délai de réponse et les règles de repos se règlent dans Opérations hivernales.",
-    "starts": "Début"
+    "starts": "Début",
+    "skippedAtAccept": "Cette personne ne peut plus le prendre ({{reason}}). Passée, et la personne suivante a été appelée."
   },
   "myCallOuts": {
     "title": "Rappels au travail",
@@ -3579,7 +3588,8 @@
     "no": "Pas cette fois",
     "accepted": "Merci! C’est à votre horaire.",
     "declined": "C’est noté. L’offre passe à la personne suivante.",
-    "fairness": "Votre réponse est inscrite au registre des heures supplémentaires, comme le prévoit votre convention."
+    "fairness": "Votre réponse est inscrite au registre des heures supplémentaires, comme le prévoit votre convention.",
+    "noLongerEligible": "Vous ne pouvez plus le prendre ({{reason}}). Il a été offert à la personne suivante."
   },
   "patrol": {
     "title": "Patrouille hivernale",
@@ -6177,7 +6187,7 @@
     "reminded_one": "Rappel envoyé à {{count}} personne.",
     "reminded_other": "Rappel envoyé à {{count}} personnes.",
     "forecast": "Ajouter d’abord les quarts de la prévision",
-    "forecastHint": "Là où la prévision demande plus de personnes que prévu, des quarts ouverts en brouillon sont ajoutés avant de remplir (le personnel ne voit pas les brouillons).",
+    "forecastHint": "Là où la prévision demande plus de personnes que prévu, elle suggère des quarts (au moins la durée minimale d’un quart). Ils sont proposés avec les autres et créés seulement quand vous les acceptez.",
     "forecastNone": "Non, remplir les quarts déjà là",
     "keepInMind": "Quelque chose à garder en tête? Les choix habituels sont déjà faits.",
     "toggle": {
@@ -6254,7 +6264,9 @@
       "FEWEST_OVERTIME": "le moins d’heures supplémentaires jusqu’ici",
       "SENIORITY": "le plus d’ancienneté parmi les disponibles",
       "CONFIRMED": "a confirmé ses disponibilités",
-      "TENTATIVE": "disponibilités pas encore confirmées"
+      "TENTATIVE": "disponibilités pas encore confirmées",
+      "DOB_MISSING": "aucune date de naissance au dossier (règles pour jeunes travailleurs non vérifiées)",
+      "STAT_HOLIDAY": "jour férié (payé au taux des jours fériés)"
     },
     "block": {
       "OTHER_one": "{{count}} autre raison",
@@ -6304,7 +6316,9 @@
       "HOS_REST_one": "{{count}} doit se reposer de la conduite",
       "HOS_REST_other": "{{count}} doivent se reposer de la conduite",
       "HOS_WEEKLY_one": "{{count}} limite hebdomadaire de conduite",
-      "HOS_WEEKLY_other": "{{count}} limites hebdomadaires de conduite"
+      "HOS_WEEKLY_other": "{{count}} limites hebdomadaires de conduite",
+      "WEEKLY_REST_one": "{{count}} ne respecterait pas le repos hebdomadaire",
+      "WEEKLY_REST_other": "{{count}} ne respecteraient pas le repos hebdomadaire"
     },
     "weight": {
       "fairness": "Partager les heures équitablement",
@@ -6336,8 +6350,27 @@
       "planAhead": "Planifier à l’avance",
       "planAheadHelp": "Le personnel doit tenir ses disponibilités à jour au moins jusque-là.",
       "maxDays": "Jours d’affilée au maximum",
-      "maxHours": "Heures par jour au maximum"
-    }
+      "maxHours": "Heures par jour au maximum",
+      "maxDaysHelp": "S’applique partout : affectation manuelle, tableau des quarts, échanges, rappels et Remplir l’horaire. Au plus 12 (un jour de congé par semaine).",
+      "maxHoursHelp": "Le plus long quart, et le maximum d’heures dans une journée (en C.-B. et en Alberta, les 24 heures à partir du début d’un quart qui passe minuit).",
+      "fullTimeTarget": "Heures par semaine, temps plein",
+      "fullTimeTargetHelp": "La cible du personnel à temps plein sans heures prévues au contrat. Les heures vont d’abord au temps plein, puis au temps partiel, puis au personnel occasionnel et sur appel.",
+      "minShift": "Quart le plus court suggéré par la prévision (heures)",
+      "minShiftHelp": "Un court manque devient un quart d’au moins cette durée.",
+      "travel": "Temps de déplacement entre installations (minutes)",
+      "travelHelp": "Remplir l’horaire ne prévoit jamais une personne à deux installations à moins de ce délai.",
+      "federal": "Sous réglementation fédérale (Code canadien du travail)",
+      "federalHelp": "Planifier selon les règles fédérales (heures supplémentaires après 8 h par jour ou 40 h par semaine, 8 h entre les quarts, un jour de congé par semaine, préavis de 96 heures). La paie suit toujours la province.",
+      "holidayClosed": "Fermé les jours fériés",
+      "holidayClosedHelp": "La prévision ne suggère aucun quart à ces installations les jours fériés."
+    },
+    "newPill": "Nouveau (prévision)",
+    "holidayPill": "Jour férié",
+    "createOpen": "Créer comme quart ouvert",
+    "dontCreate": "Ne pas créer",
+    "createdOpen": "Quart ouvert créé en brouillon.",
+    "undoneLeftOpen_one": "Annulé : {{count}} quart remis; {{open}} laissé ouvert, car la personne ne peut plus le faire.",
+    "undoneLeftOpen_other": "Annulé : {{count}} quarts remis; {{open}} laissés ouverts, car ces personnes ne peuvent plus les faire."
   },
   "planner": {
     "description": "Planifiez à la main — glissez des personnes sur les quarts en vue mois, semaine ou jour — ou laissez Remplir l’horaire proposer un brouillon. Chaque affectation suit les mêmes règles que le tableau des quarts, et rien ne change pour le personnel avant la publication.",
@@ -6499,7 +6532,10 @@
       "RULES_UNVERIFIED": "Règles provinciales en cours de révision",
       "TRAVEL": "Pas assez de temps pour se déplacer entre les installations",
       "OVERTIME_REQUIRES_ACK": "Ajoute des heures supplémentaires",
-      "NOT_FOUND": "Introuvable"
+      "NOT_FOUND": "Introuvable",
+      "DAILY_HOURS": "{{a}} h dans une journée (limite de {{b}} h)",
+      "CONSECUTIVE_DAYS": "{{a}} jours d’affilée (limite de {{b}})",
+      "WEEKLY_REST": "Seulement {{a}} h de congé d’affilée cette semaine ({{b}} h requises)"
     },
     "reasonsPlain": {
       "OVERLAPPING_SHIFT": "Travaille déjà à ce moment",
@@ -6512,7 +6548,10 @@
       "HOS_WEEKLY": "Dépasse la limite de conduite sur 7 jours",
       "OVERTIME": "Ajoute des heures supplémentaires",
       "MISSING_CERTIFICATION": "Il manque une certification requise",
-      "CERTIFICATION_EXPIRES": "Une certification requise expire avant la fin du quart"
+      "CERTIFICATION_EXPIRES": "Une certification requise expire avant la fin du quart",
+      "DAILY_HOURS": "Plus que le maximum d’heures par jour",
+      "CONSECUTIVE_DAYS": "Trop de jours d’affilée",
+      "WEEKLY_REST": "Pas assez de repos hebdomadaire"
     }
   },
   "trust": {
@@ -7029,5 +7068,22 @@
       "attention": "En cours de correction",
       "footer": "Signaler un problème de sécurité : security@flexcityhq.example"
     }
+  },
+  "publishCheck": {
+    "title": "Publier l’horaire",
+    "ready_one": "{{count}} quart en brouillon sera publié. Chaque personne est avisée une fois; les quarts ouverts vont au tableau des quarts.",
+    "ready_other": "{{count}} quarts en brouillon seront publiés. Chaque personne est avisée une fois; les quarts ouverts vont au tableau des quarts.",
+    "checking": "Vérification de la couverture requise et des certifications…",
+    "allClear": "La couverture requise est assurée et chaque personne peut faire son quart.",
+    "gapsTitle": "La couverture requise serait insuffisante",
+    "gap": "{{rule}} · {{date}}, {{time}} : {{have}} sur {{need}}",
+    "more_one": "et {{count}} de plus",
+    "more_other": "et {{count}} de plus",
+    "ineligibleTitle": "Ne peut plus faire son quart",
+    "federal_one": "{{count}} quart commence dans moins de {{hours}} heures. Le Code canadien du travail demande un préavis de {{hours}} heures pour un horaire.",
+    "federal_other": "{{count}} quarts commencent dans moins de {{hours}} heures. Le Code canadien du travail demande un préavis de {{hours}} heures pour un horaire.",
+    "confirm": "J’ai vérifié et je veux publier quand même (c’est consigné).",
+    "publish": "Publier",
+    "publishAnyway": "Publier quand même"
   }
 }

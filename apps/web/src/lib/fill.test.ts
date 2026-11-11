@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import en from '../locales/en-CA.json';
 import fr from '../locales/fr-CA.json';
-import { type FillWeek, acceptBody, beyondWindow, emptyReview, grouped, itemsOf, summarize, weeksOf } from './fill';
+import { type FillWeek, acceptBody, acceptItem, beyondWindow, emptyReview, grouped, itemsOf, popUndo, pushUndo, slotIdOf, summarize, weeksOf } from './fill';
 
 const slot = (id: string, start: string, over: object = {}) => ({ id, version: 2, facilityId: 'f', facilityName: 'Pool', positionId: 'g', position: { name: 'Lifeguard', nameFr: 'Sauveteur' }, customTitle: null, localStartsAt: start, localEndsAt: start.replace('T09', 'T13'), hours: 4, currentUserId: null, tentative: false, ...over });
 const week = (start: string, over: Partial<FillWeek> = {}): FillWeek => ({
@@ -68,5 +68,27 @@ describe('fill review helpers', () => {
     }
     expect(fr.fill.horizon['13']).toBe('3 mois');
     expect(en.fill.horizon['4']).toBe('Month');
+  });
+});
+
+describe('forecast shifts and the undo stack', () => {
+  it('accepts a forecast shift by sending it to be created', () => {
+    const s = slot('new:0-a-1', '2026-11-17T09:00:00-08:00', { version: 0, newShift: { startsAt: '2026-11-17T17:00:00.000Z', endsAt: '2026-11-17T21:00:00.000Z' } });
+    const b = acceptItem(s, 'u1');
+    expect(b).toEqual({ newShift: { facilityId: 'f', positionId: 'g', startsAt: '2026-11-17T17:00:00.000Z', endsAt: '2026-11-17T21:00:00.000Z' }, key: 'new:0-a-1', userId: 'u1' });
+    expect(slotIdOf(b)).toBe('new:0-a-1');
+    expect(slotIdOf(acceptItem(slot('a', '2026-11-17T09:00:00-08:00'), 'u1'))).toBe('a');
+  });
+  it('undoes one accept at a time, latest first, un-marking only its items', () => {
+    let st = pushUndo([], { undoIds: ['x1'], slotIds: ['a'] });
+    st = pushUndo(st, { undoIds: ['y1', 'y2'], slotIds: ['b', 'c'] });
+    st = pushUndo(st, { undoIds: [], slotIds: ['z'] });
+    expect(st).toHaveLength(2);
+    const r = { ...emptyReview(), accepted: { a: true as const, b: true as const, c: true as const } };
+    const p = popUndo(st, r);
+    expect(p.entry?.undoIds).toEqual(['y1', 'y2']);
+    expect(Object.keys(p.review.accepted)).toEqual(['a']);
+    expect(p.stack).toHaveLength(1);
+    expect(popUndo([], r).entry).toBeNull();
   });
 });

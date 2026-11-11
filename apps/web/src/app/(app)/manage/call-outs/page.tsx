@@ -3,6 +3,7 @@
 import { PhoneCall, Phone, Siren } from 'lucide-react';
 import { type FormEvent, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/components/ui/Toast';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -42,8 +43,13 @@ export default function CallOutsPage() {
       await list.reload();
     }
   }
+  const toast = useToast();
   const record = (c: CallOut, x: CallOutContact, answer: 'ACCEPTED' | 'DECLINED' | 'NO_ANSWER') =>
-    void run(`${x.id}${answer}`, () => api(`/api/call-outs/${c.id}/contacts/${x.id}`, { method: 'POST', body: { answer } }), t('callOuts.recorded')).then(() => list.reload());
+    void run(`${x.id}${answer}`, () => api<{ accepted?: boolean; skippedReason?: string | null }>(`/api/call-outs/${c.id}/contacts/${x.id}`, { method: 'POST', body: { answer } })).then((r) => {
+      // Accepted but no longer eligible: skipped with the reason, and the next person asked.
+      if (r) toast(answer === 'ACCEPTED' && r.accepted === false ? t('callOuts.skippedAtAccept', { reason: t(`callOuts.skip.${r.skippedReason}`, { defaultValue: t('callOuts.skip.OTHER') }) }) : t('callOuts.recorded'), answer === 'ACCEPTED' && r.accepted === false ? 'warn' : 'ok');
+      return list.reload();
+    });
 
   const now = new Date();
   return (

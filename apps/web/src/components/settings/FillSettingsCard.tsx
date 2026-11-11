@@ -11,7 +11,18 @@ import { api } from '@/lib/api';
 import { type Horizon, HORIZONS, type Toggles, type Weights } from '@/lib/fill';
 import { useAction, useQuery } from '@/lib/useQuery';
 
-interface Settings { organization: { planAheadWeeks: Horizon; weights: Weights; toggles: Toggles; limits: { maxConsecutiveDays: number; maxDailyHours: number } }; seniorityOn: boolean }
+interface Organization {
+  planAheadWeeks: Horizon;
+  weights: Weights;
+  toggles: Toggles;
+  limits: { maxConsecutiveDays: number; maxDailyHours: number };
+  fullTimeTargetHours: number | null;
+  minShiftHours: number;
+  travelMinutes: number;
+  federallyRegulated: boolean;
+  holidayClosedFacilityIds: string[];
+}
+interface Settings { organization: Organization; seniorityOn: boolean }
 
 /**
  * The organization's "Plan ahead" window (how far ahead staff keep availability current, and the
@@ -21,6 +32,7 @@ interface Settings { organization: { planAheadWeeks: Horizon; weights: Weights; 
 export function FillSettingsCard() {
   const { t } = useTranslation();
   const q = useQuery<Settings>('/api/schedule/fill/settings');
+  const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
   const { run, busy } = useAction();
   const [s, setS] = useState<Settings['organization'] | null>(null);
   useEffect(() => {
@@ -49,17 +61,60 @@ export function FillSettingsCard() {
         </div>
         <PrioritySliders weights={s.weights} onChange={(weights) => setS({ ...s, weights })} showSeniority={q.data.seniorityOn} />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('fill.settings.maxDays')}>
-            {(p) => <Input {...p} type="number" inputMode="numeric" min={1} max={13} value={s.limits.maxConsecutiveDays} onChange={(e) => setS({ ...s, limits: { ...s.limits, maxConsecutiveDays: Number(e.target.value) } })} />}
+          <Field label={t('fill.settings.maxDays')} hint={t('fill.settings.maxDaysHelp')}>
+            {(p) => <Input {...p} type="number" inputMode="numeric" min={1} max={12} value={s.limits.maxConsecutiveDays} onChange={(e) => setS({ ...s, limits: { ...s.limits, maxConsecutiveDays: Number(e.target.value) } })} />}
           </Field>
-          <Field label={t('fill.settings.maxHours')}>
+          <Field label={t('fill.settings.maxHours')} hint={t('fill.settings.maxHoursHelp')}>
             {(p) => <Input {...p} type="number" inputMode="decimal" min={4} max={24} value={s.limits.maxDailyHours} onChange={(e) => setS({ ...s, limits: { ...s.limits, maxDailyHours: Number(e.target.value) } })} />}
           </Field>
+          <Field label={t('fill.settings.fullTimeTarget')} hint={t('fill.settings.fullTimeTargetHelp')}>
+            {(p) => <Input {...p} type="number" inputMode="decimal" min={0} max={60} value={s.fullTimeTargetHours ?? ''} onChange={(e) => setS({ ...s, fullTimeTargetHours: e.target.value === '' ? null : Number(e.target.value) })} />}
+          </Field>
+          <Field label={t('fill.settings.minShift')} hint={t('fill.settings.minShiftHelp')}>
+            {(p) => <Input {...p} type="number" inputMode="decimal" min={1} max={12} value={s.minShiftHours} onChange={(e) => setS({ ...s, minShiftHours: Number(e.target.value) })} />}
+          </Field>
+          <Field label={t('fill.settings.travel')} hint={t('fill.settings.travelHelp')}>
+            {(p) => <Input {...p} type="number" inputMode="numeric" min={0} max={240} value={s.travelMinutes} onChange={(e) => setS({ ...s, travelMinutes: Number(e.target.value) })} />}
+          </Field>
         </div>
+        <label className="flex min-h-11 items-start gap-3 text-small">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" checked={s.federallyRegulated} onChange={(e) => setS({ ...s, federallyRegulated: e.target.checked })} />
+          <span>
+            <span className="block font-semibold">{t('fill.settings.federal')}</span>
+            <span className="text-caption text-muted">{t('fill.settings.federalHelp')}</span>
+          </span>
+        </label>
+        {facilities.data?.length ? (
+          <fieldset className="grid gap-1">
+            <legend className="text-small font-semibold">{t('fill.settings.holidayClosed')}</legend>
+            <p className="text-caption text-muted">{t('fill.settings.holidayClosedHelp')}</p>
+            {facilities.data.map((f) => (
+              <label key={f.id} className="flex min-h-11 items-center gap-3 text-small">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 shrink-0 accent-[rgb(var(--brand))]"
+                  checked={s.holidayClosedFacilityIds.includes(f.id)}
+                  onChange={(e) => setS({ ...s, holidayClosedFacilityIds: e.target.checked ? [...s.holidayClosedFacilityIds, f.id] : s.holidayClosedFacilityIds.filter((x) => x !== f.id) })}
+                />
+                {f.name}
+              </label>
+            ))}
+          </fieldset>
+        ) : null}
         <Button
           className="justify-self-start"
           loading={busy === 'save'}
-          onClick={() => void run('save', () => api('/api/schedule/fill/settings', { method: 'PUT', body: { departmentId: null, ...s } }), t('fill.savedDefaults')).then(() => q.reload())}
+          onClick={() => void run('save', () => api('/api/schedule/fill/settings', {
+                method: 'PUT',
+                body: {
+                  departmentId: null,
+                  planAheadWeeks: s.planAheadWeeks,
+                  weights: s.weights,
+                  toggles: s.toggles,
+                  limits: s.limits,
+                  organization: { fullTimeTargetHours: s.fullTimeTargetHours, minShiftHours: s.minShiftHours, travelMinutes: s.travelMinutes, federallyRegulated: s.federallyRegulated, holidayClosedFacilityIds: s.holidayClosedFacilityIds },
+                },
+              }), t('fill.savedDefaults')).then(() => q.reload())}
         >
           {t('common.save')}
         </Button>
