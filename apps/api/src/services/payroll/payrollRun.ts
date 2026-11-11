@@ -6,10 +6,11 @@ import type { PayCodeKey } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
 import { badRequest } from '../../lib/errors.js';
 import { Decimal, ZERO, cents, dec } from '../../lib/money.js';
-import { addDays, payWeekStart, startOfLocalDay, wholeYearsBetween } from '../../lib/time.js';
+import { addDays, localDate, payWeekStart, startOfLocalDay, wholeYearsBetween } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
 import { type ExportEmployee, type ExportOptions, buildPayrollCsv } from './export.js';
 import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
+import { holidaysTouching, offDayRule, personalDay, premiumDays, statutoryDay, usuallyWorks } from './holidayRules.js';
 import { type PayResult, calculatePay } from './payCalc.js';
 import { IssueSet, issue } from './issues.js';
 
@@ -44,19 +45,20 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
   for (const f of facilities) byProvince.set(f.province, [...(byProvince.get(f.province) ?? []), f]);
   for (const group of byProvince.values()) {
     const f = group[0]!;
-    const holidays = await tx.statutoryHoliday.findMany({
-      where: { province: f.province, date: { gte: new Date(periodStart), lt: new Date(periodEnd) } },
-    });
-    const statDates = holidays.map((h) => h.date.toISOString().slice(0, 10));
-    const statSet = new Set(statDates);
+    // Holidays whose own date, statutory day or observed weekday is in the period (observed dates in holidayRules.ts).
+    const holidays = await holidaysTouching(tx, f.province, periodStart, periodEnd);
+    const inPeriod = (d: string) => d >= periodStart && d < periodEnd;
+    const statDates = [...new Set(holidays.map(statutoryDay).filter(inPeriod))];
+    const mode = tenant.holidayObservance;
     const rules = resolveRules(f.province, periodStart, overrides);
     const formula = rules.statutoryHoliday.holidayPayFormula;
     if (statDates.length && formula === null) {
       warnings.add(issue('STAT_PAY_DATES', { province: f.province, dates: statDates.join(', ') }));
     }
 
-    // Holiday-pay formulas look back 30 days (4 weeks), so load enough history.
-    const lookbackStart = statDates.length && formula ? payWeekStart(addDays(periodStart, -35), tenant.payWeekStartDay) : periodStart;
+    // Holiday-pay formulas look back 30 days (4 weeks), and whether a holiday is someone's usual
+    // working day looks at the 9 weeks before it, so load enough history.
+    const lookbackStart = holidays.length ? payWeekStart(addDays(periodStart, -70), tenant.payWeekStartDay) : periodStart;
     // A day's edges by the earliest and latest time zone in the province, so no punch is missed.
     const from = new Date(Math.min(...group.map((g) => startOfLocalDay(lookbackStart, g.timezone).getTime())));
     const to = new Date(Math.max(...group.map((g) => startOfLocalDay(periodEnd, g.timezone).getTime())));
@@ -84,6 +86,11 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
         return dec(r.hourlyRate);
       };
       const intervals = ps.map((p) => ({ start: p.clockIn, end: p.clockOut!, positionId: p.positionId, premiumPerHour: p.shift?.premiumPerHour ? dec(p.shift.premiumPerHour) : null }));
+      // The days they worked, for their own pattern of work (is a holiday their usual working day?).
+      const worked = new Set(ps.flatMap((p) => [localDate(p.clockIn, main.timezone), localDate(new Date(p.clockOut!.getTime() - 1), main.timezone)]));
+      const works = (day: string) => usuallyWorks(worked, day);
+      // Their premium days: the holiday as the law fixes it for them, plus the organization's observed weekday.
+      const statSet = premiumDays(holidays, mode, works);
       const common = {
         intervals,
         timezone: main.timezone,
@@ -99,12 +106,26 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
       result.warnings.forEach((w) => warnings.add(w));
 
       // Statutory holiday pay for each holiday in the period.
-      if (statDates.length && formula) {
+      if (holidays.length && formula) {
         const history = calculatePay({ ...common, periodStart: lookbackStart, weeks: Math.round((Date.parse(periodEnd) - Date.parse(lookbackStart)) / (7 * 86_400_000)) });
         const days: DailyEarnings[] = [...history.dailyWages].map(([localDate, wages]) => ({ localDate, wages, hoursWorked: history.dailyHours.get(localDate) ?? ZERO }));
-        if (!user.hireDate) warnings.add(issue('NO_HIRE_DATE', { name: `${user.firstName} ${user.lastName}` }));
-        for (const h of statDates) {
-          const hp = statutoryHolidayPay(formula, h, user.hireDate?.toISOString().slice(0, 10) ?? '1900-01-01', days);
+        const name = `${user.firstName} ${user.lastName}`;
+        let missingHire = false;
+        for (const h of holidays) {
+          // Their holiday: the statutory day for them (the Fête nationale on a Sunday stays June 24 if they work Sundays).
+          const day = personalDay(h, works);
+          if (!inPeriod(day)) continue;
+          // A day they worked or usually work: holiday pay as usual. Otherwise it's their day off,
+          // and the province's rule (or the organization's choice where the law allows one) says what's owed.
+          if (!worked.has(day) && !works(day)) {
+            const { rule } = offDayRule(f.province, h.key, tenant.holidayOffDayRule);
+            if (rule === 'NONE') continue;
+            // A substitute day off is owed, unless the organization's observed weekday already gave them one.
+            const weekdayOff = mode === 'NEXT_WEEKDAY' && !!h.weekdayOn && h.weekdayOn !== day && works(h.weekdayOn) && !worked.has(h.weekdayOn);
+            if (rule === 'SUBSTITUTE' && !weekdayOff) warnings.add(issue('STAT_SUBSTITUTE_DAY', { name, holiday: h.name, holidayFr: h.nameFr ?? h.name, date: day, province: f.province }));
+          }
+          if (!user.hireDate) missingHire = true;
+          const hp = statutoryHolidayPay(formula, day, user.hireDate?.toISOString().slice(0, 10) ?? '1900-01-01', days);
           if (hp.eligible && hp.amount.gt(0)) {
             result.lines.push({ code: 'STAT_HOLIDAY_PAY', positionId: null, hours: ZERO, rate: ZERO, multiplier: ZERO, amount: hp.amount });
             result.grossWages = result.grossWages.plus(hp.amount);
@@ -120,6 +141,7 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
             }
           }
         }
+        if (missingHire) warnings.add(issue('NO_HIRE_DATE', { name }));
       }
       if (result.lines.length === 0) continue;
       results.push({ userId, facilityId: main.id, result });

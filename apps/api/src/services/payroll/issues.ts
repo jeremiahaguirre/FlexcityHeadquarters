@@ -29,6 +29,7 @@ const EN: Record<string, (p: Record<string, string | number>) => string> = {
   PUNCHES_PENDING: (p) => `${p.count} punch(es) in or near this period are still pending approval and were excluded.`,
   PUNCHES_OPEN: (p) => `${p.count} punch(es) have no clock-out and were excluded.`,
   STAT_PAY_DATES: (p) => `Statutory holiday pay for ${p.province} (${p.dates}) is not automated; add it manually.`,
+  STAT_SUBSTITUTE_DAY: (p) => `${p.name}: ${p.holiday} (${p.date}) fell on their day off. Their holiday pay is on this run; give them another day off for it (${p.province} rule).`,
   NO_HIRE_DATE: (p) => `${p.name} has no hire date; holiday pay eligibility assumed.`,
   OTHER_DEPARTMENT_HOURS: (p) => `${p.name} also worked in another department this period. Pay this period in one city-wide run, so tax, CPP and EI are worked out once on all their pay.`,
   DEDUCTION_WITHOUT_PAY: (p) => `${p.name} has a one-time deduction but no pay in this run; it was left out. Add it to a run where they're paid.`,

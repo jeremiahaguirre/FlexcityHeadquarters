@@ -9,6 +9,7 @@ import type { Tx } from '../../lib/db.js';
 import { Decimal, dec } from '../../lib/money.js';
 import { addDays, localDate, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { loadShiftBundle } from '../scheduling/eligibilityLoader.js';
+import { holidaysTouching, premiumDays, usuallyWorks } from './holidayRules.js';
 import { calculatePay } from './payCalc.js';
 
 export async function previewShiftPay(tx: Tx, userId: string, shiftId: string) {
@@ -19,12 +20,16 @@ export async function previewShiftPay(tx: Tx, userId: string, shiftId: string) {
   const periodStart = payWeekStart(localDate(shift.start, tz), bundle.payWeekStartDay);
   const from = startOfLocalDay(periodStart, tz);
   const to = startOfLocalDay(addDays(periodStart, 7), tz);
-  const [rates, mine, holidays, premium] = await Promise.all([
+  const [rates, mine, past, holidays, premium] = await Promise.all([
     tx.payRate.findMany({ where: { userId } }),
     tx.shift.findMany({ where: { userId, status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { not: shiftId } }, select: { startsAt: true, endsAt: true, positionId: true, premiumPerHour: true } }),
-    tx.statutoryHoliday.findMany({ where: { province: bundle.province, date: { gte: new Date(periodStart), lt: new Date(addDays(periodStart, 7)) } } }),
-    tx.shift.findUniqueOrThrow({ where: { id: shiftId }, select: { premiumPerHour: true } }),
+    // Their shifts in the 10 weeks before, for whether a holiday is a day they usually work.
+    tx.shift.findMany({ where: { userId, status: { not: 'CANCELLED' }, startsAt: { gte: startOfLocalDay(addDays(periodStart, -70), tz), lt: from } }, select: { startsAt: true } }),
+    holidaysTouching(tx, bundle.province, periodStart, addDays(periodStart, 7)),
+    tx.shift.findUniqueOrThrow({ where: { id: shiftId }, select: { premiumPerHour: true, facility: { select: { tenant: { select: { holidayObservance: true } } } } } }),
   ]);
+  const worked = new Set(past.map((s) => localDate(s.startsAt, tz)));
+  const statDays = premiumDays(holidays, premium.facility.tenant.holidayObservance, (d) => usuallyWorks(worked, d));
   const rateOn = (positionId: string, day: string) =>
     rates
       .filter((r) => r.positionId === positionId && r.effectiveFrom.toISOString().slice(0, 10) <= day && (!r.effectiveTo || r.effectiveTo.toISOString().slice(0, 10) >= day))
@@ -37,7 +42,7 @@ export async function previewShiftPay(tx: Tx, userId: string, shiftId: string) {
     return r ? dec(r.hourlyRate) : dec(own.hourlyRate);
   };
   const run = (intervals: Array<{ start: Date; end: Date; positionId: string; premiumPerHour: Decimal | null }>) =>
-    calculatePay({ intervals, timezone: tz, payWeekStartDay: bundle.payWeekStartDay, periodStart, weeks: 1, rules: { ...bundle.rules, verified: true }, rateFor, statHolidays: new Set(holidays.map((h) => h.date.toISOString().slice(0, 10))), completedYearsOfService: 0, vacationPayMode: 'ACCRUE' });
+    calculatePay({ intervals, timezone: tz, payWeekStartDay: bundle.payWeekStartDay, periodStart, weeks: 1, rules: { ...bundle.rules, verified: true }, rateFor, statHolidays: statDays, completedYearsOfService: 0, vacationPayMode: 'ACCRUE' });
   const existing = mine.map((s) => ({ start: s.startsAt, end: s.endsAt, positionId: s.positionId, premiumPerHour: s.premiumPerHour ? dec(s.premiumPerHour) : null }));
   const before = run(existing);
   const after = run([...existing, { start: shift.start, end: shift.end, positionId: shift.positionId, premiumPerHour: premium.premiumPerHour ? dec(premium.premiumPerHour) : null }]);
@@ -49,7 +54,7 @@ export async function previewShiftPay(tx: Tx, userId: string, shiftId: string) {
     rate: dec(own.hourlyRate).toFixed(2),
     gross: after.grossWages.minus(before.grossWages).toFixed(2),
     overtimeHours: diff(['OVERTIME_1_5', 'OVERTIME_2_0']).toFixed(2),
-    statHoliday: holidays.some((h) => h.date.toISOString().slice(0, 10) === day),
+    statHoliday: statDays.has(day),
     premiumPerHour: premium.premiumPerHour ? dec(premium.premiumPerHour).toFixed(2) : null,
   };
 }
