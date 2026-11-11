@@ -83,7 +83,8 @@ export default function PresentPage() {
             </>
           ) : <p className="text-center text-muted">{t('common.loading')}</p>}
         </main>
-        <footer className="mt-10 text-center text-caption text-muted">{t('trust.present.footer')}</footer>
+        {/* Only a configured address (SECURITY_EMAIL on the API): never a placeholder in front of a customer. */}
+        {o?.securityContact ? <footer className="mt-10 text-center text-caption text-muted">{t('trust.present.footer', { email: o.securityContact })}</footer> : null}
       </div>
     </div>
   );

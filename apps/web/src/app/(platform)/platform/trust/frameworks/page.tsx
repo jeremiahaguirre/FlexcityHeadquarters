@@ -76,7 +76,7 @@ export default function FrameworksPage() {
               </Card>
               <DataTable<Req>
                 key={fw.key}
-                label={t('trust.frameworks.requirements', { name: fw.name })}
+                label={t('trust.frameworks.requirements', { name: pick(fw, 'name', L) })}
                 rows={fw.requirements}
                 rowKey={(r) => r.id}
                 onOpen={setOpen}
@@ -90,7 +90,7 @@ export default function FrameworksPage() {
                   { key: 'id', label: t('trust.frameworks.requirement'), value: (r) => r.id, className: 'whitespace-nowrap' },
                   { key: 'title', label: t('trust.table.title'), value: (r) => pick(r, 'title', L), wide: true },
                   { key: 'group', label: t('trust.frameworks.group'), value: (r) => pick(r, 'group', L), wide: true },
-                  { key: 'controls', label: t('trust.section.controls'), value: (r) => r.controls.map((c) => c.key).join(' '), render: (r) => <span className="flex flex-wrap gap-1">{r.controls.map((c) => <StatusPill key={c.key} tone={controlTone[c.status]}>{c.key}</StatusPill>)}</span> },
+                  { key: 'controls', label: t('trust.section.controls'), value: (r) => r.controls.map((c) => c.key).join(' '), render: (r) => <span className="flex flex-wrap gap-1">{r.controls.map((c) => <StatusPill key={c.key} tone={controlTone[c.status]}>{c.key}<span className="sr-only">{colon(L)}{t(`trust.status.${c.status}`)}</span></StatusPill>)}</span> },
                   { key: 'state', label: t('trust.table.status'), value: (r) => stateOf(r), render: (r) => <StatusPill tone={TONE[stateOf(r)]}>{t(`trust.req.${stateOf(r)}`)}</StatusPill> },
                 ]}
               />

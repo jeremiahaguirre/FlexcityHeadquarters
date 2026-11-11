@@ -142,7 +142,7 @@ export default function TrustOverviewPage() {
                 <ScoreRing score={o.score} label={t('trust.overview.score')} />
                 <ul className="grid gap-1.5 text-small">
                   {(['PASSING', 'NEEDS_EVIDENCE', 'FAILING', 'NOT_APPLICABLE'] as const).map((s) => (
-                    <li key={s}><Link href={`/platform/trust/controls?status=${s}`} className="flex min-h-[32px] items-center gap-2 hover:underline"><StatusPill tone={({ PASSING: 'ok', NEEDS_EVIDENCE: 'warn', FAILING: 'danger', NOT_APPLICABLE: 'neutral' } as const)[s]}>{t(`trust.status.${s}`)}</StatusPill><span className="font-semibold tabular-nums">{o.controls[s] ?? 0}</span></Link></li>
+                    <li key={s}><Link href={`/platform/trust/controls?status=${s}`} className="flex min-h-[44px] items-center gap-2 hover:underline"><StatusPill tone={({ PASSING: 'ok', NEEDS_EVIDENCE: 'warn', FAILING: 'danger', NOT_APPLICABLE: 'neutral' } as const)[s]}>{t(`trust.status.${s}`)}</StatusPill><span className="font-semibold tabular-nums">{o.controls[s] ?? 0}</span></Link></li>
                   ))}
                 </ul>
               </CardBody>
@@ -186,7 +186,7 @@ export default function TrustOverviewPage() {
                 <CardBody><VendorBars dist={o.vendors} /></CardBody>
               </Card>
               <Card>
-                <CardBody><Progress done={o.policyAcks.done} total={o.policyAcks.required} label={t('trust.ackProgress', { policies: o.policyAcks.policies, admins: o.policyAcks.admins, count: o.policyAcks.admins })} /></CardBody>
+                <CardBody><Progress done={o.policyAcks.done} total={o.policyAcks.required} label={t('trust.ackProgress', { policies: t('trust.ackPolicies', { count: o.policyAcks.policies }), admins: t('trust.ackAdmins', { count: o.policyAcks.admins }) })} /></CardBody>
               </Card>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function TrustOverviewPage() {
   );
 }
 
-const chip = (on: boolean) => cn('min-h-[40px] rounded-full border px-3 text-small font-semibold transition-colors', on ? 'border-transparent bg-brand/10 text-brand-text' : 'border-line text-muted hover:bg-surface hover:text-ink');
+const chip = (on: boolean) => cn('min-h-[44px] rounded-full border px-3 text-small font-semibold transition-colors', on ? 'border-transparent bg-brand/10 text-brand-text' : 'border-line text-muted hover:bg-surface hover:text-ink');
 
 function Kpi({ href, icon: Icon, label, value, series, bad, extra }: { href: string; icon: typeof AlertTriangle; label: string; value: number; series: number[]; bad?: boolean; extra?: string }) {
   const tone = bad && value ? 'danger' : 'brand';

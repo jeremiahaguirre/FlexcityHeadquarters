@@ -13,11 +13,12 @@ import { colon, heatCells, linePath, riskLevel, timelinePos, daysLeft, type Fram
 const C = { brand: 'rgb(var(--brand-text))', ok: 'rgb(var(--ok))', warn: 'rgb(var(--warn))', danger: 'rgb(var(--danger))', line: 'rgb(var(--line))', muted: 'rgb(var(--muted))', surface: 'rgb(var(--surface))' };
 
 export function ScoreRing({ score, size = 168, label }: { score: number; size?: number; label: string }) {
+  const { i18n } = useTranslation();
   const r = size / 2 - 10;
   const len = 2 * Math.PI * r;
   const tone = score >= 80 ? C.ok : score >= 50 ? C.brand : C.warn;
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${label}: ${score} / 100`} className="shrink-0">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${label}${colon(i18n.language)}${score} / 100`} className="shrink-0">
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={C.surface} strokeWidth="12" />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={tone} strokeWidth="12" strokeLinecap="round" strokeDasharray={`${(len * score) / 100} ${len}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} className="motion-safe:transition-[stroke-dasharray] motion-safe:duration-700" />
       <text x="50%" y="48%" textAnchor="middle" dominantBaseline="middle" className="fill-ink font-extrabold" style={{ fontSize: size * 0.27 }}>{score}</text>
@@ -144,12 +145,13 @@ export function HeatMap({ risks, appetite, mode, onCell, selected }: { risks: Ov
     <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2">
       <div className="flex items-center justify-center"><span className="-rotate-90 whitespace-nowrap text-caption text-muted">{t('trust.risk.impact')} →</span></div>
       <div>
-        <div className="grid grid-cols-5 gap-1" role="grid" aria-label={t('trust.heat.label', { appetite })}>
+        {/* A group of buttons (not an ARIA grid, which would need rows and arrow-key navigation); each says its cell in words. */}
+        <div className="grid grid-cols-5 gap-1" role="group" aria-label={t('trust.heat.label', { appetite })}>
           {cells.map((c) => {
             const lvl = riskLevel(c.score, appetite);
             const on = selected?.likelihood === c.likelihood && selected?.impact === c.impact;
             return (
-              <button key={`${c.likelihood}-${c.impact}`} type="button" role="gridcell" onClick={() => onCell?.(c)} aria-pressed={on}
+              <button key={`${c.likelihood}-${c.impact}`} type="button" onClick={() => onCell?.(c)} aria-pressed={on}
                 aria-label={t('trust.heat.cell', { likelihood: c.likelihood, impact: c.impact, score: c.score, count: c.risks.length, level: t(`trust.level.${lvl}`) })}
                 className={cn('relative grid aspect-[4/3] min-h-[44px] place-items-center rounded-lg text-small font-bold tabular-nums motion-safe:transition-colors', levelStyle[lvl], c.risks.length ? '' : 'opacity-55', on && 'ring-2 ring-ink ring-offset-2 ring-offset-panel')}>
                 {c.risks.length || ''}

@@ -6644,7 +6644,7 @@
     },
     "outOfScope": "hors du score",
     "metOf": "{{met}} sur {{total}} satisfaites",
-    "readinessOf": "Préparation {{name}}",
+    "readinessOf": "Préparation pour {{name}}",
     "kpi": {
       "failingTests": "Tests en échec",
       "overdueEvidence": "Preuves en retard",
@@ -6680,7 +6680,7 @@
     "appetite": {
       "label": "Tolérance au risque",
       "value": "Élevé dès {{score}}",
-      "help": "Les scores égaux ou supérieurs sont élevés. Enregistré pour tous.",
+      "help": "Un score égal ou supérieur à ce seuil est élevé. Enregistré pour tous.",
       "readOnly": "Essayez un seuil; seul un gestionnaire Confiance peut l’enregistrer."
     },
     "level": {
@@ -6705,9 +6705,12 @@
       "inDays_other": "dans {{count}} jours"
     },
     "vendorRisk": "Risque des fournisseurs",
-    "vendorDist": "Fournisseurs par risque : {{high}} élevé, {{medium}} moyen, {{low}} faible",
-    "ackProgress_one": "Acceptations des politiques ({{policies}} publiées × {{admins}} administrateur)",
-    "ackProgress_other": "Acceptations des politiques ({{policies}} publiées × {{admins}} administrateurs)",
+    "vendorDist": "Fournisseurs par risque : élevé {{high}}, moyen {{medium}}, faible {{low}}",
+    "ackProgress": "Acceptations des politiques ({{policies}} × {{admins}})",
+    "ackPolicies_one": "{{count}} politique publiée",
+    "ackPolicies_other": "{{count}} politiques publiées",
+    "ackAdmins_one": "{{count}} administrateur",
+    "ackAdmins_other": "{{count}} administrateurs",
     "alerts": {
       "title": "Alertes et rappels récents",
       "none": "Aucune alerte pour l’instant."
@@ -6729,7 +6732,7 @@
     "table": {
       "search": "Rechercher",
       "all": "tous",
-      "count": "{{shown}} sur {{total}} affichés",
+      "count": "Affichage : {{shown}} sur {{total}}",
       "none": "Aucun résultat.",
       "clear": "Tout afficher",
       "title": "Titre",
@@ -6752,7 +6755,7 @@
       "iso27001": "ISO 27001",
       "hipaa": "HIPAA",
       "pipeda": "LPRPDE",
-      "provincial": "Provinciales",
+      "provincial": "Lois provinciales",
       "law25": "Loi 25"
     },
     "category": {
@@ -6786,7 +6789,7 @@
     },
     "frameworks": {
       "description": "Chaque exigence, les contrôles de FH qui y répondent et notre avancement.",
-      "counts": "{{met}} satisfaites · {{partial}} en partie · {{gaps}} lacunes · {{na}} s.o.",
+      "counts": "Satisfaites : {{met}} · en partie : {{partial}} · lacunes : {{gaps}} · s.o. : {{na}}",
       "optional": "Facultatif",
       "notCertified": "La préparation est notre propre évaluation. Nous ne revendiquons une certification qu’une fois le rapport d’un auditeur au dossier.",
       "export": "Dossier pour l’auditeur (ZIP)",
@@ -7014,7 +7017,7 @@
       "controlsHint": "Identifiants, p. ex. AC-01, TI-01",
       "reviewEvery": "Revoir tous les",
       "markReviewed": "Marquer comme revu",
-      "reviewed": "Revu le {{date}} · prochaine {{next}}"
+      "reviewed": "Revu le {{date}} · prochaine revue le {{next}}"
     },
     "treatment": {
       "MITIGATE": "Atténuer",
@@ -7051,7 +7054,7 @@
       "soc2": "SOC 2 expire",
       "nextReview": "Prochaine revue",
       "markReviewed": "Marquer comme revu",
-      "lastReview": "dernière revue {{date}}",
+      "lastReview": "dernière revue le {{date}}",
       "questionnaire": "Questionnaire de sécurité",
       "scoreOf": "score {{score}}/100",
       "linkedRisks": "Risques liés",
@@ -7122,14 +7125,14 @@
       "metNext": "Consigné; prochaine échéance fixée.",
       "history": "Historique",
       "metOn": "Respecté le {{date}}",
-      "wasDue": "échéance {{date}}",
+      "wasDue": "échéance le {{date}}",
       "prevMonth": "Mois précédent",
       "nextMonth": "Mois suivant",
       "noneThisMonth": "Rien à échéance ce mois-ci."
     },
     "commitState": {
       "OPEN": "Ouvert",
-      "SOON": "Bientôt dû",
+      "SOON": "Échéance proche",
       "OVERDUE": "En retard",
       "MET": "Respecté",
       "WAIVED": "Levé"
@@ -7187,7 +7190,7 @@
       "fullscreen": "Plein écran",
       "exit": "Quitter le mode présentation",
       "attention": "En cours de correction",
-      "footer": "Signaler un problème de sécurité : security@flexcityhq.example"
+      "footer": "Signaler un problème de sécurité : {{email}}"
     }
   },
   "publishCheck": {

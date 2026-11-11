@@ -33,6 +33,8 @@ export interface Overview {
   commitments: Array<{ id: string; title: string; customer: string; kind: string; dueAt: string }>;
   policyAcks: { required: number; done: number; policies: number; admins: number };
   alerts: Array<{ id: string; kind: string; title: string; titleFr: string; link: string | null; createdAt: string; readAt: string | null }>;
+  /** Where to report a security issue (the API's SECURITY_EMAIL), or null. */
+  securityContact?: string | null;
 }
 
 export const controlTone: Record<ControlStatus, Tone> = { PASSING: 'ok', FAILING: 'danger', NEEDS_EVIDENCE: 'warn', NOT_APPLICABLE: 'neutral' };

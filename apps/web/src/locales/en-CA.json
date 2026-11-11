@@ -6706,8 +6706,11 @@
     },
     "vendorRisk": "Vendor risk",
     "vendorDist": "Vendors by risk: {{high}} high, {{medium}} medium, {{low}} low",
-    "ackProgress_one": "Policy acknowledgements ({{policies}} published × {{admins}} admin)",
-    "ackProgress_other": "Policy acknowledgements ({{policies}} published × {{admins}} admins)",
+    "ackProgress": "Policy acknowledgements ({{policies}} × {{admins}})",
+    "ackPolicies_one": "{{count}} published policy",
+    "ackPolicies_other": "{{count}} published policies",
+    "ackAdmins_one": "{{count}} admin",
+    "ackAdmins_other": "{{count}} admins",
     "alerts": {
       "title": "Recent alerts and reminders",
       "none": "No alerts yet."
@@ -6752,7 +6755,7 @@
       "iso27001": "ISO 27001",
       "hipaa": "HIPAA",
       "pipeda": "PIPEDA",
-      "provincial": "Provincial",
+      "provincial": "Provincial laws",
       "law25": "Law 25"
     },
     "category": {
@@ -6786,7 +6789,7 @@
     },
     "frameworks": {
       "description": "Each requirement, the FH controls that meet it, and how far along we are.",
-      "counts": "{{met}} met · {{partial}} partly · {{gaps}} gaps · {{na}} n/a",
+      "counts": "Met {{met}} · partly met {{partial}} · gaps {{gaps}} · n/a {{na}}",
       "optional": "Optional",
       "notCertified": "Readiness is our own assessment. We claim a certification only once an auditor’s report is on file.",
       "export": "Auditor bundle (ZIP)",
@@ -7187,7 +7190,7 @@
       "fullscreen": "Full screen",
       "exit": "Leave present mode",
       "attention": "Being worked on",
-      "footer": "Report a security issue: security@flexcityhq.example"
+      "footer": "Report a security issue: {{email}}"
     }
   },
   "publishCheck": {
