@@ -932,6 +932,7 @@
     "selectPunch": "Sélectionner le pointage de {{name}}",
     "approveSelected_one": "Approuver {{count}}",
     "approveSelected_other": "Approuver {{count}}",
+    "approveNone": "Approuver la sélection",
     "reject": "Renvoyer",
     "punched": "Pointé",
     "scheduled": "Prévu",

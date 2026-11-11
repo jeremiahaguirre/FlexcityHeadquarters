@@ -2,7 +2,7 @@
 
 import { OvertimeOrder } from '@/components/OvertimeOrder';
 import { Check, ClipboardCheck, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
 import { Button } from '@/components/ui/Button';
@@ -74,6 +74,22 @@ export default function ApprovalsPage() {
       return punches.reload();
     });
 
+  // Open on the first tab that has something waiting, once every list has loaded, unless the person already chose one.
+  const chosen = useRef(false);
+  const order: Tab[] = ['claims', 'timeoff', 'punches', ...(can('shiftboard.approve') ? (['trades'] as const) : [])];
+  const allLoaded = ready && !claims.loading && !timeOff.loading && !punches.loading && !trades.loading;
+  const firstWithItems = allLoaded ? order.find((k) => count[k] > 0) : undefined;
+  useEffect(() => {
+    if (!chosen.current && firstWithItems) {
+      chosen.current = true;
+      setTab(firstWithItems);
+    }
+  }, [firstWithItems]);
+  const choose = (k: Tab) => {
+    chosen.current = true;
+    setTab(k);
+  };
+
   const label = (k: Tab) => `${t(`approvals.tabs.${k}`)}${count[k] ? ` · ${count[k]}` : ''}`;
   const reviewable = punches.data?.filter((p) => p.localClockOut) ?? [];
 
@@ -86,7 +102,7 @@ export default function ApprovalsPage() {
           <Segmented
             label={t('approvals.title')}
             value={tab}
-            onChange={setTab}
+            onChange={choose}
             options={[
               { value: 'claims', label: label('claims') },
               { value: 'timeoff', label: label('timeoff') },
@@ -200,7 +216,7 @@ export default function ApprovalsPage() {
                   {t('approvals.reject')}
                 </Button>
                 <Button size="sm" disabled={!selected.size} loading={busy === 'punch-APPROVE'} onClick={() => void decidePunches([...selected], 'APPROVE')}>
-                  {t('approvals.approveSelected', { count: selected.size })}
+                  {selected.size ? t('approvals.approveSelected', { count: selected.size }) : t('approvals.approveNone')}
                 </Button>
               </div>
             </div>

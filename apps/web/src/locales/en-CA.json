@@ -932,6 +932,7 @@
     "selectPunch": "Select punch for {{name}}",
     "approveSelected_one": "Approve {{count}}",
     "approveSelected_other": "Approve {{count}}",
+    "approveNone": "Approve selected",
     "reject": "Send back",
     "punched": "Punched",
     "scheduled": "Scheduled",
