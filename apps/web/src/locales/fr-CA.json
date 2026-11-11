@@ -6691,7 +6691,8 @@
     },
     "vendorRisk": "Risque des fournisseurs",
     "vendorDist": "Fournisseurs par risque : {{high}} élevé, {{medium}} moyen, {{low}} faible",
-    "ackProgress": "Acceptations des politiques ({{policies}} publiées × {{admins}} administrateurs)",
+    "ackProgress_one": "Acceptations des politiques ({{policies}} publiées × {{admins}} administrateur)",
+    "ackProgress_other": "Acceptations des politiques ({{policies}} publiées × {{admins}} administrateurs)",
     "alerts": {
       "title": "Alertes et rappels récents",
       "none": "Aucune alerte pour l’instant."
@@ -6829,6 +6830,89 @@
       "ownerHint": "Reçoit un courriel en cas d’échec.",
       "history": "Historique (90 jours)",
       "historyHelp": "Une ligne quand le résultat change, au plus une par heure sinon. Conservé 400 jours."
+    },
+    "testDetails": {
+      "heading": "Détails",
+      "keys": {
+        "problems": "Tables non isolées",
+        "tablesChecked": "Tables vérifiées",
+        "rlsSqlRead": "Liste d’isolement lue (rls.sql)",
+        "enforced": "Passe-clé exigé",
+        "admins": "Administrateurs actifs",
+        "missingPasskeys": "Administrateurs sans passe-clé",
+        "organizations": "Organisations",
+        "without": "Organisations qui ne l’exigent pas",
+        "role": "Rôle de base de données",
+        "superuser": "Superutilisateur",
+        "bypassRls": "Contourne la sécurité au niveau des lignes",
+        "canCreate": "Peut créer dans le schéma",
+        "ownsTables": "Possède des tables",
+        "provider": "Fournisseur de clés",
+        "region": "Région",
+        "production": "Environnement de production",
+        "length": "Longueur (caractères)",
+        "distinctCharacters": "Caractères distincts",
+        "source": "Vérifié sur",
+        "missing": "Manquants ou faibles",
+        "hsts": "HSTS envoyé",
+        "sslmode": "Mode TLS",
+        "database": "Base de données",
+        "worker": "Traitement en arrière-plan",
+        "workerAgeS": "Dernier signal du traitement",
+        "oldestAgeS": "Plus ancien message en attente",
+        "oldestSafetyS": "Plus ancien message de sécurité en attente",
+        "configured": "Configuré",
+        "at": "Consigné le",
+        "manual": "Consigné par une personne",
+        "lastOkAt": "Dernière exécution réussie",
+        "lastErrorAt": "Dernière erreur",
+        "appendOnly": "Entrées non modifiables",
+        "newest": "Entrée la plus récente",
+        "lastAt": "Dernier résultat consigné",
+        "stale": "Comptes inutilisés",
+        "accounts": "Comptes avec une session",
+        "disabled": "Comptes désactivés",
+        "keys": "Clés de plus d’un an",
+        "endpoints": "Points de terminaison en échec",
+        "overdue": "En retard",
+        "unscheduled": "Sans date de revue",
+        "vendors": "Fournisseurs actifs",
+        "policies": "Politiques",
+        "unpublished": "Pas encore publiées",
+        "reviewOverdue": "Revue en retard",
+        "acknowledgementsMissing": "Acceptations manquantes",
+        "open": "Ouverts",
+        "dueIn7Days": "À échéance dans 7 jours",
+        "error": "Erreur"
+      },
+      "values": {
+        "provider": {
+          "kms": "AWS KMS",
+          "local": "Clé de développement locale",
+          "kms+local": "AWS KMS et une clé locale",
+          "none": "Aucun"
+        },
+        "source": {
+          "deployed": "L’adresse déployée",
+          "in-process": "Une copie dans l’API"
+        },
+        "database": {
+          "ok": "En bon état",
+          "warn": "À vérifier",
+          "fail": "Ne répond pas"
+        },
+        "worker": {
+          "ok": "En bon état",
+          "warn": "À vérifier",
+          "fail": "Aucun signal"
+        }
+      },
+      "rls": {
+        "rlsOff": "{{table}} : sécurité au niveau des lignes désactivée",
+        "noPolicy": "{{table}} : aucune politique",
+        "notForced": "{{table}} : non forcée",
+        "missing": "{{table}} : inscrite dans rls.sql mais absente"
+      }
     },
     "evidence": {
       "description": "Ce qui prouve chaque contrôle : fichiers (chiffrés), liens, notes et résultats CI, et les demandes en cours.",

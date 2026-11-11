@@ -6691,7 +6691,8 @@
     },
     "vendorRisk": "Vendor risk",
     "vendorDist": "Vendors by risk: {{high}} high, {{medium}} medium, {{low}} low",
-    "ackProgress": "Policy acknowledgements ({{policies}} published × {{admins}} admins)",
+    "ackProgress_one": "Policy acknowledgements ({{policies}} published × {{admins}} admin)",
+    "ackProgress_other": "Policy acknowledgements ({{policies}} published × {{admins}} admins)",
     "alerts": {
       "title": "Recent alerts and reminders",
       "none": "No alerts yet."
@@ -6829,6 +6830,89 @@
       "ownerHint": "Gets an email when it fails.",
       "history": "History (90 days)",
       "historyHelp": "A row when the result changes, and at most one an hour otherwise. Kept 400 days."
+    },
+    "testDetails": {
+      "heading": "Details",
+      "keys": {
+        "problems": "Tables not isolated",
+        "tablesChecked": "Tables checked",
+        "rlsSqlRead": "Isolation list read (rls.sql)",
+        "enforced": "Passkey required",
+        "admins": "Active admins",
+        "missingPasskeys": "Admins without a passkey",
+        "organizations": "Organizations",
+        "without": "Organizations not requiring it",
+        "role": "Database role",
+        "superuser": "Superuser",
+        "bypassRls": "Bypasses row-level security",
+        "canCreate": "Can create in the schema",
+        "ownsTables": "Owns tables",
+        "provider": "Key provider",
+        "region": "Region",
+        "production": "Production environment",
+        "length": "Length (characters)",
+        "distinctCharacters": "Distinct characters",
+        "source": "Checked on",
+        "missing": "Missing or weak",
+        "hsts": "HSTS sent",
+        "sslmode": "TLS mode",
+        "database": "Database",
+        "worker": "Background worker",
+        "workerAgeS": "Worker last reported",
+        "oldestAgeS": "Oldest message waiting",
+        "oldestSafetyS": "Oldest safety message waiting",
+        "configured": "Configured",
+        "at": "Recorded",
+        "manual": "Recorded by a person",
+        "lastOkAt": "Last finished",
+        "lastErrorAt": "Last error",
+        "appendOnly": "Entries can’t be changed",
+        "newest": "Newest entry",
+        "lastAt": "Last result recorded",
+        "stale": "Unused accounts",
+        "accounts": "Accounts with a session",
+        "disabled": "Disabled accounts",
+        "keys": "Keys over a year old",
+        "endpoints": "Failing endpoints",
+        "overdue": "Overdue",
+        "unscheduled": "No review date",
+        "vendors": "Active vendors",
+        "policies": "Policies",
+        "unpublished": "Not yet published",
+        "reviewOverdue": "Past their review",
+        "acknowledgementsMissing": "Acknowledgements missing",
+        "open": "Open",
+        "dueIn7Days": "Due within 7 days",
+        "error": "Error"
+      },
+      "values": {
+        "provider": {
+          "kms": "AWS KMS",
+          "local": "Local development key",
+          "kms+local": "AWS KMS and a local key",
+          "none": "None"
+        },
+        "source": {
+          "deployed": "The deployed address",
+          "in-process": "A copy inside the API"
+        },
+        "database": {
+          "ok": "Healthy",
+          "warn": "Needs a look",
+          "fail": "Not answering"
+        },
+        "worker": {
+          "ok": "Healthy",
+          "warn": "Needs a look",
+          "fail": "Not reporting"
+        }
+      },
+      "rls": {
+        "rlsOff": "{{table}}: row-level security off",
+        "noPolicy": "{{table}}: no policy",
+        "notForced": "{{table}}: not forced",
+        "missing": "{{table}}: listed in rls.sql but missing"
+      }
     },
     "evidence": {
       "description": "What proves each control: files (encrypted), links, notes and CI results, and the requests still open.",

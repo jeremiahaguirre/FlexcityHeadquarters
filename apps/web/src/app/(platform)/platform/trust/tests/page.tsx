@@ -13,7 +13,8 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { papi, usePlatformQuery } from '@/lib/platform';
-import { pick, testTone, type TestStatus } from '@/lib/trust';
+import { colon, pick, testTone, type TestStatus } from '@/lib/trust';
+import { detailRows } from '@/lib/trustDetails';
 
 interface TestRow { key: string; title: string; titleFr: string; everyMinutes: number; enabled: boolean; ownerId: string | null; owner: string | null; status: TestStatus | null; lastRunAt: string | null; summary: string | null; details: Record<string, unknown> | null; controls: string[] }
 interface Run { id: string; status: TestStatus; summary: string; details: Record<string, unknown> | null; at: string; trigger: string; durationMs: number }
@@ -109,16 +110,21 @@ function TestDrawer({ test: x, onClose, onChanged }: { test: TestRow | null; onC
       toast(errorText(e, t), 'warn');
     }
   }
-  const details = Object.entries(x?.details ?? {}).filter(([k]) => k !== 'summaryFr');
-  const fmt = (v: unknown) => (Array.isArray(v) ? (v.length ? v.join(', ') : '—') : v === null || v === undefined ? '—' : typeof v === 'boolean' ? (v ? t('trust.yes') : t('trust.no')) : String(v));
+  const details = detailRows(x?.details, t, i18n.language);
   return (
     <Drawer open={!!x} onClose={onClose} title={x ? pick(x, 'title', i18n.language) : ''} subtitle={x ? <StatusPill tone={testTone(x.status)}>{t(`trust.testStatus.${x.status ?? 'NONE'}`)}</StatusPill> : null}
       footer={canManage ? <Button loading={busy} icon={<Play className="h-4 w-4" aria-hidden="true" />} onClick={() => void run()}>{t('trust.tests.runNow')}</Button> : undefined}>
       {x ? (
         <>
           <p className="text-body">{summaryOf(x, i18n.language)}</p>
-          {details.length ? <Facts items={details.map(([k, v]) => [k, fmt(v)])} /> : null}
-          <p className="text-small">{t('trust.tests.controls')}: {x.controls.map((k, i) => <span key={k}>{i ? ', ' : ''}<Link href={`/platform/trust/controls?id=${k}`} className="font-semibold text-brand-text hover:underline">{k}</Link></span>)}</p>
+          {details.length ? (
+            <section aria-label={t('trust.testDetails.heading')}>
+              <Facts items={details.map((d) => [d.label, Array.isArray(d.value) ? (
+                <ul className="grid gap-0.5">{d.value.map((v, i) => <li key={i}>{v}</li>)}</ul>
+              ) : d.value])} />
+            </section>
+          ) : null}
+          <p className="text-small">{t('trust.tests.controls')}{colon(i18n.language)}{x.controls.map((k, i) => <span key={k}>{i ? ', ' : ''}<Link href={`/platform/trust/controls?id=${k}`} className="font-semibold text-brand-text hover:underline">{k}</Link></span>)}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label={t('trust.table.owner')} hint={t('trust.tests.ownerHint')}>{(p) => <Select {...p} disabled={!canManage} value={x.ownerId ?? ''} onChange={(e) => void patch({ ownerId: e.target.value || null })}><option value="">{t('trust.unassigned')}</option>{people.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</Select>}</Field>
             <Field label={t('trust.tests.enabled')}>{(p) => <Select {...p} disabled={!canManage} value={x.enabled ? 'on' : 'off'} onChange={(e) => void patch({ enabled: e.target.value === 'on' })}><option value="on">{t('trust.tests.on')}</option><option value="off">{t('trust.tests.off')}</option></Select>}</Field>
