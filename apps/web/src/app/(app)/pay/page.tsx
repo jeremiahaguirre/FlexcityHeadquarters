@@ -59,7 +59,7 @@ function MyPayInner() {
                         <span className="block text-body-strong">{formatDate(s.payDate, lng, 'dated')}</span>
                         <span className="text-caption text-muted">{t('myPay.grossLine', { gross: formatMoney(s.gross, lng), deductions: formatMoney(s.totalDeductions, lng) })}</span>
                       </span>
-                      <span className="text-right">
+                      <span className="ml-auto text-right">
                         <span className="block text-body-strong tabular-nums">{formatMoney(s.net, lng)}</span>
                         <span className="text-caption text-muted">{s.deposit ? t('payroll.depositTo', { account: s.deposit }) : t('payroll.byCheque')}</span>
                       </span>

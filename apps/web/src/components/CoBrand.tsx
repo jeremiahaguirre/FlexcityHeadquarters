@@ -19,7 +19,7 @@ export function CityBrand({ org, size = 'md', showName = false }: { org: Organiz
     <span className="inline-flex min-w-0 items-center gap-2.5">
       {/* City logos are drawn for white paper: in dark mode they sit on a small light plate so navy lines stay visible. */}
       {/* eslint-disable-next-line @next/next/no-img-element -- uploaded at runtime, served by the API */}
-      <img src={org.logoUrl} alt={org.name} className={`${h} w-auto shrink-0 object-contain dark:box-content dark:rounded-md dark:bg-white dark:px-1.5 dark:py-1`} />
+      <img src={org.logoUrl} alt={org.name} className={`${h} w-auto shrink-0 object-contain dark:box-content dark:rounded dark:bg-white dark:px-1 dark:py-0.5`} />
       {showName ? <span className="truncate text-small font-semibold text-ink">{org.name}</span> : null}
     </span>
   );

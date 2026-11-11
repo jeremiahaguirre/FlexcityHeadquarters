@@ -40,9 +40,9 @@ export function MyBankedTime() {
         {d.expiring > 0 ? <p className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-small text-ink">{t('lieu.expiring', { n: hrs(d.expiring, lng), months: d.policy.takeWithinMonths })}</p> : null}
         {d.policy.enabled ? (
           d.bankOvertime ? (
-            <Button variant="secondary" className="justify-self-start" loading={busy === 'choose'} onClick={() => void choose(false)}>{t('lieu.stopBanking')}</Button>
+            <Button variant="secondary" className="max-w-full justify-self-start !h-auto min-h-11 py-2 !whitespace-normal text-left" loading={busy === 'choose'} onClick={() => void choose(false)}>{t('lieu.stopBanking')}</Button>
           ) : (
-            <Button variant="secondary" className="justify-self-start" icon={<Hourglass className="h-4 w-4" aria-hidden="true" />} onClick={() => setConfirm(true)}>{t('lieu.startBanking')}</Button>
+            <Button variant="secondary" className="max-w-full justify-self-start !h-auto min-h-11 py-2 !whitespace-normal text-left" icon={<Hourglass className="h-4 w-4" aria-hidden="true" />} onClick={() => setConfirm(true)}>{t('lieu.startBanking')}</Button>
           )
         ) : null}
         {d.history.length ? (
