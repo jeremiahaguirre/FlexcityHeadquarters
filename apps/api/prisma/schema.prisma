@@ -4428,3 +4428,139 @@ model SurveyResponse {
 
   @@index([surveyId])
 }
+
+enum BidRoundKind {
+  SHIFTS
+  LINES
+}
+
+enum BidRoundStatus {
+  /// Accepting rankings between opensAt and closesAt.
+  OPEN
+  /// Closed: awards proposed in seniority order, waiting for a manager to review and confirm.
+  REVIEW
+  /// Confirmed: shifts assigned and published, the rest on the Shift Board.
+  AWARDED
+  CANCELLED
+}
+
+enum SeniorityBasis {
+  DATE
+  HOURS
+}
+
+/// A shift bid round (only where the organization uses seniority): staff rank shifts or lines, and at
+/// the close each gets their highest-ranked choice still open that they can work, in seniority order.
+/// See services/scheduling/bidding.ts.
+model BidRound {
+  id                 String         @id @default(uuid()) @db.Uuid
+  tenantId           String         @db.Uuid
+  name               String
+  kind               BidRoundKind
+  departmentId       String?        @db.Uuid
+  /// Who may bid: people holding one of these positions.
+  positionIds        String[]       @db.Uuid
+  opensAt            DateTime       @db.Timestamptz(3)
+  closesAt           DateTime       @db.Timestamptz(3)
+  status             BidRoundStatus @default(OPEN)
+  maxAwardsPerPerson Int            @default(1)
+  /// Seniority by date (then hours) or by hours (then date), as the collective agreement says.
+  seniorityBasis     SeniorityBasis @default(DATE)
+  /// Lines built from this weekly template over [rangeFrom, rangeTo).
+  templateId         String?        @db.Uuid
+  rangeFrom          DateTime?      @db.Date
+  rangeTo            DateTime?      @db.Date
+  openedNotifiedAt   DateTime?      @db.Timestamptz(3)
+  closedAt           DateTime?      @db.Timestamptz(3)
+  confirmedAt        DateTime?      @db.Timestamptz(3)
+  confirmedById      String?        @db.Uuid
+  cancelledAt        DateTime?      @db.Timestamptz(3)
+  createdById        String         @db.Uuid
+  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime       @default(now()) @updatedAt @db.Timestamptz(3)
+
+  items    BidItem[]
+  choices  BidChoice[]
+  entrants BidEntrant[]
+  awards   BidAward[]
+
+  @@index([tenantId, status, closesAt])
+}
+
+/// One thing to bid on: a single shift, or a line (the same shift on the same days over a season).
+model BidItem {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  roundId    String   @db.Uuid
+  /// Draft shifts it is made of (unassigned until the round is confirmed).
+  shiftIds   String[] @db.Uuid
+  positionId String   @db.Uuid
+  facilityId String   @db.Uuid
+  firstStartsAt DateTime @db.Timestamptz(3)
+  lastEndsAt DateTime @db.Timestamptz(3)
+  /// Lines: { daysOfWeek, startMinute, endMinute }.
+  meta       Json     @default("{}")
+  sortOrder  Int      @default(0)
+
+  round BidRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([roundId])
+}
+
+/// A person's ranking: 1 = first choice. Seen by the person, the round's managers and, after the close, union stewards.
+model BidChoice {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  roundId   String   @db.Uuid
+  userId    String   @db.Uuid
+  itemId    String   @db.Uuid
+  rank      Int
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  round BidRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, userId, itemId])
+  @@index([roundId, userId])
+}
+
+/// Someone who bid, as they stood at the close: their seniority (snapshot), place in the order, and
+/// what happened to each choice ([{ itemId, rank, result, code?, pass? }]).
+model BidEntrant {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  roundId        String    @db.Uuid
+  userId         String    @db.Uuid
+  seniorityRank  Int
+  seniorityDate  DateTime? @db.Date
+  seniorityHours Decimal   @default(0) @db.Decimal(10, 2)
+  hireDate       DateTime? @db.Date
+  /// The recorded deterministic last tie-break (a hash of the round and the person).
+  tiebreak       String
+  outcomes       Json      @default("[]")
+  notifiedAt     DateTime? @db.Timestamptz(3)
+
+  round BidRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, userId])
+}
+
+/// Who gets an item: proposed in seniority order at the close, or set by a manager (with a reason).
+model BidAward {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  roundId        String   @db.Uuid
+  itemId         String   @db.Uuid
+  userId         String   @db.Uuid
+  /// Round-robin pass it was won in (1 = everyone's first award), and the winner's rank for it.
+  pass           Int      @default(1)
+  choiceRank     Int?
+  overridden     Boolean  @default(false)
+  overrideReason String?
+  overriddenById String?  @db.Uuid
+  previousUserId String?  @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+
+  round BidRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, itemId])
+}
