@@ -16,7 +16,7 @@ import { ApiError, api } from '@/lib/api';
 import { formatDate, formatTimeRange } from '@/lib/format';
 
 export interface PublishGroup { facilityId: string; from: string; to: string; shiftIds: string[]; timezone: string }
-interface Gap { ruleId: string; rule: string; date: string; from: string; to: string; have: number; need: number }
+interface Gap { ruleId: string; rule: string; date: string; from: string; to: string; have: number; need: number; localFrom?: string; localTo?: string }
 interface Check { gaps: Gap[]; ineligible: Array<{ shiftId: string; name: string; codes: string[] }>; federalNotice: { count: number; hours: number } | null }
 
 /** A UTC instant as facility-local "YYYY-MM-DDTHH:mm:00" (what the formatters take). */
@@ -122,7 +122,7 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
                   const tz = tzOf((g as Gap & { facilityId: string }).facilityId);
                   return (
                     <li key={`${g.ruleId}-${g.from}`} className="rounded-lg bg-warn-bg/60 px-2.5 py-1.5">
-                      {t('publishCheck.gap', { rule: g.rule, date: formatDate(`${g.date}T12:00:00`, lng), time: formatTimeRange(localOf(g.from, tz), localOf(g.to, tz), lng), have: g.have, need: g.need })}
+                      {t('publishCheck.gap', { rule: g.rule, date: formatDate(`${g.date}T12:00:00`, lng), time: formatTimeRange(g.localFrom ?? localOf(g.from, tz), g.localTo ?? localOf(g.to, tz), lng), have: g.have, need: g.need })}
                     </li>
                   );
                 })}

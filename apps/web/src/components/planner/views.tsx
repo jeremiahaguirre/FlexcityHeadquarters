@@ -35,6 +35,12 @@ export function shortRange(startIso: string, endIso: string, lng: string): strin
   return sa && sa === sb ? `${a.replace(suffix, '')}–\u200b${b}` : `${a}–\u200b${b}`;
 }
 
+/** "Parkinson Recreation Centre" → "PRC" (the full name is in the card's title and label). */
+export function abbreviate(name: string): string {
+  const words = name.split(/[\s-]+/).filter((w) => /^[\p{L}\d]/u.test(w) && !/^(de|du|des|la|le|les|the|of|and|et)$/i.test(w));
+  return words.length > 1 ? words.slice(0, 4).map((w) => w[0]!.toUpperCase()).join('') : name.slice(0, 10);
+}
+
 export const posLabel = (lng: string, s: Pick<BoardShift, 'customTitle' | 'position'>) => s.customTitle || (lng === 'fr-CA' && s.position.nameFr ? s.position.nameFr : s.position.name);
 export const rowLabel = (lng: string, r: Row) => (lng === 'fr-CA' && r.label.nameFr ? r.label.nameFr : r.label.name);
 
@@ -70,7 +76,7 @@ export const ShiftChip = memo(function ShiftChip({
       aria-label={`${when}, ${posLabel(lng, shift)}, ${showPlace ? `${shift.facility.name}, ` : ''}${name}${shift.status === 'DRAFT' ? `, ${t('builder.status.DRAFT')}` : ''}`}
       className={cn(
         'w-full min-w-0 touch-manipulation rounded-lg border text-left transition-[box-shadow,background-color,border-color] duration-100',
-        compact ? 'px-1.5 py-0.5' : 'px-2 py-1.5',
+        compact ? 'px-1.5 py-0.5' : 'px-1.5 py-1.5',
         shift.status === 'DRAFT' ? 'border-dashed border-muted/50 bg-surface/60' : 'border-line bg-panel',
         !shift.assignee && 'border-new/50 bg-new-bg/40',
         status && dropTone[status],
@@ -80,12 +86,16 @@ export const ShiftChip = memo(function ShiftChip({
     >
       <span className={cn('flex min-w-0 items-center gap-1', compact ? 'text-[0.7rem] leading-4' : 'text-caption')}>
         {status ? <StatusMark status={status} className="h-3.5 w-3.5" /> : null}
-        <span className={cn('min-w-0 font-semibold tabular-nums', compact ? 'truncate' : 'break-words')}>{shortRange(shift.localStartsAt, shift.localEndsAt, lng)}</span>
+        {/* One line, short form ("9–5 p.m.", "9 h–17 h"). */}
+        <span className={cn('min-w-0 truncate whitespace-nowrap font-semibold tabular-nums', !compact && 'text-[0.75rem] tracking-tight')}>{shortRange(shift.localStartsAt, shift.localEndsAt, lng).replace('\u200b', '')}</span>
       </span>
       {!compact && (showPosition || showPlace) ? (
-        <span className="block truncate text-caption text-muted">{[showPosition ? posLabel(lng, shift) : null, showPlace ? shift.facility.name : null].filter(Boolean).join(' · ')}</span>
+        <span className="block truncate text-caption text-muted" title={showPlace ? shift.facility.name : undefined}>
+          {[showPosition ? posLabel(lng, shift) : null, showPlace ? abbreviate(shift.facility.name) : null].filter(Boolean).join(' · ')}
+        </span>
       ) : null}
-      <span className={cn('block truncate font-semibold', compact ? 'text-[0.7rem] leading-4' : 'text-caption', shift.assignee ? 'text-ink' : 'text-new')}>{name}</span>
+      {/* The name in full: up to two lines. */}
+      <span className={cn('block font-semibold', compact ? 'truncate text-[0.7rem] leading-4' : 'line-clamp-2 break-words text-caption leading-4', shift.assignee ? 'text-ink' : 'text-new')}>{name}</span>
     </button>
   );
 });
@@ -212,7 +222,7 @@ export function WeekView(p: ViewProps & { rows: Row[] }) {
     <>
       {/* Desktop: rows × days */}
       <div role="table" aria-label={t('planner.views.week')} className="hidden overflow-x-auto rounded-xl2 border border-line bg-panel lg:block">
-        <div role="row" className="grid min-w-[40rem] grid-cols-[6.5rem_repeat(7,minmax(4.25rem,1fr))] border-b border-line bg-surface/60">
+        <div role="row" className="grid min-w-[40rem] grid-cols-[5.5rem_repeat(7,minmax(4.75rem,1fr))] border-b border-line bg-surface/60">
           <div role="columnheader" className="px-2 py-2 text-caption font-semibold text-muted" />
           {p.days.map((d) => (
             <div key={d} role="columnheader" className="flex items-center justify-between px-2 py-1">
@@ -223,8 +233,8 @@ export function WeekView(p: ViewProps & { rows: Row[] }) {
           ))}
         </div>
         {p.rows.map((r) => (
-          <div key={r.key} role="row" className="grid min-w-[40rem] grid-cols-[6.5rem_repeat(7,minmax(4.25rem,1fr))] border-b border-line last:border-b-0">
-            <div role="rowheader" className="truncate px-2 py-2 text-small font-semibold">
+          <div key={r.key} role="row" className="grid min-w-[40rem] grid-cols-[5.5rem_repeat(7,minmax(4.75rem,1fr))] border-b border-line last:border-b-0">
+            <div role="rowheader" className="break-words px-2 py-2 text-small font-semibold" title={rowLabel(lng, r)}>
               {rowLabel(lng, r)}
             </div>
             {p.days.map((d) => {

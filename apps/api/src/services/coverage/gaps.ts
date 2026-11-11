@@ -7,10 +7,11 @@ import type { CoverageRule } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
 import { wallClock } from '../scheduling/eligibility.js';
-import { addDays, dayOfWeek } from '../../lib/time.js';
+import { addDays, dayOfWeek, localIso } from '../../lib/time.js';
 import { notify, usersWithPermission } from '../notifications/notifier.js';
 
-export interface Gap { ruleId: string; rule: string; facilityId: string; date: string; from: string; to: string; have: number; need: number }
+/** `localFrom`/`localTo`: facility-local times with offset (what screens show). */
+export interface Gap { ruleId: string; rule: string; facilityId: string; date: string; from: string; to: string; have: number; need: number; localFrom?: string; localTo?: string }
 
 /**
  * `asIfPublished`: also count these draft shifts (the ones about to be published), so the publish
@@ -62,7 +63,7 @@ async function gapsOn(tx: Tx, rule: CoverageRule, date: string, tz: string, asIf
     if (last && last.to === new Date(a).toISOString() && last.have === have) last.to = new Date(b).toISOString();
     else gaps.push({ ruleId: rule.id, rule: rule.name, facilityId: rule.facilityId, date, from: new Date(a).toISOString(), to: new Date(b).toISOString(), have, need: rule.minCount });
   }
-  return gaps;
+  return gaps.map((g) => ({ ...g, localFrom: localIso(new Date(g.from), tz), localTo: localIso(new Date(g.to), tz) }));
 }
 
 /** Hourly: gaps in the next two days, once a day per rule, to whoever keeps coverage. */

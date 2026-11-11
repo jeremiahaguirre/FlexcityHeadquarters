@@ -738,6 +738,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
   const panel = (height: string) =>
     board ? (
       <PeoplePanel
+        weekScope={board.hoursScope === 'week'}
         people={board.people}
         positions={board.positions}
         days={period.days.length === 7 ? period.days : [focus]}
@@ -874,7 +875,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[17rem_minmax(0,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-[15.5rem_minmax(0,1fr)] 2xl:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="hidden xl:block">
           <div className="sticky top-4">{panel('calc(100dvh - 17rem)')}</div>
         </aside>

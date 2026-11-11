@@ -19,7 +19,7 @@ import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit } from '../../lib/db.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
-import { addDays, dayOfWeek, localDate, localIso, overlaps, startOfLocalDay } from '../../lib/time.js';
+import { addDays, dayOfWeek, localDate, localIso, overlaps, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
@@ -149,6 +149,12 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
   const stored = parseSolverSettings(tenant.overtimePolicy);
   const deptForSettings = c.run.length === 1 && c.run[0]!.id !== NO_DEPARTMENT ? c.run[0]!.id : null;
   const settings = effectiveSettings(stored, deptForSettings, resolveFeatures(tenant.features).seniority);
+  // Hours against a target: over the period, or, for a single day, over the pay week around it
+  // (a day's share of a weekly target, like 4.57 h, means little).
+  const payWeekStartDay = (await tx.tenant.findFirstOrThrow({ select: { payWeekStartDay: true } })).payWeekStartDay;
+  const weekScope = c.dates.length < 7;
+  const hoursFrom = weekScope ? startOfLocalDay(payWeekStart(q.from, payWeekStartDay), tz) : fromI;
+  const hoursTo = weekScope ? startOfLocalDay(addDays(payWeekStart(q.from, payWeekStartDay), 7), tz) : toI;
   const [positions, shifts, users, history, allPositions] = await Promise.all([
     tx.position.findMany({ where: { id: { in: positionIds } }, select: { id: true, name: true, nameFr: true }, orderBy: { name: 'asc' } }),
     tx.shift.findMany({
@@ -168,7 +174,7 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
         certifications: { where: { verifiedAt: { not: null }, OR: [{ expiryDate: null }, { expiryDate: { gte: fromI } }] }, select: { certification: { select: { id: true, name: true, nameFr: true } } } },
         availability: true,
         timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: toI }, endsAt: { gt: fromI } }, select: { startsAt: true, endsAt: true, type: true } },
-        shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: toI }, endsAt: { gt: fromI } }, select: { startsAt: true, endsAt: true } },
+        shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: hoursTo }, endsAt: { gt: hoursFrom } }, select: { startsAt: true, endsAt: true } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     }),
@@ -196,7 +202,7 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
       const off = piecesOn(u.timeOffRequests.map((r) => ({ start: r.startsAt, end: r.endsAt })), d, tz);
       if (off.length) timeOff[d] = off;
     }
-    const scheduled = u.shifts.reduce((s, x) => s + (Math.min(x.endsAt.getTime(), toI.getTime()) - Math.max(x.startsAt.getTime(), fromI.getTime())) / H, 0);
+    const scheduled = u.shifts.reduce((s, x) => s + (Math.min(x.endsAt.getTime(), hoursTo.getTime()) - Math.max(x.startsAt.getTime(), hoursFrom.getTime())) / H, 0);
     const weekly = u.weeklyMinHours ? Number(u.weeklyMinHours) : u.employmentStatus === 'FULL_TIME' ? settings.targetHours : null;
     const confirmed = conf.get(u.id)?.through ?? null;
     return {
@@ -209,7 +215,7 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
       certifications: u.certifications.map((x) => x.certification),
       fromDepartment: home?.department && !runIds.has(homeId) ? { name: home.department.name, nameFr: home.department.nameFr } : null,
       scheduledHours: Math.round(scheduled * 100) / 100,
-      targetHours: weekly === null ? null : Math.round(weekly * periodWeeks * 100) / 100,
+      targetHours: weekly === null ? null : Math.round(weekly * (weekScope ? 1 : periodWeeks) * 100) / 100,
       availability,
       timeOff,
       hasAvailability: avail.length > 0,
@@ -220,6 +226,8 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
 
   return {
     range: { from: q.from, to: q.to, timezone: tz, today },
+    /** 'week': scheduledHours/targetHours are for the pay week around the day in view. */
+    hoursScope: weekScope ? ('week' as const) : ('period' as const),
     planAheadThrough: through,
     departments: c.run.map((d) => ({ id: d.id, name: d.name, nameFr: d.nameFr })),
     positions,

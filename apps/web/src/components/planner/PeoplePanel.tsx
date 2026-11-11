@@ -7,12 +7,13 @@
  * (or several, ticked) onto the schedule; tap or press Enter to pick them and then choose a shift.
  * The list is windowed so a department of a few hundred stays smooth.
  */
-import { CalendarCheck, Search } from 'lucide-react';
+import { BadgeCheck, CalendarCheck, Search } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input, Select } from '@/components/ui/Field';
 import { cn } from '@/lib/cn';
-import { formatHours, formatTimeRange } from '@/lib/format';
+import { formatHours } from '@/lib/format';
+import { shortRange } from './views';
 import { type BoardPerson, type Named, type PeopleFilter, type PeopleSort, filterPeople, hhmm, hoursShare, isOffAllDay } from '@/lib/planner';
 
 const ROW = 124;
@@ -33,6 +34,8 @@ export interface PanelProps {
   onOrder: (ids: string[]) => void;
   /** Fixed height for the scroller (desktop column) or a sheet's. */
   height: string;
+  /** Hours and targets are for the week around the day in view (day view). */
+  weekScope?: boolean;
 }
 
 export function PeoplePanel(p: PanelProps) {
@@ -75,7 +78,8 @@ export function PeoplePanel(p: PanelProps) {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
           <Input type="search" aria-label={t('planner.people.search')} placeholder={t('planner.people.search')} value={filter.query} onChange={(e) => setFilter({ ...filter, query: e.target.value })} className="pl-9" autoComplete="off" />
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        {/* Stacked, full width: the whole option shows in English and French. */}
+        <div className="grid gap-2">
           <Select aria-label={t('planner.people.position')} value={filter.positionId} onChange={(e) => setFilter({ ...filter, positionId: e.target.value })}>
             <option value="">{t('planner.people.allPositions')}</option>
             {p.positions.map((x) => (
@@ -110,6 +114,7 @@ export function PeoplePanel(p: PanelProps) {
                 selected={p.selected.has(person.id)}
                 picked={!!p.picking?.includes(person.id)}
                 posNames={person.positionIds.map((id) => posById.get(id)).filter((x): x is Named => !!x).map(posName)}
+                weekScope={!!p.weekScope}
                 onToggle={p.onToggle}
                 onPick={p.onPick}
                 onDragStart={p.onDragStart}
@@ -138,10 +143,12 @@ const PersonCard = memo(function PersonCard({
   selected,
   picked,
   posNames,
+  weekScope,
   onToggle,
   onPick,
   onDragStart,
 }: {
+  weekScope: boolean;
   person: BoardPerson;
   days: string[];
   focusDay: string;
@@ -163,11 +170,18 @@ const PersonCard = memo(function PersonCard({
   const availText = off
     ? t('planner.people.off')
     : windows?.length
-      ? t('planner.people.available', { times: windows.map(([s, e]) => (s <= 0 && e >= 1440 ? t('planner.people.allDay') : formatTimeRange(time(s), e >= 1440 ? '2000-01-01T23:59:00' : time(e), lng))).join(', ') })
+      ? t('planner.people.available', { times: windows.map(([s, e]) => (s <= 0 && e >= 1440 ? t('planner.people.allDay') : shortRange(time(s), e >= 1440 ? '2000-01-01T23:59:00' : time(e), lng).replace('\u200b', ''))).join(', ') })
       : person.hasAvailability
         ? t('planner.people.notAvailable')
         : t('planner.people.noAvailability');
-  const hoursLabel = person.targetHours !== null ? t('planner.people.hoursOf', { hours: formatHours(person.scheduledHours, lng), target: formatHours(person.targetHours, lng) }) : t('planner.people.hours', { hours: formatHours(person.scheduledHours, lng) });
+  // Nearest half hour, in the locale's format; a day view counts the week (a day's share of a weekly target means little).
+  const half = (h: number) => formatHours(Math.round(h * 2) / 2, lng);
+  const hoursLabel =
+    person.targetHours !== null
+      ? t(weekScope ? 'planner.people.hoursOfWeek' : 'planner.people.hoursOf', { hours: half(person.scheduledHours), target: half(person.targetHours) })
+      : t(weekScope ? 'planner.people.hoursWeek' : 'planner.people.hours', { hours: half(person.scheduledHours) });
+  // A certificate named like one of their positions (e.g. "Swim Instructor") isn't shown twice.
+  const certs = person.certifications.filter((c) => !posNames.some((n) => n.toLowerCase() === (lng === 'fr-CA' && c.nameFr ? c.nameFr : c.name).toLowerCase() || n.toLowerCase() === c.name.toLowerCase()));
   return (
     <div
       className={cn(
@@ -200,12 +214,13 @@ const PersonCard = memo(function PersonCard({
               {n}
             </span>
           ))}
-          {person.certifications.slice(0, 1).map((c) => (
-            <span key={c.id} className="truncate rounded-full border border-line px-1.5 text-[0.7rem] leading-5 text-muted">
+          {certs.slice(0, 1).map((c) => (
+            <span key={c.id} className="inline-flex min-w-0 items-center gap-0.5 truncate rounded-full border border-line px-1.5 text-[0.7rem] leading-5 text-muted" title={t('planner.people.certificate')}>
+              <BadgeCheck className="h-3 w-3 shrink-0" aria-label={t('planner.people.certificate')} />
               {lng === 'fr-CA' && c.nameFr ? c.nameFr : c.name}
             </span>
           ))}
-          {person.certifications.length > 1 ? <span className="text-[0.7rem] leading-5 text-muted">+{person.certifications.length - 1}</span> : null}
+          {certs.length > 1 ? <span className="text-[0.7rem] leading-5 text-muted">+{certs.length - 1}</span> : null}
         </div>
         <div className="mt-1.5 flex items-center gap-2">
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface" aria-hidden="true">

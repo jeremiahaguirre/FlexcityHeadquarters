@@ -39,20 +39,26 @@ export function DayView(p: ViewProps & { rows: Row[]; day: string; preview: BarP
   const showNow = p.day === p.board.range.today && now >= axis.startHour * 60 && now <= axis.endHour * 60;
   const forecast = useForecast(p.rows, p.facilityId ?? p.board.facilities[0]?.id ?? null, p.day);
 
-  // Open at the morning (or the first shift), not at midnight.
+  // Open at the facility's opening hours (the first hour the forecast needs anyone), else an hour
+  // before the first shift, else 6 a.m.; the whole day stays a scroll away.
   const scroller = useRef<HTMLDivElement>(null);
-  const first = today.length ? Math.min(...today.map((s) => minuteOf(s.localStartsAt))) : 6 * 60;
+  const opening = useMemo(() => {
+    const hs = Object.values(forecast).flatMap((m) => Object.keys(m).map(Number));
+    return hs.length ? Math.min(...hs) * 60 : null;
+  }, [forecast]);
+  const first = today.length ? Math.min(...today.map((s) => minuteOf(s.localStartsAt))) : null;
+  const target = opening ?? (first !== null ? Math.max(0, first - 60) : 6 * 60);
   useEffect(() => {
     const el = scroller.current;
-    if (el) el.scrollLeft = Math.max(0, minutesToX(Math.min(first, 6 * 60) - 30, axis));
+    if (el) el.scrollLeft = Math.max(0, minutesToX(target - 30, axis));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [p.day, axis.startHour, px]);
+  }, [p.day, axis.startHour, px, target]);
   return (
     <div className="rounded-xl2 border border-line bg-panel">
       <div ref={scroller} className="overflow-x-auto overscroll-x-contain" role="region" aria-label={t('planner.day.timeline')} tabIndex={0}>
         <div style={{ width: width + 128 }} className="relative">
           <div className="sticky top-0 z-20 flex border-b border-line bg-panel/95">
-            <div className="sticky left-0 z-10 w-32 shrink-0 bg-panel px-2 py-1.5 text-caption font-semibold text-muted">{t('planner.day.rows')}</div>
+            <div className="sticky left-0 z-10 w-32 shrink-0 bg-panel px-2 py-1.5 text-caption font-semibold text-muted">{p.rows[0]?.facilityId && !p.rows[0]?.positionId ? t('planner.day.rowsFacility') : t('planner.day.rowsPosition')}</div>
             <div className="relative h-8" style={{ width }} aria-hidden="true">
               {hours.map((h) => (
                 <span key={h} className="absolute top-1.5 -translate-x-1/2 text-[0.7rem] tabular-nums text-muted" style={{ left: minutesToX(h * 60, axis) }}>

@@ -46,6 +46,8 @@ export interface BoardPerson {
 }
 export interface Board {
   range: { from: string; to: string; timezone: string; today: string };
+  /** 'week': people's hours and targets are for the pay week around the day in view. */
+  hoursScope?: 'week' | 'period';
   planAheadThrough: string;
   departments: Named[];
   positions: Named[];

@@ -6457,7 +6457,10 @@
       "pickHint": "Appuyez sur Entrée pour choisir, puis choisissez un quart ou une journée.",
       "open_one": "Personnes ({{count}})",
       "open_other": "Personnes ({{count}})",
-      "phoneHelp": "Touchez une personne, puis un quart ou une journée."
+      "phoneHelp": "Touchez une personne, puis un quart ou une journée.",
+      "hoursOfWeek": "{{hours}} sur {{target}} cette semaine",
+      "hoursWeek": "{{hours}} cette semaine",
+      "certificate": "Certification"
     },
     "pick": {
       "title": "Planifier {{names}} :",
@@ -6478,7 +6481,9 @@
       "need": "Suggéré {{need}}, à l’horaire {{have}}",
       "short_one": "−{{count}}",
       "short_other": "−{{count}}",
-      "empty": "Aucun quart ce jour-là. Glissez une personne sur une ligne à l’heure où elle commence."
+      "empty": "Aucun quart ce jour-là. Glissez une personne sur une ligne à l’heure où elle commence.",
+      "rowsPosition": "Poste",
+      "rowsFacility": "Installation"
     },
     "ops": {
       "assign": "affecter {{name}}",

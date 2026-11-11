@@ -6457,7 +6457,10 @@
       "pickHint": "Press Enter to pick, then choose a shift or a day.",
       "open_one": "People ({{count}})",
       "open_other": "People ({{count}})",
-      "phoneHelp": "Tap a person, then tap a shift or a day."
+      "phoneHelp": "Tap a person, then tap a shift or a day.",
+      "hoursOfWeek": "{{hours}} of {{target}} this week",
+      "hoursWeek": "{{hours}} this week",
+      "certificate": "Certification"
     },
     "pick": {
       "title": "Scheduling {{names}}:",
@@ -6478,7 +6481,9 @@
       "need": "Suggested {{need}}, scheduled {{have}}",
       "short_one": "−{{count}}",
       "short_other": "−{{count}}",
-      "empty": "No shifts this day. Drag a person onto a row at the time they should start."
+      "empty": "No shifts this day. Drag a person onto a row at the time they should start.",
+      "rowsPosition": "Position",
+      "rowsFacility": "Facility"
     },
     "ops": {
       "assign": "assign {{name}}",
