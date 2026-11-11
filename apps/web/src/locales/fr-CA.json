@@ -1962,7 +1962,7 @@
       },
       "reliability": {
         "name": "Indices de fiabilité",
-        "help": "Indices de présence à titre indicatif pour les superviseurs."
+        "help": "Indices de présence à titre indicatif pour les superviseurs et les RH, qui remontent avec une bonne assiduité ou repartent à zéro chaque année."
       },
       "jobs": {
         "name": "Offres d’emploi",

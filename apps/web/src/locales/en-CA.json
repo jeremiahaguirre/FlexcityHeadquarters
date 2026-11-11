@@ -1962,7 +1962,7 @@
       },
       "reliability": {
         "name": "Reliability scores",
-        "help": "Advisory attendance scores for supervisors."
+        "help": "Advisory attendance scores for supervisors and HR, which recover with good attendance or restart yearly."
       },
       "jobs": {
         "name": "Job postings",
