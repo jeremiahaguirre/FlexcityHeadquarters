@@ -34,7 +34,7 @@ function SecretOnce({ label, value, onDone }: { label: string; value: string; on
       <p className="text-small font-semibold text-ink">{label}</p>
       <p className="text-small text-ink">{t('integrations.secretOnce')}</p>
       <div className="flex flex-wrap gap-2">
-        <input readOnly value={value} onFocus={(e) => e.currentTarget.select()} aria-label={label} className="min-w-0 flex-1 rounded-xl border border-line bg-panel px-3 py-2 font-mono text-caption text-ink" />
+        <input readOnly value={value} onFocus={(e) => e.currentTarget.select()} aria-label={label} className="w-full min-w-0 basis-full rounded-xl border border-line bg-panel px-3 py-2 font-mono text-caption text-ink sm:basis-0 sm:flex-1" />
         <Button size="sm" variant="secondary" icon={<Copy className="h-4 w-4" aria-hidden="true" />} onClick={() => void navigator.clipboard.writeText(value).then(() => toast(t('integrations.copied'), 'ok'), () => toast(t('calendarFeed.copyManually'), 'warn'))}>
           {t('integrations.copy')}
         </Button>

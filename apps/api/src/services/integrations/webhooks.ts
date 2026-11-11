@@ -222,7 +222,11 @@ export async function attemptDelivery(tenantId: string, deliveryId: string, opts
           ...(success ? { deliveredAt: now } : status === 'PENDING' ? { nextAttemptAt: new Date(now.getTime() + webhookBackoffMs(attempts)) } : {}),
         },
       });
-      if (manual) return;
+      // Manual sends never count toward turning the endpoint off, but a success still shows it's reachable.
+      if (manual) {
+        if (success) await tx.webhookEndpoint.update({ where: { id: ep.id }, data: { lastSuccessAt: now } });
+        return;
+      }
       if (success) {
         await tx.webhookEndpoint.update({ where: { id: ep.id }, data: { consecutiveFailures: 0, lastSuccessAt: now } });
         return;
