@@ -418,6 +418,16 @@ async function capture(browser, role) {
         await page.waitForTimeout(500);
       }
     }
+    if (href === '/manage/jobs') {
+      // Each in-app posting's applications.
+      const n = Math.min(await page.getByRole('button', { name: 'Applications', exact: true }).count(), 3);
+      for (let i = 0; i < n; i++) {
+        await page.getByRole('button', { name: 'Applications', exact: true }).nth(i).click().catch(() => {});
+        await page.waitForTimeout(1200);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(300);
+      }
+    }
     if (href === '/union') {
       await page.locator('main [role=radiogroup] [role=radio]').first().click().catch(() => {});
       await page.locator('main button:has(span.text-body-strong)').first().waitFor({ timeout: 10000 }).catch(() => {});
