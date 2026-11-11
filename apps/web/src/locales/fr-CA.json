@@ -7267,8 +7267,8 @@
     "title": "Prix et renouvellement",
     "ourBilling": "notre équipe de facturation",
     "none": "Votre prix, la fréquence de facturation et la durée sont fixés dans votre bon de commande. Demandez-en une copie à {{contact}}.",
-    "price": "{{amount}} par mois pour votre forfait, avant taxes (TPS/TVH, et TVQ au Québec), plus le personnel au-delà de votre allocation, facturé chaque mois.",
-    "priceDiscount": "{{amount}} par mois pour votre forfait après votre rabais d’engagement de {{percent}} %, avant taxes (TPS/TVH, et TVQ au Québec), plus le personnel au-delà de votre allocation, facturé chaque mois.",
+    "price": "{{amount}} par mois pour votre forfait, avant taxes (TPS/TVH et, s’il y a lieu, TVP, TVD ou TVQ), plus le personnel au-delà de votre allocation, facturé chaque mois.",
+    "priceDiscount": "{{amount}} par mois pour votre forfait après votre rabais d’engagement de {{percent}} %, avant taxes (TPS/TVH et, s’il y a lieu, TVP, TVD ou TVQ), plus le personnel au-delà de votre allocation, facturé chaque mois.",
     "frequency": {
       "MONTHLY": "Facturé chaque mois.",
       "ANNUAL": "Facturé tous les 12 mois, d’avance : {{amount}} avant taxes.",

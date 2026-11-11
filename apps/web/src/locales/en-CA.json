@@ -7267,8 +7267,8 @@
     "title": "Price and renewal terms",
     "ourBilling": "our billing team",
     "none": "Your price, billing frequency and term are set in your order form. Ask {{contact}} for a copy.",
-    "price": "{{amount}} a month for your plan, before tax (GST/HST, and QST in Quebec), plus staff beyond your allowance, billed each month.",
-    "priceDiscount": "{{amount}} a month for your plan after your {{percent}}% commitment discount, before tax (GST/HST, and QST in Quebec), plus staff beyond your allowance, billed each month.",
+    "price": "{{amount}} a month for your plan, before tax (GST/HST, and PST, RST or QST where it applies), plus staff beyond your allowance, billed each month.",
+    "priceDiscount": "{{amount}} a month for your plan after your {{percent}}% commitment discount, before tax (GST/HST, and PST, RST or QST where it applies), plus staff beyond your allowance, billed each month.",
     "frequency": {
       "MONTHLY": "Invoiced every month.",
       "ANNUAL": "Invoiced every 12 months in advance: {{amount}} before tax.",
