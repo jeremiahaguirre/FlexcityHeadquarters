@@ -204,11 +204,12 @@ function toCandidateContext(u: LoadedUser): CandidateContext {
 }
 
 /** All active staff with context covering [from, to] — for the scheduling assistant. */
-export async function loadAssistantCandidates(tx: Tx, from: Date, to: Date) {
+/** `where` narrows who is loaded (e.g. one department, within a lead's scope). */
+export async function loadAssistantCandidates(tx: Tx, from: Date, to: Date, where: Prisma.UserWhereInput = {}) {
   const lo = new Date(from.getTime() - NEIGHBOURHOOD_MS);
   const hi = new Date(to.getTime() + NEIGHBOURHOOD_MS);
   const users = await tx.user.findMany({
-    where: { status: 'ACTIVE', anonymizedAt: null, processingRestrictedAt: null },
+    where: { ...where, status: 'ACTIVE', anonymizedAt: null, processingRestrictedAt: null },
     include: {
       positions: true,
       certifications: true,

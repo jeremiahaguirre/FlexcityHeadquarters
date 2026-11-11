@@ -182,9 +182,11 @@ schedulingRouter.post(
   requirePermission('schedule.write'),
   h(async (req, res) => {
     const a = authOf(req);
-    const body = z.object({ facilityId: uuid, from: z.coerce.date(), to: z.coerce.date() }).parse(req.body);
+    // `shiftIds`: publish only these drafts (e.g. one open shift to post to the board).
+    const body = z.object({ facilityId: uuid, from: z.coerce.date(), to: z.coerce.date(), shiftIds: z.array(uuid).min(1).max(3000).optional() }).parse(req.body);
     if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
-    const out = await withTenant(a.tenantId, (tx) => withEvents(tx, publishShifts(tx, actor(req), body.facilityId, body.from, body.to, shiftsWhere(a.scope))));
+    const only = { ...shiftsWhere(a.scope), ...(body.shiftIds ? { id: { in: body.shiftIds } } : {}) };
+    const out = await withTenant(a.tenantId, (tx) => withEvents(tx, publishShifts(tx, actor(req), body.facilityId, body.from, body.to, only)));
     dispatchSoon(a.tenantId);
     res.json({ published: out.published, postedToBoard: out.posted });
   }),

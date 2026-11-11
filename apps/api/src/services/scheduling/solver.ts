@@ -83,6 +83,8 @@ export interface CoverageNeed {
   certificationId: string;
   minCount: number;
   windows: Interval[];
+  /** Shifts already scheduled at the facility by certificate holders who aren't in this run. */
+  covered?: Interval[];
 }
 
 export interface SolverOptions {
@@ -338,7 +340,10 @@ export function solve(input: SolverInput): SolverResult {
       const we = w.end.getTime();
       const pts = new Set<number>([ws, we]);
       for (const j of relevant) for (const x of [sm[j]!.start, sm[j]!.end]) if (x > ws && x < we) pts.add(x);
-      const holderPre = people.flatMap((p, i) => (holdsCert(p, n.certificationId, localDate(w.start, defaultTz)) ? pre[i]!.filter((iv) => iv.facilityId === n.facilityId) : []));
+      const holderPre = [
+        ...people.flatMap((p, i) => (holdsCert(p, n.certificationId, localDate(w.start, defaultTz)) ? pre[i]!.filter((iv) => iv.facilityId === n.facilityId) : [])),
+        ...(n.covered ?? []).map((c) => ({ start: c.start.getTime(), end: c.end.getTime() })),
+      ];
       for (const x of holderPre) for (const y of [x.start, x.end]) if (y > ws && y < we) pts.add(y);
       const sorted = [...pts].sort((a, b) => a - b);
       for (let k = 0; k < sorted.length - 1; k++) {

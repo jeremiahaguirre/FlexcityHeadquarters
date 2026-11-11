@@ -79,7 +79,10 @@ overtimeRouter.put(
     const a = authOf(req);
     const body = z.object({ countRefusals: z.boolean(), clause: z.string().trim().max(200).nullable(), periodStartMonth: z.number().int().min(1).max(12) }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: body as Prisma.InputJsonValue } });
+      // Keep other settings stored alongside (Fill the schedule keeps its own under `solver`).
+      const { overtimePolicy } = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { overtimePolicy: true } });
+      const kept = overtimePolicy && typeof overtimePolicy === 'object' && !Array.isArray(overtimePolicy) ? overtimePolicy : {};
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: { ...kept, ...body } as Prisma.InputJsonValue } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'overtime.policy', entity: 'Tenant', entityId: a.tenantId, after: body });
     });
     res.json(body);

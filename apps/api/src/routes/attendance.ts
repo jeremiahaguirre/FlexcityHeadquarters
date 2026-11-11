@@ -9,6 +9,7 @@ import { localIso } from '../lib/time.js';
 import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
 import { decidePunches, punchVariance } from '../services/timeclock/review.js';
 import { teamOf, teamQuery } from '../services/people/reporting.js';
+import { confirmAvailability } from '../services/scheduling/fillRun.js';
 import { h } from './context.js';
 
 export const attendanceRouter = Router();
@@ -38,7 +39,12 @@ attendanceRouter.put(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ effectiveFrom: isoDate, windows: z.array(window).max(42) }).parse(req.body);
-    const rows = await withTenant(a.tenantId, (tx) => replaceAvailability(tx, a.tenantId, a.userId, body.effectiveFrom, body.windows));
+    const rows = await withTenant(a.tenantId, async (tx) => {
+      const out = await replaceAvailability(tx, a.tenantId, a.userId, body.effectiveFrom, body.windows);
+      // Updating availability counts as keeping it current through the planning window.
+      await confirmAvailability(tx, a.tenantId, a.userId, 'availability.update');
+      return out;
+    });
     res.json(rows);
   }),
 );
