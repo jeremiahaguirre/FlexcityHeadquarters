@@ -6,7 +6,7 @@ import type { Tx } from '../lib/db.js';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
-import { publish } from '../lib/events.js';
+import { dispatchSoon, withEvents } from '../lib/events.js';
 import { assignShift, cancelShift, createShift, publishShifts, rankCandidates, updateShift } from '../services/scheduling/shifts.js';
 import { previewShiftPay } from '../services/payroll/payPreview.js';
 import { notFound } from '../lib/errors.js';
@@ -136,10 +136,10 @@ schedulingRouter.patch(
     const out = await withTenant(a.tenantId, async (tx) => {
       await shiftScoped(tx, a, uuid.parse(req.params.id));
       if (patch.positionId) assertShiftInScope(a, { positionId: patch.positionId, facilityId: (await tx.shift.findUniqueOrThrow({ where: { id: uuid.parse(req.params.id) } })).facilityId });
-      const r = await updateShift(tx, actor(req), uuid.parse(req.params.id), expectedVersion, patch);
+      const r = await withEvents(tx, updateShift(tx, actor(req), uuid.parse(req.params.id), expectedVersion, patch));
       return { shift: await tx.shift.findUniqueOrThrow({ where: { id: r.shift.id }, include: shiftInclude }), events: r.events };
     });
-    publish(out.events);
+    dispatchSoon(a.tenantId);
     res.json(shiftView(out.shift, { fullNames: true }));
   }),
 );
@@ -153,10 +153,10 @@ schedulingRouter.post(
     const out = await withTenant(a.tenantId, async (tx) => {
       await shiftScoped(tx, a, uuid.parse(req.params.id));
       if (body.userId) await assertUserInScope(tx, a, body.userId);
-      const r = await assignShift(tx, actor(req), uuid.parse(req.params.id), body.userId, body.expectedVersion, body.acknowledgeOvertime);
+      const r = await withEvents(tx, assignShift(tx, actor(req), uuid.parse(req.params.id), body.userId, body.expectedVersion, body.acknowledgeOvertime));
       return { shift: await tx.shift.findUniqueOrThrow({ where: { id: r.shift.id }, include: shiftInclude }), events: r.events, evaluation: r.evaluation };
     });
-    publish(out.events);
+    dispatchSoon(a.tenantId);
     res.json({ shift: shiftView(out.shift, { fullNames: true }), flags: out.evaluation?.flags ?? [] });
   }),
 );
@@ -169,9 +169,9 @@ schedulingRouter.post(
     const { reason } = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
       await shiftScoped(tx, a, uuid.parse(req.params.id));
-      return cancelShift(tx, actor(req), uuid.parse(req.params.id), reason);
+      return withEvents(tx, cancelShift(tx, actor(req), uuid.parse(req.params.id), reason));
     });
-    publish(out.events);
+    dispatchSoon(a.tenantId);
     res.json({ ok: true });
   }),
 );
@@ -183,8 +183,8 @@ schedulingRouter.post(
     const a = authOf(req);
     const body = z.object({ facilityId: uuid, from: z.coerce.date(), to: z.coerce.date() }).parse(req.body);
     if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
-    const out = await withTenant(a.tenantId, (tx) => publishShifts(tx, actor(req), body.facilityId, body.from, body.to, shiftsWhere(a.scope)));
-    publish(out.events);
+    const out = await withTenant(a.tenantId, (tx) => withEvents(tx, publishShifts(tx, actor(req), body.facilityId, body.from, body.to, shiftsWhere(a.scope))));
+    dispatchSoon(a.tenantId);
     res.json({ published: out.published, postedToBoard: out.posted });
   }),
 );

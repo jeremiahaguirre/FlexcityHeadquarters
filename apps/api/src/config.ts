@@ -19,6 +19,14 @@ const schema = z.object({
   /** API worker processes in this container (Node uses one core each). */
   WEB_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(1),
   /**
+   * The one LISTEN connection each API process (and the worker) holds for pg_notify (lib/listen.ts):
+   * live notifications and cache invalidation across processes. Must reach Postgres directly, or a
+   * PgBouncer pool in session mode: transaction pooling drops LISTEN. Defaults to APP_DATABASE_URL.
+   */
+  LISTEN_DATABASE_URL: z.string().url().optional(),
+  /** Domain events: delivery tries before an event is set aside as dead (lib/outbox.ts). */
+  EVENT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(8),
+  /**
    * Where the Union Hub runs: "embedded" in this API (the default), or "separate", its own service
    * (src/unionServer.ts) behind the same address at /api/union. In "separate" mode this API holds no
    * union database credentials at all, and the union service must be the one given them.

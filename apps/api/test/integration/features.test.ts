@@ -2,8 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
-import { subscribe } from '../../src/lib/events.js';
-import { handleEvent } from '../../src/services/notifications/notifier.js';
+import { enableInlineDispatch } from '../../src/lib/outbox.js';
 import { forgetFeatures } from '../../src/services/platform/features.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
@@ -21,8 +20,8 @@ async function setFeatures(features: object) {
   forgetFeatures(t.tenant.id);
 }
 
-// Same fan-out as server.ts: domain events → notifications (+ emails).
-const unsubscribe = subscribe((e) => void handleEvent(e));
+// Same as server.ts: events recorded with a change are delivered right after its commit.
+const stopDispatch = enableInlineDispatch({ prisma: appDb });
 
 beforeAll(async () => {
   t = await seedTenant(SUB, 1);
@@ -31,7 +30,7 @@ beforeAll(async () => {
   sup = await signAccessToken({ sub: s.id, tid: t.tenant.id, roles: ['AQUATIC_SUPERVISOR'] });
 });
 afterAll(async () => {
-  unsubscribe();
+  await stopDispatch();
   await appDb.$disconnect();
   await owner.$disconnect();
 });

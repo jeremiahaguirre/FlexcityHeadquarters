@@ -5,6 +5,7 @@
  * pg_notify, which Postgres delivers only on COMMIT — so live streams on every
  * API instance see a notification exactly when it becomes durable.
  */
+import { createHash } from 'node:crypto';
 import type { AccessRole, Prisma, PrismaClient } from '@prisma/client';
 import { type Tx, withTenant } from '../../lib/db.js';
 import type { DomainEvent } from '../../lib/events.js';
@@ -28,8 +29,18 @@ export interface NotificationDraft {
   smsTemplate?: string;
 }
 
-export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft[]): Promise<number> {
-  const unique = dedupe(drafts);
+/**
+ * Store notifications (and queue their emails and texts) in the caller's transaction.
+ * With `eventId` (the event outbox's delivery), each one carries a dedupe key, and any already
+ * written for that event are skipped with their emails and texts: redelivery never repeats them.
+ */
+export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft[], opts: { eventId?: string } = {}): Promise<number> {
+  let unique = dedupe(drafts);
+  const keyOf = (d: NotificationDraft) => (opts.eventId ? `${opts.eventId}:${createHash('sha256').update(draftKey(d)).digest('base64url').slice(0, 22)}` : null);
+  if (opts.eventId && unique.length) {
+    const done = new Set((await tx.notification.findMany({ where: { dedupeKey: { startsWith: `${opts.eventId}:` } }, select: { dedupeKey: true } })).map((n) => n.dedupeKey));
+    unique = unique.filter((d) => !done.has(keyOf(d)));
+  }
   if (unique.length === 0) return 0;
   const wantEmail = unique.some((d) => d.email);
   // Notification emails (not invites or password resets) follow the organization's switch.
@@ -46,7 +57,7 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
 
   for (const d of unique) {
     const n = await tx.notification.create({
-      data: { tenantId, userId: d.userId, type: d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, link: d.link ?? null },
+      data: { tenantId, userId: d.userId, type: d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, link: d.link ?? null, dedupeKey: keyOf(d) },
     });
     await tx.$executeRaw`SELECT pg_notify(${NOTIFY_CHANNEL}, ${JSON.stringify({ tenantId, userId: d.userId, id: n.id })})`;
     const person = d.email && emailOn ? people.find((p) => p.id === d.userId) : undefined;
@@ -150,14 +161,22 @@ export async function draftsFor(tx: Tx, e: DomainEvent): Promise<NotificationDra
   }
 }
 
+/** The event outbox's handler (lib/outbox.ts): runs in the transaction that marks the event delivered. */
+export async function handleDomainEvent(tx: Tx, e: DomainEvent, eventId: string): Promise<number> {
+  return notify(tx, e.tenantId, await draftsFor(tx, e), { eventId });
+}
+
+/** One event, outside the outbox (tests and scripts). */
 export async function handleEvent(e: DomainEvent, prisma?: PrismaClient): Promise<number> {
   return withTenant(e.tenantId, async (tx) => notify(tx, e.tenantId, await draftsFor(tx, e)), { prisma });
 }
 
+const draftKey = (d: NotificationDraft) => `${d.userId}|${d.type}|${JSON.stringify(d.params ?? {})}`;
+
 function dedupe(drafts: NotificationDraft[]): NotificationDraft[] {
   const seen = new Set<string>();
   return drafts.filter((d) => {
-    const k = `${d.userId}|${d.type}|${JSON.stringify(d.params ?? {})}`;
+    const k = draftKey(d);
     if (seen.has(k)) return false;
     seen.add(k);
     return true;

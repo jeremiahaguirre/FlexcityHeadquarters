@@ -1,12 +1,16 @@
-import { EventEmitter } from 'node:events';
-import type { NotificationDraft } from '../services/notifications/notifier.js';
-
 /**
- * Domain events. In-process for now; the WebSocket gateway and push-notification
- * worker subscribe here. Emit only AFTER the transaction commits (callers return
- * events from the transaction and publish them afterwards), so subscribers never
- * see state that was rolled back.
+ * Domain events, through a transactional outbox (lib/outbox.ts).
+ *
+ * A service returns the events its change causes; the caller records them with recordEvents()
+ * INSIDE the same transaction, so an event exists exactly when its change committed (a rollback
+ * leaves neither). After the commit, dispatchSoon() asks this process to deliver them straight
+ * away; if the process stops first, the worker delivers them within seconds. Delivery is at
+ * least once, and handlers are idempotent (notifications carry a dedupe key).
  */
+import type { Prisma } from '@prisma/client';
+import type { NotificationDraft } from '../services/notifications/notifier.js';
+import type { Tx } from './db.js';
+
 export type DomainEvent =
   | { type: 'shift.offer.posted'; tenantId: string; offerId: string; shiftId: string; eligibleUserIds: string[] }
   | { type: 'shift.offer.completed'; tenantId: string; offerId: string; shiftId: string; fromUserId: string | null; toUserId: string }
@@ -18,14 +22,29 @@ export type DomainEvent =
   /** Direct notifications from features that know their recipients. */
   | { type: 'notify'; tenantId: string; drafts: NotificationDraft[] };
 
-const bus = new EventEmitter();
-bus.setMaxListeners(100);
-
-export function publish(events: DomainEvent | DomainEvent[]): void {
-  for (const e of Array.isArray(events) ? events : [events]) bus.emit('event', e);
+/** Write the events to the outbox, in the caller's transaction. Returns how many. */
+export async function recordEvents(tx: Tx, events: DomainEvent | DomainEvent[]): Promise<number> {
+  const list = Array.isArray(events) ? events : [events];
+  if (!list.length) return 0;
+  await tx.eventOutbox.createMany({ data: list.map((e) => ({ tenantId: e.tenantId, type: e.type, payload: e as unknown as Prisma.InputJsonValue })) });
+  return list.length;
 }
 
-export function subscribe(fn: (e: DomainEvent) => void): () => void {
-  bus.on('event', fn);
-  return () => bus.off('event', fn);
+/** recordEvents() for a service result that carries its events; passes the result on. */
+export async function withEvents<T extends { events: DomainEvent[] }>(tx: Tx, result: T | Promise<T>): Promise<T> {
+  const r = await result;
+  await recordEvents(tx, r.events);
+  return r;
+}
+
+let kick: ((tenantId: string) => void) | null = null;
+
+/** lib/outbox.ts installs the in-process dispatcher here (server.ts turns it on). */
+export function setDispatchKick(fn: ((tenantId: string) => void) | null): void {
+  kick = fn;
+}
+
+/** After the commit: deliver this organization's new events now (best effort; the worker is the backstop). */
+export function dispatchSoon(tenantId: string): void {
+  kick?.(tenantId);
 }

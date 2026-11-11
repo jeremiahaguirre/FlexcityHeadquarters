@@ -1,7 +1,12 @@
 /**
  * Background worker: run alongside the API (one or more instances).
  *   node dist/worker.js
- * Each job takes a Postgres advisory lock, so two workers never run the same job at once.
+ * Each job takes a Postgres advisory lock, so two workers never run the same job at once. Session
+ * advisory locks are re-entrant, so a job still running when its next round starts in this same
+ * process is skipped here too (`running`), not run twice.
+ *
+ * Domain events (lib/outbox.ts) are delivered every few seconds without a lock: claiming with
+ * SKIP LOCKED already keeps any number of workers and API processes from delivering one twice.
  */
 import pg from 'pg';
 import { computeBenchmarks } from './services/platform/benchmarks.js';
@@ -20,6 +25,7 @@ import { captureError, installProcessHandlers } from './lib/errorReporter.js';
 import { WORKER_APP_NAME, workerBeatName } from './lib/health.js';
 import { applyRetention } from './services/privacy/retention.js';
 import { deliverPush } from './services/notifications/push.js';
+import { dispatchAll } from './lib/outbox.js';
 
 const cfg = config();
 installProcessHandlers();
@@ -34,7 +40,19 @@ async function heartbeat() {
 const mailer = new ConsoleMailer();
 const sms = smsSender();
 
+const running = new Set<string>();
+
 async function exclusive(name: string, fn: () => Promise<unknown>) {
+  if (running.has(name)) return;
+  running.add(name);
+  try {
+    await locked(name, fn);
+  } finally {
+    running.delete(name);
+  }
+}
+
+async function locked(name: string, fn: () => Promise<unknown>) {
   const { rows } = await lockClient.query<{ ok: boolean }>('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', [`fh-job:${name}`]);
   if (!rows[0]?.ok) return;
   const started = Date.now();
@@ -81,9 +99,26 @@ const hourly = async () => {
   await exclusive('benchmarks', () => computeBenchmarks(db()));
 };
 
+/** Events their API process didn't deliver (it stopped, or delivery failed and is due again). */
+let dispatching = false;
+const events = async () => {
+  if (dispatching) return;
+  dispatching = true;
+  try {
+    const r = await dispatchAll();
+    if (r.delivered || r.retried || r.dead) console.log('[job] events', r);
+  } catch (err) {
+    captureError(err, { source: 'job', tags: { job: 'events' } });
+  } finally {
+    dispatching = false;
+  }
+};
+
+await events();
 await minutely();
 await heartbeat();
 await hourly();
+setInterval(() => void events(), 5_000);
 setInterval(() => void minutely().then(heartbeat), 60_000);
 setInterval(() => void hourly(), 60 * 60_000);
 console.log('FlexcityHeadquarters worker running');

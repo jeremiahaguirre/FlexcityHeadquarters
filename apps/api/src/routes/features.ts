@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
-import { publish } from '../lib/events.js';
+import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
 import { createIncident, readIncident } from '../services/ops/incidents.js';
@@ -196,8 +196,8 @@ api.post(
   requirePermission('shiftboard.post'),
   h(async (req, res) => {
     const actor = actorOf(req);
-    const out = await withTenant(actor.tenantId, (tx) => postOffer(tx, actor, uuid.parse(req.params.id)));
-    publish(out.events);
+    const out = await withTenant(actor.tenantId, (tx) => withEvents(tx, postOffer(tx, actor, uuid.parse(req.params.id))));
+    dispatchSoon(actor.tenantId);
     res.status(201).json({ offerId: out.offerId });
   }),
 );
@@ -208,8 +208,8 @@ api.post(
   h(async (req, res) => {
     const actor = actorOf(req);
     const body = z.object({ expectedShiftVersion: z.number().int().optional() }).parse(req.body ?? {});
-    const out = await withTenant(actor.tenantId, (tx) => claimOffer(tx, actor, uuid.parse(req.params.id), body.expectedShiftVersion));
-    publish(out.events);
+    const out = await withTenant(actor.tenantId, (tx) => withEvents(tx, claimOffer(tx, actor, uuid.parse(req.params.id), body.expectedShiftVersion)));
+    dispatchSoon(actor.tenantId);
     res.json(out.outcome === 'ASSIGNED' ? { outcome: out.outcome } : { outcome: out.outcome, overtimeHours: out.overtimeHours });
   }),
 );
@@ -221,12 +221,12 @@ api.post(
     const actor = actorOf(req);
     const { decision } = z.object({ decision: z.enum(['APPROVE', 'DENY']) }).parse(req.body);
     const a = authOf(req);
-    const events = await withTenant(actor.tenantId, async (tx) => {
+    await withTenant(actor.tenantId, async (tx) => {
       const offer = await tx.shiftOffer.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { shift: { select: { positionId: true, facilityId: true } } } });
       if (offer) assertShiftInScope(a, offer.shift);
-      return decideOffer(tx, actor, uuid.parse(req.params.id), decision);
+      await recordEvents(tx, await decideOffer(tx, actor, uuid.parse(req.params.id), decision));
     });
-    publish(events);
+    dispatchSoon(actor.tenantId);
     res.json({ ok: true });
   }),
 );
@@ -369,8 +369,8 @@ api.post(
         batherCount: z.number().int().nonnegative().nullable().optional(),
       })
       .parse(req.body);
-    const out = await withTenant(a.tenantId, (tx) => recordReading(tx, a.tenantId, a.userId, body));
-    publish(out.events);
+    const out = await withTenant(a.tenantId, (tx) => withEvents(tx, recordReading(tx, a.tenantId, a.userId, body)));
+    dispatchSoon(a.tenantId);
     res.status(201).json({ id: out.reading.id, outOfRange: out.outOfRange, reasons: out.reasons });
   }),
 );
@@ -381,8 +381,8 @@ api.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ action: z.enum(['CONFIRM', 'DISMISS', 'REOPEN']), note: z.string().optional() }).parse(req.body);
-    const events = await withTenant(a.tenantId, (tx) => decideClosure(tx, a.tenantId, a.userId, uuid.parse(req.params.id), body.action, body.note));
-    publish(events);
+    await withTenant(a.tenantId, async (tx) => recordEvents(tx, await decideClosure(tx, a.tenantId, a.userId, uuid.parse(req.params.id), body.action, body.note)));
+    dispatchSoon(a.tenantId);
     res.json({ ok: true });
   }),
 );
@@ -405,7 +405,8 @@ api.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ facilityId: uuid, message: z.string().min(1).max(280) }).parse(req.body);
-    publish({ type: 'frontdesk.page', tenantId: a.tenantId, facilityId: body.facilityId, fromUserId: a.userId, message: body.message });
+    await withTenant(a.tenantId, (tx) => recordEvents(tx, { type: 'frontdesk.page', tenantId: a.tenantId, facilityId: body.facilityId, fromUserId: a.userId, message: body.message }));
+    dispatchSoon(a.tenantId);
     res.status(202).json({ ok: true });
   }),
 );

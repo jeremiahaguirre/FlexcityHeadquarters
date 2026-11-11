@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
-import { publish } from '../lib/events.js';
+import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localIso } from '../lib/time.js';
 import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
 import { decidePunches, punchVariance } from '../services/timeclock/review.js';
@@ -76,8 +76,8 @@ attendanceRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ type: timeOffType, startsAt: z.coerce.date(), endsAt: z.coerce.date(), note: z.string().max(500).nullable().optional() }).parse(req.body);
-    const out = await withTenant(a.tenantId, (tx) => requestTimeOff(tx, a.tenantId, a.userId, body));
-    publish(out.events);
+    const out = await withTenant(a.tenantId, (tx) => withEvents(tx, requestTimeOff(tx, a.tenantId, a.userId, body)));
+    dispatchSoon(a.tenantId);
     res.status(201).json({ request: out.request, affectedShifts: out.affectedShifts });
   }),
 );
@@ -124,9 +124,9 @@ attendanceRouter.post(
     const out = await withTenant(a.tenantId, async (tx) => {
       const r = await tx.timeOffRequest.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { userId: true } });
       if (r) await assertUserInScope(tx, a, r.userId);
-      return decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, uuid.parse(req.params.id), body.decision, body.note);
+      return withEvents(tx, decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, uuid.parse(req.params.id), body.decision, body.note));
     });
-    publish(out.events);
+    dispatchSoon(a.tenantId);
     res.json({ status: out.status, reopenedShifts: out.reopenedShifts });
   }),
 );
@@ -228,15 +228,17 @@ attendanceRouter.post(
           if (a.scope.facilityIds.length && !a.scope.facilityIds.includes(p.facilityId)) throw forbidden('This punch isn’t in your department.');
         }
       }
-      return decidePunches(tx, { userId: a.userId, tenantId: a.tenantId }, body.ids, body.decision, body.note);
+      const r = await decidePunches(tx, { userId: a.userId, tenantId: a.tenantId }, body.ids, body.decision, body.note);
+      if (r.rejectedUserIds.length) {
+        await recordEvents(tx, {
+          type: 'notify',
+          tenantId: a.tenantId,
+          drafts: r.rejectedUserIds.map((userId) => ({ userId, type: 'punch_rejected', params: { note: body.note }, link: '/timeclock' })),
+        });
+      }
+      return r;
     });
-    if (out.rejectedUserIds.length) {
-      publish({
-        type: 'notify',
-        tenantId: a.tenantId,
-        drafts: out.rejectedUserIds.map((userId) => ({ userId, type: 'punch_rejected', params: { note: body.note }, link: '/timeclock' })),
-      });
-    }
+    if (out.rejectedUserIds.length) dispatchSoon(a.tenantId);
     res.json({ updated: out.updated });
   }),
 );
