@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { announceChange } from '../lib/changes.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { applyRotation, loadPlan } from '../services/ops/rotation.js';
@@ -40,6 +41,7 @@ deckRouter.post(
     const a = authOf(req);
     const body = stationBody.extend({ facilityId: uuid }).parse(req.body);
     const s = await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       if (!(await tx.facility.findUnique({ where: { id: body.facilityId } }))) throw notFound('Facility');
       const created = await tx.deckStation.create({ data: { ...body, tenantId: a.tenantId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'deck.station.create', entity: 'DeckStation', entityId: created.id, after: body });
@@ -57,6 +59,7 @@ deckRouter.patch(
     const id = uuid.parse(req.params.id);
     const body = stationBody.partial().extend({ archived: z.boolean().optional() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       const before = await tx.deckStation.findUnique({ where: { id } });
       if (!before) throw notFound('Station');
       const { archived, ...rest } = body;
@@ -85,6 +88,7 @@ deckRouter.post(
     const a = authOf(req);
     const body = z.object({ facilityId: uuid, assignments: z.array(z.object({ stationId: uuid, userId: uuid.nullable() })).max(60) }).parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       const r = await applyRotation(tx, a.tenantId, body.facilityId, a.userId, body.assignments);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'deck.rotate', entity: 'Facility', entityId: body.facilityId, after: body.assignments });
       return r;
@@ -101,6 +105,7 @@ deckRouter.post(
     const a = authOf(req);
     const { facilityId } = z.object({ facilityId: uuid }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       await tx.rotationLog.updateMany({ where: { facilityId, endedAt: null }, data: { endedAt: new Date() } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'deck.close', entity: 'Facility', entityId: facilityId });
     });

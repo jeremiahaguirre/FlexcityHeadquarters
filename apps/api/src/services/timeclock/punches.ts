@@ -1,3 +1,4 @@
+import { announceChange } from '../../lib/changes.js';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { classifyPunchLocation } from './geofence.js';
@@ -113,6 +114,8 @@ export async function clockIn(
     input.location,
   );
 
+  // Who is on duty changed: the deck plan refreshes (lib/changes.ts; sent at commit).
+  await announceChange(tx, input.tenantId, 'deck');
   const punch = await tx.timePunch.create({
     data: {
       tenantId: input.tenantId,
@@ -173,6 +176,8 @@ export async function clockOut(tx: Tx, userId: string, input: PunchTiming = {}) 
   const inside = await tx.timePunch.findFirst({ where: { userId, id: { not: open.id }, clockIn: { gt: open.clockIn, lt: at } } });
   if (inside) throw conflict('PUNCH_OVERLAPS', 'You already have a punch covering this time.', { punchId: inside.id });
   const skews = [open.clockSkewS, timing.skewS].filter((x): x is number => x !== null);
+  // Who is on duty changed: the deck plan refreshes (lib/changes.ts; sent at commit).
+  await announceChange(tx, open.tenantId, 'deck');
   const updated = await tx.timePunch.update({
     where: { id: open.id },
     data: {

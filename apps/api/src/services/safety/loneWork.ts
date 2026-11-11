@@ -8,6 +8,7 @@
  * and everyone who monitors lone workers; after a grace period it escalates to
  * HR too, by email. "I need help" alerts everyone at once.
  */
+import { announceChange } from '../../lib/changes.js';
 import type { LoneWorkSession, Prisma } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
 import { notify, usersWithPermission } from '../notifications/notifier.js';
@@ -48,6 +49,7 @@ export async function loneWorkChecks(tx: Tx, now = new Date()): Promise<number> 
   for (const s of missed) {
     const claimed = await tx.loneWorkSession.updateMany({ where: { id: s.id, status: 'ACTIVE' }, data: { status: 'OVERDUE', overdueAt: now } });
     if (!claimed.count) continue;
+    await announceChange(tx, s.tenantId, 'lonework');
     const params = { name: await workerName(tx, s.userId), location: s.location };
     await notify(tx, s.tenantId, [
       { userId: s.userId, type: 'lonework_check_in_now', params, link: '/alone', sms: 'text' as const },
@@ -59,6 +61,7 @@ export async function loneWorkChecks(tx: Tx, now = new Date()): Promise<number> 
   for (const s of late) {
     const claimed = await tx.loneWorkSession.updateMany({ where: { id: s.id, status: 'OVERDUE' }, data: { status: 'ESCALATED', escalatedAt: now } });
     if (!claimed.count) continue;
+    await announceChange(tx, s.tenantId, 'lonework');
     const params = { name: await workerName(tx, s.userId), location: s.location };
     const hr = await usersWithPermission(tx, s.tenantId, 'accommodation.manage', [s.userId]);
     const to = [...new Set([...(await monitors(tx, s)), ...hr])];
@@ -70,6 +73,7 @@ export async function loneWorkChecks(tx: Tx, now = new Date()): Promise<number> 
 
 export async function raiseHelp(tx: Tx, s: LoneWorkSession, note: string | null, now = new Date()) {
   await tx.loneWorkSession.update({ where: { id: s.id }, data: { status: 'HELP', helpAt: now, helpNote: note } });
+  await announceChange(tx, s.tenantId, 'lonework');
   const params = { name: await workerName(tx, s.userId), location: s.location, note: note ?? '' };
   const hr = await usersWithPermission(tx, s.tenantId, 'accommodation.manage', [s.userId]);
   const to = [...new Set([...(await monitors(tx, s)), ...hr])];

@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { announceChange } from '../lib/changes.js';
 import { audit, withTenant } from '../lib/db.js';
 import { conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
@@ -47,6 +48,7 @@ loneWorkRouter.post(
       })
       .parse(req.body);
     const s = await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       if (await mine(tx, a.userId)) throw conflict('ALREADY_ALONE', 'You already have a working-alone session. End it first.');
       const now = new Date();
       const created = await tx.loneWorkSession.create({
@@ -81,6 +83,7 @@ loneWorkRouter.post(
     const a = authOf(req);
     const body = z.object(coords).parse(req.body ?? {});
     const s = await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const cur = await mine(tx, a.userId);
       if (!cur) throw notFound('Working-alone session');
       const now = new Date();
@@ -117,6 +120,7 @@ loneWorkRouter.put(
     const a = authOf(req);
     const { on } = z.object({ on: z.boolean() }).parse(req.body);
     const s = await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const cur = await mine(tx, a.userId);
       if (!cur) throw notFound('Working-alone session');
       const next = await tx.loneWorkSession.update({ where: { id: cur.id }, data: on ? { shareLocation: true } : { shareLocation: false, latitude: null, longitude: null, locationAt: null } });
@@ -135,6 +139,7 @@ loneWorkRouter.post(
     const a = authOf(req);
     const body = z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) }).parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const cur = await mine(tx, a.userId);
       if (!cur) throw notFound('Working-alone session');
       if (!cur.shareLocation) throw conflict('LOCATION_OFF', 'Location sharing is off for this session.');
@@ -153,6 +158,7 @@ loneWorkRouter.post(
     const a = authOf(req);
     const body = z.object({ note: z.string().trim().max(300).nullable().optional(), ...coords }).parse(req.body ?? {});
     const s = await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const cur = await mine(tx, a.userId);
       if (!cur) throw notFound('Working-alone session');
       if (body.latitude != null) await tx.loneWorkSession.update({ where: { id: cur.id }, data: position(body.latitude, body.longitude) });
@@ -170,6 +176,7 @@ loneWorkRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const cur = await mine(tx, a.userId);
       if (!cur) throw notFound('Working-alone session');
       await tx.loneWorkSession.update({ where: { id: cur.id }, data: { status: 'ENDED', endedAt: new Date(), shareLocation: false } });
@@ -213,6 +220,7 @@ loneWorkRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const s = await tx.loneWorkSession.findUnique({ where: { id } });
       if (!s) throw notFound('Working-alone session');
       if (s.status === 'ENDED') throw conflict('ALREADY_ENDED', 'This session has ended.');
@@ -234,6 +242,7 @@ loneWorkRouter.post(
     const id = uuid.parse(req.params.id);
     const { note } = z.object({ note: z.string().trim().min(3).max(300) }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const s = await tx.loneWorkSession.findUnique({ where: { id } });
       if (!s) throw notFound('Working-alone session');
       if (s.status === 'ENDED') throw conflict('ALREADY_ENDED', 'This session has ended.');

@@ -7,6 +7,7 @@
  * away; if the process stops first, the worker delivers them within seconds. Delivery is at
  * least once, and handlers are idempotent (notifications carry a dedupe key).
  */
+import { EVENTS_CHANNEL } from './changes.js';
 import type { Prisma } from '@prisma/client';
 import type { NotificationDraft } from '../services/notifications/notifier.js';
 import type { Tx } from './db.js';
@@ -49,6 +50,9 @@ export async function recordEvents(tx: Tx, events: DomainEvent | DomainEvent[]):
   const list = Array.isArray(events) ? events : [events];
   if (!list.length) return 0;
   await tx.eventOutbox.createMany({ data: list.map((e) => ({ tenantId: e.tenantId, type: e.type, payload: e as unknown as Prisma.InputJsonValue })) });
+  // Announced at commit (never on rollback): the worker LISTENs and delivers straight away, even
+  // when the process that recorded them has no in-process dispatcher (lib/changes.ts).
+  for (const tenantId of new Set(list.map((e) => e.tenantId))) await tx.$executeRaw`SELECT pg_notify(${EVENTS_CHANNEL}, ${tenantId})`;
   return list.length;
 }
 

@@ -7,6 +7,7 @@
  */
 import { EventEmitter } from 'node:events';
 import { sharedListener, stopListener } from '../../lib/listen.js';
+import { CHANGE_CHANNEL, CHANGE_TOPICS, type ChangeTopic } from '../../lib/changes.js';
 import { NOTIFY_CHANNEL } from './notifier.js';
 
 export interface LiveSignal {
@@ -32,8 +33,17 @@ export async function startLiveHub(connectionString: string): Promise<() => Prom
         /* ignore malformed payloads */
       }
     });
+    // Shared-state changes (lib/changes.ts): an organization and a topic, nothing else.
+    const offChange = l.on(CHANGE_CHANNEL, (payload) => {
+      try {
+        const c = JSON.parse(payload) as { tenantId?: unknown; topic?: unknown };
+        if (typeof c.tenantId === 'string' && (CHANGE_TOPICS as readonly unknown[]).includes(c.topic)) local.emit(`tenant:${c.tenantId}`, c.topic as ChangeTopic);
+      } catch {
+        /* ignore malformed payloads */
+      }
+    });
     const offRe = l.onReconnect(() => local.emit('resync'));
-    detach = () => (off(), offRe());
+    detach = () => (off(), offChange(), offRe());
   }
   await l.start();
   return stopLiveHub;
@@ -48,6 +58,21 @@ export async function stopLiveHub(): Promise<void> {
 export function onUserSignal(userId: string, fn: (s: LiveSignal) => void): () => void {
   const key = `user:${userId}`;
   const resync = () => fn({ tenantId: '', userId, id: '', resync: true });
+  local.on(key, fn);
+  local.on('resync', resync);
+  return () => {
+    local.off(key, fn);
+    local.off('resync', resync);
+  };
+}
+
+/**
+ * An organization's shared-state changes (topics), for one live stream. After the LISTEN connection
+ * comes back, `null` means "anything may have changed: refetch everything you show".
+ */
+export function onTenantChange(tenantId: string, fn: (topic: ChangeTopic | null) => void): () => void {
+  const key = `tenant:${tenantId}`;
+  const resync = () => fn(null);
   local.on(key, fn);
   local.on('resync', resync);
   return () => {
