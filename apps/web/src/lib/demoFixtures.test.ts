@@ -37,3 +37,11 @@ describe('demo fixtures', () => {
     expect(JSON.stringify(cities)).not.toMatch(/api\/public\/logo|kelowna/i);
   });
 });
+
+describe('demo answers in either language', () => {
+  it('answers a French request with the English recording when only that was recorded', async () => {
+    const f = await loadFixtures('hr');
+    expect(f.get('/api/billing?lang=en-CA')).toBeDefined();
+    expect(f.get('/api/billing?lang=fr-CA')).toEqual(f.get('/api/billing?lang=en-CA'));
+  });
+});

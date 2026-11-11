@@ -79,8 +79,11 @@ export async function loadFixtures(role: DemoRole | 'public' | 'platform', today
   }
   return {
     get(url) {
-      const key = lookupKey(url);
-      const found = exact.has(key) ? exact.get(key) : byShape.get(key.replace(UUID, ':id'));
+      const find = (k: string) => (exact.has(k) ? exact.get(k) : byShape.get(k.replace(UUID, ':id')));
+      let found = find(lookupKey(url));
+      // Recorded in one language only (?lang=en-CA): answer the other language with it, since
+      // the screens translate their own labels. Without this a French page waits forever.
+      if (found === undefined && /[?&]lang=/.test(url)) found = find(lookupKey(url.replace(/([?&]lang=)[^&]*/, '$1en-CA')));
       if (found === undefined) return undefined;
       return within(found, new URL(url, 'http://demo').searchParams);
     },
