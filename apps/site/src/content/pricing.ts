@@ -9,7 +9,7 @@ export type Group = 'operations' | 'programs' | 'fleetWinter' | 'hr' | 'integrat
 export const GROUPS: Group[] = ['operations', 'programs', 'fleetWinter', 'hr', 'integration', 'union'];
 export type Item =
   | 'poolChemistry' | 'incidents' | 'statusBoard' | 'rotations' | 'registration' | 'fleet' | 'winter'
-  | 'onboarding' | 'reliability' | 'discipline' | 'accommodation' | 'hrSuite' | 'benchmarks' | 'sso' | 'bankConnection' | 'union';
+  | 'onboarding' | 'reliability' | 'discipline' | 'accommodation' | 'hrSuite' | 'benchmarks' | 'sso' | 'bankConnection' | 'publicApi' | 'union';
 
 /** Each option: its group, the private-sector price, and the price to add it to a public plan without it. */
 export const ITEMS: Record<Item, { group: Group; private: number; public: number }> = {
@@ -28,11 +28,12 @@ export const ITEMS: Record<Item, { group: Group; private: number; public: number
   benchmarks: { group: 'hr', private: 29, public: 100 },
   sso: { group: 'integration', private: 49, public: 300 },
   bankConnection: { group: 'integration', private: 39, public: 300 },
+  publicApi: { group: 'integration', private: 49, public: 300 },
   union: { group: 'union', private: 150, public: 150 },
 };
 
 const BUSINESS: Item[] = ['poolChemistry', 'incidents', 'statusBoard', 'rotations', 'registration', 'fleet', 'winter'];
-const MULTI: Item[] = [...BUSINESS, 'onboarding', 'reliability', 'discipline', 'accommodation', 'hrSuite', 'benchmarks', 'sso', 'bankConnection'];
+const MULTI: Item[] = [...BUSINESS, 'onboarding', 'reliability', 'discipline', 'accommodation', 'hrSuite', 'benchmarks', 'sso', 'bankConnection', 'publicApi'];
 
 export const PUBLIC: Record<Level, { price: number; quoted: boolean; staff: number | null; extraStaff: number; items: Item[] }> = {
   SMALL: { price: 1900, quoted: false, staff: 40, extraStaff: 8, items: [] },

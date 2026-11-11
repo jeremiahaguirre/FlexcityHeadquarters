@@ -5,7 +5,7 @@ export const GROUPS = ['operations', 'programs', 'fleetWinter', 'hr', 'integrati
 export type Group = (typeof GROUPS)[number];
 export type ItemKey =
   | 'poolChemistry' | 'incidents' | 'statusBoard' | 'rotations' | 'registration' | 'fleet' | 'winter'
-  | 'onboarding' | 'reliability' | 'discipline' | 'accommodation' | 'hrSuite' | 'benchmarks' | 'sso' | 'bankConnection' | 'union';
+  | 'onboarding' | 'reliability' | 'discipline' | 'accommodation' | 'hrSuite' | 'benchmarks' | 'sso' | 'bankConnection' | 'publicApi' | 'union';
 /** Kept for screens that say "module": each option is one. */
 export type Module = ItemKey;
 

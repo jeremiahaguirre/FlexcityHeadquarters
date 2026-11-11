@@ -54,6 +54,8 @@ export const ITEMS = {
   benchmarks: { group: 'hr', features: ['benchmarks'], privateCents: 2_900, publicCents: 10_000 },
   sso: { group: 'integration', features: [], privateCents: 4_900, publicCents: 30_000 },
   bankConnection: { group: 'integration', features: [], privateCents: 3_900, publicCents: 30_000 },
+  /** API keys and webhooks for the organization's own systems (docs/PUBLIC-API.md). */
+  publicApi: { group: 'integration', features: [], privateCents: 4_900, publicCents: 30_000 },
   union: { group: 'union', features: ['union'], privateCents: 15_000, publicCents: 15_000 },
 } as const satisfies Record<string, Item>;
 export type ItemKey = keyof typeof ITEMS;
@@ -80,7 +82,7 @@ export interface PublicPlan {
 }
 
 const BUSINESS_ITEMS = ['poolChemistry', 'incidents', 'statusBoard', 'rotations', 'registration', 'fleet', 'winter'] as const;
-const MULTI_ITEMS = [...BUSINESS_ITEMS, 'onboarding', 'reliability', 'discipline', 'accommodation', 'hrSuite', 'benchmarks', 'sso', 'bankConnection'] as const;
+const MULTI_ITEMS = [...BUSINESS_ITEMS, 'onboarding', 'reliability', 'discipline', 'accommodation', 'hrSuite', 'benchmarks', 'sso', 'bankConnection', 'publicApi'] as const;
 
 export const PUBLIC_PLANS: Record<PlanLevel, PublicPlan> = {
   SMALL: { listCents: 190_000, quoted: false, staffPerFacility: 40, extraStaffCents: 800, items: [], service: ['support'] },
