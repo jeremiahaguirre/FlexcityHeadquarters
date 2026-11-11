@@ -93,6 +93,21 @@ $$ SELECT id FROM "Tenant" $$;
 REVOKE ALL ON FUNCTION all_tenant_ids() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION all_tenant_ids() TO flexcity_app;
 
+-- Readiness and metrics (lib/health.ts): how far behind the email and text outboxes are, across
+-- every organization. Counts and an age only: no addresses, no tenant ids, no contents.
+DROP FUNCTION IF EXISTS outbox_backlog();
+CREATE FUNCTION outbox_backlog() RETURNS TABLE(channel text, pending bigint, failed bigint, oldest_age_s double precision)
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
+$$ SELECT 'email', count(*) FILTER (WHERE attempts < 5), count(*) FILTER (WHERE attempts >= 5),
+          coalesce(extract(epoch FROM now() - min("createdAt") FILTER (WHERE attempts < 5)), 0)::double precision
+     FROM "EmailOutbox" WHERE "sentAt" IS NULL
+   UNION ALL
+   SELECT 'sms', count(*) FILTER (WHERE attempts < 5), count(*) FILTER (WHERE attempts >= 5),
+          coalesce(extract(epoch FROM now() - min("createdAt") FILTER (WHERE attempts < 5)), 0)::double precision
+     FROM "SmsOutbox" WHERE "sentAt" IS NULL $$;
+REVOKE ALL ON FUNCTION outbox_backlog() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION outbox_backlog() TO flexcity_app;
+
 -- SQL injection, defence in depth: even if a query were ever subverted, the runtime roles can't
 -- change the schema, create objects or temporary tables, run a statement for long, or sit in an
 -- open transaction holding locks. (Row-level security above already keeps each city to its rows.)

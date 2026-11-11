@@ -1,11 +1,19 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { config } from '../config.js';
+import { dbQueryDuration } from './metrics.js';
 
 let client: PrismaClient | undefined;
 
 /** Prisma client connected as the non-owner app role (RLS enforced). */
 export function db(): PrismaClient {
-  client ??= new PrismaClient({ datasources: { db: { url: pooled(config().APP_DATABASE_URL) } } });
+  if (!client) {
+    // With metrics on (METRICS_TOKEN), each query's duration goes to fh_db_query_duration_seconds.
+    // Only the duration is read: the event's query text and parameters are never kept.
+    const timed = !!config().METRICS_TOKEN;
+    const c = new PrismaClient({ datasources: { db: { url: pooled(config().APP_DATABASE_URL) } }, ...(timed ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
+    if (timed) (c as unknown as PrismaClient<Prisma.PrismaClientOptions, 'query'>).$on('query', (e) => dbQueryDuration.observe({}, e.duration / 1000));
+    client = c;
+  }
   return client;
 }
 

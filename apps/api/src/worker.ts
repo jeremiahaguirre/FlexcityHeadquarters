@@ -16,13 +16,21 @@ import { injuryReminders } from './routes/injury.js';
 import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
 import { deliverSms, smsSender } from './services/notifications/sms.js';
 import { sendScheduledReports } from './services/reports/scheduled.js';
-import { logError } from './lib/log.js';
+import { captureError, installProcessHandlers } from './lib/errorReporter.js';
+import { WORKER_APP_NAME, workerBeatName } from './lib/health.js';
 import { applyRetention } from './services/privacy/retention.js';
 import { deliverPush } from './services/notifications/push.js';
 
 const cfg = config();
-const lockClient = new pg.Client({ connectionString: cfg.APP_DATABASE_URL });
+installProcessHandlers();
+// The connection's application_name doubles as the worker's heartbeat (lib/health.ts, /readyz).
+const lockClient = new pg.Client({ connectionString: cfg.APP_DATABASE_URL, application_name: `${WORKER_APP_NAME} starting` });
 await lockClient.connect();
+
+/** After each round of jobs: "fh-worker beat=<unix seconds>", which /readyz and /metrics read. */
+async function heartbeat() {
+  await lockClient.query("SELECT set_config('application_name', $1, false)", [workerBeatName()]).catch((err) => captureError(err, { source: 'job', tags: { job: 'heartbeat' } }));
+}
 const mailer = new ConsoleMailer();
 const sms = smsSender();
 
@@ -36,7 +44,7 @@ async function exclusive(name: string, fn: () => Promise<unknown>) {
     const counts = typeof result === 'number' ? result : result && typeof result === 'object' ? Object.fromEntries(Object.entries(result).filter(([, v]) => typeof v === 'number')) : '';
     console.log(`[job] ${name} ok in ${Date.now() - started}ms`, counts);
   } catch (err) {
-    logError(`job ${name} failed`, err);
+    captureError(err, { source: 'job', tags: { job: name } });
   } finally {
     await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [`fh-job:${name}`]);
   }
@@ -74,7 +82,8 @@ const hourly = async () => {
 };
 
 await minutely();
+await heartbeat();
 await hourly();
-setInterval(() => void minutely(), 60_000);
+setInterval(() => void minutely().then(heartbeat), 60_000);
 setInterval(() => void hourly(), 60 * 60_000);
 console.log('FlexcityHeadquarters worker running');
