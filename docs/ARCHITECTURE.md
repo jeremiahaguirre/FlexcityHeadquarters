@@ -180,12 +180,31 @@ The API runs as any number of identical processes: `WEB_CONCURRENCY` processes p
 | Sign-in and enquiry rate limits | `RateLimitHit` in Postgres in production, and whenever `WEB_CONCURRENCY` > 1 (`auth/rateLimit.ts`) |
 | Scheduled jobs | Only the worker runs them, each under a session advisory lock (`pg_try_advisory_lock`), so one worker at a time runs each; a job still running when its next round comes is skipped |
 | Sessions, tokens | Stateless JWTs and refresh tokens in Postgres |
+| Uploaded files | Encrypted in Postgres (up to 10 MB each, `routes/documents.ts`); nothing is written to a process's disk, so a container can be replaced at any time |
+| Cache misses at the same moment | Share one load per key (`src/lib/singleFlight.ts`); a load that raced a forget is returned but not cached |
+| Heavy reads | Running reports reads from `READ_REPLICA_URL` when set, in a read-only transaction under the same row-level security (`replica()` in `src/lib/db.ts`) |
 
 **LISTEN needs a direct connection.** `LISTEN_DATABASE_URL` (default `APP_DATABASE_URL`) must reach Postgres directly, or PgBouncer in *session* mode: a transaction-mode pooler hands the session to someone else between statements and the subscription is lost. The same holds for the worker's advisory-lock connection. Request traffic (`APP_DATABASE_URL`) can go through a transaction pooler.
 
 **NOTIFY is fire-and-forget.** A signal sent while a process's LISTEN connection is down is lost, so the listener reconnects with backoff (1 s doubling to 30 s) and then tells every open stream to refetch and drops every cache. Nothing durable depends on NOTIFY: notifications are rows, and a browser that missed a signal still sees them on its next fetch.
 
 **Running several processes locally.** `WEB_CONCURRENCY=2 npx tsx src/server.ts` (two processes on :4000), or two separate servers on different ports against the same database (`PORT=4000 …` and `PORT=4001 …`). See [SCALABILITY.md](SCALABILITY.md) for sizing.
+
+### Service boundaries
+
+FH deploys as three services:
+- the API (any number of processes);
+- the worker (scheduled jobs and outbox delivery);
+- optionally, the Union Hub, which runs separately so its database role never reaches the main API.
+
+It is not split further into microservices on purpose:
+- Almost every action touches the same organization's people, positions, shifts and punches inside one row-level-security transaction. Splitting those apart would turn single transactions into distributed ones.
+- The pieces that do need to scale independently are already separate: the API scales by adding processes, and slow side effects (emails, texts, pushes, webhooks, domain events) go through the outbox to whichever process or worker delivers them first.
+
+Work moves to the worker or out of the request in these cases:
+- **Already asynchronous:** notifications, emails, texts and calls, web push, webhooks, scheduled reports, retention, weather, trust monitors.
+- **Still in the request, with a longer time limit:** pay runs (`payrollTx`, 120 s) and provider exports. A 300-person city-wide run takes 7–15 s while 30 others run at once (SCALABILITY.md). Move them to a worker job, with the screen showing progress, when a run regularly takes more than about 30 s or the *Event loop blocked* alert ([MONITORING.md](MONITORING.md#event-loop-blocked)) points at them.
+- **The scheduling assistant on long horizons:** the same rule applies.
 
 ## Routes without a sign-in
 
