@@ -1622,6 +1622,9 @@ model PlatformAdmin {
   lastLoginAt  DateTime?         @db.Timestamptz(3)
   disabledAt   DateTime?         @db.Timestamptz(3)
   createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  /// Dev console permissions beyond the console itself: "trust.read" (see the Trust area),
+  /// "trust.manage" (change it). Every console admin had both when Trust was added.
+  permissions  String[]          @default(["trust.read", "trust.manage"])
   sessions     PlatformSession[]
 }
 
@@ -3661,4 +3664,319 @@ model WebhookDelivery {
   @@index([status, nextAttemptAt])
   @@index([tenantId, status, nextAttemptAt])
   @@index([endpointId, createdAt])
+}
+
+// ------------------------------------------------------------------
+// TRUST: FlexcityHeadquarters' own security and compliance program (Dev console only).
+// No city's data: these rows describe FH. Row-level security keeps them out of every city's
+// transaction (db/rls.sql, fh_only_tables). The control and framework library is code
+// (services/trust/library.ts, versioned); these tables hold its state.
+// ------------------------------------------------------------------
+
+/// The state of one library control: its owner and any manual status (with the reason).
+model TrustControlState {
+  key           String   @id
+  ownerId       String?  @db.Uuid
+  /// Null = worked out from tests and evidence. PASSING | FAILING | NEEDS_EVIDENCE | NOT_APPLICABLE
+  manualStatus  String?
+  justification String?
+  notes         String?
+  updatedById   String?  @db.Uuid
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// One automated test ("monitor"): who owns it and its latest result (every run updates this row).
+model TrustTest {
+  key           String    @id
+  ownerId       String?   @db.Uuid
+  enabled       Boolean   @default(true)
+  lastRunAt     DateTime? @db.Timestamptz(3)
+  /// PASS | FAIL | WARN | ERROR
+  lastStatus    String?
+  lastSummary   String?
+  lastDetails   Json?
+  /// The status an alert was last raised for, so a failure alerts once, not every round.
+  alertedStatus String?
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+/// Test history: a row when a result changes, and at most one an hour while it stays the same.
+model TrustTestRun {
+  id         String   @id @default(uuid()) @db.Uuid
+  testKey    String
+  status     String
+  summary    String
+  /// Counts and names only: never a secret, a token or a person's details.
+  details    Json?
+  durationMs Int
+  /// schedule | manual
+  trigger    String
+  at         DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([testKey, at])
+  @@index([at])
+}
+
+/// Posture over time (at most hourly, and after each manual run).
+model TrustScoreSnapshot {
+  id         String   @id @default(uuid()) @db.Uuid
+  score      Int
+  /// { soc2: 72, iso27001: 64, … }
+  frameworks Json
+  testsPass  Int
+  testsFail  Int
+  testsWarn  Int
+  controls   Json
+  at         DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([at])
+}
+
+/// Evidence for a control: a file (sealed like employee documents), a link, a note, a test snapshot, or a CI result.
+model TrustEvidence {
+  id          String    @id @default(uuid()) @db.Uuid
+  controlKey  String
+  /// FILE | LINK | NOTE | SNAPSHOT | CI
+  kind        String
+  title       String
+  url         String?
+  note        String?
+  /// CI results: PASS | FAIL
+  result      String?
+  fileName    String?
+  contentType String?
+  size        Int?
+  sha256      String?
+  ciphertext  Bytes?
+  iv          Bytes?
+  authTag     Bytes?
+  wrappedKey  Bytes?
+  kekId       String?
+  testKey     String?
+  /// When this evidence stops counting (e.g. a restore test is good for 35 days).
+  validUntil  DateTime? @db.Timestamptz(3)
+  addedById   String?   @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  deletedAt   DateTime? @db.Timestamptz(3)
+
+  @@index([controlKey, createdAt])
+}
+
+model TrustEvidenceRequest {
+  id          String    @id @default(uuid()) @db.Uuid
+  controlKey  String
+  title       String
+  detail      String?
+  ownerId     String?   @db.Uuid
+  dueAt       DateTime  @db.Timestamptz(3)
+  /// OPEN | DONE | CANCELLED
+  status      String    @default("OPEN")
+  evidenceId  String?   @db.Uuid
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  closedAt    DateTime? @db.Timestamptz(3)
+
+  @@index([status, dueAt])
+}
+
+model TrustPolicy {
+  id                String               @id @default(uuid()) @db.Uuid
+  key               String               @unique
+  title             String
+  titleFr           String
+  ownerId           String?              @db.Uuid
+  reviewEveryMonths Int                  @default(12)
+  nextReviewAt      DateTime?            @db.Timestamptz(3)
+  controlKeys       String[]             @default([])
+  createdAt         DateTime             @default(now()) @db.Timestamptz(3)
+  versions          TrustPolicyVersion[]
+}
+
+model TrustPolicyVersion {
+  id           String           @id @default(uuid()) @db.Uuid
+  policyId     String           @db.Uuid
+  policy       TrustPolicy      @relation(fields: [policyId], references: [id])
+  version      Int
+  body         String
+  bodyFr       String
+  changeNote   String?
+  /// DRAFT | APPROVED | PUBLISHED | RETIRED
+  status       String           @default("DRAFT")
+  createdById  String?          @db.Uuid
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  approvedById String?          @db.Uuid
+  approvedAt   DateTime?        @db.Timestamptz(3)
+  publishedAt  DateTime?        @db.Timestamptz(3)
+  acks         TrustPolicyAck[]
+
+  @@unique([policyId, version])
+}
+
+/// A Dev console admin read and accepted a published policy version.
+model TrustPolicyAck {
+  id        String             @id @default(uuid()) @db.Uuid
+  versionId String             @db.Uuid
+  version   TrustPolicyVersion @relation(fields: [versionId], references: [id])
+  adminId   String             @db.Uuid
+  at        DateTime           @default(now()) @db.Timestamptz(3)
+
+  @@unique([versionId, adminId])
+}
+
+model TrustRisk {
+  id                 String    @id @default(uuid()) @db.Uuid
+  ref                String    @unique
+  title              String
+  titleFr            String?
+  category           String
+  description        String
+  /// 1–5 each, before controls (inherent) and after (residual).
+  likelihood         Int
+  impact             Int
+  residualLikelihood Int
+  residualImpact     Int
+  /// MITIGATE | ACCEPT | TRANSFER | AVOID
+  treatment          String
+  treatmentPlan      String?
+  ownerId            String?   @db.Uuid
+  controlKeys        String[]  @default([])
+  vendorIds          String[]  @default([])
+  dueAt              DateTime? @db.Timestamptz(3)
+  reviewEveryDays    Int       @default(90)
+  lastReviewedAt     DateTime? @db.Timestamptz(3)
+  /// OPEN | CLOSED
+  status             String    @default("OPEN")
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+model TrustVendor {
+  id                String    @id @default(uuid()) @db.Uuid
+  name              String    @unique
+  purpose           String
+  purposeFr         String?
+  /// LOW | MEDIUM | HIGH | CRITICAL
+  criticality       String
+  dataAccessed      String
+  personalInfo      Boolean   @default(false)
+  dataLocation      String
+  inCanada          Boolean   @default(false)
+  website           String?
+  dpaSignedAt       DateTime? @db.Timestamptz(3)
+  dpaExpiresAt      DateTime? @db.Timestamptz(3)
+  soc2ExpiresAt     DateTime? @db.Timestamptz(3)
+  isoExpiresAt      DateTime? @db.Timestamptz(3)
+  reviewEveryMonths Int       @default(12)
+  lastReviewedAt    DateTime? @db.Timestamptz(3)
+  nextReviewAt      DateTime? @db.Timestamptz(3)
+  /// PROPOSED | ACTIVE | OFFBOARDED
+  status            String    @default("ACTIVE")
+  /// Built-in security questionnaire answers: { encryption: "yes", … }
+  questionnaire     Json?
+  score             Int?
+  ownerId           String?   @db.Uuid
+  controlKeys       String[]  @default([])
+  notes             String?
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+}
+
+/// Something FH promised a customer: a contract clause, an SLA, a report, a notice window.
+model TrustCommitment {
+  id          String                      @id @default(uuid()) @db.Uuid
+  /// The customer, when it's an organization on the platform (FH's record about it; never read by a city).
+  tenantId    String?                     @db.Uuid
+  customer    String
+  /// SECURITY_CLAUSE | SLA_UPTIME | SUPPORT_RESPONSE | DATA_RESIDENCY | BREACH_NOTICE | PEN_TEST | REPORT_DELIVERY | QUESTIONNAIRE | CUSTOM
+  kind        String
+  title       String
+  detail      String?
+  source      String?
+  dueAt       DateTime?                   @db.Timestamptz(3)
+  /// NONE | MONTHLY | QUARTERLY | YEARLY
+  recurrence  String                      @default("NONE")
+  ownerId     String?                     @db.Uuid
+  /// OPEN | MET | WAIVED (a recurring one stays OPEN with its next due date)
+  status      String                      @default("OPEN")
+  controlKeys String[]                    @default([])
+  createdById String?                     @db.Uuid
+  createdAt   DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                    @updatedAt @db.Timestamptz(3)
+  fulfilments TrustCommitmentFulfilment[]
+
+  @@index([status, dueAt])
+}
+
+model TrustCommitmentFulfilment {
+  id           String          @id @default(uuid()) @db.Uuid
+  commitmentId String          @db.Uuid
+  commitment   TrustCommitment @relation(fields: [commitmentId], references: [id])
+  dueAt        DateTime?       @db.Timestamptz(3)
+  metAt        DateTime        @default(now()) @db.Timestamptz(3)
+  note         String?
+  evidenceId   String?         @db.Uuid
+  byId         String?         @db.Uuid
+}
+
+/// Approved answers to common security questionnaire questions (city RFPs).
+model TrustAnswer {
+  id             String   @id @default(uuid()) @db.Uuid
+  category       String
+  question       String
+  questionFr     String
+  answer         String
+  answerFr       String
+  controlKeys    String[] @default([])
+  lastReviewedAt DateTime @default(now()) @db.Timestamptz(3)
+  reviewedById   String?  @db.Uuid
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// Reminders already sent, so each (thing, due date, days before) goes out once.
+model TrustReminder {
+  id         String   @id @default(uuid()) @db.Uuid
+  subject    String
+  dueKey     String
+  daysBefore Int
+  sentAt     DateTime @default(now()) @db.Timestamptz(3)
+
+  @@unique([subject, dueKey, daysBefore])
+}
+
+/// The Trust area's own feed: failing tests, reminders, overdue items. Emailed to the owner (or to every manager).
+model TrustAlert {
+  id        String    @id @default(uuid()) @db.Uuid
+  /// test_failed | test_recovered | reminder | overdue
+  kind      String
+  title     String
+  titleFr   String
+  link      String?
+  ownerId   String?   @db.Uuid
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  readAt    DateTime? @db.Timestamptz(3)
+  emailedAt DateTime? @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@index([emailedAt])
+}
+
+/// One row: the Trust area's settings.
+model TrustSettings {
+  id           Int      @id @default(1)
+  /// Residual score (likelihood × impact) at or above which a risk counts as high.
+  riskAppetite Int      @default(12)
+  /// Frameworks in scope; empty = all.
+  frameworks   String[] @default([])
+  updatedById  String?  @db.Uuid
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+}
+
+/// The worker's jobs: when each last ran and finished, for the Trust tests (e.g. retention ran in the last 25 hours).
+model WorkerJobRun {
+  name           String    @id
+  lastStartedAt  DateTime? @db.Timestamptz(3)
+  lastOkAt       DateTime? @db.Timestamptz(3)
+  lastErrorAt    DateTime? @db.Timestamptz(3)
+  lastDurationMs Int?
 }

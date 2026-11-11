@@ -189,6 +189,29 @@ BEGIN
   END LOOP;
 END
 $$;
+-- FH's own security program (the Dev console's Trust area) and the worker's job log: no city's
+-- data, read and written only with no city chosen. Inside any city's transaction they show nothing,
+-- so no city request can read FH's risks, vendors or customer commitments, even by mistake.
+DO $$
+DECLARE
+  t text;
+  fh_only_tables text[] := ARRAY['TrustControlState', 'TrustTest', 'TrustTestRun', 'TrustScoreSnapshot', 'TrustEvidence', 'TrustEvidenceRequest', 'TrustPolicy', 'TrustPolicyVersion', 'TrustPolicyAck', 'TrustRisk', 'TrustVendor', 'TrustCommitment', 'TrustCommitmentFulfilment', 'TrustAnswer', 'TrustReminder', 'TrustAlert', 'TrustSettings', 'WorkerJobRun'];
+BEGIN
+  FOREACH t IN ARRAY fh_only_tables LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS fh_only ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY fh_only ON %I TO flexcity_app
+         USING (app_current_tenant() IS NULL) WITH CHECK (app_current_tenant() IS NULL)', t);
+  END LOOP;
+END
+$$;
+-- Test history, posture snapshots and the Trust feed are thinned out by age (services/trust/monitors.ts).
+GRANT DELETE ON "TrustTestRun", "TrustScoreSnapshot", "TrustAlert" TO flexcity_app;
+-- Policy acknowledgements are evidence: added, never changed.
+REVOKE UPDATE ON "TrustPolicyAck" FROM flexcity_app;
+
 -- Invoice lines and payments follow their invoice.
 DO $$
 DECLARE
