@@ -75,7 +75,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
             const t = c.levels[i]!;
             const p = PUBLIC[key];
             return (
-              <article key={key} {...reveal(i)} className="relative flex flex-col rounded-3xl border border-line bg-panel p-7 shadow-card">
+              <article key={key} {...reveal(i)} className="relative flex flex-col rounded-3xl border border-line bg-panel p-7 shadow-card xl:p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-heading">{t.name}</h3>
                   {p.quoted ? <span className="rounded-full bg-new-bg px-2.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-wide text-new">{c.quoted}</span> : null}
@@ -103,11 +103,11 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
                 </ul>
                 {/* Footer pinned to the bottom so every button lines up across the row. */}
                 <div className="mt-auto pt-8">
-                  <Link href={`${quote}&plan=${key}`} className={cn(btnLine, 'w-full')}>
+                  <Link href={`${quote}&plan=${key}`} className={cn(btnLine, 'w-full whitespace-nowrap px-3')}>
                     {c.cta}
-                    <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
+                    <ArrowRight className="nudge h-4 w-4 shrink-0" aria-hidden="true" />
                   </Link>
-                  <RenewalNote lang={params.lang} className="mt-3" />
+                  <RenewalNote lang={params.lang} compact className="mt-3 text-center" />
                 </div>
               </article>
             );

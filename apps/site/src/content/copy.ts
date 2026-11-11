@@ -256,8 +256,10 @@ const en = {
     cta: 'Get a quote',
     ctaNote: 'We reply within one business day.',
     renewalShort: 'Prices are before tax (GST/HST, and PST, RST or QST where it applies). Your written quote confirms the price, billing frequency and term. Terms renew automatically month to month at the same rates, without the commitment discount, unless you cancel in writing before the term ends; we email a reminder 30 days before.',
-    renewalLine: 'Before tax. Renews automatically month to month at the same rates unless you cancel in writing before the term ends.',
+    renewalLine: 'Before tax. Renews automatically month to month unless cancelled in writing.',
     renewalTermsLink: 'Subscription and renewal terms',
+    renewalSee: 'Renewal terms',
+    renewalCompact: 'Before tax · renews automatically',
     jump: 'Compare the plans',
     planMock: {
       label: 'Illustration of the Billing page with sample data: the plan, staff this month against the allowance, and options included.',
@@ -830,8 +832,10 @@ const fr: DeepString<Copy> = {
     cta: 'Obtenir une soumission',
     ctaNote: 'Nous répondons en un jour ouvrable.',
     renewalShort: 'Prix avant taxes (TPS/TVH et, s’il y a lieu, TVP, TVD ou TVQ). Votre soumission écrite confirme le prix, la fréquence de facturation et la durée. L’abonnement se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement, sauf si vous résiliez par écrit avant la fin de la durée; nous envoyons un rappel 30 jours avant.',
-    renewalLine: 'Avant taxes. Se renouvelle automatiquement au mois aux mêmes tarifs, sauf si vous résiliez par écrit avant la fin de la durée.',
+    renewalLine: 'Avant taxes. Renouvellement automatique au mois, sauf résiliation par écrit.',
     renewalTermsLink: 'Conditions d’abonnement et de renouvellement',
+    renewalSee: 'Conditions de renouvellement',
+    renewalCompact: 'Avant taxes · reconduction automatique',
     jump: 'Comparer les forfaits',
     planMock: {
       label: 'Illustration de la page Facturation avec des données fictives : le forfait, le personnel du mois selon l’allocation et les options incluses.',
