@@ -815,11 +815,12 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Phones: back, the period, forward and Today stay on one row (the period takes the free space). */}
+        <div className="flex w-full items-center gap-2 sm:w-auto sm:flex-wrap">
           <Button variant="secondary" size="sm" aria-label={t('planner.prev')} onClick={() => setAnchor(stepAnchor(view, anchor, -1))}>
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </Button>
-          <p className="min-w-[10rem] text-center text-body-strong" aria-live="polite">
+          <p className="min-w-0 flex-1 text-balance text-center text-small font-semibold leading-tight sm:min-w-[10rem] sm:flex-none sm:text-body-strong" aria-live="polite">
             {title}
           </p>
           <Button variant="secondary" size="sm" aria-label={t('planner.next')} onClick={() => setAnchor(stepAnchor(view, anchor, 1))}>
@@ -866,7 +867,8 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2">
+      {/* Drafts and Publish. On phones, while there are drafts, this sits just above the tab bar so Publish stays in reach. */}
+      <div className={cn('flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2', drafts.length > 0 && 'max-md:sticky max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:z-20 max-md:border max-md:border-line max-md:bg-panel max-md:shadow-lift')}>
         <p className="text-small text-muted">
           {t('planner.unpublished', { count: drafts.length })}
           {history.past.length ? ` · ${t('planner.changes', { count: history.past.length })}` : ''}
