@@ -21,6 +21,12 @@ reproduce it, and what an attacker could do with it.
   [docs/SECURITY-LEGAL-AUDIT.md](docs/SECURITY-LEGAL-AUDIT.md).
 - Before the first city goes live and yearly after: an independent penetration test
   ([docs/SECURITY-OPERATIONS.md](docs/SECURITY-OPERATIONS.md)).
+- Continuously: the Dev console's Trust area tests the platform's real state every few minutes
+  (row-level security on every city table, the database role, passkeys for console admins, keys,
+  headers, backups and retention, stale or departed accounts) and tracks FH's controls, evidence,
+  policies, risks, vendors and customer commitments against SOC 2, ISO 27001, PIPEDA, provincial
+  privacy laws and Law 25 ([docs/TRUST-CENTER.md](docs/TRUST-CENTER.md)). It's a self-assessment,
+  not a certification.
 
 ## SQL injection
 

@@ -137,6 +137,7 @@ Screenshots on the site come from the demo (`apps/site/public/screens`). Retake 
 - [Security policy](SECURITY.md) — reporting, how the product is checked, SQL injection defences
 - [Security and legal audit](docs/SECURITY-LEGAL-AUDIT.md) — findings, fixes and the Canadian legal mapping
 - [Security operations runbook](docs/SECURITY-OPERATIONS.md) — backups, patching, access reviews, incident response
+- [Trust](docs/TRUST-CENTER.md) — FH's own security and compliance program in the Dev console: frameworks (SOC 2, ISO 27001, HIPAA, PIPEDA, provincial privacy, Law 25), live tests, evidence, policies, risks, vendors and customer commitments
 - [Scalability and load tests](docs/SCALABILITY.md) — results for 1 city × 30 and 30 cities × 300, and how to size a deployment
 - [Public API and webhooks](docs/PUBLIC-API.md) — keys, endpoints, events, signature checks
 - [Pricing](docs/PRICING.md)
