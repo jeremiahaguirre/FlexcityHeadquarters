@@ -11,6 +11,7 @@ import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { type Tx, tenantIds, withTenant } from '../../lib/db.js';
 import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { FILE_CSP } from '../../lib/files.js';
 import { FEATURE_KEYS, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
@@ -432,7 +433,7 @@ citiesRouter.get(
     const logo = await withTenant(id, (tx) => tx.tenantLogo.findUnique({ where: { tenantId: id } }));
     if (!logo) throw notFound('Logo');
     res.setHeader('Content-Type', logo.contentType);
-    res.setHeader('Content-Security-Policy', "default-src 'none'");
+    res.setHeader('Content-Security-Policy', FILE_CSP);
     res.send(Buffer.from(logo.bytes));
   }),
 );

@@ -153,6 +153,9 @@ describe('Trust: evidence', () => {
     });
     expect(f.status).toBe(200);
     expect(Buffer.compare(f.body as Buffer, PDF)).toBe(0);
+    expect(f.headers['content-disposition']).toBe('attachment; filename="restore.pdf"');
+    expect(f.headers['x-content-type-options']).toBe('nosniff');
+    expect(f.headers['content-security-policy']).toContain('sandbox');
     expect((await db().trustTest.findUniqueOrThrow({ where: { key: 'restore_evidence' } })).lastStatus).toBe('PASS');
     expect((await mgr.as('post', '/trust/evidence').send({ controlKey: 'BK-02', kind: 'FILE', title: 'x', fileName: 'x.exe', data: 'data:application/pdf;base64,TVqQAAMAAAAEAAAA' })).status).toBe(415);
     expect(await owner.platformAudit.count({ where: { adminId: mgr.id, action: { in: ['trust.evidence.add', 'trust.evidence.open'] } } })).toBe(2);

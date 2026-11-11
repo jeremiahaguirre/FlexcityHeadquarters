@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { type AuthContext, authOf, requirePermission } from '../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { type FileType, sendFile, sniff, storedName } from '../lib/files.js';
 import { open, seal } from '../services/crypto/envelope.js';
 import { sha256 } from '../services/people/fingerprint.js';
 import { userInScope } from '../services/people/scope.js';
@@ -24,15 +25,6 @@ export const documentsRouter = Router();
 const uuid = z.string().uuid();
 const MAX_BYTES = 10 * 1024 * 1024;
 const KINDS = ['MEDICAL_NOTE', 'CERTIFICATE', 'IDENTIFICATION', 'CONTRACT', 'POLICY', 'OTHER'] as const;
-
-/** The file's real type from its first bytes, never the name or the browser's claim. */
-export function sniff(b: Buffer): 'application/pdf' | 'image/png' | 'image/jpeg' | 'image/webp' | null {
-  if (b.subarray(0, 5).toString('latin1') === '%PDF-') return 'application/pdf';
-  if (b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png';
-  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
-  if (b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp';
-  return null;
-}
 
 const body = z.object({
   kind: z.enum(KINDS),
@@ -63,7 +55,7 @@ export async function store(tx: Tx, a: AuthContext, userId: string, b: Omit<z.in
   // Receipts are seen by whoever approves the claim: the person's department supervisors and HR.
   const visibility: DocumentVisibility = b.kind === 'MEDICAL_NOTE' ? 'HR' : b.kind === 'RECEIPT' || b.shareWithDepartment ? 'DEPARTMENT' : 'HR';
   const doc = await tx.employeeDocument.create({
-    data: { id, tenantId: a.tenantId, userId, uploadedById: a.userId, kind: b.kind as DocumentKind, visibility, title: b.title, fileName: b.fileName.replace(/[^\w.\- ()]/g, '_'), contentType: type, size: file.length, sha256: sha256(file), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId },
+    data: { id, tenantId: a.tenantId, userId, uploadedById: a.userId, kind: b.kind as DocumentKind, visibility, title: b.title, fileName: storedName(b.fileName, type), contentType: type, size: file.length, sha256: sha256(file), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId },
   });
   await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'document.upload', entity: 'EmployeeDocument', entityId: id, after: { userId, kind: b.kind, visibility, size: file.length, sha256: doc.sha256 } });
   return doc;
@@ -170,12 +162,8 @@ documentsRouter.get(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'document.view', entity: 'EmployeeDocument', entityId: id, after: { userId: doc.userId, kind: doc.kind } });
       return { doc, file };
     });
-    res.setHeader('Content-Type', doc.contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${doc.fileName.replace(/"/g, '')}"`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Content-Security-Policy', "default-src 'none'");
-    res.send(file);
+    // The type was found from the file's bytes when it was uploaded (sniff), so it is one of FILE_TYPES.
+    sendFile(res, file, { type: doc.contentType as FileType, name: doc.fileName });
   }),
 );
 

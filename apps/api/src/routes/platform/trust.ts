@@ -20,7 +20,7 @@ import { MONITORS, monitorByKey, runMonitors } from '../../services/trust/monito
 import { controlStatuses, defaultScope, kpis, parseScope, policyAckProgress, settings, snapshot, trend, vendorDistribution } from '../../services/trust/posture.js';
 import { APPETITE_RANGE, VENDOR_QUESTIONS, addMonths, frameworkReadiness, nextDue, postureScore, riskLevel, riskScore, vendorRisk, vendorScore, type VendorAnswer } from '../../services/trust/scoring.js';
 import { ensureTrustSeeded } from '../../services/trust/seed.js';
-import { sniff } from '../documents.js';
+import { type FileType, sendFile, sniff, storedName } from '../../lib/files.js';
 import { h, keys } from '../context.js';
 
 export const trustRouter = Router();
@@ -325,7 +325,7 @@ trustRouter.post(
       const type = sniff(buf);
       if (!type) throw new HttpError(415, 'UNSUPPORTED_TYPE', 'Upload a PDF, PNG, JPEG or WebP file.');
       const sealed = await seal(keys(), kekId(), buf.toString('base64'), aad(id));
-      file = { fileName: b.fileName.replace(/[^\w.\- ()]/g, '_'), contentType: type, size: buf.length, sha256: createHash('sha256').update(buf).digest('hex'), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId };
+      file = { fileName: storedName(b.fileName, type), contentType: type, size: buf.length, sha256: createHash('sha256').update(buf).digest('hex'), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId };
     } else if (b.kind === 'LINK' && !b.url) throw badRequest('Add the link.');
     else if (b.kind === 'CI' && !b.result) throw badRequest('Say whether the run passed.');
     const e = await db().trustEvidence.create({ data: { id, controlKey: b.controlKey, kind: b.kind, title: b.title, url: b.url ?? null, note: b.note ?? null, result: b.kind === 'CI' ? b.result : null, validUntil: b.validUntil ?? null, addedById: p.adminId, ...file }, select: EVIDENCE_LIST });
@@ -350,9 +350,7 @@ trustRouter.get(
     const buf = Buffer.from(b64, 'base64');
     if (createHash('sha256').update(buf).digest('hex') !== e.sha256) throw new HttpError(500, 'DOCUMENT_CHANGED', 'This file doesn’t match what was uploaded.');
     await audit(platformOf(req).adminId, 'evidence.open', { id });
-    res.setHeader('content-type', e.contentType!);
-    res.setHeader('content-disposition', `attachment; filename="${e.fileName}"`);
-    res.send(buf);
+    sendFile(res, buf, { type: e.contentType as FileType, name: e.fileName ?? 'evidence' });
   }),
 );
 

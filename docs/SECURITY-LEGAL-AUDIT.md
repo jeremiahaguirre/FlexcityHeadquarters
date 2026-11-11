@@ -136,7 +136,7 @@ Status values:
 | Step-up | Payroll export, pay rates, role changes, erasure, records export, suspensions and terminations, passkey changes need a sign-in within 10 minutes. |
 | Encryption | TLS in transit; incident narratives and Union Hub content encrypted with envelope encryption (per-local keys for the union; AWS KMS in production). |
 | Audit | Append-only audit log (the app can't update or delete it), incident access log with stated purpose, Dev console actions logged twice. |
-| Input handling | Every request body validated (zod), 100 KB body limit, no raw SQL, uploads checked by magic bytes (PNG, JPEG, WebP only; SVG refused). |
+| Input handling | Every request body validated (zod), 100 KB body limit, no raw SQL, uploads checked by size and magic bytes against one allow-list (`lib/files.ts`: PDF, PNG, JPEG, WebP; SVG, HTML and programs refused), renamed to a plain name with the extension of their real type, kept encrypted in the database (never on a disk the web server serves), and sent back as downloads with `nosniff` and a `sandbox` content policy so nothing in them can run. |
 | Least privilege | Permission-based routes; feature switches and per-role overrides enforced server-side, not just hidden in the menu. |
 | Privacy by design | SINs and bank accounts only for payroll, sealed with the city's key and shown masked (full SIN only in a filing file, with a passkey); no police-check results stored; date of birth only for young-worker rules; location only at the moment of clocking in; diagnosis never stored for accommodations; care check-ins record only that they happened. |
 

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { withTenant } from '../lib/db.js';
 import { notFound } from '../lib/errors.js';
+import { FILE_CSP } from '../lib/files.js';
 import { h } from './context.js';
 
 /**
@@ -19,7 +20,7 @@ publicLogoRouter.get(
     // The URL carries the content hash (?v=…), so it can be cached for a long time.
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.setHeader('Content-Type', logo.contentType);
-    res.setHeader('Content-Security-Policy', "default-src 'none'");
+    res.setHeader('Content-Security-Policy', FILE_CSP);
     res.send(Buffer.from(logo.bytes));
   }),
 );

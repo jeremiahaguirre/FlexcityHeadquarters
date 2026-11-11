@@ -62,10 +62,13 @@ describe('employee documents', () => {
 
   it('supervisors add department files but never see or add medical notes', async () => {
     expect((await call(tok.sup).post(`/api/users/${t.users[0]!.id}/documents`, { kind: 'MEDICAL_NOTE', title: 'Note from the clinic', fileName: 'x.pdf', data: dataUrl(PDF) })).status).toBe(403);
-    const c = await call(tok.sup).post(`/api/users/${t.users[0]!.id}/documents`, { kind: 'CERTIFICATE', title: 'NLS card', fileName: 'nls.pdf', data: dataUrl(PDF) });
+    const c = await call(tok.sup).post(`/api/users/${t.users[0]!.id}/documents`, { kind: 'CERTIFICATE', title: 'NLS card', fileName: 'nls card.html', data: dataUrl(PDF) });
     expect(c.body.visibility).toBe('DEPARTMENT');
     cert = c.body.id;
-    const list = (await call(tok.sup).get(`/api/users/${t.users[0]!.id}/documents`)).body.map((d: { id: string }) => d.id);
+    const listed = (await call(tok.sup).get(`/api/users/${t.users[0]!.id}/documents`)).body as Array<{ id: string; fileName: string }>;
+    // Renamed to its real type: a PDF can't come back as a web page.
+    expect(listed.find((d) => d.id === cert)?.fileName).toBe('nls card.pdf');
+    const list = listed.map((d) => d.id);
     expect(list).toContain(cert);
     expect(list).not.toContain(note);
     expect((await call(tok.sup).get(`/api/documents/${note}/file`)).status).toBe(404);
@@ -81,6 +84,9 @@ describe('employee documents', () => {
     expect(f.status).toBe(200);
     expect(Buffer.compare(f.body as Buffer, PDF)).toBe(0);
     expect(f.headers['x-content-type-options']).toBe('nosniff');
+    expect(f.headers['content-type']).toBe('application/pdf');
+    expect(f.headers['content-disposition']).toBe('attachment; filename="note.pdf"');
+    expect(f.headers['content-security-policy']).toBe("default-src 'none'; sandbox; frame-ancestors 'none'");
     expect((await call(tok.emp).get(`/api/documents/${note}/file`)).status).toBe(200);
     expect((await call(tok.other).get(`/api/documents/${note}/file`)).status).toBe(404);
     expect(await owner.auditLog.count({ where: { action: 'document.view', entityId: note } })).toBe(2);

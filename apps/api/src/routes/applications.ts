@@ -15,11 +15,11 @@ import { allow } from '../auth/rateLimit.js';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
+import { sendFile, sniff, storedName } from '../lib/files.js';
 import { open, seal } from '../services/crypto/envelope.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { sha256 } from '../services/people/fingerprint.js';
 import { h, keys, subdomainOf, tenantKekId } from './context.js';
-import { sniff } from './documents.js';
 import { workAge } from '../services/legal/ages.js';
 
 export const publicApplicationsRouter = Router();
@@ -86,7 +86,7 @@ publicApplicationsRouter.post(
       await tx.jobApplication.create({
         data: {
           id, tenantId, postingId: p.id, firstName: b.firstName, lastName: b.lastName, email: b.email.toLowerCase(), phone: b.phone ?? null, message: b.message ?? null, certifications: b.certifications ?? null, consentAt: now, notes: ageNote,
-          ...(file && sealed ? { resumeName: b.resume!.fileName.replace(/[^\w.\- ()]/g, '_'), resumeType: 'application/pdf', resumeSize: file.length, resumeSha256: sha256(file), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId } : {}),
+          ...(file && sealed ? { resumeName: storedName(b.resume!.fileName, 'application/pdf'), resumeType: 'application/pdf', resumeSize: file.length, resumeSha256: sha256(file), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId } : {}),
         },
       });
       await audit(tx, { tenantId, actorId: null, action: 'application.received', entity: 'JobApplication', entityId: id, after: { postingId: p.id, age: b.age, guardianConsent: b.age === 'YOUNG', province: ages.province, consentAt: now.toISOString(), consentVersion: APPLICANT_CONSENT_VERSION } });
@@ -147,12 +147,7 @@ applicationsRouter.get(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'application.resume_view', entity: 'JobApplication', entityId: id });
       return { x, file };
     });
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${(x.resumeName ?? 'resume.pdf').replace(/"/g, '')}"`);
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Content-Security-Policy', "default-src 'none'");
-    res.send(file);
+    sendFile(res, file, { type: 'application/pdf', name: x.resumeName ?? 'resume' });
   }),
 );
 

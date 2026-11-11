@@ -180,7 +180,7 @@ The API runs as any number of identical processes: `WEB_CONCURRENCY` processes p
 | Sign-in and enquiry rate limits | `RateLimitHit` in Postgres in production, and whenever `WEB_CONCURRENCY` > 1 (`auth/rateLimit.ts`) |
 | Scheduled jobs | Only the worker runs them, each under a session advisory lock (`pg_try_advisory_lock`), so one worker at a time runs each; a job still running when its next round comes is skipped |
 | Sessions, tokens | Stateless JWTs and refresh tokens in Postgres |
-| Uploaded files | Encrypted in Postgres (up to 10 MB each, `routes/documents.ts`); nothing is written to a process's disk, so a container can be replaced at any time |
+| Uploaded files | Encrypted in Postgres (up to 10 MB each, `routes/documents.ts`); nothing is written to a process's disk, so a container can be replaced at any time. One set of rules for every upload (`lib/files.ts`): the type is read from the file's first bytes and must be PDF, PNG, JPEG or WebP (each upload narrows this: résumés PDF only, logos images only); the name is reduced to plain characters with the extension of the real type (`storedName`); files go back only as downloads with `nosniff` and `Content-Security-Policy: default-src 'none'; sandbox` (`sendFile`) |
 | Cache misses at the same moment | Share one load per key (`src/lib/singleFlight.ts`); a load that raced a forget is returned but not cached |
 | Heavy reads | Running reports reads from `READ_REPLICA_URL` when set, in a read-only transaction under the same row-level security (`replica()` in `src/lib/db.ts`) |
 
