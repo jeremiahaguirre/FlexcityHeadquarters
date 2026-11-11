@@ -305,16 +305,6 @@ export function premiumPieces(iv: { start: Date; end: Date }, rules: ReadonlyArr
   return out;
 }
 
-/** $ a premium piece adds at a base rate. */
-export const premiumAmount = (p: PremiumPiece, rate: number) => p.hours * ((p.perHour ?? 0) + (p.percent ? (rate * p.percent) / 100 : 0));
-
-/** Premium $/h a shift averages at a rate (the solver's cost and the planner's estimate). */
-export function premiumPerHourOf(iv: { start: Date; end: Date }, rules: ReadonlyArray<PremiumRule>, ctx: PremiumContext, rate: number): number {
-  const hours = (iv.end.getTime() - iv.start.getTime()) / 3_600_000;
-  if (!hours) return 0;
-  return premiumPieces(iv, rules, ctx).reduce((s, p) => s + premiumAmount(p, rate), 0) / hours;
-}
-
 // ------------------------------------------------------------------ schedule change notice
 
 export type ChangeKind = 'TIME' | 'ADDED' | 'REMOVED';

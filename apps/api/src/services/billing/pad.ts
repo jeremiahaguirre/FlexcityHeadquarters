@@ -75,7 +75,6 @@ const padAad = (tenantId: string) => `pad:${tenantId}`;
 /** FH's own bank details (where returns go) are FH's, not a city's. */
 export const platformKekId = () => (config().KMS_KEY_ARN ? 'alias/flexcity-platform' : 'local:platform');
 
-export type AgreementView = ReturnType<typeof agreementView>;
 export function agreementView(a: { id: string; tenantId: string; status: string; payorName: string; signerName: string; signerTitle: string; institution: string; transit: string; accountLast4: string; waivedPreNotice: boolean; channel: string; authorizedAt: Date; cancelledAt: Date | null; cancelReason: string | null; agreementVersion: string }) {
   return {
     id: a.id,

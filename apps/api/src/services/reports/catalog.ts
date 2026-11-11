@@ -190,7 +190,6 @@ export const REPORTS: Record<string, Report> = {
   },
 };
 
-export type ReportKey = keyof typeof REPORTS;
 export const REPORT_KEYS = Object.keys(REPORTS);
 
 export const canRun = (a: AuthContext, key: string) => {

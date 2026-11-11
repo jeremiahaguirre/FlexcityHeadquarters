@@ -395,10 +395,6 @@ export function vacationPercent(rules: ProvinceRules, completedYears: number): n
   return pct;
 }
 
-export function allRuleSets(): readonly ProvinceRules[] {
-  return RULES.map((r) => ({ ...r, mealBreak: r.mealBreak ?? MEAL_BREAKS[r.province] ?? null, reportingPay: r.reportingPay ?? REPORTING_PAY[r.province] ?? null }));
-}
-
 /** The statutory meal break and minimum call-in pay for a jurisdiction (null = none encoded). */
 export function mealBreakRule(j: Jurisdiction): MealBreakRule | null {
   return MEAL_BREAKS[j] ?? null;

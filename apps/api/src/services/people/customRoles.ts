@@ -81,10 +81,6 @@ async function loadCustomAccess(tenantId: string, userId: string, key: string): 
   return entry;
 }
 
-export async function customPermissions(tenantId: string, userId: string): Promise<Set<Permission>> {
-  return (await customAccess(tenantId, userId)).perms;
-}
-
 /**
  * Where a person's supervisory capabilities reach.
  * - HR administrators: every department.

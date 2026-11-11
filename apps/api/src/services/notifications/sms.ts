@@ -61,8 +61,6 @@ const TEMPLATES: Record<string, { 'en-CA': Render; 'fr-CA': Render }> = {
   },
 };
 
-export const hasSmsTemplate = (t: string) => t in TEMPLATES;
-
 export function renderSms(template: string, locale: string, params: Params): string {
   const t = TEMPLATES[template];
   if (!t) throw new Error(`Unknown text template: ${template}`);

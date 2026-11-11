@@ -174,7 +174,7 @@ schedulingRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const { reason } = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
-    const out = await withTenant(a.tenantId, async (tx) => {
+    await withTenant(a.tenantId, async (tx) => {
       await shiftScoped(tx, a, uuid.parse(req.params.id));
       return withEvents(tx, cancelShift(tx, actor(req), uuid.parse(req.params.id), reason));
     });

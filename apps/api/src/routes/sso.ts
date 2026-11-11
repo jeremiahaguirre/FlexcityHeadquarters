@@ -10,7 +10,7 @@ import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, issueRefreshToken, signAccessToken } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
-import { checkIssuerHost, checkIssuerUrl, connectionFor, finishSso, ready, samlMetadata, sealClientSecret, spUrls, SsoError, startSso, STATE_COOKIE, stateCookieOpts } from '../services/auth/sso.js';
+import { checkIssuerHost, checkIssuerUrl, connectionFor, finishSso, samlMetadata, sealClientSecret, spUrls, SsoError, startSso, STATE_COOKIE, stateCookieOpts } from '../services/auth/sso.js';
 import { COOKIE, cookieOpts } from './auth.js';
 import { h, subdomainOf } from './context.js';
 

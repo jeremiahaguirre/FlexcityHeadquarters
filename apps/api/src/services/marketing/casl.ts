@@ -108,10 +108,6 @@ export async function consentFor(email: string, now = new Date()): Promise<Conse
   return consentFrom(rows, now);
 }
 
-export async function isSuppressed(email: string): Promise<boolean> {
-  return (await consentFor(email)).state === 'WITHDRAWN';
-}
-
 /** Records an unsubscribe; takes effect at once (CASL allows up to 10 business days). Idempotent. */
 export async function recordUnsubscribe(email: string, source: 'link' | 'one-click' | 'admin', locale = 'en-CA'): Promise<void> {
   const e = email.trim().toLowerCase();

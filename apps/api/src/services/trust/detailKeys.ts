@@ -71,7 +71,6 @@ export const MONITOR_DETAILS = {
 } as const;
 
 export type MonitorDetailKey = keyof typeof MONITOR_DETAILS;
-export type DetailKind = (typeof MONITOR_DETAILS)[MonitorDetailKey];
 export const MONITOR_DETAIL_KEYS = Object.keys(MONITOR_DETAILS) as MonitorDetailKey[];
 /** What a check may return: only the keys above (an unknown key is a type error). */
 export type MonitorDetails = { [K in MonitorDetailKey]?: unknown };

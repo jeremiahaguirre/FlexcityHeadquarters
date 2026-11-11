@@ -8,7 +8,7 @@ import type { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
-import { type Tx, audit, withTenant } from '../lib/db.js';
+import { audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { ageInMonths, fitsAge } from '../services/programs/levels.js';
 import { setView } from './programs.js';

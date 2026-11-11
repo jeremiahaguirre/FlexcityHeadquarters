@@ -119,10 +119,3 @@ export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Da
     await tx.refreshToken.updateMany({ where: { familyId: existing.familyId, revokedAt: null }, data: { authenticatedAt: at, ...(mfa ? { mfaAt: at } : {}) } });
   }
 }
-
-/** Does the session behind this refresh token already have a second factor? */
-export async function sessionHasMfa(tx: Tx, raw: string | undefined): Promise<boolean> {
-  if (!raw) return false;
-  const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
-  return !!existing?.mfaAt && !existing.revokedAt;
-}

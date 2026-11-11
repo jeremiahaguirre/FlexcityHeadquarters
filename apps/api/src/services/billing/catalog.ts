@@ -145,7 +145,6 @@ export function itemStates(e: Entitlement) {
 export function ownedItems(e: Entitlement): Set<ItemKey> {
   return new Set(itemStates(e).filter((s) => s.on).map((s) => s.key));
 }
-export const ownedModules = ownedItems;
 
 /** Features the account's plan doesn't include → the option that unlocks them. */
 export function lockedFeatures(e: Entitlement): Partial<Record<FeatureKey, ItemKey>> {

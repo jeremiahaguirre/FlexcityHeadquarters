@@ -14,7 +14,7 @@ import { holidaysTouching, offDayRule, personalDay, premiumDays, statutoryDay, u
 import { type PayResult, calculatePay } from './payCalc.js';
 import { IssueSet, issue } from './issues.js';
 import { type PayResultWithExtras, addEarning, workRuleExtras, workRuleIntervals } from './workRulePay.js';
-import { effectiveWorkRules, parseWorkRules } from '../scheduling/workRules.js';
+import { parseWorkRules } from '../scheduling/workRules.js';
 
 /** `onlyUsers`: a department supervisor's people; null = everyone (HR). */
 /** `positionIds`: one department's positions; null = every position. */

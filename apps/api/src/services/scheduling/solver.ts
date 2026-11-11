@@ -856,7 +856,6 @@ export function solve(input: SolverInput): SolverResult {
       // Unchanged draft: nothing to propose.
       continue;
     }
-    const m = sm[j]!;
     // Alternatives: others who could take it as things stand, cheapest first.
     place(j, -1);
     const alts: Array<{ i: number; d: number }> = [];

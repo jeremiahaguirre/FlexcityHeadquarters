@@ -232,7 +232,6 @@ staffRouter.get(
 );
 
 // -------------------------------------------------------------- Positions
-export { positionBody };
 
 staffRouter.post(
   '/positions',

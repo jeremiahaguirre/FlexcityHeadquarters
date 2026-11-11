@@ -7,7 +7,6 @@ import { CONTROLS, FRAMEWORKS, type Control, type FrameworkKey } from './library
 
 export type TestStatus = 'PASS' | 'FAIL' | 'WARN' | 'ERROR';
 export type ControlStatus = 'PASSING' | 'FAILING' | 'NEEDS_EVIDENCE' | 'NOT_APPLICABLE';
-export const CONTROL_STATUSES: ControlStatus[] = ['PASSING', 'FAILING', 'NEEDS_EVIDENCE', 'NOT_APPLICABLE'];
 
 export interface ControlInputs {
   /** Latest status per test key (missing = never run). */
