@@ -18,6 +18,7 @@ import { permissionsWithOverrides } from '../services/platform/roleOverrides.js'
 import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
 import { forgetActive, setUserCustomRoles } from '../services/people/customRoles.js';
 import { actorOf, assertUserInScope, peopleWhere } from '../services/people/scope.js';
+import { setManagers, setReportsOf } from '../services/people/reporting.js';
 import { allOf, assertDepartment, departmentFilter, departmentQuery, forget as forgetDepartmentScope } from '../services/people/departmentAdmin.js';
 
 export const staffRouter = Router();
@@ -533,6 +534,11 @@ staffRouter.patch(
       if (body.status && body.status !== 'ACTIVE') {
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
         forgetActive(id);
+      }
+      // Ended without offboarding: their people move up to the leaver's own manager (or their department's).
+      if (body.status === 'TERMINATED' && before.status !== 'TERMINATED') {
+        const reports = await setReportsOf(tx, id);
+        if (reports.length) await setManagers(tx, null, a.tenantId, reports.map((r) => r.id), before.reportsToId && before.reportsToId !== id ? before.reportsToId : null).catch(() => setManagers(tx, null, a.tenantId, reports.map((r) => r.id), null));
       }
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status }, after: { ...body, customRoleIds } });
     });
