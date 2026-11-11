@@ -16,6 +16,7 @@ import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { forgetActive } from '../services/people/customRoles.js';
 import { peopleInScope, peopleWhere, userInScope } from '../services/people/scope.js';
+import { loadGraph, setManagers, setReportsOf } from '../services/people/reporting.js';
 import { h } from './context.js';
 import { leaveHoursFrom, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
 import { assertUserInScope } from '../services/people/scope.js';
@@ -165,10 +166,15 @@ hrRouter.post(
   requirePermission('performance.manage'),
   h(async (req, res) => {
     const a = authOf(req);
-    const b = z.object({ userId: uuid, reviewerId: uuid, cycle: z.string().trim().min(2).max(60), dueOn: isoDate, goals: z.array(z.string().trim().min(2).max(300)).max(20).default([]) }).parse(req.body);
-    if (b.userId === b.reviewerId) throw new HttpError(400, 'SELF_REVIEWER', 'Someone else has to conduct the review.');
+    // No reviewer chosen: the person's manager (services/people/reporting.ts).
+    const body = z.object({ userId: uuid, reviewerId: uuid.optional(), cycle: z.string().trim().min(2).max(60), dueOn: isoDate, goals: z.array(z.string().trim().min(2).max(300)).max(20).default([]) }).parse(req.body);
+    if (body.userId === body.reviewerId) throw new HttpError(400, 'SELF_REVIEWER', 'Someone else has to conduct the review.');
     const r = await withTenant(a.tenantId, async (tx) => {
-      if (!(await userInScope(tx, a.scope, b.userId))) throw notFound('Person');
+      if (!(await userInScope(tx, a.scope, body.userId))) throw notFound('Person');
+      const reviewerId = body.reviewerId ?? (await loadGraph(tx)).parent(body.userId);
+      if (!reviewerId) throw new HttpError(400, 'NO_REVIEWER', 'This person has no manager yet: choose who conducts the review.');
+      if (!(await tx.user.findFirst({ where: { id: reviewerId, status: 'ACTIVE', anonymizedAt: null }, select: { id: true } }))) throw notFound('Reviewer');
+      const b = { ...body, reviewerId };
       const created = await tx.performanceReview.create({ data: { tenantId: a.tenantId, userId: b.userId, reviewerId: b.reviewerId, cycle: b.cycle, dueOn: new Date(b.dueOn), goals: b.goals.map((text) => ({ text, met: null })), createdById: a.userId } });
       await notify(tx, a.tenantId, [{ userId: b.userId, type: 'review_self', params: { cycle: b.cycle }, link: '/profile#reviews' }]);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'review.create', entity: 'PerformanceReview', entityId: created.id, after: b });
@@ -426,7 +432,11 @@ hrRouter.get(
     const out = await withTenant(a.tenantId, async (tx) => {
       const rows = await tx.offboarding.findMany({ orderBy: [{ completedAt: { sort: 'desc', nulls: 'first' } }, { lastDay: 'asc' }], take: 100 });
       const names = await nameMap(tx, rows.map((r) => r.userId));
-      return rows.map((r) => ({ id: r.id, userId: r.userId, name: names.get(r.userId) ?? '', lastDay: r.lastDay.toISOString().slice(0, 10), reason: r.reason, checklist: r.checklist, completedAt: r.completedAt }));
+      const open = rows.filter((r) => !r.completedAt).map((r) => r.userId);
+      // People whose manager is set to someone leaving: completing asks who they report to now.
+      const reports = open.length ? await tx.user.groupBy({ by: ['reportsToId'], where: { reportsToId: { in: open }, anonymizedAt: null, status: { not: 'TERMINATED' } }, _count: { _all: true } }) : [];
+      const reportCount = new Map(reports.map((r) => [r.reportsToId, r._count._all]));
+      return rows.map((r) => ({ id: r.id, userId: r.userId, name: names.get(r.userId) ?? '', lastDay: r.lastDay.toISOString().slice(0, 10), reason: r.reason, checklist: r.checklist, completedAt: r.completedAt, reports: r.completedAt ? 0 : (reportCount.get(r.userId) ?? 0) }));
     });
     res.json({ items: OFFBOARD_ITEMS, offboardings: out });
   }),
@@ -475,11 +485,19 @@ hrRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
+    const { reassignTo } = z.object({ reassignTo: uuid.nullable().optional() }).parse(req.body ?? {});
     const o = await withTenant(a.tenantId, async (tx) => {
       const o = await tx.offboarding.findUnique({ where: { id } });
       if (!o || o.completedAt) throw notFound('Offboarding');
       const open = (o.checklist as Array<{ key: string; done: boolean }>).filter((i) => !i.done && i.key !== 'exitInterview');
       if (open.length) throw new HttpError(409, 'CHECKLIST_OPEN', 'Finish the checklist first (the exit interview is optional).', { open: open.map((i) => i.key) });
+      // Their people need a new manager first (null: back to their department's manager).
+      const reports = await setReportsOf(tx, o.userId);
+      if (reports.length && reassignTo === undefined) throw new HttpError(409, 'HAS_REPORTS', 'Choose who their people report to now.', { reports: reports.map((r) => ({ id: r.id, name: `${r.firstName} ${r.lastName}` })) });
+      if (reports.length) {
+        if (reassignTo === o.userId) throw new HttpError(400, 'MANAGER_INACTIVE', 'Choose someone who still works here.');
+        await setManagers(tx, a, a.tenantId, reports.map((r) => r.id), reassignTo ?? null);
+      }
       await tx.benefitEnrollment.updateMany({ where: { userId: o.userId, OR: [{ endsOn: null }, { endsOn: { gt: o.lastDay } }] }, data: { endsOn: o.lastDay } });
       await tx.user.update({ where: { id: o.userId }, data: { status: 'TERMINATED' } });
       await tx.offboarding.update({ where: { id }, data: { completedAt: new Date() } });

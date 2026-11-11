@@ -44,6 +44,22 @@ describe('staff import preview', () => {
     expect(p.summary).toEqual({ create: 0, exists: 1, error: 3 });
   });
 
+  it('reads a manager column: someone on staff or in the file, never a loop', () => {
+    const csv = [
+      'first_name,last_name,email,reports_to',
+      'A,One,a@city.ca,taken@city.ca',
+      'B,Two,b@city.ca,a@city.ca',
+      'C,Three,c@city.ca,d@city.ca',
+      'D,Four,d@city.ca,c@city.ca',
+      'E,Five,e@city.ca,e@city.ca',
+      'F,Six,f@city.ca,nobody@city.ca',
+    ].join('\n');
+    const p = previewImport(csv, ctx);
+    expect(p.unknownColumns).toEqual([]);
+    expect(p.rows.map((r) => r.managerEmail)).toEqual(['taken@city.ca', 'a@city.ca', 'd@city.ca', 'c@city.ca', 'e@city.ca', 'nobody@city.ca']);
+    expect(p.rows.map((r) => r.errors.map((e) => e.code)[0] ?? r.status)).toEqual(['create', 'create', 'MANAGER_CYCLE', 'MANAGER_CYCLE', 'MANAGER_SELF', 'MANAGER_UNKNOWN']);
+  });
+
   it('says which required columns are missing', () => {
     expect(previewImport('name,email\nX,x@y.ca', ctx).missingColumns).toEqual(['firstName', 'lastName']);
   });

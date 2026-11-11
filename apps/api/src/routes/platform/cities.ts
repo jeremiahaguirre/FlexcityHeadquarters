@@ -14,6 +14,7 @@ import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { FEATURE_KEYS, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
+import { setManagers } from '../../services/people/reporting.js';
 import { createPool, poolDetailsBody, poolDetailsView, updatePool } from '../../services/ops/pools.js';
 import { CUSTOM_ROLE_PERMISSIONS, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../../services/people/customRoles.js';
 import { forgetTenantLookup, h } from '../context.js';
@@ -516,6 +517,17 @@ citiesRouter.post(
               data: { tenantId: id, toEmail: u.email, template: 'invite', locale: u.locale, params: { organization: tenant.name, url: appUrl(tenant.subdomain, `/reset?token=${token}&invite=1`) } },
             });
           }
+        }
+        // Reporting lines last, once everyone in the file exists. A manager row that failed leaves the line unset.
+        const withManager = ready.filter((r) => r.managerEmail);
+        if (withManager.length) {
+          const byEmail = new Map((await tx.user.findMany({ where: { email: { in: [...new Set(withManager.flatMap((r) => [r.email, r.managerEmail!]))] } }, select: { id: true, email: true } })).map((u) => [u.email.toLowerCase(), u.id]));
+          const byManager = new Map<string, string[]>();
+          for (const r of withManager) {
+            const m = byEmail.get(r.managerEmail!);
+            if (m) byManager.set(m, [...(byManager.get(m) ?? []), byEmail.get(r.email)!]);
+          }
+          for (const [m, people] of byManager) await setManagers(tx, null, id, people, m);
         }
         await record(tx, p.adminId, id, 'staff.import', { created: ready.length, skipped: pv.rows.length - ready.length, invited: sendInvites });
         return { created: ready.length, exists: pv.summary.exists, errors: pv.summary.error, invited: sendInvites ? ready.length : 0 };

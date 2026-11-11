@@ -53,6 +53,7 @@ const HEADERS: Record<string, string> = {
   employee_number: 'employeeNumber', 'employee number': 'employeeNumber', employee_id: 'employeeNumber', numero_employe: 'employeeNumber',
   phone: 'phone', telephone: 'phone', téléphone: 'phone',
   language: 'locale', langue: 'locale', locale: 'locale',
+  manager: 'manager', manager_email: 'manager', reports_to: 'manager', 'reports to': 'manager', gestionnaire: 'manager', superieur: 'manager', supérieur: 'manager', relève_de: 'manager', releve_de: 'manager',
   union_member: 'unionMember', union: 'unionMember', syndique: 'unionMember', syndiqué: 'unionMember',
 };
 
@@ -92,6 +93,8 @@ export interface ImportRow {
   phone: string | null;
   locale: 'en-CA' | 'fr-CA';
   unionMember: boolean;
+  /** Email of the person they report to: someone already on staff or another row of the file. */
+  managerEmail: string | null;
   /** create: will be added · exists: already on staff, skipped · error: fix and re-upload */
   status: 'create' | 'exists' | 'error';
   errors: ImportIssue[];
@@ -208,6 +211,8 @@ export function previewImport(
     const unionRaw = norm(get('unionMember'));
     const unionMember = ['yes', 'y', 'true', '1', 'oui', 'o'].includes(unionRaw);
     const phone = get('phone').slice(0, 30) || null;
+    const managerEmail = get('manager').toLowerCase() || null;
+    if (managerEmail && managerEmail === email) errors.push({ field: 'manager', code: 'MANAGER_SELF', value: managerEmail });
 
     return {
       line,
@@ -225,11 +230,33 @@ export function previewImport(
       phone,
       locale,
       unionMember,
+      managerEmail,
       status: errors.length ? 'error' : status,
       errors,
       warnings,
     };
   });
+
+  // Managers: on staff already or in this file, and never a loop within the file.
+  const inFile = new Map(rows.map((r) => [r.email, r]));
+  for (const r of rows) {
+    const m = r.managerEmail;
+    if (!m || r.errors.some((e) => e.field === 'manager')) continue;
+    if (!ctx.existingEmails.has(m) && !inFile.has(m)) r.errors.push({ field: 'manager', code: 'MANAGER_UNKNOWN', value: m });
+    else {
+      const seen = new Set([r.email]);
+      for (let cur = inFile.get(m); cur; cur = cur.managerEmail ? inFile.get(cur.managerEmail) : undefined) {
+        // Someone already on staff keeps their own manager: the chain stops there.
+        if (cur.status === 'exists' || ctx.existingEmails.has(cur.email)) break;
+        if (seen.has(cur.email)) {
+          r.errors.push({ field: 'manager', code: 'MANAGER_CYCLE', value: m });
+          break;
+        }
+        seen.add(cur.email);
+      }
+    }
+    if (r.errors.length) r.status = 'error';
+  }
 
   const summary = { create: 0, exists: 0, error: 0 };
   for (const r of rows) summary[r.status]++;
