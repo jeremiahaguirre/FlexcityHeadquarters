@@ -203,7 +203,7 @@ It is not split further into microservices on purpose:
 
 Work moves to the worker or out of the request in these cases:
 - **Already asynchronous:** notifications, emails, texts and calls, web push, webhooks, scheduled reports, retention, weather, trust monitors.
-- **Still in the request, with a longer time limit:** pay runs (`payrollTx`, 120 s) and provider exports. A 300-person city-wide run takes 7–15 s while 30 others run at once (SCALABILITY.md). Move them to a worker job, with the screen showing progress, when a run regularly takes more than about 30 s or the *Event loop blocked* alert ([MONITORING.md](MONITORING.md#event-loop-blocked)) points at them.
+- **Still in the request, with a longer time limit:** pay runs (`payrollTx`, 120 s) and provider exports. A 300-person city-wide run took 7–15 s in the first load runs and 8.5 s in the latest, with 30 others running at once (SCALABILITY.md). Move them to a worker job, with the screen showing progress, when a run regularly takes more than about 30 s or the *Event loop blocked* alert ([MONITORING.md](MONITORING.md#event-loop-blocked)) points at them.
 - **The scheduling assistant on long horizons:** the same rule applies.
 
 ## Routes without a sign-in
@@ -227,7 +227,7 @@ They sit beside the older public routes: the city logo, the careers page, public
 
 All in `routes/observability.ts` and `lib/` (`health.ts`, `metrics.ts`, `requestContext.ts`, `errorReporter.ts`, `scrub.ts`). Settings are in `apps/api/.env.example`.
 
-- **`GET /healthz`** (liveness): answers `{ ok: true }` without touching anything. Use it for "restart the container if this stops answering".
+- **`GET /healthz`** (liveness): answers `{ ok: true }` without touching anything. Use it for "restart the container if this stops answering"; the AWS load balancer checks it (`ops/terraform/edge.tf`).
 - **`GET /readyz`** (readiness): runs `SELECT 1` within `READY_DB_TIMEOUT_MS` (1.5 s), then reads the email, text and domain-event outbox backlog (`outbox_backlog()` in `db/rls.sql`: counts and the oldest age across organizations, nothing else) and the worker's heartbeat. 200 when ready, 503 with each failing check's reason otherwise. A database that is down or slow always fails it. An outbox older than `READY_OUTBOX_MAX_AGE_S` (15 min) or a worker silent for `READY_WORKER_MAX_AGE_S` (5 min) shows as `warn` and fails only in strict mode (`READY_STRICT=on`, or `/readyz?strict=1`), so a load balancer doesn't take every API server out of service when only the worker is down. Point the load balancer at `/readyz` and an uptime alert at `/readyz?strict=1`. The body names checks, counts and ages only: no hosts, errors or organization data.
 - **Worker heartbeat:** the worker is its own process with no HTTP port. After each minute's round of jobs it sets its database connection's `application_name` to `fh-worker beat=<unix seconds>`; readiness and metrics read the newest beat from `pg_stat_activity`. No table, and the beat disappears when the worker stops. The worker's lock connection must go straight to Postgres, not through PgBouncer in transaction mode (its advisory locks need that already).
 - **Request ids:** every request gets an id, or keeps an incoming `X-Request-Id` made of 8–128 letters, digits and `._:-`. It's sent back in the `X-Request-Id` header and in every error body (`requestId`), and every console line logged while handling the request starts with `[req <id>]`. Ask a person for the id on the error, then search the logs and error reports for it.

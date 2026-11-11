@@ -22,10 +22,11 @@ resource "aws_lb_target_group" "api" {
   target_type          = "ip"
   vpc_id               = aws_vpc.main.id
   deregistration_delay = 30
-  # /readyz fails only when the database is unreachable; a late outbox or a missing worker is a
-  # warning there, so the load balancer never drops every task for those (docs/MONITORING.md).
+  # /healthz: the process answers. Not /readyz, which queries the database: during a pool
+  # exhaustion or a Multi-AZ failover every task would fail it, and ECS would replace the whole
+  # fleet in the middle of the spike. Database health is watched by alerts (docs/MONITORING.md).
   health_check {
-    path                = "/readyz"
+    path                = "/healthz"
     matcher             = "200"
     interval            = 15
     timeout             = 5
@@ -77,8 +78,8 @@ resource "aws_lb_listener" "https" {
   }
 }
 
-# Health and metrics answer only to the load balancer's own checks and the metrics collector
-# inside the VPC, never from the internet.
+# Health and metrics are never answered from the internet: the load balancer's health checks go
+# to the tasks directly, and a metrics collector scrapes them inside the VPC (metrics_collector_security_group).
 resource "aws_lb_listener_rule" "ops_hidden" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 10

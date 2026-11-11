@@ -15,7 +15,7 @@ Decision (November 2026): FlexcityHeadquarters runs on **Amazon Web Services**, 
 
 ## Planned layout (to be built in the infrastructure tasks)
 
-- **Compute:** containers on ECS Fargate for the API, the worker and the web app, spread across the three zones, behind an Application Load Balancer that checks `/readyz`.
+- **Compute:** containers on ECS Fargate for the API, the worker and the web app, spread across the three zones, behind an Application Load Balancer that checks `/healthz` (process alive). `/readyz` is for dashboards and alerts: because it queries the database, using it for the load balancer would make ECS replace every task during a database failover.
 - **Scaling:** autoscaling on CPU, response time and queue depth.
 - **Database:** Amazon RDS for PostgreSQL, Multi-AZ, with row-level security as today.
   - The worker and the LISTEN connection go to Postgres directly, not through a transaction pooler (see `docs/ARCHITECTURE.md`).

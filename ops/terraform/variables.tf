@@ -181,3 +181,9 @@ variable "existing_platform_key_arn" {
   type        = string
   default     = ""
 }
+
+variable "metrics_collector_security_group" {
+  description = "Security group of the Prometheus/ADOT collector allowed to scrape the API's /metrics (docs/MONITORING.md). Empty: none."
+  type        = string
+  default     = ""
+}
