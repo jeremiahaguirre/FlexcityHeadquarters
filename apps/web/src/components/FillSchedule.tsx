@@ -7,7 +7,7 @@
  * see why and swap for one of the next three; open shifts come with next steps. Accept all, a
  * week or a day (as drafts), undo, then publish through the usual step.
  */
-import { CalendarCheck, ChevronDown, Info, Send, Sparkles, Undo2, UserCheck } from 'lucide-react';
+import { CalendarCheck, ChevronDown, Info, Send, Undo2, UserCheck } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -339,7 +339,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
     ) : step === 'priorities' ? (
       <>
         <Button variant="ghost" onClick={() => setStep('setup')}>{t('fill.back')}</Button>
-        <Button icon={<Sparkles className="h-5 w-5" aria-hidden="true" />} onClick={() => void runAll()}>{t('fill.run')}</Button>
+        <Button icon={<CalendarCheck className="h-5 w-5" aria-hidden="true" />} onClick={() => void runAll()}>{t('fill.run')}</Button>
       </>
     ) : (
       <Button variant="ghost" onClick={onClose}>{t('common.close')}</Button>
@@ -453,7 +453,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
         </div>
       ) : step === 'running' ? (
         <div className="grid gap-4 py-6 text-center" role="status" aria-live="polite">
-          <Sparkles className="mx-auto h-8 w-8 animate-pulse text-brand-text motion-reduce:animate-none" aria-hidden="true" />
+          <CalendarCheck className="mx-auto h-8 w-8 text-brand-text" aria-hidden="true" />
           <p className="text-body-strong">{t('fill.running')}</p>
           <p className="text-small text-muted">{t('fill.progress', { done: Math.min(progress.done + 1, progress.of), of: progress.of })}</p>
           <div className="mx-auto h-2 w-full max-w-xs overflow-hidden rounded-full bg-surface" aria-hidden="true">
