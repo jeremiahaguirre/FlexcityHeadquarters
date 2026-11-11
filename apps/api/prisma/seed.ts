@@ -9,7 +9,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/auth/tokens.js';
 import { seedCityWorkers } from './seedCityWorkers.js';
 import { seedNewScreens } from './seedNewScreens.js';
-import { seedStatHolidays } from '../src/services/payroll/statHolidays.js';
+import { seedStatHolidays, seedYears } from '../src/services/payroll/statHolidays.js';
 
 const prisma = new PrismaClient(); // owner connection (DATABASE_URL)
 
@@ -22,9 +22,8 @@ async function main() {
   });
 
   // Statutory holidays for every province and territory (forecast and payroll). Safe to re-run.
-  const year = new Date().getFullYear();
-  const added = await seedStatHolidays(prisma, [...new Set([2026, 2027, year, year + 1])].sort());
-  console.log(`Statutory holidays ready (${added} province-days).`);
+  const added = await seedStatHolidays(prisma, seedYears());
+  console.log(`Statutory holidays ready (${added} province-days, observed dates included).`);
 
   const existing = await prisma.tenant.findUnique({ where: { subdomain: 'kelowna' } });
   if (existing) {

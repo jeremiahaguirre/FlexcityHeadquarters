@@ -7,9 +7,14 @@
  * general holiday for most employees; days that are widely observed but not
  * statutory (Ontario's Civic Holiday, Alberta's Heritage Day, Boxing Day outside
  * Ontario and federal workplaces, Easter Monday outside the federal public
- * service's agreements, Yukon's Heritage Day) are left out. Dates are the day
- * itself: when one falls on a weekend, each law's "day off in lieu" rule applies
- * on top (not modelled here).
+ * service's agreements, Yukon's Heritage Day) are left out.
+ *
+ * Weekends. Each row keeps the holiday's own date. Where a law moves the day itself
+ * when it falls on a weekend, the row also carries `observedOn` (see `calendarMove`):
+ * Canada Day on a Sunday is July 2, and Quebec's Fête nationale on a Sunday is June 25
+ * for people who don't usually work Sundays. `weekdayOn` is the next free weekday, for
+ * organizations whose collective agreement observes weekend holidays on a weekday.
+ * What a person gets when a holiday falls on their own day off is in holidayRules.ts.
  *
  * Notes on the less obvious ones:
  * - Federal (Canada Labour Code s. 166): ten days, including Boxing Day and the
@@ -45,7 +50,18 @@ export type HolidayKey =
   | 'CHRISTMAS'
   | 'BOXING_DAY';
 
-export type StatHoliday = { date: string; key: HolidayKey; name: string; nameFr: string };
+export type HolidayKind = 'ACTUAL' | 'MOVED' | 'MOVED_IF_OFF';
+export type StatHoliday = {
+  date: string;
+  key: HolidayKey;
+  name: string;
+  nameFr: string;
+  /** ACTUAL: kept on its date. MOVED: the law moves it to `observedOn` for everyone. MOVED_IF_OFF: to `observedOn` for people who don't usually work that weekday. */
+  kind: HolidayKind;
+  observedOn: string | null;
+  /** The next weekday that isn't already a holiday, when the holiday (as the law fixes it) falls on a weekend. */
+  weekdayOn: string | null;
+};
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`;
@@ -137,34 +153,90 @@ export const JURISDICTION_HOLIDAYS: Record<Jurisdiction, HolidayKey[]> = {
 
 export const PROVINCES = Object.keys(JURISDICTION_HOLIDAYS).filter((j) => j !== 'FED') as Province[];
 
-/** One jurisdiction's statutory holidays in a year, in date order. */
+/**
+ * Where a law itself moves a holiday that falls on a weekend (a calendar substitute
+ * that applies whatever the person's schedule, or to everyone who doesn't work that day).
+ *
+ * - Canada Day on a Sunday → Monday July 2. Federal: Holidays Act, R.S.C. 1985, c. H-5,
+ *   s. 2 ("the 1st day of July, not being a Sunday … when the 1st day of July is a Sunday,
+ *   the 2nd day of July"). Quebec: Act respecting labour standards (LNT), s. 60 4° ("le
+ *   1er juillet ou, si cette date tombe un dimanche, le 2 juillet"). The other provinces
+ *   and territories don't fix a date of their own, so the federal observance applies, as
+ *   each did in 2018 (the last Sunday July 1) — except Nova Scotia, whose Labour Standards
+ *   Code defines Canada Day as July 1 whatever the day (2018 amendment), and Newfoundland
+ *   and Labrador, where July 1 is also Memorial Day and the province keeps it on July 1.
+ * - Quebec's Fête nationale on a Sunday → June 25 for an employee who doesn't usually
+ *   work on Sunday (Loi sur la fête nationale, CQLR c. F-1.1, s. 2). Someone who does work
+ *   Sundays keeps June 24: worked out per person in holiday pay.
+ *
+ * Nothing else moves by law: every other weekend holiday stays on its date, and what the
+ * person gets is the jurisdiction's "holiday on a non-working day" rule (holidayRules.ts).
+ */
+export function calendarMove(j: Jurisdiction, key: HolidayKey, date: string): { kind: HolidayKind; observedOn: string | null } {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const sunday = dow(y, m, d) === 0;
+  if (key === 'CANADA_DAY' && sunday && j !== 'NS' && j !== 'NL') return { kind: 'MOVED', observedOn: ymd(y, 7, 2) };
+  if (key === 'FETE_NATIONALE' && sunday && j === 'QC') return { kind: 'MOVED_IF_OFF', observedOn: ymd(y, 6, 25) };
+  return { kind: 'ACTUAL', observedOn: null };
+}
+
+const nextDay = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+const isWeekend = (iso: string) => {
+  const w = new Date(`${iso}T00:00:00Z`).getUTCDay();
+  return w === 0 || w === 6;
+};
+
+/** One jurisdiction's statutory holidays in a year, in date order, with their weekend observance. */
 export function statHolidays(j: Jurisdiction, year: number): StatHoliday[] {
-  return JURISDICTION_HOLIDAYS[j]
+  const list = JURISDICTION_HOLIDAYS[j]
     .map((key) => {
       const r = RULES[key];
       const local = LOCAL_NAMES[j]?.[key];
-      return { date: r.rule(year), key, name: local?.name ?? r.name, nameFr: local?.nameFr ?? r.nameFr };
+      const date = r.rule(year);
+      return { date, key, name: local?.name ?? r.name, nameFr: local?.nameFr ?? r.nameFr, ...calendarMove(j, key, date), weekdayOn: null as string | null };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
+  // The next weekday for each weekend holiday, skipping days already taken by another holiday
+  // (Christmas on a Saturday → Monday, Boxing Day on the Sunday → Tuesday).
+  const taken = new Set(list.map((h) => (h.kind === 'MOVED' ? h.observedOn! : h.date)).filter((d) => !isWeekend(d)));
+  for (const h of list) {
+    const day = h.kind === 'MOVED' ? h.observedOn! : h.date;
+    if (!isWeekend(day)) continue;
+    let w = nextDay(day);
+    while (isWeekend(w) || taken.has(w)) w = nextDay(w);
+    h.weekdayOn = w;
+    taken.add(w);
+  }
+  return list;
 }
 
+type HolidayRow = { name: string; nameFr: string; key: string; kind: HolidayKind; observedOn: Date | null; weekdayOn: Date | null };
 type HolidayStore = {
   statutoryHoliday: {
-    upsert(args: { where: { province_date: { province: Province; date: Date } }; update: { name: string; nameFr: string }; create: { province: Province; date: Date; name: string; nameFr: string } }): Promise<unknown>;
+    upsert(args: { where: { province_date: { province: Province; date: Date } }; update: HolidayRow; create: HolidayRow & { province: Province; date: Date } }): Promise<unknown>;
   };
 };
 
-/** Fills the holiday table for every province and territory for the given years. Safe to re-run. */
+const asDate = (d: string | null) => (d ? new Date(`${d}T00:00:00Z`) : null);
+
+/** Fills the holiday table for every province and territory for the given years, observed dates included. Safe to re-run. */
 export async function seedStatHolidays(db: HolidayStore, years: number[]): Promise<number> {
   let n = 0;
   for (const year of years) {
     for (const province of PROVINCES) {
       for (const h of statHolidays(province, year)) {
-        const date = new Date(`${h.date}T00:00:00Z`);
-        await db.statutoryHoliday.upsert({ where: { province_date: { province, date } }, update: { name: h.name, nameFr: h.nameFr }, create: { province, date, name: h.name, nameFr: h.nameFr } });
+        const date = asDate(h.date)!;
+        const row: HolidayRow = { name: h.name, nameFr: h.nameFr, key: h.key, kind: h.kind, observedOn: asDate(h.observedOn), weekdayOn: asDate(h.weekdayOn) };
+        await db.statutoryHoliday.upsert({ where: { province_date: { province, date } }, update: row, create: { province, date, ...row } });
         n++;
       }
     }
   }
   return n;
+}
+
+/** The years the seed keeps filled: from 2026 to three years ahead (so a Sunday Canada Day in 2029 is there). */
+export function seedYears(now = new Date()): number[] {
+  const last = Math.max(2027, now.getUTCFullYear() + 3);
+  return Array.from({ length: last - 2026 + 1 }, (_, i) => 2026 + i);
 }

@@ -222,6 +222,34 @@ enum VacationPayMode {
   ACCRUE
 }
 
+/// Which day an organization closes for a statutory holiday that falls on a weekend.
+/// STATUTORY: the day the law fixes (the holiday itself, or the law's own substitute such as
+/// July 2 when Canada Day is a Sunday). NEXT_WEEKDAY: the next weekday that isn't already a
+/// holiday, as most municipal collective agreements do (Christmas on a Saturday → Monday).
+enum HolidayObservance {
+  STATUTORY
+  NEXT_WEEKDAY
+}
+
+/// What a person gets when a statutory holiday falls on their own day off (services/payroll/holidayRules.ts).
+enum HolidayOffDayRule {
+  /// Another day off with holiday pay.
+  SUBSTITUTE
+  /// Holiday pay for the day, no extra day off.
+  PAY
+}
+
+/// How a holiday's date moves when it falls on a weekend, by law.
+enum HolidayKind {
+  /// Kept on its date.
+  ACTUAL
+  /// The law moves it for everyone to `observedOn` (Canada Day on a Sunday → July 2).
+  MOVED
+  /// The law moves it to `observedOn` only for people who don't usually work that day
+  /// (Quebec: the Fête nationale on a Sunday → June 25 for those who don't work Sundays).
+  MOVED_IF_OFF
+}
+
 // ------------------------------------------------------------------
 // TENANCY
 // ------------------------------------------------------------------
@@ -251,6 +279,10 @@ model Tenant {
   /// Years to keep payroll records after the end of the tax year they relate to.
   /// CRA requires 6; default adds a year of margin.
   payrollRetentionYears Int             @default(7)
+  /// Statutory holidays on a weekend: close on the day the law fixes, or on the next weekday.
+  holidayObservance     HolidayObservance @default(STATUTORY)
+  /// A holiday on someone's day off: substitute day or pay. Null = each province's default.
+  holidayOffDayRule     HolidayOffDayRule?
   /// Direct deposit and remittance details: { businessNumber, originatorId, originatorShortName,
   /// originatorLongName, destinationDataCentre, returnsInstitution, returnsTransit, returnsAccount (sealed),
   /// employerAddress, twoPersonApproval, requirePasskey }.
@@ -1022,11 +1054,20 @@ model SchoolCalendarPeriod {
 }
 
 model StatutoryHoliday {
-  id       String   @id @default(uuid()) @db.Uuid
-  province Province
-  date     DateTime @db.Date
-  name     String
-  nameFr   String?
+  id         String      @id @default(uuid()) @db.Uuid
+  province   Province
+  /// The holiday's own date.
+  date       DateTime    @db.Date
+  name       String
+  nameFr     String?
+  /// Which holiday (NEW_YEAR, CANADA_DAY, ...): the weekend rules differ per holiday.
+  key        String?
+  /// Whether the law moves it when it falls on a weekend; `observedOn` is then the day it moves to.
+  kind       HolidayKind @default(ACTUAL)
+  observedOn DateTime?   @db.Date
+  /// The next weekday that isn't already a holiday, for organizations that observe weekend
+  /// holidays on a weekday (collective agreements). Null when the holiday is on a weekday.
+  weekdayOn  DateTime?   @db.Date
 
   @@unique([province, date])
 }
