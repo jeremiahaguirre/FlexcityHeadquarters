@@ -268,11 +268,42 @@ async function prepareNewFeatures() {
   }
 }
 
+/** Weekly shift templates (a summer week, applied to the week after next) and a guard's shift preferences. */
+async function prepareTemplates() {
+  const sup = await apiAs('supervisor');
+  const guard = await apiAs('guard');
+  const view = await sup.call('GET', '/api/schedule/templates');
+  if (view?.templates && !view.templates.length) {
+    const [facility] = await sup.call('GET', '/api/facilities');
+    const positions = await sup.call('GET', '/api/positions');
+    const guardPos = positions.find((p) => p.name === 'Lifeguard');
+    const instructor = positions.find((p) => /instructor/i.test(p.name));
+    if (facility && guardPos) {
+      const slots = [
+        { daysOfWeek: [1, 2, 3, 4, 5], startMinute: 6 * 60, endMinute: 14 * 60, facilityId: facility.id, positionId: guardPos.id, headcount: 2, unpaidBreakMinutes: 30 },
+        { daysOfWeek: [1, 2, 3, 4, 5], startMinute: 14 * 60, endMinute: 21 * 60 + 30, facilityId: facility.id, positionId: guardPos.id, headcount: 2, unpaidBreakMinutes: 30 },
+        { daysOfWeek: [6, 0], startMinute: 8 * 60, endMinute: 16 * 60, facilityId: facility.id, positionId: guardPos.id, headcount: 3, unpaidBreakMinutes: 30 },
+        ...(instructor ? [{ daysOfWeek: [2, 4], startMinute: 16 * 60, endMinute: 19 * 60, facilityId: facility.id, positionId: instructor.id, headcount: 1, unpaidBreakMinutes: null }] : []),
+      ];
+      const y = new Date().getFullYear();
+      await sup.call('POST', '/api/schedule/templates', { name: 'Summer', validFrom: `${y + 1}-06-29`, validTo: `${y + 1}-09-07`, slots });
+      await sup.call('POST', '/api/schedule/templates', { name: 'School year', slots: slots.map((s) => (s.startMinute === 6 * 60 ? { ...s, headcount: 1 } : s)) });
+      const school = (await sup.call('GET', '/api/schedule/templates')).templates.find((x) => x.name === 'School year');
+      if (school) await sup.call('POST', `/api/schedule/templates/${school.id}/apply`, { from: nextDow(1, 14), to: iso(new Date(Date.parse(`${nextDow(1, 14)}T12:00:00Z`) + 7 * 86_400_000)) });
+    }
+  }
+  const prefs = await guard.call('GET', '/api/me/preferences');
+  if (prefs?.preferences && !prefs.preferences.length) {
+    await guard.call('PUT', '/api/me/preferences', { preferences: [{ kind: 'PREFER', daysOfWeek: [1, 2, 3, 4, 5], startMinute: 6 * 60, endMinute: 10 * 60, note: 'Mornings work with my classes' }, { kind: 'AVOID', daysOfWeek: [0], note: 'Family day' }], maxWeeklyHours: 28, maxDaysPerWeek: 5 });
+  }
+}
+
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
   for (const who of Object.values(ROLES)) await apiAs(who);
   await prepareCityWorks();
   await prepareNewFeatures();
+  await prepareTemplates();
   // The demo city's (placeholder) logo, uploaded through the Dev console API.
   const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });
   const cookie = String(login.headers.get('set-cookie')).split(';')[0];

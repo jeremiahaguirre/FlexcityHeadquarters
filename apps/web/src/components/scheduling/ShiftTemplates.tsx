@@ -60,7 +60,7 @@ function SlotEditor({ slot, index, positions, facilities, onChange, onRemove, ca
     <fieldset className="grid gap-3 rounded-2xl border border-line p-3">
       <legend className="px-1 text-small font-semibold">{t('shiftTemplates.line', { n: index + 1 })}</legend>
       <DayToggles value={slot.daysOfWeek} onChange={(daysOfWeek) => onChange({ ...slot, daysOfWeek })} label={t('shiftTemplates.days')} />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2">
         <Field label={t('shiftTemplates.start')}>{(p) => <Input {...p} type="time" value={toHHMM(slot.startMinute)} onChange={(e) => { const m = fromHHMM(e.target.value); if (m !== null) onChange({ ...slot, startMinute: m, endMinute: endAfter(m, slot.endMinute % 1440) }); }} />}</Field>
         <Field label={t('shiftTemplates.end')}>{(p) => <Input {...p} type="time" value={toHHMM(slot.endMinute)} onChange={(e) => { const m = fromHHMM(e.target.value); if (m !== null) onChange({ ...slot, endMinute: endAfter(slot.startMinute, m) }); }} />}</Field>
         <Field label={t('shiftTemplates.headcount')}>{(p) => <Input {...p} type="number" inputMode="numeric" min={1} max={50} value={slot.headcount} onChange={(e) => onChange({ ...slot, headcount: Math.max(1, Math.min(50, Number(e.target.value) || 1)) })} />}</Field>
