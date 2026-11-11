@@ -14,9 +14,9 @@ import { ApiError, api } from '@/lib/api';
 import { ageRange, hhmm, money } from '@/lib/programs';
 import { dateFormat, setTimeFormat } from '@/lib/format';
 
-interface PublicSet { id: string; name: string; facility: string; daysOfWeek: number[]; startMinute: number; endMinute: number; startsOn: string; endsOn: string; sessions: number; minAgeMonths: number | null; maxAgeMonths: number | null; priceCents: number | null; spotsLeft: number }
+interface PublicSet { id: string; name: string; facility: string; daysOfWeek: number[]; startMinute: number; endMinute: number; startsOn: string; endsOn: string; sessions: number; minAgeMonths: number | null; maxAgeMonths: number | null; priceCents: number | null; spotsLeft: number; majorityAge?: number }
 interface Program { id: string; name: string; nameFr: string | null; kind: string; open: boolean; opensAt: string | null; sets: PublicSet[] }
-interface Service { id: string; name: string; nameFr: string | null; description: string | null; descriptionFr: string | null; facility: string; durationMinutes: number; priceCents: number; maxPartySize: number | null; daysOfWeek: number[]; leadDays: number }
+interface Service { id: string; name: string; nameFr: string | null; description: string | null; descriptionFr: string | null; facility: string; durationMinutes: number; priceCents: number; maxPartySize: number | null; daysOfWeek: number[]; leadDays: number; majorityAge?: number }
 interface Portal { enabled: boolean; organization?: string; timeFormat?: string; terms?: string; termsFr?: string; payment?: string; paymentFr?: string; privacyContact?: string; programs?: Program[]; services?: Service[] }
 
 /** Public: sign up for programs or request a facility booking. No account needed. */
@@ -120,6 +120,25 @@ export default function SignupPage() {
   );
 }
 
+/**
+ * The age gate: the person filling the form confirms they're of the age of majority where the
+ * program or facility is (19 in BC, NB, NL, NS, NT, NU, YT; 18 elsewhere), and, for a child,
+ * that they're the parent or guardian and consent to the child's information being collected.
+ * The API refuses the form without these.
+ */
+function AgeGate({ majority, child, booking }: { majority: number; child?: boolean; booking?: boolean }) {
+  const { t } = useTranslation();
+  const box = 'mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]';
+  return (
+    <fieldset className="grid gap-3">
+      <legend className="mb-1 text-small font-semibold">{t('signup.ageTitle')}</legend>
+      <label className="flex items-start gap-2 text-small"><input type="checkbox" name="adult" required className={box} />{t(booking ? 'signup.adultConfirmBooking' : 'signup.adultConfirm', { age: majority })}</label>
+      {child ? <label className="flex items-start gap-2 text-small"><input type="checkbox" name="guardian" required className={box} />{t('signup.guardianConfirm')}</label> : null}
+      {child === false ? <p className="text-caption text-muted">{t('signup.minorHelp', { age: majority })}</p> : null}
+    </fieldset>
+  );
+}
+
 function Consents({ portal, photo }: { portal: Portal; photo?: boolean }) {
   const { t, i18n } = useTranslation();
   const terms = i18n.language === 'fr-CA' && portal.termsFr ? portal.termsFr : portal.terms;
@@ -176,7 +195,7 @@ function RegistrationForm({ set, portal, onBack, onDone }: { set: PublicSet & { 
       address: s('address'),
       emergency: { name: s('emName'), phone: s('emPhone') },
       participant: self ? { firstName: guardian.firstName, lastName: guardian.lastName, dateOfBirth: s('dob'), safetyNote: s('note'), self: true } : { firstName: s('pFirst'), lastName: s('pLast') || guardian.lastName, dateOfBirth: s('dob'), safetyNote: s('note') },
-      consents: { terms: f.get('terms') === 'on', privacy: f.get('privacy') === 'on', photo: f.get('photo') === 'on' },
+      consents: { terms: f.get('terms') === 'on', privacy: f.get('privacy') === 'on', photo: f.get('photo') === 'on', adult: f.get('adult') === 'on', guardian: !self && f.get('guardian') === 'on' },
       locale: i18n.language,
     });
   }
@@ -228,7 +247,7 @@ function RegistrationForm({ set, portal, onBack, onDone }: { set: PublicSet & { 
           </CardBody>
         </Card>
         <Card>
-          <CardBody><Consents portal={portal} photo /></CardBody>
+          <CardBody className="grid gap-5"><AgeGate majority={set.majorityAge ?? 19} child={!self} /><Consents portal={portal} photo /></CardBody>
         </Card>
         <div aria-live="polite">{error ? <p className="rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">{error}</p> : null}</div>
         <Button type="submit" size="lg" loading={busy} className="justify-self-start">{set.spotsLeft ? t('signup.submit') : t('signup.joinWaitlist')}</Button>
@@ -258,7 +277,7 @@ function BookingForm({ service, portal, onBack, onDone }: { service: Service; po
       serviceId: service.id, date: day, startMinute: slot, website: s('website'),
       partySize: s('party') ? Number(s('party')) : undefined,
       contact: { name: s('name'), email: s('email'), phone: s('phone') }, organization: s('org'), notes: s('notes'),
-      consents: { terms: f.get('terms') === 'on', privacy: f.get('privacy') === 'on' }, locale: lng,
+      consents: { terms: f.get('terms') === 'on', privacy: f.get('privacy') === 'on', adult: f.get('adult') === 'on' }, locale: lng,
     });
   }
   const name = lng === 'fr-CA' && service.nameFr ? service.nameFr : service.name;
@@ -299,7 +318,7 @@ function BookingForm({ service, portal, onBack, onDone }: { service: Service; po
             <Field label={t('signup.notes')} hint={t('signup.notesHint')}>{(p) => <Textarea {...p} name="notes" maxLength={1000} rows={3} />}</Field>
           </CardBody>
         </Card>
-        <Card><CardBody><Consents portal={portal} /></CardBody></Card>
+        <Card><CardBody className="grid gap-5"><AgeGate majority={service.majorityAge ?? 19} booking /><Consents portal={portal} /></CardBody></Card>
         <div aria-live="polite">{error ? <p className="rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">{error}</p> : null}</div>
         <Button type="submit" size="lg" loading={busy} disabled={slot === null} className="justify-self-start">{t('signup.sendRequest')}</Button>
       </form>

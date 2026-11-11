@@ -40,7 +40,7 @@ export function JobDetail({ job: j }: { job: Job | null }) {
         </ul>
       </header>
       <p className="max-w-prose whitespace-pre-wrap text-body">{jobDescription(j, lng)}</p>
-      {j.applyInApp ? <ApplyForm jobId={j.id} /> : j.applyUrl ? <ButtonLink href={j.applyUrl} className="justify-self-start" target="_blank" rel="noopener noreferrer">{t('jobs.apply')}</ButtonLink> : null}
+      {j.applyInApp ? <ApplyForm jobId={j.id} workAge={j.workAge} /> : j.applyUrl ? <ButtonLink href={j.applyUrl} className="justify-self-start" target="_blank" rel="noopener noreferrer">{t('jobs.apply')}</ButtonLink> : null}
     </article>
   );
 }

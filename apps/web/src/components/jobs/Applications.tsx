@@ -13,6 +13,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { EMPLOYMENT } from '@/lib/staff';
+import type { WorkAge } from '@/lib/jobs';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 const STATUSES = ['NEW', 'REVIEWING', 'INTERVIEW', 'OFFERED', 'DECLINED', 'WITHDRAWN'] as const;
@@ -21,8 +22,11 @@ const TONE: Record<Status, Tone> = { NEW: 'new', REVIEWING: 'brand', INTERVIEW: 
 interface App { id: string; name: string; email: string; phone: string | null; message: string | null; certifications: string | null; status: Status; notes: string | null; resume: { name: string; size: number } | null; createdAt: string }
 
 /** Public job page: apply in the app. */
-export function ApplyForm({ jobId }: { jobId: string }) {
+export function ApplyForm({ jobId, workAge }: { jobId: string; workAge?: WorkAge }) {
   const { t } = useTranslation();
+  // Working age without a birth date: "16 or older", or "14 or 15" with a parent's or guardian's consent.
+  const ages = workAge ?? { province: null, adultAge: 16, minAge: 14, link: null };
+  const [age, setAge] = useState<'ADULT' | 'YOUNG' | null>(null);
   const started = useRef(Date.now());
   const [resume, setResume] = useState<{ fileName: string; data: string } | null>(null);
   const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
@@ -39,7 +43,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     const s = (k: string) => String(f.get(k) ?? '').trim() || null;
     setState('sending');
     setError(null);
-    const r = await fetch(`/api/public/jobs/${jobId}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: s('firstName'), lastName: s('lastName'), email: s('email'), phone: s('phone'), certifications: s('certs'), message: s('message'), resume, consent: f.get('consent') === 'on', website: s('website') ?? '', startedAt: started.current }) });
+    const r = await fetch(`/api/public/jobs/${jobId}/apply`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: s('firstName'), lastName: s('lastName'), email: s('email'), phone: s('phone'), certifications: s('certs'), message: s('message'), resume, consent: f.get('consent') === 'on', age, guardianConsent: age === 'YOUNG' && f.get('guardianConsent') === 'on', guardianName: age === 'YOUNG' ? (s('guardianName') ?? '') : '', website: s('website') ?? '', startedAt: started.current }) });
     if (r.ok) return setState('sent');
     const body = (await r.json().catch(() => ({}))) as { code?: string; message?: string };
     setError(t(`jobs.applyErrors.${body.code ?? 'ERROR'}`, { defaultValue: body.message ?? t('jobs.applyErrors.ERROR') }));
@@ -58,6 +62,20 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       <Field label={t('jobs.certs')} hint={t('jobs.certsHint')}>{(p) => <Input {...p} name="certs" maxLength={1000} />}</Field>
       <Field label={t('jobs.message')}>{(p) => <Textarea {...p} name="message" maxLength={4000} rows={4} />}</Field>
       <Field label={t('jobs.resume')} hint={t('jobs.resumeHint')}>{(p) => <FileInput {...p} accept="application/pdf" onFile={pick} />}</Field>
+      <fieldset className="grid gap-2">
+        <legend className="mb-1 text-small font-semibold text-ink">{t('jobs.ageLegend')}</legend>
+        <label className="flex min-h-11 items-center gap-2 text-small text-ink"><input type="radio" name="age" value="ADULT" required checked={age === 'ADULT'} onChange={() => setAge('ADULT')} className="h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" />{t('jobs.ageAdult', { age: ages.adultAge })}</label>
+        <label className="flex min-h-11 items-center gap-2 text-small text-ink"><input type="radio" name="age" value="YOUNG" required checked={age === 'YOUNG'} onChange={() => setAge('YOUNG')} className="h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" />{t('jobs.ageYoung', { min: ages.minAge, max: ages.adultAge - 1 })}</label>
+        {age === 'YOUNG' ? (
+          <div className="grid gap-3 rounded-xl border border-line bg-surface p-3">
+            <p className="text-caption text-muted">{t('jobs.ageYoungHelp', { age: ages.adultAge })}</p>
+            {ages.link ? <a href={ages.link} target="_blank" rel="noopener noreferrer" className="text-caption font-semibold text-brand-text hover:underline">{t('jobs.ageRules', { province: ages.province })}</a> : null}
+            <Field label={t('jobs.guardianName')}>{(p) => <Input {...p} name="guardianName" required minLength={2} maxLength={120} autoComplete="off" />}</Field>
+            <label className="flex items-start gap-2 text-small text-ink"><input type="checkbox" name="guardianConsent" required className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" /><span>{t('jobs.guardianConsent')}</span></label>
+          </div>
+        ) : null}
+        <p className="text-caption text-muted">{t('jobs.ageUnder', { age: ages.minAge })}</p>
+      </fieldset>
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       <label className="flex items-start gap-2 text-small text-ink"><input type="checkbox" name="consent" required className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" /><span>{t('jobs.consent')}</span></label>
       {error ? <p role="alert" className="text-small text-danger">{error}</p> : null}

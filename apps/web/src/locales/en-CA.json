@@ -500,7 +500,9 @@
     "TOO_MANY_KEYS": "Your organization has the most keys it can have. Revoke one you no longer use.",
     "TOO_MANY_ENDPOINTS": "Your organization has the most webhooks it can have.",
     "HOST_NOT_PUBLIC": "That address must be on the public internet.",
-    "PUBLISH_WARNINGS": "Publishing would leave coverage gaps or shifts someone can’t work. Review them and confirm to publish anyway."
+    "PUBLISH_WARNINGS": "Publishing would leave coverage gaps or shifts someone can’t work. Review them and confirm to publish anyway.",
+    "MINOR_SELF": "Participants under the age of majority are registered by a parent or guardian.",
+    "GUARDIAN_CONSENT": "Confirm you are the participant’s parent or guardian and consent to their information being collected."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1800,9 +1802,18 @@
       "UNSUPPORTED_TYPE": "Attach your résumé as a PDF.",
       "TOO_LARGE": "Résumés can be up to 5 MB.",
       "TOO_MANY_ATTEMPTS": "Too many applications from here. Try again later.",
-      "ERROR": "Your application couldn’t be sent. Please try again."
+      "ERROR": "Your application couldn’t be sent. Please try again.",
+      "GUARDIAN_CONSENT": "Applicants under 16 need a parent’s or guardian’s consent: give their name and tick the box."
     },
-    "notesSaveHint": "Saved when you leave the box."
+    "notesSaveHint": "Saved when you leave the box.",
+    "ageLegend": "Your age",
+    "ageAdult": "I am {{age}} or older",
+    "ageYoung": "I am {{min}} or {{max}}",
+    "ageYoungHelp": "Applicants under {{age}} need a parent’s or guardian’s consent, and some jobs have a higher minimum age. Rules on hours and the kind of work young people can do depend on the province.",
+    "ageRules": "Young workers in {{province}}: provincial rules",
+    "ageUnder": "Under {{age}}? Applications aren’t taken online. In most provinces, work at that age needs a permit or isn’t allowed: contact the employer.",
+    "guardianName": "Parent or guardian’s full name",
+    "guardianConsent": "My parent or guardian has read this posting and consents to my applying, and to my information being used to consider my application."
   },
   "union": {
     "title": "Union hub",
@@ -3988,7 +3999,12 @@
     "waitlistNext": "We’ll contact you if a spot opens. Nothing is owed until then.",
     "bookingNext": "This is a request, not a confirmation. Staff will confirm by email.",
     "emailed": "We’ve emailed you the details.",
-    "another": "Sign up for something else"
+    "another": "Sign up for something else",
+    "ageTitle": "Who is filling in this form",
+    "adultConfirm": "I am {{age}} or older (the age of majority where this program runs).",
+    "adultConfirmBooking": "I am {{age}} or older (the age of majority where this facility is).",
+    "guardianConfirm": "I am this participant’s parent or legal guardian, and I consent to the information I give about them being collected and used for this registration.",
+    "minorHelp": "Under {{age}}? A parent or guardian needs to register you."
   },
   "coverage": {
     "title": "Required coverage",

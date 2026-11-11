@@ -500,7 +500,9 @@
     "TOO_MANY_KEYS": "Votre organisation a atteint le nombre maximal de clés. Révoquez-en une que vous n’utilisez plus.",
     "TOO_MANY_ENDPOINTS": "Votre organisation a atteint le nombre maximal de webhooks.",
     "HOST_NOT_PUBLIC": "Cette adresse doit être sur Internet public.",
-    "PUBLISH_WARNINGS": "La publication laisserait des trous de couverture ou des quarts qu’une personne ne peut pas faire. Vérifiez-les et confirmez pour publier quand même."
+    "PUBLISH_WARNINGS": "La publication laisserait des trous de couverture ou des quarts qu’une personne ne peut pas faire. Vérifiez-les et confirmez pour publier quand même.",
+    "MINOR_SELF": "Les participants qui n’ont pas atteint l’âge de la majorité sont inscrits par un parent ou un tuteur.",
+    "GUARDIAN_CONSENT": "Confirmez que vous êtes le parent ou le tuteur du participant et que vous consentez à la collecte de ses renseignements."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1800,9 +1802,18 @@
       "UNSUPPORTED_TYPE": "Joignez votre CV en PDF.",
       "TOO_LARGE": "Le CV peut faire jusqu’à 5 Mo.",
       "TOO_MANY_ATTEMPTS": "Trop de candidatures d’ici. Réessayez plus tard.",
-      "ERROR": "Votre candidature n’a pas pu être envoyée. Réessayez."
+      "ERROR": "Votre candidature n’a pas pu être envoyée. Réessayez.",
+      "GUARDIAN_CONSENT": "Les candidats de moins de 16 ans ont besoin du consentement d’un parent ou d’un tuteur : indiquez son nom et cochez la case."
     },
-    "notesSaveHint": "Enregistrées quand vous quittez la zone."
+    "notesSaveHint": "Enregistrées quand vous quittez la zone.",
+    "ageLegend": "Votre âge",
+    "ageAdult": "J’ai {{age}} ans ou plus",
+    "ageYoung": "J’ai {{min}} ou {{max}} ans",
+    "ageYoungHelp": "Les candidats de moins de {{age}} ans ont besoin du consentement d’un parent ou d’un tuteur, et certains emplois exigent un âge minimum plus élevé. Les règles sur les heures et le genre de travail permis aux jeunes varient selon la province.",
+    "ageRules": "Jeunes travailleurs en {{province}} : règles provinciales",
+    "ageUnder": "Vous avez moins de {{age}} ans? Les candidatures ne sont pas reçues en ligne. Dans la plupart des provinces, travailler à cet âge exige un permis ou n’est pas permis : communiquez avec l’employeur.",
+    "guardianName": "Nom complet du parent ou du tuteur",
+    "guardianConsent": "Mon parent ou tuteur a lu cette offre et consent à ce que je pose ma candidature et à ce que mes renseignements servent à l’étudier."
   },
   "union": {
     "title": "Espace syndical",
@@ -3988,7 +3999,12 @@
     "waitlistNext": "Nous vous contacterons si une place se libère. Rien n’est dû d’ici là.",
     "bookingNext": "Il s’agit d’une demande, pas d’une confirmation. Le personnel confirmera par courriel.",
     "emailed": "Nous vous avons envoyé les détails par courriel.",
-    "another": "S’inscrire à autre chose"
+    "another": "S’inscrire à autre chose",
+    "ageTitle": "Qui remplit ce formulaire",
+    "adultConfirm": "J’ai {{age}} ans ou plus (l’âge de la majorité là où se tient le programme).",
+    "adultConfirmBooking": "J’ai {{age}} ans ou plus (l’âge de la majorité là où se trouve l’installation).",
+    "guardianConfirm": "Je suis le parent ou le tuteur légal de ce participant, et je consens à ce que les renseignements que je donne à son sujet soient recueillis et utilisés pour cette inscription.",
+    "minorHelp": "Vous avez moins de {{age}} ans? Un parent ou un tuteur doit vous inscrire."
   },
   "coverage": {
     "title": "Couverture requise",
