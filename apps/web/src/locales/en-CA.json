@@ -7469,7 +7469,8 @@
       "waive": "Waive premium",
       "waiveReason": "Waived by an administrator",
       "waived": "Waived",
-      "waivedToast": "Premium waived."
+      "waivedToast": "Premium waived.",
+      "superseded": "Replaced by a later change"
     },
     "department": {
       "choose": "Department",

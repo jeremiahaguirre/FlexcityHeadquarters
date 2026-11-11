@@ -14,11 +14,16 @@ import { localDate } from '../../lib/time.js';
 import type { NotificationDraft } from '../notifications/notifier.js';
 import { type ChangeKind, type NoticeResult, changeNotice, effectiveWorkRules, parseWorkRules } from './workRules.js';
 
+/** The waive reason on a premium replaced by a later change to the same shift. */
+export const SUPERSEDED = 'Superseded by a later change to the same shift';
+
 type ShiftState = Pick<Shift, 'id' | 'userId' | 'startsAt' | 'endsAt' | 'status' | 'positionId' | 'facilityId'>;
 
 export interface ChangeEffect extends NoticeResult {
   userId: string;
   kind: ChangeKind;
+  /** Earlier late-change premiums on this shift for this person that this change replaces. */
+  supersedes: string[];
 }
 
 /** The people a change affects and the notice each gets (nothing for drafts). */
@@ -33,12 +38,28 @@ export async function changeEffects(tx: Tx, before: ShiftState, after: Pick<Shif
   // Changes in the past (a correction after the fact) aren't notice questions.
   if (Math.max(before.endsAt.getTime(), after.endsAt.getTime()) <= now.getTime()) return out;
   if (before.userId && (cancelled || after.userId !== before.userId)) {
-    out.push({ userId: before.userId, kind: 'REMOVED', ...changeNotice({ kind: 'REMOVED', old, next: null, now }, notice) });
+    out.push({ userId: before.userId, kind: 'REMOVED', supersedes: [], ...changeNotice({ kind: 'REMOVED', old, next: null, now }, notice) });
   } else if (before.userId && (old.start.getTime() !== next.start.getTime() || old.end.getTime() !== next.end.getTime())) {
-    out.push({ userId: before.userId, kind: 'TIME', ...changeNotice({ kind: 'TIME', old, next, now }, notice) });
+    out.push({ userId: before.userId, kind: 'TIME', supersedes: [], ...changeNotice({ kind: 'TIME', old, next, now }, notice) });
   }
   if (!cancelled && after.userId && after.userId !== before.userId) {
-    out.push({ userId: after.userId, kind: 'ADDED', ...changeNotice({ kind: 'ADDED', old: null, next, now }, notice) });
+    out.push({ userId: after.userId, kind: 'ADDED', supersedes: [], ...changeNotice({ kind: 'ADDED', old: null, next, now }, notice) });
+  }
+  // A shift changed again: the changed-hours premium is measured against the person's times
+  // before the first late change still standing (09:00–17:00 → 09:00–19:00 → 09:00–17:00 earns
+  // nothing in all; → 09:00–20:00 earns 3 h in all, not 2 + 1 + …), and replaces the earlier ones.
+  // Removing the person drops those premiums (they won't work the hours). Flat premiums are per change.
+  for (const e of out) {
+    if (!e.late || e.flatAmount) continue;
+    const chain = await tx.shiftChange.findMany({ where: { shiftId: before.id, userId: e.userId, late: true, waivedAt: null, premiumHours: { not: null } }, orderBy: { createdAt: 'asc' } });
+    if (!chain.length) continue;
+    e.supersedes = chain.map((c) => c.id);
+    if (e.kind === 'REMOVED') continue;
+    const first = chain[0]!;
+    const baseline = first.kind === 'ADDED' || !first.oldStartsAt || !first.oldEndsAt ? null : { start: first.oldStartsAt, end: first.oldEndsAt };
+    const r = changeNotice({ kind: baseline ? 'TIME' : 'ADDED', old: baseline, next, now }, notice);
+    e.premiumHours = r.premiumHours;
+    e.multiplier = r.multiplier;
   }
   return out;
 }
@@ -53,6 +74,10 @@ export async function recordShiftChange(tx: Tx, actor: { tenantId: string; userI
   const tz = (await tx.facility.findUnique({ where: { id: before.facilityId }, select: { timezone: true } }))?.timezone ?? 'America/Toronto';
   const drafts: NotificationDraft[] = [];
   for (const e of effects) {
+    if (e.supersedes.length) {
+      await tx.shiftChange.updateMany({ where: { id: { in: e.supersedes }, waivedAt: null }, data: { waivedAt: now, waivedById: actor.userId, waiveReason: SUPERSEDED } });
+      await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: 'shift.late_change.superseded', entity: 'Shift', entityId: before.id, after: { userId: e.userId, superseded: e.supersedes } });
+    }
     const payAt = e.kind === 'REMOVED' ? before.startsAt : after.startsAt;
     const row = await tx.shiftChange.create({
       data: {

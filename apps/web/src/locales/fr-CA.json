@@ -7469,7 +7469,8 @@
       "waive": "Annuler la prime",
       "waiveReason": "Annulée par un administrateur",
       "waived": "Annulée",
-      "waivedToast": "Prime annulée."
+      "waivedToast": "Prime annulée.",
+      "superseded": "Remplacée par un changement ultérieur"
     },
     "department": {
       "choose": "Service",

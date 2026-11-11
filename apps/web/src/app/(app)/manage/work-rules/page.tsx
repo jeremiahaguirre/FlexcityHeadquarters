@@ -407,7 +407,7 @@ function LateChangesCard({ canWaive }: { canWaive: boolean }) {
                   <p className="text-caption text-muted">{t('workRules.changes.notice', { hours: c.noticeHours, required: c.requiredHours ?? 0 })}{c.premiumHours ? ` · ${t('workRules.changes.premiumHours', { hours: c.premiumHours, m: c.multiplier })}` : ''}{c.flatAmount ? ` · ${t('workRules.changes.flat', { amount: c.flatAmount })}` : ''}</p>
                 </div>
                 {c.waived ? (
-                  <StatusPill tone="neutral">{t('workRules.changes.waived')}</StatusPill>
+                  <StatusPill tone="neutral">{t(c.superseded ? 'workRules.changes.superseded' : 'workRules.changes.waived')}</StatusPill>
                 ) : canWaive && (c.premiumHours || c.flatAmount) ? (
                   <Button size="sm" variant="ghost" loading={busy === c.id} onClick={() => void run(c.id, () => api(`/api/schedule/changes/${c.id}/waive`, { method: 'POST', body: { reason: t('workRules.changes.waiveReason') } }), t('workRules.changes.waivedToast')).then(() => q.reload())}>{t('workRules.changes.waive')}</Button>
                 ) : (

@@ -196,6 +196,59 @@ describe('schedule change notice', () => {
   });
 });
 
+describe('a shift changed twice (no double premium)', () => {
+  const day = DateTime.now().setZone(VAN).plus({ days: 2 }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 });
+  let sid = '';
+  const patch = async (start: DateTime, end: DateTime) => {
+    const s = await owner.shift.findUniqueOrThrow({ where: { id: sid } });
+    expect((await call(tok).patch(`/api/shifts/${sid}`, { startsAt: start.toJSDate(), endsAt: end.toJSDate(), expectedVersion: s.version })).status).toBe(200);
+  };
+  const active = async () => (await owner.shiftChange.findMany({ where: { shiftId: sid, waivedAt: null, late: true } })).reduce((a, c) => a + Number(c.premiumHours ?? 0), 0);
+  beforeAll(async () => {
+    await call(tok).put('/api/schedule/work-rules', { notice: { lateChangeHours: 72, premiumKind: 'multiplier', multiplier: 1.5 } });
+    sid = (await shift({ userId: g()[2], start: day.toJSDate(), end: day.plus({ hours: 8 }).toJSDate(), unpaidBreakMinutes: 0 })).id;
+  });
+  afterAll(async () => {
+    await call(tok).put('/api/schedule/work-rules', { notice: { lateChangeHours: null } });
+  });
+  it('09–17 → 09–19 → 09–20: 3 changed hours in all (not 2 + 1 counted on top of each other twice); back to 09–17: none', async () => {
+    await patch(day, day.plus({ hours: 10 }));
+    expect(await active()).toBe(2);
+    const pre = await call(tok).post(`/api/shifts/${sid}/change-preview`, { endsAt: day.plus({ hours: 11 }).toJSDate() });
+    expect(pre.body.effects[0]).toMatchObject({ premiumHours: 3 });
+    await patch(day, day.plus({ hours: 11 }));
+    expect(await active()).toBe(3);
+    await patch(day, day.plus({ hours: 8 }));
+    expect(await active()).toBe(0);
+    const list = await call(tok).get(`/api/schedule/changes?from=${new Date(Date.now() - 3_600_000).toISOString()}&to=${new Date(Date.now() + 3_600_000).toISOString()}`);
+    expect(list.body.filter((c: { shiftId: string; superseded: boolean }) => c.shiftId === sid && c.superseded)).toHaveLength(2);
+    expect(await owner.auditLog.count({ where: { action: 'shift.late_change.superseded', entityId: sid } })).toBe(2);
+  });
+  it('moved 09–17 → 13–21 → 15–23: 6 h outside the original times, paid once', async () => {
+    await patch(day.plus({ hours: 4 }), day.plus({ hours: 12 }));
+    expect(await active()).toBe(4);
+    await patch(day.plus({ hours: 6 }), day.plus({ hours: 14 }));
+    expect(await active()).toBe(6);
+  });
+  it('taken off the shift late: the earlier premiums go (they won’t work those hours)', async () => {
+    const s = await owner.shift.findUniqueOrThrow({ where: { id: sid } });
+    expect((await call(tok).post(`/api/shifts/${sid}/assign`, { userId: null, expectedVersion: s.version })).status).toBe(200);
+    expect(await active()).toBe(0);
+  });
+  it('a supervisor of another department can’t waive a premium on this one', async () => {
+    const other = (await owner.department.create({ data: { tenantId: t.tenant.id, name: 'Parks' } })).id;
+    const parksPos = (await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Parks worker', departmentId: other } })).id;
+    const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Parks payroll', permissions: ['schedule.read', 'schedule.write', 'users.read', 'payroll.export'], scopePositionIds: [parksPos] } });
+    const sup = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'Pat', lastName: 'Parks', email: `parks@${SUB}.test` } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: sup.id, customRoleId: role.id } });
+    const tokParks = await signAccessToken({ sub: sup.id, tid: t.tenant.id, roles: ['EMPLOYEE'], aat: now() });
+    const c = await owner.shiftChange.create({ data: { tenantId: t.tenant.id, shiftId: sid, userId: g()[2]!, positionId: t.position.id, kind: 'TIME', noticeHours: 1, late: true, premiumHours: 1, multiplier: 1.5, payOn: new Date('2030-01-01'), changedById: admin } });
+    expect((await call(tokParks).post(`/api/schedule/changes/${c.id}/waive`, { reason: 'Not mine' })).status).toBe(404);
+    expect((await owner.shiftChange.findUniqueOrThrow({ where: { id: c.id } })).waivedAt).toBeNull();
+    await owner.shiftChange.delete({ where: { id: c.id } });
+  });
+});
+
 describe('two-person minimum', () => {
   let alone = '';
   const day = DateTime.now().setZone(VAN).plus({ days: 5 }).set({ hour: 9, minute: 0, second: 0, millisecond: 0 });

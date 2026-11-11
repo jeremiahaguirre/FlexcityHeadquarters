@@ -16,7 +16,7 @@ import { forbidden, notFound } from '../lib/errors.js';
 import { localIso } from '../lib/time.js';
 import { mealBreakRule, reportingPayRule } from '../services/compliance/provincialRules.js';
 import { NO_DEPARTMENT, schedulableDepartments } from '../services/scheduling/fillRun.js';
-import { changeEffects, waiveShiftChange } from '../services/scheduling/changeNotice.js';
+import { SUPERSEDED, changeEffects, waiveShiftChange } from '../services/scheduling/changeNotice.js';
 import { departmentWorkRulesBody, effectiveWorkRules, parseWorkRules, workRulesBody } from '../services/scheduling/workRules.js';
 import { effectiveSettings, parseSolverSettings } from '../services/scheduling/solverSettings.js';
 import { resolveFeatures } from '../services/platform/features.js';
@@ -215,6 +215,8 @@ workRulesRouter.get(
               flatAmount: r.flatAmount ? Number(r.flatAmount) : null,
               payOn: r.payOn?.toISOString().slice(0, 10) ?? null,
               waived: !!r.waivedAt,
+              /** Replaced by a later change to the same shift (its premium is counted there). */
+              superseded: !!r.waivedAt && r.waiveReason === SUPERSEDED,
               waiveReason: r.waiveReason,
               createdAt: r.createdAt.toISOString(),
             };
@@ -230,6 +232,15 @@ workRulesRouter.post(
     const a = authOf(req);
     if (!a.permissions.has('tenant.configure') && !a.permissions.has('payroll.export')) throw forbidden();
     const { reason } = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
-    res.json(await withTenant(a.tenantId, (tx) => waiveShiftChange(tx, a, uuid.parse(req.params.id), reason).then((c) => ({ id: c.id, waived: !!c.waivedAt }))));
+    const id = uuid.parse(req.params.id);
+    res.json(
+      await withTenant(a.tenantId, async (tx) => {
+        // Only changes to shifts in the caller's own departments and facilities.
+        const c = await tx.shiftChange.findUnique({ where: { id }, select: { shiftId: true } });
+        if (!c || !(await tx.shift.findFirst({ where: { AND: [{ id: c.shiftId }, shiftsWhere(a.scope)] }, select: { id: true } }))) throw notFound('Change');
+        const out = await waiveShiftChange(tx, a, id, reason);
+        return { id: out.id, waived: !!out.waivedAt };
+      }),
+    );
   }),
 );

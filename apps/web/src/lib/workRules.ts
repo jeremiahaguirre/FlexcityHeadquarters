@@ -52,6 +52,8 @@ export interface LateChange {
   flatAmount: number | null;
   payOn: string | null;
   waived: boolean;
+  /** Replaced by a later change to the same shift. */
+  superseded?: boolean;
   createdAt: string;
 }
 export interface ChangeEffect { userId: string; kind: 'TIME' | 'ADDED' | 'REMOVED'; noticeHours: number; requiredHours: number | null; late: boolean; premiumHours: number; multiplier: number | null; flatAmount: number | null }
