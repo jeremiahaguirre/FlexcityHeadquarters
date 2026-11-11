@@ -36,7 +36,7 @@ export function ReadinessBars({ frameworks, onPick }: { frameworks: FrameworkRea
         const body = (
           <>
             <span className="flex items-baseline justify-between gap-3 text-small">
-              <span className={cn('min-w-0 truncate font-semibold', !f.inScope && 'text-muted')}>{name}{!f.inScope ? ` · ${t('trust.outOfScope')}` : ''}</span>
+              <span className={cn('min-w-0 font-semibold [overflow-wrap:anywhere]', !f.inScope && 'text-muted')}>{name}{!f.inScope ? ` · ${t('trust.outOfScope')}` : ''}</span>
               <span className="shrink-0 tabular-nums text-muted"><span className="font-semibold text-ink">{pct(f.readiness, i18n.language)}</span> · {t('trust.metOf', { met: f.met, total: f.total - f.notApplicable })}</span>
             </span>
             <span className="mt-1.5 block h-2.5 overflow-hidden rounded-full bg-surface" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={f.readiness} aria-label={t('trust.readinessOf', { name })}>
@@ -44,7 +44,7 @@ export function ReadinessBars({ frameworks, onPick }: { frameworks: FrameworkRea
             </span>
           </>
         );
-        return <li key={f.key}>{onPick ? <button type="button" onClick={() => onPick(f.key)} className="block w-full rounded-lg text-left">{body}</button> : body}</li>;
+        return <li key={f.key}>{onPick ? <button type="button" onClick={() => onPick(f.key)} className="block min-h-[44px] w-full rounded-lg text-left">{body}</button> : body}</li>;
       })}
     </ul>
   );
@@ -153,9 +153,10 @@ export function HeatMap({ risks, appetite, mode, onCell, selected }: { risks: Ov
             return (
               <button key={`${c.likelihood}-${c.impact}`} type="button" onClick={() => onCell?.(c)} aria-pressed={on}
                 aria-label={t('trust.heat.cell', { likelihood: c.likelihood, impact: c.impact, score: c.score, count: c.risks.length, level: t(`trust.level.${lvl}`) })}
-                className={cn('relative grid aspect-[4/3] min-h-[44px] place-items-center rounded-lg text-small font-bold tabular-nums motion-safe:transition-colors', levelStyle[lvl], c.risks.length ? '' : 'opacity-55', on && 'ring-2 ring-ink ring-offset-2 ring-offset-panel')}>
+                className={cn('relative grid aspect-[4/3] min-h-[44px] place-items-center rounded-lg text-small font-bold tabular-nums motion-safe:transition-colors', levelStyle[lvl], on && 'ring-2 ring-ink ring-offset-2 ring-offset-panel')}>
                 {c.risks.length || ''}
-                <span className="absolute bottom-0.5 right-1 text-[0.625rem] font-medium opacity-70" aria-hidden="true">{c.score}</span>
+                {/* Full-strength colour (no opacity): the small score keeps AA contrast on every level's background. */}
+                <span className="absolute bottom-0.5 right-1 text-[0.625rem] font-medium" aria-hidden="true">{c.score}</span>
               </button>
             );
           })}
@@ -220,7 +221,7 @@ export function Progress({ done, total, label }: { done: number; total: number; 
   const share = total ? Math.round((100 * done) / total) : 0;
   return (
     <div>
-      <div className="flex items-baseline justify-between text-small"><span>{label}</span><span className="tabular-nums"><span className="font-semibold">{done}</span> / {total} · {pct(share, i18n.language)}</span></div>
+      <div className="flex items-baseline justify-between gap-3 text-small"><span className="min-w-0">{label}</span><span className="shrink-0 whitespace-nowrap tabular-nums"><span className="font-semibold">{done}</span> / {total} · {pct(share, i18n.language)}</span></div>
       <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface" role="progressbar" aria-valuemin={0} aria-valuemax={total || 1} aria-valuenow={done} aria-label={label}>
         <div className="h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700" style={{ width: `${share}%`, background: share === 100 ? C.ok : C.brand }} />
       </div>

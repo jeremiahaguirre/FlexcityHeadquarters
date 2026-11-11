@@ -50,7 +50,8 @@ export default function PresentPage() {
             <Link href="/platform/trust" className="grid h-11 w-11 place-items-center rounded-full text-muted hover:bg-surface hover:text-ink" aria-label={t('trust.present.exit')}><X className="h-5 w-5" aria-hidden="true" /></Link>
           </div>
         </header>
-        <main className="mt-8 grid flex-1 content-center gap-10">
+        {/* Not a second <main>: the console layout already has one around this page. */}
+        <div className="mt-8 grid flex-1 content-center gap-10">
           <section className="text-center">
             <p className="text-label uppercase text-muted">{t('trust.present.eyebrow')}</p>
             <h1 className="mt-2 text-display [text-wrap:balance]">{t('trust.present.title')}</h1>
@@ -82,7 +83,7 @@ export default function PresentPage() {
               ) : null}
             </>
           ) : <p className="text-center text-muted">{t('common.loading')}</p>}
-        </main>
+        </div>
         {/* Only a configured address (SECURITY_EMAIL on the API): never a placeholder in front of a customer. */}
         {o?.securityContact ? <footer className="mt-10 text-center text-caption text-muted">{t('trust.present.footer', { email: o.securityContact })}</footer> : null}
       </div>
