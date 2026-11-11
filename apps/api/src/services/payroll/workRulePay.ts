@@ -61,12 +61,13 @@ export function workRuleIntervals(ps: ReadonlyArray<PunchLike>, ctx: { rules: Pr
   for (const p of ps) if (p.shiftId) perShift.set(p.shiftId, (perShift.get(p.shiftId) ?? 0) + 1);
   const intervals = ps.map((p) => {
     const iv = { start: p.clockIn, end: p.clockOut!, positionId: p.positionId, premiumPerHour: p.shift?.premiumPerHour ? dec(p.shift.premiumPerHour) : null, breakAt: null as { start: Date; end: Date } | null };
-    // The shift's planned break, where the single punch covers it (someone who left early, or
-    // came in for an hour, isn't docked a break they didn't reach).
+    // The shift's planned break, only where the single punch covers the whole break window
+    // (someone who left early, before or during the break, or came in for an hour, isn't docked
+    // a break they didn't complete).
     if (p.shift && perShift.get(p.shift.id) === 1) {
       const b = breakMinutesOf(p.shift, p.shift.position);
       const w = b ? breakWindow(p.shift.startsAt, p.shift.endsAt, b, breakAfterHoursFor(effFor(p.shift.positionId).breaks, ctx.rules)) : null;
-      if (w && w.start < iv.end && w.end > iv.start) iv.breakAt = w;
+      if (w && w.start >= iv.start && w.end <= iv.end) iv.breakAt = w;
     }
     return iv;
   });
