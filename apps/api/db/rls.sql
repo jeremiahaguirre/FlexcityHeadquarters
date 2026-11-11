@@ -17,8 +17,8 @@ REVOKE UPDATE ON "PolicyAck" FROM flexcity_app;
 REVOKE UPDATE ON "LogEntry" FROM flexcity_app;
 -- Shared rate limiter: insert needs its id sequence.
 GRANT USAGE, SELECT ON SEQUENCE "RateLimitHit_id_seq" TO flexcity_app;
--- Audit and access logs are append-only for the app.
-REVOKE UPDATE ON "AuditLog", "IncidentAccessLog", "TimePunchEdit" FROM flexcity_app;
+-- Audit and access logs are append-only for the app (each city's, and the Dev console's).
+REVOKE UPDATE ON "AuditLog", "IncidentAccessLog", "TimePunchEdit", "PlatformAudit" FROM flexcity_app;
 -- Migration bookkeeping is not the app's business.
 REVOKE ALL ON "_prisma_migrations" FROM flexcity_app;
 

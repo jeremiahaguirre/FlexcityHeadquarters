@@ -47,6 +47,7 @@ export const MONITOR_DETAILS = {
   lastOkAt: 'date',
   lastErrorAt: 'date',
   appendOnly: 'bool',
+  editableTables: 'list',
   newest: 'date',
   lastAt: 'date',
   // Accounts, keys, webhooks

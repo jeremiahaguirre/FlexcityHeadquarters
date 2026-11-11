@@ -42,6 +42,11 @@ export interface Monitor {
 }
 
 const r = (status: TestStatus, en: string, fr: string, details?: MonitorDetails): Result => ({ status, en, fr, details });
+/** Plural endings: English is singular for exactly 1, French for 0 and 1 ("0 compte", "2 comptes"). */
+export const sEn = (n: number) => (n === 1 ? '' : 's');
+export const sFr = (n: number) => (n > 1 ? 's' : '');
+/** "label : value" in French: a non-breaking space before the colon, as the web app writes it. */
+const frColon = (a: string, b: string) => `${a}\u00a0: ${b}`;
 const isProd = () => config().NODE_ENV === 'production';
 const ago = (now: Date, days: number) => new Date(now.getTime() - days * DAY);
 
@@ -121,7 +126,7 @@ export async function checkRls(prisma: PrismaClient, schema = 'public', lists = 
     }
   }
   const checked = rows.filter((x) => x.tenant).length;
-  if (problems.length) return r('FAIL', `${problems.length} table(s) not isolated: ${problems.slice(0, 5).join('; ')}`, `${problems.length} table(s) non isolée(s) : ${problems.slice(0, 5).join('; ')}`, { problems: problems.slice(0, 50), tablesChecked: checked, rlsSqlRead: !!lists });
+  if (problems.length) return r('FAIL', `${problems.length} table${sEn(problems.length)} not isolated: ${problems.slice(0, 5).join('; ')}`, `${problems.length} table${sFr(problems.length)} non isolée${sFr(problems.length)} : ${problems.slice(0, 5).join('; ')}`, { problems: problems.slice(0, 50), tablesChecked: checked, rlsSqlRead: !!lists });
   return r('PASS', `All ${checked} tables with organization data are isolated by row-level security.`, `Les ${checked} tables contenant des données d’organisation sont isolées par la sécurité au niveau des lignes.`, { tablesChecked: checked, rlsSqlRead: !!lists });
 }
 
@@ -159,6 +164,11 @@ async function selfHeaders(): Promise<{ headers: Record<string, string | undefin
   }
 }
 
+/** The region in a KMS key or alias ARN ("arn:aws:kms:ca-central-1:…"), or null for a bare key id or alias. */
+export function kmsRegion(arn: string): string | null {
+  return /^arn:aws[\w-]*:kms:([a-z0-9-]+):/.exec(arn)?.[1] ?? null;
+}
+
 // ---- The tests ----------------------------------------------------------------------------
 
 const DEV_SECRET = /dev-only|replace-with|change-me|changeme|example|secret-secret|^(.)\1+$/i;
@@ -181,7 +191,9 @@ export const MONITORS: Monitor[] = [
       const missing = all.filter((a) => !withKeys.some((k) => k.adminId === a.id)).map((a) => a.name);
       const enforced = platformMfaRequired();
       if (!enforced) return r('FAIL', 'The passkey requirement is switched off in this environment (PLATFORM_MFA=off).', 'L’exigence du passe-clé est désactivée dans cet environnement (PLATFORM_MFA=off).', { enforced, admins: all.length, missingPasskeys: missing });
-      if (missing.length) return r('FAIL', `${missing.length} of ${all.length} admins have no passkey yet.`, `${missing.length} administrateur(s) sur ${all.length} n’ont pas encore de passe-clé.`, { enforced, admins: all.length, missingPasskeys: missing });
+      const m = missing.length;
+      if (m) return r('FAIL', `${m} of ${all.length} admins ${m === 1 ? 'has' : 'have'} no passkey yet.`, `${m} administrateur${sFr(m)} sur ${all.length} ${m > 1 ? 'n’ont' : 'n’a'} pas encore de passe-clé.`, { enforced, admins: all.length, missingPasskeys: missing });
+      if (all.length === 1) return r('PASS', 'Passkeys required; the only admin has one.', 'Passe-clé exigé; le seul administrateur en a un.', { enforced, admins: 1 });
       return r('PASS', `Passkeys required; all ${all.length} admins have one.`, `Passe-clé exigé; les ${all.length} administrateurs en ont un.`, { enforced, admins: all.length });
     },
   },
@@ -196,7 +208,9 @@ export const MONITORS: Monitor[] = [
       const open = rows.filter((x) => !x.value.closed);
       const without = open.filter((x) => !x.value.ok).map((x) => x.value.name);
       if (!open.length) return r('PASS', 'No organizations yet.', 'Aucune organisation pour l’instant.', { organizations: 0 });
-      if (without.length) return r('WARN', `${without.length} of ${open.length} organizations don’t require a passkey for HR administrators (their choice; recommend it).`, `${without.length} organisation(s) sur ${open.length} n’exigent pas de passe-clé pour les administrateurs RH (leur choix; à recommander).`, { organizations: open.length, without: without.slice(0, 30) });
+      const w = without.length;
+      if (w) return r('WARN', `${w} of ${open.length} organization${sEn(open.length)} ${w === 1 ? 'doesn’t' : 'don’t'} require a passkey for HR administrators (their choice; recommend it).`, `${w} organisation${sFr(w)} sur ${open.length} ${w > 1 ? 'n’exigent' : 'n’exige'} pas de passe-clé pour les administrateurs RH (leur choix; à recommander).`, { organizations: open.length, without: without.slice(0, 30) });
+      if (open.length === 1) return r('PASS', 'The only organization requires MFA for HR administrators.', 'La seule organisation exige l’AMF pour les administrateurs RH.', { organizations: 1 });
       return r('PASS', `All ${open.length} organizations require MFA for HR administrators.`, `Les ${open.length} organisations exigent l’AMF pour les administrateurs RH.`, { organizations: open.length });
     },
   },
@@ -217,7 +231,12 @@ export const MONITORS: Monitor[] = [
     key: 'kek', title: 'Encryption keys configured', titleFr: 'Clés de chiffrement configurées', everyMinutes: 15,
     async run() {
       const c = config();
-      if (c.KMS_KEY_ARN && !c.LOCAL_KEK_BASE64) return r('PASS', 'Records are sealed with AWS KMS keys.', 'Les dossiers sont scellés avec des clés AWS KMS.', { provider: 'kms', region: c.AWS_REGION });
+      if (c.KMS_KEY_ARN && !c.LOCAL_KEK_BASE64) {
+        // The key's own region (from its ARN; an alias or bare key id uses AWS_REGION): CR-02 promises a key in Canada.
+        const region = kmsRegion(c.KMS_KEY_ARN) ?? c.AWS_REGION;
+        if (!region.startsWith('ca-')) return r('FAIL', `The AWS KMS key is in ${region}, outside Canada.`, `La clé AWS KMS est dans la région ${region}, hors du Canada.`, { provider: 'kms', region });
+        return r('PASS', `Records are sealed with an AWS KMS key in ${region} (Canada).`, `Les dossiers sont scellés avec une clé AWS KMS dans la région ${region} (Canada).`, { provider: 'kms', region });
+      }
       if (isProd()) return r('FAIL', 'Production must use AWS KMS and no local key.', 'La production doit utiliser AWS KMS et aucune clé locale.', { provider: c.KMS_KEY_ARN ? 'kms+local' : 'local' });
       const len = c.LOCAL_KEK_BASE64 ? Buffer.from(c.LOCAL_KEK_BASE64, 'base64').length : 0;
       if (len !== 32) return r('FAIL', 'No usable key-encryption key: sealed records can’t be read or written.', 'Aucune clé de chiffrement de clés utilisable : les dossiers scellés ne peuvent être lus ni écrits.', { provider: 'none' });
@@ -327,8 +346,12 @@ export const MONITORS: Monitor[] = [
   {
     key: 'audit_log', title: 'Audit log written and append-only', titleFr: 'Journal d’audit alimenté et en ajout seulement', everyMinutes: 15,
     async run({ db: p, now }) {
-      const priv = await p.$queryRaw<Array<{ upd: boolean; del: boolean }>>`SELECT has_table_privilege('flexcity_app', '"AuditLog"', 'UPDATE') AS upd, has_table_privilege('flexcity_app', '"AuditLog"', 'DELETE') AS del`;
-      if (priv[0]?.upd || priv[0]?.del) return r('FAIL', 'The app can change or delete audit entries.', 'L’application peut modifier ou supprimer des entrées d’audit.', { appendOnly: false });
+      // The role the app actually connects as (db() uses APP_DATABASE_URL), on both logs: each city's and the Dev console's.
+      const priv = await p.$queryRaw<Array<{ tbl: string; upd: boolean; del: boolean }>>`
+        SELECT t AS tbl, has_table_privilege(current_user, format('%I', t), 'UPDATE') AS upd, has_table_privilege(current_user, format('%I', t), 'DELETE') AS del
+          FROM unnest(ARRAY['AuditLog', 'PlatformAudit']) AS t`;
+      const editable = priv.filter((x) => x.upd || x.del).map((x) => x.tbl);
+      if (editable.length) return r('FAIL', `The app can change or delete audit entries (${editable.join(', ')}).`, `L’application peut modifier ou supprimer des entrées d’audit (${editable.join(', ')}).`, { appendOnly: false, editableTables: editable });
       const fh = await p.platformAudit.findFirst({ orderBy: { at: 'desc' }, select: { at: true } });
       let newest = fh?.at ?? null;
       for (const x of await eachTenant((tx) => tx.auditLog.findFirst({ orderBy: { at: 'desc' }, select: { at: true } }))) if (x.value && (!newest || x.value.at > newest)) newest = x.value.at;
@@ -350,7 +373,10 @@ export const MONITORS: Monitor[] = [
     async run({ db: p, now }) {
       const admins = await p.platformAdmin.findMany({ where: { disabledAt: null }, select: { name: true, lastLoginAt: true, createdAt: true } });
       const stale = admins.filter((a) => (a.lastLoginAt ?? a.createdAt) < ago(now, 90)).map((a) => a.name);
-      if (stale.length) return r('FAIL', `${stale.length} account(s) unused for over 90 days: disable or confirm.`, `${stale.length} compte(s) inutilisé(s) depuis plus de 90 jours : désactiver ou confirmer.`, { stale, admins: admins.length });
+      const n = stale.length;
+      if (n) return r('FAIL', `${n} account${sEn(n)} unused for over 90 days: disable or confirm.`, `${n} compte${sFr(n)} inutilisé${sFr(n)} depuis plus de 90 jours : désactiver ou confirmer.`, { stale, admins: admins.length });
+      if (!admins.length) return r('PASS', 'No active account.', 'Aucun compte actif.', { admins: 0 });
+      if (admins.length === 1) return r('PASS', 'The only active account was used in the last 90 days.', 'Le seul compte actif a servi dans les 90 derniers jours.', { admins: 1 });
       return r('PASS', `All ${admins.length} active accounts used in the last 90 days.`, `Les ${admins.length} comptes actifs ont servi dans les 90 derniers jours.`, { admins: admins.length });
     },
   },
@@ -359,9 +385,10 @@ export const MONITORS: Monitor[] = [
     async run({ db: p, now }) {
       const live = await p.platformSession.findMany({ where: { revokedAt: null, expiresAt: { gt: now }, admin: { disabledAt: { not: null } } }, select: { admin: { select: { name: true } } } });
       const names = [...new Set(live.map((s) => s.admin.name))];
-      if (names.length) return r('FAIL', `${names.length} disabled account(s) still have an open session.`, `${names.length} compte(s) désactivé(s) ont encore une session ouverte.`, { accounts: names });
+      const n = names.length;
+      if (n) return r('FAIL', `${n} disabled account${sEn(n)} still ${n === 1 ? 'has' : 'have'} an open session.`, `${n} compte${sFr(n)} désactivé${sFr(n)} ${n > 1 ? 'ont' : 'a'} encore une session ouverte.`, { accounts: names });
       const disabled = await p.platformAdmin.count({ where: { disabledAt: { not: null } } });
-      return r('PASS', `No disabled account has a session (${disabled} disabled).`, `Aucun compte désactivé n’a de session (${disabled} désactivé(s)).`, { disabled });
+      return r('PASS', `No disabled account has a session (${disabled} disabled).`, `Aucun compte désactivé n’a de session (${disabled} désactivé${sFr(disabled)}).`, { disabled });
     },
   },
   {
@@ -373,7 +400,7 @@ export const MONITORS: Monitor[] = [
       });
       const old = rows.filter((x) => x.value).map((x) => x.value!);
       const total = old.reduce((s, x) => s + x.n, 0);
-      if (total) return r('WARN', `${total} active API key(s) over a year old: ask the organization to rotate.`, `${total} clé(s) API active(s) de plus d’un an : demandez à l’organisation de les renouveler.`, { keys: total, organizations: old.map((x) => x.name).slice(0, 30) });
+      if (total) return r('WARN', `${total} active API key${sEn(total)} over a year old: ask the organization to rotate ${total === 1 ? 'it' : 'them'}.`, `${total} clé${sFr(total)} API active${sFr(total)} de plus d’un an : demandez à l’organisation de ${total > 1 ? 'les' : 'la'} renouveler.`, { keys: total, organizations: old.map((x) => x.name).slice(0, 30) });
       return r('PASS', 'No active API key is over a year old.', 'Aucune clé API active n’a plus d’un an.', { keys: 0 });
     },
   },
@@ -383,7 +410,7 @@ export const MONITORS: Monitor[] = [
       const rows = await eachTenant((tx) => tx.webhookEndpoint.count({ where: { OR: [{ disabledReason: 'failures' }, { enabled: true, consecutiveFailures: { gte: 5 } }] } }));
       const failing = rows.reduce((s, x) => s + x.value, 0);
       const orgs = rows.filter((x) => x.value).length;
-      if (failing) return r('WARN', `${failing} webhook endpoint(s) in ${orgs} organization(s) failing or turned off after failures.`, `${failing} point(s) de terminaison dans ${orgs} organisation(s) en échec ou désactivé(s) après des échecs.`, { endpoints: failing, organizations: orgs });
+      if (failing) return r('WARN', `${failing} webhook endpoint${sEn(failing)} in ${orgs} organization${sEn(orgs)} failing or turned off after failures.`, `${failing} point${sFr(failing)} de terminaison Webhook dans ${orgs} organisation${sFr(orgs)} en échec ou désactivé${sFr(failing)} après des échecs.`, { endpoints: failing, organizations: orgs });
       return r('PASS', 'Every webhook endpoint is delivering.', 'Chaque point de terminaison Webhook fonctionne.', { endpoints: 0 });
     },
   },
@@ -393,8 +420,10 @@ export const MONITORS: Monitor[] = [
       const vs = await p.trustVendor.findMany({ where: { status: 'ACTIVE' }, select: { name: true, nextReviewAt: true, dpaExpiresAt: true, soc2ExpiresAt: true, isoExpiresAt: true } });
       const late = vs.filter((v) => [v.nextReviewAt, v.dpaExpiresAt, v.soc2ExpiresAt, v.isoExpiresAt].some((d) => d && d < now)).map((v) => v.name);
       const never = vs.filter((v) => !v.nextReviewAt).map((v) => v.name);
-      if (late.length) return r('FAIL', `${late.length} vendor(s) with an overdue review or expired agreement or report.`, `${late.length} fournisseur(s) avec une revue en retard ou une entente ou un rapport expiré.`, { overdue: late, unscheduled: never });
-      if (never.length) return r('WARN', `${never.length} vendor(s) without a review date.`, `${never.length} fournisseur(s) sans date de revue.`, { unscheduled: never });
+      if (late.length) return r('FAIL', `${late.length} vendor${sEn(late.length)} with an overdue review or an expired agreement or report.`, `${late.length} fournisseur${sFr(late.length)} avec une revue en retard ou une entente ou un rapport expiré.`, { overdue: late, unscheduled: never });
+      if (never.length) return r('WARN', `${never.length} vendor${sEn(never.length)} without a review date.`, `${never.length} fournisseur${sFr(never.length)} sans date de revue.`, { unscheduled: never });
+      if (!vs.length) return r('PASS', 'No active vendor.', 'Aucun fournisseur actif.', { vendors: 0 });
+      if (vs.length === 1) return r('PASS', 'The only active vendor is reviewed on time.', 'Le seul fournisseur actif est revu à temps.', { vendors: 1 });
       return r('PASS', `All ${vs.length} active vendors reviewed on time.`, `Les ${vs.length} fournisseurs actifs sont revus à temps.`, { vendors: vs.length });
     },
   },
@@ -410,7 +439,11 @@ export const MONITORS: Monitor[] = [
       let missing = 0;
       for (const x of policies) for (const v of x.versions) missing += admins.filter((a) => !v.acks.some((k) => k.adminId === a.id)).length;
       const details: MonitorDetails = { policies: policies.length, unpublished, reviewOverdue: overdue, acknowledgementsMissing: missing };
-      if (overdue.length || unpublished.length || missing) return r('FAIL', `${unpublished.length} not yet published, ${overdue.length} past review, ${missing} acknowledgement(s) missing.`, `${unpublished.length} non publiée(s), ${overdue.length} à revoir, ${missing} acceptation(s) manquante(s).`, details);
+      const u = unpublished.length;
+      const o = overdue.length;
+      if (o || u || missing) return r('FAIL', `Policies: ${u} not yet published, ${o} past review, ${missing} acknowledgement${sEn(missing)} missing.`, `Politiques : ${u} non publiée${sFr(u)}, ${o} à revoir, ${missing} acceptation${sFr(missing)} manquante${sFr(missing)}.`, details);
+      if (!policies.length) return r('PASS', 'No policy yet.', 'Aucune politique pour l’instant.', details);
+      if (policies.length === 1) return r('PASS', 'The only policy is published, current and accepted by every admin.', 'La seule politique est publiée, à jour et acceptée par chaque administrateur.', details);
       return r('PASS', `All ${policies.length} policies published, current and accepted by every admin.`, `Les ${policies.length} politiques sont publiées, à jour et acceptées par chaque administrateur.`, details);
     },
   },
@@ -419,7 +452,9 @@ export const MONITORS: Monitor[] = [
     async run({ db: p, now }) {
       const risks = await p.trustRisk.findMany({ where: { status: 'OPEN' }, select: { ref: true, dueAt: true, lastReviewedAt: true, createdAt: true, reviewEveryDays: true } });
       const late = risks.filter((x) => (x.dueAt && x.dueAt < now) || (x.lastReviewedAt ?? x.createdAt).getTime() + x.reviewEveryDays * DAY < now.getTime()).map((x) => x.ref);
-      if (late.length) return r('FAIL', `${late.length} risk(s) past their treatment date or review.`, `${late.length} risque(s) en retard de traitement ou de revue.`, { overdue: late, open: risks.length });
+      if (late.length) return r('FAIL', `${late.length} risk${sEn(late.length)} past ${late.length === 1 ? 'its' : 'their'} treatment date or review.`, `${late.length} risque${sFr(late.length)} en retard de traitement ou de revue.`, { overdue: late, open: risks.length });
+      if (!risks.length) return r('PASS', 'No open risk.', 'Aucun risque ouvert.', { open: 0 });
+      if (risks.length === 1) return r('PASS', 'The only open risk is on schedule.', 'Le seul risque ouvert est à jour.', { open: 1 });
       return r('PASS', `All ${risks.length} open risks on schedule.`, `Les ${risks.length} risques ouverts sont à jour.`, { open: risks.length });
     },
   },
@@ -428,7 +463,8 @@ export const MONITORS: Monitor[] = [
     async run({ db: p, now }) {
       const late = await p.trustCommitment.findMany({ where: { status: 'OPEN', dueAt: { lt: now } }, select: { title: true, customer: true } });
       const soon = await p.trustCommitment.count({ where: { status: 'OPEN', dueAt: { gte: now, lt: new Date(now.getTime() + 7 * DAY) } } });
-      if (late.length) return r('FAIL', `${late.length} customer commitment(s) overdue.`, `${late.length} engagement(s) envers des clients en retard.`, { overdue: late.map((c) => `${c.customer}: ${c.title}`).slice(0, 30), dueIn7Days: soon });
+      // Each item in both languages ({ en, fr }), so the drawer writes "Client : title" in French.
+      if (late.length) return r('FAIL', `${late.length} customer commitment${sEn(late.length)} overdue.`, `${late.length} engagement${sFr(late.length)} envers des clients en retard.`, { overdue: late.map((c) => ({ en: `${c.customer}: ${c.title}`, fr: frColon(c.customer, c.title) })).slice(0, 30), dueIn7Days: soon });
       return r('PASS', `No commitment overdue (${soon} due within 7 days).`, `Aucun engagement en retard (${soon} à échéance dans 7 jours).`, { dueIn7Days: soon });
     },
   },
@@ -436,7 +472,7 @@ export const MONITORS: Monitor[] = [
     key: 'evidence_overdue', title: 'Evidence requests met on time', titleFr: 'Demandes de preuves satisfaites à temps', everyMinutes: 60,
     async run({ db: p, now }) {
       const late = await p.trustEvidenceRequest.findMany({ where: { status: 'OPEN', dueAt: { lt: now } }, select: { title: true, controlKey: true } });
-      if (late.length) return r('FAIL', `${late.length} evidence request(s) overdue.`, `${late.length} demande(s) de preuves en retard.`, { overdue: late.map((x) => `${x.controlKey}: ${x.title}`).slice(0, 30) });
+      if (late.length) return r('FAIL', `${late.length} evidence request${sEn(late.length)} overdue.`, `${late.length} demande${sFr(late.length)} de preuves en retard.`, { overdue: late.map((x) => ({ en: `${x.controlKey}: ${x.title}`, fr: frColon(x.controlKey, x.title) })).slice(0, 30) });
       return r('PASS', 'No evidence request overdue.', 'Aucune demande de preuves en retard.', {});
     },
   },

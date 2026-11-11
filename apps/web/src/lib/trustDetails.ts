@@ -14,7 +14,7 @@ export const DETAIL_KINDS: Record<string, Kind> = {
   role: 'text', superuser: 'bool', bypassRls: 'bool', canCreate: 'bool', ownsTables: 'bool',
   provider: 'value', region: 'text', production: 'bool', length: 'count', distinctCharacters: 'count', source: 'value', missing: 'list', hsts: 'bool', sslmode: 'text',
   database: 'value', worker: 'value', workerAgeS: 'seconds', oldestAgeS: 'seconds', oldestSafetyS: 'seconds', configured: 'bool',
-  at: 'date', manual: 'bool', lastOkAt: 'date', lastErrorAt: 'date', appendOnly: 'bool', newest: 'date', lastAt: 'date',
+  at: 'date', manual: 'bool', lastOkAt: 'date', lastErrorAt: 'date', appendOnly: 'bool', editableTables: 'list', newest: 'date', lastAt: 'date',
   stale: 'list', accounts: 'list', disabled: 'count', keys: 'count', endpoints: 'count',
   overdue: 'list', unscheduled: 'list', vendors: 'count', policies: 'count', unpublished: 'list', reviewOverdue: 'list', acknowledgementsMissing: 'count', open: 'count', dueIn7Days: 'count',
   error: 'text',

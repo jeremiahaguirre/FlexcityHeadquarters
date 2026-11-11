@@ -6882,6 +6882,7 @@
         "lastOkAt": "Dernière exécution réussie",
         "lastErrorAt": "Dernière erreur",
         "appendOnly": "Entrées non modifiables",
+        "editableTables": "Journaux modifiables par l’application",
         "newest": "Entrée la plus récente",
         "lastAt": "Dernier résultat consigné",
         "stale": "Comptes inutilisés",

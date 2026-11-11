@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTROLS, FRAMEWORKS, controlsFor, libraryProblems, type Control } from '../../src/services/trust/library.js';
-import { headerProblems, healthReasonFr, monitorByKey, rlsLists, scrubDetails } from '../../src/services/trust/monitors.js';
+import { headerProblems, healthReasonFr, kmsRegion, monitorByKey, rlsLists, scrubDetails, sEn, sFr } from '../../src/services/trust/monitors.js';
 import { controlStatus, daysUntil, frameworkReadiness, nextDue, postureScore, readinessBand, reminderDue, riskLevel, riskScore, vendorRisk, vendorScore, type ControlStatus } from '../../src/services/trust/scoring.js';
 
 const now = new Date('2026-11-11T15:00:00Z');
@@ -199,6 +199,31 @@ describe('monitor helpers', () => {
     expect(headerProblems(good, true).missing).toEqual(['Strict-Transport-Security']);
     expect(headerProblems({ ...good, 'strict-transport-security': 'max-age=31536000' }, true)).toEqual({ missing: [], hsts: true });
     expect(headerProblems({}, false).missing).toHaveLength(4);
+  });
+
+  it('reads a KMS key’s region from its ARN', () => {
+    expect(kmsRegion('arn:aws:kms:ca-central-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab')).toBe('ca-central-1');
+    expect(kmsRegion('arn:aws:kms:us-east-1:111122223333:alias/fh')).toBe('us-east-1');
+    expect(kmsRegion('alias/flexcity')).toBeNull();
+  });
+
+  it('agrees counts in both languages (1 compte, 2 comptes; 0 is singular in French)', async () => {
+    expect([0, 1, 2].map(sEn)).toEqual(['s', '', 's']);
+    expect([0, 1, 2].map(sFr)).toEqual(['', '', 's']);
+    const now = new Date();
+    const run = (key: string, db: object) => monitorByKey.get(key)!.run({ db: db as never, now });
+    const one = await run('stale_admins', { platformAdmin: { findMany: async () => [{ name: 'A', lastLoginAt: now, createdAt: now }] } });
+    expect([one.en, one.fr]).toEqual(['The only active account was used in the last 90 days.', 'Le seul compte actif a servi dans les 90 derniers jours.']);
+    const two = await run('stale_admins', { platformAdmin: { findMany: async () => [{ name: 'A', lastLoginAt: now, createdAt: now }, { name: 'B', lastLoginAt: now, createdAt: now }] } });
+    expect(two.fr).toBe('Les 2 comptes actifs ont servi dans les 90 derniers jours.');
+    const stale = await run('stale_admins', { platformAdmin: { findMany: async () => [{ name: 'A', lastLoginAt: null, createdAt: new Date(0) }] } });
+    expect([stale.en, stale.fr]).toEqual(['1 account unused for over 90 days: disable or confirm.', '1 compte inutilisé depuis plus de 90 jours : désactiver ou confirmer.']);
+    const off = await run('offboarded_admins', { platformSession: { findMany: async () => [{ admin: { name: 'Gone' } }] }, platformAdmin: { count: async () => 1 } });
+    expect([off.en, off.fr]).toEqual(['1 disabled account still has an open session.', '1 compte désactivé a encore une session ouverte.']);
+    const req = await run('evidence_overdue', { trustEvidenceRequest: { findMany: async () => [{ title: 'Inventory', controlKey: 'PS-02' }] } });
+    expect([req.en, req.fr]).toEqual(['1 evidence request overdue.', '1 demande de preuves en retard.']);
+    // A list item in both languages: the French one has a (non-breaking) space before the colon.
+    expect(req.details!.overdue).toEqual([{ en: 'PS-02: Inventory', fr: 'PS-02\u00a0: Inventory' }]);
   });
 
   it('drops anything that looks like a secret from a result', () => {

@@ -6882,6 +6882,7 @@
         "lastOkAt": "Last finished",
         "lastErrorAt": "Last error",
         "appendOnly": "Entries can’t be changed",
+        "editableTables": "Logs the app can change",
         "newest": "Newest entry",
         "lastAt": "Last result recorded",
         "stale": "Unused accounts",
