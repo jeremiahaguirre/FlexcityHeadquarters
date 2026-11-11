@@ -97,6 +97,9 @@ const schema = z.object({
   VAPID_SUBJECT: z.string().default('mailto:support@flexcityhq.example'),
   /** Bearer token for GET /metrics (Prometheus). Unset = /metrics answers 404. */
   METRICS_TOKEN: z.string().min(16).optional(),
+  // A query slower than this (ms) is logged with its SQL text (placeholders only, never the values) and counted
+  // in fh_db_slow_queries_total. 0 turns it off.
+  SLOW_QUERY_MS: z.coerce.number().int().min(0).default(500),
   /**
    * Error reports to a Sentry-compatible service (Sentry, GlitchTip), e.g. https://key@errors.example.ca/3.
    * Unset = errors are only logged. Reports are scrubbed of personal information first (lib/scrub.ts).

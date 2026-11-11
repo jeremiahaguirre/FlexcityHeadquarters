@@ -179,3 +179,23 @@ describe('error reporter', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('slow queries', () => {
+  it('counts and logs a query over the limit with its SQL text only, and leaves fast ones alone', async () => {
+    const { onQuery } = await import('../../src/lib/db.js');
+    const m = await import('../../src/lib/metrics.js'); // the same module instance db.js uses
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const before = m.dbSlowQueries.get();
+    onQuery(12, 'SELECT 1', false, 500);
+    expect(warn).not.toHaveBeenCalled();
+    onQuery(812.4, 'SELECT "User"."email"\n  FROM "User" WHERE "User"."id" = $1', false, 500);
+    expect(warn).toHaveBeenCalledTimes(1);
+    const line = String(warn.mock.calls[0]![0]);
+    expect(line).toBe('[slow-query] 812 ms: SELECT "User"."email" FROM "User" WHERE "User"."id" = $1');
+    expect(m.dbSlowQueries.get()).toBe(before + 1);
+    expect(m.renderMetrics()).toContain(`fh_db_slow_queries_total ${before + 1}`);
+    onQuery(9999, 'SELECT 2', false, 0); // 0 = off
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+});

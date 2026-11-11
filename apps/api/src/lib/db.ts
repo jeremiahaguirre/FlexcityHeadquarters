@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { config } from '../config.js';
-import { dbQueryDuration } from './metrics.js';
+import { dbQueryDuration, dbSlowQueries } from './metrics.js';
 
 let client: PrismaClient | undefined;
 
@@ -8,13 +8,25 @@ let client: PrismaClient | undefined;
 export function db(): PrismaClient {
   if (!client) {
     // With metrics on (METRICS_TOKEN), each query's duration goes to fh_db_query_duration_seconds.
-    // Only the duration is read: the event's query text and parameters are never kept.
+    // Queries slower than SLOW_QUERY_MS are logged and counted: the SQL text only (it has $1-style
+    // placeholders), never the parameters, which can hold personal information.
     const timed = !!config().METRICS_TOKEN;
-    const c = new PrismaClient({ datasources: { db: { url: pooled(config().APP_DATABASE_URL) } }, ...(timed ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
-    if (timed) (c as unknown as PrismaClient<Prisma.PrismaClientOptions, 'query'>).$on('query', (e) => dbQueryDuration.observe({}, e.duration / 1000));
+    const slowMs = config().SLOW_QUERY_MS;
+    const listen = timed || slowMs > 0;
+    const c = new PrismaClient({ datasources: { db: { url: pooled(config().APP_DATABASE_URL) } }, ...(listen ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
+    if (listen) (c as unknown as PrismaClient<Prisma.PrismaClientOptions, 'query'>).$on('query', (e) => onQuery(e.duration, e.query, timed, slowMs));
     client = c;
   }
   return client;
+}
+
+/** One query finished: time it, and log it if slow (text only, trimmed; never its parameters). */
+export function onQuery(durationMs: number, sql: string, timed: boolean, slowMs: number) {
+  if (timed) dbQueryDuration.observe({}, durationMs / 1000);
+  if (slowMs > 0 && durationMs >= slowMs) {
+    dbSlowQueries.inc({});
+    console.warn(`[slow-query] ${Math.round(durationMs)} ms: ${sql.replace(/\s+/g, ' ').slice(0, 400)}`);
+  }
 }
 
 /** Adds the configured pool size and wait to a connection URL (unless it already says). */
