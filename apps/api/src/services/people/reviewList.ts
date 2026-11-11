@@ -1,5 +1,5 @@
 import type { Tx } from '../../lib/db.js';
-import { computeReliability } from '../reliability/score.js';
+import { loadScoreInputs, reliabilityPolicy, scoreOf } from '../reliability/load.js';
 import { type Review, review } from './review.js';
 
 const YEAR = 366 * 86_400_000;
@@ -18,10 +18,12 @@ export interface ReviewRow {
 /** `onlyBy`: a supervisor who isn't HR sees only people they made records about, built from those records. */
 export async function reviewList(tx: Tx, now = new Date(), onlyBy: string | null = null): Promise<ReviewRow[]> {
   const since = new Date(now.getTime() - YEAR);
-  const [users, events, leave, notes, records] = await Promise.all([
+  const policy = await reliabilityPolicy(tx);
+  // The same score as the person's file: one computation everywhere.
+  const [users, inputs, events, notes, records] = await Promise.all([
     tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true, tenantId: true, firstName: true, lastName: true, roles: true, reviewFlaggedAt: true } }),
-    tx.reliabilityEvent.findMany({ where: { occurredAt: { gte: since }, ...(onlyBy ? { recordedById: onlyBy } : {}) } }),
-    tx.timeOffRequest.findMany({ where: { endsAt: { gte: since } } }),
+    loadScoreInputs(tx, null, policy, now, onlyBy),
+    onlyBy ? tx.reliabilityEvent.findMany({ where: { occurredAt: { gte: since }, recordedById: onlyBy }, select: { userId: true } }) : Promise.resolve([]),
     tx.conductNote.findMany({ where: { occurredAt: { gte: since }, ...(onlyBy ? { recordedById: onlyBy } : {}) } }),
     tx.disciplinaryRecord.findMany({ where: onlyBy ? { issuedById: onlyBy } : {}, select: { userId: true, level: true, issuedAt: true, acknowledgedAt: true } }),
   ]);
@@ -31,11 +33,11 @@ export async function reviewList(tx: Tx, now = new Date(), onlyBy: string | null
     for (const r of rows) m.set(r.userId, [...(m.get(r.userId) ?? []), r]);
     return m;
   };
-  const [ev, lv, nt, rc] = [by(events), by(leave), by(notes), by(records)];
+  const [nt, rc] = [by(notes), by(records)];
   return users
     .filter((u) => !involved || involved.has(u.id))
     .map((u) => {
-      const s = computeReliability(ev.get(u.id) ?? [], lv.get(u.id) ?? [], now);
+      const s = scoreOf(inputs.get(u.id), policy, now);
       return {
         id: u.id,
         tenantId: u.tenantId,

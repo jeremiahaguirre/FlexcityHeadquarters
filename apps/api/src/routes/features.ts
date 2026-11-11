@@ -15,7 +15,8 @@ import { createIncident, readIncident } from '../services/ops/incidents.js';
 import { decideClosure, recordReading } from '../services/ops/poolOps.js';
 import { runPayroll } from '../services/payroll/payrollRun.js';
 import { requestErasure } from '../services/privacy/erasure.js';
-import { computeReliability } from '../services/reliability/score.js';
+import { loadReliability } from '../services/reliability/load.js';
+import { RULES } from '../services/reliability/score.js';
 import { proposeSchedule } from '../services/scheduling/assistant.js';
 import { loadAssistantCandidates, loadShiftBundle } from '../services/scheduling/eligibilityLoader.js';
 import { cancelOffer, claimOffer, decideOffer, postOffer } from '../services/shiftboard/offers.js';
@@ -525,13 +526,9 @@ api.get(
     const out = await withTenant(a.tenantId, async (tx) => {
       // HR (and the person themselves) see every event; other supervisors only those they recorded.
       const by = userId === a.userId ? null : hrRecordsBy(a);
-      const [events, leave] = await Promise.all([
-        tx.reliabilityEvent.findMany({ where: { userId, ...(by ? { recordedById: by } : {}) } }),
-        tx.timeOffRequest.findMany({ where: { userId } }),
-      ]);
-      return computeReliability(events, leave, new Date());
+      return loadReliability(tx, userId, new Date(), by);
     });
-    res.json({ ...out, notice: 'Advisory only. Not used for automated scheduling or discipline decisions.' });
+    res.json({ ...out, rules: RULES, notice: 'Advisory only. Not used for automated scheduling or discipline decisions.' });
   }),
 );
 

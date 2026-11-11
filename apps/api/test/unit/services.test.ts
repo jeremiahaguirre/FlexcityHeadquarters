@@ -42,7 +42,7 @@ describe('reliability', () => {
       now,
     );
     expect(r.score).toBe(98);
-    expect(r.excluded).toEqual([{ id: 'a', type: 'NO_SHOW', reason: 'Overlaps protected leave' }]);
+    expect(r.excluded).toEqual([{ id: 'a', type: 'NO_SHOW', reason: 'Overlaps protected leave', code: 'PROTECTED' }]);
   });
   it('ignores events outside the 90-day window and clamps to 0–100', () => {
     const r = computeReliability(

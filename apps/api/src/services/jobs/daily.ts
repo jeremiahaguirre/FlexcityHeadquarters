@@ -5,7 +5,7 @@
 import type { Tx } from '../../lib/db.js';
 import { notify, usersWithRoles } from '../notifications/notifier.js';
 import { anonymizeUser } from '../privacy/erasure.js';
-import { computeReliability } from '../reliability/score.js';
+import { loadScoreInputs, reliabilityPolicy, scoreOf } from '../reliability/load.js';
 import { reviewList } from '../people/reviewList.js';
 import { overdueRotations } from '../ops/rotation.js';
 
@@ -14,14 +14,14 @@ const dayStart = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 /** Nightly: store each active person's advisory reliability score. */
 export async function recomputeReliability(tx: Tx, now = new Date()): Promise<number> {
-  const users = await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true, reliabilityScore: true } });
+  const policy = await reliabilityPolicy(tx);
+  const [users, inputs] = await Promise.all([
+    tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true, reliabilityScore: true } }),
+    loadScoreInputs(tx, null, policy, now),
+  ]);
   let changed = 0;
   for (const u of users) {
-    const [events, leave] = await Promise.all([
-      tx.reliabilityEvent.findMany({ where: { userId: u.id, occurredAt: { gte: new Date(now.getTime() - 91 * 86_400_000) } } }),
-      tx.timeOffRequest.findMany({ where: { userId: u.id } }),
-    ]);
-    const { score } = computeReliability(events, leave, now);
+    const { score } = scoreOf(inputs.get(u.id), policy, now);
     if (score !== u.reliabilityScore) {
       await tx.user.update({ where: { id: u.id }, data: { reliabilityScore: score } });
       changed++;
