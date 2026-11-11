@@ -14,7 +14,7 @@ import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { addDays, localIso } from '../../lib/time.js';
 import type { NotificationDraft } from '../notifications/notifier.js';
-import { userInScope } from '../people/scope.js';
+import { shiftInScope, userInScope } from '../people/scope.js';
 import { evaluateCandidate, wallClock } from './eligibility.js';
 import { evalOpts, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
 import { NO_DEPARTMENT, schedulableDepartments } from './fillRun.js';
@@ -162,6 +162,7 @@ export async function recordCallBack(tx: Tx, a: AuthContext, input: CallBackInpu
   const d = await assertDepartment(tx, a, input.departmentId);
   if (!d.positionIds.includes(input.positionId)) throw badRequest('The position isn’t in this department.');
   if (input.endsAt <= input.startsAt) throw badRequest('The call-back must end after it starts.');
+  if (!shiftInScope(a.scope, input) || !(await tx.facility.findUnique({ where: { id: input.facilityId }, select: { id: true } }))) throw notFound('Facility');
   const userId = input.userId ?? (await onCallAt(tx, input.startsAt, { departmentIds: [input.departmentId] }))[0];
   if (!userId) throw conflict('NOBODY_ON_CALL', 'Nobody is on call then. Choose who to call back.');
   await assertPerson(tx, a, d.positionIds, userId);

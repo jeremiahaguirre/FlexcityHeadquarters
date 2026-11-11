@@ -380,8 +380,11 @@ describe('on call', () => {
     const refused = await call(tok).post('/api/schedule/on-call/call-back', body);
     expect(refused.status).toBe(422);
     expect(refused.body.code ?? refused.body.error?.code).toBe('CALLBACK_REST');
+    expect((await call(tok).post('/api/schedule/on-call/call-back', { ...body, facilityId: '00000000-0000-4000-8000-000000000000', emergency: true })).status).toBe(404);
     const ok = await call(tok).post('/api/schedule/on-call/call-back', { ...body, emergency: true });
     expect(ok.status).toBe(201);
+    const audited = await owner.auditLog.findFirstOrThrow({ where: { action: 'oncall.callback', entityId: ok.body.shiftId } });
+    expect(audited.after).toMatchObject({ emergency: true, restBlocks: expect.arrayContaining([expect.any(String)]) });
     expect(ok.body.userId).toBe(g()[1]);
     expect(ok.body.nextShiftTooSoon).toBeTruthy();
     expect((await owner.shift.findUniqueOrThrow({ where: { id: ok.body.shiftId } })).callBack).toBe(true);
