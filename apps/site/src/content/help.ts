@@ -219,7 +219,7 @@ export const ARTICLES: Article[] = [
         'Have the conversation first. Then choose Start a record, pick the step, tick the facts it relies on and complete the drafted summary: impact, what was discussed, expectation, support and next step.',
         'For a suspension or termination (HR only), confirm each fair-process step. The employee is notified, signs to confirm they received it, and can add their own response.',
       ],
-      tip: 'The typical next step is a suggestion. Your policy, your collective agreement and the seriousness of what happened decide; when you skip steps, say why in the summary.',
+      tip: 'The typical next step is a suggestion. Your policy, your collective agreement and the seriousness of what happened decide; when you skip steps, say why in the summary. HR chooses in Settings › Organization whether the attendance score recovers gradually, restarts each year on a chosen date, or both.',
     },
     fr: {
       title: 'Suivi du personnel et documentation disciplinaire',
@@ -231,7 +231,7 @@ export const ARTICLES: Article[] = [
         'Tenez d’abord la discussion. Choisissez ensuite Ouvrir un dossier, l’étape, cochez les faits sur lesquels il repose et complétez le résumé rédigé : conséquences, discussion, attente, soutien et suite.',
         'Pour une suspension ou un congédiement (RH seulement), confirmez chaque étape d’équité. L’employé est avisé, signe pour confirmer la réception et peut ajouter sa propre réponse.',
       ],
-      tip: 'L’étape habituelle suivante est une suggestion. Votre politique, votre convention collective et la gravité des faits décident; si vous sautez des étapes, expliquez pourquoi dans le résumé.',
+      tip: 'L’étape habituelle suivante est une suggestion. Votre politique, votre convention collective et la gravité des faits décident; si vous sautez des étapes, expliquez pourquoi dans le résumé. Les RH choisissent dans Paramètres › Organisation si le score d’assiduité se rétablit graduellement, repart à zéro chaque année à une date choisie, ou les deux.',
     },
   },
   {
@@ -242,6 +242,7 @@ export const ARTICLES: Article[] = [
       summary: 'See what your managers see, and add your side to any record.',
       steps: [
         'Open your profile and scroll to My file. You see your attendance score, every event and note, and any records.',
+        'Under How the score got here, every change is explained: what lowered it, older deductions fading to half after 60 days, and what earned points back (on-time shifts, streaks, 30 days with nothing counted, commendations). If your organization restarts the score each year, you see the date it started again at 100.',
         'Sick days and protected leave never count. If something is wrong, ask your supervisor to excuse it; the reason stays visible to you.',
         'On a record, choose Add my response to give your account. It stays with the record for anyone who reads it.',
         'Choose How this works for a plain explanation of what is tracked and how it is used.',
@@ -253,6 +254,7 @@ export const ARTICLES: Article[] = [
       summary: 'Voyez ce que voient vos gestionnaires, et ajoutez votre version à tout dossier.',
       steps: [
         'Ouvrez votre profil et descendez jusqu’à Mon dossier. Vous y voyez votre score d’assiduité, chaque événement et chaque note, et vos dossiers.',
+        'Sous Ce qui a fait bouger le score, chaque changement est expliqué : ce qui l’a fait baisser, les déductions plus anciennes qui comptent à moitié après 60 jours, et ce qui a permis de regagner des points (quarts à l’heure, séries, 30 jours sans rien de compté, mentions d’éloge). Si votre organisation remet le score à zéro chaque année, vous voyez la date où il est reparti à 100.',
         'Les congés de maladie et protégés ne comptent jamais. Si quelque chose est inexact, demandez à votre superviseur de l’excuser; la raison reste visible pour vous.',
         'Dans un dossier, choisissez Ajouter ma réponse pour donner votre version. Elle reste avec le dossier pour quiconque le lit.',
         'Choisissez Comment ça fonctionne pour une explication simple de ce qui est suivi et de son utilisation.',
