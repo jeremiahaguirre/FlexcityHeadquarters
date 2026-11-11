@@ -101,7 +101,7 @@ export default function SchedulePage() {
                           s.assignee ? (
                             <StatusPill tone={isMine ? 'brand' : 'neutral'}>{isMine ? t('schedule.you') : s.assignee.name}</StatusPill>
                           ) : (
-                            <StatusPill tone="new">{t('schedule.open')}</StatusPill>
+                            <StatusPill tone="new" icon={<CalendarPlus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}>{t('schedule.open')}</StatusPill>
                           )
                         ) : s.offer ? (
                           <StatusPill tone={s.offer.status === 'PENDING_APPROVAL' ? 'warn' : 'new'}>

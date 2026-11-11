@@ -20,7 +20,7 @@ import { dateFormat } from '@/lib/format';
 interface Settings { enabled: boolean; terms: string; termsFr: string; payment: string; paymentFr: string; privacyContact: string }
 interface Service { id: string; facilityId: string; name: string; nameFr: string | null; description: string | null; durationMinutes: number; priceCents: number; capacity: number; maxPartySize: number | null; daysOfWeek: number[]; openMinute: number; closeMinute: number; leadDays: number; active: boolean }
 interface Booking { id: string; service: string; startsAt: string; endsAt: string; partySize: number | null; name: string; email: string; phone: string; organization: string | null; notes: string | null; status: 'REQUESTED' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED'; reference: string; timezone: string }
-const TONE: Record<Booking['status'], Tone> = { REQUESTED: 'new', CONFIRMED: 'ok', DECLINED: 'neutral', CANCELLED: 'neutral' };
+const TONE: Record<Booking['status'], Tone> = { REQUESTED: 'new', CONFIRMED: 'ok', DECLINED: 'inactive', CANCELLED: 'inactive' };
 
 /** The public sign-up page's settings, what the public can book, and booking requests. */
 export default function BookingsPage() {

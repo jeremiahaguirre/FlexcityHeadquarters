@@ -1,6 +1,6 @@
 'use client';
 
-import { HandHelping, Inbox } from 'lucide-react';
+import { CalendarPlus, HandHelping, Inbox } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PayPreview } from '@/components/PayPreview';
@@ -69,7 +69,7 @@ export default function BoardPage() {
             <ShiftCard
               key={o.id}
               shift={o.shift}
-              aside={o.source === 'SWAP' ? <StatusPill tone="neutral">{t('board.swap')}</StatusPill> : <StatusPill tone="new">{t('board.open')}</StatusPill>}
+              aside={o.source === 'SWAP' ? <StatusPill tone="neutral">{t('board.swap')}</StatusPill> : <StatusPill tone="new" icon={<CalendarPlus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}>{t('board.open')}</StatusPill>}
               footer={
                 o.status === 'PENDING_APPROVAL' ? (
                   <StatusPill tone="warn">{t('board.pendingBadge')}</StatusPill>

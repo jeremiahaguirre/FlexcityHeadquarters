@@ -16,7 +16,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { type CallOut, type CallOutContact, toLocalInput } from '@/lib/winter';
 import { dateFormat } from '@/lib/format';
 
-const TONE: Record<CallOutContact['status'], Tone> = { WAITING: 'neutral', OFFERED: 'new', ACCEPTED: 'ok', DECLINED: 'warn', NO_ANSWER: 'warn', SKIPPED: 'neutral', NOT_NEEDED: 'neutral' };
+const TONE: Record<CallOutContact['status'], Tone> = { WAITING: 'pending', OFFERED: 'new', ACCEPTED: 'ok', DECLINED: 'warn', NO_ANSWER: 'warn', SKIPPED: 'inactive', NOT_NEEDED: 'inactive' };
 
 /** Storm call-outs: offered in overtime order, one person at a time, with phone answers recorded here. */
 export default function CallOutsPage() {

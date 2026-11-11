@@ -23,7 +23,7 @@ type Status = 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'PAID' | 'WITHDRAWN';
 interface Item { id: string; date: string; category: Category; description: string; amount: number; km: number | null; centsPerKm: number | null; salesTax: number | null; receiptId: string | null }
 export interface Claim { id: string; name?: string; title: string; status: Status; total: number; submittedAt: string; decisionNote: string | null; paid: boolean; items: Item[] }
 interface Policy { centsPerKm: number; centsAfter: number; tierKm: number; receiptOver: number }
-const TONE: Record<Status, Tone> = { SUBMITTED: 'new', APPROVED: 'brand', PAID: 'ok', REJECTED: 'danger', WITHDRAWN: 'neutral' };
+const TONE: Record<Status, Tone> = { SUBMITTED: 'new', APPROVED: 'brand', PAID: 'ok', REJECTED: 'danger', WITHDRAWN: 'inactive' };
 
 /** Receipts are encrypted documents: fetched with the person's session, then saved. */
 async function receipt(id: string) {

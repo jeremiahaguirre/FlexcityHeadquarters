@@ -43,4 +43,4 @@ export interface Run {
   fileCreationNumber: number | null;
   depositFileSha256: string | null;
 }
-export const STATUS_TONE = { DRAFT: 'neutral', APPROVED: 'brand', PAID: 'ok', VOID: 'danger' } as const;
+export const STATUS_TONE = { DRAFT: 'pending', APPROVED: 'brand', PAID: 'ok', VOID: 'danger' } as const;

@@ -21,7 +21,7 @@ type Status = 'PROPOSED' | 'ACCEPTED' | 'APPROVED' | 'DECLINED' | 'DENIED' | 'CA
 export interface Trade { id: string; status: Status; note: string | null; decisionNote: string | null; from: Side; to: Side; check?: { from?: { overtimeHours: string }; to?: { overtimeHours: string } } | null }
 interface Option extends TShift { person: string }
 
-const TONE: Record<Status, Tone> = { PROPOSED: 'new', ACCEPTED: 'warn', APPROVED: 'ok', DECLINED: 'neutral', DENIED: 'neutral', CANCELLED: 'neutral', EXPIRED: 'neutral' };
+const TONE: Record<Status, Tone> = { PROPOSED: 'new', ACCEPTED: 'pending', APPROVED: 'ok', DECLINED: 'inactive', DENIED: 'inactive', CANCELLED: 'inactive', EXPIRED: 'inactive' };
 
 function useWhen() {
   const { i18n } = useTranslation();

@@ -19,7 +19,7 @@ import { formatDate } from '@/lib/format';
 import { papi, pdownload, usePlatformQuery } from '@/lib/platform';
 
 const BATCH_TONE: Record<PadBatch['status'], Tone> = { CREATED: 'new', SENT: 'brand', SETTLED: 'ok' };
-const DEBIT_TONE: Record<PadDebit['status'], Tone> = { PENDING: 'neutral', SETTLED: 'ok', RETURNED: 'danger' };
+const DEBIT_TONE: Record<PadDebit['status'], Tone> = { PENDING: 'pending', SETTLED: 'ok', RETURNED: 'danger' };
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** Pre-authorized debits: collect plan charges from cities' bank accounts. */

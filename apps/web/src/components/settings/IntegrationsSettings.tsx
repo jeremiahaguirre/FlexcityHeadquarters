@@ -144,7 +144,7 @@ function ApiKeysCard({ v, reload }: { v: View; reload: () => Promise<void> }) {
     setRevoking(null);
     if (r !== undefined) await reload();
   }
-  const tone: Record<ApiKey['status'], Tone> = { active: 'ok', expired: 'neutral', revoked: 'neutral' };
+  const tone: Record<ApiKey['status'], Tone> = { active: 'ok', expired: 'inactive', revoked: 'inactive' };
 
   return (
     <Card>
@@ -370,7 +370,7 @@ function DeliveriesCard({ endpoints }: { endpoints: Endpoint[] }) {
     const ep = endpoints.find((e) => e.id === id);
     return ep ? ep.description || new URL(ep.url).host : '';
   };
-  const tone: Record<Delivery['status'], Tone> = { SUCCEEDED: 'ok', FAILED: 'danger', PENDING: 'neutral' };
+  const tone: Record<Delivery['status'], Tone> = { SUCCEEDED: 'ok', FAILED: 'danger', PENDING: 'pending' };
   async function again(d: Delivery) {
     const r = await run(d.id, () => api<Delivery>(`/api/integrations/deliveries/${d.id}/redeliver`, { method: 'POST' }), t('integrations.redelivered'));
     if (r) await list.reload();

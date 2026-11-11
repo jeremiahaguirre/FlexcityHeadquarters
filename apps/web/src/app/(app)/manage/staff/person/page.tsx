@@ -137,7 +137,7 @@ function Person() {
         </div>
         <div className="flex flex-wrap gap-2">
           <StatusPill tone={p.status === 'ACTIVE' ? 'ok' : 'neutral'}>{t(`staff.statuses.${p.status}`)}</StatusPill>
-          {p.invited ? <StatusPill tone="new">{t('staff.pendingInvite')}</StatusPill> : null}
+          {p.invited ? <StatusPill tone="pending">{t('staff.pendingInvite')}</StatusPill> : null}
           {can('users.write') && p.invited && p.status === 'ACTIVE' ? (
             <Button variant="secondary" size="sm" icon={<MailPlus className="h-4 w-4" aria-hidden="true" />} loading={busy === 'invite'} onClick={() => void run('invite', () => api(`/api/users/${id}/invite`, { method: 'POST' }), t('staff.inviteResent'))}>
               {t('staff.resendInvite')}
@@ -198,7 +198,7 @@ function Person() {
                     <p className="text-small font-semibold">{posName(c.certification)}</p>
                     <p className="text-caption text-muted">{c.expiryDate ? t('profile.expires', { date: d(c.expiryDate) }) : t('profile.noExpiry')}</p>
                   </div>
-                  {c.verified ? <StatusPill tone="ok" icon={<BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />}>{t('profile.verified')}</StatusPill> : <StatusPill tone="neutral">{t('profile.awaiting')}</StatusPill>}
+                  {c.verified ? <StatusPill tone="ok" icon={<BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />}>{t('profile.verified')}</StatusPill> : <StatusPill tone="pending">{t('profile.awaiting')}</StatusPill>}
                 </li>
               ))}
             </ul>

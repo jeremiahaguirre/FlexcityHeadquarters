@@ -19,7 +19,7 @@ import { type Campaign, type LessonSet, PATTERNS, type SwimLevel, addDaysIso, ag
 import { useAction, useQuery } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
 
-const STATUS_TONE: Record<Campaign['status'], Tone> = { DRAFT: 'neutral', PUBLISHED: 'ok', CLOSED: 'warn' };
+const STATUS_TONE: Record<Campaign['status'], Tone> = { DRAFT: 'pending', PUBLISHED: 'ok', CLOSED: 'warn' };
 const DOW = [0, 1, 2, 3, 4, 5, 6];
 
 /** Planners at any facility (pool, arena, community centre) plan lessons, clubs and camps: levels, campaigns, sets. */

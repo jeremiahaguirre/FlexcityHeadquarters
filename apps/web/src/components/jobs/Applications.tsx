@@ -18,7 +18,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 
 const STATUSES = ['NEW', 'REVIEWING', 'INTERVIEW', 'OFFERED', 'DECLINED', 'WITHDRAWN'] as const;
 type Status = (typeof STATUSES)[number] | 'HIRED';
-const TONE: Record<Status, Tone> = { NEW: 'new', REVIEWING: 'brand', INTERVIEW: 'brand', OFFERED: 'warn', HIRED: 'ok', DECLINED: 'neutral', WITHDRAWN: 'neutral' };
+const TONE: Record<Status, Tone> = { NEW: 'new', REVIEWING: 'brand', INTERVIEW: 'brand', OFFERED: 'warn', HIRED: 'ok', DECLINED: 'inactive', WITHDRAWN: 'inactive' };
 interface App { id: string; name: string; email: string; phone: string | null; message: string | null; certifications: string | null; status: Status; notes: string | null; resume: { name: string; size: number } | null; createdAt: string }
 
 /** Public job page: apply in the app. */

@@ -15,7 +15,7 @@ import { formatDate } from '@/lib/format';
 import type { Review, ReviewStatus } from '@/lib/hr';
 import { todayIso, useAction, useQuery } from '@/lib/useQuery';
 
-const TONE: Record<ReviewStatus, Tone> = { SELF: 'neutral', MANAGER: 'neutral', DISCUSS: 'brand', ACKNOWLEDGED: 'ok' };
+const TONE: Record<ReviewStatus, Tone> = { SELF: 'pending', MANAGER: 'pending', DISCUSS: 'brand', ACKNOWLEDGED: 'ok' };
 
 function Stars({ n }: { n: number }) {
   const { t } = useTranslation();

@@ -21,7 +21,7 @@ export interface InvoiceRow {
   lines: Array<{ id: string; description: string; quantity: number; unitCents: number; amountCents: number }>;
   payments: Array<{ id: string; amountCents: number; receivedOn: string; method: string; reference: string | null }>;
 }
-export const STATUS_TONE = { DRAFT: 'neutral', SENT: 'brand', PARTIAL: 'new', OVERDUE: 'danger', PAID: 'ok', VOID: 'neutral' } as const;
+export const STATUS_TONE = { DRAFT: 'pending', SENT: 'pending', PARTIAL: 'new', OVERDUE: 'danger', PAID: 'ok', VOID: 'inactive' } as const;
 export const cad = (cents: number, locale: string) => new Intl.NumberFormat(locale, { style: 'currency', currency: 'CAD' }).format(cents / 100);
 export const thisMonth = () => new Date().toISOString().slice(0, 7);
 export const recentMonths = (n = 6) => {

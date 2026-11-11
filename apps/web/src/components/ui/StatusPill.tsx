@@ -1,8 +1,13 @@
-import { AlertTriangle, CheckCircle2, OctagonX, Sparkles } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CircleDot, Clock3, MinusCircle, OctagonX } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-export type Tone = 'ok' | 'warn' | 'danger' | 'new' | 'neutral' | 'brand';
+/**
+ * ok, warn, danger: how it went. new: needs someone's attention (open shift, request in).
+ * pending: waiting on someone (review, approval, sending). inactive: over without happening
+ * (cancelled, declined, withdrawn, void). neutral and brand: plain labels (roles, kinds).
+ */
+export type Tone = 'ok' | 'warn' | 'danger' | 'new' | 'pending' | 'inactive' | 'neutral' | 'brand';
 
 /** Neutral and brand labels (roles, kinds, plain states) get a small dot, not a hollow ring that reads as a radio button. */
 const Dot = ({ className }: { className?: string }) => <span className={cn('inline-block h-1.5 w-1.5 rounded-full bg-current opacity-70', className)} />;
@@ -11,7 +16,9 @@ const tones: Record<Tone, { cls: string; Icon: typeof CheckCircle2 | typeof Dot 
   ok: { cls: 'bg-ok-bg text-ok', Icon: CheckCircle2 },
   warn: { cls: 'bg-warn-bg text-warn', Icon: AlertTriangle },
   danger: { cls: 'bg-danger-bg text-danger', Icon: OctagonX },
-  new: { cls: 'bg-new-bg text-new', Icon: Sparkles },
+  new: { cls: 'bg-new-bg text-new', Icon: CircleDot },
+  pending: { cls: 'bg-surface text-muted', Icon: Clock3 },
+  inactive: { cls: 'bg-surface text-muted', Icon: MinusCircle },
   neutral: { cls: 'bg-surface text-muted', Icon: Dot },
   brand: { cls: 'bg-brand/10 text-brand-text', Icon: Dot },
 };

@@ -58,7 +58,7 @@ export function SavedPunches({ className }: { className?: string }) {
                 {waiting.map((p) => (
                   <li key={p.clientId} className="flex flex-wrap items-center justify-between gap-2 text-caption tabular-nums">
                     <span className="min-w-0">{describe(p)}</span>
-                    <StatusPill tone="neutral">{punch.sending ? t('timeclock.offline.sendingPill') : t('timeclock.offline.waitingPill')}</StatusPill>
+                    <StatusPill tone="pending">{punch.sending ? t('timeclock.offline.sendingPill') : t('timeclock.offline.waitingPill')}</StatusPill>
                   </li>
                 ))}
               </ul>

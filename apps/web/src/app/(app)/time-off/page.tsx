@@ -28,7 +28,7 @@ interface Request {
   note: string | null;
   decisionNote: string | null;
 }
-const TONE: Record<Status, Tone> = { PENDING: 'neutral', APPROVED: 'ok', DENIED: 'warn', CANCELLED: 'neutral' };
+const TONE: Record<Status, Tone> = { PENDING: 'pending', APPROVED: 'ok', DENIED: 'warn', CANCELLED: 'inactive' };
 const TYPES = ['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER', 'LIEU'] as const;
 
 /** Local date + optional time on this device → instant. Staff request time off in their own time zone. */

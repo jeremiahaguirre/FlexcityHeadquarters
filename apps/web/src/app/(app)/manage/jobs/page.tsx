@@ -55,7 +55,7 @@ export default function JobsPage() {
   }
 
   const status = (j: Job) => (!j.published ? 'draft' : j.closesOn < today ? 'closed' : 'live');
-  const tone = { draft: 'neutral', closed: 'neutral', live: 'ok' } as const;
+  const tone = { draft: 'pending', closed: 'inactive', live: 'ok' } as const;
   const pay = (j: Job) => (j.payMin && j.payMax ? `${formatMoney(j.payMin, lng)}–${formatMoney(j.payMax, lng)}/h` : j.payMin ? `${formatMoney(j.payMin, lng)}/h` : null);
 
   return (
