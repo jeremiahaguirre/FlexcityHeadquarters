@@ -1262,10 +1262,40 @@ model Notification {
   readAt    DateTime? @db.Timestamptz(3)
   /// Sent to the person's devices (web push), or skipped because they have none.
   pushedAt  DateTime? @db.Timestamptz(3)
+  /// Set when written by the event outbox: "<event id>:<recipient hash>", so a redelivered event never notifies twice.
+  dedupeKey String?
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
+  @@unique([tenantId, dedupeKey])
   @@index([userId, createdAt])
   @@index([tenantId])
+}
+
+enum EventStatus {
+  PENDING
+  DELIVERED
+  /// Gave up after the last attempt; kept for an operator to look at (lib/outbox.ts).
+  DEAD
+}
+
+/// Transactional outbox for domain events (lib/outbox.ts). Written in the same transaction as the
+/// change it describes; the dispatcher (API process right after commit, and the worker every few
+/// seconds) delivers each one at least once. The payload is cleared once delivered.
+model EventOutbox {
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @db.Uuid
+  type        String
+  payload     Json        @default("{}")
+  status      EventStatus @default(PENDING)
+  attempts    Int         @default(0)
+  /// Not before: retries back off by pushing this forward.
+  availableAt DateTime    @default(now()) @db.Timestamptz(3)
+  lastError   String?
+  deliveredAt DateTime?   @db.Timestamptz(3)
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+
+  @@index([status, availableAt])
+  @@index([tenantId, status, availableAt])
 }
 
 /// Emails are queued here inside the business transaction and sent by the worker,

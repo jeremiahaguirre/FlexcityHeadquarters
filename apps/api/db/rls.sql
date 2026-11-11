@@ -10,7 +10,7 @@ GRANT USAGE ON SCHEMA public TO flexcity_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO flexcity_app;
 -- No DELETE for the app role on payroll-bearing tables; deletes are limited below.
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM flexcity_app;
-GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole", "InvoiceLine", "Invoice", "PositionOnboarding", "RateLimitHit", "SwimLevel", "LessonCampaign", "Member", "FeeItem", "CoverageRule", "Department", "DepartmentManager", "PayStatement", "TrainingRecord", "PadBatch", "PadDebit", "SsoConnection", "EmailOutbox", "AuthToken", "RefreshToken", "PushSubscription", "FacilityHours", "TrainingSpend", "PayAdjustment", "EmergencyContact", "SmsOutbox", "JobApplication", "PayeePayment", "SavedReport" TO flexcity_app;
+GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole", "InvoiceLine", "Invoice", "PositionOnboarding", "RateLimitHit", "SwimLevel", "LessonCampaign", "Member", "FeeItem", "CoverageRule", "Department", "DepartmentManager", "PayStatement", "TrainingRecord", "PadBatch", "PadDebit", "SsoConnection", "EmailOutbox", "AuthToken", "RefreshToken", "PushSubscription", "FacilityHours", "TrainingSpend", "PayAdjustment", "EmergencyContact", "SmsOutbox", "JobApplication", "PayeePayment", "SavedReport", "EventOutbox" TO flexcity_app;
 -- Signed consent agreements are evidence: added, never changed or deleted by the app.
 REVOKE UPDATE ON "ConsentRecord" FROM flexcity_app;
 REVOKE UPDATE ON "PolicyAck" FROM flexcity_app;
@@ -36,7 +36,7 @@ DECLARE
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
     'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
-    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument', 'SupportGrant', 'SsoConnection', 'PushSubscription', 'ConsentRecord', 'FacilityHours', 'TrainingSpend', 'PayrollSync', 'Salary', 'PayAdjustment', 'PayDeductionOrder', 'SavedReport', 'PayeePayment', 'Payee', 'JobApplication', 'AnnouncementRead', 'Announcement', 'LogEntry', 'PolicyAck', 'Policy', 'ExpenseItem', 'ExpenseClaim', 'Kiosk', 'ShiftTrade', 'LieuAdjustment', 'SmsOutbox', 'EmergencyContact'
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument', 'SupportGrant', 'SsoConnection', 'PushSubscription', 'ConsentRecord', 'FacilityHours', 'TrainingSpend', 'PayrollSync', 'Salary', 'PayAdjustment', 'PayDeductionOrder', 'EventOutbox', 'SavedReport', 'PayeePayment', 'Payee', 'JobApplication', 'AnnouncementRead', 'Announcement', 'LogEntry', 'PolicyAck', 'Policy', 'ExpenseItem', 'ExpenseClaim', 'Kiosk', 'ShiftTrade', 'LieuAdjustment', 'SmsOutbox', 'EmergencyContact'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP
@@ -104,9 +104,21 @@ $$ SELECT 'email', count(*) FILTER (WHERE attempts < 5), count(*) FILTER (WHERE 
    UNION ALL
    SELECT 'sms', count(*) FILTER (WHERE attempts < 5), count(*) FILTER (WHERE attempts >= 5),
           coalesce(extract(epoch FROM now() - min("createdAt") FILTER (WHERE attempts < 5)), 0)::double precision
-     FROM "SmsOutbox" WHERE "sentAt" IS NULL $$;
+     FROM "SmsOutbox" WHERE "sentAt" IS NULL
+   UNION ALL
+   SELECT 'events', count(*) FILTER (WHERE status = 'PENDING'), count(*) FILTER (WHERE status = 'DEAD'),
+          coalesce(extract(epoch FROM now() - min("createdAt") FILTER (WHERE status = 'PENDING')), 0)::double precision
+     FROM "EventOutbox" WHERE status <> 'DELIVERED' $$;
 REVOKE ALL ON FUNCTION outbox_backlog() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION outbox_backlog() TO flexcity_app;
+
+-- Event outbox dispatcher (lib/outbox.ts): which organizations have domain events due now. Ids
+-- only; each organization's events are then claimed inside its own context, under RLS.
+CREATE OR REPLACE FUNCTION tenants_with_due_events() RETURNS SETOF uuid
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
+$$ SELECT DISTINCT "tenantId" FROM "EventOutbox" WHERE status = 'PENDING' AND "availableAt" <= now() $$;
+REVOKE ALL ON FUNCTION tenants_with_due_events() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION tenants_with_due_events() TO flexcity_app;
 
 -- SQL injection, defence in depth: even if a query were ever subverted, the runtime roles can't
 -- change the schema, create objects or temporary tables, run a statement for long, or sit in an
