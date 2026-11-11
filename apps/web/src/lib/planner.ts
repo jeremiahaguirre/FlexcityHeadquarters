@@ -82,7 +82,6 @@ export function plusDays(iso: string, n: number): string {
 }
 export const mondayOf = (iso: string) => plusDays(iso, -((new Date(`${iso}T12:00:00Z`).getUTCDay() + 6) % 7));
 export const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / 86_400_000);
-export const monthOf = (iso: string) => iso.slice(0, 7);
 
 /** The days a view shows around a date: a month grid (whole weeks), a week, or one day. */
 export function periodOf(view: View, anchor: string): { from: string; to: string; days: string[] } {
@@ -292,9 +291,6 @@ export function rankFor(people: BoardPerson[], cache: EligCache, shiftId: string
     .map((person) => ({ person, cell: shiftStatus(cache, person.id, shiftId) }))
     .sort((a, b) => order[a.cell.status] - order[b.cell.status] || a.person.scheduledHours - b.person.scheduledHours || a.person.name.localeCompare(b.person.name));
 }
-
-/** Tone for a status (colour is never alone: the reason text goes with it). */
-export const toneOf = (s: Status): 'ok' | 'warn' | 'danger' | 'neutral' => (s === 'ok' ? 'ok' : s === 'warn' ? 'warn' : s === 'block' ? 'danger' : 'neutral');
 
 /** People to check first: those shown at the top of the panel, then everyone else, in chunks. */
 export function chunksToLoad(order: string[], loaded: ReadonlySet<string>, size = 20): string[][] {

@@ -4,7 +4,7 @@ import { CheckCircle2, ChevronLeft, Truck, XCircle } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
-import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';

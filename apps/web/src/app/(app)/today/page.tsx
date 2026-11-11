@@ -5,7 +5,7 @@ import { MyCare } from '@/components/people/MyCare';
 import { PoliciesBanner } from '@/components/hr/Policies';
 import { MyAnnouncements } from '@/components/communication/Notices';
 import { MyOnboarding } from '@/components/people/MyOnboarding';
-import { ArrowRight, CalendarOff, ClipboardCheck, Clock, Repeat, Waves } from 'lucide-react';
+import { ArrowRight, CalendarOff, ClipboardCheck, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +38,7 @@ function Tile({ href, icon, label, value, tone }: { href: string; icon: ReactNod
   );
 }
 
+/** Home screen: today's shift and clock-in, then tiles for what is waiting (open shifts, approvals, pool status), each shown only with the permission behind it. */
 export default function TodayPage() {
   const { t, i18n } = useTranslation();
   const { me, can } = useSession();

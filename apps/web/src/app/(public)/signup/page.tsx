@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardBody } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorNotice } from '@/components/ui/ErrorNotice';
-import { Field, Input, Select, Textarea } from '@/components/ui/Field';
+import { Field, Input, Textarea } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { ApiError, api } from '@/lib/api';

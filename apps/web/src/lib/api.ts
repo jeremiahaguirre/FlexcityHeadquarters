@@ -156,11 +156,6 @@ export async function login(email: string, password: string) {
 
 export interface SsoInfo { protocol: 'OIDC' | 'SAML'; label: string | null; enforced: boolean }
 
-/** Whether this organization signs in with Microsoft / its own identity provider. */
-export async function ssoInfo(): Promise<SsoInfo | null> {
-  return (await signInInfo()).sso;
-}
-
 /** What the sign-in page needs: single sign-on, and whether the organization is closed (export only). */
 export async function signInInfo(): Promise<{ sso: SsoInfo | null; closed: { exportUntil: string | null } | null }> {
   if (DEMO) return { sso: null, closed: null };

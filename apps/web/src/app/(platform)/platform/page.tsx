@@ -13,13 +13,13 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ListSkeleton } from '@/components/ui/Skeleton';
-import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { ApiError } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import { type CitySummary, papi, usePlatformQuery } from '@/lib/platform';
 import { PROVINCES, TIMEZONES } from '@/lib/regions';
 
+/** Dev console home: every organization (city or company), with search and a form to create one. */
 export default function CitiesPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

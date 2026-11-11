@@ -6,8 +6,6 @@ export type Group = (typeof GROUPS)[number];
 export type ItemKey =
   | 'poolChemistry' | 'incidents' | 'statusBoard' | 'rotations' | 'registration' | 'fleet' | 'winter'
   | 'onboarding' | 'reliability' | 'discipline' | 'accommodation' | 'hrSuite' | 'benchmarks' | 'sso' | 'bankConnection' | 'publicApi' | 'union';
-/** Kept for screens that say "module": each option is one. */
-export type Module = ItemKey;
 
 export interface PublicPlan { listCents: number; quoted: boolean; staffPerFacility: number | null; extraStaffCents: number; items: ItemKey[]; service: string[] }
 export interface Catalog {

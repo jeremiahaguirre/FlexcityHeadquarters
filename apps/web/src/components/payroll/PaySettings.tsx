@@ -154,7 +154,6 @@ export function BankConnection() {
   const data = useQuery<Settings>('/api/payroll/settings');
   const { run, busy } = useAction();
   const editable = can('payroll.approve');
-  const [lieuOn, setLieuOn] = useState<boolean | null>(null);
   if (!data.data) return <Skeleton className="h-48" />;
   const b = data.data.bank;
   async function save(e: FormEvent<HTMLFormElement>) {
