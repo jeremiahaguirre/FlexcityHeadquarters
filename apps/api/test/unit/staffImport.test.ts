@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseCsv, previewImport } from '../../src/services/platform/staffImport.js';
+import { AccessRole as PrismaAccessRole, EmploymentStatus as PrismaEmploymentStatus } from '@prisma/client';
+import { type AccessRole, type EmploymentStatus, parseCsv, previewImport } from '../../src/services/platform/staffImport.js';
 import { parseLogo } from '../../src/services/platform/logo.js';
 
 const positions = [
@@ -71,5 +72,20 @@ describe('logo upload', () => {
     expect(parseLogo(`data:image/png;base64,${png}`).contentType).toBe('image/png');
     expect(() => parseLogo(`data:image/jpeg;base64,${png}`)).toThrow(/not a valid/);
     expect(() => parseLogo(`data:image/svg+xml;base64,${Buffer.from('<svg/>').toString('base64')}`)).toThrow(/PNG, JPEG or WebP/);
+  });
+});
+
+// Compile-time: the file's own copies of the enums must equal Prisma's both ways (npm run typecheck).
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+const sameRoles: Same<AccessRole, PrismaAccessRole> = true;
+const sameStatus: Same<EmploymentStatus, PrismaEmploymentStatus> = true;
+
+describe('enum copies', () => {
+  it('match the Prisma schema', () => {
+    expect([sameRoles, sameStatus]).toEqual([true, true]);
+    const roles: Record<AccessRole, true> = { HR_ADMIN: true, AQUATIC_SUPERVISOR: true, HEAD_LIFEGUARD: true, STAFF: true, FRONT_DESK: true, UNION_STEWARD: true, EMPLOYEE: true };
+    const statuses: Record<EmploymentStatus, true> = { FULL_TIME: true, PART_TIME: true, CASUAL: true, ON_CALL: true, VOLUNTEER: true };
+    expect(Object.keys(roles).sort()).toEqual(Object.values(PrismaAccessRole).sort());
+    expect(Object.keys(statuses).sort()).toEqual(Object.values(PrismaEmploymentStatus).sort());
   });
 });

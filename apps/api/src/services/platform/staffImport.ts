@@ -3,7 +3,13 @@
  * the Dev console can show a row-by-row preview before anything is created.
  * Problems are codes (translated in the web app), never free text.
  */
-import type { AccessRole, EmploymentStatus } from '@prisma/client';
+/**
+ * The Prisma enums, spelled out: this file is also bundled into the web app (the demo's import
+ * preview), which has no generated Prisma client. test/unit/staffImport.test.ts fails at compile
+ * time if these drift from prisma/schema.prisma.
+ */
+export type AccessRole = 'HR_ADMIN' | 'AQUATIC_SUPERVISOR' | 'HEAD_LIFEGUARD' | 'STAFF' | 'FRONT_DESK' | 'UNION_STEWARD' | 'EMPLOYEE';
+export type EmploymentStatus = 'FULL_TIME' | 'PART_TIME' | 'CASUAL' | 'ON_CALL' | 'VOLUNTEER';
 
 export const MAX_IMPORT_ROWS = 2000;
 
