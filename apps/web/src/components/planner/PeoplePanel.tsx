@@ -7,7 +7,7 @@
  * (or several, ticked) onto the schedule; tap or press Enter to pick them and then choose a shift.
  * The list is windowed so a department of a few hundred stays smooth.
  */
-import { BadgeCheck, CalendarCheck, Search } from 'lucide-react';
+import { BadgeCheck, CalendarCheck, PanelLeftClose, Search } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input, Select } from '@/components/ui/Field';
@@ -36,6 +36,8 @@ export interface PanelProps {
   height: string;
   /** Hours and targets are for the week around the day in view (day view). */
   weekScope?: boolean;
+  /** Wide screens: fold the column away (the toolbar's People button brings it back). */
+  onHide?: () => void;
 }
 
 export function PeoplePanel(p: PanelProps) {
@@ -72,7 +74,14 @@ export function PeoplePanel(p: PanelProps) {
       <div className="grid gap-2 border-b border-line p-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-body-strong">{t('planner.people.title')}</h2>
-          <span className="text-caption text-muted">{t('planner.people.count', { count: list.length })}</span>
+          <span className="flex items-center gap-1">
+            <span className="text-caption text-muted">{t('planner.people.count', { count: list.length })}</span>
+            {p.onHide ? (
+              <button type="button" onClick={p.onHide} aria-label={t('planner.people.hide')} title={t('planner.people.hide')} className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-surface hover:text-ink">
+                <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
+          </span>
         </div>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />

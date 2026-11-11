@@ -9,7 +9,7 @@
  * keyboards do the same by picking: choose a shift for a ranked list of people, or pick a person
  * and then a shift or a day. Every change is a draft until Publish, and can be undone.
  */
-import { CalendarDays, CalendarCog, ChevronLeft, ChevronRight, Copy, Redo2, Send, Undo2, Users, X } from 'lucide-react';
+import { CalendarDays, CalendarCog, ChevronLeft, ChevronRight, Copy, CalendarPlus, MoreHorizontal, Redo2, Send, Undo2, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -471,6 +471,10 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
   const [details, setDetails] = useState<BoardShift | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [peopleOpen, setPeopleOpen] = useState(false);
+  /** Wide screens: the people column can be folded away to give the days more room. */
+  const [peopleHidden, setPeopleHidden] = useState(false);
+  /** Phones: the less-used actions sit in a sheet. */
+  const [moreOpen, setMoreOpen] = useState(false);
   const [copyMode, setCopyMode] = useState(false);
   const rows = useMemo(() => (board ? rowsOf(board, rowMode) : []), [board, rowMode]);
 
@@ -753,7 +757,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
     onOpenDay,
     picking: !!picking,
   };
-  const panel = (height: string) =>
+  const panel = (height: string, onHide?: () => void) =>
     board ? (
       <PeoplePanel
         weekScope={board.hoursScope === 'week'}
@@ -770,6 +774,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
         onDragStart={onPersonDragStart}
         onOrder={onOrder}
         height={height}
+        onHide={onHide}
       />
     ) : (
       <Skeleton className="h-96" />
@@ -787,7 +792,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {options && options.departments.length > 1 ? (
-            <div className="w-full sm:w-52">
+            <div className="w-full sm:w-64">
               <Select aria-label={t('fill.department')} value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
                 {options.departments.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -799,7 +804,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
             </div>
           ) : null}
           {options && options.facilities.length > 1 ? (
-            <div className="w-full sm:w-52">
+            <div className="w-full sm:w-64">
               <Select aria-label={t('timeclock.facility')} value={facilityId} onChange={(e) => setFacilityId(e.target.value)}>
                 <option value="">{t('planner.allFacilities')}</option>
                 {options.facilities.map((f) => (
@@ -837,11 +842,11 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
             </span>
           ) : null}
           {view === 'week' ? (
-            <Button variant="secondary" size="sm" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} onClick={() => void copyRange(plusDays(period.from, -7), period.from, 7)}>
+            <Button variant="secondary" size="sm" className="max-md:hidden" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} onClick={() => void copyRange(plusDays(period.from, -7), period.from, 7)}>
               {t('planner.copyLastWeek')}
             </Button>
           ) : view === 'day' ? (
-            <Button variant="secondary" size="sm" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} onClick={() => void copyRange(plusDays(anchor, -1), anchor, 1)}>
+            <Button variant="secondary" size="sm" className="max-md:hidden" icon={<CalendarDays className="h-4 w-4" aria-hidden="true" />} onClick={() => void copyRange(plusDays(anchor, -1), anchor, 1)}>
               {t('planner.copyYesterday')}
             </Button>
           ) : null}
@@ -861,29 +866,34 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
           <Button variant="ghost" size="sm" aria-label={t('planner.redo')} title={history.future[0]?.label} disabled={!history.future.length || stepping} onClick={() => void step('redo')}>
             <Redo2 className="h-4 w-4" aria-hidden="true" />
           </Button>
-          <Button variant="secondary" size="sm" className="xl:hidden" icon={<Users className="h-4 w-4" aria-hidden="true" />} onClick={() => setPeopleOpen(true)}>
+          <Button variant="secondary" size="sm" className={cn('max-md:hidden', !peopleHidden && 'xl:hidden')} icon={<Users className="h-4 w-4" aria-hidden="true" />} onClick={() => (peopleHidden && window.matchMedia('(min-width: 1280px)').matches ? setPeopleHidden(false) : setPeopleOpen(true))}>
             {t('planner.people.open', { count: board?.people.length ?? 0 })}
+          </Button>
+          <Button variant="secondary" size="sm" className="md:hidden" aria-label={t('planner.moreActions')} aria-haspopup="dialog" onClick={() => setMoreOpen(true)}>
+            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
 
       {/* Drafts and Publish. On phones, while there are drafts, this sits just above the tab bar so Publish stays in reach. */}
-      <div className={cn('flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2', drafts.length > 0 && 'max-md:sticky max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:z-20 max-md:border max-md:border-line max-md:bg-panel max-md:shadow-lift')}>
+      <div className={cn('flex flex-wrap items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2', drafts.length === 0 ? 'max-md:hidden' : 'max-md:sticky max-md:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:z-20 max-md:border max-md:border-line max-md:bg-panel max-md:shadow-lift')}>
         <p className="text-small text-muted">
-          {t('planner.unpublished', { count: drafts.length })}
+          {drafts.length ? t('planner.unpublished', { count: drafts.length }) : t('planner.allPublished')}
           {history.past.length ? ` · ${t('planner.changes', { count: history.past.length })}` : ''}
           {checking ? ` · ${t('planner.status.checking')}` : ''}
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="ghost" size="sm" icon={<CalendarCog className="h-4 w-4" aria-hidden="true" />} onClick={() => setTemplatesOpen(true)}>
+          <Button variant="ghost" size="sm" className="max-md:hidden" icon={<CalendarCog className="h-4 w-4" aria-hidden="true" />} onClick={() => setTemplatesOpen(true)}>
             {t('planner.templates')}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onOpenFill}>
+          <Button variant="ghost" size="sm" className="max-md:hidden" onClick={onOpenFill}>
             {t('fill.open')}
           </Button>
-          <Button size="sm" icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={!!publishGroups} disabled={!drafts.length} onClick={publish}>
-            {t('builder.publish', { count: drafts.length })}
-          </Button>
+          {drafts.length ? (
+            <Button size="sm" icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={!!publishGroups} onClick={publish}>
+              {t('builder.publish', { count: drafts.length })}
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -898,10 +908,12 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[15.5rem_minmax(0,1fr)] 2xl:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside className="hidden xl:block">
-          <div className="sticky top-4">{panel('calc(100dvh - 17rem)')}</div>
-        </aside>
+      <div className={cn('grid gap-4', !peopleHidden && 'xl:grid-cols-[15.5rem_minmax(0,1fr)] 2xl:grid-cols-[17rem_minmax(0,1fr)]')}>
+        {!peopleHidden ? (
+          <aside className="hidden xl:block">
+            <div className="sticky top-4">{panel('calc(100dvh - 17rem)', () => setPeopleHidden(true))}</div>
+          </aside>
+        ) : null}
         <div className="min-w-0">
           {boardError ? (
             <ErrorNotice onRetry={() => void loadBoard()} />
@@ -926,6 +938,37 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
         {ghostText.hint ? <p className={cn('text-caption', ghostText.status === 'ok' ? 'text-ok' : ghostText.status === 'warn' ? 'text-warn' : ghostText.status === 'block' ? 'text-danger' : 'text-muted')}>{ghostText.hint}</p> : null}
         {dragging?.kind === 'shift' && (alt || copyMode) ? <p className="text-caption font-semibold text-brand-text">{t('planner.copying')}</p> : null}
       </div>
+
+      <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title={t('planner.moreActions')} closeLabel={t('common.close')}>
+        <ul className="grid gap-1">
+          {(
+            [
+              { key: 'people', icon: Users, label: t('planner.people.open', { count: board?.people.length ?? 0 }), run: () => setPeopleOpen(true) },
+              view === 'week'
+                ? { key: 'copy', icon: CalendarDays, label: t('planner.copyLastWeek'), run: () => void copyRange(plusDays(period.from, -7), period.from, 7) }
+                : view === 'day'
+                  ? { key: 'copy', icon: CalendarDays, label: t('planner.copyYesterday'), run: () => void copyRange(plusDays(anchor, -1), anchor, 1) }
+                  : null,
+              { key: 'templates', icon: CalendarCog, label: t('planner.templates'), run: () => setTemplatesOpen(true) },
+              { key: 'fill', icon: CalendarPlus, label: t('fill.open'), run: onOpenFill },
+            ].filter((x) => x !== null) as { key: string; icon: typeof Users; label: string; run: () => void }[]
+          ).map((a) => (
+            <li key={a.key}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMoreOpen(false);
+                  a.run();
+                }}
+                className="flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3 text-left text-body-strong hover:bg-surface"
+              >
+                <a.icon className="h-5 w-5 text-muted" aria-hidden="true" />
+                {a.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </Dialog>
 
       <Dialog open={peopleOpen} onClose={() => setPeopleOpen(false)} title={t('planner.people.title')} description={t('planner.people.phoneHelp')} closeLabel={t('common.close')}>
         {peopleOpen ? panel('55dvh') : null}

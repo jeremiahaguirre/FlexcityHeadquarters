@@ -2,9 +2,10 @@
 
 /** The month and week views, and the shift card both use. Drop targets carry `data-drop`. */
 import { AlertTriangle, Plus } from 'lucide-react';
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
+import { useScrollFade } from '@/lib/useScrollFade';
 import { formatDate, formatTime, formatTimeRange } from '@/lib/format';
 import { type Board, type BoardShift, type MaybeCell, type Row, type Status, inRow } from '@/lib/planner';
 import { StatusMark, dropTone } from './text';
@@ -219,12 +220,15 @@ export function WeekView(p: ViewProps & { rows: Row[] }) {
   }, [p.board.shifts]);
   const chip = (s: BoardShift, inRows = false) => <ShiftChip key={s.id} shift={s} compact={false} showPlace={showPlace && !(inRows && p.rows[0]?.facilityId)} showPosition={!(inRows && p.rows[0]?.positionId)} status={p.shiftStatus?.(s.id).status ?? null} over={p.overKey === `shift|${s.id}`} onPointerDown={p.onShiftPointerDown} onActivate={p.onShiftActivate} />;
   const dayLabel = (d: string) => formatDate(`${d}T12:00:00`, lng);
+  const scroller = useRef<HTMLDivElement>(null);
+  const fade = useScrollFade(scroller, '3rem', { endOnly: true });
   return (
     <>
       {/* Desktop: rows × days */}
-      <div role="table" aria-label={t('planner.views.week')} className="hidden overflow-x-auto rounded-xl2 border border-line bg-panel lg:block">
-        <div role="row" className="grid min-w-[40rem] grid-cols-[5.5rem_repeat(7,minmax(4.75rem,1fr))] border-b border-line bg-surface/60">
-          <div role="columnheader" className="px-2 py-2 text-caption font-semibold text-muted" />
+      {/* Days keep a readable width; when the column is narrower the grid scrolls sideways (row names stay put) and fades at the edge with more. */}
+      <div ref={scroller} style={fade} role="table" aria-label={t('planner.views.week')} className="hidden overflow-x-auto rounded-xl2 border border-line bg-panel lg:block">
+        <div role="row" className="grid min-w-[52.75rem] grid-cols-[5.5rem_repeat(7,minmax(6.75rem,1fr))] border-b border-line bg-surface">
+          <div role="columnheader" className="sticky left-0 z-10 bg-surface px-2 py-2 text-caption font-semibold text-muted" />
           {p.days.map((d) => (
             <div key={d} role="columnheader" className="flex items-center justify-between px-2 py-1">
               <button type="button" onClick={() => p.onOpenDay(d)} className={cn('rounded px-1 text-small font-bold hover:underline', d === p.board.range.today && 'text-brand-text')}>
@@ -234,8 +238,8 @@ export function WeekView(p: ViewProps & { rows: Row[] }) {
           ))}
         </div>
         {p.rows.map((r) => (
-          <div key={r.key} role="row" className="grid min-w-[40rem] grid-cols-[5.5rem_repeat(7,minmax(4.75rem,1fr))] border-b border-line last:border-b-0">
-            <div role="rowheader" className="break-words px-2 py-2 text-small font-semibold" title={rowLabel(lng, r)}>
+          <div key={r.key} role="row" className="grid min-w-[52.75rem] grid-cols-[5.5rem_repeat(7,minmax(6.75rem,1fr))] border-b border-line last:border-b-0">
+            <div role="rowheader" className="sticky left-0 z-10 break-words bg-panel px-2 py-2 text-small font-semibold" title={rowLabel(lng, r)}>
               {rowLabel(lng, r)}
             </div>
             {p.days.map((d) => {
