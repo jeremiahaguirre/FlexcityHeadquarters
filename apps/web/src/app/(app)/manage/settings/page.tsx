@@ -17,6 +17,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate, setTimeFormat } from '@/lib/format';
 import { PROVINCES, TIMEZONES } from '@/lib/regions';
+import { CANADIAN_CITIES } from '@/lib/canadianCities';
 import { DeckStations } from '@/components/pools/DeckStations';
 import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { useSession } from '@/lib/session';
@@ -34,7 +35,7 @@ import { IntegrationsSettings } from '@/components/settings/IntegrationsSettings
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
 
-interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null; rotationMinutes?: number; maxOnChairMinutes?: number }
+interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null; rotationMinutes?: number; maxOnChairMinutes?: number; exposure?: 'INDOOR' | 'OUTDOOR' | 'MIXED'; venueKind?: string; weatherSite?: string | null; weatherSiteAuto?: string | null; weatherSiteName?: { en: string; fr: string } | null }
 interface Override { id: string; province: string | null; ruleKey: string; value: unknown; effectiveFrom: string; effectiveTo: string | null; source: string }
 interface Period { kind: 'TERM' | 'BREAK'; name: string; startsOn: string; endsOn: string }
 interface Settings {
@@ -210,15 +211,17 @@ function Organization({ s, reload }: Props) {
   );
 }
 
+const VENUE_KINDS = ['POOL', 'PARK', 'BEACH', 'ARENA', 'COMMUNITY_CENTRE', 'OTHER'] as const;
+
 function Facilities({ s, reload }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { run, busy } = useAction();
   const [editing, setEditing] = useState<Facility | 'new' | null>(null);
   const current = editing === 'new' ? null : editing;
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const body = { name: str(f, 'name'), province: str(f, 'province'), timezone: str(f, 'tz'), latitude: num(f, 'lat'), longitude: num(f, 'lng'), geoRadiusM: num(f, 'radius'), costCenter: str(f, 'cc'), rotationMinutes: num(f, 'rotation') ?? undefined, maxOnChairMinutes: num(f, 'maxChair') ?? undefined };
+    const body = { name: str(f, 'name'), province: str(f, 'province'), timezone: str(f, 'tz'), latitude: num(f, 'lat'), longitude: num(f, 'lng'), geoRadiusM: num(f, 'radius'), costCenter: str(f, 'cc'), rotationMinutes: num(f, 'rotation') ?? undefined, maxOnChairMinutes: num(f, 'maxChair') ?? undefined, exposure: str(f, 'exposure') ?? undefined, venueKind: str(f, 'venueKind') ?? undefined, weatherSite: str(f, 'weatherSite') };
     const r = await run('fac', () => (current ? api(`/api/settings/facilities/${current.id}`, { method: 'PATCH', body }) : api('/api/settings/facilities', { method: 'POST', body })), t('profile.saved'));
     if (r !== undefined) {
       setEditing(null);
@@ -278,11 +281,61 @@ function Facilities({ s, reload }: Props) {
             </Field>
             <Field label={t('settings.costCentre')} hint={t('settings.costCentreHint')}>{(p) => <Input {...p} name="cc" defaultValue={current?.costCenter ?? ''} />}</Field>
             <Field label={t('settings.radius')} hint={t('settings.radiusHint')}>{(p) => <Input {...p} name="radius" type="number" min={25} max={2000} required defaultValue={current?.geoRadiusM ?? 150} />}</Field>
+            <Field label={t('settings.cityCentre')} hint={t('settings.cityCentreHint')} className="sm:col-span-2">
+              {(p) => (
+                <Select
+                  {...p}
+                  defaultValue=""
+                  onChange={(e) => {
+                    const c = CANADIAN_CITIES[Number(e.target.value)];
+                    const form = e.currentTarget.form;
+                    if (!c || !form) return;
+                    (form.elements.namedItem('lat') as HTMLInputElement).value = String(c.lat);
+                    (form.elements.namedItem('lng') as HTMLInputElement).value = String(c.lng);
+                  }}
+                >
+                  <option value="">{t('settings.cityCentrePick')}</option>
+                  {CANADIAN_CITIES.map((c, i) => (
+                    <option key={c.name} value={i}>
+                      {c.name} ({c.province})
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
             <Field label={t('settings.latitude')}>{(p) => <Input {...p} name="lat" inputMode="decimal" defaultValue={current?.latitude ?? ''} placeholder="49.8880" />}</Field>
             <Field label={t('settings.longitude')}>{(p) => <Input {...p} name="lng" inputMode="decimal" defaultValue={current?.longitude ?? ''} placeholder="-119.4960" />}</Field>
             <Field label={t('deck.rotationMinutes')} hint={t('deck.rotationMinutesHint')}>{(p) => <Input {...p} name="rotation" type="number" min={10} max={120} defaultValue={current?.rotationMinutes ?? 30} />}</Field>
             <Field label={t('deck.maxOnChair')} hint={t('deck.maxOnChairHint')}>{(p) => <Input {...p} name="maxChair" type="number" min={30} max={480} defaultValue={current?.maxOnChairMinutes ?? 120} />}</Field>
           </div>
+          <fieldset className="grid gap-4 sm:grid-cols-2">
+            <legend className="mb-2 text-body-strong">{t('settings.forecastSetup')}</legend>
+            <Field label={t('settings.exposure')} hint={t('settings.exposureHint')}>
+              {(p) => (
+                <Select {...p} name="exposure" defaultValue={current?.exposure ?? 'INDOOR'}>
+                  {(['INDOOR', 'OUTDOOR', 'MIXED'] as const).map((x) => <option key={x} value={x}>{t(`settings.exposures.${x}`)}</option>)}
+                </Select>
+              )}
+            </Field>
+            <Field label={t('settings.venueKind')}>
+              {(p) => (
+                <Select {...p} name="venueKind" defaultValue={current?.venueKind ?? 'POOL'}>
+                  {VENUE_KINDS.map((x) => <option key={x} value={x}>{t(`settings.venueKinds.${x}`)}</option>)}
+                </Select>
+              )}
+            </Field>
+            <Field
+              label={t('settings.weatherSite')}
+              className="sm:col-span-2"
+              hint={
+                current?.weatherSiteName
+                  ? t(current.weatherSite ? 'settings.weatherSiteSet' : 'settings.weatherSiteFound', { name: i18n.language.startsWith('fr') ? current.weatherSiteName.fr : current.weatherSiteName.en })
+                  : t('settings.weatherSiteHint')
+              }
+            >
+              {(p) => <Input {...p} name="weatherSite" autoComplete="off" autoCapitalize="none" spellCheck={false} pattern="[A-Za-z]{2}-[0-9]{1,4}" defaultValue={current?.weatherSite ?? ''} placeholder={current?.weatherSiteAuto ?? 'bc-48'} />}
+            </Field>
+          </fieldset>
           <Button type="submit" loading={busy === 'fac'}>
             {t('common.save')}
           </Button>
