@@ -177,6 +177,9 @@ export async function generateDraft(tenantId: string, month: string, adminId: st
   if (!est) return 'no-account';
   if (!est.lines.length) return 'nothing-to-bill';
   const { account } = await getAccount(tenantId);
+  // A month wholly inside a free trial isn't invoiced (terms and refund policy: invoicing starts
+  // once the subscription begins).
+  if (account?.trialEndsAt && account.trialEndsAt.getTime() >= end.getTime() + 86_400_000 - 1) return 'nothing-to-bill';
   const existing = await db().invoice.findFirst({ where: { tenantId, periodStart: start, status: { not: 'VOID' } } });
   if (existing) return 'exists';
   await db().invoice.create({

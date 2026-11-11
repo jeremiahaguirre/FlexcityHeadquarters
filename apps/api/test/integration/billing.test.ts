@@ -62,6 +62,14 @@ describe('billing', () => {
     expect((await dev('put', `/billing/accounts/${t.tenant.id}`, account({ province: 'XX' }))).status).toBe(400);
   });
 
+  it('months wholly inside a free trial are not invoiced (trial ending on the last day, or later)', async () => {
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ trialEndsOn: '2026-09-30' }));
+    expect((await dev('post', '/billing/invoices/generate', { month: '2026-09', tenantIds: [t.tenant.id] })).body).toMatchObject({ 'nothing-to-bill': 1 });
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ trialEndsOn: '2026-10-15' }));
+    expect((await dev('post', '/billing/invoices/generate', { month: '2026-09', tenantIds: [t.tenant.id] })).body).toMatchObject({ 'nothing-to-bill': 1 });
+    await dev('put', `/billing/accounts/${t.tenant.id}`, account({ trialEndsOn: null }));
+  });
+
   it('drafts a month once, lets Dev adjust it, then sends it with the next number', async () => {
     expect((await dev('post', '/billing/invoices/generate', { month: MONTH, tenantIds: [t.tenant.id] })).body).toMatchObject({ created: 1 });
     expect((await dev('post', '/billing/invoices/generate', { month: MONTH, tenantIds: [t.tenant.id] })).body).toMatchObject({ exists: 1 });
