@@ -6,10 +6,12 @@
  *   npm run build && npm start            (web on :3000; API on :4000 with PLATFORM_MFA=off,
  *                                         since the script signs in to the Dev console with a password)
  *   node scripts/capture-demo.cjs
+ *   node scripts/capture-demo.cjs --prepare-only   (just the sample data, nothing recorded)
  *
  * Names are swapped for the fictional demo organization before saving.
  */
 const { chromium } = require('playwright');
+const { execFileSync } = require('node:child_process');
 const { readFileSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 
@@ -206,8 +208,14 @@ async function prepareHr(hr, sup) {
   await hr.call('PUT', `/api/users/${guard.user.id}/leave`, { year, type: 'VACATION', hours: 80, carryover: 16, note: 'Article 21.01' });
 }
 
-/** Sample data for the newer screens: contacts, announcements, logbook, a policy, a claim, a contractor, a posting with an application, a saved report. */
+/**
+ * Sample data for the newer screens. Shift trades, time in lieu, text alerts, job applications,
+ * reporting lines, forecast events, facility kinds and integrations come from the API's own seed
+ * (apps/api/prisma/seedNewScreens.ts, idempotent); contacts, announcements, logbook, a policy, a claim,
+ * a contractor, a posting with an application and saved reports are added here through the API.
+ */
 async function prepareNewFeatures() {
+  execFileSync(process.execPath, ['--env-file-if-exists=.env', '--import', 'tsx', 'prisma/seedNewScreens.ts'], { cwd: join(__dirname, '../../api'), stdio: 'inherit' });
   const guard = await apiAs('guard');
   const sup = await apiAs('supervisor');
   const hr = await apiAs('hr');
@@ -505,6 +513,7 @@ async function capturePlatform(browser) {
 
 (async () => {
   await prepare();
+  if (process.argv.includes('--prepare-only')) return;
   const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP *.localhost 127.0.0.1'] });
   for (const role of Object.keys(ROLES)) await capture(browser, role);
   // Public careers page (no sign-in).
