@@ -174,6 +174,20 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Utilisez ce lien dans l'heure qui suit pour choisir un nouveau mot de passe :\n${p.url}\n\nSi vous n'avez rien demandé, ignorez ce courriel.`,
     }),
   },
+  /**
+   * A sign-in code (second factor, routes/mfaCodes.ts): transactional, sent at once. The code is in
+   * the params only until the email is sent; then they're cleared, like every outbox message.
+   */
+  mfa_code: {
+    'en-CA': (p) => ({
+      subject: 'Your FlexcityHeadquarters sign-in code',
+      text: `Hello ${p.name},\n\nThis code is for ${p.name}, to finish signing in to ${p.organization} on FlexcityHeadquarters:\n\n${p.code}\n\nIt expires in 10 minutes and works once. Nobody from FlexcityHeadquarters or your organization will ask you for it.\n\nIf this wasn't you, someone knows your password: change it now (choose "Forgot your password?" on the sign-in page) and tell your HR team.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Votre code de connexion FlexcityHeadquarters',
+      text: `Bonjour ${p.name},\n\nCe code est destiné à ${p.name}, pour terminer la connexion à ${p.organization} sur FlexcityHeadquarters :\n\n${p.code}\n\nIl expire dans 10 minutes et ne sert qu’une fois. Personne de FlexcityHeadquarters ni de votre organisation ne vous le demandera.\n\nSi ce n’était pas vous, quelqu’un connaît votre mot de passe : changez-le maintenant (choisissez « Mot de passe oublié? » sur la page de connexion) et avisez votre équipe RH.`,
+    }),
+  },
   invite: {
     'en-CA': (p) => ({
       subject: `You're invited to ${p.organization} on FlexcityHeadquarters`,

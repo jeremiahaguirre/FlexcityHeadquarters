@@ -309,7 +309,10 @@ settingsRouter.put(
   }),
 );
 
-/** Which access levels need a second factor (passkey or provider MFA). HR always does. */
+/**
+ * Which access levels need a second factor (passkey or provider MFA). HR always does. `codes`: whether
+ * a one-time code by email or text counts as the second factor too (on unless HR turns it off).
+ */
 const ALL_ROLES = ['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'UNION_STEWARD', 'EMPLOYEE'] as const;
 
 settingsRouter.get(
@@ -317,8 +320,8 @@ settingsRouter.get(
   requirePermission('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
-    const t = await withTenant(a.tenantId, (tx) => tx.tenant.findFirstOrThrow({ select: { mfaRoles: true } }));
-    res.json({ roles: t.mfaRoles, all: ALL_ROLES, everyone: ALL_ROLES.every((r) => t.mfaRoles.includes(r)) });
+    const t = await withTenant(a.tenantId, (tx) => tx.tenant.findFirstOrThrow({ select: { mfaRoles: true, mfaCodes: true } }));
+    res.json({ roles: t.mfaRoles, all: ALL_ROLES, everyone: ALL_ROLES.every((r) => t.mfaRoles.includes(r)), codes: t.mfaCodes });
   }),
 );
 
@@ -329,15 +332,17 @@ settingsRouter.put(
   h(async (req, res) => {
     const a = authOf(req);
     if (!a.mfa) throw new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey to change who needs one.');
-    const b = z.object({ roles: z.array(z.enum(ALL_ROLES)).max(ALL_ROLES.length) }).parse(req.body);
+    const b = z.object({ roles: z.array(z.enum(ALL_ROLES)).max(ALL_ROLES.length), codes: z.boolean().optional() }).parse(req.body);
     const roles = [...new Set<(typeof ALL_ROLES)[number]>(['HR_ADMIN', ...b.roles])];
-    await withTenant(a.tenantId, async (tx) => {
-      const before = await tx.tenant.findFirstOrThrow({ select: { mfaRoles: true } });
-      await tx.tenant.update({ where: { id: a.tenantId }, data: { mfaRoles: roles } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.mfa', entity: 'Tenant', entityId: a.tenantId, before: before.mfaRoles, after: roles });
+    const codes = await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenant.findFirstOrThrow({ select: { mfaRoles: true, mfaCodes: true } });
+      const codes = b.codes ?? before.mfaCodes;
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { mfaRoles: roles, mfaCodes: codes } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.mfa', entity: 'Tenant', entityId: a.tenantId, before: { roles: before.mfaRoles, codes: before.mfaCodes }, after: { roles, codes } });
+      return codes;
     });
     forgetFeatures(a.tenantId);
-    res.json({ roles });
+    res.json({ roles, codes });
   }),
 );
 

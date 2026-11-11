@@ -26,6 +26,11 @@ const TEMPLATES: Record<string, { 'en-CA': Render; 'fr-CA': Render }> = {
     'en-CA': (p) => `FlexcityHeadquarters: your code is ${s(p.code)}. It expires in 10 minutes.`,
     'fr-CA': (p) => `FlexcityHeadquarters : votre code est ${s(p.code)}. Il expire dans 10 minutes.`,
   },
+  // A sign-in code (second factor). Straight apostrophes (and only GSM accents) keep it a plain text.
+  mfa_code: {
+    'en-CA': (p) => `FlexcityHeadquarters: ${s(p.code)} is your sign-in code for ${s(p.organization)}. It expires in 10 minutes. Don't share it. Not you? Change your password now.`,
+    'fr-CA': (p) => `FlexcityHeadquarters : ${s(p.code)} est votre code de connexion pour ${s(p.organization)}. Il expire dans 10 minutes. Ne le donnez à personne. Ce n'était pas vous? Changez votre mot de passe maintenant.`,
+  },
   lonework_check_in_now: {
     'en-CA': (p) => `FH: you missed your working-alone check-in at ${s(p.location)}. Open FH and check in now.`,
     'fr-CA': (p) => `FH : vous avez manqué votre vérification de travail isolé à ${s(p.location)}. Ouvrez FH et confirmez maintenant.`,
@@ -132,6 +137,8 @@ export function smsSender(): SmsSender {
  */
 export const SAFETY_TEMPLATES: readonly string[] = ['lonework_check_in_now', 'lonework_overdue', 'lonework_escalated', 'lonework_help', 'callout_offer'];
 export const isSafetyTemplate = (t: string) => SAFETY_TEMPLATES.includes(t);
+/** Codes the person is waiting for right now (confirming a number, signing in): sent right after safety alerts. */
+export const CODE_TEMPLATES: readonly string[] = ['sms_verify', 'mfa_code'];
 export const SMS_MAX_ATTEMPTS = 5;
 /** Wait before the next try after the nth failure: short for safety alerts, longer for the rest. */
 const SAFETY_RETRY_S = [15, 30, 60, 120];
@@ -181,6 +188,7 @@ const errorText = (err: unknown) => String(err instanceof Error ? err.message : 
 export async function deliverSmsTenant(tenantId: string, sender: SmsSender, opts: { prisma?: PrismaClient; limit?: number } = {}): Promise<DeliveryResult> {
   const out: DeliveryResult = { sent: 0, failed: 0, retryInMs: null };
   const safety = Prisma.join(SAFETY_TEMPLATES);
+  const codes = Prisma.join(CODE_TEMPLATES);
   for (let i = 0; i < (opts.limit ?? 50); i++) {
     const r = await withTenant(
       tenantId,
@@ -189,7 +197,7 @@ export async function deliverSmsTenant(tenantId: string, sender: SmsSender, opts
           SELECT id, "toPhone", kind::text AS kind, template, params, locale, attempts, "createdAt" FROM "SmsOutbox"
            WHERE "tenantId" = ${tenantId}::uuid AND "sentAt" IS NULL AND attempts < ${SMS_MAX_ATTEMPTS}
              AND (params->>${RETRY_AT_KEY} IS NULL OR (params->>${RETRY_AT_KEY})::timestamptz <= now())
-           ORDER BY CASE WHEN template IN (${safety}) THEN 0 WHEN template = 'sms_verify' THEN 1 ELSE 2 END,
+           ORDER BY CASE WHEN template IN (${safety}) THEN 0 WHEN template IN (${codes}) THEN 1 ELSE 2 END,
                     "createdAt", CASE WHEN kind = 'CALL' THEN 0 ELSE 1 END
            LIMIT 1 FOR UPDATE SKIP LOCKED`;
         const m = rows[0];

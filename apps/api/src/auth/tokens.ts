@@ -13,7 +13,7 @@ export interface AccessClaims {
   roles: AccessRole[];
   /** When the person last proved who they are (epoch seconds). Absent = unknown, never "recent". */
   aat?: number;
-  /** This session proved a second factor (a passkey). */
+  /** This session proved a second factor (a passkey, or a code by email or text). */
   mfa?: boolean;
   /** An FH support visit (SupportSession id): read-only, consent-based. */
   sup?: string;
@@ -111,7 +111,7 @@ export const epochSeconds = (d: Date = new Date()) => Math.floor(d.getTime() / 1
 
 /**
  * Marks the session behind this refresh token as just re-authenticated (step-up).
- * `mfa`: it was done with a passkey, so the session now has a second factor.
+ * `mfa`: it was done with a passkey or a one-time code, so the session now has a second factor.
  */
 export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Date(), mfa = false): Promise<void> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });

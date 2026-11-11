@@ -46,7 +46,7 @@ export function subdomainOf(req: Request): string | null {
  * What a closed organization's administrators still need to reach their data export: sign-in, who
  * they are, their passkeys and the export. requireAuth then admits only administrators to the rest.
  */
-const CLOSED_OK = /^\/(public\/tenant|auth\/(login|refresh|logout|forgot|reset|passkey(\/options)?|step-up(\/options)?|sso\/.+)|me|me\/passkeys(\/.*)?|data-export(\/.*)?)$/;
+const CLOSED_OK = /^\/(public\/tenant|auth\/(login|refresh|logout|forgot|reset|passkey(\/options)?|step-up(\/options)?|mfa\/(options|code|code\/verify)|sso\/.+)|me|me\/passkeys(\/.*)?|data-export(\/.*)?)$/;
 export const exportWindowOpen = (until: Date | string | null | undefined) => !!until && new Date(until) > new Date();
 
 export async function resolveTenant(req: Request, _res: Response, next: NextFunction) {

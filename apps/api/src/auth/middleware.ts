@@ -18,7 +18,7 @@ export interface AuthContext {
   permissions: Set<Permission>;
   /** Last time the person proved who they are (password or passkey), if known. */
   authenticatedAt: Date | null;
-  /** This session proved a second factor (a passkey). */
+  /** This session proved a second factor (a passkey, or a code by email or text). */
   mfa: boolean;
   /** The city requires a second factor for one of this person's access levels, and this session hasn't given one. */
   mfaPending: boolean;
@@ -28,8 +28,8 @@ export interface AuthContext {
   support?: { sessionId: string; level: 'SETUP' | 'FULL'; endsAt: Date; adminId: string };
 }
 
-/** What someone who still owes a second factor may reach: enough to give it, or set up a passkey. */
-const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/step-up(\/|$)/];
+/** What someone who still owes a second factor may reach: enough to give it (a passkey or a code), or set up a passkey. */
+const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/step-up(\/|$)/, /^\/api\/auth\/mfa\/(options|code|code\/verify)$/];
 /** Powers that need the same second factor as HR. */
 const ADMIN_LEVEL = new Set<string>(['users.write', 'tenant.configure', 'payroll.approve', 'payroll.export', 'roles.manage', 'documents.manage', 'billing.manage', 'audit.read']);
 
@@ -43,8 +43,8 @@ const SUPPORT_BLOCKED = [
   /^\/api\/data-export(\/|$)/,
 ];
 
-/** All a closed organization's administrators can reach: who they are, their passkeys, and the export. */
-const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/step-up(\/options)?|data-export(\/.*)?)$/;
+/** All a closed organization's administrators can reach: who they are, their passkeys or a sign-in code, and the export. */
+const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/step-up(\/options)?|auth\/mfa\/(options|code|code\/verify)|data-export(\/.*)?)$/;
 const mfaExempt = (url: string) => MFA_EXEMPT.some((r) => r.test(url.split('?')[0]!));
 
 declare global {
@@ -115,7 +115,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     if (billing.stage === 'suspended' && !allowedWhileSuspended(req.method, req.originalUrl)) {
       throw new HttpError(402, 'ACCOUNT_SUSPENDED', 'Your organization’s account is read-only until the overdue balance is paid.');
     }
-    if (mfaPending && !mfaExempt(req.originalUrl)) throw new HttpError(403, 'MFA_REQUIRED', 'Your organization requires a passkey for this account. Confirm with your passkey to continue.');
+    if (mfaPending && !mfaExempt(req.originalUrl)) throw new HttpError(403, 'MFA_REQUIRED', 'Your organization requires a second factor for this account. Confirm with your passkey or a sign-in code to continue.');
     next();
   } catch (e) {
     next(e);

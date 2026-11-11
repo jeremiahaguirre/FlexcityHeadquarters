@@ -323,6 +323,8 @@ model Tenant {
   benchmarkOptIn  Boolean          @default(false)
   /// Access levels that must sign in with a passkey as a second factor.
   mfaRoles        AccessRole[]     @default([])
+  /// Whether a one-time code by email or text counts as the second factor (passkeys always do).
+  mfaCodes        Boolean          @default(true)
   /// Winter operations, set by the city's managers: { season: { start: "11-01", end: "04-15" },
   /// callOuts: { responseMinutes, minRestHours }, patrols: { maxShiftHours } }.
   winterSettings  Json             @default("{}")
@@ -601,6 +603,7 @@ model User {
   leaveEntitlements   LeaveEntitlement[]
   trainingRecords     TrainingRecord[]
   authTokens          AuthToken[]
+  mfaCodes            MfaCode[]
   disciplinaryRecords DisciplinaryRecord[] @relation("DisciplineSubject")
 
   @@unique([tenantId, email])
@@ -658,6 +661,30 @@ model AuthToken {
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, purpose])
+}
+
+/// A one-time sign-in code sent by email or text as the second factor. Only an HMAC-SHA256 of
+/// the code (keyed with the server secret, bound to this row and person) is kept, never the code.
+/// A newer code supersedes older ones; 5 wrong tries end it; it lasts 10 minutes.
+model MfaCode {
+  id        String     @id @default(uuid()) @db.Uuid
+  tenantId  String     @db.Uuid
+  userId    String     @db.Uuid
+  channel   MfaChannel
+  codeHash  String
+  expiresAt DateTime   @db.Timestamptz(3)
+  attempts  Int        @default(0)
+  usedAt    DateTime?  @db.Timestamptz(3)
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+}
+
+enum MfaChannel {
+  EMAIL
+  SMS
 }
 
 // ------------------------------------------------------------------

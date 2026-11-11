@@ -17,6 +17,7 @@ import { platformRouter } from './routes/platform/index.js';
 import { marketingRouter } from './routes/marketing.js';
 import { emailPrefsRouter } from './routes/emailPrefs.js';
 import { passkeyAuthRouter } from './routes/passkeys.js';
+import { mfaCodeRouter } from './routes/mfaCodes.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
 import { publicCalendarRouter } from './routes/calendar.js';
 import { kioskRouter } from './routes/kiosk.js';
@@ -66,7 +67,7 @@ export function createApp() {
   app.use('/api', publicCalendarRouter);
   // Facility kiosks (shared tablets) sign requests with their own secret, not a person's session.
   app.use('/api', kioskRouter);
-  app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, publicJobsRouter, publicApplicationsRouter, publicSignupRouter);
+  app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, mfaCodeRouter, publicJobsRouter, publicApplicationsRouter, publicSignupRouter);
   app.use('/api', api);
 
   app.use(errorHandler);

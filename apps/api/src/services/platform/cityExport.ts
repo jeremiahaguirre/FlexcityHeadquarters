@@ -22,7 +22,7 @@ import { csvCell } from '../payroll/export.js';
 import { accountNumber, revealSin } from '../payroll/bank.js';
 
 /** Sign-in secrets and FH's own records: never in the export. */
-const SKIP_TABLES = new Set(['AuthToken', 'RefreshToken', 'Passkey', 'WebAuthnChallenge', 'PlatformAudit', 'SupportSession', 'BillingAccount', 'PadAgreement', 'PadDebit', 'TenantLogo', 'RateLimitHit']);
+const SKIP_TABLES = new Set(['AuthToken', 'RefreshToken', 'MfaCode', 'Passkey', 'WebAuthnChallenge', 'PlatformAudit', 'SupportSession', 'BillingAccount', 'PadAgreement', 'PadDebit', 'TenantLogo', 'RateLimitHit']);
 /** Columns that are secrets or only the machinery of encryption. */
 const SKIP_COLUMNS = new Set(['passwordHash', 'tokenHash', 'ssoSubject', 'failedLoginCount', 'lockedUntil', 'oidcSecret', 'ciphertext', 'iv', 'authTag', 'wrappedDataKey', 'wrappedKey', 'kekId', 'sinCiphertext', 'sinIv', 'sinAuthTag', 'sinWrappedKey', 'sinKekId', 'accountCiphertext', 'accountIv', 'accountAuthTag', 'accountWrappedKey', 'accountKekId', 'publicKey']);
 
