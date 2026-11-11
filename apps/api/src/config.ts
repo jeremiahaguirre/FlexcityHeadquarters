@@ -31,6 +31,15 @@ const schema = z.object({
   WEBHOOK_DISABLE_AFTER: z.coerce.number().int().min(1).max(1000).default(20),
   WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(10_000),
   /**
+   * Weather for the demand forecast: Environment and Climate Change Canada's open data (MSC GeoMet
+   * OGC API, no key). "off" stops the worker fetching it; the forecast then runs without weather.
+   */
+  WEATHER: z.enum(['on', 'off']).default('on'),
+  ECCC_API_BASE: z.string().url().default('https://api.weather.gc.ca'),
+  WEATHER_TIMEOUT_MS: z.coerce.number().int().min(500).max(60_000).default(10_000),
+  /** Hours between forecast fetches for one site. */
+  WEATHER_REFRESH_HOURS: z.coerce.number().min(1).max(24).default(3),
+  /**
    * Where the Union Hub runs: "embedded" in this API (the default), or "separate", its own service
    * (src/unionServer.ts) behind the same address at /api/union. In "separate" mode this API holds no
    * union database credentials at all, and the union service must be the one given them.

@@ -28,6 +28,7 @@ import { applyRetention } from './services/privacy/retention.js';
 import { deliverPush } from './services/notifications/push.js';
 import { dispatchAll } from './lib/outbox.js';
 import { deliverAllWebhooks } from './services/integrations/webhooks.js';
+import { refreshWeather } from './services/ops/weather.js';
 
 const cfg = config();
 installProcessHandlers();
@@ -99,6 +100,8 @@ const hourly = async () => {
   await exclusive('retention', () => perTenant((tx) => applyRetention(tx)));
   await exclusive('scheduled-reports', () => perTenant((tx) => sendScheduledReports(tx)));
   await exclusive('benchmarks', () => computeBenchmarks(db()));
+  // Each distinct forecast site every WEATHER_REFRESH_HOURS (3 by default); failures are recorded, never fatal.
+  await exclusive('weather', () => refreshWeather());
 };
 
 /** Events their API process didn't deliver (it stopped, or delivery failed and is due again). */

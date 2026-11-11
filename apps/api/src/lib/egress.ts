@@ -6,6 +6,8 @@
  * In development and tests, localhost is allowed so a local identity provider works.
  */
 import { lookup } from 'node:dns/promises';
+import http from 'node:http';
+import https from 'node:https';
 import { isIP } from 'node:net';
 import { config } from '../config.js';
 import { HttpError } from './errors.js';
@@ -77,4 +79,76 @@ export async function assertPublicUrl(url: string, what: string, opts: EgressOpt
   if (u.protocol !== 'https:' && !(local && isLocal(u.hostname.replace(/^\[|\]$/g, '')) && u.protocol === 'http:')) throw new HttpError(400, 'BAD_URL', `${what} must use https.`);
   if (u.username || u.password) throw new HttpError(400, 'BAD_URL', `${what} can’t contain a user name or password.`);
   return publicAddress(u.hostname, what, opts);
+}
+
+export interface GetResult {
+  status: number;
+  body: string;
+}
+
+export interface PublicGetOptions extends EgressOptions {
+  timeoutMs?: number;
+  /** Larger answers are refused (default 2 MB). */
+  maxBytes?: number;
+  headers?: Record<string, string>;
+}
+
+/**
+ * GET from a public https address: the name is checked first (publicAddress) and the connection
+ * goes to the checked address, so a DNS answer can't be swapped in between. Redirects aren't
+ * followed. Rejects on a timeout, a network error or an answer over `maxBytes`.
+ */
+export async function publicGet(url: string, what: string, opts: PublicGetOptions = {}): Promise<GetResult> {
+  const address = await assertPublicUrl(url, what, opts);
+  const u = new URL(url);
+  const secure = u.protocol === 'https:';
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  const timeoutMs = opts.timeoutMs ?? 10_000;
+  const maxBytes = opts.maxBytes ?? 2_000_000;
+  return new Promise<GetResult>((resolve, reject) => {
+    let done = false;
+    const fail = (e: Error) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      reject(e);
+    };
+    const req = (secure ? https : http).request(
+      {
+        host: address,
+        port: u.port || (secure ? 443 : 80),
+        path: `${u.pathname}${u.search}`,
+        method: 'GET',
+        ...(secure && !isIP(host) ? { servername: host } : {}),
+        headers: { accept: 'application/json', 'user-agent': 'FlexcityHeadquarters/1.0', ...opts.headers, host: u.host },
+        agent: false,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        let size = 0;
+        res.on('data', (c: Buffer) => {
+          size += c.length;
+          if (size > maxBytes) {
+            res.destroy();
+            fail(new Error(`${what}: answer too large`));
+            return;
+          }
+          chunks.push(c);
+        });
+        res.on('end', () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8') });
+        });
+        res.on('error', (e) => fail(e));
+      },
+    );
+    const timer = setTimeout(() => {
+      req.destroy();
+      fail(new Error(`${what}: no answer within ${Math.round(timeoutMs / 1000)} s`));
+    }, timeoutMs);
+    req.on('error', (e) => fail(e));
+    req.end();
+  });
 }
