@@ -9,6 +9,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { strToU8, zipSync } from 'fflate';
 import PDFDocument from 'pdfkit';
+import { config } from '../../config.js';
 import { csvCell } from '../payroll/export.js';
 import { CONTROLS, FRAMEWORKS, LIBRARY_VERSION, frameworkByKey, type FrameworkKey } from './library.js';
 import { MONITORS } from './monitors.js';
@@ -47,7 +48,7 @@ const BUNDLE = {
   fr: {
     title: (fw: string) => `FlexcityHeadquarters : dossier de preuves ${fw}`,
     generated: (at: string, lib: string) => `Produit le ${at} à partir de la bibliothèque de contrôles ${lib}.`,
-    readiness: (r: { readiness: number; met: number; partial: number; gaps: number; notApplicable: number }) => `Préparation : ${r.readiness} % (${r.met} exigences satisfaites, ${r.partial} en partie, ${r.gaps} lacunes, ${r.notApplicable} sans objet).`,
+    readiness: (r: { readiness: number; met: number; partial: number; gaps: number; notApplicable: number }) => `Préparation : ${r.readiness}\u00a0% (${r.met} exigences satisfaites, ${r.partial} en partie, ${r.gaps} lacunes, ${r.notApplicable} sans objet).`,
     notOpinion: 'Autoévaluation préparée pour un auditeur. Ce n’est ni une opinion d’audit ni une certification.',
     files: [
       'requirements.csv  chaque exigence, les contrôles qui y répondent et leur état',
@@ -140,6 +141,8 @@ export async function postureSummary(p: PrismaClient, now = new Date()) {
     }),
     inPlace: CONTROLS.filter((c) => statuses[c.key] === 'PASSING').map((c) => ({ key: c.key, title: c.title, titleFr: c.titleFr, category: c.category })),
     subprocessors: vendors,
+    /** Where to report a security issue (SECURITY_EMAIL), or null when none is configured. */
+    securityContact: config().SECURITY_EMAIL || null,
   };
 }
 
@@ -177,7 +180,7 @@ export async function postureSummaryPdf(p: PrismaClient, fr: boolean): Promise<B
   doc.moveDown(1).fontSize(13).fillColor(ink).text(fr ? 'Cadres' : 'Frameworks');
   for (const f of s.frameworks) {
     const y = doc.y + 6;
-    doc.fontSize(10).fillColor(ink).text(fr ? `${f.nameFr} : en préparation (${f.readiness} %)` : `${f.name}: preparing (${f.readiness}%)`, 56, y);
+    doc.fontSize(10).fillColor(ink).text(fr ? `${f.nameFr}\u00a0: en préparation (${f.readiness}\u00a0%)` : `${f.name}: preparing (${f.readiness}%)`, 56, y);
     doc.roundedRect(330, y + 2, 200, 7, 3.5).fill('#E3ECEB');
     if (f.readiness > 0) doc.roundedRect(330, y + 2, Math.max(7, 2 * f.readiness), 7, 3.5).fill(accent);
     doc.x = 56;
@@ -188,8 +191,9 @@ export async function postureSummaryPdf(p: PrismaClient, fr: boolean): Promise<B
   if (!s.inPlace.length) doc.fillColor(muted).text(fr ? 'Les contrôles sont en cours de vérification.' : 'Controls are being verified.');
   doc.moveDown(1).fontSize(13).fillColor(ink).text(fr ? 'Sous-traitants qui traitent des renseignements personnels' : 'Subprocessors handling personal information');
   doc.moveDown(0.2).fontSize(9.5);
-  for (const v of s.subprocessors) doc.fillColor(ink).text(`${v.name}`, { continued: true }).fillColor(muted).text(`${fr ? ' : ' : ': '}${fr ? (v.purposeFr ?? v.purpose) : v.purpose} (${v.dataLocation})`, { width });
-  doc.moveDown(1).fontSize(9).fillColor(muted).text(fr ? 'Signaler un problème de sécurité : security@flexcityhq.example' : 'Report a security issue: security@flexcityhq.example');
+  for (const v of s.subprocessors) doc.fillColor(ink).text(`${v.name}`, { continued: true }).fillColor(muted).text(`${fr ? '\u00a0: ' : ': '}${fr ? (v.purposeFr ?? v.purpose) : v.purpose} (${v.dataLocation})`, { width });
+  // Only a real address (SECURITY_EMAIL): a customer-facing page never shows a placeholder.
+  if (s.securityContact) doc.moveDown(1).fontSize(9).fillColor(muted).text(fr ? `Signaler un problème de sécurité\u00a0: ${s.securityContact}` : `Report a security issue: ${s.securityContact}`);
   doc.end();
   return done;
 }

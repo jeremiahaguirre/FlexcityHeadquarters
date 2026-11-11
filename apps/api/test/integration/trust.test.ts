@@ -210,9 +210,13 @@ describe('Trust: reminders', () => {
 
 describe('Trust: posture summary for customers', () => {
   it('shares readiness bands and controls in place only, and never claims certification', async () => {
+    const audits = () => owner.platformAudit.count({ where: { adminId: mgr.id, action: { in: ['trust.export.summary', 'trust.export.auditor'] } } });
+    const before = await audits();
     const r = await mgr.as('get', '/trust/summary.json');
     expect(r.status).toBe(200);
-    expect(Object.keys(r.body).sort()).toEqual(['auditReportOnFile', 'frameworks', 'generatedAt', 'inPlace', 'libraryVersion', 'score', 'subprocessors']);
+    expect(Object.keys(r.body).sort()).toEqual(['auditReportOnFile', 'frameworks', 'generatedAt', 'inPlace', 'libraryVersion', 'score', 'securityContact', 'subprocessors']);
+    // No SECURITY_EMAIL here: no contact, never a placeholder address.
+    expect(r.body.securityContact).toBeNull();
     const s = JSON.stringify(r.body);
     expect(s).not.toMatch(/certified/i);
     expect(s).not.toMatch(/R-0\d\d|Annual security report|missingPasskeys|stale/);
@@ -224,7 +228,7 @@ describe('Trust: posture summary for customers', () => {
     const zip = await mgr.as('get', '/trust/export/soc2.zip');
     expect(zip.status).toBe(200);
     expect(zip.headers['content-type']).toBe('application/zip');
-    expect(await owner.platformAudit.count({ where: { adminId: mgr.id, action: { in: ['trust.export.summary', 'trust.export.auditor'] } } })).toBe(3);
+    expect(await audits()).toBe(before + 3);
   });
 
   it('writes the auditor bundle in French when asked, with the French test sentences', async () => {

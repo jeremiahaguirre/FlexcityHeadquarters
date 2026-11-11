@@ -65,6 +65,11 @@ const schema = z.object({
   COMPANY_MAILING_ADDRESS: z.string().default(''),
   /** How people reach FH about email (shown in commercial email footers); defaults to BILLING_EMAIL. */
   COMPANY_CONTACT_EMAIL: z.string().default(''),
+  /**
+   * Where people report a security issue to FH (shown on the Trust posture summary and in Present
+   * mode). Empty = no contact line is shown, rather than a placeholder address.
+   */
+  SECURITY_EMAIL: z.string().default(''),
   /** Shown on FH's invoices to organizations. */
   BILLING_LEGAL_NAME: z.string().default('FlexcityHeadquarters'),
   BILLING_ADDRESS: z.string().default(''),

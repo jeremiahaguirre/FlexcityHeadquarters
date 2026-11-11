@@ -104,6 +104,8 @@ trustRouter.get(
       commitments,
       policyAcks: acks,
       alerts,
+      /** Present mode's "report a security issue" line (SECURITY_EMAIL); null shows none. */
+      securityContact: config().SECURITY_EMAIL || null,
     };
     const etag = `"${createHash('sha256').update(JSON.stringify(body)).digest('base64url').slice(0, 27)}"`;
     res.setHeader('ETag', etag);
