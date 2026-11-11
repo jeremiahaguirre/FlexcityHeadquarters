@@ -78,7 +78,7 @@ export default function BillingPage() {
         <Skeleton className="h-96" />
       ) : (
         <>
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+          <div className="grid items-start gap-6 lg:grid-cols-[1fr_1.2fr]">
             <Card>
               <CardHeader title={t('billingPage.plan')} />
               <CardBody className="grid gap-4 pt-2 text-small">
