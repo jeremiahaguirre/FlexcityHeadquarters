@@ -63,6 +63,15 @@ export function awsKms(region: string): KmsApi {
         throw e;
       }
     },
+    async aliasTarget(alias, r) {
+      try {
+        const d = await client(r).send(new DescribeKeyCommand({ KeyId: alias }));
+        return d.KeyMetadata?.KeyId ?? null;
+      } catch (e) {
+        if (name(e) === 'NotFoundException') return null;
+        throw e;
+      }
+    },
     async replicateKey(keyId, r) {
       await client().send(new ReplicateKeyCommand({ KeyId: keyId, ReplicaRegion: r }));
     },

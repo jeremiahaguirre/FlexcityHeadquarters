@@ -93,6 +93,8 @@ export interface KmsApi {
   enableKeyRotation(keyId: string): Promise<void>;
   /** 'exists' when the alias already points at a key (in `region`, default the primary). */
   createAlias(alias: string, keyId: string, region?: string): Promise<'created' | 'exists'>;
+  /** The key id an alias points at, or null when there is no such alias. */
+  aliasTarget(alias: string, region?: string): Promise<string | null>;
   /** Copies a multi-region key to another region (same key id there). */
   replicateKey(keyId: string, region: string): Promise<void>;
   /** Marks a key created by a lost race, for operations to schedule its deletion. */
@@ -106,19 +108,26 @@ const isNotFound = (e: unknown) => (e as { name?: string } | null)?.name === 'No
  * AWS KMS provider (production).
  *
  * Each organization's key (alias/flexcity-tenant-<id>) is created the first time one of its records
- * is sealed: a symmetric key with yearly rotation, tagged with the organization. With a recovery
- * region set (KMS_REPLICA_REGION) it is a multi-region key, copied there before its alias exists
- * (so a failed copy is retried with a new key, never left half done) and given the same alias
- * there, so a restore in ca-west-1 can still open the data. Two processes creating the same key at once is harmless:
- * the second alias request finds the first, and its own unused key is left tagged
- * "fh:unused=true" for operations to delete (this service is never allowed to delete keys).
+ * is sealed: a symmetric key with yearly rotation, tagged with the organization.
+ *
+ * With a recovery region (KMS_REPLICA_REGION) the key is multi-region and copied there, and the
+ * recovery region's alias is created FIRST: it is the claim. Whoever names the copy first owns the
+ * organization's key; a process that loses the race marks its own key unused (operations delete
+ * it; this service is never allowed to delete keys) and points the primary alias at the winner. So:
+ *  - a failure before the primary alias exists leaves nothing in use, and the next request finishes
+ *    the job with the same key;
+ *  - the two regions' aliases always name the same key, or creation stops with an error (which
+ *    after a return from recovery means operations must reconcile them, docs/DISASTER-RECOVERY.md).
+ * The first data key is made with the new key's id, not the alias, which KMS may not resolve for a
+ * moment; reads through a brand-new alias are retried briefly for the same reason.
  * Other keys (alias/flexcity-platform, union locals) are created by operations, never here.
  */
 export class AwsKmsKeyProvider implements KeyProvider {
-  private creating = new Map<string, Promise<void>>();
+  private creating = new Map<string, Promise<string>>();
   constructor(
     private readonly kms: KmsApi,
     private readonly replicaRegion?: string,
+    private readonly sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
   ) {}
 
   async generateDataKey(kekId: string) {
@@ -126,21 +135,27 @@ export class AwsKmsKeyProvider implements KeyProvider {
       return await this.dataKey(kekId);
     } catch (e) {
       if (!isNotFound(e) || !TENANT_ALIAS.test(kekId)) throw e;
-      await this.ensureTenantKey(kekId);
-      return this.dataKey(kekId);
+      return this.dataKey(await this.ensureTenantKey(kekId));
     }
   }
 
   async unwrapDataKey(kekId: string, wrapped: Buffer) {
-    return Buffer.from(await this.kms.decrypt(kekId, wrapped));
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return Buffer.from(await this.kms.decrypt(kekId, wrapped));
+      } catch (e) {
+        if (!isNotFound(e) || !TENANT_ALIAS.test(kekId) || attempt >= 3) throw e;
+        await this.sleep(1000);
+      }
+    }
   }
 
-  private async dataKey(kekId: string) {
-    const out = await this.kms.generateDataKey(kekId);
+  private async dataKey(keyId: string) {
+    const out = await this.kms.generateDataKey(keyId);
     return { plaintext: Buffer.from(out.plaintext), wrapped: Buffer.from(out.wrapped) };
   }
 
-  private ensureTenantKey(alias: string): Promise<void> {
+  private ensureTenantKey(alias: string): Promise<string> {
     let p = this.creating.get(alias);
     if (!p) {
       p = this.createTenantKey(alias).finally(() => this.creating.delete(alias));
@@ -149,20 +164,39 @@ export class AwsKmsKeyProvider implements KeyProvider {
     return p;
   }
 
-  private async createTenantKey(alias: string) {
+  /** Creates (or finishes creating) the organization's key and returns its key id. */
+  private async createTenantKey(alias: string): Promise<string> {
     const tenantId = alias.slice('alias/flexcity-tenant-'.length);
-    const { keyId } = await this.kms.createKey({
+    const created = await this.kms.createKey({
       description: `FlexcityHeadquarters organization ${tenantId}: wraps the data keys of its sealed records`,
       multiRegion: !!this.replicaRegion,
       tags: { 'fh:tenant': tenantId, Project: 'FlexcityHeadquarters' },
     });
-    await this.kms.enableKeyRotation(keyId);
-    if (this.replicaRegion) await this.kms.replicateKey(keyId, this.replicaRegion);
-    if ((await this.kms.createAlias(alias, keyId)) === 'exists') {
-      // Another process won the race; its key is the organization's. Ours is never used.
-      await this.kms.tagUnused(keyId);
-      return;
+    await this.kms.enableKeyRotation(created.keyId);
+    let keyId = created.keyId;
+
+    if (this.replicaRegion) {
+      await this.kms.replicateKey(keyId, this.replicaRegion);
+      if ((await this.kms.createAlias(alias, keyId, this.replicaRegion)) === 'exists') {
+        const owner = await this.kms.aliasTarget(alias, this.replicaRegion);
+        if (!owner) throw new Error(`KMS: ${alias} exists in ${this.replicaRegion} but names no key`);
+        if (owner !== keyId) {
+          await this.kms.tagUnused(keyId);
+          keyId = owner;
+        }
+      }
     }
-    if (this.replicaRegion) await this.kms.createAlias(alias, keyId, this.replicaRegion);
+
+    if ((await this.kms.createAlias(alias, keyId)) === 'exists') {
+      const current = await this.kms.aliasTarget(alias);
+      if (!this.replicaRegion) {
+        // No recovery region: the primary alias is the claim.
+        if (!current) throw new Error(`KMS: ${alias} exists but names no key`);
+        if (current !== keyId) await this.kms.tagUnused(keyId);
+        return current;
+      }
+      if (current !== keyId) throw new Error(`KMS: ${alias} names different keys in the two regions; reconcile them before sealing (docs/DISASTER-RECOVERY.md)`);
+    }
+    return keyId;
   }
 }
