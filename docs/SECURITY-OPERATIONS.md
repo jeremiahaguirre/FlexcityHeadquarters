@@ -27,6 +27,7 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
    - any change to the audit log grants;
    - a payroll provider send or bank transmission that failed;
    - a server refusing to start because its database role is too powerful.
+   - `/readyz` answering 503 (`/readyz?strict=1` for the outbox and worker), `fh_outbox_oldest_age_seconds` over 15 minutes, `fh_worker_heartbeat_age_seconds` over 5 minutes, or a jump in `fh_errors_total` (see [ARCHITECTURE.md](ARCHITECTURE.md#health-metrics-and-errors)). An error report or log line carries a request id (`X-Request-Id`): search with it, not with a person's name.
 2. **Backups confirmed:** last night's automated snapshot completed; point-in-time recovery window intact.
 3. **Threat feeds skimmed:** GitHub security advisories for this repository, Dependabot pull requests, CCCS alerts, AWS security bulletins, Node.js and Next.js releases, PostgreSQL security releases.
 
