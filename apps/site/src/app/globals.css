@@ -215,10 +215,15 @@ details > summary::-webkit-details-marker { display: none; }
 .js .tabs-nav { display: flex; }
 .js [data-tabpanel]:not([data-active]) { display: none; }
 
-/* The FH mark, drawn in part by part: back leaf, leaf, arm, the circle, then the buildings rise.
-   .fh-mark-intro plays once (website header); .fh-mark-loop repeats (loading screens). */
+/* @logo-motion start: kept identical in apps/site/src/app/globals.css (a site test checks).
+   The FH mark, drawn in part by part: back leaf, leaf, arm, the circle, then the buildings rise.
+   intro plays once (headers); loop repeats (loading, signing in); hero draws in then stays
+   gently alive; idle is alive without the intro; done is one finishing beat.
+   .fh-mark-paused stops the motion (off screen). */
 .fh-mark .fh-p { transform-box: fill-box; transform-origin: 50% 50%; }
+.fh-sheen { opacity: 0; transform-box: fill-box; }
 .fh-mark .fh-p1, .fh-mark .fh-p2 { transform-origin: 30% 100%; }
+.fh-mark-paused .fh-p, .fh-mark-paused .fh-sheen, .fh-mark-paused .fh-wins rect { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes fhm-leaf { from { opacity: 0; transform: rotate(-30deg) scale(0.7); } to { opacity: 1; transform: none; } }
   @keyframes fhm-arm { from { opacity: 0; transform: translateX(-16px) scaleX(0.4); } to { opacity: 1; transform: none; } }
@@ -239,4 +244,30 @@ details > summary::-webkit-details-marker { display: none; }
   .fh-mark-loop .fh-p3 { animation: fhml-arm 2.6s ease-in-out infinite; }
   .fh-mark-loop .fh-p4 { animation: fhml-pop 2.6s ease-in-out infinite; }
   .fh-mark-loop .fh-p5 { animation: fhml-rise 2.6s ease-in-out infinite; }
+  /* Hero: the intro, then the mark stays quietly alive. Idle: alive without the intro. */
+  @keyframes fhm-sway { 0%, 100% { transform: none; } 50% { transform: rotate(-3deg); } }
+  @keyframes fhm-lean { 0%, 100% { transform: none; } 50% { transform: translateX(1.5px); } }
+  @keyframes fhm-breathe { 0%, 100% { transform: none; } 50% { transform: scale(1.04); } }
+  @keyframes fhm-sheen { 0%, 55% { transform: translateX(0); opacity: 0; } 60% { opacity: 1; } 85% { opacity: 1; } 90%, 100% { transform: translateX(150px); opacity: 0; } }
+  @keyframes fhm-twinkle { 0%, 70%, 100% { opacity: 1; } 80% { opacity: 0.35; } }
+  .fh-mark-hero .fh-p1 { animation: fhm-leaf 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both, fhm-sway 6s ease-in-out 1.6s infinite; }
+  .fh-mark-hero .fh-p2 { animation: fhm-leaf 700ms cubic-bezier(0.2, 0.8, 0.2, 1) 120ms both; }
+  .fh-mark-hero .fh-p3 { animation: fhm-arm 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 420ms both, fhm-lean 5s ease-in-out 1.8s infinite; }
+  .fh-mark-hero .fh-p4 { animation: fhm-pop 600ms cubic-bezier(0.3, 1.4, 0.5, 1) 560ms both, fhm-breathe 4.5s ease-in-out 1.6s infinite; }
+  .fh-mark-hero .fh-p5 { animation: fhm-rise 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 820ms both; }
+  .fh-mark-hero .fh-sheen { animation: fhm-sheen 5.5s ease-in-out 1.2s infinite both; }
+  .fh-mark-idle .fh-p1 { animation: fhm-sway 6s ease-in-out infinite; }
+  .fh-mark-idle .fh-p3 { animation: fhm-lean 5s ease-in-out infinite; }
+  .fh-mark-idle .fh-p4 { animation: fhm-breathe 4.5s ease-in-out infinite; }
+  .fh-mark-idle .fh-sheen { animation: fhm-sheen 5.5s ease-in-out infinite both; }
+  .fh-mark-hero .fh-wins rect, .fh-mark-idle .fh-wins rect { animation: fhm-twinkle 4s ease-in-out infinite; }
+  .fh-wins rect:nth-child(2) { animation-delay: 1.1s; }
+  .fh-wins rect:nth-child(3) { animation-delay: 2.3s; }
+  .fh-wins rect:nth-child(5) { animation-delay: 0.6s; }
+  .fh-wins rect:nth-child(6) { animation-delay: 3s; }
+  .fh-wins rect:nth-child(7) { animation-delay: 1.7s; }
+  /* Done: one confident beat as sign-in succeeds. */
+  @keyframes fhm-done { 0% { transform: none; } 40% { transform: scale(1.1) rotate(-2deg); } 100% { transform: none; } }
+  .fh-mark-done { animation: fhm-done 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both; transform-origin: 50% 50%; }
 }
+/* @logo-motion end */
