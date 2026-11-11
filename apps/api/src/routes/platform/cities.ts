@@ -23,8 +23,8 @@ import { MENU } from '../../auth/menu.js';
 import { PERMISSIONS, type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
 import { parseOverrides, rolePermissions, setMenu, setPermission, type RoleOverrides } from '../../services/platform/roleOverrides.js';
 import { facilityBody } from '../settings.js';
-import { positionBody } from '../staff.js';
-import { assertDepartment, departmentBody, deleteDepartment, forget as forgetDepartmentScope, listDepartments, saveDepartment } from '../../services/people/departmentAdmin.js';
+import { positionBody, savePosition as savePositionChange } from '../../services/people/positionAdmin.js';
+import { departmentBody, deleteDepartment, listDepartments, saveDepartment } from '../../services/people/departmentAdmin.js';
 
 export const citiesRouter = Router();
 const uuid = z.string().uuid();
@@ -238,19 +238,8 @@ citiesRouter.patch(
   }),
 );
 
-async function savePosition(tx: Tx, tenantId: string, positionId: string | null, body: z.infer<typeof positionBody>) {
-  const visible = await tx.certification.count({ where: { id: { in: body.requiredCertificationIds } } });
-  if (visible !== new Set(body.requiredCertificationIds).size) throw badRequest('Unknown certification.');
-  await assertDepartment(tx, body.departmentId);
-  const data = { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.departmentId !== undefined ? { departmentId: body.departmentId } : {}), ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) };
-  const pos = positionId ? await tx.position.update({ where: { id: positionId }, data }) : await tx.position.create({ data: { ...data, tenantId } });
-  await tx.positionCertRequirement.deleteMany({ where: { positionId: pos.id } });
-  if (body.requiredCertificationIds.length) {
-    await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId, positionId: pos.id, certificationId })) });
-  }
-  await forgetDepartmentScope(tenantId, tx);
-  return pos;
-}
+/** The Dev console sends the whole position: what's left out is cleared, as before. */
+const savePosition = (tx: Tx, tenantId: string, positionId: string | null, body: z.infer<typeof positionBody>) => savePositionChange(tx, tenantId, positionId, { ...body, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null });
 
 // Departments, set up from the Dev console when a city is first configured.
 citiesRouter.post(
@@ -304,7 +293,6 @@ citiesRouter.post(
     const id = uuid.parse(req.params.id);
     const body = positionBody.parse(req.body);
     const pos = await cityOr404(id, async (tx) => {
-      if (await tx.position.findFirst({ where: { name: { equals: body.name, mode: 'insensitive' } } })) throw conflict('POSITION_EXISTS', 'This organization already has a position with that name.');
       const created = await savePosition(tx, id, null, body);
       await record(tx, p.adminId, id, 'position.create', body);
       return created;
@@ -321,7 +309,6 @@ citiesRouter.put(
     const positionId = uuid.parse(req.params.positionId);
     const body = positionBody.parse(req.body);
     await cityOr404(id, async (tx) => {
-      if (!(await tx.position.findUnique({ where: { id: positionId } }))) throw notFound('Position');
       await savePosition(tx, id, positionId, body);
       await record(tx, p.adminId, id, 'position.update', { positionId, ...body });
     });

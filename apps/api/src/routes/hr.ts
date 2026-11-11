@@ -15,6 +15,7 @@ import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { forgetActive } from '../services/people/customRoles.js';
+import { OFFBOARD_ITEMS, OFFBOARD_REASONS, startOffboarding } from '../services/people/staffAdmin.js';
 import { peopleInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { loadGraph, setManagers, setReportsOf } from '../services/people/reporting.js';
 import { h } from './context.js';
@@ -448,7 +449,6 @@ hrRouter.patch(
 );
 
 // ------------------------------------------------------------- Offboarding
-const OFFBOARD_ITEMS = ['finalPay', 'vacationPayout', 'roe', 'benefitsEnded', 'equipmentReturned', 'accessRemoved', 'exitInterview'] as const;
 
 hrRouter.get(
   '/offboarding',
@@ -475,13 +475,8 @@ hrRouter.post(
     const a = authOf(req);
     const userId = uuid.parse(req.params.id);
     if (userId === a.userId) throw forbidden('Someone else has to offboard you.');
-    const b = z.object({ lastDay: isoDate, reason: z.enum(['RESIGNATION', 'RETIREMENT', 'END_OF_SEASON', 'END_OF_CONTRACT', 'DISMISSAL', 'LAYOFF', 'OTHER']) }).parse(req.body);
-    const o = await withTenant(a.tenantId, async (tx) => {
-      if (await tx.offboarding.findUnique({ where: { userId } })) throw conflict('ALREADY_OFFBOARDING', 'This person is already being offboarded.');
-      const created = await tx.offboarding.create({ data: { tenantId: a.tenantId, userId, lastDay: new Date(b.lastDay), reason: b.reason, checklist: OFFBOARD_ITEMS.map((key) => ({ key, done: false, doneAt: null, doneById: null })), createdById: a.userId } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'offboarding.start', entity: 'User', entityId: userId, after: b });
-      return created;
-    });
+    const b = z.object({ lastDay: isoDate, reason: z.enum(OFFBOARD_REASONS) }).parse(req.body);
+    const o = await withTenant(a.tenantId, (tx) => startOffboarding(tx, a, userId, b));
     res.status(201).json({ id: o.id });
   }),
 );

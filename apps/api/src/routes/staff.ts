@@ -1,5 +1,4 @@
-import { type AccessRole, Prisma } from '@prisma/client';
-import { permissionsFor } from '../auth/permissions.js';
+import { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { consentRequired } from './consent.js';
 import { z } from 'zod';
@@ -16,29 +15,15 @@ import { FEATURES, type FeatureKey, tenantSettings } from '../services/platform/
 import { MENU } from '../auth/menu.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
-import { forgetActive, setUserCustomRoles } from '../services/people/customRoles.js';
-import { actorOf, assertUserInScope, peopleWhere } from '../services/people/scope.js';
-import { setManagers, setReportsOf } from '../services/people/reporting.js';
-import { allOf, assertDepartment, departmentFilter, departmentQuery, forget as forgetDepartmentScope } from '../services/people/departmentAdmin.js';
+import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
+import { allOf, departmentFilter, departmentQuery, forget as forgetDepartmentScope } from '../services/people/departmentAdmin.js';
+import { positionBody, savePosition } from '../services/people/positionAdmin.js';
+import { createPerson, updatePerson } from '../services/people/staffAdmin.js';
 
 export const staffRouter = Router();
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const roles = z.array(z.enum(['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'UNION_STEWARD', 'EMPLOYEE'])).min(1);
-/**
- * Nobody gives out more than they hold: outside HR for the whole organization, every permission of
- * the roles being given must already be the actor's own; HR administrator can only be given by such
- * an HR administrator; and nobody changes their own roles.
- */
-function assertCanGrant(a: ReturnType<typeof authOf>, roles: readonly AccessRole[], targetId: string | null) {
-  if (targetId && targetId === a.userId) throw forbidden('You can’t change your own roles. Ask another administrator.');
-  if (roles.includes('HR_ADMIN') && (!a.roles.includes('HR_ADMIN') || a.scope)) throw forbidden('Only an HR administrator for the whole organization can give the HR administrator role.');
-  // HR for the whole organization assigns any role; everyone else only within their own access.
-  if (a.roles.includes('HR_ADMIN') && !a.scope) return;
-  const missing = [...permissionsFor(roles)].filter((p) => !a.permissions.has(p));
-  if (missing.length) throw forbidden('You can’t give a role with more access than your own.');
-}
-
 const d = (s: string | null | undefined) => (s ? new Date(`${s}T00:00:00Z`) : s === null ? null : undefined);
 const iso = (x: Date | null) => (x ? x.toISOString().slice(0, 10) : null);
 
@@ -245,19 +230,7 @@ staffRouter.get(
 );
 
 // -------------------------------------------------------------- Positions
-export const positionBody = z.object({
-  name: z.string().min(2).max(80),
-  nameFr: z.string().max(80).nullable().optional(),
-  minimumAge: z.number().int().min(12).max(25).nullable().optional(),
-  requiredCertificationIds: z.array(uuid).max(10),
-  /** The department this position belongs to; null = none. Omit to leave it as it is. */
-  departmentId: uuid.nullable().optional(),
-  /** Driving limits; omit or null for none. */
-  hoursOfService: z
-    .object({ maxDailyHours: z.number().min(1).max(24).nullable().optional(), minRestHours: z.number().min(1).max(24).nullable().optional(), maxHoursIn7Days: z.number().min(1).max(168).nullable().optional() })
-    .nullable()
-    .optional(),
-});
+export { positionBody };
 
 staffRouter.post(
   '/positions',
@@ -266,11 +239,8 @@ staffRouter.post(
     const a = authOf(req);
     const body = positionBody.parse(req.body);
     const p = await withTenant(a.tenantId, async (tx) => {
-      await assertDepartment(tx, body.departmentId);
-      const pos = await tx.position.create({ data: { tenantId: a.tenantId, name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, hoursOfService: body.hoursOfService ?? Prisma.DbNull, departmentId: body.departmentId ?? null } });
-      if (body.requiredCertificationIds.length) {
-        await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId: a.tenantId, positionId: pos.id, certificationId })) });
-      }
+      const pos = await savePosition(tx, a.tenantId, null, { ...body, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'position.create', entity: 'Position', entityId: pos.id, after: body });
       return pos;
     });
     forgetDepartmentScope(a.tenantId);
@@ -286,12 +256,7 @@ staffRouter.put(
     const id = uuid.parse(req.params.id);
     const body = positionBody.parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      await assertDepartment(tx, body.departmentId);
-      await tx.position.update({ where: { id }, data: { name: body.name, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null, ...(body.departmentId !== undefined ? { departmentId: body.departmentId } : {}), ...(body.hoursOfService !== undefined ? { hoursOfService: body.hoursOfService ?? Prisma.DbNull } : {}) } });
-      await tx.positionCertRequirement.deleteMany({ where: { positionId: id } });
-      if (body.requiredCertificationIds.length) {
-        await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId: a.tenantId, positionId: id, certificationId })) });
-      }
+      await savePosition(tx, a.tenantId, id, { ...body, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'position.update', entity: 'Position', entityId: id, after: body });
     });
     forgetDepartmentScope(a.tenantId);
@@ -423,39 +388,8 @@ staffRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = newUser.parse(req.body);
-    assertCanGrant(a, body.roles, null);
     const sub = subdomainOf(req)!;
-    const u = await withTenant(a.tenantId, async (tx) => {
-      const exists = await tx.user.findUnique({ where: { tenantId_email: { tenantId: a.tenantId, email: body.email.toLowerCase() } } });
-      if (exists) throw conflict('EMAIL_TAKEN', 'Someone in your organization already uses this email.');
-      const created = await tx.user.create({
-        data: {
-          tenantId: a.tenantId,
-          firstName: body.firstName,
-          lastName: body.lastName,
-          email: body.email.toLowerCase(),
-          phone: body.phone ?? null,
-          roles: body.roles,
-          employmentStatus: body.employmentStatus,
-          locale: body.locale,
-          hireDate: d(body.hireDate) ?? null,
-          seniorityDate: d(body.hireDate) ?? null,
-          dateOfBirth: d(body.dateOfBirth) ?? null,
-          employeeNumber: body.employeeNumber ?? null,
-        },
-      });
-      if (body.positionIds.length) {
-        await tx.userPosition.createMany({ data: body.positionIds.map((positionId) => ({ tenantId: a.tenantId, userId: created.id, positionId })) });
-      }
-      if (body.customRoleIds.length) await setUserCustomRoles(tx, a.tenantId, created.id, body.customRoleIds, actorOf(a));
-      const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
-      const token = await issueAuthToken(tx, a.tenantId, created.id, 'INVITE');
-      await tx.emailOutbox.create({
-        data: { tenantId: a.tenantId, toEmail: created.email, template: 'invite', locale: created.locale, params: { organization: tenant.name, url: appUrl(sub, `/reset?token=${token}&invite=1`) } },
-      });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.create', entity: 'User', entityId: created.id, after: { ...body } });
-      return created;
-    });
+    const u = await withTenant(a.tenantId, (tx) => createPerson(tx, a, body, { invite: true, subdomain: sub, audit: { ...body } }));
     res.status(201).json({ id: u.id, invited: true });
   }),
 );
@@ -503,45 +437,8 @@ staffRouter.patch(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
-    const { customRoleIds, ...body } = hrPatch.parse(req.body);
-    if (body.roles) {
-      if (id === a.userId && !body.roles.includes('HR_ADMIN') && a.roles.includes('HR_ADMIN')) throw badRequest('You cannot remove your own HR administrator role.');
-      // Keeping your own roles exactly as they are is fine; changing them isn't.
-      if (!(id === a.userId && [...body.roles].sort().join() === [...a.roles].sort().join())) assertCanGrant(a, body.roles, id);
-    }
-    await withTenant(a.tenantId, async (tx) => {
-      const before = await tx.user.findUnique({ where: { id } });
-      if (!before || before.anonymizedAt) throw notFound('Staff member');
-      const data: Prisma.UserUpdateInput = {
-        ...body,
-        email: body.email?.toLowerCase(),
-        hireDate: d(body.hireDate),
-        seniorityDate: d(body.seniorityDate),
-        vscClearedDate: d(body.vscClearedDate),
-        dateOfBirth: d(body.dateOfBirth),
-      };
-      // An account's roles can't be raised past the editor's own, even if they hold it already.
-      if (body.roles && before.roles.includes('HR_ADMIN') && !body.roles.includes('HR_ADMIN') && (!a.roles.includes('HR_ADMIN') || a.scope)) throw forbidden('Only an HR administrator can change another HR administrator’s roles.');
-      await tx.user.update({ where: { id }, data });
-      if (customRoleIds) await setUserCustomRoles(tx, a.tenantId, id, customRoleIds, actorOf(a));
-      // A new sign-in email: sessions end, and the old address is told (an account can't be quietly redirected).
-      const emailChanged = body.email && body.email.toLowerCase() !== before.email;
-      if (emailChanged) {
-        await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
-        await tx.authToken.updateMany({ where: { userId: id, usedAt: null }, data: { usedAt: new Date() } });
-        await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: before.email, template: 'email_changed', locale: before.locale, params: { newEmail: body.email!.toLowerCase().replace(/^(.).*(@.*)$/, '$1•••$2') } } });
-      }
-      if (body.status && body.status !== 'ACTIVE') {
-        await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
-        forgetActive(id);
-      }
-      // Ended without offboarding: their people move up to the leaver's own manager (or their department's).
-      if (body.status === 'TERMINATED' && before.status !== 'TERMINATED') {
-        const reports = await setReportsOf(tx, id);
-        if (reports.length) await setManagers(tx, null, a.tenantId, reports.map((r) => r.id), before.reportsToId && before.reportsToId !== id ? before.reportsToId : null).catch(() => setManagers(tx, null, a.tenantId, reports.map((r) => r.id), null));
-      }
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status }, after: { ...body, customRoleIds } });
-    });
+    const body = hrPatch.parse(req.body);
+    await withTenant(a.tenantId, (tx) => updatePerson(tx, a, id, body));
     res.json({ ok: true });
   }),
 );
