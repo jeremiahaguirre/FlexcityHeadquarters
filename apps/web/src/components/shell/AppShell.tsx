@@ -21,6 +21,7 @@ import { addPasskey } from '@/lib/passkeys';
 import { PunchControl } from '@/components/punch/PunchControl';
 import { PunchProvider } from '@/components/punch/PunchProvider';
 import { NotificationBell } from './NotificationBell';
+import { useUnreadMessages } from '@/lib/messages';
 import { UserMenu } from './UserMenu';
 import { CommandMenu, type Destination } from './CommandMenu';
 import { SideNav } from './SideNav';
@@ -49,6 +50,15 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   const path = pathname.replace(/\/$/, '') || '/';
   const noAccess = !!me && NAV.some((n) => n.href === path) && !items.some((n) => n.href === path) && !(me.lockedMenu ?? []).some((l) => l.href === path);
   const { tabs, more } = phoneTabs(items);
+  // Unread messages on the Messages item (and on "More" when it's in there), kept live.
+  const unread = useUnreadMessages(items.some((n) => n.href === '/messages'));
+  const badge = (href: string, className?: string) =>
+    href === '/messages' && unread ? (
+      <span className={cn('grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1.5 text-caption font-bold tabular-nums text-brand-contrast', className)}>
+        {unread > 99 ? '99+' : unread}
+        <span className="sr-only"> {t('messages.unread')}</span>
+      </span>
+    ) : null;
   const destinations: Destination[] = [
     ...items.map((n) => ({ href: n.href, label: t(`nav.${n.key}`), group: n.section ? t(`navSections.${n.section}`) : t(`navGroups.${n.group}`), icon: n.icon })),
     { href: '/profile', label: t('jump.profile'), group: t('navGroups.mine'), icon: UserRound },
@@ -68,7 +78,8 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
         )}
       >
         <n.icon className="h-5 w-5 shrink-0" aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
-        {t(`nav.${n.key}`)}
+        <span className="flex-1">{t(`nav.${n.key}`)}</span>
+        {badge(n.href)}
       </Link>
     );
   };
@@ -172,8 +183,9 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
                   aria-current={active ? 'page' : undefined}
                   className={cn('flex h-16 flex-col items-center justify-center gap-1 text-caption font-semibold', active ? 'text-brand-text' : 'text-muted')}
                 >
-                  <span className={cn('grid h-7 w-12 place-items-center rounded-full transition-[background-color,transform] duration-200 ease-out', active ? 'scale-100 bg-brand/10' : 'scale-90')}>
+                  <span className={cn('relative grid h-7 w-12 place-items-center rounded-full transition-[background-color,transform] duration-200 ease-out', active ? 'scale-100 bg-brand/10' : 'scale-90')}>
                     <n.icon className="h-5 w-5" aria-hidden="true" strokeWidth={active ? 2.4 : 2} />
+                    {badge(n.href, 'absolute -right-1 -top-1')}
                   </span>
                   <span className="max-w-full truncate px-1">{t(`nav.${n.key}Short`, { defaultValue: t(`nav.${n.key}`) })}</span>
                 </Link>
@@ -183,8 +195,9 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
           {more.length ? (
             <li>
               <button type="button" onClick={() => setMoreOpen(true)} className="flex h-16 w-full flex-col items-center justify-center gap-1 text-caption font-semibold text-muted">
-                <span className="grid h-7 w-12 place-items-center rounded-full">
+                <span className="relative grid h-7 w-12 place-items-center rounded-full">
                   <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+                  {more.some((n) => n.href === '/messages') ? badge('/messages', 'absolute -right-1 -top-1') : null}
                 </span>
                 {t('nav.more')}
               </button>

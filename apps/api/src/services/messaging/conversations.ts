@@ -16,6 +16,7 @@ import { randomUUID } from 'node:crypto';
 import type { Conversation, ConversationKind } from '@prisma/client';
 import type { AuthContext } from '../../auth/middleware.js';
 import { announceChangeTo } from '../../lib/changes.js';
+import { localIso } from '../../lib/time.js';
 import { type Tx, audit, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { sniff, storedName } from '../../lib/files.js';
@@ -281,7 +282,8 @@ async function describe(tx: Tx, convs: Conversation[], me: string, names: Map<st
     if (c.kind === 'SHIFT') {
       const [fid, s, e] = c.shiftKey!.split('|');
       const f = facs.find((x) => x.id === fid);
-      return { title: f?.name ?? null, shift: { startsAt: s, endsAt: e, timezone: f?.timezone ?? null } };
+      const tz = f?.timezone ?? 'America/Toronto';
+      return { title: f?.name ?? null, shift: { startsAt: localIso(new Date(s!), tz), endsAt: localIso(new Date(e!), tz), timezone: f?.timezone ?? null } };
     }
     return { title: c.title };
   };
