@@ -21,6 +21,8 @@ const API = process.env.CAPTURE_API ?? 'http://localhost:4000';
 const PASSWORD = 'flexcity-dev';
 const OUT = join(__dirname, '../src/lib/demo-fixtures');
 const ROLES = { guard: 'guard', supervisor: 'supervisor', hr: 'hr', frontdesk: 'frontdesk', steward: 'steward', waterworks: 'waterworks' };
+/** Accounts that only answer surveys and post messages for the sample data (never recorded). */
+const EXTRA = ['head', 'casual', 'maintenance'];
 
 const RENAME = [
   ['City of Kelowna (demo)', 'City of Lakeview (demo)'],
@@ -298,12 +300,85 @@ async function prepareTemplates() {
   }
 }
 
+/**
+ * Team messages (a one-to-one, the aquatics department, a mentoring group with the junior guard and two
+ * adults) and staff surveys (two closed pulses for the trend, one open the guard hasn't answered yet).
+ * Drew and Jess get birth dates on file: without one, the rule of two treats a person as possibly a minor.
+ */
+async function prepareMessagesSurveys() {
+  const hr = await apiAs('hr');
+  const sup = await apiAs('supervisor');
+  const guard = await apiAs('guard');
+  const people = (await hr.call('GET', '/api/messages/people'))?.people ?? [];
+  const byName = (re) => people.find((p) => re.test(p.name));
+  for (const re of [/Kowalski/, /Okoye/]) {
+    const p = byName(re);
+    if (p && !p.direct) await hr.call('PATCH', `/api/users/${p.id}`, { dateOfBirth: re.source === 'Kowalski' ? '1986-02-11' : '1979-09-23' });
+  }
+  if (!(await guard.call('GET', '/api/messages/conversations')).length) {
+    const supId = sup.user?.id ?? (await sup.call('GET', '/api/me')).id;
+    const dm = await guard.call('POST', '/api/messages/direct', { userId: supId });
+    if (dm?.id) {
+      await guard.call('POST', `/api/messages/conversations/${dm.id}/messages`, { text: 'Hi! Could I swap Saturday’s 6 a.m. for the Sunday afternoon shift? My course moved.' });
+      await sup.call('POST', `/api/messages/conversations/${dm.id}/messages`, { text: 'Sure. Post it on the board and I’ll approve the trade as soon as someone takes it.' });
+      await guard.call('POST', `/api/messages/conversations/${dm.id}/messages`, { text: 'Posted. Thank you!' });
+      await sup.call('POST', `/api/messages/conversations/${dm.id}/read`);
+    }
+    const dir = await sup.call('GET', '/api/messages/people');
+    const aquatics = dir?.departments?.find((d) => /aquatic/i.test(d.name)) ?? dir?.departments?.[0];
+    if (aquatics) {
+      const dep = await sup.call('POST', '/api/messages/department', { departmentId: aquatics.id });
+      if (dep?.id) {
+        await sup.call('POST', `/api/messages/conversations/${dep.id}/messages`, { text: 'In-service Thursday at 7 p.m. in the deep end: spinal boarding and the new AED. Bring your rescue tube.' });
+        await guard.call('POST', `/api/messages/conversations/${dep.id}/messages`, { text: 'I can set up the spinal board stations at 6:45.' });
+      }
+    }
+    const junior = (dir?.people ?? []).find((p) => /Morgan Lee/.test(p.name)) ?? (dir?.people ?? []).find((p) => p.directBlocked);
+    const head = (dir?.people ?? []).find((p) => /Avery/.test(p.name) && p.group && p.id !== junior?.id);
+    const guardId = guard.user?.id ?? (await guard.call('GET', '/api/me')).id;
+    if (junior && head) {
+      const g = await sup.call('POST', '/api/messages/groups', { title: 'Junior guard mentoring', memberIds: [junior.id, head.id, guardId] });
+      if (g?.id) {
+        await sup.call('POST', `/api/messages/conversations/${g.id}/messages`, { text: 'Welcome to the team! You’ll shadow on Saturdays this month. Ask anything here.' });
+        await guard.call('POST', `/api/messages/conversations/${g.id}/messages`, { text: 'See you Saturday at 8. We’ll start with the opening checklist.' });
+      }
+    }
+  }
+  if (!(await hr.call('GET', '/api/surveys')).length) {
+    const Q = [
+      { id: 'week', type: 'RATING', text: 'How was your work week?' },
+      { id: 'safe', type: 'RATING', text: 'I feel safe raising concerns with my supervisor.' },
+      { id: 'load', type: 'CHOICE', text: 'Your workload', options: ['Too light', 'About right', 'Too heavy'] },
+      { id: 'note', type: 'TEXT', text: 'Anything you’d like us to know?', required: false },
+    ];
+    const respondents = ['guard', 'supervisor', 'frontdesk', 'head', 'casual', 'waterworks', 'maintenance'];
+    const closesAt = new Date(Date.now() + 10 * 86_400_000).toISOString();
+    const runPulse = async (title, repeatOf, scores, notes, close) => {
+      const d = await hr.call('POST', '/api/surveys', { kind: 'PULSE', title, intro: 'Four questions, about a minute. Anonymous: results only for groups of five or more.', questions: Q, closesAt, repeatOf });
+      if (!d?.id) return null;
+      await hr.call('POST', `/api/surveys/${d.id}/publish`);
+      for (const [i, who] of respondents.entries()) {
+        if (!close && who === 'guard') continue;
+        const s = await apiAs(who).catch(() => null);
+        if (!s) continue;
+        await s.call('POST', `/api/me/surveys/${d.id}/answers`, { answers: { week: scores[i % scores.length], safe: Math.min(5, scores[(i + 2) % scores.length] + 1), load: i % 3 ? 'About right' : 'Too heavy', ...(notes[i] ? { note: notes[i] } : {}) } });
+      }
+      if (close) await hr.call('POST', `/api/surveys/${d.id}/close`);
+      return d.id;
+    };
+    const first = await runPulse('Spring check-in', null, [3, 4, 3, 2, 4, 3, 3], ['More notice for schedule changes, please.', 'Breaks get skipped on busy Saturdays.'], true);
+    const second = await runPulse('Summer check-in', first, [4, 4, 5, 3, 4, 4, 3], ['The new rotation board helps a lot.', 'Lane ropes in the main tank need replacing.', 'Great team this summer.'], true);
+    await runPulse('Fall check-in', second, [4, 3, 4, 4, 5, 3, 4], [], false);
+  }
+}
+
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
   for (const who of Object.values(ROLES)) await apiAs(who);
   await prepareCityWorks();
   await prepareNewFeatures();
   await prepareTemplates();
+  await prepareMessagesSurveys();
   // The demo city's (placeholder) logo, uploaded through the Dev console API.
   const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });
   const cookie = String(login.headers.get('set-cookie')).split(';')[0];
@@ -455,6 +530,28 @@ async function capture(browser, role) {
       for (let i = 0; i < n; i++) {
         await page.getByRole('button', { name: 'Applications', exact: true }).nth(i).click().catch(() => {});
         await page.waitForTimeout(1200);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(300);
+      }
+    }
+    if (href === '/messages') {
+      // Each conversation (the page opens one by ?c=).
+      const n = Math.min(await page.locator('main section[aria-label] li button').count(), 6);
+      for (let i = 0; i < n; i++) {
+        await page.locator('main section[aria-label] li button').nth(i).click().catch(() => {});
+        await page.waitForTimeout(1200);
+      }
+    }
+    if (href === '/manage/surveys') {
+      // Each survey's results (and the pulse trend).
+      const n = Math.min(await page.getByRole('button', { name: 'Results', exact: true }).count(), 4);
+      for (let i = 0; i < n; i++) {
+        await page.getByRole('button', { name: 'Results', exact: true }).nth(i).click().catch(() => {});
+        await page.waitForTimeout(1200);
+        for (const name of ['By department', 'By position', 'Everyone']) {
+          await page.locator('dialog[open] [role=radio]', { hasText: name }).first().click().catch(() => {});
+          await page.waitForTimeout(400);
+        }
         await page.keyboard.press('Escape');
         await page.waitForTimeout(300);
       }
