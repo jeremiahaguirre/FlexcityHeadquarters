@@ -35,7 +35,6 @@ const config: Config = {
           contrast: 'rgb(var(--brand-contrast) / <alpha-value>)',
           text: 'rgb(var(--brand-text) / <alpha-value>)',
         },
-        accent: 'rgb(var(--accent) / <alpha-value>)',
         page: 'rgb(var(--page) / <alpha-value>)',
         panel: 'rgb(var(--panel) / <alpha-value>)',
         surface: 'rgb(var(--surface) / <alpha-value>)',
