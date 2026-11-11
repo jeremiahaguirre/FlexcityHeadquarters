@@ -8,6 +8,7 @@ import { type Lang, copy } from '@/content/copy';
 import { demoLink } from '@/lib/site';
 import { LiveLogo } from './LiveLogo';
 
+/** Site header: logo, main links, the EN/FR switch (same page in the other language) and a phone menu that closes on navigation. */
 export function SiteHeader({ lang }: { lang: Lang }) {
   const c = copy(lang);
   const pathname = usePathname() ?? `/${lang}/`;

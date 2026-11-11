@@ -4,6 +4,7 @@ import { type LegalDocName, legalDoc } from '@/content/legal';
 
 const TITLE = { privacy: 'privacyTitle', accessibility: 'accessibilityTitle', terms: 'termsTitle', copyright: 'copyrightTitle', cookies: 'cookiesTitle', refunds: 'refundsTitle' } as const;
 
+/** Renders one legal document from content/legal.ts with its version and last-updated date. */
 export const legalTitle = (doc: LegalDocName, lang: Lang) => copy(lang).legal[TITLE[doc]];
 
 export function LegalPage({ doc, lang }: { doc: LegalDocName; lang: Lang }) {

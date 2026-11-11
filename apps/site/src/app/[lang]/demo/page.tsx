@@ -9,6 +9,7 @@ import { PhoneClip } from '@/components/PhoneClip';
 import { type Lang, copy } from '@/content/copy';
 import { demoLink } from '@/lib/site';
 
+/** Try the demo (EN/FR): one link per role into the static demo app, signed in as that role. */
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const all = copy(params.lang);

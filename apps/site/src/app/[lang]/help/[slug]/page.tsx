@@ -6,6 +6,7 @@ import { PageHero } from '@/components/PageHero';
 import { LANGS, type Lang, copy } from '@/content/copy';
 import { ARTICLES, articleIn } from '@/content/help';
 
+/** One help article (EN/FR), from content/help.ts; every article is built at export time. */
 export const generateStaticParams = () => LANGS.flatMap((lang) => ARTICLES.map((a) => ({ lang, slug: a.slug })));
 
 export async function generateMetadata(props: { params: Promise<{ lang: Lang; slug: string }> }) {

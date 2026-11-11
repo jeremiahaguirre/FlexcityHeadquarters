@@ -9,6 +9,7 @@ import { COMPANY, SITE } from '@/lib/site';
 const PROVINCES = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'];
 const input = 'block h-12 w-full rounded-xl border border-line bg-panel px-3.5 text-body text-ink placeholder:text-muted/70 focus:border-brand';
 
+/** Sales, demo or support request form. It posts to NEXT_PUBLIC_LEADS_URL (the API's leads endpoint); while that isn't set the form says it can't send and keeps what was typed. */
 export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' | 'DEMO' | 'SUPPORT' }) {
   const c = copy(lang).contact;
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');

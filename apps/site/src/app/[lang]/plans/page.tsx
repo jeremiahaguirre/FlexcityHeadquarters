@@ -25,6 +25,7 @@ const No = ({ label }: { label: string }) => (
   </span>
 );
 
+/** Plans and prices (EN/FR), from content/pricing.ts: public-sector plans by size, the private-sector price, and what each option includes. */
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang).plans;

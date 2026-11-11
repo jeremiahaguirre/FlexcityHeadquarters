@@ -11,6 +11,7 @@ import { type Lang, copy } from '@/content/copy';
 import { pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
 
+/** The pitch for private companies (EN/FR). */
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang).privateSector;

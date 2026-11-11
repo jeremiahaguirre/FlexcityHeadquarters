@@ -12,6 +12,7 @@ import { pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
 import { btnPrimary, btnSecondary } from '@/lib/buttons';
 
+/** Product tour (EN/FR): what the app does, with screenshots in the reader's language. */
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const h = copy(params.lang).home;

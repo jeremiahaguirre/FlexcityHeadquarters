@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { type Lang, copy } from '@/content/copy';
 import { ARTICLES, type Audience, articleIn } from '@/content/help';
 
+/** The help centre's article list, grouped by audience, with a search that filters as you type. */
 export function HelpIndex({ lang }: { lang: Lang }) {
   const c = copy(lang).help;
   const [q, setQ] = useState('');

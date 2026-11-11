@@ -13,6 +13,7 @@ import { SITE_URL, pageMeta } from '@/lib/seo';
 import { keepHyphenated } from '@/lib/keepWords';
 import { demoLink } from '@/lib/site';
 
+/** Marketing home page (EN/FR): the hero, the app clips and the feature sections. */
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang);

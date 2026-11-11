@@ -6,6 +6,7 @@ import { AnalyticsToggle } from './AnalyticsToggle';
 import { BusinessDetails } from './BusinessDetails';
 import { Logo } from './Logo';
 
+/** Site footer: links, legal pages and the analytics switch. */
 export function SiteFooter({ lang }: { lang: Lang }) {
   const c = copy(lang);
   const col = 'grid content-start gap-2 text-small';

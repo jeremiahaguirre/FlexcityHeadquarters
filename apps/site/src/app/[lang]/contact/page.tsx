@@ -6,6 +6,7 @@ import { LogoMark } from '@/components/Logo';
 import { PageHero } from '@/components/PageHero';
 import { type Lang, copy } from '@/content/copy';
 
+/** Contact (EN/FR): the contact form plus the business's contact details. */
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang).contact;

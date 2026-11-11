@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon';
 import { PageHero } from '@/components/PageHero';
 import { type Lang, copy } from '@/content/copy';
 
+/** Frequently asked questions (EN/FR), from content/copy.ts. */
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang).faq;

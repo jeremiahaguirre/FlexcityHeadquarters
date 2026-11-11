@@ -4,6 +4,7 @@ import { PAGES, SITE_URL } from '@/lib/seo';
 
 export const dynamic = 'force-static';
 
+/** sitemap.xml: every page and help article in both languages, each with its other-language alternate. */
 export default function sitemap(): MetadataRoute.Sitemap {
   const paths = [...PAGES, ...ARTICLES.map((a) => `help/${a.slug}/`)];
   return paths.flatMap((p) =>
