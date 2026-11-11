@@ -30,7 +30,7 @@ import { resolveFeatures } from '../platform/features.js';
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 export const patternBody = z.array(z.object({ day: z.number().int().min(0).max(83), start: hhmm, end: hhmm, label: z.enum(['day', 'evening', 'night']).nullable().optional() })).min(1).max(200);
 export const crewsBody = z.array(z.object({ name: z.string().trim().min(1).max(40), offsetDays: z.number().int().min(0).max(83), userIds: z.array(z.string().uuid()).max(60).default([]), openSlots: z.number().int().min(0).max(20).default(0) })).min(1).max(12);
-export const templateBody = z.object({
+export const templateObject = z.object({
   name: z.string().trim().min(2).max(80),
   departmentId: z.string().uuid().nullable().optional(),
   facilityId: z.string().uuid(),
@@ -42,6 +42,11 @@ export const templateBody = z.object({
   unpaidBreakMinutes: z.number().int().min(0).max(240).nullable().optional(),
   active: z.boolean().default(true),
 });
+/** Every working day must fall inside the cycle (a day 9 in an 8-day cycle would never be made). */
+export const insideCycle = <T extends { cycleDays: number; pattern: Array<{ day: number }> }>(t: T) => t.pattern.every((p) => p.day < t.cycleDays);
+const insideCycleError = { message: 'Every working day must fall inside the cycle.', path: ['pattern'] };
+export const templateBody = templateObject.refine(insideCycle, insideCycleError);
+export const previewBody = templateObject.extend({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), days: z.number().int().min(1).max(84).default(28) }).refine(insideCycle, insideCycleError);
 export type TemplateInput = z.infer<typeof templateBody>;
 export type PatternDay = z.infer<typeof patternBody>[number];
 export type Crew = z.infer<typeof crewsBody>[number];

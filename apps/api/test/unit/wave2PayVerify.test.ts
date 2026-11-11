@@ -177,3 +177,20 @@ describe('shift premiums (worked examples)', () => {
     expect(amt(r, 'SHIFT_PREMIUM')).toBe(12);
   });
 });
+
+describe('settings validation', () => {
+  it('a premium window must end after it starts and last at most a day', async () => {
+    const { workRulesBody } = await import('../../src/services/scheduling/workRules.js');
+    const r = (startMinute: number, endMinute: number) => workRulesBody.safeParse({ premiums: [{ id: 'x', name: 'Night', kind: 'night', startMinute, endMinute, perHour: 1 }] }).success;
+    expect(r(1320, 1800)).toBe(true); // 22:00–06:00
+    expect(r(0, 1440)).toBe(true);
+    expect(r(1320, 360)).toBe(false); // would pay nothing
+    expect(r(0, 2880)).toBe(false); // would pay each hour twice
+  });
+  it('a rotation’s working days must fall inside its cycle', async () => {
+    const { templateBody } = await import('../../src/services/scheduling/rotations.js');
+    const t = (day: number) => templateBody.safeParse({ name: 'Plant', facilityId: '00000000-0000-4000-8000-000000000001', positionId: '00000000-0000-4000-8000-000000000002', cycleDays: 8, anchorDate: '2026-07-06', pattern: [{ day, start: '07:00', end: '19:00' }], crews: [{ name: 'A', offsetDays: 0 }] }).success;
+    expect(t(7)).toBe(true);
+    expect(t(8)).toBe(false);
+  });
+});

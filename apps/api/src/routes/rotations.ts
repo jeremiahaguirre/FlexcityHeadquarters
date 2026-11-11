@@ -8,7 +8,7 @@ import { forbidden, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { schedulableDepartments } from '../services/scheduling/fillRun.js';
 import { createOnCall, deleteOnCall, onCallRoster, recordCallBack, rotateOnCall, swapOnCall } from '../services/scheduling/onCall.js';
-import { MAX_GENERATE_DAYS, type PresetKey, assertTemplateWritable, generateFromTemplates, occurrences, rotationPreset, templateBody } from '../services/scheduling/rotations.js';
+import { MAX_GENERATE_DAYS, type PresetKey, assertTemplateWritable, generateFromTemplates, occurrences, previewBody, rotationPreset, templateBody } from '../services/scheduling/rotations.js';
 import { h } from './context.js';
 
 export const rotationsRouter = Router();
@@ -114,7 +114,7 @@ rotationsRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     if (!scheduler(a.permissions)) throw forbidden();
-    const b = templateBody.extend({ from: isoDate, days: z.number().int().min(1).max(84).default(28) }).parse(req.body);
+    const b = previewBody.parse(req.body);
     const tz = await withTenant(a.tenantId, async (tx) => (await tx.facility.findUnique({ where: { id: b.facilityId }, select: { timezone: true } }))?.timezone);
     if (!tz) throw notFound('Facility');
     const to = new Date(Date.parse(`${b.from}T12:00:00Z`) + b.days * 86_400_000).toISOString().slice(0, 10);

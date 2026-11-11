@@ -63,13 +63,18 @@ export const premiumRuleBody = z.object({
   positionIds: z.array(z.string().uuid()).max(500).default([]),
   active: z.boolean().default(true),
 });
+/**
+ * A rule as saved: its window must end after it starts and last at most a day (a longer one would
+ * overlap the next day's window and pay the same hours twice).
+ */
+export const premiumRuleInput = premiumRuleBody.refine((r) => r.endMinute > r.startMinute && r.endMinute - r.startMinute <= 1440, { message: 'A premium window ends after it starts and lasts at most 24 hours.', path: ['endMinute'] });
 export const departmentWorkRulesBody = z.object({ breaks: breaksBody.optional(), callIn: callInBody.optional(), notice: noticeBody.optional(), standby: standbyBody.optional() });
 export const workRulesBody = z.object({
   breaks: breaksBody.optional(),
   callIn: callInBody.optional(),
   notice: noticeBody.optional(),
   standby: standbyBody.optional(),
-  premiums: z.array(premiumRuleBody).max(50).optional(),
+  premiums: z.array(premiumRuleInput).max(50).optional(),
 });
 
 export type PremiumRule = z.output<typeof premiumRuleBody>;
