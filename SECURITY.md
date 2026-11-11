@@ -63,6 +63,19 @@ Layered, so no single slip opens the database:
 
 ## Secrets, shared tablets and texts
 
+- **API keys** for a city's own systems (`/api/v1`, [docs/PUBLIC-API.md](docs/PUBLIC-API.md)) are 256-bit
+  random secrets with a visible prefix; only a SHA-256 is stored and the key is shown once. Each is scoped
+  (read-only), optionally limited to IP ranges and an expiry date, rate-limited per key in Postgres, and
+  every call is in the city's audit log. A key can only be given scopes whose data its maker can see.
+  The organization is found from the hash, then every read runs under RLS. Revoking is immediate;
+  rotating keeps the old key for 24 hours. Keys never work on the app's session routes.
+- **Webhooks** are signed Stripe-style (`FH-Signature: t=<seconds>,v1=<HMAC-SHA256 of "t.body">`) so
+  receivers can refuse forged and replayed messages. Signing secrets are sealed with the city's key
+  (they must be read back to sign) and shown once. Payloads carry ids and changed field names only.
+  Addresses must be https on the public internet, checked when saved and before every send, the
+  connection goes to the checked address, and redirects are never followed (SSRF; `lib/egress.ts`).
+  Delivery records keep the response code and 500 characters of the answer, never a secret.
+
 - **Links and devices that act without a sign-in** (a person's calendar feed, a facility kiosk) carry a
   long random secret. Only its SHA-256 hash is stored, it's shown once, and making a new one or
   removing it stops the old one at once (`apps/api/src/routes/calendar.ts`, `routes/kiosk.ts`).

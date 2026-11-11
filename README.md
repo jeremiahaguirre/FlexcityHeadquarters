@@ -38,6 +38,7 @@ Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and 
 | Notifications: in-app (live), email, web push on phones; installable app | Done |
 | **FH Dev console**: cities, features, menus per role, plans and billing (monthly, yearly or multi-year terms), FH's books, payroll set-up for a city, signed agreements, support visits, offboarding and data export | Done (API + web) |
 | Passkeys, single sign-on (Entra ID, SAML), multi-factor sign-in, audit log, privacy tools | Done |
+| Public API (read-only, per-organization API keys with scopes) and signed webhooks for a city's own ERP, HRIS or GIS | Done (API + web) — [docs](docs/PUBLIC-API.md) |
 | English and French throughout; light and dark mode; mobile and accessibility checked | Done |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what is not built yet and what needs people (legal, accounting, providers) before launch.
@@ -136,6 +137,7 @@ Screenshots on the site come from the demo (`apps/site/public/screens`). Retake 
 - [Security and legal audit](docs/SECURITY-LEGAL-AUDIT.md) — findings, fixes and the Canadian legal mapping
 - [Security operations runbook](docs/SECURITY-OPERATIONS.md) — backups, patching, access reviews, incident response
 - [Scalability and load tests](docs/SCALABILITY.md) — results for 1 city × 30 and 30 cities × 300, and how to size a deployment
+- [Public API and webhooks](docs/PUBLIC-API.md) — keys, endpoints, events, signature checks
 - [Pricing](docs/PRICING.md)
 - [Roadmap](docs/ROADMAP.md) and the [feature audit](docs/FEATURE-AUDIT.md) of what to add next
 - [How the spec review was resolved](docs/REVIEW-RESOLUTION.md) and the [brand guide](brand/README.md)

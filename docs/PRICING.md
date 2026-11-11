@@ -122,6 +122,8 @@ liability when a customer doesn't buy it.
 - Settings that aren't feature switches are refused with `403 PLAN_REQUIRED`: saving single sign-on (`sso`) and saving
   or testing the bank connection (`bankConnection`). An existing connection keeps working after a downgrade so nobody is
   locked out mid-pay-run.
+- API keys and webhooks (`publicApi`, standard in Multi-complex and Enterprise): without it, keys and webhooks can't be added,
+  existing keys answer `403 PLAN_REQUIRED` and no new webhook events are queued (nothing in the city's own work depends on them).
 - No billing account, or a trial (Dev console, Billing tab): every feature is on.
 
 ## Implementation fee (one-time)
