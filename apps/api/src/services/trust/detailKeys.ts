@@ -4,7 +4,7 @@
  * list), so this file has no imports.
  *
  * Kinds: count (a number of things), bool (yes/no), date (an instant), seconds (a duration),
- * list (names, refs or table problems), text (a technical word shown as is: a role, a region),
+ * list (names, refs or table problems; an item may be { en, fr } to be named in the reader's language), text (a technical word shown as is: a role, a region),
  * value (one of DETAIL_VALUES[key], translated).
  */
 export const MONITOR_DETAILS = {

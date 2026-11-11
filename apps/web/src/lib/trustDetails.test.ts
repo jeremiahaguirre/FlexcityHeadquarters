@@ -46,13 +46,14 @@ describe('Trust test details', () => {
       lastOkAt: '2026-11-10T14:05:00.000Z',
       provider: 'local',
       problems: ['Shift: not forced', 'Odd: something new'],
+      unpublished: [{ en: 'Privacy policy', fr: 'Politique de confidentialité' }, { en: 'Only English' }],
       summaryFr: 'hidden',
       lastSeenAt: 'x',
       apiToken: 'abc',
       sentryDsn: 'https://secret',
     }, t, 'fr-CA');
     const by = Object.fromEntries(rows.map((r) => [r.key, r]));
-    expect(rows.map((r) => r.key)).toEqual(['configured', 'tablesChecked', 'workerAgeS', 'lastOkAt', 'provider', 'problems', 'lastSeenAt']);
+    expect(rows.map((r) => r.key)).toEqual(['configured', 'tablesChecked', 'workerAgeS', 'lastOkAt', 'provider', 'problems', 'unpublished', 'lastSeenAt']);
     expect(by.configured).toMatchObject({ label: 'Configuré', value: 'Non' });
     expect(by.tablesChecked!.value).toMatch(/^1\s234$/);
     expect(by.workerAgeS!.value).toMatch(/^2\sminutes$/);
@@ -60,6 +61,7 @@ describe('Trust test details', () => {
     expect(by.lastOkAt!.value).toMatch(/nov/);
     expect(by.provider!.value).toBe('Clé de développement locale');
     expect(by.problems!.value).toEqual(['Shift : non forcée', 'Odd: something new']);
+    expect(by.unpublished!.value).toEqual(['Politique de confidentialité', 'Only English']);
     expect(by.lastSeenAt!.label).toBe('Last seen at');
   });
 

@@ -401,10 +401,12 @@ export const MONITORS: Monitor[] = [
   {
     key: 'policy_acks', title: 'Policies approved, current and accepted', titleFr: 'Politiques approuvées, à jour et acceptées', everyMinutes: 30,
     async run({ db: p, now }) {
-      const policies = await p.trustPolicy.findMany({ select: { title: true, nextReviewAt: true, versions: { where: { status: 'PUBLISHED' }, select: { id: true, acks: { select: { adminId: true } } } } } });
+      const policies = await p.trustPolicy.findMany({ select: { title: true, titleFr: true, nextReviewAt: true, versions: { where: { status: 'PUBLISHED' }, select: { id: true, acks: { select: { adminId: true } } } } } });
       const admins = await p.platformAdmin.findMany({ where: { disabledAt: null }, select: { id: true } });
-      const unpublished = policies.filter((x) => !x.versions.length).map((x) => x.title);
-      const overdue = policies.filter((x) => x.nextReviewAt && x.nextReviewAt < now).map((x) => x.title);
+      // Policy titles in both languages ({ en, fr }), so the drawer names them in the reader's language.
+      const name = (x: { title: string; titleFr: string }) => ({ en: x.title, fr: x.titleFr });
+      const unpublished = policies.filter((x) => !x.versions.length).map(name);
+      const overdue = policies.filter((x) => x.nextReviewAt && x.nextReviewAt < now).map(name);
       let missing = 0;
       for (const x of policies) for (const v of x.versions) missing += admins.filter((a) => !v.acks.some((k) => k.adminId === a.id)).length;
       const details: MonitorDetails = { policies: policies.length, unpublished, reviewOverdue: overdue, acknowledgementsMissing: missing };

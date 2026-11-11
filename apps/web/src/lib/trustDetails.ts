@@ -69,6 +69,10 @@ function one(key: string, v: unknown, kind: Kind | undefined, t: T, lang: string
     const id = m ? RLS_PROBLEMS[m[2]!] : undefined;
     if (m && id) return t(`trust.testDetails.rls.${id}`, { table: m[1] });
   }
+  if (typeof v === 'object' && !Array.isArray(v) && typeof (v as { en?: unknown }).en === 'string') {
+    const b = v as { en: string; fr?: unknown };
+    return lang.startsWith('fr') && typeof b.fr === 'string' && b.fr ? b.fr : b.en;
+  }
   if (typeof v === 'object') return Array.isArray(v) ? v.map((x) => one(key, x, undefined, t, lang)).join(', ') : JSON.stringify(v);
   return String(v);
 }
