@@ -947,6 +947,17 @@ model TimePunch {
   kioskId        String?             @db.Uuid
   reviewedById   String?             @db.Uuid
   reviewedAt     DateTime?           @db.Timestamptz(3)
+  /// Ids the phone gave each tap, so a re-sent punch is recognised instead of saved twice.
+  clientInId     String?             @db.Uuid
+  clientOutId    String?             @db.Uuid
+  /// Saved on the phone without a connection and sent later: flagged for review.
+  recordedOffline Boolean            @default(false)
+  /// When an offline clock-in / clock-out reached the server (null when sent live).
+  clockInReceivedAt  DateTime?       @db.Timestamptz(3)
+  clockOutReceivedAt DateTime?       @db.Timestamptz(3)
+  /// How far the phone's clock was off the server's, in seconds (+ = phone behind), when measured.
+  /// Offline times are corrected by it; large differences are flagged for review.
+  clockSkewS     Int?
   createdAt      DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
 
@@ -955,6 +966,8 @@ model TimePunch {
   shift    Shift?          @relation(fields: [shiftId], references: [id], onDelete: Restrict)
   edits    TimePunchEdit[]
 
+  @@unique([tenantId, clientInId])
+  @@unique([tenantId, clientOutId])
   @@index([tenantId, userId, clockIn])
   /// Punch review lists one status (pending first) by time.
   @@index([tenantId, status, clockIn])
