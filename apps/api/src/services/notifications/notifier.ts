@@ -13,6 +13,8 @@ import { type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
 import { resolveFeatures } from '../platform/features.js';
 import { parseOverrides, rolePermissions } from '../platform/roleOverrides.js';
 import { approversFor } from '../people/reporting.js';
+import { pushEnabled, URGENT as URGENT_PUSH } from './push.js';
+import { urgentSoon } from './urgent.js';
 
 export const NOTIFY_CHANNEL = 'fh_notifications';
 /** Open shifts starting this soon also go out by text to people who asked. */
@@ -56,6 +58,8 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
     ? await tx.user.findMany({ where: { id: { in: emailUsers }, status: 'ACTIVE', anonymizedAt: null }, select: { id: true, email: true, locale: true } })
     : [];
 
+  const pushNow = pushEnabled();
+  let urgent = false;
   for (const d of unique) {
     const n = await tx.notification.create({
       data: { tenantId, userId: d.userId, type: d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, link: d.link ?? null, dedupeKey: keyOf(d) },
@@ -79,8 +83,13 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
       // A call can go unanswered: the text follows it so the words are on the phone.
       if (d.sms === 'call') await tx.smsOutbox.create({ data: { ...base, kind: 'CALL' } });
       await tx.smsOutbox.create({ data: { ...base, kind: 'TEXT' } });
+      urgent = true;
     }
+    // Pushed to phones straight after the commit, not at the worker's next minute.
+    if (pushNow && URGENT_PUSH.has(d.type)) urgent = true;
   }
+  // Texts, calls and urgent pushes go out as soon as this commits (services/notifications/urgent.ts).
+  if (urgent) await urgentSoon(tx, tenantId);
   return unique.length;
 }
 

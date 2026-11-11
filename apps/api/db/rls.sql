@@ -106,6 +106,12 @@ $$ SELECT 'email', count(*) FILTER (WHERE attempts < 5), count(*) FILTER (WHERE 
           coalesce(extract(epoch FROM now() - min("createdAt") FILTER (WHERE attempts < 5)), 0)::double precision
      FROM "SmsOutbox" WHERE "sentAt" IS NULL
    UNION ALL
+   -- Safety texts and calls (services/notifications/sms.ts SAFETY_TEMPLATES), which /readyz holds to SAFETY_SMS_ALERT_S.
+   SELECT 'sms_safety', count(*) FILTER (WHERE attempts < 5), count(*) FILTER (WHERE attempts >= 5),
+          coalesce(extract(epoch FROM now() - min("createdAt") FILTER (WHERE attempts < 5)), 0)::double precision
+     FROM "SmsOutbox" WHERE "sentAt" IS NULL
+      AND template IN ('lonework_check_in_now', 'lonework_overdue', 'lonework_escalated', 'lonework_help', 'callout_offer')
+   UNION ALL
    SELECT 'events', count(*) FILTER (WHERE status = 'PENDING'), count(*) FILTER (WHERE status = 'DEAD'),
           coalesce(extract(epoch FROM now() - min("createdAt") FILTER (WHERE status = 'PENDING')), 0)::double precision
      FROM "EventOutbox" WHERE status <> 'DELIVERED' $$;
@@ -119,6 +125,30 @@ CREATE OR REPLACE FUNCTION tenants_with_due_events() RETURNS SETOF uuid
 $$ SELECT DISTINCT "tenantId" FROM "EventOutbox" WHERE status = 'PENDING' AND "availableAt" <= now() $$;
 REVOKE ALL ON FUNCTION tenants_with_due_events() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION tenants_with_due_events() TO flexcity_app;
+
+-- Urgent texts (services/notifications/urgent.ts): which organizations have texts or calls due now
+-- (the worker's sweep, every few seconds), and which have safety alerts still unsent after
+-- min_age_s (its alert). Ids and counts only; each organization's messages are then read under RLS.
+CREATE OR REPLACE FUNCTION tenants_with_due_sms() RETURNS SETOF uuid
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
+$$ SELECT DISTINCT "tenantId" FROM "SmsOutbox"
+    WHERE "sentAt" IS NULL AND attempts < 5
+      AND (params->>'_retryAt' IS NULL OR (params->>'_retryAt')::timestamptz <= now()) $$;
+REVOKE ALL ON FUNCTION tenants_with_due_sms() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION tenants_with_due_sms() TO flexcity_app;
+
+DROP FUNCTION IF EXISTS safety_sms_overdue(int);
+CREATE FUNCTION safety_sms_overdue(min_age_s int) RETURNS TABLE(tenant_id uuid, overdue bigint, oldest_age_s double precision)
+  LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS
+$$ SELECT "tenantId", count(*), extract(epoch FROM now() - min("createdAt"))::double precision
+     FROM "SmsOutbox"
+    WHERE "sentAt" IS NULL
+      AND template IN ('lonework_check_in_now', 'lonework_overdue', 'lonework_escalated', 'lonework_help', 'callout_offer')
+      AND "createdAt" <= now() - make_interval(secs => min_age_s)
+      AND "createdAt" > now() - interval '6 hours'
+    GROUP BY "tenantId" $$;
+REVOKE ALL ON FUNCTION safety_sms_overdue(int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION safety_sms_overdue(int) TO flexcity_app;
 
 -- SQL injection, defence in depth: even if a query were ever subverted, the runtime roles can't
 -- change the schema, create objects or temporary tables, run a statement for long, or sit in an

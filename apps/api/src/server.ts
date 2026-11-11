@@ -5,6 +5,9 @@ import { attachCacheBus } from './lib/cacheBus.js';
 import { sharedListener } from './lib/listen.js';
 import { enableInlineDispatch } from './lib/outbox.js';
 import { startLiveHub } from './services/notifications/liveHub.js';
+import { ConsoleMailer } from './services/notifications/mailer.js';
+import { type SmsSender, smsSender } from './services/notifications/sms.js';
+import { enableInlineUrgent } from './services/notifications/urgent.js';
 import { logError } from './lib/log.js';
 import { assertLeastPrivilege } from './lib/dbRole.js';
 import { installProcessHandlers } from './lib/errorReporter.js';
@@ -34,6 +37,16 @@ if (workers > 1 && cluster.isPrimary) {
   // Domain events are recorded in the outbox with their change (lib/events.ts); this process
   // delivers its own straight after each commit, and the worker picks up anything left over.
   enableInlineDispatch();
+  // Texts, calls and urgent pushes (working alone, help, call-outs) go out straight after the
+  // commit that queued them, from this process (services/notifications/urgent.ts); the worker hears
+  // a pg_notify too and is the backstop. A text provider set up wrong leaves texts to the worker.
+  let sms: SmsSender | null = null;
+  try {
+    sms = smsSender();
+  } catch (err) {
+    logError('Texts are left to the worker: the text provider is not set up here', err);
+  }
+  enableInlineUrgent({ sms, mailer: new ConsoleMailer() });
 
   // One LISTEN connection per process (lib/listen.ts): live notifications for the browsers whose
   // stream is open here, and cache invalidation from the other processes and instances.

@@ -42,14 +42,36 @@ export async function withTenant<T>(
 ): Promise<T> {
   if (!UUID.test(tenantId)) throw new Error('Invalid tenant id');
   const prisma = opts.prisma ?? db();
-  return prisma.$transaction(
+  const hooks: Array<() => void> = [];
+  const result = await prisma.$transaction(
     async (tx) => {
+      commitHooks.set(tx, hooks);
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       return fn(tx);
     },
     // maxWait: how long to wait for a free connection under load before giving up (Prisma's default is 2 s).
     { isolationLevel: opts.isolationLevel, timeout: opts.timeoutMs ?? 15_000, maxWait: config().DB_POOL_TIMEOUT_S * 1000 },
   );
+  for (const h of hooks) {
+    try {
+      h();
+    } catch {
+      // A hook is a best-effort nudge (deliver this now); the worker is the backstop.
+    }
+  }
+  return result;
+}
+
+const commitHooks = new WeakMap<object, Array<() => void>>();
+
+/**
+ * Run `fn` once the withTenant() transaction `tx` belongs to has committed (never on a rollback).
+ * For in-process nudges only, such as "deliver the text just queued": `fn` must be quick and must
+ * not need the transaction. Outside withTenant() it does nothing, so the work must also be safe to
+ * leave to the worker.
+ */
+export function afterCommit(tx: Tx, fn: () => void): void {
+  commitHooks.get(tx)?.push(fn);
 }
 
 /** Serialise work per key inside the current transaction (released at commit/rollback). */

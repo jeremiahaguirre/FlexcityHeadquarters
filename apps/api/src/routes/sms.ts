@@ -12,6 +12,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest } from '../lib/errors.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { maskPhone, toE164 } from '../services/notifications/sms.js';
+import { urgentSoon } from '../services/notifications/urgent.js';
 import { h } from './context.js';
 
 export const smsRouter = Router();
@@ -47,6 +48,8 @@ smsRouter.post(
       await tx.authToken.create({ data: { tenantId: a.tenantId, userId: a.userId, purpose: 'SMS_VERIFY', tokenHash: hashCode(a.userId, phone, code), expiresAt: new Date(Date.now() + CODE_MINUTES * 60_000) } });
       const me = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { locale: true } });
       await tx.smsOutbox.create({ data: { tenantId: a.tenantId, userId: a.userId, toPhone: phone, template: 'sms_verify', params: { code }, locale: me.locale } });
+      // Texted as soon as this commits, not at the worker's next round.
+      await urgentSoon(tx, a.tenantId);
     });
     res.status(202).json({ phone: maskPhone(phone), expiresInMinutes: CODE_MINUTES });
   }),

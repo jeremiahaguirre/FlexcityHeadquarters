@@ -95,6 +95,11 @@ const schema = z.object({
   READY_DB_TIMEOUT_MS: z.coerce.number().int().min(100).max(10_000).default(1500),
   /** Readiness fails when the oldest unsent email or text has waited longer than this (seconds). */
   READY_OUTBOX_MAX_AGE_S: z.coerce.number().int().min(60).default(15 * 60),
+  /**
+   * A safety text or call (working alone, help, call-out) still unsent after this long (seconds)
+   * raises an alert (error report, fh_safety_sms_overdue_alerts_total) and a readiness warning.
+   */
+  SAFETY_SMS_ALERT_S: z.coerce.number().int().min(30).default(120),
   /** Readiness fails when no background worker has reported in for this long (seconds). */
   READY_WORKER_MAX_AGE_S: z.coerce.number().int().min(60).default(5 * 60),
   /**

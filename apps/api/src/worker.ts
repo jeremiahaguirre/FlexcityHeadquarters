@@ -8,6 +8,11 @@
  * Domain events (lib/outbox.ts), then the webhooks they queue (services/integrations/webhooks.ts),
  * are delivered every few seconds without a lock: claiming with
  * SKIP LOCKED already keeps any number of workers and API processes from delivering one twice.
+ *
+ * Urgent texts, calls and pushes (services/notifications/urgent.ts) go out within a second or two:
+ * this process LISTENs on fh_urgent (sent when a transaction that queued one commits, in any API
+ * process), delivers after its own jobs' commits, sweeps every few seconds for due retries, and
+ * alerts on safety texts still unsent after SAFETY_SMS_ALERT_S. The minute jobs stay as the backstop.
  */
 import pg from 'pg';
 import { computeBenchmarks } from './services/platform/benchmarks.js';
@@ -29,6 +34,8 @@ import { deliverPush } from './services/notifications/push.js';
 import { dispatchAll } from './lib/outbox.js';
 import { deliverAllWebhooks } from './services/integrations/webhooks.js';
 import { refreshWeather } from './services/ops/weather.js';
+import { sharedListener } from './lib/listen.js';
+import { checkOverdueSafety, enableInlineUrgent, kickUrgent, tenantsWithDueSms, URGENT_CHANNEL } from './services/notifications/urgent.js';
 
 const cfg = config();
 installProcessHandlers();
@@ -44,6 +51,36 @@ const mailer = new ConsoleMailer();
 const sms = smsSender();
 
 const running = new Set<string>();
+
+// Urgent delivery: after this process's own commits (the lone-work and call-out jobs), and on
+// every fh_urgent NOTIFY from any API process. Claimed with SKIP LOCKED, so racing the API is safe.
+enableInlineUrgent({ sms, mailer });
+/** Organizations with texts due (retries, a NOTIFY lost while LISTEN was reconnecting), then the overdue-safety alert. */
+let sweeping = false;
+const urgentSweep = async () => {
+  if (sweeping) return;
+  sweeping = true;
+  try {
+    for (const id of await tenantsWithDueSms()) kickUrgent(id);
+    await checkOverdueSafety();
+  } catch (err) {
+    captureError(err, { source: 'job', tags: { job: 'urgent-sweep' } });
+  } finally {
+    sweeping = false;
+  }
+};
+const urgentListener = sharedListener(cfg.LISTEN_DATABASE_URL ?? cfg.APP_DATABASE_URL);
+urgentListener.on(URGENT_CHANNEL, (tenantId) => kickUrgent(tenantId));
+urgentListener.onReconnect(() => void urgentSweep());
+// Without LISTEN the sweep still delivers within a few seconds. Once connected, the listener
+// reconnects on its own; a first connection that fails is tried again every 30 s.
+const listen = (): Promise<void> =>
+  urgentListener.start().catch(async (err) => {
+    captureError(err, { source: 'job', tags: { job: 'urgent-listen' } });
+    await urgentListener.stop();
+    setTimeout(() => void listen(), 30_000).unref();
+  });
+await listen();
 
 async function exclusive(name: string, fn: () => Promise<unknown>) {
   if (running.has(name)) return;
@@ -127,6 +164,7 @@ await minutely();
 await heartbeat();
 await hourly();
 setInterval(() => void events(), 5_000);
+setInterval(() => void urgentSweep(), 5_000);
 setInterval(() => void minutely().then(heartbeat), 60_000);
 setInterval(() => void hourly(), 60 * 60_000);
 console.log('FlexcityHeadquarters worker running');
