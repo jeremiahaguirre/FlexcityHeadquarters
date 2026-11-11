@@ -329,3 +329,48 @@ axe pass (done earlier), an independent audit.
 11. Accessibility statement: AODA/ACA references and "no full conformance claimed".
 12. Working-alone "aid, not a replacement" wording in the app and terms.
 13. Claims rewrites listed above.
+14. Competition Act drip pricing (ss. 52(1.3), 74.01(1.1)): the plans page shows monthly prices and,
+    in a separate section, a mandatory one-time setup fee as a range. Whether the setup fee must be
+    shown with each price (or stated as "plus a one-time setup fee") is for counsel.
+15. Charter of the French Language s. 55 (as amended by Bill 96): the terms say the French version is
+    "provided first and prevails" and that the parties may agree to be bound by the English version.
+    Counsel to settle one clause that fits contracts of adhesion and negotiated agreements.
+16. Law 25 s. 8.1 is now described as "tell people and how to turn the functions on, which we read as
+    off by default" (the "off by default" reading is ours). Portability is cited as s. 27 and
+    de-indexing as s. 28.1.
+17. Accessibility statement: AODA's regulation (O. Reg. 191/11) references WCAG 2.0 AA; the statement
+    now says WCAG 2.1 AA "includes" it and that WCAG 2.1 is the basis of the standard used under the
+    Accessible Canada Act. Confirm the federal standard's current name and version.
+18. Owner: set a reply time for accessibility feedback if one is wanted (the undocumented "two business
+    days" promise was removed).
+19. Owner: trials ending mid-month. Billing now skips only months wholly inside a trial; the month in
+    which a trial ends is invoiced in full (no proration). Confirm, or say so in order forms.
+
+### Verification pass (November 2026)
+
+An independent check of the legal pages against the code. Fixed: taxes now name PST/RST/QST as
+`billing/tax.ts` charges them (terms, refunds, renewal note, the app's Billing page); the cookies page
+no longer says offline clock-in and attendance queues are wiped at sign-out (only class rosters and
+cached pages are; unsent clock-ins prompt send-or-delete); the privacy policy lists facility booking
+requests and the optional sign-up address and photo consent, says the email provider is not yet
+chosen, says at-rest encryption is part of the planned hosting, and describes error reports as they
+are (type, message, stack, scrubbed); the website FAQ no longer says FH staff "never" see employee
+records (the Dev console shows signed information agreements with names, emails and device addresses,
+each view audited, and setup imports); the copyright page adds regulation-excluded content and says
+identity is disclosed only where the law requires; billing no longer drafts invoices for months wholly
+inside a free trial; a valid unsubscribe link is never rate-limited (mail apps' one-click POSTs share
+server addresses).
+
+Checked in a browser on a scratch build (website, 11 pages × EN/FR × 390/1280 × light/dark): axe
+(WCAG 2.0/2.1 A/AA) clean, no horizontal overflow, 104 internal links all 200, no cookies, no
+third-party requests; `fh-analytics` is the only storage after the consent choice; the Vercel script is
+requested only after "Allow"; with Global Privacy Control or Do Not Track no bar appears and nothing
+loads. Unsubscribe end to end (landing page EN/FR, invalid link, confirm, reload, RFC 8058 one-click):
+works, recorded as a Lead row of kind `UNSUBSCRIBE`. Sign-in and Dev console sign-in link to the four
+website legal pages.
+
+Not verifiable offline: what Vercel's production analytics script stores or sends (taken from Vercel's
+documentation); whether any fee regulation exists under Copyright Act s. 41.26(2); current CRTC
+guidance. Note: unsubscribe links are signed with `JWT_SECRET`; rotating it breaks links already sent
+(CASL s. 11(2): they must work for 60 days after sending). Rotate only with a grace period, or move the
+signing key to its own secret.
