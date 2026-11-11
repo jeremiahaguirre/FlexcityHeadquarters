@@ -10,7 +10,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { dateFormat } from '@/lib/format';
-import { pct } from '@/lib/forecast';
+import { type EventEffect as Effect, eventEffect as effectOf, eventEffectValues, pct } from '@/lib/forecast';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 export interface SpecialEvent {
@@ -45,12 +45,12 @@ export function SpecialEvents({ facilityId, defaultDate, onChanged }: { facility
   const { run, busy } = useAction();
   const [editing, setEditing] = useState<SpecialEvent | 'new' | null>(null);
   const [allDay, setAllDay] = useState(true);
-  const [effect, setEffect] = useState<'extra' | 'percent'>('extra');
+  const [effect, setEffect] = useState<Effect>('extra');
   const current = editing === 'new' ? null : editing;
   const open = (e: SpecialEvent | 'new') => {
     setEditing(e);
     setAllDay(e === 'new' || e.startMinute === null);
-    setEffect(e !== 'new' && e.percent !== null && e.extraPeople === null ? 'percent' : 'extra');
+    setEffect(effectOf(e));
   };
   const date = (iso: string) => dateFormat(lng, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${iso}T12:00:00Z`));
   const clock = (m: number) => dateFormat(lng, { hour: 'numeric', minute: m % 60 ? '2-digit' : undefined, timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 0, 1, Math.floor(m / 60), m % 60)));
@@ -60,7 +60,6 @@ export function SpecialEvents({ facilityId, defaultDate, onChanged }: { facility
     ev.preventDefault();
     const f = new FormData(ev.currentTarget);
     const n = (k: string) => (String(f.get(k) ?? '').trim() === '' ? null : Number(f.get(k)));
-    const value = n('amount');
     const body = {
       facilityId: f.get('where') === 'city' ? null : facilityId,
       name: String(f.get('name') ?? '').trim(),
@@ -68,8 +67,7 @@ export function SpecialEvents({ facilityId, defaultDate, onChanged }: { facility
       endsOn: String(f.get('endsOn') || f.get('startsOn')),
       startMinute: allDay ? null : toMinute(String(f.get('from'))),
       endMinute: allDay ? null : toMinute(String(f.get('to'))),
-      extraPeople: effect === 'extra' ? value : null,
-      percent: effect === 'percent' ? value : null,
+      ...eventEffectValues(effect, n('extraPeople'), n('percent')),
       recursYearly: f.get('yearly') === 'on',
       notes: String(f.get('notes') ?? '').trim() || null,
     };
@@ -150,24 +148,26 @@ export function SpecialEvents({ facilityId, defaultDate, onChanged }: { facility
               <Field label={t('forecast.events.to')}>{(p) => <Input {...p} name="to" type="time" required defaultValue={current?.endMinute != null ? toTime(current.endMinute) : '16:00'} />}</Field>
             </div>
           ) : null}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('forecast.events.effect')}>
-              {(p) => (
-                <Select {...p} value={effect} onChange={(e) => setEffect(e.target.value as 'extra' | 'percent')}>
-                  <option value="extra">{t('forecast.events.effectExtra')}</option>
-                  <option value="percent">{t('forecast.events.effectPercent')}</option>
-                </Select>
-              )}
-            </Field>
-            <Field label={effect === 'extra' ? t('forecast.events.extraLabel') : t('forecast.events.percentLabel')} hint={effect === 'percent' ? t('forecast.events.percentHint') : t('forecast.events.extraHint')}>
-              {(p) =>
-                effect === 'extra' ? (
-                  <Input {...p} key="extra" name="amount" type="number" min={1} max={100000} step={1} required defaultValue={current?.extraPeople ?? ''} />
-                ) : (
-                  <Input {...p} key="percent" name="amount" type="number" min={-90} max={300} step={1} required defaultValue={current?.percent ?? ''} />
-                )
-              }
-            </Field>
+          <Field label={t('forecast.events.effect')}>
+            {(p) => (
+              <Select {...p} value={effect} onChange={(e) => setEffect(e.target.value as Effect)}>
+                <option value="extra">{t('forecast.events.effectExtra')}</option>
+                <option value="percent">{t('forecast.events.effectPercent')}</option>
+                <option value="both">{t('forecast.events.effectBoth')}</option>
+              </Select>
+            )}
+          </Field>
+          <div className={`grid gap-4 ${effect === 'both' ? 'sm:grid-cols-2' : ''}`}>
+            {effect !== 'percent' ? (
+              <Field label={t('forecast.events.extraLabel')} hint={t('forecast.events.extraHint')}>
+                {(p) => <Input {...p} name="extraPeople" type="number" inputMode="numeric" min={1} max={100000} step={1} required defaultValue={current?.extraPeople ?? ''} />}
+              </Field>
+            ) : null}
+            {effect !== 'extra' ? (
+              <Field label={t('forecast.events.percentLabel')} hint={t('forecast.events.percentHint')}>
+                {(p) => <Input {...p} name="percent" type="number" min={-90} max={300} step={1} required defaultValue={current?.percent ?? ''} />}
+              </Field>
+            ) : null}
           </div>
           <label className="flex min-h-[44px] items-center gap-2 text-small text-ink">
             <input type="checkbox" name="yearly" defaultChecked={current?.recursYearly ?? false} className="h-5 w-5 accent-[rgb(var(--brand))]" />

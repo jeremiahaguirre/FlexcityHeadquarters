@@ -66,3 +66,13 @@ export function reasonText(a: Adjustment, t: TFunction, lng: string): string {
       return t('forecast.events.school', { name: a.name });
   }
 }
+
+/** A special event's effect: extra people, a percentage, or both. */
+export type EventEffect = 'extra' | 'percent' | 'both';
+export const eventEffect = (e: { extraPeople: number | null; percent: number | null } | 'new'): EventEffect =>
+  e === 'new' ? 'extra' : e.extraPeople !== null && e.percent !== null ? 'both' : e.percent !== null ? 'percent' : 'extra';
+/** What the events dialog saves for the chosen effect: the fields it doesn't use are cleared. */
+export const eventEffectValues = (effect: EventEffect, extraPeople: number | null, percent: number | null) => ({
+  extraPeople: effect === 'percent' ? null : extraPeople,
+  percent: effect === 'extra' ? null : percent,
+});

@@ -3232,6 +3232,7 @@
       "effect": "Effect",
       "effectExtra": "Extra people",
       "effectPercent": "A percentage",
+      "effectBoth": "Both",
       "extraLabel": "How many",
       "extraHint": "About how many more people at once while it runs.",
       "percentLabel": "Percentage",

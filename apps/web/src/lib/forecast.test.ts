@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reasonText } from './forecast';
+import { eventEffect, eventEffectValues, reasonText } from './forecast';
 import { createI18n } from './i18n';
 
 const en = createI18n('en-CA');
@@ -17,5 +17,20 @@ describe('forecast reasons', () => {
     expect(norm(reasonText({ kind: 'holiday', name: 'Canada Day', nameFr: 'Fête du Canada', pct: 15 }, fr.t, 'fr-CA'))).toBe('+15 % Fête du Canada (jour férié)');
     expect(reasonText({ kind: 'event', id: 'e', name: 'Swim meet', pct: null, extra: 40, startMinute: 780, endMinute: 900, cityWide: false, notes: null }, en.t, 'en-CA')).toMatch(/^\+40 people Swim meet \(1\s?p\.m\.–3\s?p\.m\.\)$/);
     expect(reasonText({ kind: 'school', name: 'Spring break' }, fr.t, 'fr-CA')).toBe('Pas d’école : Spring break');
+  });
+});
+
+describe('special event effect', () => {
+  it('keeps extra people and a percentage together when an event has both', () => {
+    const both = { extraPeople: 200, percent: 25 };
+    expect(eventEffect(both)).toBe('both');
+    expect(eventEffectValues(eventEffect(both), 200, 25)).toEqual(both);
+  });
+  it('opens on the one an event uses, and clears the other', () => {
+    expect(eventEffect('new')).toBe('extra');
+    expect(eventEffect({ extraPeople: null, percent: -20 })).toBe('percent');
+    expect(eventEffect({ extraPeople: 50, percent: null })).toBe('extra');
+    expect(eventEffectValues('percent', 50, 10)).toEqual({ extraPeople: null, percent: 10 });
+    expect(eventEffectValues('extra', 50, 10)).toEqual({ extraPeople: 50, percent: null });
   });
 });
