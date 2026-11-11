@@ -334,6 +334,10 @@ model Tenant {
   /// minimum call-in pay, schedule-change notice and premiums, shift premium rules, standby and
   /// call-back, with per-department overrides where collective agreements differ.
   workRules       Json             @default("{}")
+  /// Team messaging (services/messaging/policy.ts): { staffDirect, minorDirect, pushPreview, shiftArchiveHours }.
+  messagingSettings Json           @default("{}")
+  /// Staff surveys (services/surveys): { minGroup, managersCreate }.
+  surveySettings  Json             @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -4220,4 +4224,207 @@ model ShiftPreferenceLimit {
   updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 
   @@index([tenantId])
+}
+
+// ---------------------------------------------------------------- Team messaging (services/messaging)
+
+enum ConversationKind {
+  DIRECT // two people
+  SHIFT // everyone working the same shift at a facility; archived after it ends
+  DEPARTMENT // everyone in a department and its managers
+  GROUP // a group a supervisor or HR made
+}
+
+/// A conversation. Its messages are sealed with one data key, wrapped by the organization's key (KMS).
+model Conversation {
+  id            String           @id @default(uuid()) @db.Uuid
+  tenantId      String           @db.Uuid
+  kind          ConversationKind
+  /// Groups: the name people gave it. Shift and department conversations are named from their shift or department.
+  title         String?
+  /// DIRECT: the two people's ids, sorted, joined by ":" (one conversation per pair).
+  directKey     String?
+  /// SHIFT: "<facilityId>|<startsAt ISO>|<endsAt ISO>" of the shift it was made from (one per shift).
+  shiftKey      String?
+  /// DEPARTMENT: the department (one conversation per department).
+  departmentId  String?          @db.Uuid
+  createdById   String?          @db.Uuid
+  /// SHIFT: archived (read-only) from this moment, some hours after the shift ends.
+  closesAt      DateTime?        @db.Timestamptz(3)
+  archivedAt    DateTime?        @db.Timestamptz(3)
+  lastMessageAt DateTime?        @db.Timestamptz(3)
+  /// The conversation's data key, wrapped by the organization's key (never stored unwrapped).
+  wrappedKey    Bytes
+  kekId         String
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  members       ConversationMember[]
+  messages      Message[]
+
+  @@unique([tenantId, directKey])
+  @@unique([tenantId, shiftKey])
+  @@unique([tenantId, departmentId])
+  @@index([tenantId, lastMessageAt])
+}
+
+model ConversationMember {
+  id             String       @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
+  conversationId String       @db.Uuid
+  userId         String       @db.Uuid
+  /// GROUP: the person who made it (and HR) can add and remove people.
+  owner          Boolean      @default(false)
+  /// Read receipt: everything up to this moment has been seen.
+  lastReadAt     DateTime?    @db.Timestamptz(3)
+  muted          Boolean      @default(false)
+  joinedAt       DateTime     @default(now()) @db.Timestamptz(3)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([tenantId, userId])
+}
+
+/// One message. The text is sealed (AES-256-GCM) with the conversation's data key; the AAD ties it to this row.
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
+  conversationId String       @db.Uuid
+  authorId       String       @db.Uuid
+  ciphertext     Bytes?
+  iv             Bytes?
+  authTag        Bytes?
+  /// The first version, kept when the author edits (for an investigation), sealed the same way.
+  originalCiphertext Bytes?
+  originalIv     Bytes?
+  originalAuthTag Bytes?
+  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
+  editedAt       DateTime?    @db.Timestamptz(3)
+  /// Removed by its author (or HR): shown as "message removed"; the sealed text stays until the retention period ends.
+  deletedAt      DateTime?    @db.Timestamptz(3)
+  deletedById    String?      @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  attachment     MessageAttachment?
+
+  @@index([conversationId, createdAt])
+  @@index([tenantId, authorId])
+}
+
+/// A file sent with a message (PDF, PNG, JPEG or WebP, checked by content), sealed with the conversation's key.
+model MessageAttachment {
+  id          String  @id @default(uuid()) @db.Uuid
+  tenantId    String  @db.Uuid
+  messageId   String  @unique @db.Uuid
+  fileName    String
+  contentType String
+  size        Int
+  sha256      String
+  ciphertext  Bytes
+  iv          Bytes
+  authTag     Bytes
+  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+enum MessageReportStatus {
+  OPEN
+  CLOSED
+}
+
+/// A message reported to HR under the organization's workplace harassment policy.
+model MessageReport {
+  id             String              @id @default(uuid()) @db.Uuid
+  tenantId       String              @db.Uuid
+  messageId      String              @db.Uuid
+  conversationId String              @db.Uuid
+  reporterId     String              @db.Uuid
+  reason         String
+  status         MessageReportStatus @default(OPEN)
+  closedAt       DateTime?           @db.Timestamptz(3)
+  closedById     String?             @db.Uuid
+  closingNote    String?
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, status])
+  @@index([conversationId])
+}
+
+/// HR opened a conversation they're not in, for an investigation: who, why, until when. Append-only.
+model ConversationAccess {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  conversationId String   @db.Uuid
+  userId         String   @db.Uuid
+  reason         String
+  reportId       String?  @db.Uuid
+  openedAt       DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt      DateTime @db.Timestamptz(3)
+
+  @@index([conversationId, userId])
+}
+
+// ---------------------------------------------------------------- Staff surveys (services/surveys)
+
+enum SurveyKind {
+  PULSE // short check-in, always anonymous
+  EXIT // one person who is leaving (Offboarding), named and said so up front
+}
+
+model Survey {
+  id            String     @id @default(uuid()) @db.Uuid
+  tenantId      String     @db.Uuid
+  kind          SurveyKind
+  title         String
+  intro         String?
+  /// Anonymous: who answered is kept apart from the answers, which carry no person, time or order.
+  anonymous     Boolean    @default(true)
+  /// [{ id, type: RATING | CHOICE | MULTI | TEXT, text, options?: string[], required }]
+  questions     Json
+  /// { departmentIds: [], positionIds: [] } (both empty = everyone) or, for EXIT, the person.
+  audience      Json       @default("{}")
+  /// A manager's survey: the departments it is limited to (empty = HR's, whole organization).
+  departmentIds String[]   @db.Uuid
+  /// EXIT: the offboarding it belongs to and the person.
+  offboardingId String?    @db.Uuid
+  subjectUserId String?    @db.Uuid
+  /// Repeated pulses share a series, for the trend.
+  seriesId      String     @db.Uuid
+  opensAt       DateTime   @db.Timestamptz(3)
+  closesAt      DateTime   @db.Timestamptz(3)
+  /// Null = draft. Invitations are made when it's published.
+  publishedAt   DateTime?  @db.Timestamptz(3)
+  closedAt      DateTime?  @db.Timestamptz(3)
+  /// The smallest group whose results are shown, fixed when it was published.
+  minGroup      Int        @default(5)
+  remindersSent Int        @default(0)
+  createdById   String     @db.Uuid
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime   @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, seriesId])
+  @@index([tenantId, closesAt])
+}
+
+/// Who was asked and whether they've answered (to stop duplicates and send reminders). No time is kept.
+model SurveyInvite {
+  id        String  @id @default(uuid()) @db.Uuid
+  tenantId  String  @db.Uuid
+  surveyId  String  @db.Uuid
+  userId    String  @db.Uuid
+  responded Boolean @default(false)
+
+  @@unique([surveyId, userId])
+  @@index([tenantId, userId])
+}
+
+/// One set of answers. Anonymous: no person, no time; department and position only where the group is big enough.
+model SurveyResponse {
+  id           String  @id @default(uuid()) @db.Uuid
+  tenantId     String  @db.Uuid
+  surveyId     String  @db.Uuid
+  /// Named (exit) surveys only.
+  userId       String? @db.Uuid
+  departmentId String? @db.Uuid
+  positionId   String? @db.Uuid
+  /// { [questionId]: 1..5 | "option" | ["option", …] | "text" }
+  answers      Json
+
+  @@index([surveyId])
 }
