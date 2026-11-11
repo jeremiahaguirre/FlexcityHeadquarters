@@ -47,7 +47,7 @@ The [launch blockers on the roadmap](ROADMAP.md#before-the-first-customer) still
 | 4.2 | **Notifications that survive a crash** | Domain events are published in memory after the transaction commits (`lib/events.ts`). If the process stops between the commit and `handleEvent`, that notification is lost. | Write the event to an outbox table in the same transaction and let the worker deliver it. Live delivery already uses `pg_notify`, which works across instances. |
 | 4.3 | **More than one API process** | At a realistic pace one process answers in under 50 ms (p99). With all 9,030 load-test workers acting at the same moment, reads take 1.6 s (p50) on one process and 0.95 s on three, with no errors. | Run `WEB_CONCURRENCY` (one per core) or several instances behind PgBouncer in transaction mode, and size `DB_POOL_SIZE` to stay under `max_connections`. Measured in [SCALABILITY.md](SCALABILITY.md). |
 | 4.4 | Labels built at run time | Fixed in this pass: a test now fails when a feature switch or journal account has no English or French label. | Do the same wherever a key is built from server data, such as notification types and reason codes. |
-| 4.5 | French bottom bar on small phones | At 390 px some French tab labels are cut short ("Aujourd'…", "Approba…"). | Use shorter French labels for the bottom bar, kept separate from the page titles. |
+| 4.5 | French bottom bar on small phones | At 390 px some French tab labels are cut short ("Aujourd'…", "Approba…"). | Done: the bottom bar uses its own short labels in both languages (`nav.*Short`), e.g. “Demandes”, “Heures sup”. |
 
 ## What was checked and is in good shape
 
