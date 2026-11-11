@@ -39,11 +39,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang={locale} className={jakarta.variable} style={themeVars(tenant?.themeColors) as CSSProperties} suppressHydrationWarning>
-      <head>
-        {/* eslint-disable-next-line react/no-danger */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SCHEME_SCRIPT }} />
-      </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
+        {/*
+          First thing in <body>, not in <head>: it still runs before anything paints, and React never has to
+          match it among the <head> scripts the bundle loader removes while the page hydrates (that race was
+          React error #418 on some loads). Browsers hide a nonce from the DOM, hence suppressHydrationWarning.
+        */}
+        {/* eslint-disable-next-line react/no-danger */}
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: SCHEME_SCRIPT }} />
         <Providers locale={locale}>
           <SkipLink />
           <KeyboardInset />
