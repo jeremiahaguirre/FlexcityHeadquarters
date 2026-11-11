@@ -1,3 +1,4 @@
+/** Signing in to the FH Dev console (FH staff only, separate from organization sign-in). */
 import { Router } from 'express';
 import { z } from 'zod';
 import { PLATFORM_COOKIE, endPlatformSession, platformCookieOpts, platformMfaRequired, platformOf, requirePlatformSession, startPlatformSession } from '../../auth/platform.js';

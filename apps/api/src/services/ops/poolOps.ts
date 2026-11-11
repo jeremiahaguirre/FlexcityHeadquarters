@@ -1,3 +1,4 @@
+/** Recording water-chemistry readings (an unsafe one recommends closing the pool) and confirming or dismissing those closures. */
 import type { Prisma } from '@prisma/client';
 import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';

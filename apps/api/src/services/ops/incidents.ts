@@ -1,3 +1,4 @@
+/** Incident reports. The narrative is encrypted; every read is logged with its stated purpose. */
 import type { Tx } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import { type KeyProvider, open, seal } from '../crypto/envelope.js';

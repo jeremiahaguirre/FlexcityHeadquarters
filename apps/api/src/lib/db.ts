@@ -1,3 +1,7 @@
+/**
+ * Database access. The app connects as a non-owner role so row-level security applies, and every
+ * tenant query runs inside withTenant(), which tells Postgres whose rows it may see.
+ */
 import { Prisma, PrismaClient } from '@prisma/client';
 import { config } from '../config.js';
 import { prismaUrl } from './dbUrl.js';

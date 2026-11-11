@@ -1,3 +1,8 @@
+/**
+ * The Express app for organizations' sites and the Dev console: order matters below (request ids,
+ * security headers, body limits per route, public routes before sign-in, then the signed-in API),
+ * and errorHandler turns every thrown error into one JSON shape.
+ */
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { stripeWebhookRouter } from './routes/billing.js';

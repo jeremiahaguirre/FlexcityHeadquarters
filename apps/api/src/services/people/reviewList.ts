@@ -1,3 +1,4 @@
+/** The reliability review list: everyone active with their score and suggested next step. */
 import type { Tx } from '../../lib/db.js';
 import { loadScoreInputs, reliabilityPolicy, scoreOf } from '../reliability/load.js';
 import { type Review, review } from './review.js';

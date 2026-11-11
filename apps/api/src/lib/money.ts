@@ -1,7 +1,9 @@
+/**
+ * Money and hours are computed with arbitrary-precision decimals and rounded
+ * only when a line is emitted. Never use JS floats for pay.
+ */
 import { Decimal } from 'decimal.js';
 
-// Money and hours are computed with arbitrary-precision decimals and rounded
-// only when a line is emitted. Never use JS floats for pay.
 Decimal.set({ precision: 40, rounding: Decimal.ROUND_HALF_UP });
 
 export { Decimal };

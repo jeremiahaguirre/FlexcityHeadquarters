@@ -1,4 +1,3 @@
-import { forgetActive } from '../people/customRoles.js';
 /**
  * Retention-aware erasure ("right to be forgotten").
  *
@@ -17,6 +16,7 @@ import { forgetActive } from '../people/customRoles.js';
  *
  * Hard deletes never happen; FK relations are ON DELETE RESTRICT.
  */
+import { forgetActive } from '../people/customRoles.js';
 import { type Tx, audit } from '../../lib/db.js';
 
 export function erasureDueDate(lastPayrollActivity: Date | null, retentionYears: number, requestedAt: Date): Date {

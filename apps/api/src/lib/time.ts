@@ -1,3 +1,4 @@
+/** Dates and times in an organization's own time zone (shifts, pay weeks, local days). */
 import { DateTime } from 'luxon';
 
 /**

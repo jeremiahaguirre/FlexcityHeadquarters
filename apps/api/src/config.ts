@@ -1,3 +1,4 @@
+/** Environment settings, checked once at start-up; a missing or unsafe value stops the process. */
 import { z } from 'zod';
 import { verifiesServer } from './lib/dbUrl.js';
 

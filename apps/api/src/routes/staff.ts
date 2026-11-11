@@ -1,3 +1,4 @@
+/** People and their certifications: a person's own profile and password, positions, and the staff list HR manages. */
 import { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { consentRequired } from './consent.js';

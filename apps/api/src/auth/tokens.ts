@@ -1,3 +1,7 @@
+/**
+ * Session tokens and passwords: short-lived signed access tokens, rotating refresh tokens kept as
+ * hashes (a reused one revokes its whole family), and scrypt password hashes.
+ */
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import type { AccessRole } from '@prisma/client';

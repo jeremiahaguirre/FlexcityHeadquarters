@@ -151,10 +151,10 @@ export async function sendCommercialEmail(mailer: Mailer, m: { to: string; local
 }
 
 /**
- * Website enquiries are kept two years after the last exchange (the privacy policy says so), unless
- * the enquiry led to a customer (WON); then their personal details are removed (the app role may
- * update leads but not delete them, so the row stays as an empty count). Unsubscribe records are kept:
- * they are what stops us emailing someone again. Runs hourly from the worker.
+ * Website enquiries are kept two years after the last exchange (the privacy policy says so); after
+ * that their personal details are removed, unless the enquiry led to a customer (WON), which is kept.
+ * The app role may update leads but not delete them, so a removed row stays as an empty count.
+ * Unsubscribe records are kept: they are what stops us emailing someone again. Runs hourly from the worker.
  */
 export const ENQUIRY_RETENTION_MONTHS = 24;
 export const REMOVED = '(removed)';

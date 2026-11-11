@@ -1,3 +1,4 @@
+/** Shifts: facilities and positions to pick from, creating, assigning, cancelling and publishing shifts. */
 import type { Prisma } from '@prisma/client';
 import { assertShiftInScope, assertUserInScope, peopleWhere, shiftsWhere } from '../services/people/scope.js';
 import { Router } from 'express';

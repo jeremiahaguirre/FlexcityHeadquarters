@@ -1,3 +1,4 @@
+/** Dev console passkeys: signing in with one, the second factor, and adding or removing them. */
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import { Router } from 'express';
 import { z } from 'zod';

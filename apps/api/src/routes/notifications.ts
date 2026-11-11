@@ -1,3 +1,4 @@
+/** In-app notifications, their live stream to open pages, and web push subscriptions. */
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';

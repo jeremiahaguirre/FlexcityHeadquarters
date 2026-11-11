@@ -1,3 +1,7 @@
+/**
+ * Shared route plumbing: which organization a request is for (from its subdomain), the encryption
+ * key provider, and h(), which passes async errors to the error handler.
+ */
 import type { NextFunction, Request, Response } from 'express';
 import { config } from '../config.js';
 import { db } from '../lib/db.js';

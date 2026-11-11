@@ -1,3 +1,4 @@
+/** Clocking in and out (including punches sent late from a phone that was offline), and supervisor corrections. */
 import { announceChange } from '../../lib/changes.js';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';

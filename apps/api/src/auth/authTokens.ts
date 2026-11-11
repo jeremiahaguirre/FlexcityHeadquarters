@@ -1,3 +1,7 @@
+/**
+ * One-time tokens behind emailed links and short sign-in hand-offs (password reset, invitation, SSO,
+ * text-message check). Only a hash is stored; each purpose has its own lifetime.
+ */
 import { createHash, randomBytes } from 'node:crypto';
 import type { AuthTokenPurpose } from '@prisma/client';
 import { config } from '../config.js';

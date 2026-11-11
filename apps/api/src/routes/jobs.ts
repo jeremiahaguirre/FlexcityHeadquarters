@@ -1,3 +1,4 @@
+/** Job postings: managed by HR, shown on the organization's public careers page. */
 import type { JobPosting } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';

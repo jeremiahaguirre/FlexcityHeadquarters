@@ -1,3 +1,4 @@
+/** Departments: list, add, rename and remove. */
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';

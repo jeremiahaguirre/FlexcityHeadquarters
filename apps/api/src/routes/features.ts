@@ -1,3 +1,7 @@
+/**
+ * The signed-in organization API: sign-in, the department-scope guard and the consent check run
+ * first, then every feature router is mounted here. A few smaller features' routes live in this file.
+ */
 import { exportPersonRecords } from '../services/privacy/recordsExport.js';
 import { recordsPdf } from '../services/privacy/recordsPdf.js';
 import { assertShiftInScope, hrRecordsBy, incidentsWhere, peopleInScope, peopleWhere, shiftInScope, userInScope } from '../services/people/scope.js';

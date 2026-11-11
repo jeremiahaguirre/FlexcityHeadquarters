@@ -1,3 +1,4 @@
+/** Signing in to an organization: password sign-in, refreshing and ending a session, password reset. */
 import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, consumeAuthToken, issueAuthToken } from '../auth/authTokens.js';

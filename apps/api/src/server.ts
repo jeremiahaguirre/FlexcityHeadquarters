@@ -1,3 +1,4 @@
+/** API entry point: checks the database role, then serves createApp() on one or more processes. */
 import cluster from 'node:cluster';
 import { createApp } from './app.js';
 import { config } from './config.js';

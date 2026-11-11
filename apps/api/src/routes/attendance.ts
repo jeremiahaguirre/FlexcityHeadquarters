@@ -1,3 +1,4 @@
+/** Availability, time-off requests and decisions, and punches (a person's own and the supervisor review). */
 import { Router } from 'express';
 import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { z } from 'zod';

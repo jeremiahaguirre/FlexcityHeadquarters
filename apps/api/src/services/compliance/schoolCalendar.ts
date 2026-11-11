@@ -1,3 +1,4 @@
+/** School days, for the youth work-hour limits that differ on school days. */
 import { DateTime } from 'luxon';
 import { DEFAULT_SCHOOL_CALENDAR, type SchoolCalendar } from '../scheduling/eligibility.js';
 

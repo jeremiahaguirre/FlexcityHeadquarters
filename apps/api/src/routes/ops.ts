@@ -1,3 +1,4 @@
+/** Pool operations: pools, headcounts, water-chemistry readings and their sign-off, and the incident list. */
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';

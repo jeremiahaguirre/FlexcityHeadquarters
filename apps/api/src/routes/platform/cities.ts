@@ -576,7 +576,7 @@ citiesRouter.get(
   }),
 );
 
-/** Require a passkey as a second factor for everyone with this access level. */
+/** Require a second factor (a passkey, or a sign-in code unless the organization allows passkeys only) for everyone with this access level. */
 citiesRouter.put(
   '/tenants/:id/access/mfa',
   requirePlatformStepUp,

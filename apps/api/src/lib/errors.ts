@@ -1,3 +1,4 @@
+/** Errors that carry an HTTP status and a stable code; app.ts turns them into the JSON error body. */
 export class HttpError extends Error {
   constructor(
     public readonly status: number,

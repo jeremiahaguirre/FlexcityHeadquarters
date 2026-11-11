@@ -1,3 +1,4 @@
+/** Organization settings (HR administrators): facilities, pay codes, rule overrides, retention, sign-in rules and more. */
 import type { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';

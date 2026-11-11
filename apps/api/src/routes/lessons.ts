@@ -1,3 +1,4 @@
+/** Swim lessons: instructors' sessions and attendance, and classes with their enrolments. */
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
