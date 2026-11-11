@@ -4,14 +4,19 @@
  * scheduled at the facility than the rule needs.
  */
 import type { CoverageRule } from '@prisma/client';
-import { DateTime } from 'luxon';
+import type { Prisma } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
+import { wallClock } from '../scheduling/eligibility.js';
 import { addDays, dayOfWeek } from '../../lib/time.js';
 import { notify, usersWithPermission } from '../notifications/notifier.js';
 
 export interface Gap { ruleId: string; rule: string; facilityId: string; date: string; from: string; to: string; have: number; need: number }
 
-export async function coverageGaps(tx: Tx, from: string, days: number, facilityId?: string): Promise<Gap[]> {
+/**
+ * `asIfPublished`: also count these draft shifts (the ones about to be published), so the publish
+ * dialog can warn about the gaps the schedule would leave.
+ */
+export async function coverageGaps(tx: Tx, from: string, days: number, facilityId?: string, asIfPublished: Prisma.ShiftWhereInput | null = null): Promise<Gap[]> {
   const rules = await tx.coverageRule.findMany({ where: { active: true, ...(facilityId ? { facilityId } : {}) } });
   if (!rules.length) return [];
   const facilities = await tx.facility.findMany({ where: { id: { in: [...new Set(rules.map((r) => r.facilityId))] } }, select: { id: true, timezone: true } });
@@ -21,24 +26,24 @@ export async function coverageGaps(tx: Tx, from: string, days: number, facilityI
     for (let i = 0; i < days; i++) {
       const date = addDays(from, i);
       if (!rule.daysOfWeek.includes(dayOfWeek(date))) continue;
-      out.push(...(await gapsOn(tx, rule, date, tz)));
+      out.push(...(await gapsOn(tx, rule, date, tz, asIfPublished)));
     }
   }
   return out.sort((a, b) => a.from.localeCompare(b.from));
 }
 
-async function gapsOn(tx: Tx, rule: CoverageRule, date: string, tz: string): Promise<Gap[]> {
-  const day = DateTime.fromISO(date, { zone: tz }).startOf('day');
-  const start = day.plus({ minutes: rule.startMinute }).toJSDate();
-  const end = day.plus({ minutes: rule.endMinute }).toJSDate();
+async function gapsOn(tx: Tx, rule: CoverageRule, date: string, tz: string, asIfPublished: Prisma.ShiftWhereInput | null): Promise<Gap[]> {
+  // Wall-clock window (DST-correct; past 1440 runs into the next morning).
+  const start = wallClock(date, rule.startMinute, tz);
+  const end = wallClock(date, rule.endMinute, tz);
   const shifts = await tx.shift.findMany({
-    where: { facilityId: rule.facilityId, status: 'PUBLISHED', userId: { not: null }, startsAt: { lt: end }, endsAt: { gt: start } },
+    where: { facilityId: rule.facilityId, userId: { not: null }, startsAt: { lt: end }, endsAt: { gt: start }, OR: [{ status: 'PUBLISHED' }, ...(asIfPublished ? [{ AND: [asIfPublished, { status: 'DRAFT' as const }] }] : [])] },
     select: { userId: true, startsAt: true, endsAt: true },
   });
   const holders = new Set(
     (
       await tx.userCertification.findMany({
-        where: { certificationId: rule.certificationId, userId: { in: [...new Set(shifts.map((s) => s.userId!))] }, verifiedAt: { not: null }, OR: [{ expiryDate: null }, { expiryDate: { gte: new Date(date) } }] },
+        where: { certificationId: rule.certificationId, userId: { in: [...new Set(shifts.map((s) => s.userId!))] }, verifiedAt: { not: null }, OR: [{ expiryDate: null }, { expiryDate: { gte: new Date(`${date}T00:00:00Z`) } }] },
         select: { userId: true },
       })
     ).map((c) => c.userId),

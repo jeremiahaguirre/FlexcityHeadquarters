@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { assertShiftInScope, assertUserInScope, shiftsWhere } from '../services/people/scope.js';
+import { assertShiftInScope, assertUserInScope, peopleWhere, shiftsWhere } from '../services/people/scope.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import type { Tx } from '../lib/db.js';
@@ -7,7 +7,9 @@ import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
 import { badRequest, forbidden } from '../lib/errors.js';
 import { dispatchSoon, withEvents } from '../lib/events.js';
-import { assignShift, cancelShift, createShift, publishShifts, rankCandidates, updateShift } from '../services/scheduling/shifts.js';
+import { assignShift, cancelShift, createShift, publishCheck, publishShifts, rankCandidates, updateShift } from '../services/scheduling/shifts.js';
+import { audit } from '../lib/db.js';
+import { HttpError } from '../lib/errors.js';
 import { previewShiftPay } from '../services/payroll/payPreview.js';
 import { notFound } from '../lib/errors.js';
 import { teamOf, teamQuery } from '../services/people/reporting.js';
@@ -183,12 +185,32 @@ schedulingRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     // `shiftIds`: publish only these drafts (e.g. one open shift to post to the board).
+    // `acknowledgeWarnings`: publish anyway despite coverage gaps / people who can't work a shift (audited).
+    const body = z.object({ facilityId: uuid, from: z.coerce.date(), to: z.coerce.date(), shiftIds: z.array(uuid).min(1).max(3000).optional(), acknowledgeWarnings: z.boolean().default(false) }).parse(req.body);
+    if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
+    const only = { ...shiftsWhere(a.scope), ...(body.shiftIds ? { id: { in: body.shiftIds } } : {}) };
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const check = await publishCheck(tx, body.facilityId, body.from, body.to, only);
+      const warned = check.gaps.length > 0 || check.ineligible.length > 0 || !!check.federalNotice;
+      if (warned && !body.acknowledgeWarnings) throw new HttpError(409, 'PUBLISH_WARNINGS', 'Publishing leaves coverage gaps or shifts someone can’t work. Review and confirm to publish anyway.', check);
+      if (warned) await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'shift.publish.warnings_acknowledged', entity: 'Facility', entityId: body.facilityId, after: { gaps: check.gaps.length, ineligible: check.ineligible.length, federalNotice: check.federalNotice, from: body.from, to: body.to } });
+      return withEvents(tx, publishShifts(tx, actor(req), body.facilityId, body.from, body.to, only));
+    });
+    dispatchSoon(a.tenantId);
+    res.json({ published: out.published, postedToBoard: out.posted });
+  }),
+);
+
+/** What publishing would leave: required-coverage gaps, shifts someone can no longer work, federal notice. */
+schedulingRouter.post(
+  '/shifts/publish/check',
+  requirePermission('schedule.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
     const body = z.object({ facilityId: uuid, from: z.coerce.date(), to: z.coerce.date(), shiftIds: z.array(uuid).min(1).max(3000).optional() }).parse(req.body);
     if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
     const only = { ...shiftsWhere(a.scope), ...(body.shiftIds ? { id: { in: body.shiftIds } } : {}) };
-    const out = await withTenant(a.tenantId, (tx) => withEvents(tx, publishShifts(tx, actor(req), body.facilityId, body.from, body.to, only)));
-    dispatchSoon(a.tenantId);
-    res.json({ published: out.published, postedToBoard: out.posted });
+    res.json(await withTenant(a.tenantId, (tx) => publishCheck(tx, body.facilityId, body.from, body.to, only)));
   }),
 );
 
@@ -200,7 +222,8 @@ schedulingRouter.get(
     res.json(
       await withTenant(a.tenantId, async (tx) => {
         await shiftScoped(tx, a, uuid.parse(req.params.id));
-        return rankCandidates(tx, uuid.parse(req.params.id));
+        // Only people the caller may schedule (a facility-only lead sees their own people).
+        return rankCandidates(tx, uuid.parse(req.params.id), peopleWhere(a.scope));
       }),
     );
   }),
