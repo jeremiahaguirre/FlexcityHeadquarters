@@ -9,7 +9,11 @@ See also the [security and legal audit](SECURITY-LEGAL-AUDIT.md) and the [operat
 - Rules follow the **province where the work is done** (the facility), not the employer's head office.
 - Values are effective-dated. When a law changes, add a new rule set with a new `effectiveFrom`; past periods keep recalculating with the old rules.
 - Collective agreements are applied as `RuleOverride` rows (e.g. OT after 7.5 h/day) with a cited source.
-- Items deliberately left unautomated (surfaced as warnings): statutory holiday pay formulas outside BC, ON, QC and SK; averaging agreements; "day" definitions that start at shift start rather than midnight.
+- Items deliberately left unautomated (surfaced as warnings): statutory holiday pay formulas outside BC, ON, QC and SK; averaging agreements; unpaid meal breaks (an 8.5-hour shift with a 30-minute unpaid lunch is counted as 8.5 hours worked, so it can show daily overtime in BC/AB; modelling breaks needs a schema change).
+- **The "day" for daily overtime and daily hour limits** (`services/compliance/workDay.ts`, used by payroll's daily overtime in `payCalc.ts` and by scheduling's projections and limits): a calendar day, except in **BC and Alberta**, where a shift that continues past midnight starts a 24-hour day at its start (BC ESA s. 1 "day" (b); Alberta ESC "work day"). So BC 16:00–08:00 is one 16-hour day: 8 regular, 4 at 1.5, 4 at 2.0; 22:00–08:00 has 2 hours of daily overtime. Windows never overlap: the rolling day cuts the calendar day it starts in, and the rest of the calendar day after it is a day of its own. **Counsel to verify** (checklist item 9).
+- **Daily rest (Ontario, 11 consecutive hours each day, ESA s. 18(1))**: measured in every 24 hours that start at the start of a shift, with rest allowed to cross midnight. Ordinary day shifts (07–15, 08–16, 09–17, 07–19) and 12-hour nights pass; 07–15 then 23–03 (8 h and 4 h off) is refused. A strict midnight-to-midnight reading would refuse almost every day shift, which isn't how the Ministry applies it. **Counsel to verify** (item 10).
+- **Weekly rest**: the longest consecutive time off inside each pay week must reach the province's hours (BC 32, Quebec 32, Ontario 24 or 48 in each fixed pair of consecutive weeks, Alberta and the others 24); `rolling7` is supported for a province that counts any 7 days. The organization's "most days in a row" can't exceed 12 (a day off each pay week). Refused only when the new shift causes or worsens the shortfall. **Counsel to verify** the pay-week reading and Ontario's pairing (item 11).
+- **Federally regulated** organizations or departments (Fill settings, `overtimePolicy.solver.federallyRegulated`) are scheduled under the Canada Labour Code set (8 h/day and 40 h/week overtime, 8 h between shifts, 24 h off each week, minimum age 17 for most work, 96 hours' schedule notice warned on publish). **Payroll still follows the facility's province**: a federal pay calculation is not built.
 - **Seniority is optional per organization** (Settings, or the Dev console's Features). On, the default for cities, seniority dates and hours break ties in the overtime order, call-outs and the scheduling assistant. Off, ties go by fewest hours then name, seniority isn't shown on people's records or the overtime order, and the assistant fills shifts evenly. Private-sector companies created in the Dev console start with it off. Where a collective agreement sets seniority rules, keep it on.
 
 ### Time in lieu (banked overtime)
@@ -56,7 +60,7 @@ How the app uses it:
 - **Pay runs**: hours worked on the person's statutory day are paid at the holiday rate, and where the organization observes the next weekday, hours on that weekday too (an agreement adds to the statute; it doesn't move the statutory premium away). Holiday pay is paid once per holiday. When it falls on their day off: the rule above; a substitute day owed is flagged on the run (unless the organization's observed weekday was a day off they'd usually work), and the holiday pay is on the run with the holiday.
 - **Forecast**: the holiday's effect applies on its own date, on the day the law moves it to and on the organization's observed weekday, marked "observed". The shift-pay preview uses the same days.
 - **Time off and HR leave** list the coming holidays with their own date and the day off for each.
-- **Not built:** a "federally regulated" switch for organizations under the Canada Labour Code (the federal rules are encoded and shown, but pay runs follow the facility's province); leave charges still count weekdays without skipping holidays.
+- **Partly built:** a "federally regulated" switch (Fill settings) schedules under the Canada Labour Code rules, but pay runs still follow the facility's province. Leave charges still count weekdays without skipping holidays.
 
 ### Review checklist for counsel
 
@@ -68,6 +72,9 @@ How the app uses it:
 6. Holiday pay eligibility formulas.
 7. Time in lieu: the agreement, the take-within period and payout on leaving, per province.
 8. Holidays on a weekend or a day off: the table above, the sections marked "verify", the 5-of-9-weeks test outside Alberta, Canada Day on July 2 in provinces that don't set a date, and paying holiday pay with the holiday when a substitute day is owed later.
+9. The BC/Alberta "day" for shifts past midnight (24 hours from the shift's start) in daily overtime and daily hour limits, how a rolling day meets the calendar day around it, and whether Alberta applies it to every shift or only those past midnight.
+10. Ontario's 11-hour daily rest measured in the 24 hours from each shift start (rest may cross midnight).
+11. Weekly rest per pay week (longest time off in a row), Ontario's 48 hours over two weeks counted in fixed pairs, the 12-day cap on days in a row, and the federal rule set (CLC ss. 169, 173, 173.01, 173.1, 174, 179) used for scheduling only.
 
 ## Privacy law by customer type
 
