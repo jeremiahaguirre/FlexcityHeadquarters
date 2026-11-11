@@ -1173,7 +1173,11 @@
       "VACATION_PAY": "Vacation pay",
       "LIEU_TAKEN": "Time in lieu taken",
       "LIEU_PAYOUT": "Banked time paid out",
-      "SALARY": "Salary"
+      "SALARY": "Salary",
+      "CALLBACK_PAY": "Call-back minimum",
+      "REPORTING_PAY": "Minimum call-in pay",
+      "SCHEDULE_CHANGE_PREMIUM": "Late schedule change premium",
+      "STANDBY_PAY": "Standby (on-call) pay"
     },
     "d": {
       "cpp": "CPP contributions",
@@ -1633,7 +1637,11 @@
       "STAT_WORKED": "Worked on a stat holiday",
       "STAT_HOLIDAY_PAY": "Stat holiday pay",
       "SHIFT_PREMIUM": "Shift premium",
-      "VACATION_PAY": "Vacation pay"
+      "VACATION_PAY": "Vacation pay",
+      "CALLBACK_PAY": "Call-back minimum",
+      "REPORTING_PAY": "Minimum call-in pay",
+      "SCHEDULE_CHANGE_PREMIUM": "Late schedule change premium",
+      "STANDBY_PAY": "Standby (on-call) pay"
     },
     "calendar": "School calendar",
     "calendarHelp": "Young workers can’t work during school hours on school days. Add terms and breaks so the rules know which days count.",

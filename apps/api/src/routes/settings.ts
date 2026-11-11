@@ -153,7 +153,7 @@ settingsRouter.put(
     const rows = z
       .array(
         z.object({
-          key: z.enum(['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY']),
+          key: z.enum(['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY', 'REPORTING_PAY', 'SCHEDULE_CHANGE_PREMIUM', 'STANDBY_PAY', 'CALLBACK_PAY']),
           positionId: uuid.nullable(),
           code: z.string().trim().min(1).max(40),
         }),

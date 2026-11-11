@@ -36,7 +36,7 @@ import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
 import { IntegrationsSettings } from '@/components/settings/IntegrationsSettings';
 
-const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
+const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY', 'REPORTING_PAY', 'SCHEDULE_CHANGE_PREMIUM', 'STANDBY_PAY', 'CALLBACK_PAY'] as const;
 
 interface Facility { id: string; name: string; province: string; timezone: string; latitude: number | null; longitude: number | null; geoRadiusM: number; costCenter: string | null; rotationMinutes?: number; maxOnChairMinutes?: number; exposure?: 'INDOOR' | 'OUTDOOR' | 'MIXED'; venueKind?: string; weatherSite?: string | null; weatherSiteAuto?: string | null; weatherSiteName?: { en: string; fr: string } | null }
 interface Override { id: string; province: string | null; ruleKey: string; value: unknown; effectiveFrom: string; effectiveTo: string | null; source: string }

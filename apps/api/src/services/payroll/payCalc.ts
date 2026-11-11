@@ -19,6 +19,7 @@ import { addDays, dayOfWeek, payWeekStart, splitByLocalDay, startOfLocalDay } fr
 import { type ProvinceRules, vacationPercent } from '../compliance/provincialRules.js';
 import { workDayWindows } from '../compliance/workDay.js';
 import { type Issue, issue } from './issues.js';
+import { type PremiumPiece, paidIntervals } from '../scheduling/workRules.js';
 
 export interface WorkedInterval {
   start: Date;
@@ -26,6 +27,10 @@ export interface WorkedInterval {
   positionId: string;
   /** Extra $/h (e.g. specialised class). Not multiplied by OT factors. */
   premiumPerHour?: Decimal | null;
+  /** Unpaid meal break inside this interval (minutes): never paid, never counted toward overtime. */
+  breakMinutes?: number | null;
+  /** Where the break starts at the latest (hours into the interval); default the middle. */
+  breakAfterHours?: number | null;
 }
 
 export interface PayCalcInput {
@@ -42,6 +47,11 @@ export interface PayCalcInput {
   statHolidays: ReadonlySet<string>;
   completedYearsOfService: number;
   vacationPayMode: 'PAY_EACH_PERIOD' | 'ACCRUE';
+  /**
+   * Rule-based shift premiums (evening, night, weekend, holiday: workRules.premiumPieces) for a
+   * paid piece of work. Paid as SHIFT_PREMIUM lines next to any manual premiumPerHour.
+   */
+  rulePremiums?: (piece: { start: Date; end: Date; positionId: string }) => PremiumPiece[];
 }
 
 export interface PayLine {
@@ -100,9 +110,10 @@ export function calculatePay(input: PayCalcInput): PayResult {
   // 1. Clip to the period and split at local midnights (and, where a shift past midnight starts a
   //    24-hour day, at that day's boundaries: dailyOvertimeDays()).
   for (const iv of input.intervals) if (iv.end <= iv.start) throw new Error('Interval end must be after start');
+  // The day definition looks at whole shifts; pay counts only the paid parts (unpaid breaks out).
   const days = dailyOvertimeDays(input.intervals, timezone, rules);
   const pieces: Array<Omit<Portion, 'bucket' | 'hours'>> = [];
-  for (const iv of input.intervals) {
+  for (const iv of input.intervals.flatMap((x) => paidIntervals(x))) {
     const start = iv.start < periodStartInstant ? periodStartInstant : iv.start;
     const end = iv.end > periodEndInstant ? periodEndInstant : iv.end;
     if (end <= start) continue;
@@ -166,6 +177,13 @@ export function calculatePay(input: PayCalcInput): PayResult {
     }
     if (p.premiumPerHour && p.premiumPerHour.gt(0)) {
       add('SHIFT_PREMIUM', p.positionId, p.hours, p.premiumPerHour, new Decimal(1));
+    }
+    for (const r of input.rulePremiums?.({ start: p.start, end: p.end, positionId: p.positionId }) ?? []) {
+      const perHour = new Decimal(r.perHour ?? 0).plus(r.percent ? rate.mul(r.percent).div(100) : ZERO);
+      if (perHour.lte(0) || r.hours <= 0) continue;
+      const h = new Decimal(r.hours).toDecimalPlaces(4);
+      add('SHIFT_PREMIUM', p.positionId, h, perHour.toDecimalPlaces(4), new Decimal(1));
+      bump(dailyWages, p.localDate, h.mul(perHour));
     }
   }
   if (finalPortions.some((p) => input.statHolidays.has(p.localDate)) && rules.statutoryHoliday.holidayPayFormula === null) {

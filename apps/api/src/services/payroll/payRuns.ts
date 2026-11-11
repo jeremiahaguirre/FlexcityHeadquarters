@@ -25,6 +25,9 @@ import { banks as lieuBanksOf, bankOvertime, expiredHours, lieuPolicy, regularRa
 import { withBonusMethod } from './lumpSum.js';
 import { type Issue, IssueSet, issue } from './issues.js';
 
+/** Lines that pay money but no hours of their own (premiums on hours already counted, vacation, holiday pay, standby). */
+const NOT_HOURS = new Set(['VACATION_PAY', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'SCHEDULE_CHANGE_PREMIUM', 'STANDBY_PAY']);
+
 export interface PayrollSettings {
   businessNumber?: string;
   /** Export to a payroll provider: the layout and ADP's company code and batch ID. */
@@ -240,7 +243,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   const totals = { gross: 0, deductions: 0, net: 0, employerCpp: 0, employerEi: 0, people: 0, deposits: 0, cheques: 0, cpp: 0, cpp2: 0, ei: 0, tax: 0, benefits: 0, employerBenefits: 0, qpip: 0, employerQpip: 0, quebecTax: 0, reimbursements: 0, oneTimeDeductions: 0, orders: 0 };
   for (const [userId, rs] of byUser) {
     let lines = rs.flatMap((r) => r.result.lines.map((l) => ({ code: l.code as string, positionId: l.positionId as string | null, hours: Number(l.hours), rate: Number(l.rate), amount: Number(l.amount), description: undefined as string | undefined })));
-    let hours = r2(lines.filter((l) => l.code !== 'VACATION_PAY' && l.code !== 'STAT_HOLIDAY_PAY').reduce((s, l) => s + l.hours, 0));
+    let hours = r2(lines.filter((l) => !NOT_HOURS.has(l.code)).reduce((s, l) => s + l.hours, 0));
     // Salaried: the salary replaces hours pay (overtime stays for those eligible for it).
     const mySalaries = salaries.filter((x) => x.userId === userId);
     if (mySalaries.length) {
@@ -248,7 +251,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
       const salaried = new Set(mySalaries.map((x) => x.positionId));
       const keepOt = mySalaries.some((x) => x.overtimeEligible);
       lines = lines.filter((l) => !salaried.has(l.positionId ?? '') || (keepOt && l.code.startsWith('OVERTIME')));
-      hours = r2(lines.filter((l) => !salaried.has(l.positionId ?? '') && l.code !== 'VACATION_PAY' && l.code !== 'STAT_HOLIDAY_PAY').reduce((a, l) => a + l.hours, 0));
+      hours = r2(lines.filter((l) => !salaried.has(l.positionId ?? '') && !NOT_HOURS.has(l.code)).reduce((a, l) => a + l.hours, 0));
       for (const sal of mySalaries) {
         const days = overlapDays(input.periodStart, periodEnd, sal.effectiveFrom.toISOString().slice(0, 10), sal.effectiveTo?.toISOString().slice(0, 10) ?? null);
         if (!days) continue;

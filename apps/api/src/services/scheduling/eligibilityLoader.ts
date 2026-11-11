@@ -16,6 +16,8 @@ import { blockingItemsForPosition } from '../people/onboarding.js';
 import { resolveFeatures } from '../platform/features.js';
 import { type CandidateContext, type EvaluateOptions, type OrgLimits, type PositionSpec, type SchoolCalendar, type ShiftSpec, parseHoursOfService } from './eligibility.js';
 import { effectiveSettings, parseSolverSettings } from './solverSettings.js';
+import { type EffectiveWorkRules, breakAfterHoursFor, breakMinutesOf, effectiveWorkRules, parseWorkRules } from './workRules.js';
+import { isNeverAlone } from './twoPerson.js';
 
 /**
  * Shifts loaded around the one checked: enough for rest, weekly rest over two pay weeks (ON's
@@ -37,6 +39,12 @@ export interface ShiftBundle {
   /** Seniority in use for this shift's department (the organization's switch narrowed by the department's). */
   useSeniority: boolean;
   departmentId: string | null;
+  /** The department's work rules (breaks, call-in minimum, notice, premiums, standby). */
+  workRules: EffectiveWorkRules;
+  /** Never alone (two-person minimum): the shift's flag, else its position's. */
+  neverAlone: boolean;
+  callBack: boolean;
+  premiumPerHour: number | null;
 }
 
 /** Evaluation options for a shift — every caller uses this so none forgets a rule input. */
@@ -98,8 +106,11 @@ export async function loadShiftBundle(tx: Tx, shiftId: string, cache?: BundleCac
   for (const r of s.position.requirements) {
     prerequisites.set(r.certificationId, r.certification.prerequisites.map((p) => p.requiresId));
   }
+  const workRules = effectiveWorkRules(parseWorkRules(s.facility.tenant.workRules), s.position.departmentId);
   return {
     shift: {
+      breakMinutes: breakMinutesOf(s, s.position),
+      breakAfterHours: breakAfterHoursFor(workRules.breaks, rules),
       id: s.id,
       tenantId: s.tenantId,
       facilityId: s.facilityId,
@@ -127,6 +138,10 @@ export async function loadShiftBundle(tx: Tx, shiftId: string, cache?: BundleCac
     travelMinutes: dept.travelMinutes,
     useSeniority: dept.useSeniority,
     departmentId: s.position.departmentId,
+    workRules,
+    neverAlone: isNeverAlone(s, s.position),
+    callBack: s.callBack,
+    premiumPerHour: s.premiumPerHour ? Number(s.premiumPerHour) : null,
   };
 }
 
@@ -165,7 +180,7 @@ export async function loadCandidates(
       onboarding: { orderBy: { recordedAt: 'desc' } },
       accommodations: { where: { status: 'ACTIVE' } },
       availability: true,
-      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from } } },
+      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from } }, include: SHIFT_BREAK },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: to }, endsAt: { gt: from } } },
     },
   });
@@ -185,15 +200,18 @@ export async function loadCandidate(tx: Tx, bundle: ShiftBundle, userId: string,
       onboarding: { orderBy: { recordedAt: 'desc' } },
       accommodations: { where: { status: 'ACTIVE' } },
       availability: true,
-      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { notIn: [bundle.shift.id, ...alsoFree] } } },
+      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { notIn: [bundle.shift.id, ...alsoFree] } }, include: SHIFT_BREAK },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: to }, endsAt: { gt: from } } },
     },
   });
   return u ? toCandidateContext(u) : null;
 }
 
+/** Each shift's unpaid break comes from the shift, else its position. */
+const SHIFT_BREAK = { position: { select: { unpaidBreakMinutes: true } } } as const;
+
 type LoadedUser = Prisma.UserGetPayload<{
-  include: { positions: true; certifications: true; availability: true; shifts: true; timeOffRequests: true; onboarding: true; accommodations: true };
+  include: { positions: true; certifications: true; availability: true; shifts: { include: typeof SHIFT_BREAK }; timeOffRequests: true; onboarding: true; accommodations: true };
 }>;
 
 const isoDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
@@ -232,7 +250,7 @@ function toCandidateContext(u: LoadedUser): CandidateContext {
     weeklyMaxHours: u.weeklyMaxHours ? dec(u.weeklyMaxHours) : null,
     qualifiedPositionIds: new Set(u.positions.map((p) => p.positionId)),
     certExpiry,
-    existingShifts: u.shifts.map((s) => ({ id: s.id, start: s.startsAt, end: s.endsAt, positionId: s.positionId, facilityId: s.facilityId })),
+    existingShifts: u.shifts.map((s) => ({ id: s.id, start: s.startsAt, end: s.endsAt, positionId: s.positionId, facilityId: s.facilityId, breakMinutes: breakMinutesOf(s, s.position) })),
     approvedTimeOff: u.timeOffRequests.map((t) => ({ start: t.startsAt, end: t.endsAt })),
     availability: u.availability.map((a) => ({
       dayOfWeek: a.dayOfWeek,
@@ -257,7 +275,7 @@ export async function loadAssistantCandidates(tx: Tx, from: Date, to: Date, wher
       onboarding: { orderBy: { recordedAt: 'desc' } },
       accommodations: { where: { status: 'ACTIVE' } },
       availability: true,
-      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: hi }, endsAt: { gt: lo } } },
+      shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: hi }, endsAt: { gt: lo } }, include: SHIFT_BREAK },
       timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: hi }, endsAt: { gt: lo } } },
     },
   });

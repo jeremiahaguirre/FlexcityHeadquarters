@@ -31,6 +31,7 @@ import { type Restriction, accommodationBlocks } from '../people/accommodation.j
 import { type ProvinceRules, maxConsecutiveDaysAllowed } from '../compliance/provincialRules.js';
 import { hoursPerWorkDay } from '../compliance/workDay.js';
 import { calculatePay } from '../payroll/payCalc.js';
+import { paidIntervals } from './workRules.js';
 
 export type BlockCode =
   | 'NOT_ACTIVE'
@@ -71,7 +72,7 @@ export interface CandidateContext {
   /** certificationId → latest expiry (null = never expires) */
   certExpiry: ReadonlyMap<string, string | null>;
   /** Assigned, non-cancelled shifts near the target shift. */
-  existingShifts: Array<Interval & { positionId: string; facilityId?: string; id?: string }>;
+  existingShifts: Array<Interval & { positionId: string; facilityId?: string; id?: string; breakMinutes?: number | null; breakAfterHours?: number | null }>;
   approvedTimeOff: Interval[];
   /** Active work restrictions (accommodation / return to work). */
   restrictions?: Restriction[];
@@ -92,6 +93,10 @@ export interface ShiftSpec extends Interval {
   timezone: string;
   /** Where it is (the scheduling assistant keeps travel time between facilities). */
   facilityId?: string;
+  /** Unpaid meal break (minutes): out of paid hours, overtime and weekly hours. */
+  breakMinutes?: number | null;
+  /** Latest the break starts, hours into the shift (the province's rule or the organization's). */
+  breakAfterHours?: number | null;
 }
 
 export interface PositionSpec {
@@ -557,7 +562,7 @@ export function isAvailable(windows: CandidateContext['availability'], shift: Pi
  * Shift Board warning and the pay stub can never disagree.
  */
 export function projectOvertime(
-  existing: Array<Interval & { positionId: string }>,
+  existing: Array<Interval & { positionId: string; breakMinutes?: number | null; breakAfterHours?: number | null }>,
   shift: ShiftSpec,
   opts: Pick<EvaluateOptions, 'rules' | 'payWeekStartDay' | 'overtimeMemo'>,
 ): { overtimeHours: Decimal; weeklyHoursAfter: Decimal; weeks: Array<{ weekStart: string; hours: Decimal }> } {
@@ -565,7 +570,7 @@ export function projectOvertime(
   const periodStart = payWeekStart(localDate(shift.start, tz), opts.payWeekStartDay);
   const lastWeek = payWeekStart(localDate(new Date(shift.end.getTime() - 1), tz), opts.payWeekStartDay);
   const weeks = lastWeek === periodStart ? 1 : 2;
-  const run = (intervals: Array<Interval & { positionId: string }>) =>
+  const run = (intervals: Array<Interval & { positionId: string; breakMinutes?: number | null }>) =>
     calculatePay({
       intervals,
       timezone: tz,
@@ -586,13 +591,14 @@ export function projectOvertime(
   if (memo) {
     const byRules = memo.get(opts.rules) ?? new Map<string, Decimal>();
     memo.set(opts.rules, byRules);
-    const key = `${periodStart}|${weeks}|${tz}|${nonOverlapping.map((s) => `${s.start.getTime()}-${s.end.getTime()}-${s.positionId}`).sort().join(',')}`;
+    const key = `${periodStart}|${weeks}|${tz}|${nonOverlapping.map((s) => `${s.start.getTime()}-${s.end.getTime()}-${s.positionId}-${s.breakMinutes ?? 0}`).sort().join(',')}`;
     beforeOt = byRules.get(key) ?? otOf(run(nonOverlapping));
     byRules.set(key, beforeOt);
   } else beforeOt = otOf(run(nonOverlapping));
   const after = run([...nonOverlapping, shift]);
 
-  const all = [...nonOverlapping, shift];
+  // Weekly hours are paid hours: unpaid meal breaks don't count.
+  const all = [...nonOverlapping, shift].flatMap((x) => paidIntervals(x));
   const weekList = weeks === 1 ? [periodStart] : [periodStart, lastWeek];
   const perWeek = weekList.map((w) => ({ weekStart: w, hours: new Decimal(sumHoursWithin(all, startOfLocalDay(w, tz), startOfLocalDay(addDays(w, 7), tz))) }));
   return { overtimeHours: Decimal.max(otOf(after).minus(beforeOt), 0), weeklyHoursAfter: perWeek[0]!.hours, weeks: perWeek };

@@ -46,6 +46,34 @@ export interface YoungWorkerLimit {
   latestEnd?: string;
 }
 
+/**
+ * The statutory meal break: `minutes` off (unpaid unless the person must stay available) so no one
+ * works more than `afterHours` hours in a row; `everyHours` = one more break for each further
+ * block of that many hours (AB, SK, federal). Scheduling warns when a shift long enough to need a
+ * break has none planned; pay always deducts what the schedule plans, never more.
+ */
+export interface MealBreakRule {
+  minutes: number;
+  afterHours: number;
+  everyHours?: number | null;
+  source: string;
+  /** Our reading needs counsel's confirmation (docs/COMPLIANCE.md). */
+  counselVerify?: boolean;
+}
+
+/**
+ * Minimum call-in / reporting pay: someone who reports for a scheduled shift and works less than
+ * `minHours` is paid `minHours` at their regular rate (BC: `longShiftMinHours` when the shift was
+ * scheduled for more than `longShiftOverHours`).
+ */
+export interface ReportingPayRule {
+  minHours: number;
+  longShiftOverHours?: number | null;
+  longShiftMinHours?: number | null;
+  source: string;
+  counselVerify?: boolean;
+}
+
 export interface ProvinceRules {
   province: Jurisdiction;
   effectiveFrom: string; // ISO date
@@ -92,6 +120,10 @@ export interface ProvinceRules {
     parentalConsentUnder: number | null;
     limits: YoungWorkerLimit[];
   };
+  /** Null/absent = no statutory meal-break rule encoded (not enforced; the organization's own settings apply). */
+  mealBreak?: MealBreakRule | null;
+  /** Null/absent = no statutory minimum encoded. */
+  reportingPay?: ReportingPayRule | null;
 }
 
 const PENDING_REVIEW = 'Pending review by employment counsel';
@@ -235,6 +267,38 @@ const RULES: ProvinceRules[] = [
 ];
 
 /**
+ * Meal breaks and minimum call-in pay by jurisdiction. Our reading of each statute, PENDING
+ * COUNSEL REVIEW (docs/COMPLIANCE.md lists every source and the items to confirm).
+ */
+const MEAL_BREAKS: Partial<Record<Jurisdiction, MealBreakRule>> = {
+  BC: { minutes: 30, afterHours: 5, source: 'ESA (BC) s. 32' },
+  AB: { minutes: 30, afterHours: 5, everyHours: 5, source: 'Employment Standards Code (AB) s. 18', counselVerify: true },
+  SK: { minutes: 30, afterHours: 5, everyHours: 5, source: 'Saskatchewan Employment Act s. 2-23', counselVerify: true },
+  MB: { minutes: 30, afterHours: 5, source: 'Employment Standards Code (MB) s. 50' },
+  ON: { minutes: 30, afterHours: 5, source: 'ESA, 2000 (ON) s. 20' },
+  QC: { minutes: 30, afterHours: 5, source: 'Act respecting labour standards (QC) s. 79' },
+  NB: { minutes: 30, afterHours: 5, source: 'Employment Standards Act (NB) s. 17.1', counselVerify: true },
+  NS: { minutes: 30, afterHours: 5, source: 'Labour Standards Code (NS) s. 66A', counselVerify: true },
+  PE: { minutes: 30, afterHours: 5, source: 'Employment Standards Act (PE) s. 16', counselVerify: true },
+  NL: { minutes: 60, afterHours: 5, source: 'Labour Standards Act (NL) s. 23', counselVerify: true },
+  YT: { minutes: 30, afterHours: 5, source: 'Employment Standards Act (YT) s. 11', counselVerify: true },
+  FED: { minutes: 30, afterHours: 5, everyHours: 5, source: 'Canada Labour Code s. 169.1' },
+};
+const REPORTING_PAY: Partial<Record<Jurisdiction, ReportingPayRule>> = {
+  BC: { minHours: 2, longShiftOverHours: 8, longShiftMinHours: 4, source: 'ESA (BC) s. 34' },
+  AB: { minHours: 3, source: 'Employment Standards Code (AB) s. 21', counselVerify: true },
+  SK: { minHours: 3, source: 'Saskatchewan Employment Act Part II / Employment Standards Regulations (SK)', counselVerify: true },
+  MB: { minHours: 3, source: 'Employment Standards Code (MB) s. 51', counselVerify: true },
+  ON: { minHours: 3, source: 'O. Reg. 285/01 s. 21.2 ("three-hour rule": applies to someone who regularly works more than 3 hours a day)', counselVerify: true },
+  QC: { minHours: 3, source: 'Act respecting labour standards (QC) s. 58' },
+  NB: { minHours: 3, source: 'Minimum Wage Regulation (NB)', counselVerify: true },
+  NS: { minHours: 3, source: 'Minimum Wage Order (General) (NS)', counselVerify: true },
+  PE: { minHours: 3, source: 'Employment Standards Act (PE)', counselVerify: true },
+  NL: { minHours: 3, source: 'Labour Standards Regulations (NL)', counselVerify: true },
+  FED: { minHours: 3, source: 'Canada Labour Standards Regulations s. 11.1' },
+};
+
+/**
  * Federally regulated work (Canada Labour Code Part III; Canada Labour Standards Regulations).
  * Used for scheduling when the organization (or a department) is marked federally regulated.
  * Payroll still follows the facility's province (see docs/COMPLIANCE.md).
@@ -288,6 +352,8 @@ export function resolveRules(
 ): ProvinceRules {
   if (opts.federal) {
     const rules: ProvinceRules = structuredClone(FEDERAL);
+    rules.mealBreak ??= MEAL_BREAKS.FED ?? null;
+    rules.reportingPay ??= REPORTING_PAY.FED ?? null;
     for (const o of overrides.filter((x) => x.province === null && x.effectiveFrom <= onDate && (x.effectiveTo === null || x.effectiveTo >= onDate)).sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))) {
       if (!ALLOWED_OVERRIDE_KEYS.has(o.ruleKey)) throw new Error(`Rule override key not allowed: ${o.ruleKey}`);
       const [group, key] = o.ruleKey.split('.') as [keyof ProvinceRules, string];
@@ -301,6 +367,8 @@ export function resolveRules(
   const found = candidates[0];
   if (!found) throw new Error(`No employment-standards rules for ${province} on ${onDate}`);
   const rules: ProvinceRules = structuredClone(found);
+  rules.mealBreak ??= MEAL_BREAKS[province] ?? null;
+  rules.reportingPay ??= REPORTING_PAY[province] ?? null;
 
   const applicable = overrides
     .filter(
@@ -328,12 +396,20 @@ export function vacationPercent(rules: ProvinceRules, completedYears: number): n
 }
 
 export function allRuleSets(): readonly ProvinceRules[] {
-  return RULES;
+  return RULES.map((r) => ({ ...r, mealBreak: r.mealBreak ?? MEAL_BREAKS[r.province] ?? null, reportingPay: r.reportingPay ?? REPORTING_PAY[r.province] ?? null }));
+}
+
+/** The statutory meal break and minimum call-in pay for a jurisdiction (null = none encoded). */
+export function mealBreakRule(j: Jurisdiction): MealBreakRule | null {
+  return MEAL_BREAKS[j] ?? null;
+}
+export function reportingPayRule(j: Jurisdiction): ReportingPayRule | null {
+  return REPORTING_PAY[j] ?? null;
 }
 
 /** The federal rule set (for the compliance screen). */
 export function federalRules(): ProvinceRules {
-  return FEDERAL;
+  return { ...FEDERAL, mealBreak: MEAL_BREAKS.FED ?? null, reportingPay: REPORTING_PAY.FED ?? null };
 }
 
 /**

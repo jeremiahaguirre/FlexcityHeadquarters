@@ -1173,7 +1173,11 @@
       "VACATION_PAY": "Indemnité de vacances",
       "LIEU_TAKEN": "Congé compensatoire pris",
       "LIEU_PAYOUT": "Temps accumulé payé",
-      "SALARY": "Salaire"
+      "SALARY": "Salaire",
+      "CALLBACK_PAY": "Minimum de rappel",
+      "REPORTING_PAY": "Paie minimale de rappel au travail",
+      "SCHEDULE_CHANGE_PREMIUM": "Prime pour changement d’horaire tardif",
+      "STANDBY_PAY": "Indemnité de disponibilité (garde)"
     },
     "d": {
       "cpp": "Cotisations au RPC",
@@ -1633,7 +1637,11 @@
       "STAT_WORKED": "Travail un jour férié",
       "STAT_HOLIDAY_PAY": "Indemnité de jour férié",
       "SHIFT_PREMIUM": "Prime de quart",
-      "VACATION_PAY": "Indemnité de vacances"
+      "VACATION_PAY": "Indemnité de vacances",
+      "CALLBACK_PAY": "Minimum de rappel",
+      "REPORTING_PAY": "Paie minimale de rappel au travail",
+      "SCHEDULE_CHANGE_PREMIUM": "Prime pour changement d’horaire tardif",
+      "STANDBY_PAY": "Indemnité de disponibilité (garde)"
     },
     "calendar": "Calendrier scolaire",
     "calendarHelp": "Les jeunes ne peuvent pas travailler pendant les heures de classe les jours d’école. Ajoutez les périodes scolaires et les congés pour que les règles sachent quels jours comptent.",

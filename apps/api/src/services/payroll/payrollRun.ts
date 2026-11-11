@@ -13,6 +13,8 @@ import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
 import { holidaysTouching, offDayRule, personalDay, premiumDays, statutoryDay, usuallyWorks } from './holidayRules.js';
 import { type PayResult, calculatePay } from './payCalc.js';
 import { IssueSet, issue } from './issues.js';
+import { type PayResultWithExtras, addEarning, workRuleExtras, workRuleIntervals } from './workRulePay.js';
+import { effectiveWorkRules, parseWorkRules } from '../scheduling/workRules.js';
 
 /** `onlyUsers`: a department supervisor's people; null = everyone (HR). */
 /** `positionIds`: one department's positions; null = every position. */
@@ -64,8 +66,10 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
     const to = new Date(Math.max(...group.map((g) => startOfLocalDay(periodEnd, g.timezone).getTime())));
     const punches = await tx.timePunch.findMany({
       where: { facilityId: { in: group.map((g) => g.id) }, status: 'APPROVED', clockOut: { not: null, gt: from }, clockIn: { lt: to }, ...(onlyUsers ? { userId: { in: [...onlyUsers] } } : {}), ...(positionIds ? { positionId: { in: positionIds } } : {}) },
-      include: { shift: true, user: { include: { payRates: true } } },
+      include: { shift: { include: { position: { select: { unpaidBreakMinutes: true } } } }, user: { include: { payRates: true } } },
     });
+    const workRules = parseWorkRules(tenant.workRules);
+    const deptOfPosition = new Map((await tx.position.findMany({ select: { id: true, departmentId: true } })).map((p) => [p.id, p.departmentId]));
     if (punches.length === 0) continue;
 
     const byUser = new Map<string, typeof punches>();
@@ -85,7 +89,10 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
         if (!r) throw badRequest(`${user.firstName} ${user.lastName} has no pay rate for position ${positionId} on ${localDate}.`);
         return dec(r.hourlyRate);
       };
-      const intervals = ps.map((p) => ({ start: p.clockIn, end: p.clockOut!, positionId: p.positionId, premiumPerHour: p.shift?.premiumPerHour ? dec(p.shift.premiumPerHour) : null }));
+      // Punches with the shift's unpaid meal break taken out (when it wasn't punched), rule premiums,
+      // and the call-in / call-back minimums: workRulePay.ts.
+      const wr = workRuleIntervals(ps, { rules, workRules, deptOfPosition, timezone: main.timezone });
+      const intervals = wr.intervals;
       // The days they worked, for their own pattern of work (is a holiday their usual working day?).
       const worked = new Set(ps.flatMap((p) => [localDate(p.clockIn, main.timezone), localDate(new Date(p.clockOut!.getTime() - 1), main.timezone)]));
       const works = (day: string) => usuallyWorks(worked, day);
@@ -100,10 +107,13 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
         statHolidays: statSet,
         completedYearsOfService: user.hireDate ? wholeYearsBetween(user.hireDate.toISOString().slice(0, 10), periodStart) : 0,
         vacationPayMode: tenant.vacationPayMode,
+        rulePremiums: wr.rulePremiums(statSet),
       };
       // calculatePay clips to the period, so history punches don't leak into this period's pay.
-      const result = calculatePay({ ...common, periodStart, weeks });
+      const result: PayResultWithExtras = calculatePay({ ...common, periodStart, weeks });
       result.warnings.forEach((w) => warnings.add(w));
+      // Minimum call-in (reporting) pay and call-back minimums for shifts in this period.
+      for (const t of wr.topUps(periodStart, periodEnd)) addEarning(result, { code: t.code, positionId: t.positionId, hours: new Decimal(t.hours), rate: rateFor(t.positionId, t.localDate), multiplier: new Decimal(t.multiplier) }, tenant.vacationPayMode);
 
       // Statutory holiday pay for each holiday in the period.
       if (holidays.length && formula) {
@@ -153,6 +163,19 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
         lines: result.lines,
       });
     }
+  }
+
+  // Late schedule-change premiums and standby pay (they can exist without punches in the period).
+  const extras = await workRuleExtras(tx, { tenant, periodStart, periodEnd, onlyUsers, positionIds, facilities });
+  for (const x of extras) {
+    let target = results.find((r) => r.userId === x.userId);
+    if (!target) {
+      target = { userId: x.userId, facilityId: x.facilityId, result: { lines: [], totalHours: ZERO, grossWages: ZERO, vacationPercent: x.vacationPercent, vacationPay: ZERO, vacationAccrued: ZERO, dailyWages: new Map(), dailyHours: new Map(), warnings: [] } };
+      results.push(target);
+      const f = facilities.find((g) => g.id === x.facilityId);
+      employees.push({ userId: x.userId, employeeNumber: x.employeeNumber, displayName: x.displayName, costCenter: f?.costCenter ?? null, lines: target.result.lines });
+    }
+    for (const l of x.lines) addEarning(target.result, l, tenant.vacationPayMode);
   }
 
   const resolve = (key: PayCodeKey, positionId: string | null) =>
