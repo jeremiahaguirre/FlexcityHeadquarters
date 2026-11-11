@@ -16,7 +16,7 @@ import { formatDate } from '@/lib/format';
 import { papi, usePlatformQuery } from '@/lib/platform';
 
 type Status = 'NEW' | 'CONTACTED' | 'WON' | 'CLOSED';
-interface Lead { id: string; kind: 'SALES' | 'DEMO' | 'SUPPORT'; name: string; email: string; organization: string | null; role: string | null; province: string | null; facilities: number | null; message: string; locale: string; marketingConsent: boolean; status: Status; notes: string | null; createdAt: string }
+interface Lead { id: string; kind: 'SALES' | 'DEMO' | 'SUPPORT'; name: string; email: string; organization: string | null; role: string | null; province: string | null; facilities: number | null; message: string; locale: string; marketingConsent: boolean; consent?: { state: 'EXPRESS' | 'IMPLIED' | 'WITHDRAWN' | 'NONE'; since: string | null; expires: string | null }; status: Status; notes: string | null; createdAt: string }
 const TONE: Record<Status, Tone> = { NEW: 'new', CONTACTED: 'brand', WON: 'ok', CLOSED: 'neutral' };
 type Filter = 'OPEN' | Status | 'ALL';
 
@@ -68,6 +68,8 @@ export default function EnquiriesPage() {
                     {l.role ? <div><dt className="text-caption text-muted">{t('enquiries.role')}</dt><dd>{l.role}</dd></div> : null}
                     <div><dt className="text-caption text-muted">{t('enquiries.language')}</dt><dd>{l.locale.startsWith('fr') ? 'Français' : 'English'}</dd></div>
                     <div><dt className="text-caption text-muted">{t('enquiries.marketing')}</dt><dd>{l.marketingConsent ? t('enquiries.consentYes') : t('enquiries.consentNo')}</dd></div>
+                    {/* CASL status for this address today: express, implied (six months after an enquiry), or withdrawn by an unsubscribe. */}
+                    {l.consent ? <div className="sm:col-span-2"><dt className="text-caption text-muted">{t('enquiries.caslNow')}</dt><dd>{t(`enquiries.casl.${l.consent.state}`, { since: l.consent.since?.slice(0, 10) ?? '', until: l.consent.expires?.slice(0, 10) ?? '' })}</dd></div> : null}
                   </dl>
                   <div className="grid gap-2">
                     <label className="text-caption font-semibold text-muted" htmlFor={`notes-${l.id}`}>{t('enquiries.notes')}</label>

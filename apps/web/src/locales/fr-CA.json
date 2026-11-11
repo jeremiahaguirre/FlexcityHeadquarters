@@ -4907,7 +4907,14 @@
     "saveNotes": "Enregistrer les notes",
     "statusLabel": "Statut",
     "saved": "Enregistré",
-    "replyHint": "Répondez depuis votre propre courriel; copiez l’adresse ci-dessus."
+    "replyHint": "Répondez depuis votre propre courriel; copiez l’adresse ci-dessus.",
+    "caslNow": "Peut-on envoyer des courriels promotionnels à cette adresse maintenant? (LCAP)",
+    "casl": {
+      "EXPRESS": "Oui : consentement exprès donné le {{since}}, jusqu’à un désabonnement.",
+      "IMPLIED": "Seulement des suivis de cette demande : consentement tacite du {{since}} au {{until}}.",
+      "WITHDRAWN": "Non : désabonné le {{since}}. Répondez seulement à ses messages.",
+      "NONE": "Non : aucun consentement au dossier. Répondez seulement à ses messages."
+    }
   },
   "payrollIssues": {
     "RULES_UNVERIFIED": "Les règles de {{province}} n’ont pas encore été vérifiées par un avocat en droit du travail.",
@@ -7222,5 +7229,14 @@
     "refund": "Remboursements : les montants déjà facturés ne sont pas remboursés pour une partie de période, et les changements de forfait s’appliquent à partir de la facture suivante.",
     "consoleTitle": "Ce que voit l’organisation",
     "consoleHelp": "Affiché à côté des boutons de paiement, de débit bancaire et de forfait sur la page Facturation de l’organisation, avec ces conditions une fois enregistrées."
+  },
+  "unsubscribe": {
+    "title": "Vous désabonner des courriels de FlexcityHeadquarters",
+    "help": "Ne plus recevoir de nouvelles ni d’autres courriels promotionnels de FlexcityHeadquarters à {{email}}. Le changement prend effet immédiatement.",
+    "confirm": "Désabonner {{email}}",
+    "done": "Vous êtes désabonné",
+    "doneHelp": "Nous n’enverrons plus de courriels promotionnels à {{email}}, sauf si vous nous le demandez.",
+    "invalid": "Ce lien de désabonnement n’est pas valide. Utilisez le lien du courriel, ou écrivez-nous et nous vous désabonnerons.",
+    "service": "Les messages de service que votre employeur ou votre organisation envoie par FlexcityHeadquarters (quarts, paie, alertes de sécurité, sécurité du compte) ne sont pas touchés."
   }
 }

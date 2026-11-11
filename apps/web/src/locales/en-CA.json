@@ -4907,7 +4907,14 @@
     "saveNotes": "Save notes",
     "statusLabel": "Status",
     "saved": "Saved",
-    "replyHint": "Reply from your own email; copy the address above."
+    "replyHint": "Reply from your own email; copy the address above.",
+    "caslNow": "May we send this address promotional email now? (CASL)",
+    "casl": {
+      "EXPRESS": "Yes: express consent given {{since}}, until they unsubscribe.",
+      "IMPLIED": "Only follow-ups to this enquiry: implied consent from {{since}} until {{until}}.",
+      "WITHDRAWN": "No: unsubscribed on {{since}}. Reply to their messages only.",
+      "NONE": "No: no consent on record. Reply to their messages only."
+    }
   },
   "payrollIssues": {
     "RULES_UNVERIFIED": "{{province}} rules have not been verified by employment counsel.",
@@ -7222,5 +7229,14 @@
     "refund": "Refunds: amounts already invoiced aren’t refunded for part of a period, and plan changes apply from the next invoice.",
     "consoleTitle": "What the organization sees",
     "consoleHelp": "Shown beside the pay, bank debit and plan buttons on the organization’s Billing page, with these terms once saved."
+  },
+  "unsubscribe": {
+    "title": "Unsubscribe from FlexcityHeadquarters emails",
+    "help": "Stop product news and other promotional emails from FlexcityHeadquarters to {{email}}. It takes effect immediately.",
+    "confirm": "Unsubscribe {{email}}",
+    "done": "You’re unsubscribed",
+    "doneHelp": "We won’t send promotional emails to {{email}} again unless you ask us to.",
+    "invalid": "This unsubscribe link isn’t valid. Use the link from the email, or contact us and we’ll unsubscribe you.",
+    "service": "Service messages your employer or organization sends through FlexcityHeadquarters (shifts, pay, safety alerts, account security) aren’t affected."
   }
 }
