@@ -110,7 +110,7 @@ describe('text and phone alerts', () => {
     expect(now.find((d) => d.sms)!.smsTemplate).toBe('shift_urgent');
     expect((await withTenant(t.tenant.id, (tx) => draftsFor(tx, ev(later.id)))).some((d) => d.sms)).toBe(false);
     await withTenant(t.tenant.id, (tx) => notify(tx, t.tenant.id, now));
-    const text = await owner.smsOutbox.findFirstOrThrow({ where: { template: 'shift_urgent' } });
+    const text = await owner.smsOutbox.findFirstOrThrow({ where: { tenantId: t.tenant.id, template: 'shift_urgent' } });
     expect(renderSms(text.template, text.locale, text.params as Record<string, unknown>)).toMatch(/quart libre de Lifeguard à Rec Centre commence/);
   });
 

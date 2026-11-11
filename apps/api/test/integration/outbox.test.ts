@@ -90,7 +90,7 @@ describe('event outbox', () => {
     // One notification per event, for the one head guard.
     expect(await owner.notification.count({ where: { tenantId: t.tenant.id, type: 'front_desk_page' } })).toBe(n);
     // Nothing left: running again delivers nothing.
-    expect((await dispatchAll({ prisma: app })).delivered).toBe(0);
+    expect((await dispatchTenant(t.tenant.id, { prisma: app })).delivered).toBe(0);
   });
 
   it('delivering the same event twice notifies once (dedupe key)', async () => {
@@ -144,7 +144,7 @@ describe('event outbox', () => {
     // Dead events are reported to /readyz and /metrics, and never picked up again.
     const backlog = await app.$queryRaw<Array<{ channel: string; failed: bigint }>>`SELECT * FROM outbox_backlog()`;
     expect(Number(backlog.find((b) => b.channel === 'events')!.failed)).toBeGreaterThanOrEqual(1);
-    expect((await dispatchAll({ prisma: app, handler: broken })).dead).toBe(0);
+    expect((await dispatchTenant(t.tenant.id, { prisma: app, handler: broken })).dead).toBe(0);
   });
 
   it('only organizations with events due are listed to the worker, ids only', async () => {
