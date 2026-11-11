@@ -20,7 +20,7 @@ follow it. Prices are monthly, in Canadian dollars, before GST/HST and PST.
 | Benchmarks | | | ✓ | ✓ |
 | Single sign-on (Entra ID, SAML) | | | ✓ | ✓ |
 | Bank connection (SFTP) for payroll | | | ✓ | ✓ |
-| API and webhooks (read-only API keys, signed webhooks) | | | ✓ | ✓ |
+| API and webhooks (API keys that read, and with write scopes change, data; signed webhooks) | | | ✓ | ✓ |
 | Union hub | +$150 | +$150 | +$150 | ✓ |
 | Anything else not included | each option at its own price (below) | | | |
 | Support | Email and phone | Email and phone | Priority | Priority, success manager, 99.9% uptime commitment, test organization, multi-year price lock |

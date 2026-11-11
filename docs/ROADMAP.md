@@ -17,7 +17,6 @@
 
 - [ ] Weather in the forecast: confirm the first live fetches from `api.weather.gc.ca` (city page and daily climate collections) match the parser, which was built against the documented format and recorded fixtures.
 - [ ] Metrics: Prisma's connection-pool metrics (a preview feature that needs a schema flag).
-- [ ] Public API: write scopes (v1 is read-only), once a city asks for a specific write.
 
 ## Later
 
@@ -85,7 +84,7 @@
 - Website: Vercel Web Analytics (cookieless).
 - Offline punching: without signal a punch is kept on the phone per person and sent when the connection returns; never doubled, the phone's clock corrected, old or out-of-order punches refused with a reason, the rest flagged "Recorded offline" for supervisors.
 - Reporting lines and an org chart: a manager per person (or the department's by default), set one at a time, in bulk or from the import; requests go to the manager first; My team in approval queues; reviews default to the manager; offboarding reassigns a leaver's people.
-- Public API v1 (read-only, scoped per-organization keys, IP allow list, expiry, rotation, rate limit per key, every request audited, OpenAPI 3.1) and signed webhooks with retries and auto-disable; Settings › Integrations; `publicApi` plan option, standard in Multi-complex and Enterprise.
+- Public API v1 (scoped per-organization keys; opt-in write scopes for people, departments, positions and time off with Idempotency-Key, ETags, external-id upserts and the key as the audit actor; IP allow list, expiry, rotation, rate limit per key, every request audited, OpenAPI 3.1) and signed webhooks with retries and auto-disable; Settings › Integrations; `publicApi` plan option, standard in Multi-complex and Enterprise.
 - Observability: request ids, `/readyz` (database, outbox backlog, worker heartbeat), Prometheus `/metrics` behind a token, scrubbed error reports from the server and browsers to a Sentry-compatible service when configured.
 - Domain events through a transactional outbox (at least once, deduplicated notifications); one LISTEN connection per process and caches dropped everywhere through `pg_notify`, so several API processes can run (`WEB_CONCURRENCY`).
 - Accessibility pass (WCAG 2.1 AA target, not yet independently audited): keyboard use, focus, dialog and field names for screen readers, one h1 per screen; phone keyboards per field type; calm motion and the animated logo (stopped when motion is reduced); a clear no-access screen; discipline records hide empty template sections, with the record as signed one tap away.

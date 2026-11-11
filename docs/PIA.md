@@ -59,8 +59,13 @@ describe the product; the city adds its own purposes, authorities and decisions.
    security; sensitive fields additionally sealed with the city's own KMS key.
 3. Leaves the system only when the city sends it: the bank deposit file (city's SFTP), T4/RL-1/ROE
    files (uploaded by the city to CRA, Revenu Québec, Service Canada), payroll provider exports,
-   emails to staff, the city's own systems through its API keys and webhooks (scoped, read-only, no SINs, bank, health or
-   date-of-birth fields; webhook messages carry ids only; see [PUBLIC-API.md](PUBLIC-API.md)), and, where the city turns text alerts on, urgent texts and calls through the text provider (the number and the alert's words; no links). See [SUBPROCESSORS.md](SUBPROCESSORS.md).
+   emails to staff, the city's own systems through its API keys and webhooks (scoped; no SINs, bank, health or
+   date-of-birth fields; webhook messages carry ids only; see [PUBLIC-API.md](PUBLIC-API.md)). A key reads by default;
+   the city can give a key write scopes so its HRIS or ERP sends in people, departments, positions and time off. Those
+   writes can't include SIN, bank, pay, birth-date or health details, never delete anything, follow the same rules as
+   the app (an end of employment starts offboarding; time off is pending unless the key may send it approved), and are
+   audited with the key as the actor. A person's preferred name and an external id (the city's own HRIS id) can be
+   stored for this; both are part of their record, covered by the same retention and erasure as the rest of it. and, where the city turns text alerts on, urgent texts and calls through the text provider (the number and the alert's words; no links). See [SUBPROCESSORS.md](SUBPROCESSORS.md).
 4. FH staff can't see employee records; support visits need the city's consent, are read-only and
    never open individual records.
 5. At first sign-in each person reads the information and consent agreement

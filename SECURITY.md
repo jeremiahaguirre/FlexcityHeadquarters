@@ -64,11 +64,19 @@ Layered, so no single slip opens the database:
 ## Secrets, shared tablets and texts
 
 - **API keys** for a city's own systems (`/api/v1`, [docs/PUBLIC-API.md](docs/PUBLIC-API.md)) are 256-bit
-  random secrets with a visible prefix; only a SHA-256 is stored and the key is shown once. Each is scoped
-  (read-only), optionally limited to IP ranges and an expiry date, rate-limited per key in Postgres, and
-  every call is in the city's audit log. A key can only be given scopes whose data its maker can see.
-  The organization is found from the hash, then every read runs under RLS. Revoking is immediate;
-  rotating keeps the old key for 24 hours. Keys never work on the app's session routes.
+  random secrets with a visible prefix; only a SHA-256 is stored and the key is shown once. Each is scoped,
+  optionally limited to IP ranges and an expiry date, rate-limited per key in Postgres, and every call is
+  in the city's audit log. A key can only be given scopes whose data its maker can see. The organization
+  is found from the hash, then every request runs under RLS. Revoking is immediate; rotating keeps the old
+  key for 24 hours. Keys never work on the app's session routes.
+- **API writes** are opt-in per key (write scopes, confirmed in Settings and badged “Write”), given only by
+  someone holding the matching permission for the whole organization. A key writes with its maker's
+  current access (re-checked on every request; it stops if they leave or lose it), through the same
+  services and rules as the app, never deletes, and refuses SIN, bank, pay, birth-date and health fields.
+  Ids in a body are looked up under RLS first, so another organization's record is "not found", never
+  linked (foreign keys alone don't check the tenant). Every change is audited with the key as the actor
+  (`AuditLog.apiKeyId`). POST needs an Idempotency-Key (kept 24 hours under RLS; a reused key with another
+  body is refused), changes take If-Match/ETag (412), and writes have their own per-key rate limit.
 - **Webhooks** are signed Stripe-style (`FH-Signature: t=<seconds>,v1=<HMAC-SHA256 of "t.body">`) so
   receivers can refuse forged and replayed messages. Signing secrets are sealed with the city's key
   (they must be read back to sign) and shown once. Payloads carry ids and changed field names only.
