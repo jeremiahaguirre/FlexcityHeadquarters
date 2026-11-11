@@ -6,7 +6,8 @@ import { cn } from '@/lib/cn';
 
 /**
  * Accessible modal built on <dialog> (focus trap, Esc, inert background for free).
- * Phones get a bottom sheet; larger screens a centred card.
+ * Phones get a bottom sheet; larger screens a centred card. `wide` is for dialogs that hold a
+ * table (a pay run's lines): room for the columns on a laptop instead of a sideways scroll.
  */
 export function Dialog({
   open,
@@ -16,6 +17,7 @@ export function Dialog({
   children,
   footer,
   closeLabel = 'Close',
+  wide = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -24,6 +26,7 @@ export function Dialog({
   children?: ReactNode;
   footer?: ReactNode;
   closeLabel?: string;
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -45,6 +48,7 @@ export function Dialog({
       className={cn(
         'fh-dialog m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-y-auto rounded-t-3xl border border-line bg-panel p-0 text-ink shadow-lift backdrop:bg-overlay/50 backdrop:backdrop-blur-[2px]',
         'sm:m-auto sm:max-w-lg sm:rounded-3xl',
+        wide && 'md:max-w-4xl',
       )}
     >
       <div aria-hidden="true" className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-line sm:hidden" />

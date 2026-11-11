@@ -179,7 +179,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
   }
   const d = data.data;
   return (
-    <Dialog open onClose={onClose} title={d ? `${formatDate(d.run.periodStart, lng)} – ${formatDate(d.run.periodEnd, lng)} · ${deptName(d.run.departmentId)}` : t('payroll.run')}>
+    <Dialog wide open onClose={onClose} title={d ? `${formatDate(d.run.periodStart, lng)} – ${formatDate(d.run.periodEnd, lng)} · ${deptName(d.run.departmentId)}` : t('payroll.run')}>
       {!d ? (
         <Skeleton className="h-64" />
       ) : (
@@ -260,7 +260,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[44rem] text-small tabular-nums">
               <thead className="text-left text-caption text-muted">
-                <tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th><th className="py-1.5 text-right font-semibold">{t('payroll.hours')}</th><th className="py-1.5 text-right font-semibold">{t('payroll.gross')}</th><th className="py-1.5 text-right font-semibold">CPP</th><th className="py-1.5 text-right font-semibold">EI</th><th className="py-1.5 text-right font-semibold">{t('payroll.tax')}</th><th className="py-1.5 text-right font-semibold">{t('payroll.net')}</th><th className="py-1.5 font-semibold">{t('payroll.paidTo')}</th></tr>
+                <tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th><th className="py-1.5 text-right font-semibold">{t('payroll.hours')}</th><th className="py-1.5 text-right font-semibold">{t('payroll.gross')}</th><th className="py-1.5 text-right font-semibold">CPP</th><th className="py-1.5 text-right font-semibold">EI</th><th className="py-1.5 text-right font-semibold">{t('payroll.tax')}</th><th className="py-1.5 text-right font-semibold">{t('payroll.net')}</th><th className="py-1.5 pl-6 font-semibold">{t('payroll.paidTo')}</th></tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {d.statements.map((s) => (
@@ -272,7 +272,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
                     <td className="py-2 text-right">{money(s.deductions.ei)}</td>
                     <td className="py-2 text-right">{money(s.deductions.federalTax + s.deductions.provincialTax)}</td>
                     <td className="py-2 text-right font-semibold">{money(s.net)}</td>
-                    <td className="py-2">{s.deposit ?? t('payroll.byCheque')}</td>
+                    <td className="py-2 pl-6">{s.deposit ?? t('payroll.byCheque')}</td>
                   </tr>
                 ))}
               </tbody>
