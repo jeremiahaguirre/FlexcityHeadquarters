@@ -47,6 +47,20 @@ Everything stays under half a second. The first reads after a restart take 0.4 s
 | 5. 30 workers a second | p50 27–54 ms, p99 240–300 ms |
 | Errors | **0** |
 
+**Before and after sharing cache loads (11 November 2026, `WEB_CONCURRENCY=2`, the 30 large cities, 9,000 workers).** Both runs had response compression and metrics on, with slow queries logged from 200 ms, on a quieter machine than the run above. The only change between them was single-flight loading of the access checks (`lib/singleFlight.ts`). Before it, a phone's four simultaneous requests each missed the cache and ran the same lookups.
+
+| Scenario | Before | After |
+| --- | --- | --- |
+| 1. All 9,000 workers at once | 145 s, 371 req/s; reads p50 1.6 s, p95 2.8 s; clock in p50 0.57 s | 92 s, 585 req/s; reads p50 1.0 s, p95 1.6 s; clock in p50 0.38 s |
+| 2. Browsing | shift board p50 1.8 s; week schedule p50 1.4 s | shift board p50 1.4 s; week schedule p50 0.9 s |
+| 3. Claim race | 10 for 10, no wrong assignment | same |
+| 4. 30 pay runs at once | all built, slowest 9.2 s | all built, slowest 8.5 s |
+| 5. 30 workers a second | p50 11–27 ms, p99 under 55 ms | p50 9–25 ms, p99 under 55 ms |
+| Queries over 200 ms | 149 | 72 |
+| Errors | **0** | **0** |
+
+The remaining slow queries happen only during the all-at-once bursts: commits, punch inserts, and the access lookups queueing for the 4 shared cores. Every one of those lookups uses an index. None appeared in the steady scenario 5.
+
 Every claim's events went through the outbox and were delivered on the first try by the process that took the claim (10 events, 10 notifications with dedupe keys, none left pending).
 
 Scenario 5 is closest to a real day: even 9,000 workers arriving at a steady pace feel instant. Scenario 1 is a stress test. It shows the system queues work rather than failing: every request was answered, just slower.
