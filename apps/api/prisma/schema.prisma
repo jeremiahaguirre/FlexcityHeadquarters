@@ -395,6 +395,9 @@ model User {
   kioskPinHash      String?
   /// The employer's HR/payroll system ID — used in payroll exports.
   employeeNumber   String?
+  /// Who this person reports to, in the same organization (services/people/reporting.ts keeps it
+  /// free of cycles). Null = their department's manager, where the department has one.
+  reportsToId      String?   @db.Uuid
   passwordHash     String?
   /// Account lockout after repeated failed sign-ins.
   failedLoginCount Int       @default(0)
@@ -425,6 +428,8 @@ model User {
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
   tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  reportsTo           User?                @relation("ReportsTo", fields: [reportsToId], references: [id], onDelete: SetNull)
+  directReports       User[]               @relation("ReportsTo")
   positions           UserPosition[]
   payRates            PayRate[]
   certifications      UserCertification[]
@@ -452,6 +457,7 @@ model User {
   @@unique([tenantId, email])
   @@unique([tenantId, employeeNumber])
   @@index([tenantId, status])
+  @@index([reportsToId])
 }
 
 model RefreshToken {
