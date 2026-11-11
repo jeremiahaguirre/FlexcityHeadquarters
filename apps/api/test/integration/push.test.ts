@@ -120,6 +120,37 @@ describe('delivery', () => {
   });
 });
 
+describe('urgent pushes', () => {
+  const SUP_DEVICE = 'https://fcm.googleapis.com/fcm/send/supervisor';
+  it('two deliveries at once (the API and the worker) push each notification once', async () => {
+    expect((await as(tok.sup).post('/api/me/push', { endpoint: SUP_DEVICE, keys })).status).toBe(201);
+    await owner.notification.createMany({ data: Array.from({ length: 5 }, () => ({ tenantId: t.tenant.id, userId: id.sup, type: 'shift_available', params: {} })) });
+    const [a, b] = await Promise.all([run(), withTenant(t.tenant.id, (tx) => deliverPush(tx), { prisma: appDb })]);
+    expect(a + b).toBe(5);
+    expect(sent.calls.filter((c) => c.endpoint === SUP_DEVICE)).toHaveLength(5);
+  });
+
+  it('a call for help is pushed straight after the commit, not at the next minute, safety first', async () => {
+    const { enableInlineUrgent } = await import('../../src/services/notifications/urgent.js');
+    const { notify } = await import('../../src/services/notifications/notifier.js');
+    const stop = enableInlineUrgent({});
+    try {
+      await withTenant(t.tenant.id, (tx) =>
+        notify(tx, t.tenant.id, [
+          { userId: id.sup, type: 'shift_available', params: { n: 1 } },
+          { userId: id.sup, type: 'lonework_help', params: { name: 'Ben', location: 'Reservoir' } },
+        ]),
+      );
+      const started = Date.now();
+      while (sent.calls.length < 2 && Date.now() - started < 2_000) await new Promise((r) => setTimeout(r, 20));
+      expect(sent.calls.map((c) => c.payload.tag)).toEqual(['lonework_help', 'shift_available']);
+      expect(sent.calls[0]!.payload).toMatchObject({ urgent: true, title: 'URGENT: help requested' });
+    } finally {
+      await stop();
+    }
+  });
+});
+
 describe('working alone: location and reminders', () => {
   it('location updates only while sharing is on, at most every 30 seconds; turning it off removes it', async () => {
     const s = await as(tok.b).post('/api/me/lone-work', { location: 'Reservoir 2', intervalMinutes: 30 });
