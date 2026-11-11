@@ -23,6 +23,19 @@ const sizes: Record<Size, string> = {
   lg: 'h-[3.25rem] px-5 text-body-strong',
 };
 
+/**
+ * Classes from the caller win over the defaults they replace: cn() only joins class names, and in
+ * the stylesheet "whitespace-nowrap" and "h-11" would otherwise beat "whitespace-normal" and "h-auto"
+ * (a button whose label may wrap on a phone).
+ */
+function withOverrides(defaults: string, className?: string): string {
+  if (!className) return defaults;
+  let out = defaults;
+  if (/(^|\s)whitespace-normal(\s|$)/.test(className)) out = out.replace(/(^|\s)whitespace-nowrap(?=\s|$)/g, '');
+  if (/(^|\s)h-auto(\s|$)/.test(className)) out = out.replace(/(^|\s)(sm:)?h-(\d+|\[[^\]]+\])(?=\s|$)/g, '');
+  return cn(out, className);
+}
+
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
@@ -41,7 +54,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={cn(base, variants[variant], sizes[size], block && 'w-full', className)}
+      className={withOverrides(cn(base, variants[variant], sizes[size], block && 'w-full'), className)}
       {...rest}
     >
       {loading ? <Spinner className="h-4 w-4" /> : icon}
@@ -60,7 +73,7 @@ export function ButtonLink({
   ...rest
 }: ComponentProps<typeof Link> & { variant?: Variant; size?: Size; icon?: ReactNode; block?: boolean }) {
   return (
-    <Link className={cn(base, variants[variant], sizes[size], block && 'w-full', className)} {...rest}>
+    <Link className={withOverrides(cn(base, variants[variant], sizes[size], block && 'w-full'), className)} {...rest}>
       {icon}
       {children}
     </Link>
