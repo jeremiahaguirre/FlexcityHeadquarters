@@ -16,7 +16,6 @@ import { useToast } from '@/components/ui/Toast';
 import { OpeningHours } from '@/components/forecast/OpeningHours';
 import { dateFormat } from '@/lib/format';
 import { Segmented } from '@/components/ui/Segmented';
-import { StatusPill } from '@/components/ui/StatusPill';
 import { SpecialEvents } from '@/components/forecast/SpecialEvents';
 import { WeatherIcon } from '@/components/forecast/WeatherIcon';
 import { type Adjustment, type DayWeather, type WeatherInfo, reasonText, temp } from '@/lib/forecast';
@@ -227,15 +226,16 @@ function WeekOutlook({ data, label, view }: { data: Forecast; label: (iso: strin
             {status}
           </p>
         ) : null}
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {data.days.map((d) => {
             const adj = d.adjustments ?? [];
-            const moved = adj.filter((a) => a.kind !== 'school');
+            // Events and holidays read in their pill (name and effect together); weather has its own line.
+            const moved = adj.filter((a) => a.kind === 'weather');
             const after = peak(d, 'adjusted');
             const before = peak(d, 'base');
             return (
               <li key={d.date} className="rounded-xl border border-line p-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                   <span className="text-small font-semibold">{label(d.date)}</span>
                   {d.weather ? (
                     <span className="flex items-center gap-1 text-small text-muted">
@@ -247,13 +247,14 @@ function WeekOutlook({ data, label, view }: { data: Forecast; label: (iso: strin
                   ) : null}
                 </div>
                 {adj.some((a) => a.kind !== 'weather') ? (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  // One line each (name and effect together), marked by a coloured rule: narrow day cards can't fit pills.
+                  <ul className="mt-2 grid gap-1.5 text-caption font-semibold">
                     {adj.map((a, i) =>
-                      a.kind === 'event' ? <StatusPill key={i} tone="brand">{a.name}</StatusPill> :
-                      a.kind === 'holiday' ? <StatusPill key={i} tone="new">{lng.startsWith('fr') && a.nameFr ? a.nameFr : a.name}</StatusPill> :
-                      a.kind === 'school' ? <StatusPill key={i} tone="neutral">{t('forecast.events.school', { name: a.name })}</StatusPill> : null,
+                      a.kind === 'event' ? <li key={i} className="border-l-2 border-brand pl-2 text-brand-text">{reasonText(a, t, lng)}</li> :
+                      a.kind === 'holiday' ? <li key={i} className="border-l-2 border-new pl-2 text-new">{reasonText(a, t, lng)}</li> :
+                      a.kind === 'school' ? <li key={i} className="border-l-2 border-line pl-2 text-muted">{t('forecast.events.school', { name: a.name })}</li> : null,
                     )}
-                  </div>
+                  </ul>
                 ) : null}
                 {moved.length ? (
                   <ul className="mt-2 grid gap-0.5 text-caption text-muted">
