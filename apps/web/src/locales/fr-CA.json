@@ -348,7 +348,12 @@
     "announcement": "Nouvelle annonce : {{title}}",
     "application_received": "{{name}} a postulé : {{title}}.",
     "webhook_disabled": "Un webhook échouait sans cesse et a été désactivé. Vérifiez-le dans les paramètres.",
-    "availability_reminder": "Veuillez confirmer ou mettre à jour vos disponibilités jusqu’au {{through}}."
+    "availability_reminder": "Veuillez confirmer ou mettre à jour vos disponibilités jusqu’au {{through}}.",
+    "callback_requested": "Vous êtes rappelé au travail : {{reason}}",
+    "callback_rest": "{{name}} a été rappelé et pourrait ne pas avoir le repos requis avant son prochain quart.",
+    "oncall_assigned": "Vous êtes de garde du {{from}} au {{to}}.",
+    "oncall_changed": "Votre période de garde du {{from}} a changé.",
+    "schedule_late_change": "Votre horaire a changé avec un préavis de seulement {{hours}} h. Une prime pour changement tardif pourrait s’appliquer."
   },
   "today": {
     "morning": "Bonjour",

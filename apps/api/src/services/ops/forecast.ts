@@ -21,7 +21,9 @@ import { lifeguardsRequired } from './chemistry.js';
 import { coversHour, holidayEffect, occursOn, type EventRow } from './specialEvents.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { learnEffects, profileOf, weatherEffect, type Bucket, type Condition, type WeatherDay } from './weather.js';
-import { parseSolverSettings } from '../scheduling/solverSettings.js';
+import { DEFAULT_MIN_SHIFT_HOURS, parseSolverSettings } from '../scheduling/solverSettings.js';
+import { effectiveWorkRules, minimumShiftHours, parseWorkRules } from '../scheduling/workRules.js';
+import { reportingPayRule } from '../compliance/provincialRules.js';
 
 const WEEKS = 8;
 
@@ -379,8 +381,15 @@ function rawGapBlocks(days: Array<{ date: string; hours: Array<{ hour: number; g
  */
 export async function previewShiftsFor(tx: Tx, facilityId: string, weekStart: string, positionId: string) {
   const f = await forecastWeek(tx, facilityId, weekStart, positionId);
-  const [facility, tenant] = await Promise.all([tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true } }), tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } })]);
-  const minHours = parseSolverSettings(tenant.overtimePolicy).minShiftHours;
+  const [facility, tenant, position] = await Promise.all([
+    tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true, province: true } }),
+    tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true, workRules: true } }),
+    tx.position.findUnique({ where: { id: positionId }, select: { departmentId: true } }),
+  ]);
+  // The organization's minimum shift length when it set one; otherwise the minimum call-in pay
+  // (a shorter shift costs the minimum anyway), else 3 hours.
+  const storedMin = (tenant.overtimePolicy as { solver?: { minShiftHours?: unknown } } | null)?.solver?.minShiftHours;
+  const minHours = typeof storedMin === 'number' ? parseSolverSettings(tenant.overtimePolicy).minShiftHours : minimumShiftHours(effectiveWorkRules(parseWorkRules(tenant.workRules), position?.departmentId ?? null).callIn, reportingPayRule(facility.province), DEFAULT_MIN_SHIFT_HOURS);
   const blocks = gapBlocks(f.days.map((d) => ({ date: d.date, hours: d.hours.map((h) => ({ hour: h.hour, gap: Math.max(0, h.gap - h.unfilled) })) })), minHours);
   return blocks.map((b) => ({
     facilityId,

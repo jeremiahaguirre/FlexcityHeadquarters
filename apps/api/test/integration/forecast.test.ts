@@ -81,8 +81,9 @@ describe('demand forecast', () => {
     expect(r.status).toBe(201);
     const monday = r.body.shifts.filter((s: { startsAt: string }) => s.startsAt.startsWith(WEEK)).map((s: { startsAt: string; endsAt: string }) => `${s.startsAt.slice(11, 16)}-${s.endsAt.slice(11, 16)}`).sort();
     // Open 10–16 needing 2 (3 at 14:00) with one guard from 12: short 2 from 10–12, 1 from 12–16 (2 at 14:00).
-    // Blocks shorter than the minimum shift length (3 h by default) grow into the day's busy hours.
-    expect(monday).toEqual(['10:00-16:00', '10:00-13:00', '13:00-16:00'].sort());
+    // Blocks shorter than the minimum shift length grow into the day's busy hours. With no minimum set, it is
+    // the minimum call-in pay (BC: 2 h), so 10–12 and 14–16 stand as they are (an organization's 3 h gives 10–13, 13–16).
+    expect(monday).toEqual(['10:00-16:00', '10:00-12:00', '14:00-16:00'].sort());
     const saved = await owner.shift.findMany({ where: { tenantId: t.tenant.id, userId: null } });
     expect(saved.every((s) => s.status === 'DRAFT')).toBe(true);
     expect(r.body.created).toBe(saved.length);

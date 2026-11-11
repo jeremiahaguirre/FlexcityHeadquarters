@@ -23,6 +23,10 @@ export const positionBody = z.object({
     .object({ maxDailyHours: z.number().min(1).max(24).nullable().optional(), minRestHours: z.number().min(1).max(24).nullable().optional(), maxHoursIn7Days: z.number().min(1).max(168).nullable().optional() })
     .nullable()
     .optional(),
+  /** Unpaid meal break minutes on its shifts (a shift can override); null = none. */
+  unpaidBreakMinutes: z.number().int().min(0).max(240).nullable().optional(),
+  /** Never alone: two qualified people must overlap on its shifts. */
+  neverAlone: z.boolean().optional(),
 });
 export type PositionInput = z.infer<typeof positionBody>;
 
@@ -55,6 +59,8 @@ export async function savePosition(tx: Tx, tenantId: string, id: string | null, 
     ...(change.departmentId !== undefined ? { departmentId: change.departmentId } : {}),
     ...(change.hoursOfService !== undefined ? { hoursOfService: change.hoursOfService ?? Prisma.DbNull } : {}),
     ...(change.externalId !== undefined ? { externalId: change.externalId } : {}),
+    ...(change.unpaidBreakMinutes !== undefined ? { unpaidBreakMinutes: change.unpaidBreakMinutes || null } : {}),
+    ...(change.neverAlone !== undefined ? { neverAlone: change.neverAlone } : {}),
   };
   const pos = id ? await tx.position.update({ where: { id }, data }) : await tx.position.create({ data: { name: change.name!, ...data, tenantId } });
   if (certs) {

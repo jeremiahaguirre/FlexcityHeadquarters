@@ -45,7 +45,7 @@ schedulingRouter.get(
     res.json(
       await withTenant(a.tenantId, (tx) =>
         tx.position.findMany({
-          select: { id: true, name: true, nameFr: true, minimumAge: true, hoursOfService: true, requirements: { select: { certificationId: true } } },
+          select: { id: true, name: true, nameFr: true, minimumAge: true, hoursOfService: true, departmentId: true, unpaidBreakMinutes: true, neverAlone: true, requirements: { select: { certificationId: true } } },
           orderBy: { name: 'asc' },
         }),
       ),
@@ -112,6 +112,10 @@ const shiftBody = z.object({
   shiftType: z.enum(['STANDARD', 'CUSTOM', 'MANDATORY']).optional(),
   customTitle: z.string().max(120).nullable().optional(),
   premiumPerHour: money.nullable().optional(),
+  /** Unpaid meal break (minutes); null = the position's. */
+  unpaidBreakMinutes: z.number().int().min(0).max(240).nullable().optional(),
+  /** Never alone (two-person minimum); null = the position's flag. */
+  neverAlone: z.boolean().nullable().optional(),
 });
 
 schedulingRouter.post(
@@ -191,9 +195,9 @@ schedulingRouter.post(
     const only = { ...shiftsWhere(a.scope), ...(body.shiftIds ? { id: { in: body.shiftIds } } : {}) };
     const out = await withTenant(a.tenantId, async (tx) => {
       const check = await publishCheck(tx, body.facilityId, body.from, body.to, only);
-      const warned = check.gaps.length > 0 || check.ineligible.length > 0 || !!check.federalNotice;
+      const warned = check.gaps.length > 0 || check.ineligible.length > 0 || !!check.federalNotice || check.twoPerson.length > 0 || !!check.postingNotice;
       if (warned && !body.acknowledgeWarnings) throw new HttpError(409, 'PUBLISH_WARNINGS', 'Publishing leaves coverage gaps or shifts someone can’t work. Review and confirm to publish anyway.', check);
-      if (warned) await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'shift.publish.warnings_acknowledged', entity: 'Facility', entityId: body.facilityId, after: { gaps: check.gaps.length, ineligible: check.ineligible.length, federalNotice: check.federalNotice, from: body.from, to: body.to } });
+      if (warned) await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'shift.publish.warnings_acknowledged', entity: 'Facility', entityId: body.facilityId, after: { gaps: check.gaps.length, ineligible: check.ineligible.length, federalNotice: check.federalNotice, twoPerson: check.twoPerson.length, postingNotice: check.postingNotice, from: body.from, to: body.to } });
       return withEvents(tx, publishShifts(tx, actor(req), body.facilityId, body.from, body.to, only));
     });
     dispatchSoon(a.tenantId);

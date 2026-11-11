@@ -17,6 +17,9 @@ import type { NotificationDraft } from '../notifications/notifier.js';
 import { coverageGaps } from '../coverage/gaps.js';
 import { addDays, localDate } from '../../lib/time.js';
 import { FEDERAL_SCHEDULE_NOTICE_HOURS } from '../compliance/provincialRules.js';
+import { recordShiftChange } from './changeNotice.js';
+import { effectiveWorkRules, parseWorkRules } from './workRules.js';
+import { type ShiftWarning, shiftWarnings, warningShiftInclude } from './shiftWarnings.js';
 
 export interface Actor {
   userId: string;
@@ -38,6 +41,11 @@ export interface ShiftInput {
   shiftType?: ShiftType;
   customTitle?: string | null;
   premiumPerHour?: string | null;
+  /** Unpaid meal break minutes; null = the position's. */
+  unpaidBreakMinutes?: number | null;
+  /** Never alone; null = the position's flag. */
+  neverAlone?: boolean | null;
+  callBack?: boolean;
 }
 
 export async function createShift(tx: Tx, actor: Actor, input: ShiftInput) {
@@ -59,6 +67,9 @@ export async function createShift(tx: Tx, actor: Actor, input: ShiftInput) {
       shiftType: input.shiftType ?? 'STANDARD',
       customTitle: input.customTitle ?? null,
       premiumPerHour: input.premiumPerHour ?? null,
+      unpaidBreakMinutes: input.unpaidBreakMinutes ?? null,
+      neverAlone: input.neverAlone ?? null,
+      callBack: input.callBack ?? false,
     },
   });
   await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: 'shift.create', entity: 'Shift', entityId: shift.id, after: shift });
@@ -91,6 +102,8 @@ export async function updateShift(
       shiftType: patch.shiftType ?? before.shiftType,
       customTitle: patch.customTitle === undefined ? before.customTitle : patch.customTitle,
       premiumPerHour: patch.premiumPerHour === undefined ? before.premiumPerHour : patch.premiumPerHour,
+      unpaidBreakMinutes: patch.unpaidBreakMinutes === undefined ? before.unpaidBreakMinutes : patch.unpaidBreakMinutes,
+      neverAlone: patch.neverAlone === undefined ? before.neverAlone : patch.neverAlone,
       version: { increment: 1 },
     },
   });
@@ -107,9 +120,11 @@ export async function updateShift(
   }
   const after = await tx.shift.findUniqueOrThrow({ where: { id: shiftId } });
   await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: 'shift.update', entity: 'Shift', entityId: shiftId, before, after });
+  // A published shift's new times: the notice it gave, and a premium when it was late.
+  const late = await recordShiftChange(tx, actor, before, after);
   const events: DomainEvent[] =
     before.userId && after.status === 'PUBLISHED' && (before.startsAt.getTime() !== after.startsAt.getTime() || before.endsAt.getTime() !== after.endsAt.getTime())
-      ? [{ type: 'notify', tenantId: actor.tenantId, drafts: [{ userId: before.userId, type: 'shift_changed', params: { shiftId }, link: '/schedule' }] }]
+      ? [{ type: 'notify', tenantId: actor.tenantId, drafts: [{ userId: before.userId, type: 'shift_changed', params: { shiftId }, link: '/schedule' }, ...late] }]
       : [];
   return { shift: after, events };
 }
@@ -132,7 +147,7 @@ export async function assignShift(
   expectedVersion: number,
   acknowledgeOvertime = false,
 ): Promise<AssignResult> {
-  const head = await tx.shift.findUnique({ where: { id: shiftId }, select: { userId: true } });
+  const head = await tx.shift.findUnique({ where: { id: shiftId } });
   if (!head) throw notFound('Shift');
   // One check-and-write per person at a time: no two writers can both book the same person.
   await lockForAssignment(tx, { shiftIds: [shiftId], userIds: [userId, head.userId] });
@@ -184,6 +199,7 @@ export async function assignShift(
   if (shift.status === 'PUBLISHED') {
     if (userId) drafts.push({ userId, type: 'shift_assigned', params: { shiftId }, link: '/schedule', email: 'shift_assigned' });
     if (previous && previous !== userId) drafts.push({ userId: previous, type: 'shift_unassigned', params: { shiftId }, link: '/schedule' });
+    if (previous !== userId) drafts.push(...(await recordShiftChange(tx, actor, { ...head, userId: previous, status: shift.status }, shift)));
   }
   return { shift, evaluation, events: drafts.length ? [{ type: 'notify', tenantId: actor.tenantId, drafts }] : [] };
 }
@@ -193,12 +209,13 @@ export async function cancelShift(tx: Tx, actor: Actor, shiftId: string, reason:
   if (!shift) throw notFound('Shift');
   if (shift.status === 'CANCELLED') return { events: [] as DomainEvent[] };
   await tx.shift.update({ where: { id: shiftId }, data: { status: 'CANCELLED', version: { increment: 1 }, conflictReason: reason } });
+  const late = await recordShiftChange(tx, actor, shift, { ...shift, status: 'CANCELLED' });
   if (shift.userId) await reverseOvertime(tx, actor.tenantId, actor.userId, shift.userId, shiftId, 'Shift cancelled');
   await tx.shiftOffer.updateMany({ where: { shiftId, status: { in: ['OPEN', 'PENDING_APPROVAL'] } }, data: { status: 'CANCELLED' } });
   await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: 'shift.cancel', entity: 'Shift', entityId: shiftId, after: { reason } });
   const events: DomainEvent[] =
     shift.userId && shift.status === 'PUBLISHED'
-      ? [{ type: 'notify', tenantId: actor.tenantId, drafts: [{ userId: shift.userId, type: 'shift_cancelled', params: { shiftId, reason }, link: '/schedule' }] }]
+      ? [{ type: 'notify', tenantId: actor.tenantId, drafts: [{ userId: shift.userId, type: 'shift_cancelled', params: { shiftId, reason }, link: '/schedule' }, ...late] }]
       : [];
   return { events };
 }
@@ -259,7 +276,32 @@ export async function publishCheck(tx: Tx, facilityId: string, from: Date, to: D
     const e = c && evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle));
     if (e && !e.eligible) ineligible.push({ shiftId: d.id, userId: d.userId!, name: d.user ? `${d.user.firstName} ${d.user.lastName}` : '', codes: [...new Set(e.blocks.map((b) => b.code))] });
   }
-  return { gaps, ineligible, federalNotice: federalLate ? { count: federalLate, hours: FEDERAL_SCHEDULE_NOTICE_HOURS } : null, through: addDays(firstDay, days - 1) };
+  // Work rules: never-alone shifts left alone, meal breaks missing, shifts under the call-in
+  // minimum, and shifts published later than the department's posting notice.
+  const all = await tx.shift.findMany({ where: scope, include: { ...warningShiftInclude, user: { select: { firstName: true, lastName: true } } }, orderBy: { startsAt: 'asc' }, take: 2000 });
+  const warns = await shiftWarnings(tx, all);
+  const listOf = (code: ShiftWarning['code']) => all.filter((x) => warns.get(x.id)?.some((w) => w.code === code)).map((x) => ({ shiftId: x.id, name: x.user ? `${x.user.firstName} ${x.user.lastName}` : '', startsAt: x.startsAt.toISOString(), hours: warns.get(x.id)!.find((w) => w.code === code)!.n[0]! }));
+  const tenant = await tx.tenant.findFirstOrThrow({ select: { workRules: true } });
+  const wr = parseWorkRules(tenant.workRules);
+  let postingLate = 0;
+  let postingDays = 0;
+  for (const x of all) {
+    const days = effectiveWorkRules(wr, x.position.departmentId).notice.postDaysAhead;
+    if (days && x.startsAt.getTime() - now < days * 86_400_000) {
+      postingLate++;
+      postingDays = Math.max(postingDays, days);
+    }
+  }
+  return {
+    gaps,
+    ineligible,
+    federalNotice: federalLate ? { count: federalLate, hours: FEDERAL_SCHEDULE_NOTICE_HOURS } : null,
+    twoPerson: listOf('TWO_PERSON'),
+    breaks: listOf('BREAK_MISSING').length + listOf('BREAK_SHORT').length,
+    shortShifts: listOf('SHORT_SHIFT').length,
+    postingNotice: postingLate ? { count: postingLate, days: postingDays } : null,
+    through: addDays(firstDay, days - 1),
+  };
 }
 
 /** Everyone qualified for a shift, ranked: eligible without overtime, then with, then blocked. */

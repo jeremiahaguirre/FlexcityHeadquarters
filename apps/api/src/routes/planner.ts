@@ -49,6 +49,8 @@ plannerRouter.post(
         endsAt: z.coerce.date(),
         shiftType: shiftType.optional(),
         customTitle: z.string().trim().max(120).nullable().optional(),
+        unpaidBreakMinutes: z.number().int().min(0).max(240).nullable().optional(),
+        neverAlone: z.boolean().nullable().optional(),
         userIds: z.array(uuid).max(30).default([]),
         acknowledgeOvertime: z.boolean().default(false),
       })

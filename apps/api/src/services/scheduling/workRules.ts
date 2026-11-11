@@ -91,8 +91,8 @@ export type EffectiveWorkRules = Omit<WorkRules, 'departments'>;
 
 export const DEFAULT_BREAKS: BreakSettings = { breakAfterHours: null, warnMissing: true };
 export const DEFAULT_CALL_IN: CallInSettings = { enabled: true, minHours: null };
-/** Notice: a schedule is posted two weeks ahead; late-change premiums are off until a department's agreement turns them on. */
-export const DEFAULT_NOTICE: NoticeSettings = { postDaysAhead: 14, lateChangeHours: null, premiumKind: 'multiplier', multiplier: 1.5, flatAmount: 0 };
+/** Notice rules are off until the organization or a department's agreement turns them on. */
+export const DEFAULT_NOTICE: NoticeSettings = { postDaysAhead: null, lateChangeHours: null, premiumKind: 'multiplier', multiplier: 1.5, flatAmount: 0 };
 /** Standby pay is off until set; a call-back is paid at least 3 hours (a common agreement minimum). */
 export const DEFAULT_STANDBY: StandbySettings = { perDay: null, hoursPerDay: null, percent: null, callbackMinHours: 3, callbackMultiplier: 1 };
 
@@ -144,13 +144,27 @@ export function effectiveWorkRules(w: WorkRules, departmentId: string | null | u
 
 // ------------------------------------------------------------------ unpaid meal breaks
 
-/** A shift's unpaid break: its own value, else its position's, else none. */
-export function breakMinutesOf(shift: { unpaidBreakMinutes?: number | null }, position?: { unpaidBreakMinutes?: number | null } | null): number {
-  const m = shift.unpaidBreakMinutes ?? position?.unpaidBreakMinutes ?? 0;
+/** A position's default break applies to shifts longer than this (a 2-hour shift has no lunch). */
+export const DEFAULT_BREAK_MIN_SHIFT_HOURS = 5;
+
+/**
+ * A shift's unpaid break: its own value, else its position's default when the shift is longer
+ * than 5 hours (the statutory threshold almost everywhere), else none.
+ */
+export function breakMinutesOf(shift: { unpaidBreakMinutes?: number | null; startsAt?: Date; endsAt?: Date }, position?: { unpaidBreakMinutes?: number | null } | null): number {
+  const long = !shift.startsAt || !shift.endsAt || shift.endsAt.getTime() - shift.startsAt.getTime() > DEFAULT_BREAK_MIN_SHIFT_HOURS * 3_600_000;
+  const m = shift.unpaidBreakMinutes ?? (long ? position?.unpaidBreakMinutes : 0) ?? 0;
   return Number.isFinite(m) && m > 0 ? Math.round(m) : 0;
 }
 
-export interface BreakInterval { start: Date; end: Date; breakMinutes?: number | null; breakAfterHours?: number | null }
+export interface BreakInterval {
+  start: Date;
+  end: Date;
+  breakMinutes?: number | null;
+  breakAfterHours?: number | null;
+  /** An exact break window (a punch takes out the shift's planned break where it covers it). */
+  breakAt?: { start: Date; end: Date } | null;
+}
 
 /**
  * Where an unpaid break falls: in the middle of the shift, but starting no later than
@@ -169,11 +183,12 @@ export function breakWindow(start: Date, end: Date, minutes: number, afterHours:
 
 /** The paid parts of a shift: the shift minus its unpaid break. */
 export function paidIntervals<T extends BreakInterval>(iv: T): Array<T & { start: Date; end: Date }> {
-  const w = iv.breakMinutes ? breakWindow(iv.start, iv.end, iv.breakMinutes, iv.breakAfterHours) : null;
-  if (!w) return [iv];
+  let w = iv.breakAt ?? (iv.breakMinutes ? breakWindow(iv.start, iv.end, iv.breakMinutes, iv.breakAfterHours) : null);
+  if (w) w = { start: new Date(Math.max(w.start.getTime(), iv.start.getTime())), end: new Date(Math.min(w.end.getTime(), iv.end.getTime())) };
+  if (!w || w.end <= w.start) return [iv];
   return [
-    { ...iv, start: iv.start, end: w.start, breakMinutes: 0 },
-    { ...iv, start: w.end, end: iv.end, breakMinutes: 0 },
+    { ...iv, start: iv.start, end: w.start, breakMinutes: 0, breakAt: null },
+    { ...iv, start: w.end, end: iv.end, breakMinutes: 0, breakAt: null },
   ].filter((x) => x.end > x.start);
 }
 

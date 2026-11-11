@@ -348,7 +348,12 @@
     "announcement": "New announcement: {{title}}",
     "application_received": "{{name}} applied for {{title}}.",
     "webhook_disabled": "A webhook kept failing and was turned off. Check it in Settings.",
-    "availability_reminder": "Please confirm or update your availability through {{through}}."
+    "availability_reminder": "Please confirm or update your availability through {{through}}.",
+    "callback_requested": "You’re called back in: {{reason}}",
+    "callback_rest": "{{name}} was called back and may not get the rest required before their next shift.",
+    "oncall_assigned": "You’re on call from {{from}} to {{to}}.",
+    "oncall_changed": "Your on-call period from {{from}} changed.",
+    "schedule_late_change": "Your schedule changed with only {{hours}} h notice. A late-change premium may apply."
   },
   "today": {
     "morning": "Good morning",

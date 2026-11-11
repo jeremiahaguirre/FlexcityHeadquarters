@@ -29,6 +29,8 @@ import { lockForAssignment } from './locks.js';
 import { chargeOvertime, parsePolicy, periodStart, reverseOvertime } from './overtime.js';
 import { createShift } from './shifts.js';
 import { type CoverageNeed, type SolverPerson, type SolverSlot, orderKey, solve } from './solver.js';
+import { breakAfterHoursFor, breakMinutesOf, effectiveWorkRules, paidIntervals, parseWorkRules, premiumPieces } from './workRules.js';
+import { isNeverAlone } from './twoPerson.js';
 import { type EffectiveSettings, type HorizonWeeks, type SolverToggles, type SolverWeights, effectiveSettings, parseSolverSettings, withSolverSettings } from './solverSettings.js';
 
 /** Pseudo-departments: positions that belong to none, and everything the person may schedule. */
@@ -174,19 +176,31 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
   // Beyond the availability planning window, a week is tentative.
   const today = localDate(new Date(), tz);
   const windowEnd = addDays(today, base.planAheadWeeks * 7);
-  const slotOf = (s: { id: string; facilityId: string; positionId: string; startsAt: Date; endsAt: Date; userId: string | null; premiumPerHour: Prisma.Decimal | null }): SolverSlot => {
+  // Work rules: unpaid breaks (paid hours), rule premiums (cost), never-alone shifts.
+  const workRules = parseWorkRules(tenant.workRules);
+  const slotOf = (s: { id: string; facilityId: string; positionId: string; startsAt: Date; endsAt: Date; userId: string | null; premiumPerHour: Prisma.Decimal | null; unpaidBreakMinutes?: number | null; neverAlone?: boolean | null }): SolverSlot => {
     const ftz = facilityById.get(s.facilityId)!.timezone;
     const date = localDate(s.startsAt, ftz);
+    const pos = positionRow.get(s.positionId);
+    const wr = effectiveWorkRules(workRules, pos?.departmentId ?? null);
+    const breakMinutes = breakMinutesOf(s, pos);
+    const rules = rulesFor(s.facilityId, date, s.positionId);
+    const paid = paidIntervals({ start: s.startsAt, end: s.endsAt, breakMinutes, breakAfterHours: breakAfterHoursFor(wr.breaks, rules) });
+    const paidH = paid.reduce((t, x) => t + (x.end.getTime() - x.start.getTime()) / H, 0) || 1;
+    const holidays = holidayDays.get(facilityById.get(s.facilityId)!.province) ?? new Set<string>();
+    const rulePieces = wr.premiums.length ? paid.flatMap((x) => premiumPieces(x, wr.premiums, { timezone: ftz, departmentId: pos?.departmentId ?? null, positionId: s.positionId, holidays })) : [];
     return {
       id: s.id,
-      shift: { id: s.id, positionId: s.positionId, facilityId: s.facilityId, timezone: ftz, start: s.startsAt, end: s.endsAt },
+      shift: { id: s.id, positionId: s.positionId, facilityId: s.facilityId, timezone: ftz, start: s.startsAt, end: s.endsAt, breakMinutes, breakAfterHours: breakAfterHoursFor(wr.breaks, rules) },
+      neverAlone: isNeverAlone(s, pos),
+      premiumPercent: rulePieces.reduce((t, p) => t + (p.percent ?? 0) * p.hours, 0) / paidH,
       position: positionSpecs.get(s.positionId)!,
-      rules: rulesFor(s.facilityId, date, s.positionId),
+      rules,
       schoolCalendar,
       currentUserId: s.userId,
       tentative: date > windowEnd,
       statHoliday: isHoliday(s.facilityId, date),
-      premiumPerHour: s.premiumPerHour ? Number(s.premiumPerHour) : 0,
+      premiumPerHour: (s.premiumPerHour ? Number(s.premiumPerHour) : 0) + rulePieces.reduce((t, p) => t + (p.perHour ?? 0) * p.hours, 0) / paidH,
     };
   };
   const slots: SolverSlot[] = [
@@ -279,12 +293,36 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     coverage.push({ id: r.id, name: r.name, facilityId: r.facilityId, certificationId: r.certificationId, minCount: r.minCount, windows, covered: others.filter(valid).map((s) => ({ start: s.startsAt, end: s.endsAt })) });
   }
 
+  // Never-alone shifts: the second person can be someone outside this run already working there.
+  const companions: NonNullable<Parameters<typeof solve>[0]['companions']> = [];
+  if (slots.some((x) => x.neverAlone)) {
+    const rows = await tx.shift.findMany({
+      where: { facilityId: { in: facilities.map((f) => f.id) }, status: { not: 'CANCELLED' }, userId: { notIn: userIds, not: null }, startsAt: { lt: new Date(to.getTime() + 86_400_000) }, endsAt: { gt: new Date(from.getTime() - 86_400_000) } },
+      select: { id: true, userId: true, facilityId: true, positionId: true, startsAt: true, endsAt: true, user: { select: { positions: { select: { positionId: true } } } } },
+    });
+    for (const r of rows) companions.push({ id: r.id, userId: r.userId!, facilityId: r.facilityId, positionId: r.positionId, start: r.startsAt, end: r.endsAt, qualifiedPositionIds: new Set(r.user?.positions.map((x) => x.positionId) ?? []) });
+    // A soft goal too: the solver prefers filling a second qualified person alongside.
+    for (const sl of slots.filter((x) => x.neverAlone)) {
+      coverage.push({
+        id: `two-person:${sl.id}`,
+        name: 'TWO_PERSON',
+        facilityId: sl.shift.facilityId,
+        certificationId: '',
+        positionId: sl.shift.positionId,
+        minCount: 2,
+        windows: [{ start: sl.shift.start, end: sl.shift.end }],
+        covered: companions.filter((c) => c.facilityId === sl.shift.facilityId && c.qualifiedPositionIds.has(sl.shift.positionId)).map((c) => ({ start: c.start, end: c.end })),
+      });
+    }
+  }
+
   const budget = req.horizonWeeks <= 2 ? 3000 : req.horizonWeeks <= 4 ? 2000 : 1000;
   const seed = req.seed ?? orderKey(0, `${req.departmentId}|${req.weekStart}`) % 100_000;
   const result = solve({
     slots,
     people,
     coverage,
+    companions,
     options: {
       weights,
       useSeniority,
@@ -340,7 +378,10 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
       customTitle: s.customTitle,
       localStartsAt: localIso(s.startsAt, f.timezone),
       localEndsAt: localIso(s.endsAt, f.timezone),
-      hours: (s.endsAt.getTime() - s.startsAt.getTime()) / H,
+      // Paid hours (unpaid meal break out).
+      hours: (s.endsAt.getTime() - s.startsAt.getTime()) / H - (sl.shift.breakMinutes ?? 0) / 60,
+      unpaidBreakMinutes: sl.shift.breakMinutes ?? 0,
+      neverAlone: sl.neverAlone ?? false,
       currentUserId: s.userId,
       tentative: sl.tentative ?? false,
       statHoliday: sl.statHoliday ?? false,
@@ -354,7 +395,8 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     summary: result.summary,
     proposals: result.proposals,
     unfilled: result.unfilled,
-    coverageGaps: result.coverageGaps,
+    // Two-person needs are a soft goal inside the solver; a shift left alone is reported in `unfilled` (TWO_PERSON).
+    coverageGaps: result.coverageGaps.filter((g) => !g.needId.startsWith('two-person:')),
     slots: slotOut,
     people: peopleOut,
     /** Shifts of this week proposed, to send back as `carry` for the next week. */

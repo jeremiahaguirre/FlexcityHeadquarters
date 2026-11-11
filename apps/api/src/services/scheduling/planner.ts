@@ -31,6 +31,9 @@ import { lockForAssignment } from './locks.js';
 import { ALL_DEPARTMENTS, NO_DEPARTMENT, confirmedThrough, schedulableDepartments } from './fillRun.js';
 import { assignShift, cancelShift, createShift, updateShift } from './shifts.js';
 import { effectiveSettings, parseSolverSettings } from './solverSettings.js';
+import { type ShiftWarning, shiftWarnings } from './shiftWarnings.js';
+import { isNeverAlone } from './twoPerson.js';
+import { breakMinutesOf, paidHours } from './workRules.js';
 
 const H = 3_600_000;
 export const MAX_PLANNER_DAYS = 42;
@@ -114,13 +117,14 @@ function usualTimes(rows: Array<{ positionId: string; startsAt: Date; endsAt: Da
 }
 
 const shiftSelect = {
-  facility: { select: { id: true, name: true, timezone: true } },
-  position: { select: { id: true, name: true, nameFr: true } },
+  facility: { select: { id: true, name: true, timezone: true, province: true } },
+  position: { select: { id: true, name: true, nameFr: true, unpaidBreakMinutes: true, neverAlone: true, departmentId: true } },
   user: { select: { id: true, firstName: true, lastName: true } },
 } as const;
 
 type BoardShift = Prisma.ShiftGetPayload<{ include: typeof shiftSelect }>;
-export function plannerShiftView(s: BoardShift) {
+export function plannerShiftView(s: BoardShift, warnings: ShiftWarning[] = []) {
+  const breakMinutes = breakMinutesOf(s, s.position);
   return {
     id: s.id,
     facilityId: s.facilityId,
@@ -133,7 +137,16 @@ export function plannerShiftView(s: BoardShift) {
     customTitle: s.customTitle,
     conflictReason: s.conflictReason,
     version: s.version,
-    hours: (s.endsAt.getTime() - s.startsAt.getTime()) / H,
+    /** Paid hours: length − unpaid meal break. */
+    hours: paidHours({ start: s.startsAt, end: s.endsAt, breakMinutes }),
+    unpaidBreakMinutes: breakMinutes,
+    /** The shift's own break (null = the position's). */
+    ownBreakMinutes: s.unpaidBreakMinutes,
+    neverAlone: isNeverAlone(s, s.position),
+    ownNeverAlone: s.neverAlone,
+    callBack: s.callBack,
+    premiumPerHour: s.premiumPerHour ? Number(s.premiumPerHour) : null,
+    warnings,
     facility: { id: s.facility.id, name: s.facility.name, timezone: s.facility.timezone },
     position: { id: s.position.id, name: s.position.name, nameFr: s.position.nameFr },
     assignee: s.user ? { id: s.user.id, name: `${s.user.firstName} ${s.user.lastName}` } : null,
@@ -174,7 +187,7 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
         certifications: { where: { verifiedAt: { not: null }, OR: [{ expiryDate: null }, { expiryDate: { gte: fromI } }] }, select: { certification: { select: { id: true, name: true, nameFr: true } } } },
         availability: true,
         timeOffRequests: { where: { status: 'APPROVED', startsAt: { lt: toI }, endsAt: { gt: fromI } }, select: { startsAt: true, endsAt: true, type: true } },
-        shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: hoursTo }, endsAt: { gt: hoursFrom } }, select: { startsAt: true, endsAt: true } },
+        shifts: { where: { status: { not: 'CANCELLED' }, startsAt: { lt: hoursTo }, endsAt: { gt: hoursFrom } }, select: { startsAt: true, endsAt: true, unpaidBreakMinutes: true, position: { select: { unpaidBreakMinutes: true } } } },
       },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     }),
@@ -182,6 +195,8 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
     tx.position.findMany({ select: { id: true, departmentId: true, department: { select: { name: true, nameFr: true } } } }),
   ]);
   const conf = await confirmedThrough(tx, users.map((u) => u.id));
+  // Meal breaks, shifts under the call-in minimum, never-alone shifts left alone.
+  const warnings = await shiftWarnings(tx, shifts);
   const today = localDate(new Date(), tz);
   const planAhead = Math.min(...c.run.map((d) => d.planAheadWeeks));
   const through = addDays(today, planAhead * 7 - 1);
@@ -202,7 +217,8 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
       const off = piecesOn(u.timeOffRequests.map((r) => ({ start: r.startsAt, end: r.endsAt })), d, tz);
       if (off.length) timeOff[d] = off;
     }
-    const scheduled = u.shifts.reduce((s, x) => s + (Math.min(x.endsAt.getTime(), hoursTo.getTime()) - Math.max(x.startsAt.getTime(), hoursFrom.getTime())) / H, 0);
+    // Paid hours: unpaid meal breaks don't count toward the target.
+    const scheduled = u.shifts.reduce((s, x) => s + (Math.min(x.endsAt.getTime(), hoursTo.getTime()) - Math.max(x.startsAt.getTime(), hoursFrom.getTime())) / H - (x.startsAt >= hoursFrom && x.endsAt <= hoursTo ? breakMinutesOf(x, x.position) / 60 : 0), 0);
     const weekly = u.weeklyMinHours ? Number(u.weeklyMinHours) : u.employmentStatus === 'FULL_TIME' ? settings.targetHours : null;
     const confirmed = conf.get(u.id)?.through ?? null;
     return {
@@ -233,7 +249,7 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
     positions,
     facilities: c.facilities.map((f) => ({ id: f.id, name: f.name, timezone: f.timezone })),
     people,
-    shifts: shifts.map(plannerShiftView),
+    shifts: shifts.map((s) => plannerShiftView(s, warnings.get(s.id))),
     usual: usualTimes(history, tz),
   };
 }
@@ -443,6 +459,8 @@ export interface CreateInput {
   endsAt: Date;
   shiftType?: 'STANDARD' | 'CUSTOM' | 'MANDATORY';
   customTitle?: string | null;
+  unpaidBreakMinutes?: number | null;
+  neverAlone?: boolean | null;
   /** One draft per person (or one open draft when empty). */
   userIds: string[];
   acknowledgeOvertime: boolean;

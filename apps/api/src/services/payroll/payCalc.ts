@@ -31,6 +31,8 @@ export interface WorkedInterval {
   breakMinutes?: number | null;
   /** Where the break starts at the latest (hours into the interval); default the middle. */
   breakAfterHours?: number | null;
+  /** An exact unpaid window instead (a punch covering its shift's planned break). */
+  breakAt?: { start: Date; end: Date } | null;
 }
 
 export interface PayCalcInput {
