@@ -10,7 +10,7 @@ import { Field, Input } from '@/components/ui/Field';
 import { StatTile } from '@/components/ui/StatTile';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import { formatDate, formatHours } from '@/lib/format';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 export interface LieuPolicy { enabled: boolean; capHours: number; takeWithinMonths: number }
@@ -34,8 +34,8 @@ export function MyBankedTime() {
       <CardHeader title={t('lieu.title')} description={t('lieu.help', { cap: d.policy.capHours, months: d.policy.takeWithinMonths })} action={d.bankOvertime ? <StatusPill tone="ok">{t('lieu.banking')}</StatusPill> : undefined} />
       <CardBody className="grid gap-4 pt-2">
         <div className="grid grid-cols-2 gap-3">
-          <StatTile surface="inset" label={t('lieu.balance')} value={t('lieu.hours', { n: hrs(d.balance, lng) })} />
-          <StatTile surface="inset" label={t('lieu.available')} value={t('lieu.hours', { n: hrs(Math.max(0, d.available), lng) })} />
+          <StatTile surface="inset" label={t('lieu.balance')} value={formatHours(d.balance, lng)} />
+          <StatTile surface="inset" label={t('lieu.available')} value={formatHours(Math.max(0, d.available), lng)} />
         </div>
         {d.expiring > 0 ? <p className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-small text-ink">{t('lieu.expiring', { n: hrs(d.expiring, lng), months: d.policy.takeWithinMonths })}</p> : null}
         {d.policy.enabled ? (
@@ -50,7 +50,7 @@ export function MyBankedTime() {
             {d.history.slice(0, 8).map((h, i) => (
               <li key={i} className="flex justify-between gap-3 border-b border-line py-1.5 last:border-0">
                 <span className="text-ink">{t(`lieu.kinds.${h.kind}`)}{h.note ? <span className="text-muted"> · {h.note}</span> : null}<span className="block text-caption text-muted">{formatDate(h.on, lng)}</span></span>
-                <span className={h.hours >= 0 ? 'font-semibold text-ok' : 'font-semibold text-ink'}>{h.hours > 0 ? '+' : ''}{hrs(h.hours, lng)}</span>
+                <span className={h.hours >= 0 ? 'font-semibold text-ok' : 'font-semibold text-ink'}>{h.hours > 0 ? '+' : ''}{formatHours(h.hours, lng)}</span>
               </li>
             ))}
           </ul>
@@ -102,8 +102,8 @@ export function LieuBalances() {
                 {d.people.map((r) => (
                   <tr key={r.userId} className="border-t border-line">
                     <td className="py-2 pr-3 text-ink">{r.name}{r.bankOvertime ? <span className="block text-caption text-muted">{t('lieu.banking')}</span> : null}</td>
-                    <td className="py-2 pr-3 font-semibold text-ink">{hrs(r.balance, lng)}</td>
-                    <td className="py-2 pr-3">{r.expiring > 0 ? <StatusPill tone="warn">{hrs(r.expiring, lng)}</StatusPill> : '—'}</td>
+                    <td className="py-2 pr-3 font-semibold text-ink">{formatHours(r.balance, lng)}</td>
+                    <td className="py-2 pr-3">{r.expiring > 0 ? <StatusPill tone="warn">{formatHours(r.expiring, lng)}</StatusPill> : '—'}</td>
                     <td className="py-2 text-right"><Button size="sm" variant="ghost" onClick={() => setFixing(r)}>{t('lieu.adjust')}</Button></td>
                   </tr>
                 ))}

@@ -3,7 +3,7 @@
 import { Armchair, ArrowRight, Coffee, RotateCw, Square } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatElapsed } from '@/lib/format';
+import { formatDuration, formatElapsed } from '@/lib/format';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -28,6 +28,8 @@ const mins = (ms: number) => Math.round(ms / 60_000);
 export default function DeckPage() {
   const { t, i18n } = useTranslation();
   // Past 12 hours a chair is simply overdue: the deck was left open, a count of hours helps nobody.
+  // A rule's length: "45 min", and from 90 minutes in hours ("2 h", "1 h 30 min").
+  const span = (m: number) => (m < 90 ? formatElapsed(m, i18n.language) : formatDuration(m / 60, i18n.language));
   const overdue = (ms: number) => (ms > 12 * 3_600_000 ? t('deck.overdueLong') : t('deck.overdue', { time: formatElapsed(mins(ms), i18n.language) }));
   const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
   const [facilityId, setFacilityId] = useState<string | null>(null);
@@ -127,7 +129,7 @@ export default function DeckPage() {
 
           <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
             <Card>
-              <CardHeader title={t('deck.next')} description={t('deck.nextHelp', { m: p.facility.rotationMinutes })} />
+              <CardHeader title={t('deck.next')} description={t('deck.nextHelp', { span: span(p.facility.rotationMinutes) })} />
               <CardBody className="grid gap-3 pt-3">
                 <ul className="grid gap-2 text-small">
                   {p.suggestion.assignments.map((a) => (
@@ -149,7 +151,7 @@ export default function DeckPage() {
               </CardBody>
             </Card>
             <Card>
-              <CardHeader title={t('deck.onDuty')} description={t('deck.onDutyHelp', { m: p.facility.maxOnChairMinutes })} />
+              <CardHeader title={t('deck.onDuty')} description={t('deck.onDutyHelp', { span: span(p.facility.maxOnChairMinutes) })} />
               <CardBody className="pt-3">
                 {!p.onDuty.length ? (
                   <p className="text-small text-muted">{t('deck.nobodyOnDuty')}</p>
