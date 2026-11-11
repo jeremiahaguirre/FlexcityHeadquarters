@@ -11,6 +11,7 @@
 import type { LoneWorkSession, Prisma } from '@prisma/client';
 import type { Tx } from '../../lib/db.js';
 import { notify, usersWithPermission } from '../notifications/notifier.js';
+import { onCallForWorker } from '../scheduling/onCall.js';
 
 export const INTERVALS = [15, 30, 60, 90, 120] as const;
 /** After a missed check-in, how long before it escalates. */
@@ -18,8 +19,10 @@ export const GRACE_MINUTES = 15;
 
 const minutes = (n: number) => n * 60_000;
 
-async function monitors(tx: Tx, s: LoneWorkSession) {
-  return usersWithPermission(tx, s.tenantId, 'lonework.monitor', [s.userId]);
+/** Who is alerted: the person on call for the worker's department first, then everyone who monitors. */
+async function monitors(tx: Tx, s: LoneWorkSession, now = new Date()) {
+  const first = await onCallForWorker(tx, s.userId, now);
+  return [...new Set([...first, ...(await usersWithPermission(tx, s.tenantId, 'lonework.monitor', [s.userId]))])];
 }
 
 async function workerName(tx: Tx, userId: string) {

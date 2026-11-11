@@ -16,6 +16,7 @@ import { evalOpts, loadCandidate, loadShiftBundle } from '../scheduling/eligibil
 import { lockForAssignment } from '../scheduling/locks.js';
 import { standings } from '../scheduling/overtime.js';
 import { winterSettings } from './settings.js';
+import { onCallAt } from '../scheduling/onCall.js';
 
 interface Actor { tenantId: string; userId: string }
 export interface CallOutInput { facilityId: string; positionId: string; reason: string; startsAt: Date; endsAt: Date }
@@ -26,14 +27,18 @@ export async function createCallOut(tx: Tx, actor: Actor, input: CallOutInput, n
   if (input.endsAt <= input.startsAt) throw conflict('BAD_TIMES', 'The call-out must end after it starts.');
   const settings = await winterSettings(tx);
   const shift = await tx.shift.create({
-    data: { tenantId: actor.tenantId, facilityId: input.facilityId, positionId: input.positionId, startsAt: input.startsAt, endsAt: input.endsAt, status: 'PUBLISHED', shiftType: 'CUSTOM', customTitle: `Call-out: ${input.reason}` },
+    // A call-out is a call-back: the call-back minimum applies in payroll.
+    data: { tenantId: actor.tenantId, facilityId: input.facilityId, positionId: input.positionId, startsAt: input.startsAt, endsAt: input.endsAt, status: 'PUBLISHED', shiftType: 'CUSTOM', customTitle: `Call-out: ${input.reason}`, callBack: true },
   });
   const callOut = await tx.callOut.create({
     data: { tenantId: actor.tenantId, facilityId: input.facilityId, positionId: input.positionId, shiftId: shift.id, reason: input.reason, startsAt: input.startsAt, endsAt: input.endsAt, responseMinutes: settings.callOuts.responseMinutes, createdById: actor.userId },
   });
   // The list, in overtime order, with anyone who can't take it skipped and why.
   const bundle = (await loadShiftBundle(tx, shift.id))!;
-  const { rows } = await standings(tx, input.positionId, now);
+  const { rows: order } = await standings(tx, input.positionId, now);
+  // Whoever is on call for the department then is asked first, then the overtime order.
+  const onCall = await onCallAt(tx, input.startsAt, { positionIds: [input.positionId] });
+  const rows = [...order.filter((r) => onCall.includes(r.userId)), ...order.filter((r) => !onCall.includes(r.userId))];
   let rank = 0;
   for (const r of rows) {
     if (r.userId === actor.userId) continue;

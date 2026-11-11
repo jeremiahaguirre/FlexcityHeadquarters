@@ -46,6 +46,10 @@ const TEMPLATES: Record<string, { 'en-CA': Render; 'fr-CA': Render }> = {
     'en-CA': (p) => `FH call-out: ${s(p.reason)} at ${s(p.facility)}. You're next in line. Answer in FH within ${s(p.minutes)} minutes.`,
     'fr-CA': (p) => `FH, rappel au travail : ${s(p.reason)} à ${s(p.facility)}. Vous êtes le prochain sur la liste. Répondez dans FH d'ici ${s(p.minutes)} minutes.`,
   },
+  callback_requested: {
+    'en-CA': (p) => `FH call-back: you're called back in (${s(p.reason)}). Open FH for the details.`,
+    'fr-CA': (p) => `FH, rappel : vous êtes rappelé au travail (${s(p.reason)}). Ouvrez FH pour les détails.`,
+  },
   shift_urgent: {
     'en-CA': (p) => `FH: an open ${s(p.position)} shift at ${s(p.facility)} starts ${when(p, 'en-CA')}. Open the shift board in FH to take it.`,
     'fr-CA': (p) => `FH : un quart libre de ${s(p.position)} à ${s(p.facility)} commence ${when(p, 'fr-CA')}. Ouvrez le tableau des quarts dans FH pour le prendre.`,
