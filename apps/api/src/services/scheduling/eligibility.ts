@@ -287,7 +287,7 @@ export function evaluateCandidate(
   return { userId: c.userId, eligible: blocks.length === 0, blocks, flags, overtimeHours, weeklyHoursAfter };
 }
 
-function checkRestBetweenShifts(existing: Interval[], shift: Interval, rules: ProvinceRules): Reason<BlockCode> | null {
+export function checkRestBetweenShifts(existing: Interval[], shift: Interval, rules: ProvinceRules): Reason<BlockCode> | null {
   const min = rules.rest.betweenShiftsHours;
   if (min === null) return null;
   for (const s of existing) {

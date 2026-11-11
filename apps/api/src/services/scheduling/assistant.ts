@@ -152,7 +152,7 @@ export function proposeSchedule(input: AssistantInput): AssistantOutput {
 }
 
 /** Booked at another facility too close before or after this shift to get there. */
-function tooLittleTravel(c: Pooled, shift: ShiftSpec, travelMs: number): boolean {
+export function tooLittleTravel(c: Pick<Pooled, 'existingShifts'>, shift: ShiftSpec, travelMs: number): boolean {
   if (!shift.facilityId || !travelMs) return false;
   return c.existingShifts.some(
     (s) => s.facilityId && s.facilityId !== shift.facilityId && shift.start.getTime() - s.end.getTime() < travelMs && s.start.getTime() - shift.end.getTime() < travelMs,
