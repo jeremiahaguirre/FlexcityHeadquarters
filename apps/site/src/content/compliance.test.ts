@@ -235,3 +235,14 @@ describe('legal text matches the code (verification, November 2026)', () => {
     expect(p).toMatch(lang === 'en' ? /planned production hosting, at rest/ : /hébergement de production prévu, au repos/);
   });
 });
+
+describe('claims about FH staff access match the Dev console', () => {
+  it.each(['en', 'fr'] as const)('%s: the FAQ does not say FH never sees employee records (the Dev console shows signed agreements with names and emails)', (lang) => {
+    const api = readFileSync(join(REPO, 'apps/api/src/routes/platform/consents.ts'), 'utf8');
+    expect(api).toMatch(/firstName: true, lastName: true, email: true/);
+    const all = JSON.stringify(copy(lang));
+    expect(all).not.toMatch(/never employee records|jamais les dossiers des employés/);
+    expect(all).toMatch(lang === 'en' ? /signed information agreement/ : /entente d’information signée/);
+    expect(all).not.toMatch(/prix garantis|prices guaranteed/i);
+  });
+});
