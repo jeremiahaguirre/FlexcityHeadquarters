@@ -264,7 +264,7 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
                 </label>
               </>
             ) : null}
-            <Textarea aria-label={t('messages.write')} placeholder={t('messages.write')} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} rows={1} maxLength={MAX_TEXT} className="max-h-40 min-h-[2.75rem] flex-1 resize-none py-2.5" />
+            <Textarea aria-label={t('messages.write')} placeholder={t('messages.write')} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} rows={Math.min(6, Math.max(1, text.split('\n').length))} maxLength={MAX_TEXT} style={{ minHeight: '2.75rem' }} className="max-h-40 flex-1 resize-none py-2.5" />
             <Button type="submit" aria-label={editing ? t('messages.saveEdit') : t('messages.send')} loading={busy === 'send'} disabled={!text.trim() && !file} icon={editing ? <Pencil className="h-4 w-4" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />} />
           </div>
           {text.length > MAX_TEXT - 200 ? <p className="px-1 text-caption text-muted">{t('messages.charsLeft', { count: MAX_TEXT - text.length })}</p> : null}
