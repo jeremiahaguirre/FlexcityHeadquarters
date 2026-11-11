@@ -92,7 +92,7 @@ export default function TimeclockPage() {
                   <div className="min-w-0">
                     <p className="text-small font-semibold">{formatDate(p.localClockIn, lng)}</p>
                     <p className="text-caption tabular-nums text-muted">
-                      {p.localClockOut ? formatSpan(p.localClockIn, p.localClockOut, lng) : `${formatTime(p.localClockIn, lng)} – …`} · {p.facility.name}
+                      {p.localClockOut ? formatSpan(p.localClockIn, p.localClockOut, lng, { startDate: false }) : `${formatTime(p.localClockIn, lng)} – …`} · {p.facility.name}
                     </p>
                     {p.status === 'REJECTED' && p.varianceReason ? <p className="mt-1 text-caption text-warn">{p.varianceReason}</p> : null}
                   </div>

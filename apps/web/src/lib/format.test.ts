@@ -28,6 +28,7 @@ describe('format helpers (FH Typography doc examples)', () => {
   });
   it('spans that end on another day repeat the date', () => {
     expect(formatSpan('2026-11-09T13:33:00-08:00', '2026-11-09T18:01:00-08:00', 'en-CA')).toBe(`1:33${NBSP}p.m.–6:01${NBSP}p.m.`);
+    expect(formatSpan('2026-11-09T13:33:00-08:00', '2026-11-10T18:01:00-08:00', 'en-CA', { startDate: false })).toBe(`1:33${NBSP}p.m. – Tue,${NBSP}Nov${NBSP}10, 6:01${NBSP}p.m.`);
     expect(formatSpan('2026-11-09T13:33:00-08:00', '2026-11-10T18:01:00-08:00', 'en-CA')).toBe(`Mon,${NBSP}Nov${NBSP}9, 1:33${NBSP}p.m. – Tue,${NBSP}Nov${NBSP}10, 6:01${NBSP}p.m.`);
   });
   it('durations and elapsed time', () => {

@@ -225,7 +225,7 @@ export default function ApprovalsPage() {
                       {p.user.name} · <span className="font-normal text-muted">{formatDate(p.localClockIn, lng)}</span>
                     </p>
                     <p className="text-caption tabular-nums text-muted">
-                      {t('approvals.punched')}: {p.localClockOut ? formatSpan(p.localClockIn, p.localClockOut, lng) : `${formatTime(p.localClockIn, lng)} – …`}
+                      {t('approvals.punched')}: {p.localClockOut ? formatSpan(p.localClockIn, p.localClockOut, lng, { startDate: false }) : `${formatTime(p.localClockIn, lng)} – …`}
                       {p.localShiftStart && p.localShiftEnd ? ` · ${t('approvals.scheduled')}: ${formatTimeRange(p.localShiftStart, p.localShiftEnd, lng)}` : ''}
                     </p>
                     {p.recordedOffline ? <OfflineNote p={p} lng={lng} /> : null}
