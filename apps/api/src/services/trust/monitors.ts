@@ -19,6 +19,7 @@ import { config } from '../../config.js';
 import { db, tenantIds, withTenant } from '../../lib/db.js';
 import { leastPrivilegeProblems, roleFacts } from '../../lib/dbRole.js';
 import { readiness } from '../../lib/health.js';
+import { type MonitorDetails, SECRETISH } from './detailKeys.js';
 import type { TestStatus } from './scoring.js';
 
 export const HISTORY_DAYS = 400;
@@ -28,7 +29,8 @@ export interface Result {
   status: TestStatus;
   en: string;
   fr: string;
-  details?: Record<string, unknown>;
+  /** Only the keys detailKeys.ts lists (each has English and French labels in the web app). */
+  details?: MonitorDetails;
 }
 export interface Monitor {
   key: string;
@@ -39,7 +41,7 @@ export interface Monitor {
   run(ctx: { db: PrismaClient; now: Date }): Promise<Result>;
 }
 
-const r = (status: TestStatus, en: string, fr: string, details?: Record<string, unknown>): Result => ({ status, en, fr, details });
+const r = (status: TestStatus, en: string, fr: string, details?: MonitorDetails): Result => ({ status, en, fr, details });
 const isProd = () => config().NODE_ENV === 'production';
 const ago = (now: Date, days: number) => new Date(now.getTime() - days * DAY);
 
@@ -48,6 +50,24 @@ async function eachTenant<T>(fn: (tx: Parameters<Parameters<typeof withTenant>[1
   const out: Array<{ id: string; value: T }> = [];
   for (const id of await tenantIds()) out.push({ id, value: await withTenant(id, (tx) => fn(tx, id)) });
   return out;
+}
+
+/** A health check's reason (lib/health.ts, in English) in French, part by part; an unknown part stays as is. */
+export function healthReasonFr(reason: string): string {
+  const channel = (c: string) => ({ email: 'courriels', sms: 'textos', sms_safety: 'textos de sécurité' })[c] ?? c;
+  const how = (x: string) => ({ 'timed out': 'délai dépassé', unreachable: 'injoignable' })[x] ?? x;
+  return reason.split('; ').map((part) => {
+    let m: RegExpExecArray | null;
+    if (part === 'not checked: database unavailable') return 'non vérifié : base de données indisponible';
+    if (part === 'no background worker connected') return 'aucun traitement en arrière-plan connecté';
+    if ((m = /^worker last reported (\d+)s ago$/.exec(part))) return `dernier signal du traitement il y a ${m[1]} s`;
+    if ((m = /^worker heartbeat (.+)$/.exec(part))) return `signal du traitement : ${how(m[1]!)}`;
+    if ((m = /^database (.+)$/.exec(part))) return `base de données : ${how(m[1]!)}`;
+    if ((m = /^outbox backlog (.+)$/.exec(part))) return `file des messages : ${how(m[1]!)}`;
+    if ((m = /^safety texts waiting longer than (\d+)s$/.exec(part))) return `textos de sécurité en attente depuis plus de ${m[1]} s`;
+    if ((m = /^(.+) waiting longer than (\d+)s$/.exec(part))) return `${m[1]!.split(' and ').map(channel).join(' et ')} en attente depuis plus de ${m[2]} s`;
+    return part;
+  }).join('; ');
 }
 
 // ---- Row-level security ---------------------------------------------------------------------
@@ -209,7 +229,7 @@ export const MONITORS: Monitor[] = [
     async run() {
       const s = config().JWT_SECRET;
       const distinct = new Set(s).size;
-      const details = { length: s.length, distinctCharacters: distinct };
+      const details: MonitorDetails = { length: s.length, distinctCharacters: distinct };
       if (s.length < 32 || distinct < 12) return r('FAIL', 'The signing secret is too short or too repetitive.', 'Le secret de signature est trop court ou trop répétitif.', details);
       if (DEV_SECRET.test(s)) return isProd() ? r('FAIL', 'Production is using a development signing secret.', 'La production utilise un secret de signature de développement.', details) : r('WARN', 'A development signing secret is in use (fine here, never in production).', 'Un secret de signature de développement est utilisé (correct ici, jamais en production).', details);
       return r('PASS', `Signing secret: ${s.length} characters, random-looking.`, `Secret de signature : ${s.length} caractères, d’apparence aléatoire.`, details);
@@ -240,9 +260,9 @@ export const MONITORS: Monitor[] = [
     async run() {
       const x = await readiness({ strict: true });
       const { database, worker } = x.checks;
-      const details = { database: database.status, worker: worker.status, workerAgeS: worker.lastBeatAgeS ?? null };
+      const details: MonitorDetails = { database: database.status, worker: worker.status, workerAgeS: worker.lastBeatAgeS ?? null };
       if (database.status !== 'ok') return r('FAIL', 'The database isn’t answering.', 'La base de données ne répond pas.', details);
-      if (worker.status !== 'ok') return r('FAIL', `Background worker: ${worker.reason ?? 'not reporting'}.`, `Traitement en arrière-plan : ${worker.reason ?? 'aucun signal'}.`, details);
+      if (worker.status !== 'ok') return r('FAIL', `Background worker: ${worker.reason ?? 'not reporting'}.`, `Traitement en arrière-plan : ${worker.reason ? healthReasonFr(worker.reason) : 'aucun signal'}.`, details);
       return r('PASS', 'Database and background worker healthy.', 'Base de données et traitement en arrière-plan en bon état.', details);
     },
   },
@@ -250,8 +270,8 @@ export const MONITORS: Monitor[] = [
     key: 'outbox', title: 'Email and text backlog healthy', titleFr: 'File de courriels et de textos en bon état', everyMinutes: 5,
     async run() {
       const { outbox } = (await readiness({ strict: true })).checks;
-      const details = { oldestAgeS: outbox.oldestAgeS ?? null, oldestSafetyS: outbox.oldestSafetyS ?? null };
-      if (outbox.status !== 'ok') return r('FAIL', `Messages waiting: ${outbox.reason ?? 'backlog'}.`, `Messages en attente : ${outbox.reason ?? 'retard'}.`, details);
+      const details: MonitorDetails = { oldestAgeS: outbox.oldestAgeS ?? null, oldestSafetyS: outbox.oldestSafetyS ?? null };
+      if (outbox.status !== 'ok') return r('FAIL', `Messages waiting: ${outbox.reason ?? 'backlog'}.`, `Messages en attente : ${outbox.reason ? healthReasonFr(outbox.reason) : 'retard'}.`, details);
       return r('PASS', 'No email or text has waited too long.', 'Aucun courriel ni texto n’attend trop longtemps.', details);
     },
   },
@@ -387,7 +407,7 @@ export const MONITORS: Monitor[] = [
       const overdue = policies.filter((x) => x.nextReviewAt && x.nextReviewAt < now).map((x) => x.title);
       let missing = 0;
       for (const x of policies) for (const v of x.versions) missing += admins.filter((a) => !v.acks.some((k) => k.adminId === a.id)).length;
-      const details = { policies: policies.length, unpublished, reviewOverdue: overdue, acknowledgementsMissing: missing };
+      const details: MonitorDetails = { policies: policies.length, unpublished, reviewOverdue: overdue, acknowledgementsMissing: missing };
       if (overdue.length || unpublished.length || missing) return r('FAIL', `${unpublished.length} not yet published, ${overdue.length} past review, ${missing} acknowledgement(s) missing.`, `${unpublished.length} non publiée(s), ${overdue.length} à revoir, ${missing} acceptation(s) manquante(s).`, details);
       return r('PASS', `All ${policies.length} policies published, current and accepted by every admin.`, `Les ${policies.length} politiques sont publiées, à jour et acceptées par chaque administrateur.`, details);
     },
@@ -430,8 +450,7 @@ function timed<T>(p: Promise<T>): Promise<T> {
   });
 }
 
-/** Keys that look like secrets never reach a result, whatever a check returns. */
-const SECRETISH = /secret|token|password|dsn|key$|kek|arn|url/i;
+/** Keys that look like secrets (detailKeys.ts SECRETISH) never reach a result, whatever a check returns. */
 export function scrubDetails(d: Record<string, unknown> | undefined): Record<string, unknown> {
   if (!d) return {};
   return Object.fromEntries(Object.entries(d).filter(([k]) => !SECRETISH.test(k) || k === 'apiKeys'));

@@ -15,10 +15,12 @@ export interface Requirement {
   id: string;
   title: string;
   titleFr: string;
-  /** Grouping shown in the UI (e.g. "Common criteria", "Annex A 8"). */
+  /** Grouping shown in the UI (e.g. "Common criteria", "Annex A 8"), and in French. */
   group: string;
-  /** Doesn't apply to FH at all (shown, never counted). */
+  groupFr: string;
+  /** Doesn't apply to FH at all (shown, never counted), and why in French. */
   na?: string;
+  naFr?: string;
 }
 export interface Framework {
   key: FrameworkKey;
@@ -35,8 +37,38 @@ export interface Framework {
 }
 
 type Row = [id: string, en: string, fr: string];
-const reqs = (group: string, rows: Row[], na: Record<string, string> = {}): Requirement[] =>
-  rows.map(([id, title, titleFr]) => ({ id, title, titleFr, group, ...(na[id] ? { na: na[id] } : {}) }));
+/** Requirement groups in French (keyed by the English group). */
+export const GROUP_FR: Record<string, string> = {
+  'CC1 Control environment': 'CC1 Environnement de contrôle',
+  'CC2 Communication and information': 'CC2 Communication et information',
+  'CC3 Risk assessment': 'CC3 Évaluation des risques',
+  'CC4 Monitoring': 'CC4 Surveillance',
+  'CC5 Control activities': 'CC5 Activités de contrôle',
+  'CC6 Logical and physical access': 'CC6 Accès logique et physique',
+  'CC7 System operations': 'CC7 Exploitation des systèmes',
+  'CC8 Change management': 'CC8 Gestion des changements',
+  'CC9 Risk mitigation': 'CC9 Atténuation des risques',
+  'A1 Availability': 'A1 Disponibilité',
+  'C1 Confidentiality': 'C1 Confidentialité',
+  'P Privacy': 'P Protection de la vie privée',
+  'Clauses 4–10': 'Articles 4 à 10',
+  'Annex A 5 Organizational': 'Annexe A 5 Mesures organisationnelles',
+  'Annex A 6 People': 'Annexe A 6 Mesures liées aux personnes',
+  'Annex A 7 Physical': 'Annexe A 7 Mesures physiques',
+  'Annex A 8 Technological': 'Annexe A 8 Mesures technologiques',
+  '164.308 Administrative': '164.308 Mesures administratives',
+  '164.310 Physical': '164.310 Mesures physiques',
+  '164.312 Technical': '164.312 Mesures techniques',
+  '164.314–316 Organizational and documentation': '164.314 à 316 Organisation et documentation',
+  'Fair information principles': 'Principes relatifs à l’équité dans le traitement de l’information',
+  'British Columbia FIPPA': 'FIPPA (Colombie-Britannique)',
+  'Ontario MFIPPA': 'LAIMPVP (Ontario)',
+  'Alberta FOIP / POPA': 'FOIP / POPA (Alberta)',
+  'Quebec private-sector Act (Law 25)': 'Loi sur le secteur privé (Loi 25, Québec)',
+};
+type Na = Record<string, [en: string, fr: string]>;
+const reqs = (group: string, rows: Row[], na: Na = {}): Requirement[] =>
+  rows.map(([id, title, titleFr]) => ({ id, title, titleFr, group, groupFr: GROUP_FR[group] ?? group, ...(na[id] ? { na: na[id][0], naFr: na[id][1] } : {}) }));
 
 const SOC2: Requirement[] = [
   ...reqs('CC1 Control environment', [
@@ -279,7 +311,7 @@ const HIPAA: Requirement[] = [
     ['164.314(b)', 'Group health plan requirements', 'Exigences des régimes collectifs de santé'],
     ['164.316(a)', 'Policies and procedures', 'Politiques et procédures'],
     ['164.316(b)', 'Documentation kept six years and reviewed', 'Documentation conservée six ans et révisée'],
-  ], { '164.314(b)': 'FH is not a group health plan.' }),
+  ], { '164.314(b)': ['FH is not a group health plan.', 'FH n’est pas un régime d’assurance maladie collectif.'] }),
 ];
 
 const PIPEDA: Requirement[] = reqs('Fair information principles', [

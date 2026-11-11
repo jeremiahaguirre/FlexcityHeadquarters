@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTROLS, FRAMEWORKS, controlsFor, libraryProblems, type Control } from '../../src/services/trust/library.js';
-import { headerProblems, rlsLists, scrubDetails } from '../../src/services/trust/monitors.js';
+import { headerProblems, healthReasonFr, rlsLists, scrubDetails } from '../../src/services/trust/monitors.js';
 import { controlStatus, daysUntil, frameworkReadiness, nextDue, postureScore, readinessBand, reminderDue, riskLevel, riskScore, vendorRisk, vendorScore, type ControlStatus } from '../../src/services/trust/scoring.js';
 
 const now = new Date('2026-11-11T15:00:00Z');
@@ -36,6 +36,7 @@ describe('control library', () => {
   it('gives every control and requirement a French title', () => {
     for (const c of CONTROLS) expect(c.titleFr && c.descriptionFr, c.key).toBeTruthy();
     for (const f of FRAMEWORKS) for (const r of f.requirements) expect(r.titleFr, `${f.key}:${r.id}`).toBeTruthy();
+    for (const f of FRAMEWORKS) for (const r of f.requirements) expect(r.groupFr !== r.group && !!r.groupFr && (!r.na || !!r.naFr), `${f.key}:${r.id} group/na in French`).toBe(true);
   });
 });
 
@@ -138,6 +139,14 @@ describe('reminders and recurrence', () => {
 });
 
 describe('monitor helpers', () => {
+  it('puts health reasons in French', () => {
+    expect(healthReasonFr('no background worker connected')).toBe('aucun traitement en arrière-plan connecté');
+    expect(healthReasonFr('worker last reported 400s ago')).toBe('dernier signal du traitement il y a 400 s');
+    expect(healthReasonFr('safety texts waiting longer than 120s; email and sms waiting longer than 900s')).toBe('textos de sécurité en attente depuis plus de 120 s; courriels et textos en attente depuis plus de 900 s');
+    expect(healthReasonFr('worker heartbeat timed out')).toBe('signal du traitement : délai dépassé');
+    expect(healthReasonFr('something new')).toBe('something new');
+  });
+
   it('reads the RLS lists from rls.sql', () => {
     const l = rlsLists()!;
     expect(l.tenant).toContain('User');
