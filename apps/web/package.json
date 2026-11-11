@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build:demo": "NEXT_PUBLIC_DEMO=1 next build",
-    "demo:capture": "node scripts/capture-demo.cjs"
+    "demo:capture": "node scripts/capture-demo.cjs",
+    "test:e2e": "playwright test --trace off"
   },
   "dependencies": {
     "@simplewebauthn/browser": "13.3.0",
@@ -21,6 +22,7 @@
     "react-i18next": "15.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/node": "26.6.6",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",

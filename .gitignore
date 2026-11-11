@@ -11,3 +11,5 @@ coverage/
 *.tsbuildinfo
 out/
 apps/api/test/load/plan.json
+test-results/
+playwright-report/
