@@ -29,6 +29,14 @@ These are internal targets, to be confirmed by the drills below. They are not cu
 
 Nothing is written outside Canada, and the recovery copies are encrypted with keys created in Calgary.
 
+## To confirm with AWS before relying on this
+
+These AWS behaviours couldn't be checked against AWS's documentation or a real account while this was written. Confirm them when the infrastructure is first built, and record the answers here:
+
+- **Database backups to Calgary.** Copying RDS automated backups from `ca-central-1` to `ca-west-1` (`database.tf`). If that region pair isn't supported, use scheduled snapshot copies (AWS Backup) instead.
+- **Images in Calgary.** The repositories ECR creates there by replication: their encryption, tag immutability and scanning settings. The lifecycle policy is not replicated.
+- **Key copies.** How long a copied key (ReplicateKey) takes to become usable in Calgary. The app waits up to a minute before naming it there.
+
 ## Runbooks
 
 ### A. A zone fails
