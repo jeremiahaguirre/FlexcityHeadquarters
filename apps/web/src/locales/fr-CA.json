@@ -7578,7 +7578,8 @@
       "showPercent": "{{n}} % du taux",
       "title": "Primes de quart",
       "to": "À",
-      "unit": "Versée en"
+      "unit": "Versée en",
+      "holidaysOnlyHelp": "Versée en plus de la paie de jour férié que la paie applique déjà pour le travail ce jour-là. Ne l’utilisez que pour ce que votre convention ajoute; une prime qui reprend celle de la loi la paie deux fois."
     },
     "saved": "Règles de travail enregistrées.",
     "standby": {

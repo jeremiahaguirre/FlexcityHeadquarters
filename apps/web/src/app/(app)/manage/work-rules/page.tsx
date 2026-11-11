@@ -181,7 +181,7 @@ function PremiumDialog({ rule, open, onClose, onSave, data }: { rule: PremiumRul
           </div>
           <p className="text-caption text-muted">{t('workRules.premiums.daysHelp')}</p>
         </fieldset>
-        <Check checked={r.holidaysOnly} onChange={(c) => setR({ ...r, holidaysOnly: c })} label={t('workRules.premiums.holidaysOnly')} />
+        <Check checked={r.holidaysOnly} onChange={(c) => setR({ ...r, holidaysOnly: c })} label={t('workRules.premiums.holidaysOnly')} help={t('workRules.premiums.holidaysOnlyHelp')} />
         <div className="grid grid-cols-2 gap-3">
           <Field label={t('workRules.premiums.unit')}>
             {(p) => (

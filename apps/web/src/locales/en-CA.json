@@ -7578,7 +7578,8 @@
       "showPercent": "{{n}}% of the rate",
       "title": "Shift premiums",
       "to": "To",
-      "unit": "Paid as"
+      "unit": "Paid as",
+      "holidaysOnlyHelp": "Paid on top of the statutory holiday pay payroll already applies for working the holiday. Use it only for what your agreement adds; a premium that repeats the law’s pays it twice."
     },
     "saved": "Work rules saved.",
     "standby": {
