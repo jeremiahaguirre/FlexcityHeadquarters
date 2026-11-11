@@ -64,8 +64,8 @@ export function AppClips({ clips, lang, labels }: { clips: Clip[]; lang: 'en' | 
           return (
             <li key={c.key} className="grid content-start gap-4">
               <div className={cn('mx-auto w-full max-w-[17rem] overflow-hidden rounded-[2rem] border-[6px] shadow-lift transition-colors', scheme === 'dark' ? 'border-[#1d2a2c] bg-[#0b1416]' : 'border-[#0B1F22] bg-white')}>
-                {/* key: a new source when the theme changes */}
-                <video key={base} className="block aspect-[390/760] w-full" poster={`${base}.jpg`} muted loop playsInline preload="none" autoPlay={playing} aria-label={c.title}>
+                {/* key: a new source when the theme changes, faded in rather than swapped */}
+                <video key={base} className="clip-fade block aspect-[390/760] w-full" poster={`${base}.jpg`} muted loop playsInline preload="none" autoPlay={playing} aria-label={c.title}>
                   <source src={`${base}.mp4`} type="video/mp4" />
                 </video>
               </div>
