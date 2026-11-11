@@ -18,10 +18,57 @@ export interface Review {
   hasExclusions: boolean;
 }
 
+/** Where an event stands for the score now (it always stays on the record). */
+export type EventStatus = 'COUNTED' | 'FADING' | 'EXCUSED' | 'PROTECTED' | 'RESTARTED' | 'AGED_OUT';
+export type RecoveryMode = 'GRADUAL' | 'RESET' | 'BOTH';
+
+/** One explained change to the score; `applied` is what it actually moved (the score stays between 0 and 100). */
+export interface ScoreChange {
+  kind: 'EVENT' | 'ON_TIME' | 'STREAK' | 'CLEAN' | 'COMMENDATION' | 'RESTART';
+  at: string;
+  points: number;
+  applied: number;
+  eventId?: string;
+  eventType?: string;
+  basePoints?: number;
+  fading?: boolean;
+  month?: string;
+  count?: number;
+  days?: number;
+  noteId?: string;
+}
+
+export interface ScoreRules {
+  windowDays: number;
+  fullWeightDays: number;
+  fadedWeight: number;
+  onTimeShift: number;
+  onTimeShiftMonthlyCap: number;
+  streakLength: number;
+  streakBonus: number;
+  cleanDays: number;
+  cleanBonus: number;
+  commendation: number;
+  commendationMonthlyCap: number;
+}
+
+export interface ReliabilityExplain {
+  mode: RecoveryMode;
+  countsFrom: string;
+  restartedAt: string | null;
+  nextRestartAt: string | null;
+  streak: number;
+  changes: ScoreChange[];
+  rules: ScoreRules;
+}
+
 export interface FileEvent {
   id: string;
   type: string;
+  /** What it counts for now (half once fading). */
   points: number;
+  basePoints?: number;
+  status?: EventStatus;
   occurredAt: string;
   note: string | null;
   counted: boolean;
@@ -64,6 +111,8 @@ export interface CaseFile {
   /** The viewer isn't HR: only records they made themselves are shown. */
   onlyMine?: boolean;
   score: number;
+  /** How the score got here (older demo data may not have it). */
+  reliability?: ReliabilityExplain;
   review: Review;
   events: FileEvent[];
   notes: FileNote[];

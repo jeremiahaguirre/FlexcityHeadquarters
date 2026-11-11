@@ -14,6 +14,7 @@ import { formatDate } from '@/lib/format';
 import { type CaseFile, dayOf } from '@/lib/people';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { RecordRow, scoreTone } from './CaseFilePanel';
+import { EventStanding, ScoreExplain, eventNote } from './ScoreExplain';
 
 /** The employee's own file: the same facts a manager sees, how it's used, and their right to respond. */
 export function MyFile() {
@@ -48,6 +49,9 @@ export function MyFile() {
             </StatusPill>
           </div>
           <p className="mt-2 text-caption text-muted">{t('profile.reliabilityHelp')}</p>
+          <div className="mt-4">
+            <ScoreExplain r={f.reliability} mine />
+          </div>
         </div>
         <div className="grid min-w-0 gap-5">
           <section>
@@ -59,9 +63,10 @@ export function MyFile() {
                     <span className="min-w-0">
                       {t(`profile.events.${e.type}`)} · <span className="text-muted">{date(e.occurredAt)}</span>
                       {e.note ? <span className="block text-caption text-muted">{e.note}</span> : null}
-                      {e.excludedReason ? <span className="block text-caption">{t('people.excusedBecause', { reason: e.excludedReason })}</span> : null}
+                      {e.excludedReason && e.status !== 'PROTECTED' ? <span className="block text-caption">{t('people.excusedBecause', { reason: e.excludedReason })}</span> : null}
+                      {eventNote(e, t) ? <span className="block text-caption">{eventNote(e, t)}</span> : null}
                     </span>
-                    {e.counted ? <span className={`tabular-nums font-semibold ${e.points < 0 ? 'text-warn' : 'text-ok'}`}>{e.points > 0 ? `+${e.points}` : e.points}</span> : <StatusPill tone="neutral">{t('people.excused')}</StatusPill>}
+                    <EventStanding e={e} />
                   </li>
                 ))}
               </ul>

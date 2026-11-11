@@ -774,7 +774,7 @@
     "reliability": "Fiabilité",
     "reliabilityHelp": "À titre indicatif seulement : jamais utilisée pour planifier ou sanctionner automatiquement. Les congés de maladie et protégés ne comptent jamais.",
     "outOf100": "sur 100",
-    "noEvents": "Rien d’inscrit dans les 90 derniers jours.",
+    "noEvents": "Rien d’inscrit dans les 12 derniers mois.",
     "excluded_one": "{{count}} événement exclu (congé protégé ou motivé).",
     "excluded_other": "{{count}} événements exclus (congé protégé ou motivé).",
     "events": {
@@ -2764,7 +2764,7 @@
     "saveResponse": "Enregistrer ma réponse",
     "responseSaved": "Votre réponse est au dossier.",
     "how": [
-      "Votre score d’assiduité commence à 100 et couvre les 90 derniers jours. Les retards au pointage, les quarts manqués et les quarts cédés moins de 24 heures à l’avance le font baisser; prendre des quarts le fait monter.",
+      "Votre score d’assiduité commence à 100. Les retards au pointage, les quarts manqués et les quarts cédés moins de 24 heures à l’avance le font baisser; prendre des quarts le fait monter. Il remonte avec une bonne assiduité (quarts à l’heure, séries, 30 jours sans rien de compté, mentions d’éloge), les déductions plus anciennes s’estompent, et votre organisation peut aussi le remettre à zéro une fois par année. Chaque changement est indiqué dans votre dossier.",
       "Les congés de maladie et les congés protégés ne comptent jamais. Un superviseur peut excuser tout autre événement avec une raison, que vous voyez.",
       "Les superviseurs peuvent ajouter des notes sur votre travail, y compris des mentions d’éloge. Vous êtes avisé chaque fois et voyez exactement ce qui est écrit.",
       "Le score et les notes aident seulement les gestionnaires à voir quand une discussion pourrait aider. Rien ne planifie, ne sanctionne ni ne met fin à votre emploi automatiquement; une personne décide, et vous pouvez toujours répondre par écrit.",
@@ -5781,7 +5781,8 @@
       "incidents": "Incidents par installation",
       "lone_work": "Travail isolé",
       "policies_unsigned": "Politiques pas encore signées",
-      "expenses": "Demandes de remboursement payées"
+      "expenses": "Demandes de remboursement payées",
+      "reliability": "Fiabilité (à titre indicatif)"
     },
     "about": {
       "hours_worked": "Pointages approuvés : quarts et heures par personne.",
@@ -5792,7 +5793,8 @@
       "incidents": "Rapports d’incident par installation et par type.",
       "lone_work": "Séances, vérifications manquées, escalades et demandes d’aide.",
       "policies_unsigned": "Pour chaque politique en vigueur : combien l’ont signée, combien pas encore.",
-      "expenses": "Demandes approuvées et payées : kilomètres et montants par personne."
+      "expenses": "Demandes approuvées et payées : kilomètres et montants par personne.",
+      "reliability": "Le score indicatif de chaque personne à la fin de la période, avec ce qui l’a fait baisser et monter pendant la période. Le même score que dans son dossier."
     },
     "columns": {
       "person": "Personne",
@@ -5822,7 +5824,11 @@
       "signed": "Signée",
       "waiting": "Pas encore",
       "claims": "Demandes",
-      "km": "Km"
+      "km": "Km",
+      "score": "Score",
+      "deductions": "Déductions",
+      "credits": "Regagné",
+      "notCounted": "Excusé ou protégé"
     }
   },
   "noAccess": {
@@ -6012,5 +6018,69 @@
     "events_other": "{{count}} types d’événements",
     "lastSuccess": "dernière livraison le {{time}}",
     "noWebhooks": "Aucun webhook configuré"
+  },
+  "reliability": {
+    "title": "Ce qui a fait bouger le score",
+    "mode": {
+      "GRADUAL": "Couvre les {{days}} derniers jours. Les déductions comptent en entier pendant {{full}} jours, puis à moitié, et une bonne assiduité permet de regagner des points.",
+      "RESET": "Couvre tout depuis le {{since}}, en entier. Le score repart à 100 le {{next}}.",
+      "BOTH": "Couvre les {{days}} derniers jours, jamais avant la remise à zéro annuelle, et une bonne assiduité permet de regagner des points. Le score repart à 100 le {{next}}."
+    },
+    "change": {
+      "ON_TIME_one": "{{count}} quart à l’heure en {{month}}",
+      "ON_TIME_other": "{{count}} quarts à l’heure en {{month}}",
+      "STREAK_one": "{{count}} quart de suite à l’heure",
+      "STREAK_other": "{{count}} quarts de suite à l’heure",
+      "CLEAN_one": "{{count}} jour sans rien de compté",
+      "CLEAN_other": "{{count}} jours sans rien de compté",
+      "COMMENDATION": "Mention d’éloge",
+      "RESTART": "Score remis à zéro le {{date}}"
+    },
+    "fadingShort": "S’estompe : compte à moitié après {{days}} jours",
+    "fadingNote": "S’estompe : comptait {{full}} au début, maintenant {{now}}.",
+    "protectedNote": "Chevauche un congé de maladie ou un congé protégé : ne compte jamais.",
+    "restartedNote": "Avant la remise à zéro annuelle : reste au dossier, mais ne compte plus.",
+    "agedOutNote": "Plus ancien que la période couverte par le score : reste au dossier, mais ne compte plus.",
+    "capNote": "+1 pour chacun, jusqu’à +{{cap}} par mois",
+    "atCap": "(le score ne dépasse jamais 100)",
+    "streak_one": "{{count}} quart de suite à l’heure. Encore {{left}} pour un boni de +{{bonus}}.",
+    "streak_other": "{{count}} quarts de suite à l’heure. Encore {{left}} pour un boni de +{{bonus}}.",
+    "streakMine_one": "Belle série : {{count}} quart à l’heure. Encore {{left}} pour un boni de +{{bonus}}.",
+    "streakMine_other": "Belle série : {{count}} quarts à l’heure. Encore {{left}} pour un boni de +{{bonus}}.",
+    "nothing": "Rien n’a fait bouger le score : il est à 100.",
+    "showAll": "Afficher les {{count}} changements",
+    "showFewer": "Afficher moins",
+    "status": {
+      "COUNTED": "Compte",
+      "FADING": "S’estompe",
+      "EXCUSED": "Excusé",
+      "PROTECTED": "Congé protégé",
+      "RESTARTED": "Avant la remise à zéro",
+      "AGED_OUT": "Ne compte plus"
+    },
+    "settings": {
+      "title": "Score de fiabilité",
+      "help": "Comment le score d’assiduité, à titre indicatif, se rétablit. Il aide seulement les gestionnaires à voir quand une discussion pourrait aider : rien n’est planifié ni sanctionné automatiquement.",
+      "how": "Comment le score se rétablit",
+      "default": "par défaut",
+      "modes": {
+        "GRADUAL": "Se rétablir graduellement avec un bon comportement",
+        "RESET": "Remettre à zéro chaque année",
+        "BOTH": "Les deux"
+      },
+      "modeHelp": {
+        "GRADUAL": "Couvre {{days}} jours. Les déductions comptent à moitié après {{full}} jours. Chaque quart à l’heure rapporte +{{onTime}} (jusqu’à +{{cap}} par mois), chaque série de {{streak}} à l’heure +{{bonus}}, et {{clean}} jours sans rien de compté +{{cleanBonus}}.",
+        "RESET": "Tout ce qui suit la date de remise à zéro compte en entier, et le score repart à 100 à cette date chaque année.",
+        "BOTH": "Se rétablit graduellement avec une bonne assiduité, et repart aussi à 100 à la date de remise à zéro chaque année."
+      },
+      "month": "Mois de la remise à zéro",
+      "day": "Jour",
+      "dateHelp": "Le 1er janvier, ou le début de votre exercice ou de votre saison (par exemple après la saison estivale).",
+      "leap": "Les années sans 29 février, la remise à zéro a lieu le 28 février.",
+      "next": "Dernière remise à zéro : {{last}}. Prochaine : {{next}}.",
+      "records": "Les congés de maladie et les congés protégés ne comptent jamais. Les événements antérieurs restent toujours au dossier de chaque personne, et les mesures disciplinaires sont distinctes et ne changent jamais.",
+      "save": "Enregistrer",
+      "saved": "Paramètres de fiabilité enregistrés"
+    }
   }
 }

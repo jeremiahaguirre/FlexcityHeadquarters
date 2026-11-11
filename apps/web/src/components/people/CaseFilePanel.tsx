@@ -17,6 +17,7 @@ import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { emptySections } from '@/lib/recordSections';
 import { RecordText } from './RecordText';
+import { EventStanding, ScoreExplain, eventNote } from './ScoreExplain';
 
 type Item = { at: string; key: string; node: ReactNode };
 const toLocalInput = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -52,17 +53,12 @@ export function CaseFilePanel({ userId, name, unionMember }: { userId: string; n
           icon={e.type === 'NO_SHOW' || e.type === 'MISSED_IN_SERVICE' ? <CalendarX2 className="h-4 w-4" /> : <Clock className="h-4 w-4" />}
           title={t(`profile.events.${e.type}`)}
           meta={`${date(e.occurredAt)} · ${t(`people.source.${e.source}`)}`}
-          tail={
-            e.counted ? (
-              <span className={`tabular-nums text-small font-semibold ${e.points < 0 ? 'text-warn' : 'text-ok'}`}>{e.points > 0 ? `+${e.points}` : e.points}</span>
-            ) : (
-              <StatusPill tone="neutral">{t('people.excused')}</StatusPill>
-            )
-          }
+          tail={<EventStanding e={e} />}
           muted={!e.counted}
         >
           {e.note ? <p>{e.note}</p> : null}
-          {e.excludedReason ? <p className="text-muted">{t('people.excusedBecause', { reason: e.excludedReason })}</p> : null}
+          {e.excludedReason && e.status !== 'PROTECTED' ? <p className="text-muted">{t('people.excusedBecause', { reason: e.excludedReason })}</p> : null}
+          {eventNote(e, t) ? <p className="text-muted">{eventNote(e, t)}</p> : null}
           {write && e.counted && e.points < 0 ? (
             <button type="button" className="mt-1 justify-self-start text-caption font-semibold text-brand-text hover:underline" onClick={() => setReasonFor({ kind: 'excuse', id: e.id })}>
               {t('people.excuse')}
@@ -137,6 +133,9 @@ export function CaseFilePanel({ userId, name, unionMember }: { userId: string; n
               </StatusPill>
             </div>
             {review.commendations90 ? <p className="mt-1 flex items-center gap-1.5 text-small text-ok"><Award className="h-4 w-4" aria-hidden="true" />{t('people.commendations', { count: review.commendations90 })}</p> : null}
+            <div className="mt-4">
+              <ScoreExplain r={f.reliability} />
+            </div>
           </div>
           {review.flags.length ? (
             <div className="rounded-2xl border border-warn/40 bg-warn-bg/50 p-4">

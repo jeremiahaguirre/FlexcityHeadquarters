@@ -774,7 +774,7 @@
     "reliability": "Reliability",
     "reliabilityHelp": "Advisory only: never used to schedule or discipline automatically. Sick days and protected leave never count.",
     "outOf100": "out of 100",
-    "noEvents": "Nothing recorded in the last 90 days.",
+    "noEvents": "Nothing recorded in the last 12 months.",
     "excluded_one": "{{count}} event excluded (protected leave or excused).",
     "excluded_other": "{{count}} events excluded (protected leave or excused).",
     "events": {
@@ -2764,7 +2764,7 @@
     "saveResponse": "Save my response",
     "responseSaved": "Your response is on the record.",
     "how": [
-      "Your attendance score starts at 100 and covers the last 90 days. Late clock-ins, missed shifts and giving away a shift with under 24 hours' notice lower it; picking up shifts raises it.",
+      "Your attendance score starts at 100. Late clock-ins, missed shifts and giving away a shift with under 24 hours’ notice lower it; picking up shifts raises it. It climbs back with good attendance (on-time shifts, streaks, 30 days with nothing counted, commendations), older deductions fade, and your organization may also restart it once a year. Every change is listed on your file.",
       "Sick days and protected leave never count. A supervisor can excuse anything else with a reason, and the reason stays visible to you.",
       "Supervisors can add notes about your work, including commendations. You're notified each time and see exactly what they wrote.",
       "The score and notes only help managers notice when a conversation may help. Nothing schedules, disciplines or ends your employment automatically; a person decides, and you can always respond in writing.",
@@ -5781,7 +5781,8 @@
       "incidents": "Incidents by facility",
       "lone_work": "Working alone",
       "policies_unsigned": "Policies not yet signed",
-      "expenses": "Expense claims paid"
+      "expenses": "Expense claims paid",
+      "reliability": "Reliability (advisory)"
     },
     "about": {
       "hours_worked": "Approved punches: shifts and hours per person.",
@@ -5792,7 +5793,8 @@
       "incidents": "Incident reports by facility and type.",
       "lone_work": "Sessions, missed check-ins, escalations and calls for help.",
       "policies_unsigned": "Each live policy: how many signed, how many haven’t.",
-      "expenses": "Approved and paid claims: kilometres and amounts per person."
+      "expenses": "Approved and paid claims: kilometres and amounts per person.",
+      "reliability": "Each person’s advisory score at the end of the period, with what lowered and raised it during the period. Same score as their file."
     },
     "columns": {
       "person": "Person",
@@ -5822,7 +5824,11 @@
       "signed": "Signed",
       "waiting": "Not yet",
       "claims": "Claims",
-      "km": "Km"
+      "km": "Km",
+      "score": "Score",
+      "deductions": "Deductions",
+      "credits": "Earned back",
+      "notCounted": "Excused or protected"
     }
   },
   "noAccess": {
@@ -6012,5 +6018,69 @@
     "events_other": "{{count}} event types",
     "lastSuccess": "last delivered {{time}}",
     "noWebhooks": "No webhooks set up"
+  },
+  "reliability": {
+    "title": "How the score got here",
+    "mode": {
+      "GRADUAL": "Counts the last {{days}} days. Deductions count in full for {{full}} days, then at half, and good attendance earns points back.",
+      "RESET": "Counts everything since {{since}}, in full. The score starts again at 100 on {{next}}.",
+      "BOTH": "Counts the last {{days}} days, never before the yearly restart, and good attendance earns points back. The score starts again at 100 on {{next}}."
+    },
+    "change": {
+      "ON_TIME_one": "{{count}} shift on time in {{month}}",
+      "ON_TIME_other": "{{count}} shifts on time in {{month}}",
+      "STREAK_one": "{{count}} shift in a row on time",
+      "STREAK_other": "{{count}} shifts in a row on time",
+      "CLEAN_one": "{{count}} day with nothing counted",
+      "CLEAN_other": "{{count}} days with nothing counted",
+      "COMMENDATION": "Commendation",
+      "RESTART": "Score restarted on {{date}}"
+    },
+    "fadingShort": "Fading: counts half after {{days}} days",
+    "fadingNote": "Fading: counted {{full}} at first, now {{now}}.",
+    "protectedNote": "Overlaps sick days or protected leave, so it never counts.",
+    "restartedNote": "Before the yearly restart: it stays on the record but no longer counts.",
+    "agedOutNote": "Older than the score looks back: it stays on the record but no longer counts.",
+    "capNote": "+1 for each, up to +{{cap}} a month",
+    "atCap": "(the score stays at or below 100)",
+    "streak_one": "{{count}} shift in a row on time. {{left}} more for a +{{bonus}} bonus.",
+    "streak_other": "{{count}} shifts in a row on time. {{left}} more for a +{{bonus}} bonus.",
+    "streakMine_one": "You’re on a streak: {{count}} shift on time. {{left}} more for a +{{bonus}} bonus.",
+    "streakMine_other": "You’re on a streak: {{count}} shifts on time. {{left}} more for a +{{bonus}} bonus.",
+    "nothing": "Nothing has changed the score: it’s at 100.",
+    "showAll": "Show all {{count}} changes",
+    "showFewer": "Show fewer",
+    "status": {
+      "COUNTED": "Counts",
+      "FADING": "Fading",
+      "EXCUSED": "Excused",
+      "PROTECTED": "Protected leave",
+      "RESTARTED": "Before the restart",
+      "AGED_OUT": "No longer counts"
+    },
+    "settings": {
+      "title": "Reliability score",
+      "help": "How the advisory attendance score recovers. It only helps managers notice when a conversation may help: nothing is scheduled or disciplined automatically.",
+      "how": "How the score recovers",
+      "default": "default",
+      "modes": {
+        "GRADUAL": "Recover gradually with good behaviour",
+        "RESET": "Reset every year",
+        "BOTH": "Both"
+      },
+      "modeHelp": {
+        "GRADUAL": "Looks back {{days}} days. Deductions count half after {{full}} days. On-time shifts earn +{{onTime}} (up to +{{cap}} a month), every {{streak}} on time in a row +{{bonus}}, and {{clean}} days with nothing counted +{{cleanBonus}}.",
+        "RESET": "Everything since the restart date counts in full, and the score starts again at 100 on that date each year.",
+        "BOTH": "Recovers gradually with good attendance, and also starts again at 100 on the restart date each year."
+      },
+      "month": "Restart month",
+      "day": "Day",
+      "dateHelp": "January 1, or the start of your fiscal or season year (for example after the summer season).",
+      "leap": "In years without February 29, the restart is on February 28.",
+      "next": "Last restart {{last}}. Next restart {{next}}.",
+      "records": "Sick days and protected leave never count. Earlier events always stay on each person’s record as history, and discipline records are separate and never change.",
+      "save": "Save",
+      "saved": "Reliability settings saved"
+    }
   }
 }
