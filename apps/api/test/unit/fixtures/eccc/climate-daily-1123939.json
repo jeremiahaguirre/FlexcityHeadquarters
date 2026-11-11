@@ -1,0 +1,51 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "CLIMATE_IDENTIFIER": "1123939",
+    "LOCAL_DATE": "2026-07-12 00:00:00",
+    "MAX_TEMPERATURE": 33.1,
+    "MIN_TEMPERATURE": 15.2,
+    "TOTAL_PRECIPITATION": 0,
+    "TOTAL_RAIN": 0,
+    "TOTAL_SNOW": 0
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "CLIMATE_IDENTIFIER": "1123939",
+    "LOCAL_DATE": "2026-07-13 00:00:00",
+    "MAX_TEMPERATURE": 21.0,
+    "MIN_TEMPERATURE": 12.0,
+    "TOTAL_PRECIPITATION": 8.4,
+    "TOTAL_RAIN": 8.4,
+    "TOTAL_SNOW": 0
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "CLIMATE_IDENTIFIER": "1123939",
+    "LOCAL_DATE": "2026-07-14 00:00:00",
+    "MAX_TEMPERATURE": null,
+    "MIN_TEMPERATURE": null,
+    "TOTAL_PRECIPITATION": null
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "CLIMATE_IDENTIFIER": "1123939",
+    "LOCAL_DATE": "2026-01-05 00:00:00",
+    "MAX_TEMPERATURE": -4.0,
+    "MIN_TEMPERATURE": -11.0,
+    "TOTAL_PRECIPITATION": 6.0,
+    "TOTAL_RAIN": 0,
+    "TOTAL_SNOW": 7.5
+   }
+  }
+ ]
+}

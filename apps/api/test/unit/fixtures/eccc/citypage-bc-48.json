@@ -1,0 +1,526 @@
+{
+ "type": "Feature",
+ "id": "bc-48",
+ "geometry": {
+  "type": "Point",
+  "coordinates": [
+   -119.496,
+   49.888
+  ]
+ },
+ "properties": {
+  "identifier": "bc-48",
+  "name": {
+   "en": "Kelowna",
+   "fr": "Kelowna"
+  },
+  "region": {
+   "en": "Okanagan Valley",
+   "fr": "Vallée de l'Okanagan"
+  },
+  "lastUpdated": "2026-07-15T18:00:00Z",
+  "url": {
+   "en": "https://weather.gc.ca/city/pages/bc-48_metric_e.html",
+   "fr": "https://meteo.gc.ca/city/pages/bc-48_metric_f.html"
+  },
+  "currentConditions": {
+   "temperature": {
+    "value": {
+     "en": 29.4,
+     "fr": 29.4
+    }
+   }
+  },
+  "forecastGroup": {
+   "timestamp": "2026-07-15T18:00:00Z",
+   "forecasts": [
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Today",
+       "fr": "Aujourd'hui"
+      },
+      "value": {
+       "en": "Wednesday",
+       "fr": "mercredi"
+      }
+     },
+     "textSummary": {
+      "en": "Sunny. Details.",
+      "fr": "Ensoleillé. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/00.gif",
+       "value": 0
+      },
+      "pop": {
+       "value": {
+        "en": "",
+        "fr": ""
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Sunny",
+       "fr": "Ensoleillé"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "High 31.",
+       "fr": "31."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "high",
+         "fr": "max"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 31,
+         "fr": 31
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Tonight",
+       "fr": "Ce soir et cette nuit"
+      },
+      "value": {
+       "en": "Wednesday night",
+       "fr": "mercredi soir et nuit"
+      }
+     },
+     "textSummary": {
+      "en": "Clear. Details.",
+      "fr": "Dégagé. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/30.gif",
+       "value": 30
+      },
+      "pop": {
+       "value": {
+        "en": "",
+        "fr": ""
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Clear",
+       "fr": "Dégagé"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "Low 16.",
+       "fr": "16."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "low",
+         "fr": "min"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 16,
+         "fr": 16
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Thursday",
+       "fr": "jeudi"
+      },
+      "value": {
+       "en": "Thursday",
+       "fr": "jeudi"
+      }
+     },
+     "textSummary": {
+      "en": "Chance of showers. Details.",
+      "fr": "Possibilité d'averses. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/06.gif",
+       "value": 6
+      },
+      "pop": {
+       "value": {
+        "en": 60,
+        "fr": 60
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Chance of showers",
+       "fr": "Possibilité d'averses"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "High 24.",
+       "fr": "24."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "high",
+         "fr": "max"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 24,
+         "fr": 24
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Thursday night",
+       "fr": "jeudi soir et nuit"
+      },
+      "value": {
+       "en": "Thursday night",
+       "fr": "jeudi soir et nuit"
+      }
+     },
+     "textSummary": {
+      "en": "Showers or thunderstorms. Details.",
+      "fr": "Averses ou orages. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/39.gif",
+       "value": 39
+      },
+      "pop": {
+       "value": {
+        "en": 70,
+        "fr": 70
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Showers or thunderstorms",
+       "fr": "Averses ou orages"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "Low 14.",
+       "fr": "14."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "low",
+         "fr": "min"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 14,
+         "fr": 14
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Friday",
+       "fr": "vendredi"
+      },
+      "value": {
+       "en": "Friday",
+       "fr": "vendredi"
+      }
+     },
+     "textSummary": {
+      "en": "Chance of thunderstorms. Details.",
+      "fr": "Risque d'orages. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/19.gif",
+       "value": 19
+      },
+      "pop": {
+       "value": {
+        "en": 70,
+        "fr": 70
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Chance of thunderstorms",
+       "fr": "Risque d'orages"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "High 27.",
+       "fr": "27."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "high",
+         "fr": "max"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 27,
+         "fr": 27
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Friday night",
+       "fr": "vendredi soir et nuit"
+      },
+      "value": {
+       "en": "Friday night",
+       "fr": "vendredi soir et nuit"
+      }
+     },
+     "textSummary": {
+      "en": "Cloudy periods. Details.",
+      "fr": "Passages nuageux. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/33.gif",
+       "value": 33
+      },
+      "pop": {
+       "value": {
+        "en": "",
+        "fr": ""
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Cloudy periods",
+       "fr": "Passages nuageux"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "Low 13.",
+       "fr": "13."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "low",
+         "fr": "min"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 13,
+         "fr": 13
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Saturday",
+       "fr": "samedi"
+      },
+      "value": {
+       "en": "Saturday",
+       "fr": "samedi"
+      }
+     },
+     "textSummary": {
+      "en": "Rain. Details.",
+      "fr": "Pluie. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/12.gif",
+       "value": 12
+      },
+      "pop": {
+       "value": {
+        "en": 80,
+        "fr": 80
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Rain",
+       "fr": "Pluie"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "High 18.",
+       "fr": "18."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "high",
+         "fr": "max"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 18,
+         "fr": 18
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Saturday night",
+       "fr": "samedi soir et nuit"
+      },
+      "value": {
+       "en": "Saturday night",
+       "fr": "samedi soir et nuit"
+      }
+     },
+     "textSummary": {
+      "en": "Cloudy periods. Details.",
+      "fr": "Passages nuageux. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/32.gif",
+       "value": 32
+      },
+      "pop": {
+       "value": {
+        "en": "",
+        "fr": ""
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "Cloudy periods",
+       "fr": "Passages nuageux"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "Low 9.",
+       "fr": "9."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "low",
+         "fr": "min"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 9,
+         "fr": 9
+        }
+       }
+      ]
+     }
+    },
+    {
+     "period": {
+      "textForecastName": {
+       "en": "Sunday",
+       "fr": "dimanche"
+      },
+      "value": {
+       "en": "Sunday",
+       "fr": "dimanche"
+      }
+     },
+     "textSummary": {
+      "en": "A mix of sun and cloud. Details.",
+      "fr": "Alternance de soleil et de nuages. Détails."
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "format": "gif",
+       "url": "https://weather.gc.ca/weathericons/02.gif",
+       "value": 2
+      },
+      "pop": {
+       "value": {
+        "en": "",
+        "fr": ""
+       },
+       "units": "%"
+      },
+      "textSummary": {
+       "en": "A mix of sun and cloud",
+       "fr": "Alternance de soleil et de nuages"
+      }
+     },
+     "temperatures": {
+      "textSummary": {
+       "en": "High 22.",
+       "fr": "22."
+      },
+      "temperature": [
+       {
+        "class": {
+         "en": "high",
+         "fr": "max"
+        },
+        "unitType": "metric",
+        "units": "C",
+        "value": {
+         "en": 22,
+         "fr": 22
+        }
+       }
+      ]
+     }
+    }
+   ]
+  }
+ }
+}

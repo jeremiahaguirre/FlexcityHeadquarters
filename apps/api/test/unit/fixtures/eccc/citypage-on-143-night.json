@@ -1,0 +1,56 @@
+{
+ "type": "Feature",
+ "id": "on-143",
+ "geometry": {
+  "type": "Point",
+  "coordinates": [
+   -79.4,
+   43.74
+  ]
+ },
+ "properties": {
+  "identifier": "on-143",
+  "name": "Toronto",
+  "forecastGroup": {
+   "timestamp": "2026-01-10T03:30:00Z",
+   "forecasts": [
+    {
+     "period": {
+      "textForecastName": "Tonight",
+      "value": "Friday night"
+     },
+     "abbreviatedForecast": {
+      "icon": {
+       "value": "17"
+      },
+      "pop": {
+       "value": "40"
+      },
+      "textSummary": "Periods of snow"
+     },
+     "temperatures": {
+      "temperature": {
+       "class": "low",
+       "value": "-8"
+      }
+     }
+    },
+    {
+     "period": {
+      "textForecastName": "Saturday",
+      "value": "Saturday"
+     },
+     "abbreviatedForecast": {
+      "textSummary": "Mainly cloudy"
+     },
+     "temperatures": {
+      "temperature": {
+       "class": "high",
+       "value": "-3"
+      }
+     }
+    }
+   ]
+  }
+ }
+}

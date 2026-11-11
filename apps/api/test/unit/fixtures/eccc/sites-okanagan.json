@@ -1,0 +1,61 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "id": "bc-48",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -119.496,
+     49.888
+    ]
+   },
+   "properties": {
+    "identifier": "bc-48",
+    "name": {
+     "en": "Kelowna",
+     "fr": "Kelowna"
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "bc-27",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -119.272,
+     50.267
+    ]
+   },
+   "properties": {
+    "identifier": "bc-27",
+    "name": {
+     "en": "Vernon",
+     "fr": "Vernon"
+    }
+   }
+  },
+  {
+   "type": "Feature",
+   "id": "bc-84",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -119.593,
+     49.499
+    ]
+   },
+   "properties": {
+    "identifier": "bc-84",
+    "name": {
+     "en": "Penticton",
+     "fr": "Penticton"
+    }
+   }
+  }
+ ],
+ "numberMatched": 3,
+ "numberReturned": 3
+}
