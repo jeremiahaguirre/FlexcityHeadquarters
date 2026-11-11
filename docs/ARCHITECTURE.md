@@ -36,7 +36,7 @@ The original single `role` field conflated *what you may do in the app* with *wh
 
 ### Eligibility (`services/scheduling/eligibility.ts`)
 
-A pure function decides whether a person may work a shift and explains every refusal. The database loader does coarse filtering in SQL; the pure function makes the final decision. The Shift Board, the scheduling assistant, Fill the schedule and supervisor approvals all use the same function.
+A pure function decides whether a person may work a shift and explains every refusal. The database loader does coarse filtering in SQL; the pure function makes the final decision. The Shift Board, the scheduling assistant, Fill the schedule, the schedule builder’s drag and drop and supervisor approvals all use the same function.
 
 ### Fill the schedule (`services/scheduling/solver.ts`, `fillRun.ts`, `solverSettings.ts`)
 
@@ -51,6 +51,16 @@ A pure, seeded solver assigns people to a week's open draft shifts; the web runs
 Cost, lowest first: an open shift (1000), short required coverage (per hour), then weighted (0–10) contracted hours, fair hours (squared hours above target across the horizon), overtime cost and the overtime ledger, weekends/evenings rotation, continuity, main position and confirmed availability, and seniority only when the organization's switch and the department allow it (otherwise it is never read). Weights, toggles, limits and the **Plan ahead** window live in `Tenant.overtimePolicy.solver`, with per-department overrides; the plan-ahead window is both how far ahead staff confirm availability (confirmations are `availability.confirm`/`availability.update` audit rows) and the default horizon, and later weeks are tentative.
 
 A run is read-only apart from its audit row. Accepting re-checks each proposal in order and writes draft assignments with a compare-and-set on `Shift.version` (the accept's audit row is the undo token); publishing is the usual step. A run covers one department's positions (or all the person schedules), proposes only people in the person's scope who hold one of those positions, and never touches published shifts.
+
+### Scheduling by hand (`services/scheduling/planner.ts`, `routes/planner.ts`, web `components/planner/`, `lib/planner.ts`)
+
+The schedule builder's month, week and day views put a people panel beside the schedule. Drag and drop is plain pointer events (mouse and pen; no library): the ghost moves through a ref, targets are found with `elementFromPoint` and `data-drop` attributes, and the pointer math (15-minute snapping, lanes, period math) is pure and unit-tested. Touch screens and keyboards don't drag: a shift opens a ranked list of people, or a picked person is placed on a shift or a day. Screen readers hear the drag, each target's verdict and the result through a live region.
+
+- **Board** (`GET /schedule/planner`): the department's people (scope and department as in Fill the schedule, people from other departments marked), each with availability and approved time off per visible day, hours in the period (every department) against their target, and Plan-ahead confirmation; the shifts; each position's usual start–end times (last 4 weeks) to prefill a new shift.
+- **Batch eligibility** (`POST /schedule/planner/eligibility`): `evaluateCandidate()` for every person × shift in the period (only people who hold the position; identical shifts once per person) and for a typical new shift per person × day. Blocks are refusals; overtime, flags and being outside submitted availability are warnings (assigning by hand doesn't require availability; overtime asks for confirmation). People are referenced by index and each distinct list of reasons is sent once. The browser asks in chunks of 20 people in the panel's order (two at a time), asks for a dragged person first, and after a change re-asks only for the people and shifts it touched. The browser never decides: it colours what the API returned, and every drop is re-checked on write.
+- **Writes**: create with people (`POST /schedule/planner/shifts`, one draft each, all or nothing), move/resize/reassign/copy (`POST /schedule/planner/shifts/:id/move`, through `updateShift()` and `assignShift()`, so hard rules refuse and new overtime needs confirming), several people on one shift (`assign-many`: the shift plus a same-time draft for each other person), copy a day or week (`/copy`, wall-clock times kept across daylight saving, each person re-checked in order and kept only without overtime, never copied twice) and cancel drafts (`/cancel`, for undo). Shift edits are audited as before; copying adds a `schedule.copy` row. Undo/redo is the browser's own stack of these calls.
+
+Speed: time-zone conversions in `lib/time.ts` remember recent answers and batch checks share a person's existing overtime per pay period; a month for 300 people and 420 shifts checks in about 5 s in the background (one person: under 0.2 s; a refresh after a change: about 0.1 s).
 
 ### Shift Board (`services/shiftboard/offers.ts`)
 
