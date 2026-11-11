@@ -19,7 +19,7 @@ export function AuthLogo({ size = 88 }: { size?: number }) {
   }, []);
   const motion: LogoMotion = state === 'start' ? 'hero' : state === 'working' ? 'loop' : state;
   return (
-    <span role="img" aria-label="FlexcityHeadquarters" className="inline-flex flex-col items-center gap-3 text-center">
+    <span role="img" aria-label="FlexcityHeadquarters" className="inline-flex flex-col items-center gap-2 text-center">
       <span className="relative grid place-items-center">
         <span aria-hidden="true" className="absolute h-[150%] w-[150%] rounded-full bg-[radial-gradient(closest-side,rgb(var(--brand)/0.16),transparent)]" />
         <span aria-hidden="true" className={cn('fh-halo absolute inset-0 rounded-full border border-brand/30', state === 'working' && 'fh-halo-fast')} />

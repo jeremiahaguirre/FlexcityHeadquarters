@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BrandMotto } from '@/components/BrandMotto';
+import { BrandCategory, BrandMotto } from '@/components/BrandMotto';
 import { CityBrand } from '@/components/CoBrand';
 import { AuthLogo } from '@/components/auth/AuthLogo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
@@ -18,12 +18,14 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
       <div className="absolute right-4 top-4 z-10">
         <AuthLanguageSwitch />
       </div>
-      <main id="main" className="flex flex-col justify-center px-6 py-16 sm:px-12">
+      <main id="main" className="flex flex-col justify-center px-6 py-8 sm:px-12 sm:py-12 lg:py-6">
         <div className="mx-auto w-full max-w-sm">
-          <div className="mb-10 flex flex-col items-center text-center">
-            <AuthLogo size={88} />
+          {/* Logo, motto and city stay compact so the sign-in button is on screen on a phone. */}
+          <div className="mb-5 flex flex-col items-center text-center">
+            <AuthLogo size={72} />
+            <BrandMotto className="mt-3" />
             {tenant ? (
-              <div className="mt-6 flex w-full flex-col items-center gap-2 border-t border-line pt-5">
+              <div className="mt-4 flex w-full flex-col items-center gap-2 border-t border-line pt-3">
                 <CityBrand org={{ name: tenant.name, logoUrl: tenant.logoUrl }} size="lg" />
                 {tenant.logoUrl ? <p className="text-caption text-muted">{tenant.name}</p> : null}
               </div>
@@ -41,7 +43,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
           <circle cx="77" cy="86" r="22" fill="#fff" />
         </svg>
         <div className="absolute inset-x-12 bottom-14 max-w-md text-white">
-          <BrandMotto />
+          <BrandCategory />
         </div>
       </div>
     </div>

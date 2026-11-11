@@ -125,7 +125,7 @@ function LoginForm() {
         </div>
       ) : null}
       {sso ? (
-        <div className="mt-8 grid gap-3">
+        <div className="mt-6 grid gap-3">
           <Button size="lg" block icon={<Building2 className="h-5 w-5" aria-hidden="true" />} onClick={() => window.location.assign(ssoHref())}>
             {sso.label ? t('login.ssoWith', { name: sso.label }) : t('login.ssoOrg')}
           </Button>
