@@ -14,7 +14,7 @@ export function MyCare() {
   const c = care.data?.open[0];
   if (!c) return null;
   return (
-    <section className="rounded-2xl border border-brand/30 bg-brand/5 p-5">
+    <section className="rounded-xl2 border border-line bg-panel p-5 shadow-card">
       <h2 className="flex items-center gap-2 text-heading"><HeartHandshake className="h-6 w-6 text-brand-text" aria-hidden="true" />{t('care.mineTitle')}</h2>
       <p className="mt-2 text-small leading-6">{t('care.mineBody')}</p>
       {care.data?.eap ? <p className="mt-3 whitespace-pre-wrap rounded-xl bg-panel px-4 py-3 text-small font-semibold">{care.data.eap}</p> : null}

@@ -28,7 +28,7 @@ export function ShiftCard({ shift, aside, footer, highlight }: { shift: ShiftLik
     <div className={cn('rounded-xl2 border bg-panel p-4 shadow-card', highlight ? 'border-brand/40 ring-1 ring-brand/20' : 'border-line')}>
       <div className="flex gap-4">
         <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-brand/10 py-2 text-brand-text">
-          <span className="text-label uppercase">{weekday}</span>
+          <span className="text-label">{weekday}</span>
           <span className="text-heading leading-none">{dayNum}</span>
           <span className="text-caption">{month}</span>
         </div>

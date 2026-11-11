@@ -82,7 +82,7 @@ export function MyAnnouncements() {
   return (
     <section aria-label={t('announcements.title')} className="grid gap-3">
       {shown.map((n) => (
-        <div key={n.id} className="rounded-2xl border border-brand/30 bg-brand/5 p-4">
+        <div key={n.id} className="rounded-xl2 border border-line bg-panel p-4 shadow-card">
           <p className="flex items-center gap-2 text-body-strong text-ink">{n.pinned ? <Pin className="h-4 w-4 text-brand-text" aria-label={t('announcements.pinned')} /> : <BellRing className="h-4 w-4 text-brand-text" aria-hidden="true" />}{n.title}</p>
           <p className="mt-1 whitespace-pre-wrap text-body text-ink">{n.body}</p>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">

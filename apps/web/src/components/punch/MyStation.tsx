@@ -16,7 +16,7 @@ export function MyStation() {
   if (!d) return null;
   const time = (iso: string) => dateFormat(i18n.language, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-brand/30 bg-brand/5 px-4 py-3">
+    <div className="flex items-center gap-3 rounded-xl2 border border-line bg-panel px-4 py-3 shadow-card">
       <Armchair className="h-6 w-6 shrink-0 text-brand-text" aria-hidden="true" />
       <p className="text-small">
         {d.station && d.dueAt ? t('deck.yourStation', { station: d.station, time: time(d.dueAt) }).replace(/\.\.$/, '.') : t('deck.onBreak')}

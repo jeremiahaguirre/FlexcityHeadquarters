@@ -84,7 +84,6 @@ export default function TodayPage() {
         ) : next ? (
           <ShiftCard
             shift={next}
-            highlight
             aside={
               <StatusPill tone="brand">
                 {shifts.data!.length === 1 ? t('today.onlyShift') : t('today.moreShifts', { count: shifts.data!.length - 1 })}

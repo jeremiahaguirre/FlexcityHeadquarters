@@ -1,6 +1,6 @@
 'use client';
 
-import { CloudOff, LogIn, LogOut, PartyPopper, Waves } from 'lucide-react';
+import { CloudOff, LogIn, LogOut, PartyPopper } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '@/components/ui/Dialog';
@@ -180,9 +180,8 @@ function PunchCard({ bare = false, onDone }: { bare?: boolean; onDone?: () => vo
   }
 
   return (
-    <div className={cn(frame, !bare && 'border-brand/20 bg-[linear-gradient(135deg,rgb(var(--brand)/0.10),rgb(var(--brand)/0.02)_60%)]')}>
+    <div className={cn(frame, !bare && 'border-line bg-panel shadow-card')}>
       <Bubbles burst={burst} />
-      <Waves aria-hidden="true" className="pointer-events-none absolute -right-4 -top-4 h-28 w-28 text-brand/10" />
       <div className="relative grid gap-4">
         <div>
           <p className="text-heading">{punch.suggested ? t('punch.readyTitle') : t('punch.noShiftTitle')}</p>

@@ -27,7 +27,7 @@ export function PoliciesBanner() {
   const n = q.data?.toSign.length ?? 0;
   if (!n) return null;
   return (
-    <Link href="/profile#policies" className="fh-lift flex items-center gap-3 rounded-2xl border border-warn/40 bg-warn/10 p-4 text-body text-ink hover:bg-warn/15">
+    <Link href="/profile#policies" className="flex min-h-11 items-center gap-3 rounded-xl2 bg-warn-bg p-4 text-body text-ink hover:underline">
       <FileSignature className="h-5 w-5 shrink-0 text-warn" aria-hidden="true" />
       <span className="min-w-0 flex-1 font-semibold">{t('policies.banner', { count: n })}</span>
       <ChevronRight className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
