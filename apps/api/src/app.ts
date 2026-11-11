@@ -3,6 +3,7 @@ import cookieParser from 'cookie-parser';
 import { stripeWebhookRouter } from './routes/billing.js';
 import { publicSignupRouter } from './routes/signup.js';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { ZodError } from 'zod';
 import { HttpError } from './lib/errors.js';
 import { authRouter } from './routes/auth.js';
@@ -106,7 +107,26 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
   report(err, req);
+  // The database is out of free connections or unreachable (a traffic spike, a failover): say so,
+  // so phones retry their reads after a moment instead of showing a failure.
+  if (isOverload(err)) {
+    res.setHeader('Retry-After', '2');
+    res.status(503).json({ code: 'BUSY', message: 'The service is busy. Try again in a moment.', requestId });
+    return;
+  }
   res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong', requestId });
+}
+
+/**
+ * Errors that mean "too much at once" or "database briefly away", not a bug:
+ * P2024 no free connection in the pool within DB_POOL_TIMEOUT_S; P2028 when a transaction couldn't
+ * start in time; P1001/P1002/P1017 the database unreachable or the connection closed (a failover).
+ */
+export function isOverload(err: unknown): boolean {
+  if (err instanceof Prisma.PrismaClientInitializationError) return true;
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
+  if (['P2024', 'P1001', 'P1002', 'P1017'].includes(err.code)) return true;
+  return err.code === 'P2028' && /unable to start a transaction in the given time/i.test(err.message);
 }
 
 function report(err: unknown, req: Request) {
