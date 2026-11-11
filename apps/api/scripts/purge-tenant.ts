@@ -5,10 +5,12 @@
  * Uses DATABASE_URL (the database owner). Logged in the platform audit log.
  */
 import { PrismaClient } from '@prisma/client';
+import { prismaUrl } from '../src/lib/dbUrl.js';
 import { purgePlan, purgeTenant } from '../src/services/platform/purge.js';
 
 const [sub, flag] = process.argv.slice(2);
-const owner = new PrismaClient();
+// Owner connection (DATABASE_URL), its TLS settings translated for Prisma (src/lib/dbUrl.ts).
+const owner = new PrismaClient(process.env.DATABASE_URL ? { datasources: { db: { url: prismaUrl(process.env.DATABASE_URL) } } } : undefined);
 (async () => {
   if (!sub) throw new Error('Give the organization’s address (subdomain).');
   const t = await owner.tenant.findUnique({ where: { subdomain: sub } });

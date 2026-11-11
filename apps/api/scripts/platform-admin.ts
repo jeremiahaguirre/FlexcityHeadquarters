@@ -6,6 +6,7 @@
  * The password comes from the environment so it never lands in shell history.
  */
 import { PrismaClient } from '@prisma/client';
+import { prismaUrl } from '../src/lib/dbUrl.js';
 import { hashPassword } from '../src/auth/tokens.js';
 
 const [email, ...nameParts] = process.argv.slice(2);
@@ -14,7 +15,8 @@ if (!email || !nameParts.length || password.length < 12) {
   console.error('Usage: PLATFORM_ADMIN_PASSWORD=<12+ characters> npm run platform:admin -- <email> "<name>"');
   process.exit(1);
 }
-const prisma = new PrismaClient(); // owner connection (DATABASE_URL)
+// Owner connection (DATABASE_URL), its TLS settings translated for Prisma (src/lib/dbUrl.ts).
+const prisma = new PrismaClient(process.env.DATABASE_URL ? { datasources: { db: { url: prismaUrl(process.env.DATABASE_URL) } } } : undefined); // owner connection (DATABASE_URL)
 const passwordHash = await hashPassword(password);
 const a = await prisma.platformAdmin.upsert({
   where: { email: email.toLowerCase() },

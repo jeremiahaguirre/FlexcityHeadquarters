@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { verifiesServer } from './lib/dbUrl.js';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -156,7 +157,9 @@ export function config(): Config {
     // Encryption in transit to the database, not just to the browser.
     if (parsed.data.NODE_ENV === 'production') {
       for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL], ['LISTEN_DATABASE_URL', parsed.data.LISTEN_DATABASE_URL], ['READ_REPLICA_URL', parsed.data.READ_REPLICA_URL]] as const) {
-        if (url && !/[?&]sslmode=(require|verify-ca|verify-full)\b/.test(url)) throw new Error(`${name} must use TLS in production (sslmode=verify-full)`);
+        // The server's certificate must be checked, not just encrypted: sslmode=require (pg or Prisma)
+        // would accept any certificate. lib/dbUrl.ts translates this form for Prisma.
+        if (url && !verifiesServer(url)) throw new Error(`${name} must verify the database's certificate in production (sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem)`);
       }
     }
     // Separate Union Hub: the main API must not be handed the union role's credentials.

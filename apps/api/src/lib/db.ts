@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { config } from '../config.js';
+import { prismaUrl } from './dbUrl.js';
 import { dbQueryDuration, dbSlowQueries } from './metrics.js';
 
 let client: PrismaClient | undefined;
@@ -30,7 +31,7 @@ function connect(url: string): PrismaClient {
   const timed = !!config().METRICS_TOKEN;
   const slowMs = config().SLOW_QUERY_MS;
   const listen = timed || slowMs > 0;
-  const c = new PrismaClient({ datasources: { db: { url: pooled(url) } }, ...(listen ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
+  const c = new PrismaClient({ datasources: { db: { url: pooled(prismaUrl(url)) } }, ...(listen ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
   if (listen) (c as unknown as PrismaClient<Prisma.PrismaClientOptions, 'query'>).$on('query', (e) => onQuery(e.duration, e.query, timed, slowMs));
   return c;
 }

@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "prisma:generate": "prisma generate",
-    "db:migrate": "prisma migrate deploy && node --env-file-if-exists=.env scripts/apply-sql.mjs db/rls.sql db/union_hub.sql",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs && node --env-file-if-exists=.env scripts/apply-sql.mjs db/rls.sql db/union_hub.sql",
     "db:seed": "node --env-file-if-exists=.env --import tsx prisma/seed.ts",
     "platform:admin": "tsx scripts/platform-admin.ts",
     "worker": "tsx src/worker.ts",
