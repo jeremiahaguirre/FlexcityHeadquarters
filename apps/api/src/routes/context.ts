@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { db } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import { LocalKeyProvider, AwsKmsKeyProvider, type KeyProvider } from '../services/crypto/envelope.js';
+import { awsKms } from '../services/crypto/awsKms.js';
 import { sharedForget } from '../lib/cacheBus.js';
 
 export interface PublicTenant {
@@ -70,7 +71,7 @@ let keyProvider: KeyProvider | undefined;
 export function keys(): KeyProvider {
   if (!keyProvider) {
     const c = config();
-    if (c.KMS_KEY_ARN) keyProvider = new AwsKmsKeyProvider(c.AWS_REGION);
+    if (c.KMS_KEY_ARN) keyProvider = new AwsKmsKeyProvider(awsKms(c.AWS_REGION), c.KMS_REPLICA_REGION);
     else if (c.LOCAL_KEK_BASE64) keyProvider = new LocalKeyProvider(Buffer.from(c.LOCAL_KEK_BASE64, 'base64'));
     else throw new Error('No key provider configured (KMS_KEY_ARN or LOCAL_KEK_BASE64)');
   }

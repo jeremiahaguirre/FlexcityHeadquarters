@@ -85,31 +85,84 @@ export class LocalKeyProvider implements KeyProvider {
   }
 }
 
+/** The KMS calls this module makes (the AWS SDK client, or a fake in tests). */
+export interface KmsApi {
+  generateDataKey(keyId: string): Promise<{ plaintext: Uint8Array; wrapped: Uint8Array }>;
+  decrypt(keyId: string, wrapped: Uint8Array): Promise<Uint8Array>;
+  createKey(input: { description: string; multiRegion: boolean; tags: Record<string, string> }): Promise<{ keyId: string }>;
+  enableKeyRotation(keyId: string): Promise<void>;
+  /** 'exists' when the alias already points at a key (in `region`, default the primary). */
+  createAlias(alias: string, keyId: string, region?: string): Promise<'created' | 'exists'>;
+  /** Copies a multi-region key to another region (same key id there). */
+  replicateKey(keyId: string, region: string): Promise<void>;
+  /** Marks a key created by a lost race, for operations to schedule its deletion. */
+  tagUnused(keyId: string): Promise<void>;
+}
+
+const TENANT_ALIAS = /^alias\/flexcity-tenant-[0-9a-f-]{36}$/;
+const isNotFound = (e: unknown) => (e as { name?: string } | null)?.name === 'NotFoundException';
+
 /**
- * AWS KMS provider (production). Loaded lazily so local dev doesn't need the SDK:
- *   npm i @aws-sdk/client-kms
+ * AWS KMS provider (production).
+ *
+ * Each organization's key (alias/flexcity-tenant-<id>) is created the first time one of its records
+ * is sealed: a symmetric key with yearly rotation, tagged with the organization. With a recovery
+ * region set (KMS_REPLICA_REGION) it is a multi-region key, copied there before its alias exists
+ * (so a failed copy is retried with a new key, never left half done) and given the same alias
+ * there, so a restore in ca-west-1 can still open the data. Two processes creating the same key at once is harmless:
+ * the second alias request finds the first, and its own unused key is left tagged
+ * "fh:unused=true" for operations to delete (this service is never allowed to delete keys).
+ * Other keys (alias/flexcity-platform, union locals) are created by operations, never here.
  */
 export class AwsKmsKeyProvider implements KeyProvider {
-  constructor(private readonly region: string) {}
-
-  private async client() {
-    const mod = (await import('@aws-sdk/client-kms' as string)) as {
-      KMSClient: new (cfg: { region: string }) => { send(cmd: unknown): Promise<Record<string, Uint8Array | undefined>> };
-      GenerateDataKeyCommand: new (input: unknown) => unknown;
-      DecryptCommand: new (input: unknown) => unknown;
-    };
-    return { mod, kms: new mod.KMSClient({ region: this.region }) };
-  }
+  private creating = new Map<string, Promise<void>>();
+  constructor(
+    private readonly kms: KmsApi,
+    private readonly replicaRegion?: string,
+  ) {}
 
   async generateDataKey(kekId: string) {
-    const { mod, kms } = await this.client();
-    const out = await kms.send(new mod.GenerateDataKeyCommand({ KeyId: kekId, KeySpec: 'AES_256' }));
-    return { plaintext: Buffer.from(out.Plaintext!), wrapped: Buffer.from(out.CiphertextBlob!) };
+    try {
+      return await this.dataKey(kekId);
+    } catch (e) {
+      if (!isNotFound(e) || !TENANT_ALIAS.test(kekId)) throw e;
+      await this.ensureTenantKey(kekId);
+      return this.dataKey(kekId);
+    }
   }
 
   async unwrapDataKey(kekId: string, wrapped: Buffer) {
-    const { mod, kms } = await this.client();
-    const out = await kms.send(new mod.DecryptCommand({ KeyId: kekId, CiphertextBlob: wrapped }));
-    return Buffer.from(out.Plaintext!);
+    return Buffer.from(await this.kms.decrypt(kekId, wrapped));
+  }
+
+  private async dataKey(kekId: string) {
+    const out = await this.kms.generateDataKey(kekId);
+    return { plaintext: Buffer.from(out.plaintext), wrapped: Buffer.from(out.wrapped) };
+  }
+
+  private ensureTenantKey(alias: string): Promise<void> {
+    let p = this.creating.get(alias);
+    if (!p) {
+      p = this.createTenantKey(alias).finally(() => this.creating.delete(alias));
+      this.creating.set(alias, p);
+    }
+    return p;
+  }
+
+  private async createTenantKey(alias: string) {
+    const tenantId = alias.slice('alias/flexcity-tenant-'.length);
+    const { keyId } = await this.kms.createKey({
+      description: `FlexcityHeadquarters organization ${tenantId}: wraps the data keys of its sealed records`,
+      multiRegion: !!this.replicaRegion,
+      tags: { 'fh:tenant': tenantId, Project: 'FlexcityHeadquarters' },
+    });
+    await this.kms.enableKeyRotation(keyId);
+    if (this.replicaRegion) await this.kms.replicateKey(keyId, this.replicaRegion);
+    if ((await this.kms.createAlias(alias, keyId)) === 'exists') {
+      // Another process won the race; its key is the organization's. Ours is never used.
+      await this.kms.tagUnused(keyId);
+      return;
+    }
+    if (this.replicaRegion) await this.kms.createAlias(alias, keyId, this.replicaRegion);
   }
 }

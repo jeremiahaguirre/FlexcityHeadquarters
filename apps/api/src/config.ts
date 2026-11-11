@@ -90,6 +90,8 @@ const schema = z.object({
   /** Local/dev key-encryption key. Production uses AWS KMS (KMS_KEY_ARN). */
   LOCAL_KEK_BASE64: z.string().optional(),
   KMS_KEY_ARN: z.string().optional(),
+  /** Recovery region (ca-west-1): organizations' keys are created multi-region and copied there. */
+  KMS_REPLICA_REGION: z.string().optional(),
   AWS_REGION: z.string().default('ca-central-1'),
   /** Texts and voice calls (urgent alerts). "console" logs them; "twilio" sends them. */
   SMS_PROVIDER: z.enum(['console', 'twilio']).default('console'),
@@ -144,6 +146,9 @@ export function config(): Config {
     }
     if (parsed.data.NODE_ENV === 'production' && !parsed.data.KMS_KEY_ARN) {
       throw new Error('KMS_KEY_ARN is required in production');
+    }
+    if (parsed.data.KMS_REPLICA_REGION && !parsed.data.KMS_REPLICA_REGION.startsWith('ca-')) {
+      throw new Error('Data residency: KMS_REPLICA_REGION must be a Canadian region');
     }
     if (parsed.data.NODE_ENV === 'production' && !parsed.data.AWS_REGION.startsWith('ca-')) {
       throw new Error('Data residency: AWS_REGION must be a Canadian region');

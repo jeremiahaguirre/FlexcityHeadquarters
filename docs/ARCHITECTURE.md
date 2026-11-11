@@ -8,7 +8,7 @@
 | API | Node 26, Express, TypeScript (strict), Zod | Permission-based route guards |
 | Data | PostgreSQL 16 via Prisma | Row-level security on every tenant table |
 | Hosting | AWS `ca-central-1` | Config refuses non-Canadian regions in production |
-| Keys | AWS KMS | One KEK per tenant; one per union local |
+| Keys | AWS KMS | One KEK per tenant (`alias/flexcity-tenant-<id>`, created on first use with yearly rotation, copied to `ca-west-1` when `KMS_REPLICA_REGION` is set; `services/crypto`), one platform key (`alias/flexcity-platform`), one per union local (created by operations) |
 
 ## Tenancy and isolation
 
