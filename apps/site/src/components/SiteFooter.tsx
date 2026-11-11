@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { type Lang, copy } from '@/content/copy';
 import { demoLink } from '@/lib/site';
+import { AnalyticsToggle } from './AnalyticsToggle';
 import { Logo } from './Logo';
 
 export function SiteFooter({ lang }: { lang: Lang }) {
@@ -35,6 +36,10 @@ export function SiteFooter({ lang }: { lang: Lang }) {
           <Link href={`/${lang}/privacy/`} className="hover:underline">{c.footer.privacy}</Link>
           <Link href={`/${lang}/accessibility/`} className="hover:underline">{c.footer.accessibility}</Link>
           <Link href={`/${lang}/terms/`} className="hover:underline">{c.footer.terms}</Link>
+          <Link href={`/${lang}/copyright/`} className="hover:underline">{c.footer.copyright}</Link>
+          <div className="mt-2 text-caption text-muted">
+            <AnalyticsToggle label={c.footer.analytics} on={c.footer.analyticsOn} off={c.footer.analyticsOff} signal={c.footer.analyticsSignal} />
+          </div>
         </div>
       </div>
       <div className="border-t border-line">

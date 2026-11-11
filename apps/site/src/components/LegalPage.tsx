@@ -3,7 +3,7 @@ import { PageHero } from './PageHero';
 import { type Lang, copy } from '@/content/copy';
 import { type LegalDocName, legalDoc } from '@/content/legal';
 
-const TITLE = { privacy: 'privacyTitle', accessibility: 'accessibilityTitle', terms: 'termsTitle' } as const;
+const TITLE = { privacy: 'privacyTitle', accessibility: 'accessibilityTitle', terms: 'termsTitle', copyright: 'copyrightTitle' } as const;
 
 export const legalTitle = (doc: LegalDocName, lang: Lang) => copy(lang).legal[TITLE[doc]];
 

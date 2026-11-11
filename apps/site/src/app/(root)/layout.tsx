@@ -1,4 +1,4 @@
-import { Analytics } from '@vercel/analytics/next';
+import { SiteAnalytics } from '@/components/SiteAnalytics';
 import type { ReactNode } from 'react';
 import '../globals.css';
 
@@ -7,7 +7,7 @@ export default function RootRedirectLayout({ children }: { children: ReactNode }
     <html lang="en-CA">
       <body>
         {children}
-        <Analytics />
+        <SiteAnalytics />
       </body>
     </html>
   );

@@ -9,6 +9,7 @@ import { reveal } from '@/lib/reveal';
 import { pageMeta } from '@/lib/seo';
 import { GROUPS, ITEMS, type Item, LEVELS, PRIVATE, PUBLIC, TERM_DISCOUNTS, UPFRONT_BONUS, YEARLY_DISCOUNT, has, yearlyMonthly } from '@/content/pricing';
 import { PeriodToggle } from '@/components/PeriodToggle';
+import { RenewalNote } from '@/components/RenewalNote';
 
 const Yes = ({ label }: { label: string }) => (
   <span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-ok-bg text-ok">
@@ -82,6 +83,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
           <a href="#included" className={cn(btn, 'border border-white/30 bg-white/5 text-white hover:bg-white/15')}>{c.jump}</a>
         </div>
         <p className="mt-4 text-caption text-white/70">{c.ctaNote}</p>
+        <RenewalNote lang={params.lang} dark className="mt-2 max-w-2xl" />
       </PageHero>
 
       {/* Public-sector plans */}
@@ -125,6 +127,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
                   {c.cta}
                   <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
                 </Link>
+                <RenewalNote lang={params.lang} className="mt-3" />
               </article>
             );
           })}
@@ -163,6 +166,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
                 {c.privateLink}
               </Link>
             </div>
+            <RenewalNote lang={params.lang} className="mt-3" />
           </div>
           <div>
             <h4 className="text-subheading">{c.privateModulesTitle}</h4>
@@ -381,6 +385,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
               <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
             </Link>
             <p className="mt-3 text-caption text-white/70">{c.ctaNote}</p>
+            <RenewalNote lang={params.lang} dark className="mt-2 max-w-sm" />
           </div>
         </div>
       </Section>

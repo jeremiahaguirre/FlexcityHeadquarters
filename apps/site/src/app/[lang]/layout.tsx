@@ -1,4 +1,3 @@
-import { Analytics } from '@vercel/analytics/next';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
@@ -6,6 +5,7 @@ import { RevealObserver } from '@/components/Motion';
 import { REVEAL_BOOT } from '@/lib/reveal';
 import { DemoReturn } from '@/components/DemoReturn';
 import { SiteFooter } from '@/components/SiteFooter';
+import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { SiteHeader } from '@/components/SiteHeader';
 import { LANGS, type Lang, copy } from '@/content/copy';
 import { SITE_URL, pageMeta } from '@/lib/seo';
@@ -48,8 +48,8 @@ export default async function LangLayout(props: { children: ReactNode; params: P
         <SiteHeader lang={params.lang} />
         <main id="main">{children}</main>
         <SiteFooter lang={params.lang} />
-        {/* Vercel Web Analytics: page views and visitors, no cookies. */}
-        <Analytics />
+        {/* Vercel Web Analytics: page views and visitors, no cookies; off with GPC/DNT or the footer switch. */}
+        <SiteAnalytics />
       </body>
     </html>
   );

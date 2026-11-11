@@ -1,5 +1,6 @@
 import { ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
+import { RenewalNote } from '@/components/RenewalNote';
 import { PageHero } from '@/components/PageHero';
 import { PhoneClip } from '@/components/PhoneClip';
 import { Icon } from '@/components/Icon';
@@ -33,6 +34,7 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
             {all.home.ctaDemo}
           </a>
         </div>
+        <RenewalNote lang={params.lang} dark className="mt-4 max-w-2xl" />
       </PageHero>
       <Section tone="panel">
         <SectionHead title={c.whoTitle} />
@@ -70,6 +72,7 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
             <Link href={`/${params.lang}/contact/?kind=SALES`} className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl bg-brand text-body-strong text-brand-contrast hover:bg-brand-hover">
               {c.cta}
             </Link>
+            <RenewalNote lang={params.lang} className="mt-3" />
             <Link href={`/${params.lang}/plans/`} className="mt-3 block text-center text-small font-semibold text-brand-text hover:underline">
               {all.nav.plans}
             </Link>

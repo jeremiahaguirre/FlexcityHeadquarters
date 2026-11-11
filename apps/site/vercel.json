@@ -27,6 +27,10 @@
         {
           "key": "Strict-Transport-Security",
           "value": "max-age=63072000"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         }
       ]
     }

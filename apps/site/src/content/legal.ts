@@ -3,22 +3,25 @@
  * this site actually work, and must be reviewed by counsel before launch.
  */
 import type { Lang } from './copy';
+import { COMPANY } from '../lib/site';
 
 export interface LegalSection { heading: string; body: string[] }
 export interface LegalDoc { updated: string; intro: string; sections: LegalSection[] }
-type Doc = 'privacy' | 'accessibility' | 'terms';
+type Doc = 'privacy' | 'accessibility' | 'terms' | 'copyright';
 
 const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
   privacy: {
     en: {
-      updated: '2026-11-10',
+      updated: '2026-11-11',
       intro: 'This notice explains what personal information FlexcityHeadquarters collects through this website and through the FlexcityHeadquarters application, why, and the choices you have. It is written to meet the Personal Information Protection and Electronic Documents Act (PIPEDA), Quebec’s Act respecting the protection of personal information in the private sector (Law 25), and the privacy expectations of the public bodies we serve.',
       sections: [
         {
           heading: 'This website',
           body: [
-            'The site does not use cookies or advertising pixels. To count visits, it uses Vercel Web Analytics, run by our hosting provider: it records the pages viewed, the referring site, and the country, browser and type of device, without cookies and without identifying you; visitors are told apart only by a hash that changes every day.',
-            'When you send the contact form we collect your name, work email, organization, role, province, number of facilities and your message. We use them only to reply and, if you tick the box, to send product news. We keep a record of the wording you agreed to and when, as Canada’s Anti-Spam Legislation (CASL) requires.',
+            'The site does not use cookies, advertising pixels or session recording (nothing records your screen, clicks or typing). To count visits, it uses Vercel Web Analytics, run by our hosting provider: it records the pages viewed, the referring site, and the country, browser and type of device, without cookies and without identifying you; visitors are told apart only by a hash that changes every day.',
+            'You can turn this counting off with the “Analytics” switch at the bottom of every page (remembered in your browser). It is also off automatically if your browser sends a Global Privacy Control or Do Not Track signal.',
+            'When you send the contact form we collect your name, work email, organization, role, province, number of facilities and your message. We use them only to reply and, if you tick the box, to send product news. We keep a record of the wording you agreed to and when, as Canada’s Anti-Spam Legislation (CASL) requires. Because you wrote to us, we may also follow up on your enquiry by email for up to six months (implied consent under CASL); every such message identifies us, gives our mailing address and has a one-click unsubscribe link that takes effect immediately.',
+            'The contact form is for organizations. It is not meant for children, and we ask you not to include information about children in your message.',
             'Our hosting provider keeps standard server logs (IP address, browser, pages requested) for security for a short period.',
           ],
         },
@@ -83,14 +86,16 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
       ],
     },
     fr: {
-      updated: '2026-11-10',
+      updated: '2026-11-11',
       intro: 'Le présent avis explique quels renseignements personnels FlexcityHeadquarters recueille par ce site et par l’application FlexcityHeadquarters, pourquoi, et quels choix vous avez. Il vise à respecter la Loi sur la protection des renseignements personnels et les documents électroniques (LPRPDE), la Loi sur la protection des renseignements personnels dans le secteur privé du Québec (Loi 25) et les attentes des organismes publics que nous servons.',
       sections: [
         {
           heading: 'Ce site',
           body: [
-            'Le site n’utilise ni témoins (cookies) ni pixels publicitaires. Pour compter les visites, il utilise Vercel Web Analytics, fourni par notre hébergeur : l’outil consigne les pages consultées, le site d’où vous venez, ainsi que le pays, le navigateur et le type d’appareil, sans témoins et sans vous identifier; les visiteurs ne sont distingués que par une empreinte qui change chaque jour.',
-            'Lorsque vous envoyez le formulaire de contact, nous recueillons votre nom, votre courriel professionnel, votre organisation, votre rôle, votre province, le nombre d’installations et votre message. Nous les utilisons seulement pour vous répondre et, si vous cochez la case, pour vous envoyer des nouvelles. Nous conservons le libellé accepté et la date, comme l’exige la Loi canadienne anti-pourriel (LCAP).',
+            'Le site n’utilise ni témoins (cookies), ni pixels publicitaires, ni enregistrement de session (rien n’enregistre votre écran, vos clics ou votre saisie). Pour compter les visites, il utilise Vercel Web Analytics, fourni par notre hébergeur : l’outil consigne les pages consultées, le site d’où vous venez, ainsi que le pays, le navigateur et le type d’appareil, sans témoins et sans vous identifier; les visiteurs ne sont distingués que par une empreinte qui change chaque jour.',
+            'Vous pouvez désactiver ce décompte avec l’interrupteur « Statistiques » au bas de chaque page (le choix est mémorisé dans votre navigateur). Il est aussi désactivé automatiquement si votre navigateur envoie un signal Global Privacy Control ou « Ne pas me suivre ».',
+            'Lorsque vous envoyez le formulaire de contact, nous recueillons votre nom, votre courriel professionnel, votre organisation, votre rôle, votre province, le nombre d’installations et votre message. Nous les utilisons seulement pour vous répondre et, si vous cochez la case, pour vous envoyer des nouvelles. Nous conservons le libellé accepté et la date, comme l’exige la Loi canadienne anti-pourriel (LCAP). Comme vous nous avez écrit, nous pouvons aussi faire un suivi de votre demande par courriel pendant au plus six mois (consentement tacite au sens de la LCAP); chacun de ces messages nous identifie, donne notre adresse postale et comporte un lien de désabonnement en un clic qui prend effet immédiatement.',
+            'Le formulaire de contact s’adresse aux organisations. Il n’est pas destiné aux enfants, et nous vous demandons de ne pas inclure de renseignements sur des enfants dans votre message.',
             'Notre hébergeur conserve brièvement des journaux de serveur standards (adresse IP, navigateur, pages consultées) à des fins de sécurité.',
           ],
         },
@@ -207,27 +212,102 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
   },
   terms: {
     en: {
-      updated: '2026-11-10',
+      updated: '2026-11-11',
       intro: 'These terms cover your use of this website and the public demo. Use of the FlexcityHeadquarters application by an organization is governed by the subscription agreement signed with that organization, which prevails over these terms.',
       sections: [
         { heading: 'The demo', body: ['The demo uses invented people and a fictional city. Do not enter real personal information. Nothing you do in the demo is saved.'] },
         { heading: 'Information on this site', body: ['Prices and features are described in good faith and may change; a written quote or agreement is binding. Employment-standards and pool-safety information is general and is not legal advice. Each organization remains responsible for meeting the law that applies to it.'] },
         { heading: 'Acceptable use', body: ['Do not try to break, overload or probe the site or demo for weaknesses except through a responsible disclosure arranged with us through the contact page.'] },
         { heading: 'Liability', body: ['The site and demo are provided as is. To the extent permitted by law, we are not liable for indirect losses arising from their use.'] },
+        { heading: 'Subscriptions and renewal', body: ['Prices on this site are per month, before applicable taxes (GST/HST, and QST in Quebec). Your written quote and subscription agreement confirm the price, how often you are invoiced (monthly, yearly or the whole term up front) and the length of the term. When a term ends it renews automatically month to month at the same rates, without the commitment discount, until you sign a new term or cancel. We email your billing contact a reminder 30 days before a term ends. To cancel, write to us before the end of the term (or, month to month, before the next month starts); nothing further is invoiced after the period already billed.'] },
+        { heading: 'Content customers upload', body: ['Organizations using the application are responsible for the documents, logos, résumés and other files they upload. If you believe something stored on the service infringes your copyright, see our Copyright notices page for how to send a notice under the Copyright Act.'] },
         { heading: 'Copyright and trademarks', body: ['© 2026 FlexcityHeadquarters. All rights reserved. The FlexcityHeadquarters name, logo, application, screenshots and the text and design of this site are protected by copyright and may not be copied or reused without written permission. Organization names and logos shown belong to their owners.'] },
         { heading: 'Governing law', body: ['These terms are governed by the laws of the province of British Columbia and the federal laws of Canada that apply there, unless the law of your province requires otherwise.'] },
       ],
     },
     fr: {
-      updated: '2026-11-10',
+      updated: '2026-11-11',
       intro: 'Les présentes conditions encadrent l’utilisation de ce site et de la démo publique. L’utilisation de l’application FlexcityHeadquarters par une organisation est régie par l’entente d’abonnement conclue avec elle, qui a préséance sur les présentes.',
       sections: [
         { heading: 'La démo', body: ['La démo utilise des personnes inventées et une ville fictive. N’y entrez aucun renseignement personnel réel. Rien n’y est enregistré.'] },
         { heading: 'Information sur ce site', body: ['Les prix et fonctions sont décrits de bonne foi et peuvent changer; seule une soumission ou une entente écrite engage. L’information sur les normes du travail et la sécurité aquatique est générale et ne constitue pas un avis juridique. Chaque organisation demeure responsable de respecter la loi qui s’applique à elle.'] },
         { heading: 'Utilisation acceptable', body: ['N’essayez pas de briser, de surcharger ou de sonder le site ou la démo, sauf dans le cadre d’une divulgation responsable convenue avec nous par la page de contact.'] },
         { heading: 'Responsabilité', body: ['Le site et la démo sont fournis tels quels. Dans la mesure permise par la loi, nous ne sommes pas responsables des pertes indirectes découlant de leur utilisation.'] },
+        { heading: 'Abonnements et renouvellement', body: ['Les prix affichés sur ce site sont mensuels, avant les taxes applicables (TPS/TVH, et TVQ au Québec). Votre soumission écrite et votre entente d’abonnement confirment le prix, la fréquence de facturation (au mois, à l’année ou toute la durée d’avance) et la durée de l’engagement. À la fin de la durée, l’abonnement se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement, jusqu’à ce que vous signiez une nouvelle durée ou que vous résiliiez. Nous envoyons un rappel par courriel à votre contact de facturation 30 jours avant la fin d’une durée. Pour résilier, écrivez-nous avant la fin de la durée (ou, au mois, avant le début du mois suivant); rien n’est facturé au-delà de la période déjà facturée.'] },
+        { heading: 'Contenu téléversé par les clients', body: ['Les organisations qui utilisent l’application sont responsables des documents, logos, curriculum vitæ et autres fichiers qu’elles téléversent. Si vous croyez qu’un contenu hébergé sur le service viole votre droit d’auteur, consultez notre page Avis relatifs au droit d’auteur pour savoir comment envoyer un avis en vertu de la Loi sur le droit d’auteur.'] },
         { heading: 'Droit d’auteur et marques', body: ['© 2026 FlexcityHeadquarters. Tous droits réservés. Le nom, le logo, l’application et les captures d’écran FlexcityHeadquarters ainsi que le texte et la conception de ce site sont protégés par le droit d’auteur et ne peuvent être copiés ni réutilisés sans autorisation écrite. Les noms et logos d’organisations affichés appartiennent à leurs propriétaires.'] },
         { heading: 'Droit applicable', body: ['Les présentes conditions sont régies par les lois de la Colombie-Britannique et les lois fédérales du Canada qui s’y appliquent, sauf si la loi de votre province en exige autrement. Au Québec, la version française prévaut.'] },
+      ],
+    },
+  },
+  /**
+   * Copyright notices: Canada's notice-and-notice regime, Copyright Act ss. 41.25–41.27 (in force
+   * 2015; s. 41.25(3) content limits added 2018). FH provides the digital memory (hosting) for its
+   * customers' files. Internal procedure: docs/LEGAL-OPS.md. Draft for counsel review.
+   */
+  copyright: {
+    en: {
+      updated: '2026-11-11',
+      intro: 'Organizations that use FlexcityHeadquarters store files in it: documents, policies, logos, photos and job applicants’ résumés. If you believe content stored on the service infringes your copyright, Canada’s Copyright Act sets out a notice-and-notice system (sections 41.25 to 41.27). This page explains how to send us a notice and what we do with it.',
+      sections: [
+        { heading: 'Who is responsible for uploaded content', body: ['Each customer organization decides what it uploads and is responsible for it under its subscription agreement with us. We provide the storage; we do not review or choose the files customers upload.'] },
+        {
+          heading: 'How to send a notice of claimed infringement',
+          body: [
+            'A notice must be in writing (email or mail) and must state, as section 41.25(2) of the Copyright Act requires:',
+            '1. your name and address (the claimant’s);',
+            '2. the work or other subject matter concerned, and your interest or right in it;',
+            '3. the location data: the web address, or a description of where the file is in the service (for example the organization’s address, the page and the file name);',
+            '4. the infringement you claim;',
+            '5. the date and time of the alleged infringement;',
+            '6. any other information prescribed by regulation.',
+          ],
+        },
+        { heading: 'Where to send it', body: [`${COMPANY.copyrightContact.name}, ${COMPANY.copyrightContact.address}. Email: ${COMPANY.copyrightContact.email}.`] },
+        {
+          heading: 'What we do when we receive a notice',
+          body: [
+            'When a notice meets the requirements, we forward it electronically, as soon as feasible, to the person to whom the content belongs (the customer organization that uploaded it, through its administrator), and we tell you that it was forwarded. If we cannot forward it, we tell you why.',
+            'We keep records that allow that person to be identified for six months from the day we receive the notice, or for one year if, within those six months, you start proceedings about the claimed infringement and tell us so.',
+            'We do not charge a fee for this: none is set by regulation.',
+            'We do not give you the identity of the organization or person concerned. Disclosing it requires a court order.',
+          ],
+        },
+        { heading: 'Notices we cannot forward', body: ['Under section 41.25(3), a notice is not valid if it contains an offer to settle the claimed infringement, a request or demand for payment or for personal information, or a reference (including a link) to such an offer, request or demand. We do not forward those notices.'] },
+        { heading: 'Removing or disabling content', body: ['The notice-and-notice system does not require us to remove content, and forwarding a notice is not a finding that anything infringes. Where the customer agreement allows, we may remove or disable access to content, for example content that is clearly unlawful or that a court orders removed, and we tell the customer when we do.'] },
+        { heading: 'Not legal advice', body: ['This page explains our process; it is not legal advice. If you are unsure whether you have a claim, consult a lawyer.'] },
+      ],
+    },
+    fr: {
+      updated: '2026-11-11',
+      intro: 'Les organisations qui utilisent FlexcityHeadquarters y conservent des fichiers : documents, politiques, logos, photos et curriculum vitæ de candidats. Si vous croyez qu’un contenu hébergé sur le service viole votre droit d’auteur, la Loi sur le droit d’auteur du Canada prévoit un régime d’avis et avis (articles 41.25 à 41.27). Cette page explique comment nous envoyer un avis et ce que nous en faisons.',
+      sections: [
+        { heading: 'Qui est responsable du contenu téléversé', body: ['Chaque organisation cliente décide de ce qu’elle téléverse et en est responsable aux termes de son entente d’abonnement avec nous. Nous fournissons le stockage; nous n’examinons ni ne choisissons les fichiers que les clients téléversent.'] },
+        {
+          heading: 'Comment envoyer un avis de prétendue violation',
+          body: [
+            'L’avis doit être écrit (courriel ou courrier) et préciser, comme l’exige le paragraphe 41.25(2) de la Loi sur le droit d’auteur :',
+            '1. vos nom et adresse (ceux du demandeur);',
+            '2. l’œuvre ou l’autre objet du droit d’auteur en cause, et vos droits ou intérêts à son égard;',
+            '3. les données de localisation : l’adresse Web ou une description de l’endroit où se trouve le fichier dans le service (par exemple l’adresse de l’organisation, la page et le nom du fichier);',
+            '4. la violation que vous alléguez;',
+            '5. la date et l’heure de la prétendue violation;',
+            '6. tout autre renseignement prévu par règlement.',
+          ],
+        },
+        { heading: 'Où l’envoyer', body: [`${COMPANY.copyrightContact.name}, ${COMPANY.copyrightContact.address}. Courriel : ${COMPANY.copyrightContact.email}.`] },
+        {
+          heading: 'Ce que nous faisons à la réception d’un avis',
+          body: [
+            'Lorsqu’un avis respecte les exigences, nous le transmettons par voie électronique, dès que possible, à la personne à qui appartient le contenu (l’organisation cliente qui l’a téléversé, par l’entremise de son administrateur), et nous vous informons de cette transmission. Si nous ne pouvons pas le transmettre, nous vous en donnons la raison.',
+            'Nous conservons les registres permettant d’identifier cette personne pendant six mois à compter de la réception de l’avis, ou pendant un an si, dans ces six mois, vous intentez une procédure relative à la prétendue violation et nous en avisez.',
+            'Nous n’exigeons aucuns droits pour ce faire : aucun montant n’est fixé par règlement.',
+            'Nous ne vous communiquons pas l’identité de l’organisation ou de la personne en cause. Sa divulgation exige une ordonnance du tribunal.',
+          ],
+        },
+        { heading: 'Avis que nous ne pouvons pas transmettre', body: ['Selon le paragraphe 41.25(3), un avis n’est pas valide s’il contient une offre de règlement de la prétendue violation, une demande ou exigence de paiement ou de renseignements personnels, ou un renvoi (y compris par hyperlien) à une telle offre, demande ou exigence. Nous ne transmettons pas ces avis.'] },
+        { heading: 'Retrait ou blocage d’un contenu', body: ['Le régime d’avis et avis ne nous oblige pas à retirer un contenu, et la transmission d’un avis ne constitue pas une conclusion de violation. Lorsque l’entente avec le client le permet, nous pouvons retirer un contenu ou en bloquer l’accès, par exemple un contenu manifestement illicite ou dont un tribunal ordonne le retrait, et nous en informons le client.'] },
+        { heading: 'Pas un avis juridique', body: ['Cette page décrit notre processus; elle ne constitue pas un avis juridique. En cas de doute sur votre réclamation, consultez un avocat.'] },
       ],
     },
   },

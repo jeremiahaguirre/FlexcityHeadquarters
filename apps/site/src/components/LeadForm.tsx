@@ -4,7 +4,7 @@ import { CheckCircle2, Send } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { type Lang, copy } from '@/content/copy';
-import { SITE } from '@/lib/site';
+import { COMPANY, SITE } from '@/lib/site';
 
 const PROVINCES = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'];
 const input = 'block h-12 w-full rounded-xl border border-line bg-panel px-3.5 text-body text-ink placeholder:text-muted/70 focus:border-brand';
@@ -63,6 +63,7 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
   );
   return (
     <form onSubmit={(e) => void submit(e)} className="grid gap-4">
+      <p className="text-small text-muted">{c.orgOnly}</p>
       {field('kind', c.kind, (
         <select id="kind" name="kind" defaultValue={kind} className={`${input} pr-9`}>
           {(['SALES', 'DEMO', 'SUPPORT'] as const).map((k) => (
@@ -101,6 +102,8 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
         <span>
           {c.consent}
           <span className="block text-caption text-muted">{c.consentHint}</span>
+          {/* CASL s. 10(1): a consent request names who is asking, with a mailing address and a way to reach them. */}
+          <span className="block text-caption text-muted">{c.consentFrom.replace('{name}', COMPANY.legalName).replace('{address}', COMPANY.mailingAddress).replace('{email}', COMPANY.email)}</span>
         </span>
       </label>
       <div role="alert">
