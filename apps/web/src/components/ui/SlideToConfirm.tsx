@@ -62,7 +62,7 @@ export function SlideToConfirm({
         // Full width on phones; on larger screens a comfortable length to drag across.
         'relative h-16 w-full select-none overflow-hidden rounded-full p-1 touch-pan-y sm:max-w-[26rem]',
         confirmed && 'fh-slide-done',
-        tone === 'brand' ? 'bg-brand/15' : 'bg-danger/12',
+        tone === 'brand' ? 'bg-brand/15' : 'bg-danger/15',
         busy && 'opacity-80',
       )}
     >
@@ -75,14 +75,15 @@ export function SlideToConfirm({
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute inset-0 grid place-items-center pl-12 text-body-strong transition-opacity',
+          // Text starts after the thumb (56 px + the track's 4 px padding) so long labels (French) never slide under it; they wrap instead.
+          'pointer-events-none absolute inset-0 grid place-items-center pl-[4.25rem] pr-4 text-body-strong transition-opacity',
           tone === 'brand' ? 'text-brand-text' : 'text-danger',
           pos > 0.35 && 'opacity-0',
         )}
       >
-        <span className="flex items-center gap-1">
-          {label}
-          <ChevronsRight className="animate-nudge h-5 w-5" />
+        <span className="flex min-w-0 items-center gap-1 text-center leading-tight">
+          <span className="min-w-0 [text-wrap:balance]">{label}</span>
+          <ChevronsRight className="animate-nudge h-5 w-5 shrink-0" />
         </span>
       </span>
       <button
