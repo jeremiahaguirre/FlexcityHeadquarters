@@ -13,11 +13,14 @@ import { requireAuth } from './auth/middleware.js';
 import { resolveTenant } from './routes/context.js';
 import { requireConsent } from './routes/consent.js';
 import { unionRouter } from './routes/union.js';
+import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
 
 export function createUnionApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
+  installLogContext();
+  app.use(requestIdMiddleware);
   app.use(securityHeaders);
   app.use(express.json({ limit: '100kb' }));
   app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'union-hub' }));

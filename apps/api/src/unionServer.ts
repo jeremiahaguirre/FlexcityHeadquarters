@@ -3,8 +3,10 @@ process.env.FLEXCITY_SERVICE = 'union';
 import { config } from './config.js';
 import { createUnionApp } from './unionApp.js';
 import { assertLeastPrivilege } from './lib/dbRole.js';
+import { installProcessHandlers } from './lib/errorReporter.js';
 
 const cfg = config();
+installProcessHandlers();
 if (!cfg.UNION_DATABASE_URL) throw new Error('The Union Hub service needs UNION_DATABASE_URL (the flexcity_union role).');
 await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
 await assertLeastPrivilege('UNION_DATABASE_URL', cfg.UNION_DATABASE_URL, cfg.NODE_ENV === 'production');

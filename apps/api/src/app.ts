@@ -17,13 +17,22 @@ import { passkeyAuthRouter } from './routes/passkeys.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
 import { publicCalendarRouter } from './routes/calendar.js';
 import { kioskRouter } from './routes/kiosk.js';
-import { logError } from './lib/log.js';
+import { captureError } from './lib/errorReporter.js';
+import { metricsMiddleware, routePattern, startProcessMetrics } from './lib/metrics.js';
+import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
+import { clientErrorsRouter, opsRouter } from './routes/observability.js';
 
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1); // behind the AWS load balancer
+  installLogContext();
+  startProcessMetrics();
+  // First: every request gets an id (X-Request-Id, in every log line and error body) and is counted.
+  app.use(requestIdMiddleware, metricsMiddleware);
   app.use(securityHeaders);
+  // /healthz, /readyz, /metrics (routes/observability.ts).
+  app.use(opsRouter);
   // The marketing site's enquiry form (no organization, its own CORS).
   app.use('/api', marketingRouter);
   // Before the 100 kB body limit: the Dev console uploads logos and spreadsheets.
@@ -39,7 +48,8 @@ export function createApp() {
   );
   app.use(cookieParser());
 
-  app.get('/healthz', (_req, res) => res.json({ ok: true }));
+  // Browsers' error reports, from any page (an organization's or the Dev console).
+  app.use('/api', clientErrorsRouter);
   app.use('/api', publicLogoRouter);
   // Calendar apps fetch a person's private shift feed by its link (routes/calendar.ts).
   app.use('/api', publicCalendarRouter);
@@ -64,16 +74,31 @@ export function securityHeaders(_req: Request, res: Response, next: NextFunction
   next();
 }
 
-/** Known errors as JSON with their code; anything else is logged and answered without detail. */
+/**
+ * Known errors as JSON with their code; anything else is reported (lib/errorReporter.ts) and
+ * answered without detail. Every error body carries the request id, so support can find it.
+ */
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
+  const requestId = req.id;
   if (err instanceof HttpError) {
-    res.status(err.status).json({ code: err.code, message: err.message, details: err.details });
+    if (err.status >= 500) report(err, req);
+    res.status(err.status).json({ code: err.code, message: err.message, details: err.details, requestId });
     return;
   }
   if (err instanceof ZodError) {
-    res.status(400).json({ code: 'VALIDATION', message: 'Invalid request', details: err.issues });
+    res.status(400).json({ code: 'VALIDATION', message: 'Invalid request', details: err.issues, requestId });
     return;
   }
-  logError(`${req.method} ${req.path}`, err);
-  res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong' });
+  // express.json(): a body that isn't JSON or is too large is the client's mistake, not ours.
+  const status = (err as { status?: unknown; type?: unknown }).status;
+  if (typeof status === 'number' && status >= 400 && status < 500 && typeof (err as { type?: unknown }).type === 'string') {
+    res.status(status).json({ code: status === 413 ? 'TOO_LARGE' : 'BAD_REQUEST', message: status === 413 ? 'Request too large' : 'Invalid request body', requestId });
+    return;
+  }
+  report(err, req);
+  res.status(500).json({ code: 'INTERNAL', message: 'Something went wrong', requestId });
+}
+
+function report(err: unknown, req: Request) {
+  captureError(err, { source: 'request', requestId: req.id, method: req.method, route: routePattern(req), tenantId: req.auth?.tenantId ?? req.tenantId, userId: req.auth?.userId });
 }
