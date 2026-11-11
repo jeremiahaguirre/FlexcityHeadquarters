@@ -36,6 +36,19 @@ Everything stays under half a second. The first reads after a restart take 0.4 s
 | 5. 30 workers a second | p50 10–25 ms, p99 under 50 ms | p50 8–21 ms, p99 under 40 ms |
 | Errors | **0** | **0** |
 
+**Re-run with two processes after the event outbox and LISTEN changes (11 November 2026, `WEB_CONCURRENCY=2`).** Same seed and scenarios, but on a busier machine: the shared development API and web server were also running, right after a container restart (load average 9.7 on 4 cores), so compare it with the table above only loosely.
+
+| Scenario | Two API processes |
+| --- | --- |
+| 1. All 9,030 workers at once | 168 s, 323 req/s; reads p50 1.9 s, p99 4.8 s; clock in p50 0.67 s |
+| 2. Browsing | shift board p50 2.6 s; week schedule p50 1.4 s |
+| 3. Claim race | exactly one claim per shift (10 for 10), no wrong assignment |
+| 4. 31 pay runs at once | all 31 built, 9,030 statements, slowest 22.8 s |
+| 5. 30 workers a second | p50 27–54 ms, p99 240–300 ms |
+| Errors | **0** |
+
+Every claim's events went through the outbox and were delivered on the first try by the process that took the claim (10 events, 10 notifications with dedupe keys, none left pending).
+
 Scenario 5 is closest to a real day: even 9,000 workers arriving at a steady pace feel instant. Scenario 1 is a stress test. It shows the system queues work rather than failing: every request was answered, just slower.
 
 ## What was changed to get here
@@ -46,7 +59,12 @@ The first run, before the fixes below, failed many requests in scenarios 1 and 4
   - each process opens `DB_POOL_SIZE` connections (default 25, up from Prisma's default of 9);
   - a request waits up to `DB_POOL_TIMEOUT_S` (20 s) for one, instead of 2 s.
 - **Pay runs, provider sends and exports** run in a transaction with a 120 s limit (`payrollTx`), not the 15 s limit other requests get.
-- **Worker processes:** `WEB_CONCURRENCY` starts that many API processes on one port. Live notifications reach every process through Postgres `LISTEN`.
+- **Worker processes:** `WEB_CONCURRENCY` starts that many API processes on one port. Processes share nothing in memory (see [ARCHITECTURE.md](ARCHITECTURE.md#process-model)):
+  - live notifications reach every process through one Postgres `LISTEN` connection each;
+  - domain events go through a transactional outbox (`EventOutbox`) that any process or the worker may deliver;
+  - caches are dropped in every process through `pg_notify`;
+  - rate limits are counted in Postgres;
+  - scheduled jobs run only in the worker, each under an advisory lock.
 - **Lighter shift board:** it selects only the fields it shows, at most 200 rows.
 - **Index** on punches by `(tenantId, status, clockIn)` for punch review.
 
@@ -58,7 +76,7 @@ The first run, before the fixes below, failed many requests in scenarios 1 and 4
 | 30 cities × 300 staff (this test) | Two API instances with 2–4 cores each, behind a load balancer; Postgres with 4 vCPU and 16 GB |
 | More | Add API instances; put PgBouncer (transaction mode) in front of Postgres; read replica for reports and exports |
 
-**Connections:** each API process holds up to `DB_POOL_SIZE` connections plus one `LISTEN` connection. The worker (`npm run worker`) holds its own. Keep
+**Connections:** each API process holds up to `DB_POOL_SIZE` connections plus one `LISTEN` connection. The worker (`npm run worker`) holds its own pool plus its advisory-lock connection. The `LISTEN` and lock connections must reach Postgres directly (`LISTEN_DATABASE_URL`, default `APP_DATABASE_URL`), or PgBouncer in session mode: transaction pooling loses `LISTEN` subscriptions and session locks. Request traffic can go through PgBouncer in transaction mode. Keep
 
   instances × `WEB_CONCURRENCY` × (`DB_POOL_SIZE` + 1) + worker
 
@@ -88,4 +106,6 @@ Then run:
 JWT_SECRET=… DATABASE_URL=postgresql://postgres@localhost:5432/flexcity_load npx tsx test/load/run.ts --scale all
 ```
 
-`--scale small` or `--scale big` runs one size only. The seed writes the generated sign-ins to `test/load/plan.json`, which is git-ignored.
+`--scale small` or `--scale big` runs one size only.
+
+To try several processes locally without the cluster module, start two servers on different ports against the same database (`PORT=4200 …` and `PORT=4201 …`): notifications, events and cache invalidation reach both through Postgres. The seed writes the generated sign-ins to `test/load/plan.json`, which is git-ignored.

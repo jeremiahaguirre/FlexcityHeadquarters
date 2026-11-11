@@ -29,6 +29,7 @@ with their records retention by-law.
 | Working-alone check-in locations | Deleted when the person turns sharing off; otherwise 30 days after the session | Deleted | On request; hourly job |
 | Device push subscriptions | Until the person signs out on that device or turns notifications off; dropped when the push service reports the device gone, or after 10 failed sends | Deleted | Immediately / each send |
 | Sign-in sessions and one-time links | 30 days after they end or are used | Deleted | Hourly job |
+| Domain events (event outbox: kind of event, ids; names or messages only until delivered) | 7 days after delivery; 30 days if delivery gave up | Deleted | Contents cleared as soon as delivered; hourly job; events not yet delivered are kept until they are |
 | Audit log | For the life of the account | Deleted with the organization | Append-only while the account exists |
 | Signed information and consent agreements (name, signature, choices, time, device address and browser) | For the life of the account: evidence of what each person was told | Deleted with the organization | The app can't change or delete them; FH can download a certificate per record |
 | Payroll provider sends (period, file fingerprint, status, provider's reference) | With payroll records | Deleted with the organization | The file itself isn't kept, only its SHA-256 |
