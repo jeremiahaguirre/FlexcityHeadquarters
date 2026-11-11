@@ -310,6 +310,14 @@ model Facility {
   rotationMinutes     Int      @default(30)
   /// Fatigue limit: continuous minutes on stations (across rotations) before a break.
   maxOnChairMinutes   Int      @default(120)
+  /// Demand forecast: indoor, outdoor or both, and what kind of place it is. They set how the
+  /// weather is expected to move attendance until enough history has been learned.
+  exposure            FacilityExposure @default(INDOOR)
+  venueKind           VenueKind        @default(POOL)
+  /// Environment and Climate Change Canada city forecast site (e.g. "bc-48"), set by hand.
+  weatherSite         String?
+  /// The nearest forecast site to the coordinates, found by the weather job when none is set by hand.
+  weatherSiteAuto     String?
   createdAt           DateTime @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime @updatedAt @db.Timestamptz(3)
 
@@ -340,6 +348,99 @@ model FacilityHours {
   facility Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, facilityId, dayOfWeek])
+}
+
+enum FacilityExposure {
+  INDOOR
+  OUTDOOR
+  MIXED
+}
+
+enum VenueKind {
+  POOL
+  PARK
+  BEACH
+  ARENA
+  COMMUNITY_CENTRE
+  OTHER
+}
+
+/// A one-off or yearly event that changes how many people come: Canada Day fireworks, a swim
+/// meet, a tournament, a festival. For one facility, or every facility in the city (facilityId null).
+/// Either extra people expected at a time while it runs, or a percentage up or down, or both.
+model SpecialEvent {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  facilityId   String?  @db.Uuid
+  name         String
+  startsOn     DateTime @db.Date
+  endsOn       DateTime @db.Date
+  /// Minutes after midnight, facility local time; both null = all day.
+  startMinute  Int?
+  endMinute    Int?
+  extraPeople  Int?
+  /// -90 to +300: expected attendance changes by this percentage.
+  percent      Int?
+  /// Happens every year on the same dates.
+  recursYearly Boolean  @default(false)
+  notes        String?
+  createdById  String?  @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, facilityId])
+}
+
+/// An Environment and Climate Change Canada city forecast site: public reference data shared by
+/// every organization (no organization's data here), and how the last fetch went.
+model WeatherSite {
+  site        String    @id
+  nameEn      String
+  nameFr      String?
+  latitude    Float
+  longitude   Float
+  /// The nearest climate station with daily data, for observed weather.
+  climateId   String?
+  lastFetchAt DateTime? @db.Timestamptz(3)
+  lastOkAt    DateTime? @db.Timestamptz(3)
+  failures    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+}
+
+/// Daily forecast for a site, cached from ECCC (kept a week). Shared by every organization near it.
+model WeatherForecastDay {
+  site      String
+  date      DateTime @db.Date
+  high      Int?
+  low       Int?
+  /// Chance of precipitation, %.
+  pop       Int?
+  iconCode  Int?
+  /// sunny | partly | cloudy | showers | rain | thunder | snow | mixed | fog
+  condition String
+  summaryEn String?
+  summaryFr String?
+  fetchedAt DateTime @db.Timestamptz(3)
+
+  @@id([site, date])
+}
+
+/// What the weather was on a day at a site: from ECCC daily climate data, or the day's own forecast
+/// until climate data comes in. The forecast learns from it how attendance responds to the weather.
+model WeatherObservation {
+  site      String
+  date      DateTime @db.Date
+  high      Float?
+  low       Float?
+  precipMm  Float?
+  snowCm    Float?
+  condition String
+  /// "climate" (ECCC daily climate data) or "forecast" (the day's forecast, until climate data comes in)
+  source    String
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  @@id([site, date])
 }
 
 /// Tenant-specific overrides of provincial rules, e.g. a collective agreement
