@@ -525,6 +525,9 @@ api.get(
     if (userId !== a.userId && !a.permissions.has('reliability.read')) throw forbidden();
     const out = await withTenant(a.tenantId, async (tx) => {
       // HR (and the person themselves) see every event; other supervisors only those they recorded.
+      // Someone in another organization (or erased) reads as not found.
+      const u = await tx.user.findUnique({ where: { id: userId }, select: { anonymizedAt: true } });
+      if (!u || u.anonymizedAt) throw notFound('Staff member');
       const by = userId === a.userId ? null : hrRecordsBy(a);
       return loadReliability(tx, userId, new Date(), by);
     });
