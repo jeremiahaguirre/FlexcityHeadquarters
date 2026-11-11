@@ -1,4 +1,4 @@
-import { BookOpenCheck, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
+import { BookOpenCheck, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, Gauge, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
 export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
 export type ManageSection = (typeof MANAGE_SECTIONS)[number];
@@ -25,7 +25,7 @@ export const NAV: NavItem[] = [
   { href: '/board', key: 'board', icon: Repeat, group: 'mine', permission: 'shiftboard.claim', tab: 4, ready: true },
   { href: '/timeclock', key: 'timeclock', icon: Clock, group: 'mine', permission: 'timeclock.punch', tab: 5, ready: true },
   { href: '/time-off', key: 'timeOff', icon: CalendarClock, group: 'mine', permission: 'timeoff.self', ready: true },
-  { href: '/availability', key: 'availability', icon: CalendarRange, group: 'mine', permission: 'availability.self', ready: true },
+  { href: '/availability', key: 'availability', icon: CalendarCheck, group: 'mine', permission: 'availability.self', ready: true },
   { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'lessons.teach', ready: true },
   { href: '/alone', key: 'loneWork', icon: ShieldCheck, group: 'mine', permission: 'lonework.self', ready: true },
   { href: '/patrol', key: 'patrol', icon: Snowflake, group: 'mine', permission: 'winter.patrol', ready: true },
@@ -41,7 +41,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/hr', key: 'hr', icon: Building2, group: 'manage', section: 'people', permission: 'leave.manage', ready: true },
   { href: '/members', key: 'members', icon: IdCard, group: 'manage', section: 'programs', permission: 'members.manage', tab: 7, ready: true },
   { href: '/manage/programs', key: 'programs', icon: Layers, group: 'manage', section: 'programs', permission: 'lessons.plan', ready: true },
-  { href: '/manage/schedule', key: 'manageSchedule', icon: Activity, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
+  { href: '/manage/schedule', key: 'manageSchedule', icon: CalendarRange, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
   { href: '/manage/forecast', key: 'forecast', icon: TrendingUp, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
   { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', section: 'time', permission: 'timeclock.review', ready: true },
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', section: 'people', permission: 'users.read', ready: true },
@@ -61,7 +61,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', section: 'safety', permission: 'compliance.report', ready: true },
   { href: '/manage/fleet', key: 'fleet', icon: Truck, group: 'manage', section: 'safety', permission: 'fleet.manage', ready: true },
   { href: '/manage/coverage', key: 'coverage', icon: BadgeCheck, group: 'manage', section: 'time', permission: ['coverage.manage', 'schedule.write'], ready: true },
-  { href: '/manage/benchmarks', key: 'benchmarks', icon: BarChart3, group: 'manage', section: 'organization', permission: ['tenant.configure', 'reliability.read'], ready: true },
+  { href: '/manage/benchmarks', key: 'benchmarks', icon: Gauge, group: 'manage', section: 'organization', permission: ['tenant.configure', 'reliability.read'], ready: true },
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', section: 'people', permission: 'certs.verify', ready: true },
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', section: 'people', permission: 'jobs.manage', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', section: 'pay', permission: 'payroll.export', ready: true },
