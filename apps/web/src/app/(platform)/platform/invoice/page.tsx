@@ -145,7 +145,7 @@ function Invoice() {
               <th className="py-2 pl-3 text-right font-semibold">{t('billing.qty')}</th>
               <th className="whitespace-nowrap py-2 pl-4 text-right font-semibold">{t('billing.unit')}</th>
               <th className="py-2 pl-4 text-right font-semibold">{t('billing.amount')}</th>
-              {i.status === 'DRAFT' ? <th className="w-8 print:hidden" /> : null}
+              {i.status === 'DRAFT' ? <th className="w-8 print:hidden"><span className="sr-only">{t('common.actions')}</span></th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#D9E3E1]">

@@ -66,7 +66,7 @@ export function PayPeople() {
         <CardBody className="pt-2">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[42rem] text-small">
-              <thead className="text-left text-caption text-muted"><tr><th className="py-2 font-semibold">{t('payroll.employee')}</th><th className="py-2 font-semibold">{t('payroll.directDeposit')}</th><th className="py-2 font-semibold">TD1</th><th className="py-2 font-semibold">SIN</th><th /></tr></thead>
+              <thead className="text-left text-caption text-muted"><tr><th className="py-2 font-semibold">{t('payroll.employee')}</th><th className="py-2 font-semibold">{t('payroll.directDeposit')}</th><th className="py-2 font-semibold">TD1</th><th className="py-2 font-semibold">SIN</th><th><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
               <tbody className="divide-y divide-line">
                 {people.map((p) => {
                   const active = p.bankAccounts.find((b) => b.status === 'ACTIVE');

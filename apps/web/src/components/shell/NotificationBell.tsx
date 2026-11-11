@@ -97,6 +97,7 @@ export function NotificationBell() {
                   <button type="button" onClick={() => go(n)} className={cn('flex w-full gap-3 px-4 py-3 text-left hover:bg-surface', !n.readAt && 'bg-new-bg/40')}>
                     <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.readAt ? 'bg-transparent' : 'bg-new')} aria-hidden="true" />
                     <span className="min-w-0 flex-1">
+                      {!n.readAt ? <span className="sr-only">{t('shell.unread')}: </span> : null}
                       <span className="block text-small text-ink">{t(`notifications.${n.type}`, { ...n.params, defaultValue: t('notifications.generic') })}</span>
                       <span className="mt-0.5 block text-caption text-muted">{timeAgo(n.createdAt, i18n.language)}</span>
                     </span>

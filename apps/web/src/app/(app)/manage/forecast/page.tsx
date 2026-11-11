@@ -114,7 +114,7 @@ export default function ForecastPage() {
               <table className="w-full min-w-[42rem] border-separate border-spacing-1 text-center text-caption">
                 <thead>
                   <tr>
-                    <th />
+                    <td />
                     {data.data.days.map((d) => (
                       <th key={d.date} className="font-semibold">{label(d.date)}<span className="block font-normal text-muted">{d.schoolDay ? t('forecast.school') : t('forecast.noSchool')}</span></th>
                     ))}

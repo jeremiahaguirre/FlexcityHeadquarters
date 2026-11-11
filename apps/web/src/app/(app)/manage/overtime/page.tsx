@@ -75,7 +75,7 @@ export default function OvertimePage() {
               <Skeleton className="h-48" />
             ) : (
               <table className="w-full min-w-[34rem] text-left text-small">
-                <thead className="text-label uppercase text-muted"><tr><th className="py-2">#</th><th>{t('overtime.person')}</th><th className="text-right">{t('overtime.charged')}</th><th className="text-right">{t('overtime.refusals')}</th>{data.data.useSeniority !== false ? <th>{t('overtime.seniority')}</th> : null}<th /></tr></thead>
+                <thead className="text-label uppercase text-muted"><tr><th className="py-2">#</th><th>{t('overtime.person')}</th><th className="text-right">{t('overtime.charged')}</th><th className="text-right">{t('overtime.refusals')}</th>{data.data.useSeniority !== false ? <th>{t('overtime.seniority')}</th> : null}<th><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
                 <tbody className="divide-y divide-line">
                   {data.data.rows.map((r, i) => (
                     <tr key={r.userId}>

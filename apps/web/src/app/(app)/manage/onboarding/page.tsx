@@ -267,7 +267,7 @@ function Requirements() {
           <table className="w-full min-w-[40rem] border-separate border-spacing-0 text-small">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-panel py-2 pr-4 text-left" />
+                <td className="sticky left-0 z-10 bg-panel py-2 pr-4 text-left" />
                 <th className="px-2 py-2 text-center text-caption font-semibold">{t('onboarding.everyoneCol')}</th>
                 {d.positions.map((p) => <th key={p.id} className="min-w-[6rem] px-2 py-2 text-center text-caption font-semibold">{pos(p)}</th>)}
               </tr>

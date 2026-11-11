@@ -115,6 +115,7 @@
     "back": "Retour au site Web"
   },
   "common": {
+    "actions": "Actions",
     "close": "Fermer",
     "dismiss": "Masquer",
     "error": "Une erreur s’est produite. Vérifiez votre connexion et réessayez.",
@@ -155,6 +156,7 @@
     "mainNav": "Principal",
     "notifications": "Notifications",
     "notificationsUnread": "Notifications, {{count}} non lues",
+    "unread": "Non lue",
     "markAllRead": "Tout marquer comme lu",
     "noNotifications": "Vous êtes à jour.",
     "profile": "Mon profil",

@@ -115,6 +115,7 @@
     "back": "Back to the website"
   },
   "common": {
+    "actions": "Actions",
     "close": "Close",
     "dismiss": "Dismiss",
     "error": "Something went wrong. Check your connection and try again.",
@@ -155,6 +156,7 @@
     "mainNav": "Main",
     "notifications": "Notifications",
     "notificationsUnread": "Notifications, {{count}} unread",
+    "unread": "Unread",
     "markAllRead": "Mark all read",
     "noNotifications": "You’re all caught up.",
     "profile": "My profile",
