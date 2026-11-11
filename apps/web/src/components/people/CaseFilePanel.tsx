@@ -15,6 +15,8 @@ import { formatDate } from '@/lib/format';
 import { CATEGORIES, type CaseFile, type FileEvent, type FileNote, type FileRecord, LEVELS, type Level, SERIOUS, dayOf, recentFacts, requiredChecks } from '@/lib/people';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { emptySections } from '@/lib/recordSections';
+import { RecordText } from './RecordText';
 
 type Item = { at: string; key: string; node: ReactNode };
 const toLocalInput = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -295,7 +297,7 @@ export function RecordRow({ r }: { r: FileRecord }) {
       meta={`${formatDate(dayOf(r.issuedAt), lng, 'dated')}${r.stewardPresent ? ` · ${t('people.stewardWasPresent')}` : ''}`}
       tail={<StatusPill tone={r.acknowledgedAt ? 'ok' : 'neutral'}>{r.acknowledgedAt ? t('staff.signed') : t('staff.notSigned')}</StatusPill>}
     >
-      <p className="whitespace-pre-wrap">{r.summary}</p>
+      <RecordText text={r.summary} />
       {r.evidence?.length ? <p className="text-caption text-muted">{t('people.reliesOn', { count: r.evidence.length })}</p> : null}
       {r.signatureCheck?.signed ? (
         <p className={`flex items-center gap-1.5 text-caption ${r.signatureCheck.intact ? 'text-ok' : 'font-semibold text-danger'}`} title={`SHA-256 ${r.signatureCheck.signed}`}>
@@ -344,6 +346,7 @@ function RecordDialog({ file, userId, name, unionMember, onClose, onSaved }: { f
     if (!edited) setSummary(draft());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, events, notes]);
+  const gaps = useMemo(() => emptySections(summary), [summary]);
   const needed = requiredChecks(level, unionMember);
   const serious = SERIOUS.has(level);
   const allowed = LEVELS.filter((l) => !SERIOUS.has(l) || can('users.write'));
@@ -430,6 +433,9 @@ function RecordDialog({ file, userId, name, unionMember, onClose, onSaved }: { f
                 <Undo2 className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />
                 {t('people.redraft')}
               </button>
+              {gaps.length ? (
+                <p className="mt-1 rounded-xl bg-warn-bg px-3 py-2 text-small text-warn">{t('people.emptySectionsWarn', { list: gaps.join(', ') })}</p>
+              ) : null}
             </>
           )}
         </Field>

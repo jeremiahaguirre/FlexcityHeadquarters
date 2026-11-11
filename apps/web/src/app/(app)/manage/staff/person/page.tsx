@@ -13,6 +13,7 @@ import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { AccommodationPanel } from '@/components/people/AccommodationPanel';
 import { CaseFilePanel } from '@/components/people/CaseFilePanel';
+import { RecordText } from '@/components/people/RecordText';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api, apiDownload, saveBlob } from '@/lib/api';
@@ -305,7 +306,7 @@ function Person() {
                       <span className="font-semibold">{formatDate(r.issuedAt, lng, 'dated')}</span>
                       <StatusPill tone={r.acknowledgedAt ? 'ok' : 'neutral'}>{r.acknowledgedAt ? t('staff.signed') : t('staff.notSigned')}</StatusPill>
                     </div>
-                    <p className="whitespace-pre-wrap">{r.summary}</p>
+                    <RecordText text={r.summary} />
                   </li>
                 ))}
               </ul>

@@ -2683,7 +2683,12 @@
     "onlyMine": "Vous ne voyez que les dossiers que vous avez créés ou émis vous-même. Les RH voient le dossier complet.",
     "descriptionMine": "Les personnes au sujet desquelles vous avez consigné quelque chose, d’après vos propres dossiers. Les RH voient le dossier complet de chacun.",
     "signedIntact": "Inchangé depuis la signature (empreinte {{fp}}…)",
-    "signedChanged": "Modifié après la signature : ce n’est pas la version signée par l’employé."
+    "signedChanged": "Modifié après la signature : ce n’est pas la version signée par l’employé.",
+    "showSigned": "Afficher le dossier complet tel que signé",
+    "showTidy": "Masquer les sections vides",
+    "hiddenEmpty_one": "{{count}} section vide est masquée. Le dossier lui-même n’est pas modifié.",
+    "hiddenEmpty_other": "{{count}} sections vides sont masquées. Le dossier lui-même n’est pas modifié.",
+    "emptySectionsWarn": "Ces sections sont vides : {{list}}. Vous pouvez quand même enregistrer. Les lecteurs ne verront pas les titres vides, mais le dossier est conservé exactement tel que rédigé."
   },
   "deck": {
     "title": "Rotation",

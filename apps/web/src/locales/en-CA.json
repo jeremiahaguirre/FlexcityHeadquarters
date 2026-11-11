@@ -2683,7 +2683,12 @@
     "onlyMine": "You see only the records you made or issued yourself. HR sees the full file.",
     "descriptionMine": "People you’ve made records about, built from your own records. HR sees everyone’s full file.",
     "signedIntact": "Unchanged since it was signed (fingerprint {{fp}}…)",
-    "signedChanged": "Changed after it was signed: this isn’t the version the employee signed."
+    "signedChanged": "Changed after it was signed: this isn’t the version the employee signed.",
+    "showSigned": "Show the full record as signed",
+    "showTidy": "Hide empty sections",
+    "hiddenEmpty_one": "{{count}} empty section is hidden. The record itself is unchanged.",
+    "hiddenEmpty_other": "{{count}} empty sections are hidden. The record itself is unchanged.",
+    "emptySectionsWarn": "These sections are empty: {{list}}. You can still save. Readers won’t see the empty headings, but the record is kept exactly as written."
   },
   "deck": {
     "title": "Rotation",

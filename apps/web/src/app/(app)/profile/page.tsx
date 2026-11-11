@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { SignaturePad } from '@/components/SignaturePad';
 import { MyFile } from '@/components/people/MyFile';
 import { MyOnboarding } from '@/components/people/MyOnboarding';
+import { RecordText } from '@/components/people/RecordText';
 import { MyRestrictions } from '@/components/people/AccommodationPanel';
 import { MyReviews } from '@/components/hr/Reviews';
 import { MyTraining } from '@/components/hr/Training';
@@ -255,7 +256,7 @@ export default function ProfilePage() {
       >
         {signing ? (
           <div className="grid gap-4">
-            <p className="whitespace-pre-wrap rounded-xl bg-surface px-4 py-3 text-small">{signing.summary}</p>
+            <RecordText text={signing.summary} className="rounded-xl bg-surface px-4 py-3 text-small" />
             <p className="text-small text-muted">{t('profile.signMeaning')}</p>
             <SignaturePad onChange={setSignature} />
           </div>
