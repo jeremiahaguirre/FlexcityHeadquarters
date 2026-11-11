@@ -1,13 +1,15 @@
 import type { Prisma } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { audit, withTenant } from '../lib/db.js';
+import { authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, notFound } from '../lib/errors.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
 import { h } from './context.js';
 import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
 import { RETENTION_DEFAULTS, RETENTION_LIMITS, readRetention } from '../services/privacy/retention.js';
+import { reliabilityPolicy } from '../services/reliability/load.js';
+import { RECOVERY_MODES, RULES, lastRestart, nextRestart } from '../services/reliability/score.js';
 
 export const settingsRouter = Router();
 settingsRouter.use('/settings', requirePermission('tenant.configure'));
@@ -256,10 +258,53 @@ settingsRouter.put(
       .parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
       const before = await tx.tenant.findFirstOrThrow({ select: { retentionSettings: true } });
-      await tx.tenant.update({ where: { id: a.tenantId }, data: { retentionSettings: b } });
+      // The reliability score's recovery choice lives alongside: keep it.
+      const kept = (before.retentionSettings as Record<string, unknown> | null)?.reliability;
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { retentionSettings: { ...b, ...(kept ? { reliability: kept as Prisma.InputJsonValue } : {}) } } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.retention', entity: 'Tenant', entityId: a.tenantId, before: readRetention(before.retentionSettings), after: b });
     });
     res.json(b);
+  }),
+);
+
+/**
+ * How the advisory reliability score recovers: gradually with good attendance (the default),
+ * a fresh start every year on a chosen date (Jan 1, or a fiscal or season year), or both.
+ * Earlier events are never deleted; they stop counting for the score. Discipline records are separate.
+ */
+const reliabilityView = async (tx: Tx) => {
+  const p = await reliabilityPolicy(tx);
+  const now = new Date();
+  const resets = p.mode !== 'GRADUAL';
+  return { ...p, rules: RULES, lastRestartAt: resets ? lastRestart(now, p) : null, nextRestartAt: resets ? nextRestart(now, p) : null };
+};
+
+settingsRouter.get(
+  '/settings/reliability',
+  requireFeature('reliability'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    res.json(await withTenant(a.tenantId, reliabilityView));
+  }),
+);
+
+settingsRouter.put(
+  '/settings/reliability',
+  requireFeature('reliability'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const b = z
+      .object({ mode: z.enum(RECOVERY_MODES), resetMonth: z.number().int().min(1).max(12).default(1), resetDay: z.number().int().min(1).max(31).default(1) })
+      .refine((v) => v.resetDay <= [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][v.resetMonth - 1]!, { message: 'That day isn’t in that month.', path: ['resetDay'] })
+      .parse(req.body);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const t = await tx.tenant.findFirstOrThrow({ select: { retentionSettings: true } });
+      const current = (t.retentionSettings as Record<string, unknown> | null) ?? {};
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { retentionSettings: { ...(current as Prisma.InputJsonObject), reliability: b } } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.reliability', entity: 'Tenant', entityId: a.tenantId, before: current.reliability ?? null, after: b });
+      return reliabilityView(tx);
+    });
+    res.json(out);
   }),
 );
 
