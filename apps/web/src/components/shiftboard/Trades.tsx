@@ -146,8 +146,7 @@ export function MyTradesLink() {
   return (
     <Link href="/schedule" className="flex min-h-11 items-center gap-3 rounded-xl2 border border-line bg-panel px-4 py-3 text-small shadow-card hover:bg-surface/60">
       <ArrowLeftRight className="h-5 w-5 shrink-0 text-brand-text" aria-hidden="true" />
-      <span className="min-w-0 flex-1">{t('trades.inProgress', { count: active })}</span>
-      <span className="shrink-0 font-semibold text-brand-text">{t('trades.seeOnSchedule')}</span>
+      <span className="min-w-0 flex-1">{t('trades.inProgress', { count: active })} <span className="whitespace-nowrap font-semibold text-brand-text">{t('trades.seeOnSchedule')}</span></span>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
     </Link>
   );
