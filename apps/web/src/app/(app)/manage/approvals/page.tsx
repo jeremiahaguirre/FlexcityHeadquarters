@@ -90,6 +90,17 @@ export default function ApprovalsPage() {
     setTab(k);
   };
 
+  // A tab that had items and is now empty after the supervisor's own decisions gets a short celebration.
+  const seen = useRef<Partial<Record<Tab, number>>>({});
+  const [cleared, setCleared] = useState<Tab | null>(null);
+  useEffect(() => {
+    if (!allLoaded) return;
+    for (const k of order) {
+      if ((seen.current[k] ?? 0) > 0 && count[k] === 0) setCleared(k);
+      seen.current[k] = count[k];
+    }
+  });
+
   const label = (k: Tab) => `${t(`approvals.tabs.${k}`)}${count[k] ? ` · ${count[k]}` : ''}`;
   const reviewable = punches.data?.filter((p) => p.localClockOut) ?? [];
 
@@ -122,7 +133,7 @@ export default function ApprovalsPage() {
         claims.loading ? (
           <ListSkeleton />
         ) : !claims.data?.length ? (
-          <EmptyState icon={ClipboardCheck} title={t('approvals.allClear')}>
+          <EmptyState icon={ClipboardCheck} title={t('approvals.allClear')} celebrate={cleared === tab}>
             {t('approvals.claimsEmpty')}
           </EmptyState>
         ) : (
@@ -158,7 +169,7 @@ export default function ApprovalsPage() {
         timeOff.loading ? (
           <ListSkeleton />
         ) : !timeOff.data?.length ? (
-          <EmptyState icon={ClipboardCheck} title={t('approvals.allClear')}>
+          <EmptyState icon={ClipboardCheck} title={t('approvals.allClear')} celebrate={cleared === tab}>
             {t('approvals.timeOffEmpty')}
           </EmptyState>
         ) : (
@@ -196,7 +207,7 @@ export default function ApprovalsPage() {
         punches.loading ? (
           <ListSkeleton />
         ) : !punches.data?.length ? (
-          <EmptyState icon={ClipboardCheck} title={t('approvals.allClear')}>
+          <EmptyState icon={ClipboardCheck} title={t('approvals.allClear')} celebrate={cleared === tab}>
             {t('approvals.punchesEmpty')}
           </EmptyState>
         ) : (
