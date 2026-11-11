@@ -5557,7 +5557,10 @@
     "approve": "Approve trade",
     "deny": "Don’t approve",
     "approved": "Trade approved; both schedules updated",
-    "denied": "Trade not approved"
+    "denied": "Trade not approved",
+    "inProgress_one": "You have {{count}} shift trade in progress.",
+    "inProgress_other": "You have {{count}} shift trades in progress.",
+    "seeOnSchedule": "See them on My schedule"
   },
   "calendarFeed": {
     "title": "Shifts in your calendar",

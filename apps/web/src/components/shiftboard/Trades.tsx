@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowLeftRight, CalendarX2, Check, X } from 'lucide-react';
+import { ArrowLeftRight, CalendarX2, Check, ChevronRight, X } from 'lucide-react';
+import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -114,8 +115,8 @@ export function MyTrades({ onChanged }: { onChanged?: () => void }) {
                 <StatusPill tone={TONE[tr.status]}>{t(`trades.status.${tr.status}`)}</StatusPill>
               </div>
               <div className="grid gap-2 text-small sm:grid-cols-2">
-                <div><p className="text-caption uppercase text-muted">{t('trades.youGive')}</p><ShiftLine s={give} /></div>
-                <div><p className="text-caption uppercase text-muted">{t('trades.youTake')}</p><ShiftLine s={get} /></div>
+                <div><p className="text-caption font-semibold text-muted">{t('trades.youGive')}</p><ShiftLine s={give} /></div>
+                <div><p className="text-caption font-semibold text-muted">{t('trades.youTake')}</p><ShiftLine s={get} /></div>
               </div>
               {tr.note ? <p className="text-small text-ink">“{tr.note}”</p> : null}
               {tr.decisionNote ? <p className="text-small text-muted">{t('trades.supervisorSaid', { note: tr.decisionNote })}</p> : null}
@@ -136,6 +137,22 @@ export function MyTrades({ onChanged }: { onChanged?: () => void }) {
   );
 }
 
+/** Trades live on My schedule (where they start, from a shift): elsewhere, one line that leads there. */
+export function MyTradesLink() {
+  const { t } = useTranslation();
+  const q = useQuery<Trade[]>('/api/me/trades');
+  const active = q.data?.filter((tr) => tr.status === 'PROPOSED' || tr.status === 'ACCEPTED').length ?? 0;
+  if (!active) return null;
+  return (
+    <Link href="/schedule" className="flex min-h-11 items-center gap-3 rounded-xl2 border border-line bg-panel px-4 py-3 text-small shadow-card hover:bg-surface/60">
+      <ArrowLeftRight className="h-5 w-5 shrink-0 text-brand-text" aria-hidden="true" />
+      <span className="min-w-0 flex-1">{t('trades.inProgress', { count: active })}</span>
+      <span className="shrink-0 font-semibold text-brand-text">{t('trades.seeOnSchedule')}</span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+    </Link>
+  );
+}
+
 /** Supervisors: trades both people agreed to. */
 /** `team`: only trades involving the people who report to me ("My team" on the approvals page). */
 export function TradeApprovals({ team = false }: { team?: boolean } = {}) {
@@ -153,8 +170,8 @@ export function TradeApprovals({ team = false }: { team?: boolean } = {}) {
           <Card key={tr.id}>
             <CardBody className="grid gap-3">
               <div className="grid gap-3 text-small sm:grid-cols-2">
-                <div><p className="text-caption uppercase text-muted">{t('trades.takes', { name: tr.from.name })}</p><ShiftLine s={tr.to.shift} />{ot(tr.check?.from?.overtimeHours) ? <StatusPill tone="warn">{t('trades.overtime', { h: tr.check!.from!.overtimeHours })}</StatusPill> : null}</div>
-                <div><p className="text-caption uppercase text-muted">{t('trades.takes', { name: tr.to.name })}</p><ShiftLine s={tr.from.shift} />{ot(tr.check?.to?.overtimeHours) ? <StatusPill tone="warn">{t('trades.overtime', { h: tr.check!.to!.overtimeHours })}</StatusPill> : null}</div>
+                <div><p className="text-caption font-semibold text-muted">{t('trades.takes', { name: tr.from.name })}</p><ShiftLine s={tr.to.shift} />{ot(tr.check?.from?.overtimeHours) ? <StatusPill tone="warn">{t('trades.overtime', { h: tr.check!.from!.overtimeHours })}</StatusPill> : null}</div>
+                <div><p className="text-caption font-semibold text-muted">{t('trades.takes', { name: tr.to.name })}</p><ShiftLine s={tr.from.shift} />{ot(tr.check?.to?.overtimeHours) ? <StatusPill tone="warn">{t('trades.overtime', { h: tr.check!.to!.overtimeHours })}</StatusPill> : null}</div>
               </div>
               {tr.note ? <p className="text-small text-ink">“{tr.note}”</p> : null}
               <div className="flex flex-wrap gap-2">

@@ -5557,7 +5557,10 @@
     "approve": "Approuver l’échange",
     "deny": "Ne pas approuver",
     "approved": "Échange approuvé; les deux horaires sont à jour",
-    "denied": "Échange non approuvé"
+    "denied": "Échange non approuvé",
+    "inProgress_one": "Vous avez {{count}} échange de quart en cours.",
+    "inProgress_other": "Vous avez {{count}} échanges de quarts en cours.",
+    "seeOnSchedule": "Les voir dans Mon horaire"
   },
   "calendarFeed": {
     "title": "Vos quarts dans votre agenda",
