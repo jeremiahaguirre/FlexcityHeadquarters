@@ -4,7 +4,7 @@ import { platformOf } from '../../auth/platform.js';
 import { db } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import { h } from '../context.js';
-import { UNSUBSCRIBE_KIND, consentFrom } from '../../services/marketing/casl.js';
+import { REMOVED, UNSUBSCRIBE_KIND, consentFrom } from '../../services/marketing/casl.js';
 
 /** Marketing-site enquiries for FH staff to follow up. */
 export const leadsRouter = Router();
@@ -14,7 +14,7 @@ leadsRouter.get(
   '/leads',
   h(async (req, res) => {
     const q = z.object({ status: statuses.optional() }).parse(req.query);
-    const leads = await db().lead.findMany({ where: { kind: { not: UNSUBSCRIBE_KIND }, ...(q.status ? { status: q.status } : {}) }, orderBy: { createdAt: 'desc' }, take: 500 });
+    const leads = await db().lead.findMany({ where: { kind: { not: UNSUBSCRIBE_KIND }, name: { not: REMOVED }, ...(q.status ? { status: q.status } : {}) }, orderBy: { createdAt: 'desc' }, take: 500 });
     // CASL consent per address (express with its wording and date, implied for six months after an
     // enquiry, or withdrawn by an unsubscribe), so follow-ups only go to people who may be emailed.
     const ledger = await db().lead.findMany({ where: { email: { in: [...new Set(leads.map((l) => l.email))] } }, select: { email: true, kind: true, marketingConsent: true, consentText: true, createdAt: true } });

@@ -153,3 +153,20 @@ export async function sendCommercialEmail(mailer: Mailer, m: { to: string; local
   await mailer.send(buildCommercialEmail(m));
   return { sent: true };
 }
+
+/**
+ * Website enquiries are kept two years after the last exchange (the privacy policy says so), unless
+ * the enquiry led to a customer (WON); then their personal details are removed (the app role may
+ * update leads but not delete them, so the row stays as an empty count). Unsubscribe records are kept:
+ * they are what stops us emailing someone again. Runs hourly from the worker.
+ */
+export const ENQUIRY_RETENTION_MONTHS = 24;
+export const REMOVED = '(removed)';
+export async function purgeOldEnquiries(now = new Date()): Promise<number> {
+  const cutoff = addMonths(now, -ENQUIRY_RETENTION_MONTHS);
+  const r = await db().lead.updateMany({
+    where: { kind: { in: ENQUIRY_KINDS }, status: { not: 'WON' }, updatedAt: { lt: cutoff }, name: { not: REMOVED } },
+    data: { name: REMOVED, email: '', organization: null, role: null, province: null, facilities: null, message: REMOVED, notes: null, marketingConsent: false, consentText: null, status: 'CLOSED' },
+  });
+  return r.count;
+}

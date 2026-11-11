@@ -5,7 +5,7 @@ import { createApp } from '../../src/app.js';
 import { config } from '../../src/config.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
 import { ConsoleMailer } from '../../src/services/notifications/mailer.js';
-import { buildCommercialEmail, consentFor, consentFrom, sendCommercialEmail, unsubscribeToken, verifyUnsubscribeToken } from '../../src/services/marketing/casl.js';
+import { buildCommercialEmail, consentFor, consentFrom, purgeOldEnquiries, sendCommercialEmail, unsubscribeToken, verifyUnsubscribeToken } from '../../src/services/marketing/casl.js';
 import { owner } from './fixtures.js';
 
 const server = createApp();
@@ -96,5 +96,20 @@ describe('CASL: commercial email', () => {
       c.COMPANY_LEGAL_NAME = before.name;
       c.COMPANY_MAILING_ADDRESS = before.address;
     }
+  });
+
+  it('enquiries lose their personal details two years after the last exchange; customers and unsubscribes are kept', async () => {
+    const e = addr();
+    const old = new Date(Date.now() - 800 * 86_400_000);
+    const base = { name: 'Old', email: e, message: 'Old enquiry', locale: 'en-CA' };
+    const gone = await owner.lead.create({ data: { ...base, kind: 'SALES', createdAt: old } });
+    const won = await owner.lead.create({ data: { ...base, kind: 'DEMO', status: 'WON', createdAt: old } });
+    const unsub = await owner.lead.create({ data: { ...base, kind: 'UNSUBSCRIBE', status: 'CLOSED', createdAt: old } });
+    await owner.$executeRaw`UPDATE "Lead" SET "updatedAt" = ${old} WHERE email = ${e}`;
+    expect(await purgeOldEnquiries()).toBeGreaterThanOrEqual(1);
+    expect(await owner.lead.findUnique({ where: { id: gone.id } })).toMatchObject({ name: '(removed)', email: '', message: '(removed)', organization: null });
+    expect(await purgeOldEnquiries()).toBe(0);
+    expect(await owner.lead.findUnique({ where: { id: won.id } })).not.toBeNull();
+    expect(await owner.lead.findUnique({ where: { id: unsub.id } })).not.toBeNull();
   });
 });
