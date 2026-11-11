@@ -29,6 +29,13 @@ function v6Blocked(ip: string): boolean {
   if (x === '::' || x === '::1') return true;
   const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(x);
   if (mapped) return v4Blocked(mapped[1]!);
+  // The same IPv4-mapped address written in hex, as URL parsing normalizes it ([::ffff:10.0.0.1] → ::ffff:a00:1).
+  const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(x);
+  if (hex) {
+    const hi = parseInt(hex[1]!, 16);
+    const lo = parseInt(hex[2]!, 16);
+    return v4Blocked(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`);
+  }
   return /^(fc|fd|fe8|fe9|fea|feb|ff)/.test(x) || x.startsWith('64:ff9b:') || x.startsWith('2001:db8');
 }
 
@@ -37,10 +44,15 @@ export const blockedAddress = (ip: string) => (isIP(ip) === 4 ? v4Blocked(ip) : 
 const localOk = () => config().NODE_ENV !== 'production';
 const isLocal = (host: string) => host === 'localhost' || host === '127.0.0.1' || host === '::1';
 
+export interface EgressOptions {
+  /** Allow localhost (default: outside production). Webhooks pass false unless a test opts in. */
+  allowLocal?: boolean;
+}
+
 /** Resolves `host` and returns an address that's safe to connect to, or refuses. */
-export async function publicAddress(host: string, what: string): Promise<string> {
+export async function publicAddress(host: string, what: string, opts: EgressOptions = {}): Promise<string> {
   const h = host.replace(/^\[|\]$/g, '').toLowerCase();
-  if (isLocal(h) && localOk()) return h === 'localhost' ? '127.0.0.1' : h;
+  if (isLocal(h) && (opts.allowLocal ?? localOk())) return h === 'localhost' ? '127.0.0.1' : h;
   let addrs: Array<{ address: string }>;
   try {
     addrs = isIP(h) ? [{ address: h }] : await lookup(h, { all: true, verbatim: true });
@@ -54,13 +66,15 @@ export async function publicAddress(host: string, what: string): Promise<string>
 }
 
 /** The same check for a URL (https only outside development). */
-export async function assertPublicUrl(url: string, what: string): Promise<void> {
+export async function assertPublicUrl(url: string, what: string, opts: EgressOptions = {}): Promise<string> {
   let u: URL;
   try {
     u = new URL(url);
   } catch {
     throw new HttpError(400, 'BAD_URL', `${what} isn’t a web address.`);
   }
-  if (u.protocol !== 'https:' && !(localOk() && isLocal(u.hostname) && u.protocol === 'http:')) throw new HttpError(400, 'BAD_URL', `${what} must use https.`);
-  await publicAddress(u.hostname, what);
+  const local = opts.allowLocal ?? localOk();
+  if (u.protocol !== 'https:' && !(local && isLocal(u.hostname.replace(/^\[|\]$/g, '')) && u.protocol === 'http:')) throw new HttpError(400, 'BAD_URL', `${what} must use https.`);
+  if (u.username || u.password) throw new HttpError(400, 'BAD_URL', `${what} can’t contain a user name or password.`);
+  return publicAddress(u.hostname, what, opts);
 }
