@@ -26,6 +26,8 @@
 
 ## Done
 
+- Team messaging: one to one, shift, department and group conversations sealed with the organization's key, read receipts, unread counts, edit and remove, files, mute, reports to HR and audited investigations, the rule of two for minors, live updates, retention and exports.
+- Staff surveys: anonymous pulse check-ins (participation kept apart from answers, minimum group with complementary suppression, results after closing, trend across repeats, CSV) and named exit surveys from offboarding, with two reminders at most.
 - Weekly shift templates (a department's standard week by season, applied to future weeks as drafts, idempotent, closures skipped, undo per application, optional automatic drafts ahead) and stated shift preferences (prefer/avoid, preferred weekly hours and days) weighed softly by Fill the schedule and shown in the planner.
 - Shift board with eligibility reasons, overtime approval and optimistic locking; schedule builder with assistant; my schedule.
 - Fill the schedule: a department's 1 week to 3 months filled by a seeded, explainable solver (hardest first, local search, every proposal re-checked with the shared eligibility rules), reviewed by week and day with reasons and alternatives, accepted as drafts with undo; one Plan ahead window for availability and the fill horizon.

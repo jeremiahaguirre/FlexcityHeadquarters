@@ -5203,7 +5203,10 @@
         "Votre travail : postes, certifications, disponibilités, horaire, congés et soldes de congés.",
         "Votre temps : heures d’arrivée et de départ, et corrections avec le motif, pour la paie.",
         "La paie, si votre employeur vous paie par l’application : taux de salaire, montants de demande (TD1), retenues, compte bancaire (scellé), numéro d’assurance sociale (scellé) et adresse postale pour les feuillets fiscaux.",
-        "Les dossiers RH vous concernant : évaluations, formation, éléments d’intégration, événements d’assiduité, notes de conduite, mesures disciplinaires, mesures d’adaptation, réclamations pour lésion et documents que vous ou les RH téléversez. Les notes médicales sont réservées aux RH."
+        "Les dossiers RH vous concernant : évaluations, formation, éléments d’intégration, événements d’assiduité, notes de conduite, mesures disciplinaires, mesures d’adaptation, réclamations pour lésion et documents que vous ou les RH téléversez. Les notes médicales sont réservées aux RH.",
+        "Messages, si votre organisation les active : vos conversations, les messages et fichiers que vous envoyez (scellés avec la clé de votre employeur), le moment où vous avez lu chaque conversation pour la dernière fois, et les signalements que vous faites aux RH.",
+        "Sondages : pour un sondage anonyme, seul le fait que vous avez répondu est conservé avec votre nom; vos réponses n’ont ni nom ni heure. Les sondages de départ sont nominatifs et l’indiquent d’abord.",
+        "Préférences d’horaire et choix de soumission de quarts que vous indiquez."
       ]
     },
     "see": {
@@ -5213,7 +5216,10 @@
         "Votre superviseur voit ce qu’il faut pour gérer votre service : horaire, temps, disponibilités et les dossiers qu’il a rédigés. Pas vos renseignements médicaux, les détails de votre paie ni vos coordonnées bancaires.",
         "Les RH voient votre dossier complet. La paie voit les détails de paie et d’impôt, avec compte bancaire et NAS masqués.",
         "Vos collègues voient votre prénom et l’initiale de votre nom sur l’horaire publié de votre service.",
-        "Le personnel de FlexcityHeadquarters ne voit pas les dossiers des employés. Si votre employeur demande de l’aide, une visite du soutien est en lecture seule, limitée dans le temps, consignée, et n’ouvre jamais de dossiers individuels."
+        "Le personnel de FlexcityHeadquarters ne voit pas les dossiers des employés. Si votre employeur demande de l’aide, une visite du soutien est en lecture seule, limitée dans le temps, consignée, et n’ouvre jamais de dossiers individuels.",
+        "Les personnes d’une conversation en voient les messages et le moment où chaque membre l’a lue pour la dernière fois. Votre employeur ne peut lire une conversation dont il ne fait pas partie qu’en l’ouvrant pour une enquête, avec une raison consignée; chaque lecture est journalisée.",
+        "Les résultats des sondages anonymes ne s’affichent qu’à la fin du sondage et seulement pour des groupes d’au moins 5 personnes (votre organisation peut relever ce seuil, jamais sous 3). Les RH voient les réponses aux sondages de départ avec votre nom.",
+        "Les jeunes travailleurs n’ont jamais de conversation individuelle avec un adulte dans l’application; ils écrivent aux adultes dans des groupes comptant au moins deux adultes."
       ]
     },
     "monitoring": {
@@ -5232,7 +5238,8 @@
         "Dossiers de paie : les années que votre employeur doit les conserver pour l’impôt (au moins six après l’année).",
         "Notifications dans l’application : 2 ans par défaut; journal des courriels et des textos : 90 jours par défaut, qui ne conserve le contenu d’un message que jusqu’à son envoi.",
         "Sessions terminées et codes de connexion : 30 jours.",
-        "À votre départ, votre dossier est conservé pendant la période légale de votre employeur, puis anonymisé."
+        "À votre départ, votre dossier est conservé pendant la période légale de votre employeur, puis anonymisé.",
+        "Messages d’équipe : 2 ans après le dernier message d’une conversation par défaut; les messages retirés ou modifiés sont conservés, scellés, d’ici là pour les enquêtes. Réponses aux sondages : 2 ans après la fin du sondage par défaut."
       ]
     },
     "rights": {
@@ -5246,7 +5253,7 @@
     "security": {
       "title": "Comment ils sont protégés",
       "items": [
-        "Chiffrés en transit et au repos; les NAS, comptes bancaires, récits d’incident et documents sont en plus scellés avec la clé propre à votre employeur.",
+        "Chiffrés en transit et au repos; les NAS, comptes bancaires, récits d’incident, documents et messages sont en plus scellés avec la clé propre à votre employeur.",
         "Les données de chaque organisation sont isolées par la base de données elle-même.",
         "Mots de passe de 12 à 128 caractères, les plus courants étant refusés; une deuxième étape à la connexion avec une clé d’accès ou un code à usage unique par courriel ou par texto; les actions sensibles vous demandent de confirmer votre identité."
       ]

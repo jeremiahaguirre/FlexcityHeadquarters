@@ -5203,7 +5203,10 @@
         "Your work: positions, certifications, availability, schedule, time off and leave balances.",
         "Your time: clock-in and clock-out times, and corrections with the reason, for pay.",
         "Pay, if your employer pays you through the app: pay rate, tax claim amounts (TD1), deductions, your bank account (sealed) and Social Insurance Number (sealed), and your home mailing address for tax slips.",
-        "HR files about you: reviews, training, onboarding items, attendance events, conduct notes, discipline, accommodations and injury claims, and documents you or HR upload. Medical notes are HR-only."
+        "HR files about you: reviews, training, onboarding items, attendance events, conduct notes, discipline, accommodations and injury claims, and documents you or HR upload. Medical notes are HR-only.",
+        "Messages, if your organization turns them on: your conversations, the messages and files you send (sealed with your employer’s key), when you last read each conversation, and reports you make to HR.",
+        "Surveys: for an anonymous survey, only that you answered is kept with your name; your answers have no name or time. Exit surveys are named, and say so first.",
+        "Scheduling preferences and shift bid choices you give."
       ]
     },
     "see": {
@@ -5213,7 +5216,10 @@
         "Your supervisor sees what they need to run your department: your schedule, time, availability and the records they wrote. Not your medical information, pay details or banking.",
         "HR sees your full file. Payroll sees pay and tax details, with banking and SIN masked.",
         "Colleagues see your first name and last initial on your department's published schedule.",
-        "FlexcityHeadquarters staff can't see employee records. If your employer asks for help, a support visit is read-only, time-limited, logged, and never opens individual records."
+        "FlexcityHeadquarters staff can't see employee records. If your employer asks for help, a support visit is read-only, time-limited, logged, and never opens individual records.",
+        "People in a conversation see its messages and when each member last read it. Your employer can read a conversation it isn’t in only when it opens it for an investigation, with a recorded reason; every reading is logged.",
+        "Anonymous survey results are shown only after the survey closes and only for groups of at least 5 (your organization can raise this, never below 3). Exit survey answers are seen by HR with your name.",
+        "Young workers never have one-to-one conversations with adults in the app; they message adults in groups with at least two adults."
       ]
     },
     "monitoring": {
@@ -5232,7 +5238,8 @@
         "Pay records: the years your employer must keep them for tax (at least six after the year).",
         "In-app notifications: 2 years by default; the log of emails and texts: 90 days by default, and it keeps a message’s contents only until it’s sent.",
         "Ended sign-in sessions and sign-in codes: 30 days.",
-        "When you leave, your file is kept for your employer's legal retention period, then anonymized."
+        "When you leave, your file is kept for your employer's legal retention period, then anonymized.",
+        "Team messages: 2 years after a conversation’s last message by default; removed and edited messages are kept, sealed, until then for investigations. Survey answers: 2 years after the survey closes by default."
       ]
     },
     "rights": {
@@ -5246,7 +5253,7 @@
     "security": {
       "title": "How it’s protected",
       "items": [
-        "Encrypted in transit and at rest; SINs, bank accounts, incident narratives and documents are additionally sealed with your employer's own key.",
+        "Encrypted in transit and at rest; SINs, bank accounts, incident narratives, documents and messages are additionally sealed with your employer's own key.",
         "Each organization's data is walled off by the database itself.",
         "Passwords of 12 to 128 characters, with common ones refused; a second step at sign-in with a passkey or a one-time code by email or text; sensitive actions ask you to confirm it’s you."
       ]
