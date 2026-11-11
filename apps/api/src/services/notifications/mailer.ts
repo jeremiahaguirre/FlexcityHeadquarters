@@ -2,7 +2,7 @@
  * Email delivery from the outbox. Templates are bilingual; the recipient's
  * locale picks the language.
  */
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { tenantIds, withTenant } from '../../lib/db.js';
 import { maskEmail } from '../../lib/log.js';
 import { emailHtml } from './emailHtml.js';
@@ -248,41 +248,69 @@ export function hasEmailTemplate(template: string): boolean {
   return template in TEMPLATES;
 }
 
+/** Emails that go with a safety alert (services/notifications/sms.ts SAFETY_TEMPLATES): sent first. */
+const SAFETY_EMAILS = ['lonework_escalated', 'lonework_help', 'callout_offer'];
+const RETRY_AT_KEY = '_retryAt';
+/** After the nth failure: 1, 2, 4, 8 minutes. */
+const emailRetryMs = (failures: number) => 60_000 * 2 ** Math.min(Math.max(failures - 1, 0), 3);
+
 /**
- * Sends pending outbox emails, tenant by tenant under row-level security.
- * Retries up to 5 times; failures are recorded on the row.
+ * Sends one organization's due emails, safety alerts first, under row-level security. Each one is
+ * claimed with `FOR UPDATE SKIP LOCKED` and sent while the row lock is held, so the API process
+ * that queued it (straight after its commit) and the worker never both send it. Retries up to 5
+ * times with a growing wait; failures are recorded on the row.
  */
+export async function deliverEmailTenant(tenantId: string, mailer: Mailer, opts: { prisma?: PrismaClient; limit?: number } = {}): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+  const safety = Prisma.join(SAFETY_EMAILS);
+  for (let i = 0; i < (opts.limit ?? 50); i++) {
+    const r = await withTenant(
+      tenantId,
+      async (tx) => {
+        const rows = await tx.$queryRaw<Array<{ id: string; toEmail: string; template: string; params: Params; locale: string; attempts: number }>>`
+          SELECT id, "toEmail", template, params, locale, attempts FROM "EmailOutbox"
+           WHERE "sentAt" IS NULL AND attempts < 5
+             AND (params->>${RETRY_AT_KEY} IS NULL OR (params->>${RETRY_AT_KEY})::timestamptz <= now())
+           ORDER BY CASE WHEN template IN (${safety}) THEN 0 ELSE 1 END, "createdAt"
+           LIMIT 1 FOR UPDATE SKIP LOCKED`;
+        const m = rows[0];
+        if (!m) return null;
+        let error: string | null = null;
+        try {
+          const { subject, text } = renderEmail(m.template, m.locale, m.params);
+          await mailer.send({ to: m.toEmail, subject, text, html: emailHtml(subject, text, m.locale) });
+        } catch (err) {
+          error = String(err instanceof Error ? err.message : err).slice(0, 500);
+        }
+        const attempts = m.attempts + 1;
+        // Once sent (or given up on), the message's contents are dropped: sign-in links and names
+        // shouldn't sit in the database where anyone with database access could read them.
+        await tx.emailOutbox.update({
+          where: { id: m.id },
+          data: error
+            ? { attempts, lastError: error, params: attempts >= 5 ? {} : ({ ...m.params, [RETRY_AT_KEY]: new Date(Date.now() + emailRetryMs(attempts)).toISOString() } as Prisma.InputJsonValue) }
+            : { sentAt: new Date(), attempts, params: {}, lastError: null },
+        });
+        return error ? 'failed' : 'sent';
+      },
+      { prisma: opts.prisma, timeoutMs: 30_000 },
+    );
+    if (!r) break;
+    if (r === 'sent') sent++;
+    else failed++;
+  }
+  return { sent, failed };
+}
+
+/** Every organization's due emails (the worker, every minute). */
 export async function deliverOutbox(prisma: PrismaClient, mailer: Mailer, batch = 50): Promise<{ sent: number; failed: number }> {
   let sent = 0;
   let failed = 0;
   for (const tenantId of await tenantIds(prisma)) {
-    const pending = await withTenant(
-      tenantId,
-      (tx) => tx.emailOutbox.findMany({ where: { sentAt: null, attempts: { lt: 5 } }, orderBy: { createdAt: 'asc' }, take: batch }),
-      { prisma },
-    );
-    for (const m of pending) {
-      let error: string | null = null;
-      try {
-        const { subject, text } = renderEmail(m.template, m.locale, m.params as Params);
-        await mailer.send({ to: m.toEmail, subject, text, html: emailHtml(subject, text, m.locale) });
-        sent++;
-      } catch (err) {
-        error = String(err instanceof Error ? err.message : err).slice(0, 500);
-        failed++;
-      }
-      await withTenant(
-        tenantId,
-        // Once sent (or given up on), the message's contents are dropped: sign-in links and names
-        // shouldn't sit in the database where anyone with database access could read them.
-        (tx) =>
-          tx.emailOutbox.update({
-            where: { id: m.id },
-            data: error ? { attempts: { increment: 1 }, lastError: error, ...(m.attempts + 1 >= 5 ? { params: {} } : {}) } : { sentAt: new Date(), attempts: { increment: 1 }, params: {}, lastError: null },
-          }),
-        { prisma },
-      );
-    }
+    const r = await deliverEmailTenant(tenantId, mailer, { prisma, limit: batch });
+    sent += r.sent;
+    failed += r.failed;
   }
   return { sent, failed };
 }

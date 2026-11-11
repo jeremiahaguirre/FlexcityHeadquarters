@@ -8,9 +8,11 @@
  * little personal information as the alert needs. Calls read the same words
  * twice. Bodies are rendered when sent; the params are dropped afterwards.
  */
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 import { config } from '../../config.js';
 import { tenantIds, withTenant } from '../../lib/db.js';
+import { captureError } from '../../lib/errorReporter.js';
+import { smsQueueToSent, smsSends } from '../../lib/metrics.js';
 
 type Params = Record<string, unknown>;
 type Render = (p: Params) => string;
@@ -119,33 +121,122 @@ export function smsSender(): SmsSender {
   return new ConsoleSms();
 }
 
-/** Sends pending texts and calls, tenant by tenant. Up to 5 tries; contents dropped once sent or given up on. */
+/**
+ * Safety alerts: someone may be hurt or alone without help. They go out first, retry soon after a
+ * failure, and raise an alert when still unsent after SAFETY_SMS_ALERT_S (services/notifications/
+ * urgent.ts). Keep in step with the list in db/rls.sql (outbox_backlog, safety_sms_overdue).
+ */
+export const SAFETY_TEMPLATES: readonly string[] = ['lonework_check_in_now', 'lonework_overdue', 'lonework_escalated', 'lonework_help', 'callout_offer'];
+export const isSafetyTemplate = (t: string) => SAFETY_TEMPLATES.includes(t);
+export const SMS_MAX_ATTEMPTS = 5;
+/** Wait before the next try after the nth failure: short for safety alerts, longer for the rest. */
+const SAFETY_RETRY_S = [15, 30, 60, 120];
+const OTHER_RETRY_S = [60, 120, 300, 600];
+export const smsRetryDelayMs = (safety: boolean, failures: number) => {
+  const steps = safety ? SAFETY_RETRY_S : OTHER_RETRY_S;
+  return steps[Math.min(Math.max(failures, 1), steps.length) - 1]! * 1000;
+};
+/**
+ * The next try's time is kept in the row's params (there is no column for it): params are only
+ * read to render the message, and they are dropped once it is sent or given up on.
+ */
+export const RETRY_AT_KEY = '_retryAt';
+
+export interface DeliveryResult {
+  sent: number;
+  failed: number;
+  /** When the soonest retry of a failed message is due (ms from now), if any. */
+  retryInMs: number | null;
+}
+
+interface ClaimedSms {
+  id: string;
+  toPhone: string;
+  kind: 'TEXT' | 'CALL';
+  template: string;
+  params: Params;
+  locale: string;
+  attempts: number;
+  createdAt: Date;
+}
+
+const errorText = (err: unknown) => String(err instanceof Error ? err.message : err).slice(0, 500);
+
+/**
+ * Sends one organization's due texts and calls: safety alerts first, then sign-in codes, then the
+ * rest; oldest first within each.
+ *
+ * Each message is claimed with `SELECT … FOR UPDATE SKIP LOCKED` in its own transaction, sent while
+ * that row lock is held, and marked sent before the commit. Any number of processes (the API that
+ * queued it, right after its commit; the worker, on a pg_notify or its sweep) can run this at once:
+ * a message another one holds is skipped, never sent twice. If the process dies between the
+ * provider accepting a message and the commit, the message is sent again later: at least once,
+ * as for the event outbox. (Twilio's Messages and Calls APIs take no idempotency key, so the row
+ * lock is the guard.)
+ */
+export async function deliverSmsTenant(tenantId: string, sender: SmsSender, opts: { prisma?: PrismaClient; limit?: number } = {}): Promise<DeliveryResult> {
+  const out: DeliveryResult = { sent: 0, failed: 0, retryInMs: null };
+  const safety = Prisma.join(SAFETY_TEMPLATES);
+  for (let i = 0; i < (opts.limit ?? 50); i++) {
+    const r = await withTenant(
+      tenantId,
+      async (tx) => {
+        const rows = await tx.$queryRaw<ClaimedSms[]>`
+          SELECT id, "toPhone", kind::text AS kind, template, params, locale, attempts, "createdAt" FROM "SmsOutbox"
+           WHERE "tenantId" = ${tenantId}::uuid AND "sentAt" IS NULL AND attempts < ${SMS_MAX_ATTEMPTS}
+             AND (params->>${RETRY_AT_KEY} IS NULL OR (params->>${RETRY_AT_KEY})::timestamptz <= now())
+           ORDER BY CASE WHEN template IN (${safety}) THEN 0 WHEN template = 'sms_verify' THEN 1 ELSE 2 END,
+                    "createdAt", CASE WHEN kind = 'CALL' THEN 0 ELSE 1 END
+           LIMIT 1 FOR UPDATE SKIP LOCKED`;
+        const m = rows[0];
+        if (!m) return null;
+        const isSafety = isSafetyTemplate(m.template);
+        const priority = isSafety ? 'safety' : 'other';
+        let error: string | null = null;
+        try {
+          const body = renderSms(m.template, m.locale, m.params);
+          if (m.kind === 'CALL') await sender.call(m.toPhone, body, m.locale);
+          else await sender.text(m.toPhone, body);
+        } catch (err) {
+          error = errorText(err);
+        }
+        const now = new Date();
+        if (!error) {
+          await tx.smsOutbox.update({ where: { id: m.id }, data: { sentAt: now, attempts: m.attempts + 1, params: {}, lastError: null } });
+          smsQueueToSent.observe({ priority, kind: m.kind }, Math.max(0, now.getTime() - new Date(m.createdAt).getTime()) / 1000);
+          smsSends.inc({ priority, outcome: 'sent' });
+          return { sent: true, retryInMs: null };
+        }
+        const attempts = m.attempts + 1;
+        const gaveUp = attempts >= SMS_MAX_ATTEMPTS;
+        const wait = smsRetryDelayMs(isSafety, attempts);
+        await tx.smsOutbox.update({
+          where: { id: m.id },
+          data: { attempts, lastError: error, params: gaveUp ? {} : ({ ...m.params, [RETRY_AT_KEY]: new Date(now.getTime() + wait).toISOString() } as Prisma.InputJsonValue) },
+        });
+        smsSends.inc({ priority, outcome: gaveUp ? 'gave_up' : 'retry' });
+        // Ids and the template only: never the number or the words.
+        if (gaveUp) captureError(new Error(`${isSafety ? 'Safety text' : 'Text'} (${m.template}, ${m.kind}) not sent after ${attempts} attempts`), { source: 'job', tenantId, tags: { task: 'sms', template: m.template } });
+        return { sent: false, retryInMs: gaveUp ? null : wait };
+      },
+      { prisma: opts.prisma, timeoutMs: 30_000 },
+    );
+    if (!r) break;
+    if (r.sent) out.sent++;
+    else out.failed++;
+    if (r.retryInMs !== null) out.retryInMs = Math.min(out.retryInMs ?? Infinity, r.retryInMs);
+  }
+  return out;
+}
+
+/** Every organization's due texts and calls (the worker's backstop). Up to 5 tries; contents dropped once sent or given up on. */
 export async function deliverSms(prisma: PrismaClient, sender: SmsSender, batch = 50): Promise<{ sent: number; failed: number }> {
   let sent = 0;
   let failed = 0;
   for (const tenantId of await tenantIds(prisma)) {
-    const pending = await withTenant(tenantId, (tx) => tx.smsOutbox.findMany({ where: { sentAt: null, attempts: { lt: 5 } }, orderBy: { createdAt: 'asc' }, take: batch }), { prisma });
-    for (const m of pending) {
-      let error: string | null = null;
-      try {
-        const body = renderSms(m.template, m.locale, m.params as Params);
-        if (m.kind === 'CALL') await sender.call(m.toPhone, body, m.locale);
-        else await sender.text(m.toPhone, body);
-        sent++;
-      } catch (err) {
-        error = String(err instanceof Error ? err.message : err).slice(0, 500);
-        failed++;
-      }
-      await withTenant(
-        tenantId,
-        (tx) =>
-          tx.smsOutbox.update({
-            where: { id: m.id },
-            data: error ? { attempts: { increment: 1 }, lastError: error, ...(m.attempts + 1 >= 5 ? { params: {} } : {}) } : { sentAt: new Date(), attempts: { increment: 1 }, params: {}, lastError: null },
-          }),
-        { prisma },
-      );
-    }
+    const r = await deliverSmsTenant(tenantId, sender, { prisma, limit: batch });
+    sent += r.sent;
+    failed += r.failed;
   }
   return { sent, failed };
 }

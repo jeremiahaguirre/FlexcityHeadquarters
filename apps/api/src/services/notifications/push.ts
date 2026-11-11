@@ -6,7 +6,7 @@
  * a lock screen is deliberately short: for sensitive kinds (discipline, care, accommodation,
  * banking, documents) only "You have a new message", never details.
  */
-import type { Notification, PushSubscription } from '@prisma/client';
+import { Prisma, type Notification, type PushSubscription } from '@prisma/client';
 import webpush from 'web-push';
 import { config } from '../../config.js';
 import type { Tx } from '../../lib/db.js';
@@ -51,7 +51,8 @@ const TEXT: Record<string, Record<Lang, [string, string]>> = {
   webhook_disabled: { en: ['Webhook turned off', 'A webhook kept failing and was turned off.'], fr: ['Webhook désactivé', 'Un webhook échouait sans cesse et a été désactivé.'] },
 };
 const GENERIC: Record<Lang, [string, string]> = { en: ['FlexcityHeadquarters', 'You have a new message.'], fr: ['FlexcityHeadquarters', 'Vous avez un nouveau message.'] };
-const URGENT = new Set(['lonework_help', 'lonework_escalated', 'lonework_overdue', 'lonework_check_in_now', 'callout_offer', 'closure_recommended']);
+/** Pushed with high urgency, first, and straight after the commit (services/notifications/urgent.ts). */
+export const URGENT = new Set(['lonework_help', 'lonework_escalated', 'lonework_overdue', 'lonework_check_in_now', 'callout_offer', 'closure_recommended']);
 
 export function pushPayload(n: Pick<Notification, 'id' | 'type' | 'link'>, locale: string) {
   const lang: Lang = locale.startsWith('fr') ? 'fr' : 'en';
@@ -60,17 +61,29 @@ export function pushPayload(n: Pick<Notification, 'id' | 'type' | 'link'>, local
 }
 
 /**
- * Sends each recent, not-yet-pushed notification to its person's devices. Runs every minute.
- * Notifications older than 15 minutes are marked and skipped (a stale alert helps no one).
- * Devices the push service says are gone are forgotten.
+ * Sends each recent, not-yet-pushed notification to its person's devices: safety alerts first.
+ * Runs every minute in the worker, and straight after the commit for urgent kinds
+ * (services/notifications/urgent.ts). Notifications older than 15 minutes are marked and skipped
+ * (a stale alert helps no one). Devices the push service says are gone are forgotten.
+ *
+ * Notifications are claimed with `FOR UPDATE SKIP LOCKED` and marked pushed in the same
+ * transaction, so two runs at once (the API process and the worker) never push one twice.
  */
 export async function deliverPush(tx: Tx, now = new Date()): Promise<number> {
   if (!pushEnabled()) return 0;
   setup();
   const fresh = new Date(now.getTime() - 15 * 60_000);
-  await tx.notification.updateMany({ where: { pushedAt: null, createdAt: { lt: fresh } }, data: { pushedAt: now } });
-  const due = await tx.notification.findMany({ where: { pushedAt: null }, orderBy: { createdAt: 'asc' }, take: 200 });
-  if (!due.length) return 0;
+  await tx.$executeRaw`
+    UPDATE "Notification" SET "pushedAt" = ${now}
+     WHERE id IN (SELECT id FROM "Notification" WHERE "pushedAt" IS NULL AND "createdAt" < ${fresh} FOR UPDATE SKIP LOCKED)`;
+  const urgent = Prisma.join([...URGENT]);
+  const claimed = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT id FROM "Notification" WHERE "pushedAt" IS NULL
+     ORDER BY CASE WHEN type IN (${urgent}) THEN 0 ELSE 1 END, "createdAt"
+     LIMIT 200 FOR UPDATE SKIP LOCKED`;
+  if (!claimed.length) return 0;
+  const order = new Map(claimed.map((c, i) => [c.id, i]));
+  const due = (await tx.notification.findMany({ where: { id: { in: claimed.map((c) => c.id) } } })).sort((a, b) => order.get(a.id)! - order.get(b.id)!);
   const userIds = [...new Set(due.map((n) => n.userId))];
   const [subs, people] = await Promise.all([
     tx.pushSubscription.findMany({ where: { userId: { in: userIds } } }),
