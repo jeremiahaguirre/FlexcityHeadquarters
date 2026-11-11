@@ -373,17 +373,22 @@ export function changePremiumAmount(c: { premiumHours: number | null; multiplier
 // ------------------------------------------------------------------ standby and call-back
 
 /**
- * Standby pay for on-call time inside [from, to): each started 24 hours on call (counted from the
- * period's start, clipped to the pay period) earns `perDay`, plus `hoursPerDay` hours at `percent`
- * of the person's rate. Returns days and $.
+ * Standby pay for on-call time in the pay period [from, to): each started day on call earns
+ * `perDay`, plus `hoursPerDay` hours at `percent` of the person's rate. Days are counted from the
+ * on-call period's own start (wall-clock in `timezone`, so a week across a DST change is still 7
+ * days), and each day is paid in the pay period it starts in: a week split across two pay periods
+ * is 7 days in all, never 8. Returns days, hours and $.
  */
-export function standbyPay(periods: ReadonlyArray<{ start: Date; end: Date }>, from: Date, to: Date, s: StandbySettings, rate: number): { days: number; amount: number; hours: number } {
+export function standbyPay(periods: ReadonlyArray<{ start: Date; end: Date }>, from: Date, to: Date, s: StandbySettings, rate: number, timezone = 'UTC'): { days: number; amount: number; hours: number } {
   let days = 0;
   for (const p of periods) {
-    const a = Math.max(p.start.getTime(), from.getTime());
-    const b = Math.min(p.end.getTime(), to.getTime());
-    if (b <= a) continue;
-    days += Math.ceil((b - a) / 86_400_000 - 1e-9);
+    if (p.end <= p.start) continue;
+    const start = DateTime.fromJSDate(p.start, { zone: timezone });
+    for (let k = 0; k < 400; k++) {
+      const d = start.plus({ days: k }).toMillis();
+      if (d >= p.end.getTime() || d >= to.getTime()) break;
+      if (d >= from.getTime()) days++;
+    }
   }
   const hours = s.hoursPerDay && s.percent ? days * s.hoursPerDay : 0;
   const amount = days * (s.perDay ?? 0) + (hours ? (hours * rate * (s.percent ?? 0)) / 100 : 0);

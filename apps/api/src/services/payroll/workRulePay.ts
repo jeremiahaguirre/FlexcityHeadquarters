@@ -175,8 +175,10 @@ export async function workRuleExtras(tx: Tx, x: ExtraInput) {
       const s = effectiveWorkRules(workRules, deptId).standby;
       const deptPositions = positions.filter((p) => p.departmentId === deptId).map((p) => p.id);
       const rate = deptPositions.map((p) => rateOn(p, x.periodStart)).find((r) => r) ?? rateOn(null, x.periodStart) ?? ZERO;
-      const pay = standbyPay(mine.filter((o) => o.departmentId === deptId).map((o) => ({ start: o.startsAt, end: o.endsAt })), from, to, s, Number(rate));
-      if (pay.amount > 0) lines.push({ code: 'STANDBY_PAY', positionId: null, hours: new Decimal(pay.hours), rate: ZERO, multiplier: ZERO, amount: new Decimal(pay.amount) });
+      const pay = standbyPay(mine.filter((o) => o.departmentId === deptId).map((o) => ({ start: o.startsAt, end: o.endsAt })), from, to, s, Number(rate), tz);
+      // An amount, not hours: standby isn't time worked, and a provider export with hours and a
+      // zero rate would pay nothing (ADP takes hours × rate when hours are given).
+      if (pay.amount > 0) lines.push({ code: 'STANDBY_PAY', positionId: null, hours: ZERO, rate: ZERO, multiplier: ZERO, amount: new Decimal(pay.amount) });
     }
     if (!lines.length) continue;
     const f = x.facilities.find((g) => g.id === facilityId) ?? x.facilities[0];
