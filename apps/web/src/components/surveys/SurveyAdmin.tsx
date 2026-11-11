@@ -178,7 +178,7 @@ function Bars({ counts, total, label }: { counts: Record<string, number>; total:
         <li key={k}>
           <span className="flex items-baseline justify-between gap-3 text-small"><span className="min-w-0 [overflow-wrap:anywhere]">{label(k)}</span><span className="shrink-0 tabular-nums text-muted"><span className="font-semibold text-ink">{n}</span> · {pct(n)}</span></span>
           <span className="mt-1 block h-2.5 overflow-hidden rounded-full bg-surface" role="meter" aria-valuemin={0} aria-valuemax={total} aria-valuenow={n} aria-label={t('surveyAdmin.barLabel', { label: label(k), n, total })}>
-            <span className="block h-full rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-700" style={{ width: `${share(n, total)}%` }} />
+            <span className="block h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700" style={{ width: `${share(n, total)}%`, background: 'rgb(var(--brand-text))' }} />
           </span>
         </li>
       ))}
@@ -187,11 +187,11 @@ function Bars({ counts, total, label }: { counts: Record<string, number>; total:
 }
 
 function QuestionResult({ q }: { q: QuestionSummary }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <div className="grid gap-2 border-t border-line pt-4 first:border-t-0 first:pt-0">
       <p className="text-body-strong">{q.text}</p>
-      <p className="text-caption text-muted">{t('surveyAdmin.answeredN', { count: q.answered })}{q.average !== undefined ? ` · ${t('surveyAdmin.average', { avg: q.average })}` : ''}</p>
+      <p className="text-caption text-muted">{t('surveyAdmin.answeredN', { count: q.answered })}{q.average !== undefined ? ` · ${t('surveyAdmin.average', { avg: q.average.toLocaleString(i18n.language) })}` : ''}</p>
       {q.counts ? <Bars counts={q.counts} total={q.answered} label={(k) => (q.type === 'RATING' ? t('surveyAdmin.ratingLabel', { n: k }) : k)} /> : null}
       {q.type === 'TEXT' ? (
         q.texts?.length ? (
