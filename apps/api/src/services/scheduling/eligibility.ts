@@ -364,7 +364,7 @@ export function checkDailyRest(existing: ReadonlyArray<Interval>, shift: Interva
     const free = longestFree(after, t, t + DAY_MS);
     if (free + 1e-9 >= required) continue;
     const had = t === a ? 24 : longestFree(before, t, t + DAY_MS);
-    if (free < had - 1e-9) return { code: 'DAILY_REST', message: `Would leave only ${free.toFixed(1)}h consecutive rest in the 24 hours from a shift start (${required}h required).` };
+    if (free < had - 1e-9) return { code: 'DAILY_REST', message: `Would leave only ${free.toFixed(1)}h consecutive rest (${required}h required in each day, counted from a shift start).` };
   }
   return null;
 }
