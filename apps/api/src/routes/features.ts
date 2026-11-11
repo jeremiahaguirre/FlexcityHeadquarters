@@ -269,7 +269,8 @@ api.post(
         to: z.coerce.date(),
         distributionMode: z.enum(['SENIORITY', 'EGALITARIAN']),
         useShadowTiers: z.boolean().default(false),
-        travelMinutes: z.number().int().min(0).max(240).default(30),
+        /** Default: the organization's travel-time setting. */
+        travelMinutes: z.number().int().min(0).max(240).optional(),
         apply: z.boolean().default(false),
       })
       .refine((b) => b.facilityId || b.facilityIds?.length, { message: 'Choose at least one facility.' })
@@ -291,7 +292,7 @@ api.post(
         // Each shift with its own facility's rules (provinces can differ), school calendar and limits.
         shifts: bundles.map((b) => ({ shift: b.shift, position: b.position, rules: b.rules, schoolCalendar: b.schoolCalendar, limits: b.limits })),
         candidates,
-        travelMinutes: body.travelMinutes,
+        travelMinutes: body.travelMinutes ?? bundles[0]?.travelMinutes ?? 30,
         // Same rules (incl. collective-agreement overrides) and school calendar as every other check.
         rules: bundles[0]?.rules ?? resolveRules(facility.province, localDate(body.from, facility.timezone)),
         payWeekStartDay: facility.tenant.payWeekStartDay,
