@@ -24,6 +24,7 @@ with their records retention by-law.
 | Signed policies (typed name, time, fingerprint of the text) | For the life of the account: evidence the person read the policy | Deleted with the organization | The app can't change them; in the person's records export |
 | Facility logbook entries | For the life of the account | Deleted with the organization | The app can't change them; a correction is a new entry |
 | Announcements and who read them | For the life of the account | Deleted with the organization | — |
+| Shift preferences (shifts a person would like or avoid, preferred weekly hours and days, a note) | While the person works here; seasonal staff away keep theirs | Deleted | Replaced whenever the person edits them; deleted when the person is anonymized, and by the hourly job 90 days after someone who left last changed them |
 | Saved reports | Until the owner deletes them | Deleted | Emailing stops when the owner loses access to the report |
 | Families and children (program registrations) | Until 3 years without a registration or purchase (*set by the city*) | Personal details removed | Names, birth dates, contacts, safety notes removed; payment records kept as "Former family" |
 | Facility booking requests | 2 years after the booking (*set by the city*) | Contact details removed | Hourly job |

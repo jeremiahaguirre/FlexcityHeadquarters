@@ -7601,7 +7601,7 @@
     "autoWeeksHint": "Only when the organization turns on automatic drafts.",
     "weeksAhead_one": "{{count}} week ahead",
     "weeksAhead_other": "{{count}} weeks ahead",
-    "never": "Never (apply by hand)",
+    "never": "Never",
     "active": "In use",
     "lines": "Shifts in the week",
     "line": "Shift {{n}}",

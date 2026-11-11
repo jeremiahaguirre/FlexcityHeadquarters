@@ -7601,7 +7601,7 @@
     "autoWeeksHint": "Seulement si l’organisation active les quarts provisoires automatiques.",
     "weeksAhead_one": "{{count}} semaine d’avance",
     "weeksAhead_other": "{{count}} semaines d’avance",
-    "never": "Jamais (appliquer à la main)",
+    "never": "Jamais",
     "active": "En usage",
     "lines": "Quarts de la semaine",
     "line": "Quart {{n}}",
