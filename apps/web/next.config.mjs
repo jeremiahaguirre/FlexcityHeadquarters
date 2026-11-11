@@ -40,7 +40,13 @@ const nextConfig = DEMO
         return [...(UNION_URL ? [{ source: '/api/union/:path*', destination: `${UNION_URL}/api/union/:path*` }] : []), { source: '/api/:path*', destination: `${API_URL}/api/:path*` }];
       },
       async headers() {
-        return [{ source: '/:path*', headers: securityHeaders }];
+        return [
+          { source: '/:path*', headers: securityHeaders },
+          // The service worker is always checked for a new version, so fixes reach installed phones on the next visit.
+          { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
+          // App icons change only with a rebrand: a day in the browser, then revalidated.
+          { source: '/:icon(icon-192.png|icon-512.png|icon-maskable-512.png)', headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, must-revalidate' }] },
+        ];
       },
     };
 
