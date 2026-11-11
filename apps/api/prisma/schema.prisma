@@ -506,6 +506,8 @@ model User {
 
   firstName        String
   lastName         String
+  /// The name they go by, when it differs from their legal first name.
+  preferredName    String?
   email            String
   phone            String?
   locale           String    @default("en-CA")
@@ -528,6 +530,8 @@ model User {
   kioskPinHash      String?
   /// The employer's HR/payroll system ID — used in payroll exports.
   employeeNumber   String?
+  /// The organization's own system's id for this person (HRIS/ERP), for the public API's upsert. Unique per organization.
+  externalId       String?
   /// Who this person reports to, in the same organization (services/people/reporting.ts keeps it
   /// free of cycles). Null = their department's manager, where the department has one.
   reportsToId      String?   @db.Uuid
@@ -589,6 +593,7 @@ model User {
 
   @@unique([tenantId, email])
   @@unique([tenantId, employeeNumber])
+  @@unique([tenantId, externalId])
   @@index([tenantId, status])
   @@index([reportsToId])
 }
@@ -660,6 +665,8 @@ model Position {
   hoursOfService Json?
   /// The department this position belongs to (Aquatics, Water Works…). Null = none yet.
   departmentId   String? @db.Uuid
+  /// The organization's own system's id (public API upsert). Unique per organization.
+  externalId     String?
   /// For the public API's updated_since filter.
   updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 
@@ -673,6 +680,7 @@ model Position {
   onboarding      PositionOnboarding[]
 
   @@unique([tenantId, name])
+  @@unique([tenantId, externalId])
 }
 
 /// A part of the city's workforce: Aquatics, Water Works, Parks… Supervisors and
@@ -688,6 +696,8 @@ model Department {
   glCode       String?
   /// Labour budget for the year, for budget-to-actual.
   labourBudget Decimal?            @db.Decimal(14, 2)
+  /// The organization's own system's id (public API upsert). Unique per organization.
+  externalId   String?
   createdAt    DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
   tenant       Tenant              @relation(fields: [tenantId], references: [id])
@@ -695,6 +705,7 @@ model Department {
   managers     DepartmentManager[]
 
   @@unique([tenantId, name])
+  @@unique([tenantId, externalId])
 }
 
 /// A supervisor or manager HR chose to run a department. A department can have several.
@@ -1387,6 +1398,8 @@ model AuditLog {
   id       String   @id @default(uuid()) @db.Uuid
   tenantId String   @db.Uuid
   actorId  String?  @db.Uuid
+  /// The organization API key that made the change (public API writes); actorId is then null.
+  apiKeyId String?  @db.Uuid
   action   String
   entity   String
   entityId String?
@@ -3557,6 +3570,29 @@ model ApiKey {
   rotatedFromId      String?   @db.Uuid
 
   @@index([tenantId, createdAt])
+}
+
+/// A public API write's Idempotency-Key (routes/publicApi.ts): the request's fingerprint and the
+/// answer, kept 24 hours so a retry gets the same answer and a reused key with another body is refused.
+model ApiIdempotencyKey {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  apiKeyId    String   @db.Uuid
+  key         String
+  method      String
+  path        String
+  /// SHA-256 of the method, path and body.
+  requestHash String
+  /// Null while the first request is still being handled.
+  status      Int?
+  response    Json?
+  etag        String?
+  location    String?
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  expiresAt   DateTime @db.Timestamptz(3)
+
+  @@unique([tenantId, apiKeyId, key])
+  @@index([tenantId, expiresAt])
 }
 
 /// An address on the city's own systems that FH sends signed events to (services/integrations/webhooks.ts).
