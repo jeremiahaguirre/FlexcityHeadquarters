@@ -23,7 +23,7 @@ follow it. Prices are monthly, in Canadian dollars, before GST/HST and PST.
 | API and webhooks (API keys that read, and with write scopes change, data; signed webhooks) | | | ✓ | ✓ |
 | Union hub | +$150 | +$150 | +$150 | ✓ |
 | Anything else not included | each option at its own price (below) | | | |
-| Support | Email and phone | Email and phone | Priority | Priority, success manager, 99.9% uptime commitment, test organization, multi-year price lock |
+| Support | Email and phone | Email and phone | Priority | Priority, success manager, service level agreement (terms to be set in the order form; no uptime figure is published), test organization, multi-year price lock |
 
 - **Facility size** (`Facility.billingTier`) scales the price and the staff allowance: seasonal or outdoor ×0.4,
   standard ×1, major complex ×2. A facility's own contract rate (`billingMonthlyCents`) overrides its price.

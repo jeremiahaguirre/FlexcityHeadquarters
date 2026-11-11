@@ -237,8 +237,8 @@ Before → after (EN and FR):
 - FAQ "Is it legal under Canadian privacy and employment law?" / "Est-ce conforme…?" → "How does it
   handle Canadian privacy and employment law?" / "Comment tient-il compte…?".
 - No testimonials, ratings, customer logos, user counts, savings statistics or certification claims were
-  found. Screenshots use the fictional "City of Lakeview (demo)". `docs/PRICING.md` still mentions the
-  99.9% figure as an internal plan note: remove it if no SLA is offered.
+  found. Screenshots use the fictional "City of Lakeview (demo)". `docs/PRICING.md` mentioned the
+  99.9% figure as an internal plan note: now replaced with "service level agreement" (no published uptime figure).
 
 ### Data minimization (forms reviewed)
 
