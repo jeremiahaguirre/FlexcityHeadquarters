@@ -97,7 +97,7 @@ Every alert links to a section here. **Page** means someone is woken up; **ticke
 
 *Ticket.* More than 20 queries took longer than `SLOW_QUERY_MS` in 15 minutes.
 
-1. Search the logs for `[slow-query]`; each line has the request id of the request that ran it.
+1. Search the logs for `[slow-query]`. These lines carry no request id (Prisma reports query timings outside the request), so match them by time with the slow routes on the dashboard ("p95 by route") and with request log lines from the same process.
 2. Run `EXPLAIN (ANALYZE, BUFFERS)` on the query (with representative values, in a copy of the data, never with real personal information pasted into tools).
 3. Add an index or change the query; record the fix in the commit.
 
