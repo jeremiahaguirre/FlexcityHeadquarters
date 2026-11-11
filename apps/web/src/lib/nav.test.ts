@@ -17,24 +17,24 @@ describe('menus per role', () => {
 
   it('lifeguard / instructor: their own work and the pool deck tasks', () => {
     expect(menu('STAFF')).toEqual({
-      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/preferences', '/lessons', '/alone', '/pay', '/expenses', '/logbook', '/headcount', '/ops', '/incidents'],
+      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/preferences', '/lessons', '/alone', '/pay', '/expenses', '/logbook', '/messages', '/headcount', '/ops', '/incidents', '/surveys'],
       home: '/today',
     });
   });
 
   it('front desk: shifts, clock, their pay and the live pool board, nothing else', () => {
-    expect(menu('FRONT_DESK').items).toEqual(['/today', '/schedule', '/timeclock', '/pay', '/logbook', '/status', '/members', '/manage/bookings']);
+    expect(menu('FRONT_DESK').items).toEqual(['/today', '/schedule', '/timeclock', '/pay', '/logbook', '/messages', '/status', '/members', '/manage/bookings', '/surveys']);
   });
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/training', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/on-call', '/manage/work-rules', '/manage/people', '/manage/org-chart', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/expenses', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/reports', '/manage/announcements', '/manage/roles', '/manage/billing', '/manage/settings'],
+      items: ['/messages', '/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/training', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/on-call', '/manage/work-rules', '/manage/people', '/manage/org-chart', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/expenses', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/reports', '/manage/announcements', '/manage/messages', '/manage/surveys', '/manage/roles', '/manage/billing', '/manage/settings', '/surveys'],
       home: '/manage/hr',
     });
   });
 
   it('general employee (water works, maintenance…): their own work, no pool screens at all', () => {
-    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/preferences', '/alone', '/patrol', '/pretrip', '/pay', '/expenses', '/logbook'], home: '/today' });
+    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/preferences', '/alone', '/patrol', '/pretrip', '/pay', '/expenses', '/logbook', '/messages', '/surveys'], home: '/today' });
   });
 
   it('people review is for HR and supervisors only', () => {
@@ -73,7 +73,7 @@ describe('menus per role', () => {
       return phoneTabs(visibleNav((p) => perms.has(p as never))).tabs.map((n) => n.href);
     };
     expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/headcount', '/board']);
-    expect(tabsFor('HR_ADMIN')).toEqual(['/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime']);
+    expect(tabsFor('HR_ADMIN')).toEqual(['/messages', '/manage/hr', '/manage/approvals', '/manage/staff']);
     expect(tabsFor('UNION_STEWARD')).toEqual(['/union']);
   });
 

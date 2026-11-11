@@ -2076,6 +2076,10 @@
       "messaging": {
         "name": "Team messaging",
         "help": "One-to-one, shift, department and group conversations, sealed with the organization’s key. Minors never have one-to-one conversations with adults."
+      },
+      "surveys": {
+        "name": "Staff surveys",
+        "help": "Short pulse check-ins (anonymous, results only for groups big enough) and exit surveys for people leaving. Part of the HR suite option."
       }
     },
     "positions": "Positions",

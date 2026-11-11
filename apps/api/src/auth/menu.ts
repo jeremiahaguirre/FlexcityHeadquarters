@@ -23,7 +23,6 @@ export const MENU: MenuItem[] = [
   { href: '/expenses', key: 'expenses', group: 'mine', permissions: ['expenses.self'] },
   { href: '/logbook', key: 'logbook', group: 'mine', permissions: ['logbook.write'] },
   { href: '/messages', key: 'messages', group: 'mine', permissions: ['messages.use'] },
-  { href: '/surveys', key: 'surveys', group: 'mine', permissions: ['surveys.respond'] },
   { href: '/headcount', key: 'headcount', group: 'deck', permissions: ['ops.headcount.record'] },
   { href: '/deck', key: 'deck', group: 'deck', permissions: ['deck.rotate'] },
   { href: '/status', key: 'status', group: 'deck', permissions: ['ops.status.read'] },
@@ -70,5 +69,6 @@ export const MENU: MenuItem[] = [
   { href: '/manage/billing', key: 'billing', group: 'manage', permissions: ['billing.manage'] },
   { href: '/manage/settings', key: 'settings', group: 'manage', permissions: ['tenant.configure', 'ops.configure'] },
   { href: '/union', key: 'union', group: 'union', permissions: ['union.hub'] },
+  { href: '/surveys', key: 'surveys', group: 'mine', permissions: ['surveys.respond'] },
 ];
 export const MENU_HREFS = new Set(MENU.map((m) => m.href));

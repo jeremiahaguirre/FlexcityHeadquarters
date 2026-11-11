@@ -16,6 +16,8 @@ export interface NavItem {
   permission?: string | string[];
   /** Order in the phone tab bar (lower first); omitted = only under "More". */
   tab?: number;
+  /** False: never the page someone lands on after signing in (messages, surveys), even when it's first in their menu. */
+  home?: false;
   /** Set once the screen exists, so navigation never leads to a missing page. */
   ready: boolean;
 }
@@ -35,8 +37,7 @@ export const NAV: NavItem[] = [
   { href: '/pay', key: 'myPay', icon: Wallet, group: 'mine', permission: 'timeclock.punch', ready: true },
   { href: '/expenses', key: 'expenses', icon: ReceiptText, group: 'mine', permission: 'expenses.self', ready: true },
   { href: '/logbook', key: 'logbook', icon: NotebookPen, group: 'mine', permission: 'logbook.write', ready: true },
-  { href: '/messages', key: 'messages', icon: MessagesSquare, group: 'mine', permission: 'messages.use', ready: true },
-  { href: '/surveys', key: 'surveys', icon: ClipboardPen, group: 'mine', permission: 'surveys.respond', ready: true },
+  { href: '/messages', key: 'messages', icon: MessagesSquare, group: 'mine', permission: 'messages.use', tab: 8, home: false, ready: true },
   { href: '/headcount', key: 'headcount', icon: Calculator, group: 'deck', permission: 'ops.headcount.record', tab: 3, ready: true },
   { href: '/deck', key: 'deck', icon: Armchair, group: 'deck', permission: 'deck.rotate', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
@@ -83,6 +84,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', section: 'organization', permission: 'billing.manage', ready: true },
   { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', section: 'organization', permission: ['tenant.configure', 'ops.configure'], ready: true },
   { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: true },
+  { href: '/surveys', key: 'surveys', icon: ClipboardPen, group: 'mine', permission: 'surveys.respond', home: false, ready: true },
 ];
 
 /** Menu items a person may open, minus any the city's Dev console hid for their roles. */
@@ -102,5 +104,6 @@ export function phoneTabs(items: NavItem[]): { tabs: NavItem[]; more: NavItem[] 
 }
 
 export function homePath(can: (p: string) => boolean, hidden: readonly string[] = []): string {
-  return visibleNav(can, hidden)[0]?.href ?? '/profile';
+  const items = visibleNav(can, hidden);
+  return (items.find((n) => n.home !== false) ?? items[0])?.href ?? '/profile';
 }

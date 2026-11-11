@@ -2076,6 +2076,10 @@
       "messaging": {
         "name": "Messagerie d’équipe",
         "help": "Conversations individuelles, de quart, de service et de groupe, scellées avec la clé de l’organisation. Les mineurs n’ont jamais de conversation individuelle avec un adulte."
+      },
+      "surveys": {
+        "name": "Sondages du personnel",
+        "help": "Courts sondages éclair (anonymes, résultats seulement pour des groupes assez grands) et sondages de départ. Fait partie de l’option Suite RH."
       }
     },
     "positions": "Postes",
