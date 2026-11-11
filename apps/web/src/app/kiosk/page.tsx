@@ -111,7 +111,7 @@ export default function KioskPage() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-[max(16px,env(safe-area-inset-left))] py-3">
         <div className="flex items-center gap-3"><Logo size={28} /><div><p className="text-body-strong text-ink">{info?.facility}</p><p className="text-caption text-muted">{info?.organization}</p></div></div>
         <div className="text-right"><p className="text-title tabular-nums text-ink">{clock}</p><p className="text-caption text-muted">{day}</p></div>
-        <button type="button" className="text-small font-semibold text-brand-text underline-offset-2 hover:underline" onClick={() => void i18n.changeLanguage(lng === 'fr-CA' ? 'en-CA' : 'fr-CA')}>{lng === 'fr-CA' ? 'English' : 'Français'}</button>
+        <button type="button" lang={lng === 'fr-CA' ? 'en' : 'fr'} className="min-h-[44px] px-2 text-small font-semibold text-brand-text underline-offset-2 hover:underline" onClick={() => void i18n.changeLanguage(lng === 'fr-CA' ? 'en-CA' : 'fr-CA')}>{lng === 'fr-CA' ? 'English' : 'Français'}</button>
       </header>
       <div className="mx-auto grid w-full max-w-sm content-center gap-5 p-4">
         <div aria-live="polite" className="min-h-[5.5rem]">

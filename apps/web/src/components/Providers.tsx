@@ -23,5 +23,13 @@ export function Providers({ locale, children }: { locale: Locale; children: Reac
       void i18n.changeLanguage(next);
     }
   }, [i18n]);
+  // Keep <html lang> in step with the language, however it was switched, so screen readers pronounce French as French.
+  useEffect(() => {
+    const sync = (lng: string) => {
+      document.documentElement.lang = lng;
+    };
+    i18n.on('languageChanged', sync);
+    return () => i18n.off('languageChanged', sync);
+  }, [i18n]);
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;
 }

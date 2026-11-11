@@ -12,6 +12,7 @@ export function AuthLanguageSwitch() {
       type="button"
       onClick={switchLanguage}
       aria-label={t('app.languageLabel')}
+      lang={t('app.languageCode')}
       className="flex h-10 items-center gap-2 rounded-full border border-line bg-panel px-4 text-small font-semibold text-ink hover:bg-surface"
     >
       <Languages className="h-4 w-4 text-muted" aria-hidden="true" />
