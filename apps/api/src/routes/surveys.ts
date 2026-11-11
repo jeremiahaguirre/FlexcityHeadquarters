@@ -9,7 +9,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { forbidden } from '../lib/errors.js';
 import { csvCell } from '../services/payroll/export.js';
 import { MIN_GROUP_CEILING, MIN_GROUP_FLOOR, normalizeQuestions, questionInput, resultsCsv } from '../services/surveys/results.js';
-import { SURVEY_DEFAULTS, closeSurvey, deleteDraft, listSurveys, mySurveys, offboardingsForExit, ownSurvey, publish, readSurveySettings, remind, respond, saveDraft, surveyResults, trend } from '../services/surveys/surveys.js';
+import { SURVEY_DEFAULTS, authorScope, closeSurvey, surveySettings, deleteDraft, listSurveys, mySurveys, offboardingsForExit, ownSurvey, publish, readSurveySettings, remind, respond, saveDraft, surveyResults, trend } from '../services/surveys/surveys.js';
 import { h } from './context.js';
 
 export const surveysRouter = Router();
@@ -157,6 +157,27 @@ surveysRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     res.json(await withTenant(a.tenantId, (tx) => trend(tx, a, uuid.parse(req.params.id))));
+  }),
+);
+
+/** Departments and positions this author may send to (a manager: their departments only). */
+surveysRouter.get(
+  '/surveys-admin/choices',
+  author,
+  h(async (req, res) => {
+    const a = authOf(req);
+    res.json(
+      await withTenant(a.tenantId, async (tx) => {
+        const scope = await authorScope(tx, a).catch(() => ({ hr: false, departments: [] as string[] }));
+        const where = scope.hr ? {} : { id: { in: scope.departments } };
+        const [departments, positions, settings] = await Promise.all([
+          tx.department.findMany({ where, select: { id: true, name: true, nameFr: true }, orderBy: { name: 'asc' } }),
+          tx.position.findMany({ where: scope.hr ? {} : { departmentId: { in: scope.departments } }, select: { id: true, name: true, nameFr: true, departmentId: true }, orderBy: { name: 'asc' } }),
+          surveySettings(tx),
+        ]);
+        return { canCreate: scope.hr || scope.departments.length > 0, hr: scope.hr, departments, positions, minGroup: settings.minGroup };
+      }),
+    );
   }),
 );
 
