@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
-import { dateFormat } from '@/lib/format';
+import { formatMoment } from '@/lib/format';
 
 interface CheckIn { id: string; status: 'OFFERED' | 'CHECKED_IN' | 'DECLINED'; dueAt: string; breakAskedAt: string | null; completedAt: string | null; person: string; incident: { category: string; occurredAt: string; facility: string } | null }
 
@@ -22,7 +22,7 @@ export default function CarePage() {
   const list = useQuery<CheckIn[]>('/api/care/checkins');
   const settings = useQuery<{ eap: string | null }>('/api/care/settings');
   const { run, busy } = useAction();
-  const when = (iso: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string) => formatMoment(iso, i18n.language);
   const open = (list.data ?? []).filter((c) => c.status === 'OFFERED');
   const closed = (list.data ?? []).filter((c) => c.status !== 'OFFERED');
 

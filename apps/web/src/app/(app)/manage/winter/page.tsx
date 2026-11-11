@@ -15,7 +15,7 @@ import { api, apiDownload, saveBlob } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import type { Patrol, RouteStatus, WinterSettings } from '@/lib/winter';
-import { dateFormat } from '@/lib/format';
+import { dateFormat, formatMoment } from '@/lib/format';
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
@@ -32,7 +32,7 @@ export default function WinterPage() {
   const { run, busy } = useAction();
   const manage = can('winter.manage');
   const month = (m: string) => dateFormat(i18n.language, { month: 'long', timeZone: 'UTC' }).format(new Date(`2026-${m}-15T12:00:00Z`));
-  const when = (iso: string | null) => (iso ? dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso)) : '—');
+  const when = (iso: string | null) => (iso ? formatMoment(iso, i18n.language) : '—');
 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

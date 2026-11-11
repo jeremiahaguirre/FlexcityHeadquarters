@@ -17,7 +17,7 @@ import { ApiError, api } from '@/lib/api';
 import { type Fee, type LessonSet, PAYMENT_METHODS, ageLabel, ageRange, hhmm, money } from '@/lib/programs';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { useToast } from '@/components/ui/Toast';
-import { dateFormat } from '@/lib/format';
+import { dateFormat, formatInstant } from '@/lib/format';
 
 interface Member { id: string; role: 'GUARDIAN' | 'CHILD' | 'ADULT'; firstName: string; lastName: string; dateOfBirth: string | null; ageMonths: number | null; email: string | null; phone: string | null; safetyNote: string | null }
 interface Family {
@@ -204,7 +204,7 @@ function FamilyView({ id }: { id: string }) {
   const [selling, setSelling] = useState(false);
   const [override, setOverride] = useState<{ set: LessonSet; pay: string } | null>(null);
   const [pay, setPay] = useState<string>('DEBIT');
-  const date = (d: string | null) => (d ? dateFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
+  const date = (d: string | null) => (d ? formatInstant(d, lng) : '—');
   const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
 
   async function register(set: LessonSet, ageOverride?: string) {

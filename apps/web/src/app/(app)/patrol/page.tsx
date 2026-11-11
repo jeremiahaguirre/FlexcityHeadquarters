@@ -13,7 +13,7 @@ import { api } from '@/lib/api';
 import { currentPosition } from '@/lib/loneWork';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { ACTIONS, CONDITIONS, type Patrol, type RouteStatus, chip } from '@/lib/winter';
-import { dateFormat } from '@/lib/format';
+import { formatMoment } from '@/lib/format';
 
 /** A winter patrol: start it on a route, then record the conditions and what was done. */
 export default function PatrolPage() {
@@ -30,7 +30,7 @@ export default function PatrolPage() {
     else n.add(v);
     setter(n);
   };
-  const when = (iso: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string) => formatMoment(iso, i18n.language);
   const num = (f: FormData, k: string) => (String(f.get(k) ?? '').trim() === '' ? null : Number(String(f.get(k)).replace(',', '.')));
 
   async function start(e: FormEvent<HTMLFormElement>) {

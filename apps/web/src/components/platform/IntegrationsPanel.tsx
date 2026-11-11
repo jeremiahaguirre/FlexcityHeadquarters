@@ -8,6 +8,7 @@ import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { usePlatformQuery } from '@/lib/platform';
+import { formatMoment } from '@/lib/format';
 
 interface Usage {
   inPlan: boolean;
@@ -23,7 +24,7 @@ export function IntegrationsPanel({ id }: { id: string }) {
   if (q.error) return <ErrorNotice onRetry={q.reload} />;
   if (!q.data) return <Skeleton className="h-48" />;
   const d = q.data;
-  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }) : t('platformIntegrations.never'));
+  const when = (iso: string | null) => (iso ? formatMoment(iso, i18n.language) : t('platformIntegrations.never'));
   const stat = (label: string, value: string | number) => (
     <div className="rounded-xl border border-line p-3">
       <p className="text-caption text-muted">{label}</p>

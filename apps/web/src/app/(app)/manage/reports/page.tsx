@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatMoney } from '@/lib/format';
+import { formatInstant, formatMoney } from '@/lib/format';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 
@@ -63,8 +63,9 @@ export default function ReportsPage() {
                   <Field label={t('reports.daysAhead')}>{(p) => <Input {...p} type="number" min={1} max={366} value={days} onChange={(e) => setDays(Number(e.target.value))} />}</Field>
                 ) : (
                   <>
-                    <Field label={t('reports.from')}>{(p) => <Input {...p} type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />}</Field>
-                    <Field label={t('reports.to')}>{(p) => <Input {...p} type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} />}</Field>
+                    {/* The browser draws date inputs in its own locale (mm/dd/yyyy on some): the hint spells the day out the app's way. */}
+                    <Field label={t('reports.from')} hint={/^\d{4}-\d{2}-\d{2}$/.test(from) ? formatInstant(from, lng) : undefined}>{(p) => <Input {...p} type="date" lang={lng} value={from} max={to} onChange={(e) => setFrom(e.target.value)} />}</Field>
+                    <Field label={t('reports.to')} hint={/^\d{4}-\d{2}-\d{2}$/.test(to) ? formatInstant(to, lng) : undefined}>{(p) => <Input {...p} type="date" lang={lng} value={to} min={from} onChange={(e) => setTo(e.target.value)} />}</Field>
                   </>
                 )}
               </div>

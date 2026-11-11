@@ -14,7 +14,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { type CallOut, type CallOutContact, toLocalInput } from '@/lib/winter';
-import { dateFormat } from '@/lib/format';
+import { dateFormat, formatMoment } from '@/lib/format';
 
 const TONE: Record<CallOutContact['status'], Tone> = { WAITING: 'pending', OFFERED: 'new', ACCEPTED: 'ok', DECLINED: 'warn', NO_ANSWER: 'warn', SKIPPED: 'inactive', NOT_NEEDED: 'inactive' };
 
@@ -30,7 +30,7 @@ export default function CallOutsPage() {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const when = (iso: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string) => formatMoment(iso, i18n.language);
   const label = (p: { name: string; nameFr: string | null }) => (i18n.language === 'fr-CA' && p.nameFr ? p.nameFr : p.name);
 
   async function create(e: FormEvent<HTMLFormElement>) {

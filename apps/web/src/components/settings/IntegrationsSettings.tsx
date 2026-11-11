@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toast';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { formatMoment } from '@/lib/format';
 
 interface ApiKey { id: string; name: string; prefix: string; scopes: string[]; write?: boolean; allowedIps: string[]; expiresAt: string | null; lastUsedAt: string | null; requestCount: number; createdAt: string; status: 'active' | 'expired' | 'revoked' }
 interface Endpoint { id: string; url: string; description: string | null; events: string[]; enabled: boolean; disabledReason: string | null; consecutiveFailures: number; lastSuccessAt: string | null; lastFailureAt: string | null }
@@ -23,7 +24,7 @@ interface View { inPlan: boolean; scopes: Array<{ scope: string; allowed: boolea
 
 interface KeyBody { name: string; scopes: string[]; allowedIps: string[]; expiresAt: string | null }
 
-const when = (iso: string, lng: string) => new Date(iso).toLocaleString(lng, { dateStyle: 'medium', timeStyle: 'short' });
+const when = (iso: string, lng: string) => formatMoment(iso, lng);
 const scopeKey = (s: string) => s.replace(':', '_');
 const eventKey = (e: string) => e.replace('.', '_');
 

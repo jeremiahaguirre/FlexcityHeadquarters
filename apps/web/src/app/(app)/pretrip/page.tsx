@@ -13,7 +13,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { STATUS_TONE, type Vehicle } from '@/lib/fleet';
 import { useAction, useQuery } from '@/lib/useQuery';
-import { dateFormat } from '@/lib/format';
+import { formatMoment } from '@/lib/format';
 
 type Mark = { ok: boolean; severity?: 'MINOR' | 'MAJOR'; note?: string };
 
@@ -25,7 +25,7 @@ export default function PretripPage() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
   const [result, setResult] = useState<string | null>(null);
-  const when = (iso: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string) => formatMoment(iso, i18n.language);
   const set = (item: string, m: Partial<Mark>) => setMarks((x) => ({ ...x, [item]: { ...(x[item] ?? { ok: true }), ...m } }));
 
   async function submit(e: FormEvent<HTMLFormElement>) {

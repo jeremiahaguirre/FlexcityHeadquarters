@@ -12,7 +12,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { ApiError, api } from '@/lib/api';
 import { ageRange, hhmm, money } from '@/lib/programs';
-import { dateFormat, setTimeFormat } from '@/lib/format';
+import { dateFormat, formatInstant, setTimeFormat } from '@/lib/format';
 
 interface PublicSet { id: string; name: string; facility: string; daysOfWeek: number[]; startMinute: number; endMinute: number; startsOn: string; endsOn: string; sessions: number; minAgeMonths: number | null; maxAgeMonths: number | null; priceCents: number | null; spotsLeft: number; majorityAge?: number }
 interface Program { id: string; name: string; nameFr: string | null; kind: string; open: boolean; opensAt: string | null; sets: PublicSet[] }
@@ -35,7 +35,7 @@ export default function SignupPage() {
     api<Portal>('/api/public/signup', {}, false).then((p) => { setTimeFormat(p.timeFormat); setData(p); }, () => setFailed(true));
   };
   useEffect(load, []);
-  const date = (d: string) => dateFormat(lng, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`));
+  const date = (d: string) => formatInstant(d, lng);
   const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
   const pick = (k: string, f: string | null) => (fr && f ? f : k);
 

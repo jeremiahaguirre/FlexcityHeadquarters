@@ -81,6 +81,12 @@ export function formatInstant(value: Date | string, locale: Locale, style: DateS
   return style === 'long' ? out : glue(out);
 }
 
+/** A moment with its time, in the viewer's zone: "Nov 13, 2026, 4:30 p.m." · "13 nov. 2026, 16 h 30". */
+export function formatMoment(value: Date | string, locale: Locale): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  return `${formatInstant(d, locale)}, ${glue(dateFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(d))}`;
+}
+
 /** Both ends of a punch; the date is repeated when it ends on another day ("Mon, Nov 9, 1:33 p.m. – Tue, Nov 10, 6:01 p.m."). */
 export function formatSpan(startIso: string, endIso: string, locale: Locale): string {
   if (localDateKey(startIso) === localDateKey(endIso)) return formatTimeRange(startIso, endIso, locale);

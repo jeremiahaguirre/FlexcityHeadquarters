@@ -13,7 +13,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
-import { dateFormat } from '@/lib/format';
+import { formatMoment } from '@/lib/format';
 
 interface Claim { id: string; person: string; userId: string; facilityId: string; occurredAt: string; learnedAt: string; province: string; board: string; form: string; dueAt: string; lostTime: boolean; healthCare: boolean; description: string; status: 'OPEN' | 'FILED' | 'NOT_REQUIRED'; claimNumber: string | null; filedAt: string | null; verified: boolean }
 const toLocal = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -27,7 +27,7 @@ export default function InjuriesPage() {
   const { run, busy } = useAction();
   const [adding, setAdding] = useState(false);
   const [filing, setFiling] = useState<Claim | null>(null);
-  const when = (iso: string) => dateFormat(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  const when = (iso: string) => formatMoment(iso, i18n.language);
   const hoursLeft = (iso: string) => Math.round((new Date(iso).getTime() - Date.now()) / 3_600_000);
   const open = (q.data?.claims ?? []).filter((c) => c.status === 'OPEN');
   const rest = (q.data?.claims ?? []).filter((c) => c.status !== 'OPEN');

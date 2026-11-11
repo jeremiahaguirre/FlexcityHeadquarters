@@ -4,7 +4,7 @@ import { AlertTriangle, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from 'react-i18next';
 import { useSession } from '@/lib/session';
-import { dateFormat } from '@/lib/format';
+import { formatInstant } from '@/lib/format';
 
 /**
  * Overdue: a warning for whoever handles billing, with the date the app turns
@@ -16,7 +16,7 @@ export function BillingBanner() {
   const b = me?.billing;
   if (!b || (b.stage !== 'overdue' && b.stage !== 'suspended')) return null;
   if (b.stage === 'overdue' && !b.canPay) return null;
-  const date = (d: string | null) => (d ? dateFormat(i18n.language, { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '');
+  const date = (d: string | null) => (d ? formatInstant(d.slice(0, 10), i18n.language) : '');
   const suspended = b.stage === 'suspended';
   return (
     <div role={suspended ? 'alert' : 'status'} className={`mb-6 flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3 text-small ${suspended ? 'bg-danger-bg text-danger' : 'bg-warn-bg text-warn'}`}>
