@@ -28,6 +28,7 @@ import { SupportAccessCard } from '@/components/settings/SupportAccessCard';
 import { SsoCard } from '@/components/settings/SsoCard';
 import { MfaCard } from '@/components/settings/MfaCard';
 import { SeniorityCard } from '@/components/settings/SeniorityCard';
+import { FillSettingsCard } from '@/components/settings/FillSettingsCard';
 import { ReliabilityCard } from '@/components/settings/ReliabilityCard';
 import { HolidayWeekendCard } from '@/components/settings/HolidayWeekendCard';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
@@ -112,6 +113,7 @@ export default function SettingsPage() {
         <div className="grid max-w-4xl gap-6">
           {tab === 'org' ? <Organization s={settings.data} reload={settings.reload} /> : null}
           {tab === 'org' ? <SeniorityCard /> : null}
+          {tab === 'org' ? <FillSettingsCard /> : null}
           {tab === 'org' ? <ReliabilityCard /> : null}
           {tab === 'org' ? <MfaCard /> : null}
           {tab === 'org' ? <SsoCard /> : null}

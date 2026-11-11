@@ -1,5 +1,6 @@
 'use client';
 
+import { FillSchedule } from '@/components/FillSchedule';
 import { OvertimeOrder, type Skipped } from '@/components/OvertimeOrder';
 import { CalendarRange, ChevronLeft, ChevronRight, Plus, Send, Sparkles, UserCheck, UserMinus, XCircle } from 'lucide-react';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
@@ -17,7 +18,6 @@ import { cn } from '@/lib/cn';
 import { formatDate, formatHours, formatTimeRange } from '@/lib/format';
 import { mondayOf, zonedToInstant } from '@/lib/tz';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
-import { useSession } from '@/lib/session';
 
 interface Facility { id: string; name: string; timezone: string }
 interface Position { id: string; name: string; nameFr: string | null }
@@ -36,7 +36,6 @@ interface Shift {
   assignee: { id: string; name: string } | null;
 }
 interface Candidate { user: { id: string; firstName: string; lastName: string; employmentStatus: string }; eligible: boolean; overtimeHours: string; weeklyHoursAfter: string; blocks: Array<{ code: string }> }
-interface Proposal { assignments: Array<{ shiftId: string; userId: string }>; unfilled: Array<{ shiftId: string; reason: string }>; repaired?: number }
 
 export default function ScheduleBuilderPage() {
   const { t, i18n } = useTranslation();
@@ -44,8 +43,6 @@ export default function ScheduleBuilderPage() {
   const toast = useToast();
   const facilities = useQuery<Facility[]>('/api/facilities');
   const positions = useQuery<Position[]>('/api/positions');
-  const { can } = useSession();
-  const staff = useQuery<Array<{ id: string; name: string }>>(can('users.read') ? '/api/users' : null);
   const [facilityId, setFacilityId] = useState('');
   const facility = facilities.data?.find((f) => f.id === facilityId) ?? facilities.data?.[0];
   const [week, setWeek] = useState(() => mondayOf(todayIso()));
@@ -57,12 +54,7 @@ export default function ScheduleBuilderPage() {
   const { run, busy } = useAction();
   const [adding, setAdding] = useState<string | null>(null);
   const [selected, setSelected] = useState<Shift | null>(null);
-  const [assistant, setAssistant] = useState<Proposal | null>(null);
-  const useSeniority = useSession().me?.features?.seniority !== false;
-  const [mode, setMode] = useState<'SENIORITY' | 'EGALITARIAN'>(useSeniority ? 'SENIORITY' : 'EGALITARIAN');
-  // Plan every facility together, so staff shared between them are placed once, with travel time.
-  const [together, setTogether] = useState(false);
-  const [travel, setTravel] = useState(30);
+  const [filling, setFilling] = useState(false);
 
   useEffect(() => {
     if (!facilityId && facilities.data?.[0]) setFacilityId(facilities.data[0].id);
@@ -72,7 +64,6 @@ export default function ScheduleBuilderPage() {
   const posName = (p: Position) => (lng === 'fr-CA' && p.nameFr ? p.nameFr : p.name);
   const drafts = shifts.data?.filter((s) => s.status === 'DRAFT').length ?? 0;
   const open = shifts.data?.filter((s) => !s.assignee).length ?? 0;
-  const nameOf = (id: string) => staff.data?.find((u) => u.id === id)?.name ?? '—';
 
   async function addShift(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -95,22 +86,6 @@ export default function ScheduleBuilderPage() {
     }
   }
 
-  async function runAssistant(apply: boolean) {
-    if (!facility || !range) return;
-    const r = await run(apply ? 'apply' : 'preview', () =>
-      api<Proposal>('/api/schedule/assist', {
-        method: 'POST',
-        body: { ...(together && (facilities.data?.length ?? 0) > 1 ? { facilityIds: facilities.data!.map((f) => f.id) } : { facilityId: facility.id }), from: range.from, to: range.to, distributionMode: mode, useShadowTiers: true, travelMinutes: travel, apply },
-      }),
-    );
-    if (!r) return;
-    if (apply) {
-      toast(t('builder.applied', { count: r.assignments.length }), 'ok');
-      setAssistant(null);
-      await shifts.reload();
-    } else setAssistant(r);
-  }
-
   async function publish() {
     if (!facility || !range) return;
     const r = await run('publish', () => api<{ published: number; postedToBoard: number }>('/api/shifts/publish', { method: 'POST', body: { facilityId: facility.id, from: range.from, to: range.to } }));
@@ -127,11 +102,11 @@ export default function ScheduleBuilderPage() {
         description={t('builder.description')}
         actions={
           <>
-            <Button variant="secondary" icon={<Sparkles className="h-5 w-5" aria-hidden="true" />} loading={busy === 'preview'} onClick={() => void runAssistant(false)} disabled={!open}>
-              {t('builder.assist')}
-            </Button>
-            <Button icon={<Send className="h-5 w-5" aria-hidden="true" />} loading={busy === 'publish'} onClick={() => void publish()} disabled={!drafts}>
+            <Button variant="secondary" icon={<Send className="h-5 w-5" aria-hidden="true" />} loading={busy === 'publish'} onClick={() => void publish()} disabled={!drafts}>
               {t('builder.publish', { count: drafts })}
+            </Button>
+            <Button icon={<Sparkles className="h-5 w-5" aria-hidden="true" />} onClick={() => setFilling(true)}>
+              {t('fill.open')}
             </Button>
           </>
         }
@@ -265,109 +240,7 @@ export default function ScheduleBuilderPage() {
 
       {selected ? <ShiftDialog shift={selected} onClose={() => setSelected(null)} onChanged={() => void shifts.reload()} /> : null}
 
-      <Dialog
-        open={assistant !== null}
-        onClose={() => setAssistant(null)}
-        title={t('builder.assistTitle')}
-        description={t('builder.assistHelp')}
-        closeLabel={t('common.close')}
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setAssistant(null)}>
-              {t('common.cancel')}
-            </Button>
-            <Button loading={busy === 'apply'} disabled={!assistant?.assignments.length} onClick={() => void runAssistant(true)}>
-              {t('builder.applyDrafts', { count: assistant?.assignments.length ?? 0 })}
-            </Button>
-          </>
-        }
-      >
-        <div className="grid gap-4">
-          <Field label={t('builder.distribution')}>
-            {(p) => (
-              <Select
-                {...p}
-                value={mode}
-                onChange={(e) => {
-                  setMode(e.target.value as typeof mode);
-                  setAssistant(null);
-                }}
-              >
-                {useSeniority ? <option value="SENIORITY">{t('builder.seniority')}</option> : null}
-                <option value="EGALITARIAN">{t('builder.egalitarian')}</option>
-              </Select>
-            )}
-          </Field>
-          {(facilities.data?.length ?? 0) > 1 ? (
-            <div className="grid gap-3 rounded-xl border border-line p-3">
-              <label className="flex items-start gap-3 text-small">
-                <input
-                  type="checkbox"
-                  checked={together}
-                  onChange={(e) => {
-                    setTogether(e.target.checked);
-                    setAssistant(null);
-                  }}
-                  className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]"
-                />
-                <span>
-                  <span className="block font-semibold">{t('builder.together', { count: facilities.data!.length })}</span>
-                  <span className="text-muted">{t('builder.togetherHelp')}</span>
-                </span>
-              </label>
-              {together ? (
-                <Field label={t('builder.travel')} hint={t('builder.travelHint')}>
-                  {(p) => (
-                    <Select
-                      {...p}
-                      value={travel}
-                      onChange={(e) => {
-                        setTravel(Number(e.target.value));
-                        setAssistant(null);
-                      }}
-                    >
-                      {[0, 15, 30, 45, 60, 90].map((m) => <option key={m} value={m}>{t('builder.minutes', { count: m })}</option>)}
-                    </Select>
-                  )}
-                </Field>
-              ) : null}
-            </div>
-          ) : null}
-          {assistant ? (
-            <p className="text-small text-muted">
-              {t('builder.summary', { filled: assistant.assignments.length, open: assistant.unfilled.length })}
-              {assistant.repaired ? ` ${t('builder.repaired', { count: assistant.repaired })}` : ''}
-              {together ? ` ${t('builder.otherSites')}` : ''}
-            </p>
-          ) : (
-            <Button variant="secondary" size="sm" className="justify-self-start" loading={busy === 'preview'} onClick={() => void runAssistant(false)}>{t('builder.assist')}</Button>
-          )}
-          <ul className="grid max-h-80 gap-2 overflow-y-auto">
-            {assistant?.assignments.map((a) => {
-              const s = shifts.data?.find((x) => x.id === a.shiftId);
-              return s ? (
-                <li key={a.shiftId} className="flex items-center justify-between gap-3 rounded-xl bg-ok-bg/60 px-3 py-2 text-small">
-                  <span className="tabular-nums">
-                    {formatDate(s.localStartsAt, lng)} · {formatTimeRange(s.localStartsAt, s.localEndsAt, lng)}
-                  </span>
-                  <span className="font-semibold">{nameOf(a.userId)}</span>
-                </li>
-              ) : null;
-            })}
-            {assistant?.unfilled.map((u) => {
-              const s = shifts.data?.find((x) => x.id === u.shiftId);
-              return s ? (
-                <li key={u.shiftId} className="rounded-xl bg-warn-bg px-3 py-2 text-small">
-                  <p className="tabular-nums">
-                    {formatDate(s.localStartsAt, lng)} · {formatTimeRange(s.localStartsAt, s.localEndsAt, lng)} · <span className="font-semibold text-warn">{t('builder.unfilled')}</span>
-                  </p>
-                  <p className="text-caption text-muted">{u.reason}</p>
-                </li>
-              ) : null;
-            })}
-          </ul>
-        </div>
-      </Dialog>
+      <FillSchedule open={filling} onClose={() => setFilling(false)} weekStart={week} onChanged={() => void shifts.reload()} />
     </>
   );
 }

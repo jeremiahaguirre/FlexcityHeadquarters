@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { todayIso, useAction, useQuery } from '@/lib/useQuery';
-import { dateFormat } from '@/lib/format';
+import { dateFormat, formatDate } from '@/lib/format';
 
 interface Row { dayOfWeek: number; startMinute: number; endMinute: number; effectiveTo: string | null }
 type Window = { start: string; end: string };
@@ -27,6 +27,7 @@ export default function AvailabilityPage() {
   const [days, setDays] = useState<Record<number, Window[]>>({});
   const [from, setFrom] = useState(todayIso());
   const [error, setError] = useState<string | null>(null);
+  const [windowKey, setWindowKey] = useState(0);
 
   useEffect(() => {
     if (!rows.data) return;
@@ -45,11 +46,13 @@ export default function AvailabilityPage() {
     setError(null);
     await run('save', () => api('/api/me/availability', { method: 'PUT', body: { effectiveFrom: from, windows } }), t('availability.saved'));
     await rows.reload();
+    setWindowKey((k) => k + 1);
   }
 
   return (
     <>
       <PageHeader title={t('availability.title')} description={t('availability.description')} />
+      <PlanAheadNotice key={windowKey} />
       {rows.loading ? (
         <Skeleton className="h-96" />
       ) : (
@@ -110,5 +113,29 @@ export default function AvailabilityPage() {
         </Card>
       )}
     </>
+  );
+}
+
+/** "Your city plans 2 weeks ahead — your availability is set through Nov 29", with a quick confirm. */
+function PlanAheadNotice() {
+  const { t, i18n } = useTranslation();
+  const w = useQuery<{ planAheadWeeks: number; through: string; confirmedThrough: string | null; current: boolean }>('/api/me/availability/window');
+  const { run, busy } = useAction();
+  if (!w.data) return null;
+  const date = (iso: string) => formatDate(`${iso}T12:00:00`, i18n.language, 'long');
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl2 border border-line bg-panel px-4 py-3">
+      <p className="text-small">
+        <span className="block font-semibold">{t('availability.planAhead', { window: t(`fill.horizon.${w.data.planAheadWeeks}`) })}</span>
+        <span className="text-muted">
+          {w.data.current ? t('availability.setThrough', { date: date(w.data.confirmedThrough ?? w.data.through) }) : w.data.confirmedThrough ? t('availability.confirmedOnlyThrough', { date: date(w.data.confirmedThrough) }) : t('availability.notConfirmed')}
+        </span>
+      </p>
+      {!w.data.current ? (
+        <Button size="sm" variant="secondary" loading={busy === 'confirm'} onClick={() => void run('confirm', () => api('/api/me/availability/confirm', { method: 'POST' }), t('availability.confirmed')).then(() => w.reload())}>
+          {t('availability.confirm', { date: date(w.data.through) })}
+        </Button>
+      ) : null}
+    </div>
   );
 }
