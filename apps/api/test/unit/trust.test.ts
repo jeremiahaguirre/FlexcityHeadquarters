@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONTROLS, FRAMEWORKS, controlsFor, libraryProblems, type Control } from '../../src/services/trust/library.js';
-import { headerProblems, healthReasonFr, rlsLists, scrubDetails } from '../../src/services/trust/monitors.js';
+import { headerProblems, healthReasonFr, monitorByKey, rlsLists, scrubDetails } from '../../src/services/trust/monitors.js';
 import { controlStatus, daysUntil, frameworkReadiness, nextDue, postureScore, readinessBand, reminderDue, riskLevel, riskScore, vendorRisk, vendorScore, type ControlStatus } from '../../src/services/trust/scoring.js';
 
 const now = new Date('2026-11-11T15:00:00Z');
@@ -31,6 +31,45 @@ describe('control library', () => {
     expect(h.optional).toBe(true);
     expect(h.note).toMatch(/US protected health information/);
     expect(h.noteFr).toMatch(/États-Unis/);
+  });
+
+  it('lists exactly the published requirement ids: SOC 2 (2017 TSC), ISO/IEC 27001:2022 Annex A, HIPAA, PIPEDA', () => {
+    const ids = (k: string) => FRAMEWORKS.find((f) => f.key === k)!.requirements.map((r) => r.id);
+    const seq = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}${i + 1}`);
+    expect(ids('soc2')).toEqual([
+      ...seq('CC1.', 5), ...seq('CC2.', 3), ...seq('CC3.', 4), ...seq('CC4.', 2), ...seq('CC5.', 3), ...seq('CC6.', 8), ...seq('CC7.', 5), 'CC8.1', ...seq('CC9.', 2),
+      ...seq('A1.', 3), ...seq('C1.', 2), 'P1.1', 'P2.1', 'P3.1', 'P3.2', 'P4.1', 'P4.2', 'P4.3', 'P5.1', 'P5.2', ...seq('P6.', 7), 'P7.1', 'P8.1',
+    ]);
+    expect(ids('iso27001').filter((i) => i.startsWith('A.'))).toEqual([...seq('A.5.', 37), ...seq('A.6.', 8), ...seq('A.7.', 14), ...seq('A.8.', 34)]);
+    expect(ids('iso27001').filter((i) => !i.startsWith('A.'))).toEqual(['4.1', '4.2', '4.3', '4.4', '5.1', '5.2', '5.3', '6.1.2', '6.1.3', '6.2', '6.3', '7.1', '7.2', '7.3', '7.4', '7.5', '8.1', '8.2', '8.3', '9.1', '9.2', '9.3', '10.1', '10.2']);
+    expect(ids('hipaa')).toEqual([...seq('164.308(a)(', 8).map((x) => `${x})`), '164.308(b)', '164.310(a)', '164.310(b)', '164.310(c)', '164.310(d)', '164.312(a)', '164.312(b)', '164.312(c)', '164.312(d)', '164.312(e)', '164.314(a)', '164.314(b)', '164.316(a)', '164.316(b)']);
+    expect(ids('pipeda')).toEqual([...seq('4.', 10), '10.1']);
+  });
+
+  it('keeps breach reporting apart from the ten principles, and marks provincial section numbers for counsel', () => {
+    const pipeda = FRAMEWORKS.find((f) => f.key === 'pipeda')!;
+    expect(pipeda.requirements.find((r) => r.id === '10.1')!.group).toBe('Breach of security safeguards');
+    expect(pipeda.requirements.filter((r) => r.group === 'Fair information principles')).toHaveLength(10);
+    for (const k of ['provincial', 'law25']) {
+      const f = FRAMEWORKS.find((x) => x.key === k)!;
+      expect(f.note, k).toMatch(/counsel/);
+      expect(f.noteFr, k).toMatch(/conseiller juridique/);
+    }
+  });
+
+  it('maps no control to a requirement it doesn’t do', () => {
+    const maps = (k: string) => CONTROLS.find((c) => c.key === k)!.maps;
+    // Retention deletes records; HIPAA 164.316(b) is keeping documentation six years.
+    expect(maps('RT-01')).not.toContain('hipaa:164.316(b)');
+    // A web application firewall filters traffic to FH; Annex A 8.23 is filtering staff's web access.
+    expect(maps('NW-01')).not.toContain('iso27001:A.8.23');
+    expect(maps('PS-02')).toContain('iso27001:A.8.23');
+    expect(CONTROLS.find((c) => c.key === 'PS-02')!.description).toMatch(/filtering/);
+  });
+
+  it('claims no certification, compliance or audit anywhere in the library or the tests', () => {
+    const text = JSON.stringify([FRAMEWORKS, CONTROLS, [...monitorByKey.values()].map((m) => [m.title, m.titleFr])]);
+    expect(text).not.toMatch(/\b(certified|compliant|audited|certifiée?s?|conformes?|auditée?s?)\b/i);
   });
 
   it('gives every control and requirement a French title', () => {

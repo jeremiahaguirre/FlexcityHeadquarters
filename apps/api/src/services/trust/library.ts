@@ -4,11 +4,12 @@
  * a change here is reviewed like any other change, and the version is printed on every export.
  *
  * Requirement titles are short plain-language paraphrases written for FH, not the standards' text.
- * Section numbers for the provincial laws are as commonly cited; confirm with the customer's
- * privacy office before quoting them in a contract.
+ * Section numbers for the provincial laws (BC, Ontario, Alberta, Quebec) are as commonly cited and
+ * are marked for counsel in the UI (the frameworks' notes): have counsel or the customer's privacy
+ * office confirm them before quoting them in a contract.
  */
 
-export const LIBRARY_VERSION = '2026.11-1';
+export const LIBRARY_VERSION = '2026.11-2';
 
 export type FrameworkKey = 'soc2' | 'iso27001' | 'hipaa' | 'pipeda' | 'provincial' | 'law25';
 export interface Requirement {
@@ -61,6 +62,7 @@ export const GROUP_FR: Record<string, string> = {
   '164.312 Technical': '164.312 Mesures techniques',
   '164.314–316 Organizational and documentation': '164.314 à 316 Organisation et documentation',
   'Fair information principles': 'Principes relatifs à l’équité dans le traitement de l’information',
+  'Breach of security safeguards': 'Atteintes aux mesures de sécurité',
   'British Columbia FIPPA': 'FIPPA (Colombie-Britannique)',
   'Ontario MFIPPA': 'LAIMPVP (Ontario)',
   'Alberta FOIP / POPA': 'FOIP / POPA (Alberta)',
@@ -314,25 +316,30 @@ const HIPAA: Requirement[] = [
   ], { '164.314(b)': ['FH is not a group health plan.', 'FH n’est pas un régime d’assurance maladie collectif.'] }),
 ];
 
-const PIPEDA: Requirement[] = reqs('Fair information principles', [
-  ['4.1', 'Accountability: a named person answers for privacy', 'Responsabilité : une personne désignée répond de la vie privée'],
-  ['4.2', 'Identify purposes before or at collection', 'Déterminer les fins avant ou pendant la collecte'],
-  ['4.3', 'Meaningful consent', 'Consentement valable'],
-  ['4.4', 'Limit collection to what’s needed', 'Limiter la collecte au nécessaire'],
-  ['4.5', 'Limit use, disclosure and retention', 'Limiter l’utilisation, la communication et la conservation'],
-  ['4.6', 'Accuracy', 'Exactitude'],
-  ['4.7', 'Security safeguards suited to the sensitivity', 'Mesures de sécurité adaptées à la sensibilité'],
-  ['4.8', 'Openness about policies and practices', 'Transparence des politiques et pratiques'],
-  ['4.9', 'Individual access', 'Accès aux renseignements personnels'],
-  ['4.10', 'Challenging compliance', 'Possibilité de contester le respect des principes'],
-  ['10.1', 'Report breaches with real risk of significant harm; keep a breach record 24 months', 'Déclarer les atteintes présentant un risque réel de préjudice grave; tenir un registre 24 mois'],
-]);
+const PIPEDA: Requirement[] = [
+  ...reqs('Fair information principles', [
+    ['4.1', 'Accountability: a named person answers for privacy', 'Responsabilité : une personne désignée répond de la vie privée'],
+    ['4.2', 'Identify purposes before or at collection', 'Déterminer les fins avant ou pendant la collecte'],
+    ['4.3', 'Meaningful consent', 'Consentement valable'],
+    ['4.4', 'Limit collection to what’s needed', 'Limiter la collecte au nécessaire'],
+    ['4.5', 'Limit use, disclosure and retention', 'Limiter l’utilisation, la communication et la conservation'],
+    ['4.6', 'Accuracy', 'Exactitude'],
+    ['4.7', 'Security safeguards suited to the sensitivity', 'Mesures de sécurité adaptées à la sensibilité'],
+    ['4.8', 'Openness about policies and practices', 'Transparence des politiques et pratiques'],
+    ['4.9', 'Individual access', 'Accès aux renseignements personnels'],
+    ['4.10', 'Challenging compliance', 'Possibilité de contester le respect des principes'],
+  ]),
+  // Division 1.1: report to the Commissioner and notify people (s. 10.1); keep a record of every breach (s. 10.3, 24 months under the regulations).
+  ...reqs('Breach of security safeguards', [
+    ['10.1', 'Report breaches with a real risk of significant harm (s. 10.1) and keep a record of every breach for 24 months (s. 10.3)', 'Déclarer les atteintes présentant un risque réel de préjudice grave (art. 10.1) et consigner chaque atteinte pendant 24 mois (art. 10.3)'],
+  ]),
+];
 
 const PROVINCIAL: Requirement[] = [
   ...reqs('British Columbia FIPPA', [
     ['BC-30', 'Reasonable security arrangements against unauthorized access', 'Mesures de sécurité raisonnables contre l’accès non autorisé'],
     ['BC-30.5', 'Service providers report unauthorized disclosure to the public body', 'Les fournisseurs signalent toute communication non autorisée à l’organisme public'],
-    ['BC-33', 'Disclosure and storage outside Canada only as the Act allows', 'Communication et stockage hors du Canada seulement selon la Loi'],
+    ['BC-33', 'Disclosure only as the Act allows (s. 33), outside Canada only under s. 33.1 and its regulations', 'Communication seulement selon la Loi (art. 33), hors du Canada seulement selon l’art. 33.1 et ses règlements'],
     ['BC-36.2', 'Privacy management program', 'Programme de gestion de la vie privée'],
     ['BC-36.3', 'Notify affected people and the Commissioner of serious breaches', 'Aviser les personnes touchées et le commissaire des atteintes graves'],
   ]),
@@ -381,11 +388,16 @@ export const FRAMEWORKS: Framework[] = [
     key: 'provincial', name: 'Provincial public-sector privacy', nameFr: 'Vie privée du secteur public provincial',
     description: 'What cities’ own privacy laws ask of their service providers: BC FIPPA, Ontario MFIPPA, Alberta FOIP.',
     descriptionFr: 'Ce que les lois sur la vie privée des villes exigent de leurs fournisseurs : FIPPA (C.-B.), MFIPPA (Ont.), FOIP (Alb.).',
-    note: 'Customer-requirement framework: these laws bind the cities, which pass them on by contract. BC: until 2021, s. 30.1 required storage and access in Canada; amendments that year removed it and s. 33.1 now allows disclosure outside Canada under the regulations, but many BC bodies still require Canadian storage by contract. Alberta replaced FOIP with the Protection of Privacy Act in 2025; older contracts still cite FOIP.',
-    noteFr: 'Cadre d’exigences des clients : ces lois s’appliquent aux villes, qui les transmettent par contrat. C.-B. : jusqu’en 2021, l’art. 30.1 exigeait le stockage et l’accès au Canada; les modifications de cette année-là l’ont retiré et l’art. 33.1 permet maintenant la communication hors du Canada selon les règlements, mais de nombreux organismes exigent encore un stockage canadien par contrat. L’Alberta a remplacé la FOIP par la Protection of Privacy Act en 2025; d’anciens contrats citent encore la FOIP.',
+    note: 'Customer-requirement framework: these laws bind the cities, which pass them on by contract. BC: until 2021, s. 30.1 required storage and access in Canada; amendments that year removed it and s. 33.1 now allows disclosure outside Canada under the regulations, but many BC bodies still require Canadian storage by contract. Alberta replaced FOIP with the Protection of Privacy Act and the Access to Information Act in 2025; older contracts still cite FOIP. Section numbers are as commonly cited: have counsel confirm them before quoting them in a contract.',
+    noteFr: 'Cadre d’exigences des clients : ces lois s’appliquent aux villes, qui les transmettent par contrat. C.-B. : jusqu’en 2021, l’art. 30.1 exigeait le stockage et l’accès au Canada; les modifications de cette année-là l’ont retiré et l’art. 33.1 permet maintenant la communication hors du Canada selon les règlements, mais de nombreux organismes exigent encore un stockage canadien par contrat. L’Alberta a remplacé la FOIP par la Protection of Privacy Act et l’Access to Information Act en 2025; d’anciens contrats citent encore la FOIP. Les numéros d’articles sont ceux couramment cités : faites-les confirmer par un conseiller juridique avant de les citer dans un contrat.',
     requirements: PROVINCIAL,
   },
-  { key: 'law25', name: 'Quebec Law 25', nameFr: 'Loi 25 (Québec)', description: 'Quebec’s modernized private-sector privacy Act.', descriptionFr: 'La loi québécoise modernisée sur la protection des renseignements personnels dans le secteur privé.', requirements: LAW25 },
+  {
+    key: 'law25', name: 'Quebec Law 25', nameFr: 'Loi 25 (Québec)', description: 'Quebec’s modernized private-sector privacy Act.', descriptionFr: 'La loi québécoise modernisée sur la protection des renseignements personnels dans le secteur privé.',
+    note: 'Section numbers are those of the Act respecting the protection of personal information in the private sector as amended by Law 25, as commonly cited: have counsel confirm them before quoting them in a contract.',
+    noteFr: 'Les numéros d’articles sont ceux de la Loi sur la protection des renseignements personnels dans le secteur privé modifiée par la Loi 25, tels qu’ils sont couramment cités : faites-les confirmer par un conseiller juridique avant de les citer dans un contrat.',
+    requirements: LAW25,
+  },
 ];
 export const FRAMEWORK_KEYS = FRAMEWORKS.map((f) => f.key);
 
@@ -600,7 +612,7 @@ export const CONTROLS: Control[] = [
   {
     key: 'RT-01', category: 'retention', title: 'Retention applied automatically', titleFr: 'Conservation appliquée automatiquement',
     description: 'The worker removes records past each organization’s retention period every hour.', descriptionFr: 'Le traitement en arrière-plan retire chaque heure les dossiers dont la durée de conservation est échue.',
-    tests: ['retention_job'], maps: [...m('soc2', 'C1.2', 'P4.2', 'P4.3'), ...m('iso27001', 'A.8.10', 'A.5.33'), ...m('pipeda', '4.5'), ...m('provincial', 'ON-30', 'AB-35'), ...m('law25', 'Q-23'), ...m('hipaa', '164.316(b)')],
+    tests: ['retention_job'], maps: [...m('soc2', 'C1.2', 'P4.2', 'P4.3'), ...m('iso27001', 'A.8.10', 'A.5.33'), ...m('pipeda', '4.5'), ...m('provincial', 'ON-30', 'AB-35'), ...m('law25', 'Q-23')],
   },
   {
     key: 'RT-02', category: 'retention', title: 'Deletion at end of contract', titleFr: 'Suppression à la fin du contrat',
@@ -645,15 +657,15 @@ export const CONTROLS: Control[] = [
   },
   {
     key: 'PS-02', category: 'physical', title: 'Staff devices secured', titleFr: 'Appareils du personnel sécurisés',
-    description: 'Laptops have disk encryption, screen lock, automatic updates and malware protection; remote work rules apply.', descriptionFr: 'Les portables ont le chiffrement du disque, le verrouillage de l’écran, les mises à jour automatiques et une protection contre les logiciels malveillants; des règles de télétravail s’appliquent.',
-    tests: [], evidenceDays: 100, evidenceHint: 'Device inventory with encryption and update status.', evidenceHintFr: 'Inventaire des appareils avec état du chiffrement et des mises à jour.',
+    description: 'Laptops have disk encryption, screen lock, automatic updates, malware protection and filtering of malicious websites; remote work rules apply.', descriptionFr: 'Les portables ont le chiffrement du disque, le verrouillage de l’écran, les mises à jour automatiques, une protection contre les logiciels malveillants et le filtrage des sites Web malveillants; des règles de télétravail s’appliquent.',
+    tests: [], evidenceDays: 100, evidenceHint: 'Device inventory with encryption, update, malware and web filtering status.', evidenceHintFr: 'Inventaire des appareils avec l’état du chiffrement, des mises à jour, de la protection contre les logiciels malveillants et du filtrage Web.',
     maps: [...m('soc2', 'CC6.8', 'CC6.5'), ...m('iso27001', 'A.8.1', 'A.7.7', 'A.7.9', 'A.6.7', 'A.8.7', 'A.8.23', 'A.7.10'), ...m('hipaa', '164.310(b)', '164.310(c)')],
   },
   {
     key: 'NW-01', category: 'access', title: 'Network protections', titleFr: 'Protections réseau',
     description: 'A web application firewall, private database networking and tight security groups.', descriptionFr: 'Un pare-feu applicatif Web, une base de données en réseau privé et des groupes de sécurité restreints.',
     tests: [], evidenceDays: 180, evidenceHint: 'WAF rules and security group export.', evidenceHintFr: 'Règles du pare-feu et exportation des groupes de sécurité.',
-    maps: [...m('soc2', 'CC6.6'), ...m('iso27001', 'A.8.20', 'A.8.21', 'A.8.22', 'A.8.23')],
+    maps: [...m('soc2', 'CC6.6'), ...m('iso27001', 'A.8.20', 'A.8.21', 'A.8.22')],
   },
   {
     key: 'GV-01', category: 'governance', title: 'Security program governance', titleFr: 'Gouvernance du programme de sécurité',
