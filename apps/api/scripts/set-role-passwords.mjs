@@ -5,13 +5,16 @@
 //   DATABASE_URL=… FLEXCITY_APP_PASSWORD=… [FLEXCITY_UNION_PASSWORD=…] node scripts/set-role-passwords.mjs
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
+import { ownerUrl } from './owner-url.mjs';
 
-const url = process.env.DATABASE_URL;
-const passwords = { flexcity_app: process.env.FLEXCITY_APP_PASSWORD, flexcity_union: process.env.FLEXCITY_UNION_PASSWORD };
-if (!url) {
-  console.error('DATABASE_URL is required');
+let url;
+try {
+  url = ownerUrl();
+} catch (e) {
+  console.error(e.message);
   process.exit(1);
 }
+const passwords = { flexcity_app: process.env.FLEXCITY_APP_PASSWORD, flexcity_union: process.env.FLEXCITY_UNION_PASSWORD };
 if (!passwords.flexcity_app || passwords.flexcity_app.length < 24) {
   console.error('FLEXCITY_APP_PASSWORD is required (24 characters or more)');
   process.exit(1);

@@ -2,10 +2,13 @@
 // Usage: node scripts/apply-sql.mjs db/rls.sql db/union_hub.sql
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
+import { ownerUrl } from './owner-url.mjs';
 
-const url = process.env.DATABASE_URL;
-if (!url) {
-  console.error('DATABASE_URL is required');
+let url;
+try {
+  url = ownerUrl();
+} catch (e) {
+  console.error(e.message);
   process.exit(1);
 }
 

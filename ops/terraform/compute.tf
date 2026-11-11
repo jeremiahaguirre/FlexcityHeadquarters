@@ -33,6 +33,18 @@ locals {
 
   app_secrets = [for k in var.app_secret_keys : { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }]
 
+  # The owner connection for migrations and set-up (apps/api/scripts/owner-url.mjs): the password
+  # comes straight from the RDS-managed secret, which RDS rotates, so it never goes stale.
+  owner_env = [
+    { name = "NODE_ENV", value = "production" },
+    { name = "DB_HOST", value = aws_db_instance.main.address },
+    { name = "DB_PORT", value = tostring(aws_db_instance.main.port) },
+    { name = "DB_NAME", value = "flexcity" },
+    { name = "DB_USER", value = "fh_owner" },
+    { name = "DB_SSLROOTCERT", value = "/etc/ssl/rds/global-bundle.pem" },
+  ]
+  owner_password = { name = "DB_PASSWORD", valueFrom = "${aws_db_instance.main.master_user_secret[0].secret_arn}:password::" }
+
   log = { for k in ["api", "worker", "web", "migrate"] : k => {
     logDriver = "awslogs"
     options = {
@@ -107,8 +119,8 @@ resource "aws_ecs_task_definition" "migrate" {
     name             = "migrate"
     image            = local.image["migrate"]
     essential        = true
-    environment      = [{ name = "NODE_ENV", value = "production" }]
-    secrets          = [{ name = "DATABASE_URL", valueFrom = "${local.app_secret_arn}:DATABASE_URL::" }]
+    environment      = local.owner_env
+    secrets          = [local.owner_password]
     logConfiguration = local.log["migrate"]
   }])
 }
@@ -132,9 +144,9 @@ resource "aws_ecs_task_definition" "db_roles" {
     image       = local.image["migrate"]
     essential   = true
     command     = ["node", "scripts/set-role-passwords.mjs"]
-    environment = [{ name = "NODE_ENV", value = "production" }]
-    secrets = [for k in concat(["DATABASE_URL", "FLEXCITY_APP_PASSWORD"], var.union_role_password ? ["FLEXCITY_UNION_PASSWORD"] : []) :
-    { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }]
+    environment = local.owner_env
+    secrets = concat([local.owner_password], [for k in concat(["FLEXCITY_APP_PASSWORD"], var.union_role_password ? ["FLEXCITY_UNION_PASSWORD"] : []) :
+    { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }])
     logConfiguration = local.log["migrate"]
   }])
 }

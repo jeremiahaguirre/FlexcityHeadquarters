@@ -34,3 +34,19 @@ describe('database URLs', () => {
     expect(verifiesServer('postgresql://a:b@h/d?sslmode=require&sslcert=/x&sslaccept=strict')).toBe(false);
   });
 });
+
+describe('owner connection for migrations', () => {
+  it('uses DATABASE_URL when set, otherwise builds it from parts (password from the RDS secret)', async () => {
+    // @ts-expect-error a plain JavaScript module without types
+    const { ownerUrl } = await import('../../scripts/owner-url.mjs');
+    expect(ownerUrl({ DATABASE_URL: 'postgresql://a:b@h/d' })).toBe('postgresql://a:b@h/d');
+    const u = new URL(ownerUrl({ DB_HOST: 'fh.abc.ca-central-1.rds.amazonaws.com', DB_USER: 'fh_owner', DB_PASSWORD: 'p@ss:w/rd?#&', DB_NAME: 'flexcity', DB_SSLROOTCERT: '/etc/ssl/rds/global-bundle.pem' }));
+    expect(decodeURIComponent(u.password)).toBe('p@ss:w/rd?#&');
+    expect(u.hostname).toBe('fh.abc.ca-central-1.rds.amazonaws.com');
+    expect(u.port).toBe('5432');
+    expect(u.pathname).toBe('/flexcity');
+    expect(u.searchParams.get('sslmode')).toBe('verify-full');
+    expect(verifiesServer(u.toString())).toBe(true);
+    expect(() => ownerUrl({ DB_HOST: 'h' })).toThrow('DB_USER, DB_PASSWORD');
+  });
+});

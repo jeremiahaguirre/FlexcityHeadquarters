@@ -61,8 +61,8 @@ run "production_defaults" {
     error_message = "At least two API tasks and two workers."
   }
   assert {
-    condition     = aws_lb_target_group.api.health_check[0].path == "/readyz"
-    error_message = "API health check must be /readyz."
+    condition     = aws_lb_target_group.api.health_check[0].path == "/healthz"
+    error_message = "The load balancer checks /healthz, never the database-dependent /readyz."
   }
   assert {
     condition     = length(aws_db_instance_automated_backups_replication.dr) == 1 && length(aws_ecr_replication_configuration.dr) == 1 && length(aws_s3_bucket_replication_configuration.backups) == 1
@@ -75,6 +75,10 @@ run "production_defaults" {
   assert {
     condition     = length(aws_db_instance.main.restore_to_point_in_time) == 0 && aws_db_instance.main.db_name == "flexcity"
     error_message = "A normal deployment creates a new database."
+  }
+  assert {
+    condition     = local.owner_password.name == "DB_PASSWORD" && contains([for e in local.owner_env : e.name], "DB_SSLROOTCERT") && !contains(var.app_secret_keys, "DATABASE_URL")
+    error_message = "Migrations take the owner password from the RDS-managed secret, never a copy."
   }
   assert {
     condition     = length(aws_nat_gateway.main) == 1

@@ -47,12 +47,15 @@ Use a **separate AWS account per environment** (staging, production). The API ma
 
    | Key | Value |
    | --- | --- |
-   | `DATABASE_URL` | Owner connection, password from the RDS-managed secret (`database_master_secret_arn` output): `postgresql://fh_owner:…@<endpoint>:5432/flexcity?sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem` |
    | `FLEXCITY_APP_PASSWORD` | A new random password (32+ characters) for the app role |
-   | `APP_DATABASE_URL` | `postgresql://flexcity_app:<that password>@<endpoint>:5432/flexcity?sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem` |
+   | `APP_DATABASE_URL` | `postgresql://flexcity_app:<that password, URL-encoded>@<endpoint>:5432/flexcity?sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem` |
    | `LISTEN_DATABASE_URL` | The same as `APP_DATABASE_URL` (direct to the database, never through a transaction pooler) |
    | `JWT_SECRET` | 64 random bytes, base64 |
    | `METRICS_TOKEN` | 32 random characters; also given to the metrics collector |
+
+   Database URLs are always written in this standard form. `pg` verifies the certificate and host name from it. For Prisma, which doesn't understand `verify-full`, the app translates it to Prisma's own settings (`apps/api/src/lib/dbUrl.ts`). In production the API refuses to start without `sslmode=verify-full` (or `verify-ca`) and an `sslrootcert`.
+
+   The owner (`fh_owner`) password is **not** copied into this secret: RDS manages and rotates it. The migration and database-role tasks read it from the RDS secret and build the connection themselves (`apps/api/scripts/owner-url.mjs`).
 
    Optional keys can be added later: `TWILIO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `READ_REPLICA_URL`, `FLEXCITY_UNION_PASSWORD`. Add each one to `app_secret_keys` (or set `union_role_password`) and apply. A task won't start if a key it names is missing.
 6. **Database roles, then migrations.** Run as one-off tasks in the private subnets with the app security group (all values are Terraform outputs):
@@ -64,7 +67,8 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    ```
 7. **DNS.** Point `<root_domain>` and `*.<root_domain>` at the load balancer, and the site's host name at the CloudFront distribution (Route 53 alias records).
 8. **Marketing site.** Run `npm run build -w apps/site` with `NEXT_PUBLIC_SITE_URL` set, then `aws s3 sync apps/site/out s3://<site_bucket> --delete` and invalidate the distribution.
-9. **First Dev console administrator.** Run `npm run platform:admin` from a workstation with an SSM or bastion tunnel to the database, or as a one-off task with a command override.
+9. **First Dev console administrator.** Run `npm run platform:admin` as a one-off task from the migration image with a command override; it uses the same owner connection.
+10. **Metrics.** Give the collector's security group as `metrics_collector_security_group`, so it can scrape `/metrics` on port 4000 (docs/MONITORING.md).
 
 ## Every deployment
 

@@ -22,7 +22,7 @@ resource "aws_iam_role_policy_attachment" "execution" {
 data "aws_iam_policy_document" "execution_secrets" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [local.app_secret_arn]
+    resources = [local.app_secret_arn, aws_db_instance.main.master_user_secret[0].secret_arn]
   }
   statement {
     actions   = ["kms:Decrypt"]
@@ -61,6 +61,12 @@ data "aws_iam_policy_document" "app" {
     sid       = "CreateOrganizationKeys"
     actions   = ["kms:CreateKey"]
     resources = ["*"]
+    # Key material only ever in Canada: the two regions of this deployment.
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [var.region, var.dr_region]
+    }
   }
   statement {
     sid       = "TagOrganizationKeys"
@@ -73,9 +79,19 @@ data "aws_iam_policy_document" "app" {
     }
   }
   statement {
-    sid       = "SetUpOrganizationKeys"
-    actions   = ["kms:EnableKeyRotation", "kms:ReplicateKey"]
+    sid       = "RotateOrganizationKeys"
+    actions   = ["kms:EnableKeyRotation"]
     resources = local.key_arns
+  }
+  statement {
+    sid       = "CopyOrganizationKeysToRecovery"
+    actions   = ["kms:ReplicateKey"]
+    resources = local.key_arns
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ReplicaRegion"
+      values   = [var.dr_region]
+    }
   }
   statement {
     sid       = "NameOrganizationKeys"
