@@ -221,11 +221,11 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   invoice: {
     'en-CA': (p) => ({
       subject: `Invoice ${p.number} from ${p.from}: ${p.total}`,
-      text: `Hello ${p.organization},\n\nInvoice ${p.number} for ${p.period} is ${p.total}, due ${p.dueDate}.\n\n${p.padAccount ? `Under your pre-authorized debit agreement, ${p.total} will be debited from account ${p.padAccount} on or after ${p.dueDate}. Nothing else to do.` : p.remittance}\n\nQuestions about this invoice: ${p.contact}`,
+      text: `Hello ${p.organization},\n\nInvoice ${p.number} for ${p.period} is ${p.total}, due ${p.dueDate}.\n\n${p.padAccount ? `Under your pre-authorized debit agreement, ${p.total} will be debited from account ${p.padAccount} on or after ${p.dueDate}. Nothing else to do.` : p.remittance}${p.contact ? `\n\nQuestions about this invoice: ${p.contact}` : ''}`,
     }),
     'fr-CA': (p) => ({
       subject: `Facture ${p.number} de ${p.from} : ${p.total}`,
-      text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période du ${p.period} s'élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.padAccount ? `Selon votre entente de débit préautorisé, ${p.total} sera prélevé du compte ${p.padAccount} à compter du ${p.dueDate}. Vous n'avez rien d'autre à faire.` : p.remittance}\n\nQuestions sur cette facture : ${p.contact}`,
+      text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période du ${p.period} s'élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.padAccount ? `Selon votre entente de débit préautorisé, ${p.total} sera prélevé du compte ${p.padAccount} à compter du ${p.dueDate}. Vous n'avez rien d'autre à faire.` : p.remittance}${p.contact ? `\n\nQuestions sur cette facture : ${p.contact}` : ''}`,
     }),
   },
   /**
@@ -236,21 +236,21 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   renewal_reminder: {
     'en-CA': (p) => ({
       subject: `Your FlexcityHeadquarters term ends on ${p.termEnd}`,
-      text: `Hello ${p.organization},\n\nYour ${p.termLength} term ends on ${p.termEnd}. Unless you tell us otherwise, it then renews automatically month to month at the same rates without the ${p.discount}% commitment discount: about ${p.monthly} a month before tax (plus staff beyond your allowance, billed monthly).\n\nTo sign a new term (and keep a commitment discount), or to cancel, write to ${p.contact} before ${p.termEnd}. Cancelling stops invoicing after the period already billed; you can download your data before the account closes.\n\nYour billing details:\n${p.url}`,
+      text: `Hello ${p.organization},\n\nYour ${p.termLength} term ends on ${p.termEnd}. Unless you tell us otherwise, it then renews automatically month to month at the same rates without the ${p.discount}% commitment discount: about ${p.monthly} a month before tax (plus staff beyond your allowance, billed monthly).\n\nTo sign a new term (and keep a commitment discount), or to cancel, ${p.contact ? `write to ${p.contact}` : 'reply to this email'} before ${p.termEnd}. Cancelling stops invoicing after the period already billed; you can download your data before the account closes.\n\nYour billing details:\n${p.url}`,
     }),
     'fr-CA': (p) => ({
       subject: `Votre durée FlexcityHeadquarters se termine le ${p.termEnd}`,
-      text: `Bonjour ${p.organization},\n\nVotre engagement de ${p.termLength} se termine le ${p.termEnd}. Sauf avis contraire de votre part, il se renouvelle ensuite automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement de ${p.discount} % : environ ${p.monthly} par mois avant taxes (plus le personnel au-delà de votre allocation, facturé au mois).\n\nPour signer une nouvelle durée (et conserver un rabais d’engagement) ou pour résilier, écrivez à ${p.contact} avant le ${p.termEnd}. La résiliation met fin à la facturation après la période déjà facturée; vous pouvez télécharger vos données avant la fermeture du compte.\n\nVos renseignements de facturation :\n${p.url}`,
+      text: `Bonjour ${p.organization},\n\nVotre engagement de ${p.termLength} se termine le ${p.termEnd}. Sauf avis contraire de votre part, il se renouvelle ensuite automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement de ${p.discount} % : environ ${p.monthly} par mois avant taxes (plus le personnel au-delà de votre allocation, facturé au mois).\n\nPour signer une nouvelle durée (et conserver un rabais d’engagement) ou pour résilier, ${p.contact ? `écrivez à ${p.contact}` : 'répondez à ce courriel'} avant le ${p.termEnd}. La résiliation met fin à la facturation après la période déjà facturée; vous pouvez télécharger vos données avant la fermeture du compte.\n\nVos renseignements de facturation :\n${p.url}`,
     }),
   },
   pad_confirmation: {
     'en-CA': (p) => ({
       subject: `Pre-authorized debit agreement confirmed: ${p.payee}`,
-      text: `This confirms the business pre-authorized debit agreement between ${p.payor} and ${p.payee}, authorized on ${p.date} by ${p.signer}.\n\nAccount: ${p.account}\n\n${p.terms}\n\nKeep this email for your records. To change or cancel the agreement: ${p.contact}`,
+      text: `This confirms the business pre-authorized debit agreement between ${p.payor} and ${p.payee}, authorized on ${p.date} by ${p.signer}.\n\nAccount: ${p.account}\n\n${p.terms}\n\nKeep this email for your records. To change or cancel the agreement: ${p.contact || 'reply to this email'}.`,
     }),
     'fr-CA': (p) => ({
       subject: `Entente de débit préautorisé confirmée : ${p.payee}`,
-      text: `Ceci confirme l'entente de débit préautorisé d'entreprise entre ${p.payor} et ${p.payee}, autorisée le ${p.date} par ${p.signer}.\n\nCompte : ${p.account}\n\n${p.terms}\n\nConservez ce courriel dans vos dossiers. Pour modifier ou annuler l'entente : ${p.contact}`,
+      text: `Ceci confirme l'entente de débit préautorisé d'entreprise entre ${p.payor} et ${p.payee}, autorisée le ${p.date} par ${p.signer}.\n\nCompte : ${p.account}\n\n${p.terms}\n\nConservez ce courriel dans vos dossiers. Pour modifier ou annuler l'entente : ${p.contact || 'répondez à ce courriel'}.`,
     }),
   },
 };

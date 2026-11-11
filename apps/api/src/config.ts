@@ -153,3 +153,24 @@ export function config(): Config {
   }
   return cached;
 }
+
+/**
+ * A contact address that isn't real yet: empty, or on a reserved example domain (RFC 2606/6761:
+ * ".example", "example.com/.org/.net"), like the development defaults above. Customer-facing
+ * responses and emails never carry one; they leave the line out or use wording without an address.
+ * Same rule as apps/web/src/lib/contact.ts.
+ */
+export function isPlaceholderContact(value: string | null | undefined): boolean {
+  const v = (value ?? '').trim().replace(/^mailto:/i, '').toLowerCase();
+  if (!v) return true;
+  const domain = v.includes('@') ? v.slice(v.lastIndexOf('@') + 1) : v;
+  return /(^|\.)example$/.test(domain) || /(^|\.)example\.(com|org|net)$/.test(domain);
+}
+
+/** The address, or null when it is a placeholder. */
+export function realContact(value: string | null | undefined): string | null {
+  return isPlaceholderContact(value) ? null : (value ?? '').trim();
+}
+
+/** FH's billing contact for customers (BILLING_EMAIL), or null while it is a placeholder. */
+export const billingContact = (): string | null => realContact(config().BILLING_EMAIL);

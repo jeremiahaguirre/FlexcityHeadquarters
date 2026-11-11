@@ -5,7 +5,7 @@
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { config } from '../config.js';
+import { billingContact, config } from '../config.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { catalog, itemStates } from '../services/billing/catalog.js';
 import { planRate } from '../services/billing/pricing.js';
@@ -60,7 +60,7 @@ billingRouter.get(
         paidCents: i.paidCents,
         balanceCents: i.status === 'SENT' ? i.totalCents - i.paidCents : 0,
       })),
-      payment: { online: onlinePaymentsEnabled(), remittance: remittanceFor(String(req.query.lang ?? 'en-CA')), payee: config().BILLING_LEGAL_NAME, contact: config().BILLING_EMAIL },
+      payment: { online: onlinePaymentsEnabled(), remittance: remittanceFor(String(req.query.lang ?? 'en-CA')), payee: config().BILLING_LEGAL_NAME, contact: billingContact() },
       pad: { agreement: pad ? agreementView(pad) : null, terms: agreementTerms(String(req.query.lang ?? 'en-CA')) },
     });
   }),

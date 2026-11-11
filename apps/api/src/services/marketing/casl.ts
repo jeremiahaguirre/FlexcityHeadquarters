@@ -19,7 +19,7 @@
  * A dedicated EmailSuppression table would be cleaner: see docs/COMPLIANCE.md (CASL).
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { config } from '../../config.js';
+import { config, realContact } from '../../config.js';
 import { db } from '../../lib/db.js';
 import type { Mailer } from '../notifications/mailer.js';
 
@@ -36,7 +36,7 @@ export function senderIdentity() {
   return {
     legalName: c.COMPANY_LEGAL_NAME.trim() || PLACEHOLDER_NAME,
     mailingAddress: c.COMPANY_MAILING_ADDRESS.trim() || PLACEHOLDER_ADDRESS,
-    email: c.COMPANY_CONTACT_EMAIL.trim() || c.BILLING_EMAIL,
+    email: realContact(c.COMPANY_CONTACT_EMAIL) ?? realContact(c.BILLING_EMAIL),
     configured: !!c.COMPANY_LEGAL_NAME.trim() && !!c.COMPANY_MAILING_ADDRESS.trim(),
   };
 }
@@ -123,9 +123,9 @@ export async function recordUnsubscribe(email: string, source: 'link' | 'one-cli
 
 const FOOTER = {
   'en-CA': (id: ReturnType<typeof senderIdentity>, url: string) =>
-    `—\nThis message is from ${id.legalName}, ${id.mailingAddress}. Contact us: ${id.email}.\nUnsubscribe (one click, takes effect immediately): ${url}`,
+    `—\nThis message is from ${id.legalName}, ${id.mailingAddress}.${id.email ? ` Contact us: ${id.email}.` : ''}\nUnsubscribe (one click, takes effect immediately): ${url}`,
   'fr-CA': (id: ReturnType<typeof senderIdentity>, url: string) =>
-    `—\nCe message provient de ${id.legalName}, ${id.mailingAddress}. Nous joindre : ${id.email}.\nVous désabonner (un clic, effet immédiat) : ${url}`,
+    `—\nCe message provient de ${id.legalName}, ${id.mailingAddress}.${id.email ? ` Nous joindre : ${id.email}.` : ''}\nVous désabonner (un clic, effet immédiat) : ${url}`,
 };
 
 /** The message as sent: body, identification footer, unsubscribe link and headers. */

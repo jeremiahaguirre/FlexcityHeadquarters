@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { platformOf } from '../../auth/platform.js';
-import { config } from '../../config.js';
+import { billingContact, config } from '../../config.js';
 import { db, tenantIds, withTenant } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import {
@@ -87,7 +87,7 @@ billingRouter.get(
     );
     const open = await db().invoice.findMany({ where: { status: 'SENT' } });
     const { start, next } = monthBounds(month);
-    const paidThisMonth = await db().invoicePayment.aggregate({ _sum: { amountCents: true }, where: { receivedOn: { gte: start, lt: next } } });
+    const paidThisMonth = await db().invoicePayment.aggregate({ _sum: { amountCents: true }, _count: true, where: { receivedOn: { gte: start, lt: next } } });
     const overdue = open.filter((i) => displayStatus(i) === 'OVERDUE');
     res.json({
       month,
@@ -95,9 +95,11 @@ billingRouter.get(
       totals: {
         mrrCents: cities.reduce((s, c) => s + c.monthlySubtotalCents, 0),
         outstandingCents: open.reduce((s, i) => s + i.totalCents - i.paidCents, 0),
+        outstandingCount: open.length,
         overdueCents: overdue.reduce((s, i) => s + i.totalCents - i.paidCents, 0),
         overdueCount: overdue.length,
         paidThisMonthCents: paidThisMonth._sum.amountCents ?? 0,
+        paidThisMonthCount: paidThisMonth._count,
       },
       issuer: { legalName: config().BILLING_LEGAL_NAME, gstNumberSet: !!config().BILLING_GST_NUMBER },
       tax: { verified: TAX_RATES_VERIFIED, asOf: TAX_RATES_AS_OF },
@@ -177,7 +179,7 @@ billingRouter.get(
     const orgs = await names();
     res.json({
       ...invoiceView(inv, orgs.get(inv.tenantId)),
-      issuer: { legalName: config().BILLING_LEGAL_NAME, address: config().BILLING_ADDRESS, email: config().BILLING_EMAIL, gstNumber: config().BILLING_GST_NUMBER, qstNumber: config().BILLING_QST_NUMBER, remittance: remittanceFor(orgs.get(inv.tenantId)?.defaultLocale) },
+      issuer: { legalName: config().BILLING_LEGAL_NAME, address: config().BILLING_ADDRESS, email: billingContact(), gstNumber: config().BILLING_GST_NUMBER, qstNumber: config().BILLING_QST_NUMBER, remittance: remittanceFor(orgs.get(inv.tenantId)?.defaultLocale) },
     });
   }),
 );

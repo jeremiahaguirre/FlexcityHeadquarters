@@ -2685,7 +2685,9 @@
     "noTerm": "Sans durée",
     "termsFoot": "Avant taxes et avant l’utilisation : le personnel actif au-delà du forfait est facturé chaque mois pour ce mois. Après la durée, la facturation continue au mois aux mêmes tarifs jusqu’au renouvellement.",
     "afterDiscount": "après une remise de {{percent}} %",
-    "titleShort": "Factures"
+    "titleShort": "Factures",
+    "paymentCount_one": "{{count}} paiement",
+    "paymentCount_other": "{{count}} paiements"
   },
   "people": {
     "title": "Suivi du personnel",
@@ -3464,7 +3466,9 @@
     "addStaff": "Est active toute personne ayant un quart ou un pointage ce mois-ci. Vous grandissez? Écrivez-nous à {{contact}} pour ajouter des places de personnel à votre forfait, pour un montant mensuel stable.",
     "termTo": "engagement de {{length}}, jusqu’au {{end}}",
     "termDiscount": "remise de {{percent}} % pour engagement",
-    "nextPrepaid": "Prochaine facture d’avance : {{months}} mois, {{amount}} avant taxes ({{month}})."
+    "nextPrepaid": "Prochaine facture d’avance : {{months}} mois, {{amount}} avant taxes ({{month}}).",
+    "addStaffNoContact": "Est active toute personne ayant un quart ou un pointage ce mois-ci. Vous grandissez? Écrivez à notre équipe de facturation pour ajouter des places de personnel à votre forfait, pour un montant mensuel stable.",
+    "changePlanNoContact": "Pour changer de forfait ou ajouter un module, écrivez à notre équipe de facturation. Les écrans verrouillés s’ouvrent dès l’ajout."
   },
   "rolesPage": {
     "title": "Rôles",

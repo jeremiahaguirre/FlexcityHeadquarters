@@ -10,7 +10,7 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { appUrl } from '../../auth/authTokens.js';
-import { config } from '../../config.js';
+import { billingContact } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
 import { estimate } from './invoices.js';
 
@@ -57,7 +57,7 @@ export async function sendRenewalReminders(prisma: PrismaClient = db(), now = ne
             termLength: years ? (fr ? `${years} an${years > 1 ? 's' : ''}` : `${years}-year`) : fr ? `${a.termMonths} mois` : `${a.termMonths}-month`,
             discount: est?.term?.discountPercent ?? 0,
             monthly: money(est?.term?.monthlyFixedCents ?? 0),
-            contact: config().BILLING_EMAIL,
+            contact: billingContact() ?? '',
             url: appUrl(t.subdomain, '/manage/billing'),
           },
         },

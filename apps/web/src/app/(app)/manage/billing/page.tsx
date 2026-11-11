@@ -17,7 +17,8 @@ import { api } from '@/lib/api';
 import type { PadAgreement } from '@/lib/books';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
-import { dateFormat } from '@/lib/format';
+import { formatInstant } from '@/lib/format';
+import { realContact } from '@/lib/contact';
 import { StaffMeter, type StaffUsage } from '@/components/platform/BillingPanel';
 import { type Catalog, GROUPS, type ItemKey, type ItemState, type PlanLevel, cents } from '@/lib/plans';
 
@@ -30,7 +31,7 @@ interface Billing {
   staff: StaffUsage | null;
   term: { cycle: 'MONTHLY' | 'ANNUAL' | 'TERM'; termMonths: number | null; termStart: string | null; termEnd: string | null; discountPercent: number; monthlyFixedCents?: number; monthlyFixedAfterDiscountCents?: number; perInvoiceFixedCents: number; perInvoiceMonths: number; nextFixedInvoice: string | null } | null;
   invoices: InvoiceRow[];
-  payment: { online: boolean; remittance: string; payee: string; contact: string };
+  payment: { online: boolean; remittance: string; payee: string; contact: string | null };
   pad?: { agreement: PadAgreement | null; terms: string[] };
 }
 
@@ -48,7 +49,7 @@ export default function BillingPage() {
   const detail = useQuery<InvoiceDetail>(open ? `/api/billing/invoices/${open}` : null);
   const [unlock, setUnlock] = useState<ItemKey | null>(null);
   const money = (c: number) => new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'CAD' }).format(c / 100);
-  const date = (d: string | null) => (d ? dateFormat(i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${d}T12:00:00Z`)) : '—');
+  const date = (d: string | null) => (d ? formatInstant(d.slice(0, 10), i18n.language) : '—');
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -69,6 +70,7 @@ export default function BillingPage() {
   }
 
   const b = q.data;
+  const contact = realContact(b?.payment.contact);
   return (
     <div className="grid gap-6">
       <PageHeader title={t('billingPage.title')} description={t('billingPage.description')} />
@@ -103,9 +105,9 @@ export default function BillingPage() {
                 ) : null}
                 {b.staff ? (
                   <div className="rounded-xl bg-surface p-3">
-                    <p className="mb-2 text-caption font-semibold uppercase tracking-wide text-muted">{t('billing.staffTitle')}</p>
+                    <p className="mb-2 text-small text-muted">{t('billing.staffTitle')}</p>
                     <StaffMeter staff={b.staff} lng={i18n.language} />
-                    {b.staff.unlimited ? null : <p className="mt-2 text-caption text-muted">{t('billingPage.addStaff', { contact: b.payment.contact })}</p>}
+                    {b.staff.unlimited ? null : <p className="mt-2 text-caption text-muted">{(contact ? t('billingPage.addStaff', { contact }) : t('billingPage.addStaffNoContact'))}</p>}
                   </div>
                 ) : null}
                 {b.state.trialEndsAt ? <p>{t('billingPage.trialUntil', { date: date(b.state.trialEndsAt.slice(0, 10)) })}</p> : null}
@@ -140,7 +142,7 @@ export default function BillingPage() {
                     );
                   })}
                 </ul>
-                <p className="text-caption text-muted">{t('billingPage.changePlan', { contact: b.payment.contact })}</p>
+                <p className="text-caption text-muted">{(contact ? t('billingPage.changePlan', { contact }) : t('billingPage.changePlanNoContact'))}</p>
                 {/* Beside the plan and its change path: what the price is and how it renews (CPA-style disclosure, B2B courtesy). */}
                 {b.plan ? <RenewalTerms term={b.term} contact={b.payment.contact} id="renewal-plan" /> : null}
               </CardBody>

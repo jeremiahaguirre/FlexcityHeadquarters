@@ -1,5 +1,6 @@
 'use client';
 
+import { realContact } from '@/lib/contact';
 import { ArrowLeft, Ban, Banknote, Plus, Printer, Send, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -105,7 +106,7 @@ function Invoice() {
         <header className="flex flex-wrap items-start justify-between gap-6">
           <div className="grid gap-2">
             <Logo size={34} />
-            <p className="whitespace-pre-line text-small text-[#56696B]">{[i.issuer.legalName, i.issuer.address, i.issuer.email].filter(Boolean).join('\n')}</p>
+            <p className="whitespace-pre-line text-small text-[#56696B]">{[i.issuer.legalName, i.issuer.address, realContact(i.issuer.email)].filter(Boolean).join('\n')}</p>
           </div>
           <div className="text-right">
             <h1>
@@ -142,7 +143,7 @@ function Invoice() {
 
         <table className="mt-8 w-full text-small">
           <thead>
-            <tr className="border-b-2 border-[#0B1F22] text-left text-label uppercase text-[#56696B]">
+            <tr className="border-b-2 border-[#0B1F22] text-left text-caption font-semibold text-[#56696B]">
               <th className="py-2 font-semibold">{t('billing.lineDescription')}</th>
               <th className="py-2 pl-3 text-right font-semibold">{t('billing.qty')}</th>
               <th className="whitespace-nowrap py-2 pl-4 text-right font-semibold">{t('billing.unit')}</th>

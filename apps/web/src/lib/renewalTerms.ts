@@ -8,6 +8,7 @@
  * - a reminder goes to the billing contact 30 days before a term ends.
  */
 import type { TFunction } from 'i18next';
+import { realContact } from './contact';
 
 export interface TermView {
   cycle: 'MONTHLY' | 'ANNUAL' | 'TERM';
@@ -25,7 +26,7 @@ export const RENEWAL_NOTICE_DAYS = 30;
 
 export function renewalLines(term: TermView | null, opts: { t: TFunction; money: (cents: number) => string; date: (iso: string) => string; contact?: string | null }): string[] {
   const { t, money, date } = opts;
-  const contact = opts.contact || t('renewal.ourBilling');
+  const contact = realContact(opts.contact) ?? t('renewal.ourBilling');
   if (!term) return [t('renewal.none', { contact }), t('renewal.refund')];
   const full = term.monthlyFixedCents ?? term.monthlyFixedAfterDiscountCents ?? 0;
   const after = term.monthlyFixedAfterDiscountCents ?? full;

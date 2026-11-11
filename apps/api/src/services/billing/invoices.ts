@@ -5,7 +5,7 @@
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { appUrl } from '../../auth/authTokens.js';
-import { config } from '../../config.js';
+import { billingContact, config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { type Line, lineLabel, monthlyLines, staffUsage } from './pricing.js';
@@ -260,7 +260,7 @@ export async function sendInvoice(id: string) {
           period: `${isoDay(sent.periodStart)} – ${isoDay(sent.periodEnd)}`,
           from: config().BILLING_LEGAL_NAME,
           remittance: remittanceFor(tenant.defaultLocale),
-          contact: config().BILLING_EMAIL,
+          contact: billingContact() ?? '',
           url: appUrl(tenant.subdomain, ''),
           ...(pad ? { padAccount: `${pad.institution}-${pad.transit} •••${pad.accountLast4}` } : {}),
         },

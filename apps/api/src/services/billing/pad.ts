@@ -17,7 +17,7 @@
  */
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { config } from '../../config.js';
+import { billingContact, config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import { type Sealed, open, seal } from '../crypto/envelope.js';
@@ -36,7 +36,9 @@ const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
 /** The terms the payor agrees to, in their language. */
-export function agreementTerms(locale: string, payee = config().BILLING_LEGAL_NAME, contact = config().BILLING_EMAIL): string[] {
+export function agreementTerms(locale: string, payee = config().BILLING_LEGAL_NAME, contact: string | null = billingContact()): string[] {
+  // No address on file yet: name who to write to rather than show a placeholder.
+  contact = contact || payee;
   if (locale.startsWith('fr')) {
     return [
       `Vous autorisez ${payee} à débiter le compte indiqué du montant de chaque facture d’abonnement, à la date d’échéance ou après.`,
@@ -132,7 +134,7 @@ export async function createAgreement(tenantId: string, input: z.infer<typeof ag
         toEmail: account.email,
         template: 'pad_confirmation',
         locale: tenant.defaultLocale,
-        params: { payee: config().BILLING_LEGAL_NAME, payor: input.payorName, signer: `${input.signerName}, ${input.signerTitle}`, account: `${input.institution}-${input.transit} •••${input.account.slice(-4)}`, date: isoDay(new Date()), contact: config().BILLING_EMAIL, terms: agreementTerms(tenant.defaultLocale).join('\n\n') },
+        params: { payee: config().BILLING_LEGAL_NAME, payor: input.payorName, signer: `${input.signerName}, ${input.signerTitle}`, account: `${input.institution}-${input.transit} •••${input.account.slice(-4)}`, date: isoDay(new Date()), contact: billingContact() ?? '', terms: agreementTerms(tenant.defaultLocale).join('\n\n') },
       },
     }),
   );
