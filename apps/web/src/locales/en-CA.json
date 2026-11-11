@@ -593,7 +593,13 @@
       "DENIED": "Declined",
       "CANCELLED": "Withdrawn"
     },
-    "lieuHint": "You can ask for up to {{n}} hours."
+    "lieuHint": "You can ask for up to {{n}} hours.",
+    "holidaysTitle": "Statutory holidays",
+    "holidaysHelp": "The coming year’s holidays, and the day you’re off for each when it’s not the holiday’s own date.",
+    "holidayObserved": "observed {{date}}",
+    "holidayMovedIfOff": "{{date}} if you don’t usually work that day",
+    "holidaysMore": "Show all {{count}}",
+    "holidaysLess": "Show fewer"
   },
   "availability": {
     "title": "Availability",
@@ -6083,6 +6089,41 @@
       "records": "Sick days and protected leave never count. Earlier events always stay on each person’s record as history, and discipline records are separate and never change.",
       "save": "Save",
       "saved": "Reliability settings saved"
+    }
+  },
+  "holidayWeekend": {
+    "title": "When a holiday falls on a weekend",
+    "help": "Statutory holidays keep their own date. Where the law moves one, FH uses the moved day: Canada Day on a Sunday is Monday, July 2 (outside Nova Scotia and Newfoundland and Labrador), and in Quebec the Fête nationale on a Sunday is June 25 for people who don’t usually work Sundays.",
+    "observance": "Day the organization is closed",
+    "observanceStatutory": "The statutory day",
+    "observanceStatutoryHint": "Closed on the holiday itself, or on the day the law moves it to.",
+    "observanceWeekday": "The next weekday",
+    "observanceWeekdayHint": "As most municipal collective agreements do: Christmas on a Saturday is observed Monday, and Boxing Day on the Sunday, Tuesday. Hours worked on the observed day are paid at the holiday rate, and so are hours on the holiday itself.",
+    "offDay": "A holiday on someone’s day off",
+    "offDayHint": "Whether it’s their day off follows their own pattern of work (the weekday they worked in at least 5 of the 9 weeks before), not the calendar weekend. Your choice applies only where the province lets the employer choose; elsewhere its own rule applies.",
+    "offDayDefault": "Follow each province’s rule",
+    "offDaySUBSTITUTE": "Another day off with holiday pay",
+    "offDayPAY": "Holiday pay, no extra day off",
+    "provinceDefaults": "Your provinces’ rules",
+    "noFacilities": "Add a facility to see its province’s rule.",
+    "choiceAllowed": "Your choice applies here.",
+    "choiceNotAllowed": "The law sets this; your choice doesn’t change it.",
+    "saved": "Holiday settings saved",
+    "rules": {
+      "FED": "Federally regulated: a holiday with pay on another day, the working day before or after for the six fixed-date holidays (Canada Labour Code ss. 193, 195).",
+      "BC": "British Columbia: an average day’s pay whether or not the holiday is their day off; another day off only by written agreement (ESA ss. 44, 45, 48).",
+      "AB": "Alberta: nothing is owed when the holiday isn’t their normal work day and they don’t work it (Employment Standards Code ss. 27–28). You may give more.",
+      "SK": "Saskatchewan: public holiday pay (5% of the 4 weeks’ wages) for every holiday, whatever their days of work (Saskatchewan Employment Act s. 2-32).",
+      "MB": "Manitoba: their next working day off with general holiday pay, or another day you agree on (Employment Standards Code).",
+      "ON": "Ontario: a substitute day off with public holiday pay, or public holiday pay alone if they agree in writing (ESA s. 27).",
+      "QC": "Quebec: the holiday indemnity, or a compensatory day off at the employer’s choice (Act respecting labour standards ss. 62–65).",
+      "NB": "New Brunswick: another day off with regular pay, or a day’s regular pay instead (Employment Standards Act s. 18).",
+      "NS": "Nova Scotia: a day off with pay on the next working day or another day agreed (Labour Standards Code). Remembrance Day: nothing when it falls on their day off (Remembrance Day Act).",
+      "PE": "Prince Edward Island: another day off with pay, usually their next working day (Employment Standards Act).",
+      "NL": "Newfoundland and Labrador: another day off with the same pay, usually their next working day (Labour Standards Act).",
+      "YT": "Yukon: a holiday with pay on their next working day (Employment Standards Act).",
+      "NT": "Northwest Territories: holiday pay, or another day off with pay at a time you agree on (Employment Standards Act).",
+      "NU": "Nunavut: a holiday with pay on their next working day (Labour Standards Act)."
     }
   }
 }

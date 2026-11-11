@@ -8,6 +8,7 @@ import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js
 import { h } from './context.js';
 import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
 import { RETENTION_DEFAULTS, RETENTION_LIMITS, readRetention } from '../services/privacy/retention.js';
+import { offDaySummary } from '../services/payroll/holidayRules.js';
 import { reliabilityPolicy } from '../services/reliability/load.js';
 import { RECOVERY_MODES, RULES, lastRestart, nextRestart } from '../services/reliability/score.js';
 
@@ -368,5 +369,43 @@ settingsRouter.put(
     });
     forgetFeatures(a.tenantId);
     res.json({ useSeniority });
+  }),
+);
+
+/**
+ * When a statutory holiday falls on a weekend: whether the organization closes on the day the law
+ * fixes or on the next weekday (collective agreements), and what someone gets when a holiday falls
+ * on their own day off where the province lets the employer choose. Each facility province's
+ * default comes back so the screen can explain it.
+ */
+settingsRouter.get(
+  '/settings/holidays',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const [t, facilities] = await Promise.all([
+        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { holidayObservance: true, holidayOffDayRule: true } }),
+        tx.facility.findMany({ select: { province: true } }),
+      ]);
+      const provinces = [...new Set(facilities.map((f) => f.province))].sort();
+      return { observance: t.holidayObservance, offDayRule: t.holidayOffDayRule, provinces: provinces.map(offDaySummary) };
+    });
+    res.json(out);
+  }),
+);
+
+settingsRouter.put(
+  '/settings/holidays',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ observance: z.enum(['STATUTORY', 'NEXT_WEEKDAY']), offDayRule: z.enum(['SUBSTITUTE', 'PAY']).nullable() }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { holidayObservance: true, holidayOffDayRule: true } });
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { holidayObservance: body.observance, holidayOffDayRule: body.offDayRule } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.holidays', entity: 'Tenant', entityId: a.tenantId, before: { observance: before.holidayObservance, offDayRule: before.holidayOffDayRule }, after: body });
+    });
+    res.json(body);
   }),
 );

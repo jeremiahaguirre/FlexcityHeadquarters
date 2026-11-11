@@ -593,7 +593,13 @@
       "DENIED": "Refusé",
       "CANCELLED": "Retiré"
     },
-    "lieuHint": "Vous pouvez demander jusqu’à {{n}} heures."
+    "lieuHint": "Vous pouvez demander jusqu’à {{n}} heures.",
+    "holidaysTitle": "Jours fériés",
+    "holidaysHelp": "Les jours fériés de l’année à venir, et le jour de congé pour chacun quand ce n’est pas sa propre date.",
+    "holidayObserved": "observé le {{date}}",
+    "holidayMovedIfOff": "le {{date}} si vous ne travaillez pas habituellement ce jour-là",
+    "holidaysMore": "Afficher les {{count}}",
+    "holidaysLess": "Afficher moins"
   },
   "availability": {
     "title": "Disponibilités",
@@ -6083,6 +6089,41 @@
       "records": "Les congés de maladie et les congés protégés ne comptent jamais. Les événements antérieurs restent toujours au dossier de chaque personne, et les mesures disciplinaires sont distinctes et ne changent jamais.",
       "save": "Enregistrer",
       "saved": "Paramètres de fiabilité enregistrés"
+    }
+  },
+  "holidayWeekend": {
+    "title": "Quand un jour férié tombe la fin de semaine",
+    "help": "Les jours fériés gardent leur propre date. Quand la loi en déplace un, FH utilise le jour où il est déplacé : la fête du Canada un dimanche est le lundi 2 juillet (sauf en Nouvelle-Écosse et à Terre-Neuve-et-Labrador), et au Québec, la Fête nationale un dimanche est le 25 juin pour les personnes qui ne travaillent pas habituellement le dimanche.",
+    "observance": "Jour de fermeture de l’organisation",
+    "observanceStatutory": "Le jour prévu par la loi",
+    "observanceStatutoryHint": "Fermé le jour férié lui-même, ou le jour où la loi le déplace.",
+    "observanceWeekday": "Le jour de semaine suivant",
+    "observanceWeekdayHint": "Comme la plupart des conventions collectives municipales : Noël un samedi est observé le lundi, et le lendemain de Noël le dimanche, le mardi. Les heures travaillées le jour observé sont payées au taux du jour férié, tout comme celles du jour férié lui-même.",
+    "offDay": "Un jour férié pendant un jour de congé",
+    "offDayHint": "Le jour de congé dépend de l’horaire habituel de la personne (le jour de semaine travaillé au moins 5 des 9 semaines précédentes), et non de la fin de semaine du calendrier. Votre choix s’applique seulement là où la province laisse le choix à l’employeur; ailleurs, sa propre règle s’applique.",
+    "offDayDefault": "Suivre la règle de chaque province",
+    "offDaySUBSTITUTE": "Un autre jour de congé avec l’indemnité",
+    "offDayPAY": "L’indemnité, sans autre jour de congé",
+    "provinceDefaults": "Les règles de vos provinces",
+    "noFacilities": "Ajoutez une installation pour voir la règle de sa province.",
+    "choiceAllowed": "Votre choix s’applique ici.",
+    "choiceNotAllowed": "La loi fixe cette règle; votre choix ne la change pas.",
+    "saved": "Paramètres des jours fériés enregistrés",
+    "rules": {
+      "FED": "Entreprises fédérales : un congé payé un autre jour, le jour ouvrable précédent ou suivant pour les six jours fériés à date fixe (Code canadien du travail, art. 193 et 195).",
+      "BC": "Colombie-Britannique : le salaire moyen d’une journée, que le jour férié soit ou non un jour de congé; un autre jour de congé seulement par entente écrite (ESA, art. 44, 45 et 48).",
+      "AB": "Alberta : rien n’est dû quand le jour férié n’est pas un jour normal de travail et que la personne ne travaille pas (Employment Standards Code, art. 27 et 28). Vous pouvez offrir davantage.",
+      "SK": "Saskatchewan : l’indemnité de jour férié (5 % du salaire des 4 semaines) pour chaque jour férié, quels que soient les jours de travail (Saskatchewan Employment Act, art. 2-32).",
+      "MB": "Manitoba : le jour ouvrable suivant en congé avec l’indemnité de jour férié, ou un autre jour convenu (Code des normes d’emploi).",
+      "ON": "Ontario : un jour de remplacement avec l’indemnité de jour férié, ou l’indemnité seule si la personne y consent par écrit (LNE, art. 27).",
+      "QC": "Québec : l’indemnité de jour férié, ou un congé compensatoire au choix de l’employeur (Loi sur les normes du travail, art. 62 à 65).",
+      "NB": "Nouveau-Brunswick : un autre jour de congé avec le salaire habituel, ou le salaire habituel d’une journée à la place (Loi sur les normes d’emploi, art. 18).",
+      "NS": "Nouvelle-Écosse : un congé payé le jour ouvrable suivant ou un autre jour convenu (Labour Standards Code). Jour du Souvenir : rien quand il tombe un jour de congé (Remembrance Day Act).",
+      "PE": "Île-du-Prince-Édouard : un autre jour de congé payé, habituellement le jour ouvrable suivant (Employment Standards Act).",
+      "NL": "Terre-Neuve-et-Labrador : un autre jour de congé avec le même salaire, habituellement le jour ouvrable suivant (Labour Standards Act).",
+      "YT": "Yukon : un congé payé le jour ouvrable suivant (Loi sur les normes d’emploi).",
+      "NT": "Territoires du Nord-Ouest : l’indemnité de jour férié, ou un autre jour de congé payé à un moment convenu (Loi sur les normes d’emploi).",
+      "NU": "Nunavut : un congé payé le jour ouvrable suivant (Loi sur les normes du travail)."
     }
   }
 }

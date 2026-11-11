@@ -4,6 +4,7 @@ import { CalendarClock, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MyLeaveBalances } from '@/components/hr/LeaveBalances';
+import { UpcomingHolidays } from '@/components/hr/UpcomingHolidays';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
@@ -91,6 +92,7 @@ export default function TimeOffPage() {
         }
       />
       <MyLeaveBalances />
+      <UpcomingHolidays className="mb-3" />
       {list.loading ? (
         <ListSkeleton />
       ) : list.error ? (

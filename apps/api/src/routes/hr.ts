@@ -20,6 +20,7 @@ import { loadGraph, setManagers, setReportsOf } from '../services/people/reporti
 import { h } from './context.js';
 import { leaveHoursFrom, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
 import { assertUserInScope } from '../services/people/scope.js';
+import { holidaysTouching, organizationDay, statutoryDay } from '../services/payroll/holidayRules.js';
 
 export const hrRouter = Router();
 hrRouter.use(['/leave', '/me/leave', '/reviews', '/me/reviews', '/training', '/me/training', '/grievances'], requireFeature('hrSuite'));
@@ -95,6 +96,31 @@ hrRouter.get(
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year ?? new Date().getUTCFullYear());
     const [mine] = await withTenant(a.tenantId, (tx) => balances(tx, [a.userId], year));
     res.json({ year, types: mine?.types ?? [] });
+  }),
+);
+
+/**
+ * The organization's statutory holidays for the coming year, for time-off screens: each with its
+ * own date, the day the law moves it to (Canada Day on a Sunday → July 2) and the day the
+ * organization is closed for it (the next weekday where it observes weekend holidays that way).
+ * Public information, so anyone signed in may see it.
+ */
+hrRouter.get(
+  '/me/holidays',
+  h(async (req, res) => {
+    const a = authOf(req);
+    const from = isoDate.optional().parse(req.query.from) ?? new Date().toISOString().slice(0, 10);
+    const to = new Date(Date.parse(`${from}T00:00:00Z`) + 366 * 86_400_000).toISOString().slice(0, 10);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const [t, facilities] = await Promise.all([
+        tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { holidayObservance: true } }),
+        tx.facility.findMany({ select: { province: true } }),
+      ]);
+      const provinces = [...new Set(facilities.map((f) => f.province))].sort();
+      const rows = await Promise.all(provinces.map(async (province) => (await holidaysTouching(tx, province, from, to)).map((h) => ({ province, key: h.key, name: h.name, nameFr: h.nameFr, date: h.date, kind: h.kind, observedOn: h.kind === 'ACTUAL' ? null : statutoryDay(h), closedOn: organizationDay(h, t.holidayObservance) }))));
+      return { observance: t.holidayObservance, provinces, holidays: rows.flat().filter((h) => h.closedOn >= from).sort((x, y) => x.closedOn.localeCompare(y.closedOn) || x.province.localeCompare(y.province)) };
+    });
+    res.json(out);
   }),
 );
 

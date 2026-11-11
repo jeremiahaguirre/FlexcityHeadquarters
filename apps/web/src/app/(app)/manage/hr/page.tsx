@@ -1,5 +1,6 @@
 'use client';
 
+import { UpcomingHolidays } from '@/components/hr/UpcomingHolidays';
 import { FileSignature, Banknote, Bandage, Briefcase, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, DoorOpen, GraduationCap, HeartPulse, type LucideIcon, Scale, UserCheck, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -44,7 +45,7 @@ function HrInner() {
     <div className="grid gap-6">
       {tab !== 'overview' ? <PageHeader title={t('hr.title')} description={t('hr.description')} /> : null}
       {tab !== 'overview' ? tabs : null}
-      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <div className="grid gap-6"><LeavePanel canEdit /><LieuBalances /></div> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'policies' ? <PoliciesPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
+      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <div className="grid gap-6"><LeavePanel canEdit /><LieuBalances /><UpcomingHolidays /></div> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'policies' ? <PoliciesPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
     </div>
   );
 }
