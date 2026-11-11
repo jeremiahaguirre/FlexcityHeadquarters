@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { type Tx, withTenant } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { sharedForget } from '../../lib/cacheBus.js';
+import { singleFlight } from '../../lib/singleFlight.js';
 
 export const CUSTOM_ROLE_PERMISSIONS = {
   everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'expenses.self', 'logbook.write'],
@@ -49,12 +50,18 @@ export const AQUATIC_ACCESS_ROLES = ['STAFF', 'HEAD_LIFEGUARD', 'FRONT_DESK'];
 interface CustomAccess { perms: Set<Permission>; roles: Array<{ perms: Permission[]; positionIds: string[]; facilityIds: string[] }> }
 const cache = new Map<string, { at: number } & CustomAccess>();
 const TTL_MS = 30_000;
+const accessFlight = singleFlight<CustomAccess>();
 
 /** A person's custom roles: their capabilities and departments (cached briefly per person). */
 export async function customAccess(tenantId: string, userId: string): Promise<CustomAccess> {
   const key = `${tenantId}:${userId}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL_MS) return hit;
+  return accessFlight.run(key, () => loadCustomAccess(tenantId, userId, key));
+}
+
+async function loadCustomAccess(tenantId: string, userId: string, key: string): Promise<CustomAccess> {
+  const gen = accessFlight.generation;
   const { rows, inDepartment } = await withTenant(tenantId, async (tx) => {
     const rows = await tx.userCustomRole.findMany({ where: { userId }, include: { customRole: { select: { permissions: true, scopePositionIds: true, scopeFacilityIds: true, scopeDepartmentIds: true } } } });
     const departments = [...new Set(rows.flatMap((r) => r.customRole.scopeDepartmentIds))];
@@ -70,7 +77,7 @@ export async function customAccess(tenantId: string, userId: string): Promise<Cu
     return { perms: c.permissions.filter(isAllowedCustomPermission), positionIds, facilityIds: c.scopeFacilityIds };
   });
   const entry = { at: Date.now(), perms: new Set(roles.flatMap((r) => r.perms)), roles };
-  cache.set(key, entry);
+  if (accessFlight.fresh(gen)) cache.set(key, entry);
   return entry;
 }
 
@@ -110,6 +117,7 @@ export function scopeOf(builtIn: ReadonlySet<Permission>, access: CustomAccess, 
 
 /** Drops cached permissions here and in every other API process (lib/cacheBus.ts). */
 export const forgetCustomPermissions = sharedForget('customRoles', (tenantId) => {
+  accessFlight.forget(tenantId ? (k) => k.startsWith(`${tenantId}:`) : undefined);
   if (!tenantId) return cache.clear();
   for (const k of cache.keys()) if (k.startsWith(`${tenantId}:`)) cache.delete(k);
 });
@@ -224,12 +232,17 @@ const active = new Map<string, { at: number; ok: boolean }>();
 export async function stillActive(tenantId: string, userId: string): Promise<boolean> {
   const hit = active.get(userId);
   if (hit && Date.now() - hit.at < 30_000) return hit.ok;
-  const u = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { id: userId }, select: { status: true, processingRestrictedAt: true, anonymizedAt: true } }));
-  const ok = !!u && u.status === 'ACTIVE' && !u.processingRestrictedAt && !u.anonymizedAt;
-  active.set(userId, { at: Date.now(), ok });
-  return ok;
+  return activeFlight.run(userId, async () => {
+    const gen = activeFlight.generation;
+    const u = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { id: userId }, select: { status: true, processingRestrictedAt: true, anonymizedAt: true } }));
+    const ok = !!u && u.status === 'ACTIVE' && !u.processingRestrictedAt && !u.anonymizedAt;
+    if (activeFlight.fresh(gen)) active.set(userId, { at: Date.now(), ok });
+    return ok;
+  });
 }
+const activeFlight = singleFlight<boolean>();
 export function forgetActive(userId?: string): void {
+  activeFlight.forget(userId);
   if (userId) active.delete(userId);
   else active.clear();
 }

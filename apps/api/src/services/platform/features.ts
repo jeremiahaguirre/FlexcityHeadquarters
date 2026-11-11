@@ -12,6 +12,7 @@ import { type RoleOverrides, parseOverrides } from './roleOverrides.js';
 import { withTenant } from '../../lib/db.js';
 import { type BillingState, billingState } from '../billing/entitlements.js';
 import { sharedForget } from '../../lib/cacheBus.js';
+import { singleFlight } from '../../lib/singleFlight.js';
 
 export const FEATURES = {
   shiftBoard: { default: true, permissions: ['shiftboard.claim', 'shiftboard.post', 'shiftboard.approve', 'shiftboard.assign_emergency'] },
@@ -75,6 +76,7 @@ export function withoutDisabled<P extends string>(permissions: Set<P>, features:
 
 const cache = new Map<string, TenantSettings & { at: number }>();
 const TTL_MS = 30_000;
+const flight = singleFlight<TenantSettings>();
 
 /** Cached per process for 30 s; changes clear it in every process (forgetFeatures). */
 export async function tenantFeatures(tenantId: string): Promise<FeatureSet> {
@@ -87,18 +89,24 @@ export interface TenantSettings { features: FeatureSet; overrides: RoleOverrides
 export async function tenantSettings(tenantId: string): Promise<TenantSettings> {
   const hit = cache.get(tenantId);
   if (hit && Date.now() - hit.at < TTL_MS) return hit;
+  return flight.run(tenantId, () => loadSettings(tenantId));
+}
+
+async function loadSettings(tenantId: string): Promise<TenantSettings> {
+  const gen = flight.generation;
   const row = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { features: true, roleOverrides: true, mfaRoles: true, disabledAt: true, exportUntil: true } }));
   const billing = await billingState(tenantId);
   // A feature the plan doesn't include is off, whatever its switch says.
   const features = resolveFeatures(row?.features);
   for (const k of Object.keys(billing.locked) as FeatureKey[]) features[k] = false;
   const entry = { at: Date.now(), features, overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [], billing, disabledAt: row?.disabledAt ?? null, exportUntil: row?.exportUntil ?? null };
-  cache.set(tenantId, entry);
+  if (flight.fresh(gen)) cache.set(tenantId, entry);
   return entry;
 }
 
 /** Drops the cached settings here and in every other API process (lib/cacheBus.ts). */
 export const forgetFeatures = sharedForget('features', (tenantId) => {
+  flight.forget(tenantId);
   if (tenantId) cache.delete(tenantId);
   else cache.clear();
 });
