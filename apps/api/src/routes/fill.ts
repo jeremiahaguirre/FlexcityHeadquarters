@@ -11,7 +11,7 @@ import { resolveFeatures } from '../services/platform/features.js';
 import {
   ALL_DEPARTMENTS,
   NO_DEPARTMENT,
-  acceptFill,
+  acceptFillChunked,
   availabilityStatus,
   availabilityWindow,
   confirmAvailability,
@@ -19,7 +19,7 @@ import {
   schedulableDepartments,
   undoFill,
 } from '../services/scheduling/fillRun.js';
-import { departmentBody, effectiveSettings, horizonBody, limitsBody, parseSolverSettings, togglesBody, weightsBody, withSolverSettings } from '../services/scheduling/solverSettings.js';
+import { departmentBody, effectiveSettings, horizonBody, limitsBody, orgExtrasBody, parseSolverSettings, togglesBody, weightsBody, withSolverSettings } from '../services/scheduling/solverSettings.js';
 import { h } from './context.js';
 
 export const fillRouter = Router();
@@ -65,7 +65,12 @@ const runBody = z.object({
   horizonStart: isoDate,
   weekIndex: z.number().int().min(0).max(12),
   horizonWeeks: horizonBody,
-  carry: z.array(z.object({ shiftId: uuid, userId: uuid })).max(5000).default([]),
+  carry: z
+    .array(z.object({ shiftId: z.union([uuid, z.string().regex(/^new:[\w:.-]{1,80}$/)]), userId: uuid, startsAt: z.coerce.date().optional(), endsAt: z.coerce.date().optional(), positionId: uuid.optional(), facilityId: uuid.optional() }))
+    .max(5000)
+    .default([]),
+  /** Forecast shifts to propose without creating them (created only on accept). */
+  newShifts: z.array(z.object({ key: z.string().regex(/^[\w:.-]{1,80}$/), facilityId: uuid, positionId: uuid, startsAt: z.coerce.date(), endsAt: z.coerce.date() })).max(2000).default([]),
   toggles: togglesBody.optional(),
   weights: weightsBody.optional(),
   seed: z.number().int().min(0).max(1_000_000).optional(),
@@ -87,13 +92,20 @@ fillRouter.post(
   requirePermission('schedule.write'),
   h(async (req, res) => {
     const a = authOf(req);
-    const body = z
+    const item = z
       .object({
-        items: z.array(z.object({ shiftId: uuid, userId: uuid, expectedVersion: z.number().int().min(0), previousUserId: uuid.nullable().default(null) })).min(1).max(3000),
-        allowOvertime: z.boolean().default(false),
+        shiftId: uuid.optional(),
+        newShift: z.object({ facilityId: uuid, positionId: uuid, startsAt: z.coerce.date(), endsAt: z.coerce.date() }).optional(),
+        key: z.string().regex(/^[\w:.-]{1,80}$/).optional(),
+        userId: uuid.nullable(),
+        expectedVersion: z.number().int().min(0).default(0),
+        previousUserId: uuid.nullable().default(null),
       })
-      .parse(req.body);
-    res.json(await withTenant(a.tenantId, (tx) => acceptFill(tx, a, body.items, { allowOvertime: body.allowOvertime })));
+      .refine((x) => !!x.shiftId !== !!x.newShift, { message: 'Give a shift or a new shift.' })
+      .refine((x) => x.userId !== null || !!x.newShift, { message: 'Choose who works it.' });
+    const body = z.object({ items: z.array(item).min(1).max(3000), allowOvertime: z.boolean().default(false) }).parse(req.body);
+    // One transaction per pay week (acceptFillChunked opens them).
+    res.json(await acceptFillChunked(a, body.items, { allowOvertime: body.allowOvertime }));
   }),
 );
 
@@ -102,8 +114,23 @@ fillRouter.post(
   requirePermission('schedule.write'),
   h(async (req, res) => {
     const a = authOf(req);
-    const { undoId } = z.object({ undoId: uuid }).parse(req.body);
-    res.json(await withTenant(a.tenantId, (tx) => undoFill(tx, a, undoId)));
+    // One accept can span several weeks (one undo id each): undo them together, latest first.
+    const body = z.object({ undoId: uuid.optional(), undoIds: z.array(uuid).min(1).max(60).optional() }).refine((b) => b.undoId || b.undoIds, { message: 'Nothing to undo.' }).parse(req.body);
+    const ids = [...new Set([...(body.undoIds ?? []), ...(body.undoId ? [body.undoId] : [])])].reverse();
+    res.json(
+      await withTenant(a.tenantId, async (tx) => {
+        let restored = 0;
+        let of = 0;
+        let leftOpen = 0;
+        for (const id of ids) {
+          const r = await undoFill(tx, a, id);
+          restored += r.restored;
+          of += r.of;
+          leftOpen += r.leftOpen;
+        }
+        return { restored, of, leftOpen };
+      }),
+    );
   }),
 );
 
@@ -122,7 +149,7 @@ fillRouter.get(
         const orgSeniority = resolveFeatures(tenant.features).seniority;
         const dept = departmentId && departmentId !== NO_DEPARTMENT ? (s.departments[departmentId] ?? {}) : null;
         return {
-          organization: { planAheadWeeks: s.planAheadWeeks, weights: s.weights, toggles: s.toggles, limits: s.limits },
+          organization: { planAheadWeeks: s.planAheadWeeks, weights: s.weights, toggles: s.toggles, limits: s.limits, fullTimeTargetHours: s.fullTimeTargetHours, minShiftHours: s.minShiftHours, travelMinutes: s.travelMinutes, federallyRegulated: s.federallyRegulated, holidayClosedFacilityIds: s.holidayClosedFacilityIds },
           department: dept,
           effective: effectiveSettings(s, departmentId && departmentId !== NO_DEPARTMENT ? departmentId : null, orgSeniority),
           seniorityOn: orgSeniority,
@@ -149,6 +176,10 @@ fillRouter.put(
         limits: limitsBody.optional(),
         useSeniority: z.boolean().nullable().optional(),
         targetHours: z.number().min(0).max(60).nullable().optional(),
+        /** Organization: full-time target, minimum shift length, travel time, federal rules, holiday closures. */
+        organization: orgExtrasBody.optional(),
+        /** Department: schedule under the Canada Labour Code (null = the organization's). Needs tenant.configure, like its limits. */
+        federallyRegulated: z.boolean().nullable().optional(),
         /** Department only: drop its own values and use the organization's again. */
         reset: z.boolean().optional(),
       })
@@ -163,8 +194,11 @@ fillRouter.put(
         s.weights = { ...s.weights, ...(body.weights ?? {}) };
         s.toggles = { ...s.toggles, ...(body.toggles ?? {}) };
         s.limits = { ...s.limits, ...(body.limits ?? {}) };
+        Object.assign(s, body.organization ?? {});
       } else {
         if (!a.permissions.has('schedule.assist')) throw forbidden();
+        // Limits and the federal switch are organization policy, even per department.
+        if ((body.limits || body.federallyRegulated !== undefined) && !a.permissions.has('tenant.configure')) throw forbidden();
         if (!(await schedulableDepartments(tx, a)).some((d) => d.id === body.departmentId)) throw notFound('Department');
         const prev = s.departments[body.departmentId] ?? {};
         s.departments[body.departmentId] = body.reset
@@ -176,6 +210,8 @@ fillRouter.put(
               toggles: { ...(prev.toggles ?? {}), ...(body.toggles ?? {}) },
               ...(body.useSeniority !== undefined ? { useSeniority: body.useSeniority } : {}),
               ...(body.targetHours !== undefined ? { targetHours: body.targetHours } : {}),
+              ...(body.limits ? { limits: { ...(prev.limits ?? {}), ...body.limits } } : {}),
+              ...(body.federallyRegulated !== undefined ? { federallyRegulated: body.federallyRegulated } : {}),
             });
       }
       await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: withSolverSettings(tenant.overtimePolicy, s) as Prisma.InputJsonValue } });

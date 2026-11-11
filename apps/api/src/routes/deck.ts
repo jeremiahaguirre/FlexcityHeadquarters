@@ -6,7 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { applyRotation, loadPlan } from '../services/ops/rotation.js';
 import { complianceSnapshot } from '../services/ops/compliance.js';
-import { draftShiftsFor, forecastWeek } from '../services/ops/forecast.js';
+import { draftShiftsFor, forecastWeek, previewShiftsFor } from '../services/ops/forecast.js';
 import { h } from './context.js';
 import { facilitiesOf } from '../services/people/scope.js';
 
@@ -228,6 +228,24 @@ complianceRouter.put(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'facility.hours', entity: 'Facility', entityId: facilityId, before, after: blocks });
     });
     res.json({ blocks: blocks.length });
+  }),
+);
+
+/** The week's gaps for one position as shifts to propose, nothing written (the Fill flow's preview). */
+complianceRouter.post(
+  '/forecast/preview-shifts',
+  requirePermission('schedule.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const b = z.object({ facilityId: uuid, weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), positionId: uuid }).parse(req.body);
+    facilityInScope(req, b.facilityId);
+    positionInScope(req, b.positionId);
+    const shifts = await withTenant(a.tenantId, async (tx) => {
+      if (!(await tx.facility.findUnique({ where: { id: b.facilityId } }))) throw notFound('Facility');
+      if (!(await tx.position.findUnique({ where: { id: b.positionId } }))) throw notFound('Position');
+      return previewShiftsFor(tx, b.facilityId, b.weekStart, b.positionId);
+    });
+    res.json({ shifts });
   }),
 );
 

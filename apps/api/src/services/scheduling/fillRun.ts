@@ -10,21 +10,24 @@
  * every other shift those people have — drafts and published, in any department — so a person
  * shared by two departments is never double-booked.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma, Province } from '@prisma/client';
 import { DateTime } from 'luxon';
 import type { AuthContext } from '../../auth/middleware.js';
-import { type Tx, audit } from '../../lib/db.js';
+import { type Tx, audit, withTenant } from '../../lib/db.js';
 import { badRequest, forbidden, notFound } from '../../lib/errors.js';
-import { addDays, dayOfWeek, localDate, localIso, startOfLocalDay } from '../../lib/time.js';
+import { addDays, dayOfWeek, localDate, localIso, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
+import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
 import { facilitiesOf, peopleWhere, shiftInScope, userInScope } from '../people/scope.js';
 import { resolveFeatures } from '../platform/features.js';
 import { tooLittleTravel } from './assistant.js';
-import { type PositionSpec, evaluateCandidate, parseHoursOfService } from './eligibility.js';
-import { evalOpts, loadAssistantCandidates, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
-import { parsePolicy, periodStart } from './overtime.js';
+import { type PositionSpec, evaluateCandidate, parseHoursOfService, wallClock } from './eligibility.js';
+import { type BundleCache, evalOpts, loadAssistantCandidates, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
+import { lockForAssignment } from './locks.js';
+import { chargeOvertime, parsePolicy, periodStart, reverseOvertime } from './overtime.js';
+import { createShift } from './shifts.js';
 import { type CoverageNeed, type SolverPerson, type SolverSlot, orderKey, solve } from './solver.js';
 import { type EffectiveSettings, type HorizonWeeks, type SolverToggles, type SolverWeights, effectiveSettings, parseSolverSettings, withSolverSettings } from './solverSettings.js';
 
@@ -65,12 +68,22 @@ export interface FillRequest {
   horizonStart: string;
   weekIndex: number;
   horizonWeeks: HorizonWeeks;
-  /** Proposals from earlier weeks of this horizon (not yet accepted), carried forward. */
-  carry: Array<{ shiftId: string; userId: string }>;
+  /** Proposals from earlier weeks of this horizon (not yet accepted), carried forward. New (forecast) shifts carry their times. */
+  carry: Array<CarryItem>;
+  /**
+   * Shifts the forecast suggests, not yet created: proposed like any open draft, and created
+   * only when the scheduler accepts them (the run itself writes nothing).
+   */
+  newShifts?: NewShift[];
   toggles?: Partial<SolverToggles>;
   weights?: Partial<SolverWeights>;
   seed?: number;
 }
+
+export interface NewShift { key: string; facilityId: string; positionId: string; startsAt: Date; endsAt: Date }
+export interface CarryItem { shiftId: string; userId: string; startsAt?: Date; endsAt?: Date; positionId?: string; facilityId?: string }
+/** Slot id of a forecast shift that doesn't exist yet. */
+export const newSlotId = (key: string) => `new:${key}`;
 
 const H = 3_600_000;
 
@@ -118,65 +131,88 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
   });
   const inScope = shifts.filter((s) => shiftInScope(a.scope, s));
+  const facilityIdSet = new Set(facilities.map((f) => f.id));
+  const proposedNew = (req.newShifts ?? []).filter((n) => facilityIdSet.has(n.facilityId) && positionIds.includes(n.positionId) && shiftInScope(a.scope, n) && n.startsAt >= from && n.startsAt < to && n.endsAt > n.startsAt);
 
   // Rules per facility and date, the school calendar and blocking onboarding: loaded once.
   const overrides = tenant.ruleOverrides.map((o) => ({ province: o.province, ruleKey: o.ruleKey, value: o.value, effectiveFrom: o.effectiveFrom.toISOString().slice(0, 10), effectiveTo: o.effectiveTo?.toISOString().slice(0, 10) ?? null }));
   const rulesCache = new Map<string, ReturnType<typeof resolveRules>>();
   const facilityById = new Map(facilities.map((f) => [f.id, f]));
-  const rulesFor = (facilityId: string, date: string) => {
-    const k = `${facilityId}|${date}`;
-    if (!rulesCache.has(k)) rulesCache.set(k, resolveRules(facilityById.get(facilityId)!.province, date, overrides));
+  const allPositions = await tx.position.findMany({ where: { id: { in: positionIds } }, include: { requirements: { include: { certification: { include: { prerequisites: true } } } } } });
+  const positionRow = new Map(allPositions.map((p) => [p.id, p]));
+  // Federally regulated departments schedule under the Canada Labour Code rule set.
+  const federalFor = (positionId: string) => effectiveSettings(stored, positionRow.get(positionId)?.departmentId ?? null, orgSeniority).federallyRegulated;
+  const rulesFor = (facilityId: string, date: string, positionId: string) => {
+    const federal = federalFor(positionId);
+    const k = `${facilityId}|${date}|${federal}`;
+    if (!rulesCache.has(k)) rulesCache.set(k, resolveRules(facilityById.get(facilityId)!.province, date, overrides, { federal }));
     return rulesCache.get(k)!;
   };
+  // Statutory holidays (as the law and the organization observe them), per province.
+  const holidayDays = new Map<Province, Set<string>>();
+  for (const prov of new Set(facilities.map((f) => f.province))) {
+    const rows = await holidaysTouching(tx, prov, req.horizonStart, addDays(req.weekStart, 7));
+    holidayDays.set(prov, new Set(rows.flatMap((h) => [h.date, statutoryDay(h), organizationDay(h, tenant.holidayObservance)])));
+  }
+  const isHoliday = (facilityId: string, date: string) => holidayDays.get(facilityById.get(facilityId)!.province)?.has(date) ?? false;
   const schoolCalendar = buildSchoolCalendar((await tx.schoolCalendarPeriod.findMany()).map((x) => ({ kind: x.kind, startsOn: x.startsOn.toISOString().slice(0, 10), endsOn: x.endsOn.toISOString().slice(0, 10) })));
   const positionSpecs = new Map<string, PositionSpec>();
-  for (const s of inScope) {
-    if (positionSpecs.has(s.positionId)) continue;
+  for (const pid of new Set([...inScope.map((s) => s.positionId), ...proposedNew.map((n) => n.positionId)])) {
+    const pos = positionRow.get(pid)!;
     const prerequisites = new Map<string, string[]>();
-    for (const r of s.position.requirements) prerequisites.set(r.certificationId, r.certification.prerequisites.map((p) => p.requiresId));
-    positionSpecs.set(s.positionId, {
-      id: s.positionId,
-      minimumAge: s.position.minimumAge,
-      requiredCertIds: s.position.requirements.map((r) => r.certificationId),
+    for (const r of pos.requirements) prerequisites.set(r.certificationId, r.certification.prerequisites.map((p) => p.requiresId));
+    positionSpecs.set(pid, {
+      id: pid,
+      minimumAge: pos.minimumAge,
+      requiredCertIds: pos.requirements.map((r) => r.certificationId),
       prerequisites,
-      blockingOnboarding: await blockingItemsForPosition(tx, s.positionId),
-      hoursOfService: parseHoursOfService(s.position.hoursOfService),
+      blockingOnboarding: await blockingItemsForPosition(tx, pid),
+      hoursOfService: parseHoursOfService(pos.hoursOfService),
     });
   }
 
   // Beyond the availability planning window, a week is tentative.
   const today = localDate(new Date(), tz);
   const windowEnd = addDays(today, base.planAheadWeeks * 7);
-  const slots: SolverSlot[] = inScope.map((s) => {
+  const slotOf = (s: { id: string; facilityId: string; positionId: string; startsAt: Date; endsAt: Date; userId: string | null; premiumPerHour: Prisma.Decimal | null }): SolverSlot => {
     const ftz = facilityById.get(s.facilityId)!.timezone;
+    const date = localDate(s.startsAt, ftz);
     return {
       id: s.id,
       shift: { id: s.id, positionId: s.positionId, facilityId: s.facilityId, timezone: ftz, start: s.startsAt, end: s.endsAt },
       position: positionSpecs.get(s.positionId)!,
-      rules: rulesFor(s.facilityId, localDate(s.startsAt, ftz)),
+      rules: rulesFor(s.facilityId, date, s.positionId),
       schoolCalendar,
       currentUserId: s.userId,
-      tentative: localDate(s.startsAt, ftz) > windowEnd,
+      tentative: date > windowEnd,
+      statHoliday: isHoliday(s.facilityId, date),
+      premiumPerHour: s.premiumPerHour ? Number(s.premiumPerHour) : 0,
     };
-  });
+  };
+  const slots: SolverSlot[] = [
+    ...inScope.map(slotOf),
+    ...proposedNew.map((n) => slotOf({ id: newSlotId(n.key), facilityId: n.facilityId, positionId: n.positionId, startsAt: n.startsAt, endsAt: n.endsAt, userId: null, premiumPerHour: null })),
+  ];
 
   // People: anyone in scope who holds one of these positions.
   const candidates = await loadAssistantCandidates(tx, from, to, { AND: [peopleWhere(a.scope), { positions: { some: { positionId: { in: positionIds } } } }] });
   const userIds = candidates.map((c) => c.userId);
-  const carryIds = req.carry.map((c) => c.shiftId);
+  const carryIds = req.carry.map((c) => c.shiftId).filter((id) => !id.startsWith('new:'));
   const [userRows, rates, ledger, confirmations, priorShifts, carried, positions] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, positions: { select: { positionId: true, approvedAt: true } } } }),
     tx.payRate.findMany({ where: { userId: { in: userIds }, effectiveFrom: { lte: to }, OR: [{ effectiveTo: null }, { effectiveTo: { gte: from } }] }, orderBy: { effectiveFrom: 'desc' } }),
     tx.overtimeEntry.findMany({ where: { userId: { in: userIds }, occurredAt: { gte: periodStart(new Date(), parsePolicy(tenant.overtimePolicy).periodStartMonth) } } }),
     confirmedThrough(tx, userIds),
-    tx.shift.findMany({ where: { userId: { in: userIds }, status: { not: 'CANCELLED' }, startsAt: { gte: horizonFrom, lt: from } }, select: { userId: true, startsAt: true, endsAt: true } }),
+    tx.shift.findMany({ where: { userId: { in: userIds }, status: { not: 'CANCELLED' }, startsAt: { gte: horizonFrom, lt: from }, facilityId: { in: facilities.map((f) => f.id) } }, select: { userId: true, startsAt: true, endsAt: true, facilityId: true } }),
     carryIds.length ? tx.shift.findMany({ where: { id: { in: carryIds }, status: 'DRAFT', startsAt: { lt: from } }, select: { id: true, startsAt: true, endsAt: true, positionId: true, facilityId: true } }) : Promise.resolve([]),
     tx.position.findMany({ select: { id: true, departmentId: true, department: { select: { name: true, nameFr: true } } } }),
   ]);
   const policy = parsePolicy(tenant.overtimePolicy);
   const deptOfPosition = new Map(positions.map((p) => [p.id, p]));
   const runDeptIds = new Set(runDepartments.map((d) => d.id));
-  const carryById = new Map(carried.map((c) => [c.id, c]));
+  const carryById = new Map<string, { id: string; startsAt: Date; endsAt: Date; positionId: string; facilityId: string }>(carried.map((c) => [c.id, c]));
+  // Forecast shifts proposed in earlier weeks don't exist yet: they carry their own times.
+  for (const c of req.carry) if (c.shiftId.startsWith('new:') && c.startsAt && c.endsAt && c.positionId && c.facilityId && c.startsAt < from) carryById.set(c.shiftId, { id: c.shiftId, startsAt: c.startsAt, endsAt: c.endsAt, positionId: c.positionId, facilityId: c.facilityId });
 
   const people: SolverPerson[] = candidates.map((c) => {
     const u = userRows.find((x) => x.id === c.userId)!;
@@ -188,7 +224,7 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
       const e = DateTime.fromJSDate(x.end, { zone: tz });
       return e.hour * 60 + e.minute > 19 * 60 || localDate(x.start, tz) !== localDate(new Date(x.end.getTime() - 1), tz);
     };
-    const draftsHeld = slots.filter((s) => s.currentUserId === c.userId);
+    const draftsHeld = new Set(slots.filter((s) => s.currentUserId === c.userId).map((s) => s.id));
     const rateBy = new Map<string, number>();
     for (const r of rates.filter((x) => x.userId === c.userId)) if (!rateBy.has(r.positionId)) rateBy.set(r.positionId, Number(r.hourlyRate));
     const mineLedger = ledger.filter((e) => e.userId === c.userId);
@@ -197,7 +233,8 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     return {
       ...c,
       // A draft this run may change isn't "already working" for its current assignee.
-      existingShifts: [...c.existingShifts.filter((s) => !draftsHeld.some((d) => d.shift.start.getTime() === s.start.getTime() && d.shift.end.getTime() === s.end.getTime() && d.shift.positionId === s.positionId)), ...mineCarried.map((s) => ({ start: s.startsAt, end: s.endsAt, positionId: s.positionId, facilityId: s.facilityId }))],
+      // (matched by shift id: two identical drafts are two shifts).
+      existingShifts: [...c.existingShifts.filter((s) => !(s.id && draftsHeld.has(s.id))), ...mineCarried.map((s) => ({ start: s.startsAt, end: s.endsAt, positionId: s.positionId, facilityId: s.facilityId }))],
       seniorityDate: useSeniority ? c.seniorityDate : null,
       seniorityHours: useSeniority ? Number(c.seniorityHours) : 0,
       targetHours: c.weeklyMinHours ? Number(c.weeklyMinHours) : ftTarget,
@@ -208,6 +245,7 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
         hours: before.reduce((s, x) => s + (x.end.getTime() - x.start.getTime()) / H, 0),
         weekends: before.filter((x) => weekend(x.start)).length,
         evenings: before.filter(evening).length,
+        holidays: [...priorShifts.filter((s) => s.userId === c.userId), ...mineCarried].filter((x) => isHoliday(x.facilityId, localDate(x.startsAt, tz))).length,
         weeks: req.weekIndex,
       },
       confirmedThrough: confirmations.get(c.userId)?.through ?? null,
@@ -220,18 +258,25 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
   for (const r of rules) {
     const ftz = facilityById.get(r.facilityId)!.timezone;
     const windows = [];
-    for (let i = 0; i < 7; i++) {
+    // Wall-clock windows (DST-correct), including the night before the week that runs past
+    // midnight into it, and a last-day window that runs past midnight into the next week.
+    for (let i = -1; i < 7; i++) {
       const d = addDays(req.weekStart, i);
       if (!r.daysOfWeek.includes(dayOfWeek(d))) continue;
-      const day = DateTime.fromISO(d, { zone: ftz }).startOf('day');
-      windows.push({ start: day.plus({ minutes: r.startMinute }).toJSDate(), end: day.plus({ minutes: r.endMinute }).toJSDate() });
+      const start = wallClock(d, r.startMinute, ftz);
+      const end = wallClock(d, r.endMinute, ftz);
+      if (end <= from) continue;
+      windows.push({ start: start < from ? from : start, end });
     }
     if (!windows.length) continue;
+    const lastEnd = new Date(Math.max(to.getTime(), ...windows.map((w) => w.end.getTime())));
     const others = await tx.shift.findMany({
-      where: { facilityId: r.facilityId, status: { not: 'CANCELLED' }, userId: { notIn: userIds, not: null }, startsAt: { lt: to }, endsAt: { gt: from }, user: { certifications: { some: { certificationId: r.certificationId, verifiedAt: { not: null }, OR: [{ expiryDate: null }, { expiryDate: { gte: from } }] } } } },
-      select: { startsAt: true, endsAt: true },
+      where: { facilityId: r.facilityId, status: { not: 'CANCELLED' }, userId: { notIn: userIds, not: null }, startsAt: { lt: lastEnd }, endsAt: { gt: from } },
+      select: { startsAt: true, endsAt: true, user: { select: { certifications: { where: { certificationId: r.certificationId, verifiedAt: { not: null } }, select: { expiryDate: true } } } } },
     });
-    coverage.push({ id: r.id, name: r.name, facilityId: r.facilityId, certificationId: r.certificationId, minCount: r.minCount, windows, covered: others.map((s) => ({ start: s.startsAt, end: s.endsAt })) });
+    // A holder's certificate counts on each shift's own date.
+    const valid = (s: (typeof others)[number]) => s.user?.certifications.some((c) => !c.expiryDate || c.expiryDate.toISOString().slice(0, 10) >= localDate(new Date(s.endsAt.getTime() - 1), ftz));
+    coverage.push({ id: r.id, name: r.name, facilityId: r.facilityId, certificationId: r.certificationId, minCount: r.minCount, windows, covered: others.filter(valid).map((s) => ({ start: s.startsAt, end: s.endsAt })) });
   }
 
   const budget = req.horizonWeeks <= 2 ? 3000 : req.horizonWeeks <= 4 ? 2000 : 1000;
@@ -245,7 +290,8 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
       useSeniority,
       avoidOvertime: toggles.avoidOvertime,
       payWeekStartDay: tenant.payWeekStartDay,
-      travelMinutes: 30,
+      travelMinutes: base.travelMinutes,
+      facilityTimezones: new Map((await tx.facility.findMany({ select: { id: true, timezone: true } })).map((f) => [f.id, f.timezone])),
       maxConsecutiveDays: base.limits.maxConsecutiveDays,
       maxDailyHours: base.limits.maxDailyHours,
       windowStart: from,
@@ -264,7 +310,8 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     action: 'schedule.fill.run',
     entity: 'Department',
     entityId: req.departmentId,
-    after: { weekStart: req.weekStart, weekIndex: req.weekIndex, horizonWeeks: req.horizonWeeks, toggles, useSeniority, ...result.summary, coverageGaps: result.coverageGaps.length },
+    // `reproducible: false` = the time budget ended the search; the same seed may give a different answer.
+    after: { weekStart: req.weekStart, weekIndex: req.weekIndex, horizonWeeks: req.horizonWeeks, toggles, useSeniority, ...result.summary, coverageGaps: result.coverageGaps.length, newShifts: proposedNew.length },
   });
 
   // Names only for people in the result, with their home department when it isn't this one.
@@ -276,21 +323,29 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     const homeId = home?.departmentId ?? NO_DEPARTMENT;
     peopleOut[u.id] = { name: `${u.firstName} ${u.lastName}`, fromDepartment: home?.department && !runDeptIds.has(homeId) ? { name: home.department.name, nameFr: home.department.nameFr } : null };
   }
-  const slotOut = inScope.map((s) => {
+  const slotOut = [
+    ...inScope.map((s) => ({ id: s.id, version: s.version, facilityId: s.facilityId, positionId: s.positionId, customTitle: s.customTitle, startsAt: s.startsAt, endsAt: s.endsAt, userId: s.userId, newShift: null as null | { startsAt: string; endsAt: string } })),
+    ...proposedNew.map((n) => ({ id: newSlotId(n.key), version: 0, facilityId: n.facilityId, positionId: n.positionId, customTitle: null, startsAt: n.startsAt, endsAt: n.endsAt, userId: null, newShift: { startsAt: n.startsAt.toISOString(), endsAt: n.endsAt.toISOString() } })),
+  ].map((s) => {
     const f = facilityById.get(s.facilityId)!;
+    const pos = positionRow.get(s.positionId)!;
+    const sl = slots.find((x) => x.id === s.id)!;
     return {
       id: s.id,
       version: s.version,
       facilityId: s.facilityId,
       facilityName: f.name,
       positionId: s.positionId,
-      position: { name: s.position.name, nameFr: s.position.nameFr },
+      position: { name: pos.name, nameFr: pos.nameFr },
       customTitle: s.customTitle,
       localStartsAt: localIso(s.startsAt, f.timezone),
       localEndsAt: localIso(s.endsAt, f.timezone),
       hours: (s.endsAt.getTime() - s.startsAt.getTime()) / H,
       currentUserId: s.userId,
-      tentative: slots.find((x) => x.id === s.id)!.tentative ?? false,
+      tentative: sl.tentative ?? false,
+      statHoliday: sl.statHoliday ?? false,
+      /** A forecast shift not created yet: accepting creates it. */
+      newShift: s.newShift,
     };
   });
   return {
@@ -303,7 +358,10 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     slots: slotOut,
     people: peopleOut,
     /** Shifts of this week proposed, to send back as `carry` for the next week. */
-    carry: result.proposals.map((p) => ({ shiftId: p.slotId, userId: p.userId })),
+    carry: result.proposals.map((p) => {
+      const n = p.slotId.startsWith('new:') ? proposedNew.find((x) => newSlotId(x.key) === p.slotId) : undefined;
+      return n ? { shiftId: p.slotId, userId: p.userId, startsAt: n.startsAt.toISOString(), endsAt: n.endsAt.toISOString(), positionId: n.positionId, facilityId: n.facilityId } : { shiftId: p.slotId, userId: p.userId };
+    }),
   };
 }
 
@@ -319,72 +377,173 @@ export async function confirmedThrough(tx: Tx, userIds: string[]): Promise<Map<s
   return out;
 }
 
-export interface AcceptItem { shiftId: string; userId: string; expectedVersion: number; previousUserId: string | null }
+export interface AcceptItem {
+  /** An existing draft, or (with `newShift`) a forecast shift to create. */
+  shiftId?: string;
+  newShift?: { facilityId: string; positionId: string; startsAt: Date; endsAt: Date };
+  /** The client's id for a new shift (its slot id), echoed in `skipped` and `created`. */
+  key?: string;
+  /** null only for a new shift left open (created without anyone). */
+  userId: string | null;
+  expectedVersion: number;
+  previousUserId: string | null;
+}
+interface AppliedItem { shiftId: string; userId: string | null; previousUserId: string | null; version: number; created: boolean; overtimeHours: string }
 
 /**
- * Accepts proposals as DRAFT assignments. Each is re-checked now with the shared evaluator
- * (the world may have changed since the run), in order, so accepting a whole week can never
- * double-book anyone. Returns what was applied and what was skipped, with the audit id to undo.
+ * Accepts proposals as DRAFT assignments, one week per transaction (a 13-week horizon never
+ * runs as one long transaction). Each item is re-checked now with the full rule set every other
+ * path uses (the world may have changed since the run): eligibility with the organization's
+ * limits, weekly rest, availability, travel time and overtime; under per-person locks, so two
+ * departments accepting at once can never double-book a person they share. Overtime accepted
+ * is charged to the ledger. Returns what was applied and skipped, and one undo id per week.
  */
-export async function acceptFill(tx: Tx, a: AuthContext, items: AcceptItem[], opts: { allowOvertime: boolean }) {
-  const applied: Array<AcceptItem & { version: number }> = [];
+export async function acceptFillChunked(a: AuthContext, items: AcceptItem[], opts: { allowOvertime: boolean }) {
+  // Preload start times once, to group by pay week.
+  const ids = items.map((i) => i.shiftId).filter((x): x is string => !!x);
+  const { starts, payWeekStartDay, tz } = await withTenant(a.tenantId, async (tx) => {
+    const rows = ids.length ? await tx.shift.findMany({ where: { id: { in: ids } }, select: { id: true, startsAt: true, facility: { select: { timezone: true } } } }) : [];
+    const t = await tx.tenant.findFirstOrThrow({ select: { payWeekStartDay: true } });
+    return { starts: new Map(rows.map((r) => [r.id, { at: r.startsAt, tz: r.facility.timezone }])), payWeekStartDay: t.payWeekStartDay, tz: rows[0]?.facility.timezone ?? 'America/Toronto' };
+  });
+  const weekOf = (it: AcceptItem) => {
+    const s = it.shiftId ? starts.get(it.shiftId) : null;
+    const at = s?.at ?? it.newShift?.startsAt ?? new Date(0);
+    return payWeekStart(localDate(at, s?.tz ?? tz), payWeekStartDay);
+  };
+  const groups = new Map<string, AcceptItem[]>();
+  for (const it of items) groups.set(weekOf(it), [...(groups.get(weekOf(it)) ?? []), it]);
+  let applied = 0;
   const skipped: Array<{ shiftId: string; code: string }> = [];
+  const undoIds: string[] = [];
+  const created: Array<{ key: string; shiftId: string }> = [];
+  for (const week of [...groups.keys()].sort()) {
+    const r = await withTenant(a.tenantId, (tx) => acceptFill(tx, a, groups.get(week)!, opts));
+    applied += r.applied;
+    skipped.push(...r.skipped);
+    created.push(...r.created);
+    if (r.undoId) undoIds.push(r.undoId);
+  }
+  return { applied, skipped, undoIds, undoId: undoIds.at(-1) ?? null, created };
+}
+
+/** One transaction's worth of acceptFillChunked (one week). */
+export async function acceptFill(tx: Tx, a: AuthContext, items: AcceptItem[], opts: { allowOvertime: boolean }) {
+  const applied: AppliedItem[] = [];
+  const skipped: Array<{ shiftId: string; code: string }> = [];
+  const created: Array<{ key: string; shiftId: string }> = [];
+  for (const id of new Set(items.flatMap((it) => [it.userId, it.previousUserId]).filter((x): x is string => !!x))) {
+    if (!(await userInScope(tx, a.scope, id))) throw forbidden('This person isn’t in your department.');
+  }
+  // Locks first, in one order: shifts, then people (sorted), as every other assigning path does.
+  await lockForAssignment(tx, { shiftIds: items.map((i) => i.shiftId), userIds: items.flatMap((i) => [i.userId, i.previousUserId]) });
+  const cache: BundleCache = {};
+  const actor = { userId: a.userId, tenantId: a.tenantId };
   for (const it of items) {
-    const bundle = await loadShiftBundle(tx, it.shiftId);
+    const label = it.shiftId ?? it.key ?? `new:${it.newShift?.startsAt.toISOString()}`;
+    let shiftId = it.shiftId ?? null;
+    let isNew = false;
+    if (!shiftId) {
+      const n = it.newShift;
+      if (!n || !shiftInScope(a.scope, n)) throw forbidden('This shift isn’t in your department.');
+      // A forecast shift: created now, on confirm, as a draft (open, or for the person accepted).
+      const sh = await createShift(tx, actor, { facilityId: n.facilityId, positionId: n.positionId, startsAt: n.startsAt, endsAt: n.endsAt });
+      shiftId = sh.id;
+      isNew = true;
+      created.push({ key: label, shiftId });
+      if (!it.userId) {
+        applied.push({ shiftId, userId: null, previousUserId: null, version: sh.version, created: true, overtimeHours: '0.00' });
+        continue;
+      }
+    }
+    const bundle = await loadShiftBundle(tx, shiftId, cache);
     if (!bundle) {
-      skipped.push({ shiftId: it.shiftId, code: 'NOT_FOUND' });
+      skipped.push({ shiftId: label, code: 'NOT_FOUND' });
       continue;
     }
     if (!shiftInScope(a.scope, bundle.shift)) throw forbidden('This shift isn’t in your department.');
-    if (bundle.shift.status !== 'DRAFT' || bundle.shift.version !== it.expectedVersion || bundle.shift.userId !== it.previousUserId) {
-      skipped.push({ shiftId: it.shiftId, code: 'CHANGED' });
+    const expected = isNew ? bundle.shift.version : it.expectedVersion;
+    if (bundle.shift.status !== 'DRAFT' || bundle.shift.version !== expected || bundle.shift.userId !== (isNew ? null : it.previousUserId)) {
+      skipped.push({ shiftId: label, code: 'CHANGED' });
       continue;
     }
-    if (!(await userInScope(tx, a.scope, it.userId))) throw forbidden('This person isn’t in your department.');
+    if (!it.userId) {
+      skipped.push({ shiftId: label, code: 'NOT_FOUND' });
+      continue;
+    }
     const c = await loadCandidate(tx, bundle, it.userId);
-    if (!c) {
-      skipped.push({ shiftId: it.shiftId, code: 'NOT_FOUND' });
+    const code = !c ? 'NOT_FOUND' : acceptBlock(c, bundle, opts.allowOvertime);
+    if (code || !c) {
+      skipped.push({ shiftId: label, code: code ?? 'NOT_FOUND' });
+      // A forecast shift nobody could take stays as an open draft the scheduler can post.
+      if (isNew) applied.push({ shiftId, userId: null, previousUserId: null, version: bundle.shift.version, created: true, overtimeHours: '0.00' });
       continue;
     }
     const e = evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle, true));
-    if (!e.eligible) {
-      skipped.push({ shiftId: it.shiftId, code: e.blocks[0]!.code });
+    const done = await tx.shift.updateMany({ where: { id: shiftId, version: expected, status: 'DRAFT', userId: isNew ? null : it.previousUserId }, data: { userId: it.userId, version: { increment: 1 }, conflictReason: null } });
+    if (!done.count) {
+      skipped.push({ shiftId: label, code: 'CHANGED' });
       continue;
     }
-    if (e.overtimeHours.gt(0) && !opts.allowOvertime) {
-      skipped.push({ shiftId: it.shiftId, code: 'OVERTIME' });
-      continue;
-    }
-    if (tooLittleTravel(c, bundle.shift, 30 * 60_000)) {
-      skipped.push({ shiftId: it.shiftId, code: 'TRAVEL' });
-      continue;
-    }
-    const done = await tx.shift.updateMany({ where: { id: it.shiftId, version: it.expectedVersion, status: 'DRAFT', userId: it.previousUserId }, data: { userId: it.userId, version: { increment: 1 }, conflictReason: null } });
-    if (!done.count) skipped.push({ shiftId: it.shiftId, code: 'CHANGED' });
-    else applied.push({ ...it, version: it.expectedVersion + 1 });
+    if (!isNew && it.previousUserId && it.previousUserId !== it.userId) await reverseOvertime(tx, a.tenantId, a.userId, it.previousUserId, shiftId, 'Reassigned by Fill the schedule');
+    if (e.overtimeHours.gt(0)) await chargeOvertime(tx, a.tenantId, a.userId, it.userId, shiftId, e.overtimeHours.toFixed(2), bundle.shift.positionId);
+    applied.push({ shiftId, userId: it.userId, previousUserId: isNew ? null : it.previousUserId, version: expected + 1, created: isNew, overtimeHours: e.overtimeHours.toFixed(2) });
   }
   let undoId: string | null = null;
   if (applied.length) {
     const row = await tx.auditLog.create({ data: { tenantId: a.tenantId, actorId: a.userId, action: 'schedule.fill.accept', entity: 'Shift', after: { applied, skipped } as unknown as Prisma.InputJsonValue } });
     undoId = row.id;
   }
-  return { applied: applied.length, skipped, undoId };
+  return { applied: applied.filter((x) => x.userId).length, skipped, undoId, created };
 }
 
-/** Undoes an accept: each shift goes back to who had it, if no one has changed it since. */
+/** The first reason this person can't take this shift now, or null: every hard rule, availability, travel and (unless allowed) overtime. */
+function acceptBlock(c: NonNullable<Awaited<ReturnType<typeof loadCandidate>>>, bundle: NonNullable<Awaited<ReturnType<typeof loadShiftBundle>>>, allowOvertime: boolean): string | null {
+  const e = evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle, true));
+  if (!e.eligible) return e.blocks[0]!.code;
+  if (e.overtimeHours.gt(0) && !allowOvertime) return 'OVERTIME';
+  if (tooLittleTravel(c, bundle.shift, bundle.travelMinutes * 60_000)) return 'TRAVEL';
+  return null;
+}
+
+/**
+ * Undoes an accept: each shift goes back to who had it, if no one has changed it since and they
+ * can still work it (re-checked now; otherwise it's left open and counted). Shifts the accept
+ * created from the forecast are cancelled. Overtime charged by the accept comes off the ledger.
+ */
 export async function undoFill(tx: Tx, a: AuthContext, undoId: string) {
   const row = await tx.auditLog.findUnique({ where: { id: undoId } });
   if (!row || row.action !== 'schedule.fill.accept' || row.actorId !== a.userId) throw notFound('Accepted proposals');
   const done = await tx.auditLog.findFirst({ where: { action: 'schedule.fill.undo', entityId: undoId } });
   if (done) throw badRequest('These proposals were already undone.');
-  const applied = ((row.after as { applied?: Array<AcceptItem & { version: number }> } | null)?.applied ?? []);
+  const applied = ((row.after as { applied?: Array<Partial<AppliedItem> & { shiftId: string; version: number; userId: string | null; previousUserId: string | null }> } | null)?.applied ?? []);
+  await lockForAssignment(tx, { shiftIds: applied.map((x) => x.shiftId), userIds: applied.flatMap((x) => [x.userId, x.previousUserId]) });
   let restored = 0;
+  let leftOpen = 0;
+  const cache: BundleCache = {};
   for (const x of applied) {
-    const r = await tx.shift.updateMany({ where: { id: x.shiftId, version: x.version, status: 'DRAFT', userId: x.userId }, data: { userId: x.previousUserId, version: { increment: 1 } } });
+    if (x.created) {
+      const r = await tx.shift.updateMany({ where: { id: x.shiftId, version: x.version, status: 'DRAFT', userId: x.userId }, data: { status: 'CANCELLED', version: { increment: 1 }, conflictReason: 'Undone in Fill the schedule' } });
+      if (r.count && x.userId) await reverseOvertime(tx, a.tenantId, a.userId, x.userId, x.shiftId, 'Fill accept undone');
+      restored += r.count;
+      continue;
+    }
+    let back = x.previousUserId;
+    if (back) {
+      const bundle = await loadShiftBundle(tx, x.shiftId, cache);
+      const c = bundle && (await loadCandidate(tx, bundle, back));
+      const e = bundle && c ? evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle)) : null;
+      if (!e || !e.eligible) {
+        back = null;
+        leftOpen++;
+      }
+    }
+    const r = await tx.shift.updateMany({ where: { id: x.shiftId, version: x.version, status: 'DRAFT', userId: x.userId }, data: { userId: back, version: { increment: 1 } } });
+    if (r.count && x.userId) await reverseOvertime(tx, a.tenantId, a.userId, x.userId, x.shiftId, 'Fill accept undone');
     restored += r.count;
   }
-  await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'schedule.fill.undo', entity: 'AuditLog', entityId: undoId, after: { restored, of: applied.length } });
-  return { restored, of: applied.length };
+  await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'schedule.fill.undo', entity: 'AuditLog', entityId: undoId, after: { restored, of: applied.length, leftOpen } });
+  return { restored, of: applied.length, leftOpen };
 }
 
 /** The availability planning window for a person: from their main position's department. */

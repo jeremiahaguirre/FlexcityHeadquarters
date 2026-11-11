@@ -21,6 +21,7 @@ import { lifeguardsRequired } from './chemistry.js';
 import { coversHour, holidayEffect, occursOn, type EventRow } from './specialEvents.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { learnEffects, profileOf, weatherEffect, type Bucket, type Condition, type WeatherDay } from './weather.js';
+import { parseSolverSettings } from '../scheduling/solverSettings.js';
 
 const WEEKS = 8;
 
@@ -114,7 +115,9 @@ async function learnedFor(tx: Tx, facilityId: string, tz: string, site: string, 
 }
 
 export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string, positionId: string | null) {
-  const facility = await tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true, name: true, province: true, exposure: true, venueKind: true, weatherSite: true, weatherSiteAuto: true, tenant: { select: { holidayObservance: true } } } });
+  const facility = await tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true, name: true, province: true, exposure: true, venueKind: true, weatherSite: true, weatherSiteAuto: true, tenant: { select: { holidayObservance: true, overtimePolicy: true } } } });
+  // Facilities the organization closes on statutory holidays need no one those days.
+  const closedOnHolidays = parseSolverSettings(facility.tenant.overtimePolicy).holidayClosedFacilityIds.includes(facilityId);
   const tz = facility.timezone;
   const profile = profileOf(facility.exposure, facility.venueKind);
   const site = facility.weatherSite ?? facility.weatherSiteAuto;
@@ -194,7 +197,9 @@ export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string
     }
     // A holiday counts on its own date, on the day the law moves it to (Canada Day on a Sunday →
     // July 2) and on the weekday the organization observes it, once each: more people are off on all of them.
-    for (const hd of holidays.filter((x) => new Set([x.date, statutoryDay(x), organizationDay(x, facility.tenant.holidayObservance)]).has(day))) {
+    const holidaysToday = holidays.filter((x) => new Set([x.date, statutoryDay(x), organizationDay(x, facility.tenant.holidayObservance)]).has(day));
+    const closedToday = closedOnHolidays && holidaysToday.length > 0;
+    for (const hd of holidaysToday) {
       const pct = holidayEffect(profile);
       adjustments.push({ kind: 'holiday', name: hd.name, nameFr: hd.nameFr, pct, ...(day !== hd.date ? { observed: true } : {}) });
       dayFactor *= 1 + pct / 100;
@@ -204,6 +209,7 @@ export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string
     for (const b of breaks.filter((p) => iso(p.startsOn) <= day && iso(p.endsOn) >= day)) adjustments.push({ kind: 'school', name: b.name });
     return {
       date: day,
+      closedForHoliday: closedToday,
       schoolDay: cal.isSchoolDay(day),
       weather,
       adjustments,
@@ -211,8 +217,8 @@ export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string
         const slotStart = localHour(day, hour, tz);
         const slotEnd = new Date(slotStart.getTime() + 3_600_000);
         const hours = openAt(blocks, dayOfWeek(day), hour);
-        const lessons = lessonsAt(classes, day, hour, positionId);
-        const open = hours ? hours.open : null;
+        const lessons = closedToday ? { classes: 0, swimmers: 0, instructors: 0 } : lessonsAt(classes, day, hour, positionId);
+        const open = closedToday ? false : hours ? hours.open : null;
         let basedOn = 0;
         const base = new Map<string, number>();
         for (const p of pools) {
@@ -314,10 +320,24 @@ export const MAX_SHIFT_HOURS = 8;
 /**
  * Turns the gaps into shift blocks: on each day, layer k covers every hour still short by at
  * least k, consecutive hours joined, so two guards short from 9 to 12 gives two 9–12 shifts.
- * Blocks longer than MAX_SHIFT_HOURS are split into even back-to-back shifts.
+ * Blocks longer than MAX_SHIFT_HOURS are split into even back-to-back shifts. A block shorter
+ * than `minHours` (the organization's minimum shift length, default 3) is lengthened to it,
+ * later first (within the day), so the forecast never proposes a one-hour shift.
  */
-export function gapBlocks(days: Array<{ date: string; hours: Array<{ hour: number; gap: number }> }>): Array<{ date: string; startHour: number; endHour: number }> {
-  return rawGapBlocks(days).flatMap((b) => {
+export function gapBlocks(days: Array<{ date: string; hours: Array<{ hour: number; gap: number }> }>, minHours = 0): Array<{ date: string; startHour: number; endHour: number }> {
+  const min = Math.min(Math.ceil(minHours), MAX_SHIFT_HOURS);
+  // Hours with any demand that day: a short block grows into those first (later, then earlier), then beyond.
+  const demand = new Map(days.map((d) => [d.date, new Set(d.hours.filter((h) => h.gap > 0).map((h) => h.hour))]));
+  return rawGapBlocks(days).map((b) => {
+    if (b.endHour - b.startHour >= min) return b;
+    let { startHour, endHour } = b;
+    const busy = demand.get(b.date) ?? new Set<number>();
+    while (endHour - startHour < min && endHour < 24 && busy.has(endHour)) endHour++;
+    while (endHour - startHour < min && startHour > 0 && busy.has(startHour - 1)) startHour--;
+    while (endHour - startHour < min && endHour < 24) endHour++;
+    while (endHour - startHour < min && startHour > 0) startHour--;
+    return { ...b, startHour, endHour };
+  }).flatMap((b) => {
     const len = b.endHour - b.startHour;
     const parts = Math.ceil(len / MAX_SHIFT_HOURS);
     if (parts <= 1) return [b];
@@ -352,20 +372,29 @@ function rawGapBlocks(days: Array<{ date: string; hours: Array<{ hour: number; g
   return out;
 }
 
+/**
+ * The gaps as shifts to propose, without writing anything (the Fill flow previews them and creates
+ * only what the scheduler confirms). Only what isn't already covered by an open shift waiting to be
+ * filled, so running it twice proposes nothing new.
+ */
+export async function previewShiftsFor(tx: Tx, facilityId: string, weekStart: string, positionId: string) {
+  const f = await forecastWeek(tx, facilityId, weekStart, positionId);
+  const [facility, tenant] = await Promise.all([tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true } }), tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } })]);
+  const minHours = parseSolverSettings(tenant.overtimePolicy).minShiftHours;
+  const blocks = gapBlocks(f.days.map((d) => ({ date: d.date, hours: d.hours.map((h) => ({ hour: h.hour, gap: Math.max(0, h.gap - h.unfilled) })) })), minHours);
+  return blocks.map((b) => ({
+    facilityId,
+    positionId,
+    startsAt: localHour(b.date, b.startHour, facility.timezone),
+    endsAt: b.endHour >= 24 ? startOfLocalDay(addDays(b.date, 1), facility.timezone) : localHour(b.date, b.endHour, facility.timezone),
+  }));
+}
+
 /** Creates the gaps as draft open shifts (unpublished: a scheduler reviews, fills or posts them). */
 export async function draftShiftsFor(tx: Tx, tenantId: string, facilityId: string, weekStart: string, positionId: string) {
-  const f = await forecastWeek(tx, facilityId, weekStart, positionId);
-  const facility = await tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true } });
-  // Only what isn't already covered by an open shift waiting to be filled, so running it twice adds nothing.
-  const blocks = gapBlocks(f.days.map((d) => ({ date: d.date, hours: d.hours.map((h) => ({ hour: h.hour, gap: Math.max(0, h.gap - h.unfilled) })) })));
   const created = [];
-  for (const b of blocks) {
-    created.push(
-      await tx.shift.create({
-        data: { tenantId, facilityId, positionId, startsAt: localHour(b.date, b.startHour, facility.timezone), endsAt: b.endHour >= 24 ? startOfLocalDay(addDays(b.date, 1), facility.timezone) : localHour(b.date, b.endHour, facility.timezone), status: 'DRAFT', conflictReason: null },
-        select: { id: true, startsAt: true, endsAt: true },
-      }),
-    );
+  for (const b of await previewShiftsFor(tx, facilityId, weekStart, positionId)) {
+    created.push(await tx.shift.create({ data: { tenantId, facilityId, positionId, startsAt: b.startsAt, endsAt: b.endsAt, status: 'DRAFT', conflictReason: null }, select: { id: true, startsAt: true, endsAt: true } }));
   }
   return created;
 }

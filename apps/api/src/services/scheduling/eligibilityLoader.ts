@@ -55,7 +55,13 @@ export function departmentRuleSettings(overtimePolicy: unknown, features: unknow
   };
 }
 
-export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBundle | null> {
+/** What a batch (a Fill accept of a week) loads once instead of once per shift. */
+export interface BundleCache {
+  schoolCalendar?: SchoolCalendar;
+  onboarding?: Map<string, Awaited<ReturnType<typeof blockingItemsForPosition>>>;
+}
+
+export async function loadShiftBundle(tx: Tx, shiftId: string, cache?: BundleCache): Promise<ShiftBundle | null> {
   const s = await tx.shift.findUnique({
     where: { id: shiftId },
     include: {
@@ -79,10 +85,15 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
     })),
     { federal: dept.federal },
   );
-  const periods = await tx.schoolCalendarPeriod.findMany();
-  const schoolCalendar = buildSchoolCalendar(
-    periods.map((x) => ({ kind: x.kind, startsOn: x.startsOn.toISOString().slice(0, 10), endsOn: x.endsOn.toISOString().slice(0, 10) })),
-  );
+  const schoolCalendar =
+    cache?.schoolCalendar ??
+    buildSchoolCalendar((await tx.schoolCalendarPeriod.findMany()).map((x) => ({ kind: x.kind, startsOn: x.startsOn.toISOString().slice(0, 10), endsOn: x.endsOn.toISOString().slice(0, 10) })));
+  if (cache) cache.schoolCalendar = schoolCalendar;
+  let onboarding = cache?.onboarding?.get(s.positionId);
+  if (!onboarding) {
+    onboarding = await blockingItemsForPosition(tx, s.positionId);
+    if (cache) (cache.onboarding ??= new Map()).set(s.positionId, onboarding);
+  }
   const prerequisites = new Map<string, string[]>();
   for (const r of s.position.requirements) {
     prerequisites.set(r.certificationId, r.certification.prerequisites.map((p) => p.requiresId));
@@ -105,7 +116,7 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
       minimumAge: s.position.minimumAge,
       requiredCertIds: s.position.requirements.map((r) => r.certificationId),
       prerequisites,
-      blockingOnboarding: await blockingItemsForPosition(tx, s.positionId),
+      blockingOnboarding: onboarding,
       hoursOfService: parseHoursOfService(s.position.hoursOfService),
     },
     province: s.facility.province,
