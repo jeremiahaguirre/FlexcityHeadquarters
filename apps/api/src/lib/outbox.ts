@@ -2,7 +2,8 @@
  * Event outbox dispatcher: delivers the domain events recorded by lib/events.ts recordEvents().
  *
  * - Who runs it: the API process that committed the change, straight after the commit
- *   (dispatchSoon, best effort, for low latency), and the worker every few seconds, for events
+ *   (dispatchSoon, best effort, for low latency), and the worker as soon as recordEvents() announces
+ *   the organization on fh_events at commit, plus a 30 s sweep for retries and events
  *   whose process stopped first or whose delivery failed. Any number of processes may run it at once.
  * - Claiming: one event at a time, `SELECT … FOR UPDATE SKIP LOCKED` inside the organization's own
  *   transaction (RLS applies). Two dispatchers never hold the same event, and neither waits on the other.

@@ -6,12 +6,13 @@
  * process is skipped here too (`running`), not run twice.
  *
  * Domain events (lib/outbox.ts), then the webhooks they queue (services/integrations/webhooks.ts),
- * are delivered every few seconds without a lock: claiming with
- * SKIP LOCKED already keeps any number of workers and API processes from delivering one twice.
+ * are delivered as soon as they commit: recordEvents() announces the organization on fh_events and
+ * this process LISTENs (a 30 s sweep catches retries and anything missed while reconnecting). No
+ * lock: claiming with SKIP LOCKED keeps any number of workers and API processes from delivering one twice.
  *
  * Urgent texts, calls and pushes (services/notifications/urgent.ts) go out within a second or two:
  * this process LISTENs on fh_urgent (sent when a transaction that queued one commits, in any API
- * process), delivers after its own jobs' commits, sweeps every few seconds for due retries, and
+ * process), delivers after its own jobs' commits, sweeps every 30 s for due retries, and
  * alerts on safety texts still unsent after SAFETY_SMS_ALERT_S. The minute jobs stay as the backstop.
  */
 import pg from 'pg';
@@ -31,8 +32,9 @@ import { captureError, installProcessHandlers } from './lib/errorReporter.js';
 import { WORKER_APP_NAME, workerBeatName } from './lib/health.js';
 import { applyRetention } from './services/privacy/retention.js';
 import { deliverPush } from './services/notifications/push.js';
-import { dispatchAll } from './lib/outbox.js';
-import { deliverAllWebhooks } from './services/integrations/webhooks.js';
+import { dispatchAll, dispatchTenant } from './lib/outbox.js';
+import { EVENTS_CHANNEL } from './lib/changes.js';
+import { deliverAllWebhooks, deliverTenantWebhooks } from './services/integrations/webhooks.js';
 import { refreshWeather } from './services/ops/weather.js';
 import { sharedListener } from './lib/listen.js';
 import { runMonitors, pruneTrustHistory } from './services/trust/monitors.js';
@@ -77,8 +79,11 @@ const urgentSweep = async () => {
 };
 const urgentListener = sharedListener(cfg.LISTEN_DATABASE_URL ?? cfg.APP_DATABASE_URL);
 urgentListener.on(URGENT_CHANNEL, (tenantId) => kickUrgent(tenantId));
-urgentListener.onReconnect(() => void urgentSweep());
-// Without LISTEN the sweep still delivers within a few seconds. Once connected, the listener
+// Domain events: recordEvents() announces the organization on fh_events at commit; deliver its
+// events, then the webhooks they queued, straight away (coalesced per organization).
+urgentListener.on(EVENTS_CHANNEL, (tenantId) => kickEvents(tenantId));
+urgentListener.onReconnect(() => (void urgentSweep(), void events()));
+// Without LISTEN the 30 s sweep still delivers (and the API sends urgent texts itself right after its commits). Once connected, the listener
 // reconnects on its own; a first connection that fails is tried again every 30 s.
 const listen = (): Promise<void> =>
   urgentListener.start().catch(async (err) => {
@@ -159,6 +164,25 @@ const hourly = async () => {
 
 /** Events their API process didn't deliver (it stopped, or delivery failed and is due again). */
 let dispatching = false;
+const eventsRunning = new Map<string, Promise<void>>();
+const eventsAgain = new Set<string>();
+/** One organization's events, then its webhooks; a kick while that runs runs it once more after. */
+function kickEvents(tenantId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(tenantId)) return;
+  if (eventsRunning.has(tenantId)) return void eventsAgain.add(tenantId);
+  const p = (async () => {
+    do {
+      eventsAgain.delete(tenantId);
+      try {
+        await dispatchTenant(tenantId);
+        await deliverTenantWebhooks(tenantId);
+      } catch (err) {
+        captureError(err, { source: 'job', tags: { job: 'events:notify' } });
+      }
+    } while (eventsAgain.has(tenantId));
+  })().finally(() => eventsRunning.delete(tenantId));
+  eventsRunning.set(tenantId, p);
+}
 const events = async () => {
   if (dispatching) return;
   dispatching = true;
@@ -190,8 +214,10 @@ await events();
 await minutely();
 await heartbeat();
 await hourly();
-setInterval(() => void events(), 5_000);
-setInterval(() => void urgentSweep(), 5_000);
+// Safety nets only: new events and urgent texts arrive by LISTEN (above). These catch retries that
+// come due (backoff) and anything announced while the LISTEN connection was reconnecting.
+setInterval(() => void events(), 30_000);
+setInterval(() => void urgentSweep(), 30_000);
 setInterval(() => void minutely().then(heartbeat), 60_000);
 setInterval(() => void hourly(), 60 * 60_000);
 // Trust tests check every few minutes; the first round waits a minute so readiness sees this worker's heartbeat.

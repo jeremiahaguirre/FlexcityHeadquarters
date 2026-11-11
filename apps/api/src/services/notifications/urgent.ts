@@ -8,7 +8,7 @@
  *    coalesced per organization: enableInlineUrgent() turns it on in the API and the worker);
  *  - the worker hears a pg_notify on URGENT_CHANNEL (sent only on COMMIT) and does the same, so a
  *    message queued by an API process that stopped first still goes out within a second or two;
- *  - the worker also sweeps every few seconds for due texts (tenants_with_due_sms()), which covers
+ *  - the worker also sweeps every 30 s for due texts (tenants_with_due_sms()), which covers
  *    retries and a lost NOTIFY, and keeps its minute jobs as the last backstop.
  * Every path claims each message with `FOR UPDATE SKIP LOCKED` (sms.ts, mailer.ts, push.ts), so
  * running them all at once never sends one twice.
