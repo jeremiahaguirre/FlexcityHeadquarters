@@ -160,7 +160,8 @@ export default function ForecastPage() {
                       {data.data!.days.map((d) => {
                         const c = d.hours.find((x) => x.hour === hour)!;
                         const v = fig(c, view);
-                        const tone = c.open === false ? 'bg-transparent text-muted/60' : !v.needed ? 'bg-surface text-muted' : v.gap ? 'bg-danger-bg text-danger' : 'bg-ok-bg text-ok';
+                        // Short by 2 or more: red; short by 1: amber; covered: green. The colour carries the size of the gap, the text says it exactly.
+                        const tone = c.open === false ? 'bg-transparent text-muted/60' : !v.needed ? 'bg-surface text-muted' : v.gap >= 2 ? 'bg-danger-bg text-danger' : v.gap === 1 ? 'bg-warn-bg text-warn' : 'bg-ok-bg text-ok';
                         return (
                           <td key={d.date} className={`rounded-lg px-1 py-1.5 ${tone}`} title={cellTitle(c)}>
                             <span className="sr-only">{cellTitle(c)}</span>
@@ -174,7 +175,7 @@ export default function ForecastPage() {
                                     {c.unfilled ? <span className="font-normal opacity-80"> +{c.unfilled}</span> : null}
                                     {changed(c) ? (c.needed > c.base!.needed ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : null}
                                   </span>
-                                  <span className="flex items-center justify-center gap-0.5 opacity-80">{c.lessons?.classes ? <><GraduationCap className="h-3 w-3" />{c.lessons.swimmers}</> : `~${v.expected}`}</span>
+                                  <span className="flex items-center justify-center gap-0.5 opacity-80">{c.lessons?.classes ? <><GraduationCap className="h-3 w-3" />{c.lessons.swimmers}</> : v.expected > 0 ? `~${v.expected}` : '—'}</span>
                                 </>
                               ) : '·'}
                             </span>
@@ -187,6 +188,7 @@ export default function ForecastPage() {
               </table>
             </div>
             <p className="mt-4 text-caption text-muted">{t(data.data.forLessons ? 'forecast.legendLessons' : 'forecast.legend', { weeks: data.data.weeksOfHistory })}</p>
+            <p className="mt-1 text-caption text-muted">{t('forecast.colourKey')}</p>
             {!data.data.hoursSet && !data.data.forLessons ? <p className="mt-2 text-caption text-muted">{t('forecast.noHoursHint')}</p> : null}
             {view === 'adjusted' && !data.data.forLessons ? <p className="mt-2 text-caption text-muted">{t('forecast.draftAdjusted')}</p> : null}
           </CardBody>
@@ -225,7 +227,7 @@ function WeekOutlook({ data, label, view }: { data: Forecast; label: (iso: strin
             {status}
           </p>
         ) : null}
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {data.days.map((d) => {
             const adj = d.adjustments ?? [];
             const moved = adj.filter((a) => a.kind !== 'school');

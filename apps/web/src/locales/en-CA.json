@@ -3300,7 +3300,8 @@
       "holiday": "{{name}} (statutory holiday)",
       "holidayObserved": "{{name}} (statutory holiday, observed)",
       "school": "No school: {{name}}"
-    }
+    },
+    "colourKey": "Red: short 2 or more · amber: short 1 · green: covered. “—” means no headcounts yet for that hour."
   },
   "benchmarks": {
     "title": "Benchmarks",

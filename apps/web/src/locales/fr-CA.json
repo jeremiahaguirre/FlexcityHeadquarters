@@ -3300,7 +3300,8 @@
       "holiday": "{{name}} (jour férié)",
       "holidayObserved": "{{name}} (jour férié, observé)",
       "school": "Pas d’école : {{name}}"
-    }
+    },
+    "colourKey": "Rouge : il manque 2 personnes ou plus · ambre : il en manque 1 · vert : couvert. « — » signifie aucun dénombrement pour cette heure."
   },
   "benchmarks": {
     "title": "Comparaisons",
