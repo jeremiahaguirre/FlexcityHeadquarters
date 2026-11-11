@@ -39,7 +39,7 @@ export function Field({
         </p>
       ) : null}
       {error ? (
-        <p id={errId} className="flex items-start gap-1.5 text-small text-warn">
+        <p id={errId} role="alert" className="flex items-start gap-1.5 text-small text-warn">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </p>

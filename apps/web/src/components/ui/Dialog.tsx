@@ -1,7 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { cn } from '@/lib/cn';
 
 /**
@@ -26,6 +26,7 @@ export function Dialog({
   closeLabel?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const id = useId();
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -35,6 +36,8 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
+      aria-labelledby={`${id}-title`}
+      aria-describedby={description ? `${id}-desc` : undefined}
       onClose={onClose}
       onClick={(e) => {
         if (e.target === ref.current) onClose();
@@ -47,8 +50,8 @@ export function Dialog({
       <div aria-hidden="true" className="mx-auto mt-2.5 h-1.5 w-10 rounded-full bg-line sm:hidden" />
       <div className="flex items-start justify-between gap-4 px-6 pt-4 sm:pt-6">
         <div>
-          <h2 className="text-heading">{title}</h2>
-          {description ? <p className="mt-1 text-small text-muted">{description}</p> : null}
+          <h2 id={`${id}-title`} className="text-heading">{title}</h2>
+          {description ? <p id={`${id}-desc`} className="mt-1 text-small text-muted">{description}</p> : null}
         </div>
         <button type="button" onClick={onClose} className="-mr-2 grid h-10 w-10 place-items-center rounded-full text-muted hover:bg-surface hover:text-ink" aria-label={closeLabel}>
           <X className="h-5 w-5" aria-hidden="true" />
