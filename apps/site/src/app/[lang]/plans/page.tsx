@@ -1,6 +1,8 @@
 import { ArrowRight, Check, ChevronDown, Minus } from 'lucide-react';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
+import { BrandShapes, DeviceDuo, ShowRow } from '@/components/Device';
+import { captions } from '@/content/screens';
 import { Icon } from '@/components/Icon';
 import { Kicker, Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
@@ -47,7 +49,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       {/* Header: a short title, the rest in the lead, and a drawing of the Billing page with sample data */}
-      <PageHero eyebrow={c.title} title={c.hero} lead={c.lead} aside={<PlanMock lang={params.lang} />}>
+      <PageHero eyebrow={c.title} title={c.hero} lead={c.lead} aside={<div className="relative"><BrandShapes className="absolute -inset-x-[10%] -inset-y-[12%] h-[124%] w-[120%]" /><div className="duo-in relative"><PlanMock lang={params.lang} /></div></div>}>
         <ul className="mt-6 flex flex-wrap gap-2">
           {c.chips.map((chip) => (
             <li key={chip} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-panel px-3.5 py-1.5 text-small font-semibold">
@@ -177,7 +179,7 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
       </Section>
 
       {/* The core, in every plan */}
-      <Section tone="panel">
+      <Section tone="panel" className="overflow-hidden">
         <SectionHead n="03" eyebrow={c.baseKicker} title={c.baseTitle} lead={c.baseLead} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {c.base.map((g, i) => (
@@ -203,6 +205,9 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
           ))}
         </div>
         <p className="mt-8 max-w-3xl text-small leading-6 text-muted">{c.alertsNote}</p>
+        <div className="mt-16 md:mt-24">
+          <ShowRow flip title={captions(params.lang).plansTitle} body={captions(params.lang).plansBody} visual={<DeviceDuo laptop="laptop-coverage" phone="phone-pay" lang={params.lang} />} />
+        </div>
       </Section>
 
       {/* Comparison: a real table, scrolling sideways on phones */}

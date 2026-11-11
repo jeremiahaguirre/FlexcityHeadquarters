@@ -8,6 +8,8 @@ import { reveal } from '@/lib/reveal';
 import { AppClips } from '@/components/AppClips';
 import { HeroConsole } from '@/components/Mock';
 import { Kicker, Section, SectionHead } from '@/components/Section';
+import { DeviceDuo, Laptop, PhoneRow, ShowRow } from '@/components/Device';
+import { captions } from '@/content/screens';
 import { type Lang, copy } from '@/content/copy';
 import { SITE_URL, pageMeta } from '@/lib/seo';
 import { keepHyphenated } from '@/lib/keepWords';
@@ -25,6 +27,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
   const c = copy(params.lang);
   const h = c.home;
   const m = h.mock;
+  const sc = captions(params.lang);
   const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] hover:bg-[#D4F767]';
   const btnGhost = 'inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15';
   // Structured data: who we are and what we sell (no ratings or reviews we don't have).
@@ -45,7 +48,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
-      {/* Hero: the one dark band on the site, calm: the statement, the pitch, and the product picture beside it */}
+      {/* Hero: the one dark band on the site, calm: the statement, the pitch, and the real app beside it (HR on a laptop, a head count on a phone) */}
       <section className="night relative overflow-hidden">
         {/* The FH mark, large and faded, drawing itself in behind the statement and then staying gently alive. */}
         <div aria-hidden="true" className="pointer-events-none absolute -right-28 -top-20 md:-right-12 md:-top-28">
@@ -74,8 +77,8 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
             </div>
             <p className="rise rise-4 mt-4 text-caption text-white/70">{h.fine}</p>
           </div>
-          <div className="rise rise-3 sm:pt-28 lg:pt-24">
-            <HeroConsole m={m} />
+          <div className="lg:self-center lg:pt-4">
+            <DeviceDuo laptop="laptop-hr" phone="phone-count" lang={params.lang} priority night />
           </div>
         </div>
       </section>
@@ -86,10 +89,20 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
         <AppClips clips={h.see.clips} lang={params.lang} labels={h.see} />
       </Section>
 
-      {/* 02 Every department, in brief, then the product page */}
-      <Section tone="panel">
+      {/* 02 On every screen: real screenshots, phone and laptop, sides alternating */}
+      <Section tone="panel" className="overflow-hidden">
+        <SectionHead n="02" eyebrow={sc.showKicker} title={sc.showTitle} lead={sc.showLead} />
+        <div className="grid gap-20 md:gap-28">
+          <ShowRow title={sc.staffTitle} body={sc.staffBody} visual={<PhoneRow names={['phone-schedule', 'phone-timeoff', 'phone-pay']} lang={params.lang} />} />
+          <ShowRow flip title={sc.supTitle} body={sc.supBody} visual={<Laptop name="laptop-coverage" lang={params.lang} className="mx-auto max-w-[40rem]" />} />
+          <ShowRow title={sc.hrTitle} body={sc.hrBody} visual={<Laptop name="laptop-casefile" lang={params.lang} className="mx-auto max-w-[40rem]" />} />
+        </div>
+      </Section>
+
+      {/* 03 Every department, in brief, then the product page */}
+      <Section>
         <div className="grid items-end gap-6 md:grid-cols-[1.4fr_auto]">
-          <SectionHead n="02" eyebrow={h.teaser.productKicker} title={h.teaser.productTitle} lead={h.teaser.productLead} />
+          <SectionHead n="03" eyebrow={h.teaser.productKicker} title={h.teaser.productTitle} lead={h.teaser.productLead} />
           <Link href={`/${params.lang}/product/`} className="mb-10 inline-flex h-12 items-center gap-2 justify-self-start rounded-xl bg-brand px-6 text-body-strong text-brand-contrast shadow-lift hover:bg-brand-hover md:mb-14">
             {h.teaser.productLink}
             <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
@@ -108,10 +121,10 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
         </ul>
       </Section>
 
-      {/* 03 Why FH, in brief, then the why page */}
-      <Section>
+      {/* 04 Why FH, in brief, then the why page */}
+      <Section tone="panel">
         <div className="grid items-end gap-6 md:grid-cols-[1.4fr_auto]">
-          <SectionHead n="03" eyebrow={h.teaser.whyKicker} title={h.teaser.whyTitle} />
+          <SectionHead n="04" eyebrow={h.teaser.whyKicker} title={h.teaser.whyTitle} />
           <Link href={`/${params.lang}/why/`} className="mb-10 inline-flex h-12 items-center gap-2 justify-self-start rounded-xl border border-line bg-panel px-6 text-body-strong hover:bg-surface md:mb-14">
             {h.teaser.whyLink}
             <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
@@ -128,11 +141,11 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
         </ul>
       </Section>
 
-      {/* 04 Plans in one line, private sector in one line */}
-      <Section tone="panel">
+      {/* 05 Plans in one line, private sector in one line */}
+      <Section>
         <div {...reveal()} className="grid items-center gap-6 rounded-3xl border border-line bg-panel p-8 shadow-card md:grid-cols-[1.6fr_auto] md:p-12">
           <div>
-            <Kicker n="04">{c.nav.plans}</Kicker>
+            <Kicker n="05">{c.nav.plans}</Kicker>
             <h2 className="text-[1.75rem] font-extrabold leading-9 tracking-[-0.02em] md:text-[2.25rem] md:leading-[2.75rem] [text-wrap:balance]">{h.teaser.plansTitle}</h2>
             <p className="mt-3 max-w-2xl text-body text-muted">{h.teaser.plansBody}</p>
           </div>
@@ -148,24 +161,27 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
         </div>
       </Section>
 
-      {/* Closing CTA */}
+      {/* Closing CTA, with the drawn week (shifts popping in, the clock-in slide, the lone-worker timer) beside it */}
       <Section tone="brand">
-        <div {...reveal()} className="grid items-center gap-10 md:grid-cols-[1.4fr_1fr]">
+        <div {...reveal()} className="grid items-center gap-12 lg:grid-cols-[1fr_1.05fr] lg:gap-16">
           <div>
             <span className="mb-6 inline-grid h-16 w-16 place-items-center rounded-2xl bg-white shadow-lift">
               <LogoMark size={44} />
             </span>
             <h2 className="text-hero2 [text-wrap:balance]">{h.ctaTitle}</h2>
             <p className="mt-4 max-w-xl text-[1.0625rem] leading-7 text-white/85">{h.ctaBody}</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href={demoLink('STAFF', params.lang)} className={btnLight}>
+                {h.ctaDemo}
+                <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
+              </a>
+              <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
+                {h.ctaTalk}
+              </Link>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3 md:justify-end">
-            <a href={demoLink('STAFF', params.lang)} className={btnLight}>
-              {h.ctaDemo}
-              <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
-            </a>
-            <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
-              {h.ctaTalk}
-            </Link>
+          <div className="sm:pt-28 lg:pt-24">
+            <HeroConsole m={m} />
           </div>
         </div>
       </Section>

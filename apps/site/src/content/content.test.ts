@@ -1,8 +1,11 @@
+import { existsSync, readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { demoLink } from '../lib/site';
 import { copy } from './copy';
 import { ARTICLES } from './help';
 import { legalDoc } from './legal';
+import { SCREENS, screenAlt } from './screens';
 import { ITEMS, LEVELS, PRIVATE, PUBLIC, SIZE, TERM_DISCOUNTS, UPFRONT_BONUS } from './pricing';
 
 /** Same keys and array lengths in both languages, and no empty strings. */
@@ -68,5 +71,26 @@ describe('prices', () => {
     }
     // Every option described on the page, in both languages.
     for (const lang of ['en', 'fr'] as const) expect(copy(lang).plans.items.map((m) => m.key).sort()).toEqual(Object.keys(ITEMS).sort());
+  });
+});
+
+describe('app screenshots', () => {
+  const dir = join(__dirname, '../../public/screens');
+  it('every screenshot the site names exists in both languages and schemes, small enough for the web', () => {
+    for (const name of SCREENS) {
+      for (const lang of ['en', 'fr'] as const) {
+        expect(screenAlt(name, lang).trim().length, `${name} ${lang} alt`).toBeGreaterThan(20);
+        for (const scheme of ['light', 'dark']) {
+          const file = join(dir, `${name}-${lang}-${scheme}.webp`);
+          expect(existsSync(file), file).toBe(true);
+          expect(statSync(file).size, file).toBeLessThan(250_000);
+        }
+      }
+    }
+  });
+
+  it('ships no screenshot that no page uses', () => {
+    const named = new Set(SCREENS.flatMap((n) => ['en', 'fr'].flatMap((l) => ['light', 'dark'].map((s) => `${n}-${l}-${s}.webp`))));
+    expect(readdirSync(dir).filter((f) => f !== 'og.png' && !named.has(f))).toEqual([]);
   });
 });

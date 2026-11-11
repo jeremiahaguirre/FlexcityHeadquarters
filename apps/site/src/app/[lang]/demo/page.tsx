@@ -6,6 +6,8 @@ import { Section, SectionHead } from '@/components/Section';
 import { Icon } from '@/components/Icon';
 import { PageHero } from '@/components/PageHero';
 import { PhoneClip } from '@/components/PhoneClip';
+import { DeviceDuo, Laptop, Phone } from '@/components/Device';
+import { captions } from '@/content/screens';
 import { type Lang, copy } from '@/content/copy';
 import { demoLink } from '@/lib/site';
 
@@ -23,9 +25,11 @@ export default async function Demo(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const all = copy(params.lang);
   const c = all.demo;
+  const sc = captions(params.lang);
+  const roleTitle = (id: string) => c.roles.find((r) => r.id === id)?.title ?? id;
   return (
     <>
-      <PageHero eyebrow={all.nav.demo} title={c.title} lead={c.lead} overlap aside={<PhoneClip clip="clock" lang={params.lang} label={all.home.see.clips[2]!.title} className="hidden lg:block" />} />
+      <PageHero eyebrow={all.nav.demo} title={c.title} lead={c.lead} overlap aside={<DeviceDuo laptop="laptop-hr" lang={params.lang} priority className="hidden lg:block" phoneNode={<PhoneClip clip="clock" lang={params.lang} label={all.home.see.clips[2]!.title} />} />} />
       <section className="relative">
         <div className="mx-auto -mt-28 grid max-w-7xl gap-4 px-4 pb-16 sm:grid-cols-2 md:-mt-36 md:px-6 lg:grid-cols-3">
           {c.roles.map((r, i) => (
@@ -41,6 +45,24 @@ export default async function Demo(props: { params: Promise<{ lang: Lang }> }) {
           ))}
         </div>
       </section>
+      {/* What two of the roles open on: real screens from the demo */}
+      <Section className="overflow-hidden">
+        <SectionHead title={sc.demoTitle} />
+        <div className="grid items-end gap-12 md:grid-cols-[1.9fr_1fr] md:gap-10">
+          <figure {...reveal()}>
+            <Laptop name="laptop-casefile" lang={params.lang} />
+            <figcaption className="mt-5 text-small leading-6 text-muted">
+              <a href={demoLink('HR_ADMIN', params.lang)} className="font-semibold text-brand-text hover:underline">{roleTitle('HR_ADMIN')}</a> · {sc.demoHr}
+            </figcaption>
+          </figure>
+          <figure {...reveal(1)} className="mx-auto w-full max-w-[15rem]">
+            <Phone name="phone-board" lang={params.lang} />
+            <figcaption className="mt-5 text-small leading-6 text-muted">
+              <a href={demoLink('STAFF', params.lang)} className="font-semibold text-brand-text hover:underline">{roleTitle('STAFF')}</a> · {sc.demoStaff}
+            </figcaption>
+          </figure>
+        </div>
+      </Section>
       <Section tone="panel">
         <div {...reveal()} className="grid gap-10 lg:grid-cols-[1fr_1.3fr]">
           <SectionHead title={c.guidedTitle} lead={c.guidedBody} />

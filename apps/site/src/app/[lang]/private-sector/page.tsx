@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { RenewalNote, RenewalTerms } from '@/components/RenewalNote';
 import { btnPrimary, btnSecondary } from '@/lib/buttons';
 import { PageHero } from '@/components/PageHero';
-import { PhoneClip } from '@/components/PhoneClip';
+import { DeviceDuo, PhoneRow, ShowRow } from '@/components/Device';
+import { captions } from '@/content/screens';
 import { Icon } from '@/components/Icon';
 import { reveal } from '@/lib/reveal';
 import { Section, SectionHead } from '@/components/Section';
@@ -24,9 +25,10 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
   const params = await props.params;
   const all = copy(params.lang);
   const c = all.privateSector;
+  const sc = captions(params.lang);
   return (
     <>
-      <PageHero eyebrow={all.nav.privateSector} title={c.title} lead={c.lead} aside={<PhoneClip clip="board" lang={params.lang} label={all.home.see.clips[0]!.title} />}>
+      <PageHero eyebrow={all.nav.privateSector} title={c.title} lead={c.lead} aside={<DeviceDuo laptop="laptop-orgchart" phone="phone-board" lang={params.lang} priority />}>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href={`/${params.lang}/contact/?kind=SALES`} className={btnPrimary}>
             {c.cta}
@@ -38,7 +40,7 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
         </div>
         <RenewalNote lang={params.lang} className="mt-4 max-w-2xl" />
       </PageHero>
-      <Section tone="panel">
+      <Section>
         <SectionHead title={c.whoTitle} />
         <div className="grid gap-5 sm:grid-cols-2">
           {c.who.map((w, i) => (
@@ -53,6 +55,9 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
             </article>
           ))}
         </div>
+      </Section>
+      <Section tone="panel" className="overflow-hidden">
+        <ShowRow title={sc.privateTitle} body={sc.privateBody} visual={<PhoneRow names={['phone-schedule', 'phone-timeoff']} lang={params.lang} />} />
       </Section>
       <Section>
         <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">

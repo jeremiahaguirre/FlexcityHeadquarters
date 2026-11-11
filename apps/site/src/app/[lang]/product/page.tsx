@@ -1,6 +1,6 @@
 import { ArrowRight, Check, MapPin } from 'lucide-react';
 import Link from 'next/link';
-import { PhoneClip } from '@/components/PhoneClip';
+import { DeviceDuo, Laptop, PhoneRow } from '@/components/Device';
 import { PageHero } from '@/components/PageHero';
 import { Icon } from '@/components/Icon';
 import { reveal } from '@/lib/reveal';
@@ -33,7 +33,7 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
   const btnGhost = 'inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15';
   return (
     <>
-      <PageHero eyebrow={c.nav.product} title={h.pages.productTitle} lead={h.pages.productLead} aside={<PhoneClip clip="count" lang={params.lang} label={h.see.clips[1]!.title} />}>
+      <PageHero eyebrow={c.nav.product} title={h.pages.productTitle} lead={h.pages.productLead} aside={<DeviceDuo laptop="laptop-onboarding" phone="phone-board" lang={params.lang} priority />}>
         <div className="mt-8 flex flex-wrap gap-3">
           <a href={demoLink('STAFF', params.lang)} className={btnPrimary}>
             {h.ctaDemo}
@@ -174,9 +174,8 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
           </div>
         </div>
         <div className="mt-16 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <div className="relative mx-auto grid max-w-md grid-cols-2 gap-4 lg:max-w-none" {...reveal()}>
-            <img src={`/screens/phone-headcount${fr ? '-fr' : ''}.png`} alt={h.screensAlt[0]} className="rounded-[1.5rem] border-[5px] border-[#0B1F22] shadow-lift" width={390} height={844} loading="lazy" />
-            <img src={`/screens/phone-board${fr ? '-fr' : ''}.png`} alt={h.screensAlt[1]} className="mt-10 rounded-[1.5rem] border-[5px] border-[#0B1F22] shadow-lift" width={390} height={844} loading="lazy" />
+          <div {...reveal()}>
+            <PhoneRow names={['phone-count', 'phone-schedule']} lang={params.lang} />
           </div>
           <div {...reveal(1)}>
             <p className="mb-3 text-label uppercase tracking-[0.14em] text-brand-text">{h.screensTitle}</p>
@@ -222,9 +221,7 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
             <p className="mt-4 text-caption text-muted">{h.peopleNote}</p>
           </div>
           <div {...reveal(1)} className="relative">
-            <div className="tilt relative overflow-hidden rounded-2xl border border-line bg-panel shadow-lift">
-              <img src={`/screens/desktop-casefile${fr ? '-fr' : ''}.png`} alt={fr ? 'Dossier d’un employé : score, signalements motivés et faits datés' : 'An employee’s case file: score, flags with reasons and dated facts'} className="block w-full" width={944} height={640} loading="lazy" />
-            </div>
+            <Laptop name="laptop-casefile" lang={params.lang} className="tilt mx-auto max-w-[40rem]" />
           </div>
         </div>
       </Section>

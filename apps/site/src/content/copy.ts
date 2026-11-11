@@ -73,7 +73,6 @@ const en = {
       included: 'Included in every plan',
     },
     screensTitle: 'On any phone, in the browser',
-    screensAlt: ['Bather headcount clicker on a phone', 'Shift board on a phone'],
     departmentsTitle: 'One platform for every department',
     departmentsLead: 'Each department gets the screens it needs and nothing it doesn’t. Your city defines the roles, and you switch features on or off per organization.',
     departments: [
@@ -651,7 +650,6 @@ const fr: DeepString<Copy> = {
       included: 'Compris dans tous les forfaits',
     },
     screensTitle: 'Sur tout téléphone, dans le navigateur',
-    screensAlt: ['Compteur de baigneurs sur téléphone', 'Babillard des quarts sur téléphone'],
     departmentsTitle: 'Une plateforme pour tous les services',
     departmentsLead: 'Chaque service a les écrans dont il a besoin, et rien de plus. Votre ville définit les rôles et active ou désactive les fonctions selon l’organisation.',
     departments: [

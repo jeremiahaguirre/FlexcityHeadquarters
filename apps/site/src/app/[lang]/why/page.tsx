@@ -1,6 +1,8 @@
 import { ArrowRight, Check, Minus } from 'lucide-react';
 import Link from 'next/link';
 import { PageHero } from '@/components/PageHero';
+import { DeviceDuo, ShowRow } from '@/components/Device';
+import { captions } from '@/content/screens';
 import { reveal } from '@/lib/reveal';
 import { Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
@@ -20,11 +22,12 @@ export default async function Why(props: { params: Promise<{ lang: Lang }> }) {
   const c = copy(params.lang);
   const h = c.home;
   const k = h.kickers;
+  const sc = captions(params.lang);
   const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] hover:bg-[#D4F767]';
   const btnGhost = 'inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15';
   return (
     <>
-      <PageHero eyebrow={c.nav.why} title={h.pages.whyTitle} lead={h.pages.whyLead}>
+      <PageHero eyebrow={c.nav.why} title={h.pages.whyTitle} lead={h.pages.whyLead} aside={<DeviceDuo laptop="laptop-overtime" phone="phone-timeoff" lang={params.lang} priority />}>
         <div className="mt-8 flex flex-wrap gap-3">
           <a href={demoLink('STAFF', params.lang)} className={btnPrimary}>
             {h.ctaDemo}
@@ -76,8 +79,13 @@ export default async function Why(props: { params: Promise<{ lang: Lang }> }) {
         </div>
       </Section>
 
+      {/* The same app at the desk and on a phone */}
+      <Section tone="panel" className="overflow-hidden">
+        <ShowRow flip title={sc.whyTitle} body={sc.whyBody} visual={<DeviceDuo laptop="laptop-hr" phone="phone-schedule" lang={params.lang} />} />
+      </Section>
+
       {/* 07 Trust */}
-      <Section tone="panel">
+      <Section>
         <SectionHead n="02" eyebrow={k.trust} title={h.trustTitle} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {h.trust.map((t, i) => (
