@@ -7,7 +7,8 @@ import type { AuthContext } from '../../auth/middleware.js';
 import type { Permission } from '../../auth/permissions.js';
 import type { Tx } from '../../lib/db.js';
 import { forbidden } from '../../lib/errors.js';
-import { peopleInScope } from '../people/scope.js';
+import { hrRecordsBy, peopleInScope } from '../people/scope.js';
+import { loadScoreInputs, reliabilityPolicy, scoreOf } from '../reliability/load.js';
 
 export interface ReportParams { from: string; to: string; days: number }
 export interface ReportResult { columns: string[]; rows: Array<Record<string, string | number | null>> }
@@ -139,6 +140,35 @@ export const REPORTS: Record<string, Report> = {
         rows.push({ policy: p.title, version: p.version, signed: p._count.acks, waiting: Math.max(0, of - p._count.acks) });
       }
       return { columns: ['policy', 'version', 'signed', 'waiting'], rows };
+    },
+  },
+  /** The advisory reliability score as of the period's end (the same computation as each person's file), and what moved it during the period. */
+  reliability: {
+    permissions: ['reliability.read'],
+    kind: 'range',
+    async run(tx, a, p) {
+      const at = new Date(Math.min(Date.now(), after(p.to).getTime() - 1));
+      const scope = await peopleInScope(tx, a.scope);
+      const users = await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null, ...(scope ? { id: { in: [...scope] } } : {}) }, select: { id: true, firstName: true, lastName: true } });
+      const policy = await reliabilityPolicy(tx);
+      const inputs = await loadScoreInputs(tx, users.map((u) => u.id), policy, at, hrRecordsBy(a));
+      const lo = start(p.from).getTime();
+      return {
+        columns: ['person', 'score', 'deductions', 'credits', 'notCounted'],
+        rows: users
+          .map((u) => {
+            const s = scoreOf(inputs.get(u.id), policy, at);
+            const inPeriod = s.changes.filter((c) => c.at.getTime() >= lo);
+            return {
+              person: `${u.firstName} ${u.lastName}`,
+              score: s.score,
+              deductions: inPeriod.filter((c) => c.applied < 0).reduce((n, c) => n + c.applied, 0),
+              credits: inPeriod.filter((c) => c.applied > 0).reduce((n, c) => n + c.applied, 0),
+              notCounted: (inputs.get(u.id)?.events ?? []).filter((e) => e.occurredAt.getTime() >= lo && (s.status[e.id] === 'EXCUSED' || s.status[e.id] === 'PROTECTED')).length,
+            };
+          })
+          .sort((x, y) => x.score - y.score || x.person.localeCompare(y.person)),
+      };
     },
   },
   expenses: {

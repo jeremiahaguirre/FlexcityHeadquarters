@@ -6,6 +6,7 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { type Tx, tenantIds, withTenant } from '../../lib/db.js';
+import { protectedAt } from '../reliability/score.js';
 
 export const MIN_CITIES = 5;
 export const METRICS = ['noShowRate', 'lateRate', 'certLapseRate', 'fillHours', 'overtimeShare'] as const;
@@ -29,15 +30,19 @@ const pct = (a: number, b: number) => (b ? Math.round((a / b) * 1000) / 10 : 0);
 /** One city's measures for the last 90 days (run inside its tenant transaction). */
 export async function cityMetrics(tx: Tx, now = new Date()): Promise<Record<Metric, number>> {
   const from = new Date(now.getTime() - WINDOW);
-  const [shifts, noShows, punches, late, offers, ot, staff] = await Promise.all([
+  const [shifts, attendance, leave, punches, offers, ot, staff] = await Promise.all([
     tx.shift.findMany({ where: { status: 'PUBLISHED', userId: { not: null }, endsAt: { gte: from, lte: now } }, select: { startsAt: true, endsAt: true } }),
-    tx.reliabilityEvent.count({ where: { type: 'NO_SHOW', occurredAt: { gte: from }, excludedReason: null } }),
+    tx.reliabilityEvent.findMany({ where: { type: { in: ['NO_SHOW', 'LATE_PUNCH'] }, occurredAt: { gte: from, lte: now }, excludedReason: null }, select: { userId: true, type: true, occurredAt: true } }),
+    tx.timeOffRequest.findMany({ where: { type: { in: ['SICK', 'PROTECTED_LEAVE'] }, endsAt: { gte: from } }, select: { userId: true, type: true, status: true, startsAt: true, endsAt: true } }),
     tx.timePunch.count({ where: { clockIn: { gte: from } } }),
-    tx.reliabilityEvent.count({ where: { type: 'LATE_PUNCH', occurredAt: { gte: from }, excludedReason: null } }),
     tx.shiftOffer.findMany({ where: { status: 'COMPLETED', createdAt: { gte: from } }, select: { createdAt: true, updatedAt: true } }),
     tx.overtimeEntry.aggregate({ where: { kind: 'ACCEPTED', occurredAt: { gte: from } }, _sum: { hours: true } }),
     tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null, certifications: { some: { verifiedAt: { not: null } } } }, select: { certifications: { where: { verifiedAt: { not: null } }, select: { certificationId: true, expiryDate: true } } } }),
   ]);
+  // The same rule as the reliability score: excused events and sick days or protected leave don't count.
+  const counts = attendance.filter((e) => !protectedAt(leave.filter((l) => l.userId === e.userId), e.occurredAt.getTime()));
+  const noShows = counts.filter((e) => e.type === 'NO_SHOW').length;
+  const late = counts.filter((e) => e.type === 'LATE_PUNCH').length;
   const hours = shifts.reduce((s, x) => s + (x.endsAt.getTime() - x.startsAt.getTime()) / 3_600_000, 0);
   const fill = offers.map((o) => (o.updatedAt.getTime() - o.createdAt.getTime()) / 3_600_000).sort((a, b) => a - b);
   const today = now.toISOString().slice(0, 10);
