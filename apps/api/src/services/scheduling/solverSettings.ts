@@ -14,6 +14,7 @@
  *     federallyRegulated,                // schedule under the Canada Labour Code rule set
  *     holidayClosedFacilityIds,          // facilities closed on statutory holidays (forecast proposes nothing)
  *     templateAutoCreate,                // the worker keeps weekly shift templates' next weeks drafted (default off)
+ *     bidSeniorityBasis,                 // shift bidding: 'DATE' (seniority date, then hours) or 'HOURS' (default DATE)
  *     lastHorizonWeeks,                  // the last horizon someone ran (shown as a hint)
  *     departments: { [departmentId]: { planAheadWeeks?, weights?, toggles?, useSeniority?, targetHours?, limits?, federallyRegulated? } }
  *   }
@@ -75,6 +76,8 @@ export interface SolverSettings {
   holidayClosedFacilityIds: string[];
   /** Weekly shift templates: the worker drafts each template's next weeks (its autoWeeksAhead). Off by default. */
   templateAutoCreate: boolean;
+  /** Shift bidding's default seniority basis (a round can set its own): date then hours, or hours then date. */
+  bidSeniorityBasis: 'DATE' | 'HOURS';
   departments: Record<string, DepartmentSolverSettings>;
 }
 
@@ -98,6 +101,7 @@ export const orgExtrasBody = z.object({
   federallyRegulated: z.boolean(),
   holidayClosedFacilityIds: z.array(z.string().uuid()).max(500),
   templateAutoCreate: z.boolean(),
+  bidSeniorityBasis: z.enum(['DATE', 'HOURS']),
 }).partial();
 export const departmentBody = z.object({
   planAheadWeeks: horizonBody.optional(),
@@ -147,6 +151,7 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
     ...(s.federallyRegulated !== undefined ? { federallyRegulated: s.federallyRegulated } : {}),
     ...(s.holidayClosedFacilityIds !== undefined ? { holidayClosedFacilityIds: s.holidayClosedFacilityIds } : {}),
     ...(s.templateAutoCreate !== undefined ? { templateAutoCreate: s.templateAutoCreate } : {}),
+    ...(s.bidSeniorityBasis !== undefined ? { bidSeniorityBasis: s.bidSeniorityBasis } : {}),
   });
   const x = extras.success ? extras.data : {};
   // An older stored 13 (before the weekly-rest cap) reads as 12.
@@ -165,6 +170,7 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
     federallyRegulated: x.federallyRegulated ?? false,
     holidayClosedFacilityIds: x.holidayClosedFacilityIds ?? [],
     templateAutoCreate: x.templateAutoCreate ?? false,
+    bidSeniorityBasis: x.bidSeniorityBasis ?? 'DATE',
     departments,
   };
 }

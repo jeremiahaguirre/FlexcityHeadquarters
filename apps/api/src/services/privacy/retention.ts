@@ -15,6 +15,8 @@
  *   (messagesDays), unless a report about it is still open with HR.
  * - Staff surveys (services/surveys): 2 years after a survey closed (surveysDays), with who was asked
  *   and every answer.
+ * - Shift bid rankings and outcomes (services/scheduling/bidding.ts): 2 years after the round was
+ *   confirmed or cancelled (not configurable); the awards (who works what) stay with the schedule.
  * - Shift preferences (services/scheduling/preferences.ts): of people who left, 90 days after the
  *   last change (not configurable); seasonal staff away keep theirs. Anonymizing deletes them at once.
  * The audit log is kept for the life of the account (it's append-only, and part of the
@@ -22,6 +24,7 @@
  */
 import type { Tx } from '../../lib/db.js';
 import { purgeInactivePreferences } from '../scheduling/preferences.js';
+import { purgeOldBids } from '../scheduling/bidding.js';
 import { applyMessageRetention } from '../messaging/records.js';
 import { applySurveyRetention } from '../surveys/surveys.js';
 
@@ -70,7 +73,7 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const year = ago(now, APPLICATION_DAYS);
   const ap = await tx.jobApplication.deleteMany({ where: { status: { not: 'HIRED' }, updatedAt: { lt: year } } });
   await tx.jobApplication.updateMany({ where: { status: 'HIRED', updatedAt: { lt: year }, NOT: { ciphertext: null } }, data: { ciphertext: null, iv: null, authTag: null, wrappedKey: null, kekId: null, message: null } });
-  const sp = await purgeInactivePreferences(tx, now);
+  const sp = (await purgeInactivePreferences(tx, now)) + (await purgeOldBids(tx, now));
   const msg = await applyMessageRetention(tx, r.messagesDays, now);
   const sv = await applySurveyRetention(tx, r.surveysDays, now);
   return sp + msg + sv + n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + mc.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));

@@ -33,6 +33,7 @@ import { WORKER_APP_NAME, workerBeatName } from './lib/health.js';
 import { applyRetention } from './services/privacy/retention.js';
 import { surveyReminders } from './services/surveys/surveys.js';
 import { autoDraftTemplates } from './services/scheduling/shiftTemplates.js';
+import { bidRoundTick } from './services/scheduling/bidding.js';
 import { deliverPush } from './services/notifications/push.js';
 import { dispatchAll, dispatchTenant } from './lib/outbox.js';
 import { EVENTS_CHANNEL } from './lib/changes.js';
@@ -137,6 +138,8 @@ const minutely = async () => {
   await exclusive('lone-work', () => perTenant((tx) => loneWorkChecks(tx)));
   await exclusive('call-outs', () => perTenant((tx) => callOutTimeouts(tx)));
   await exclusive('rotation-alerts', () => perTenant((tx) => rotationAlerts(tx)));
+  // Shift bidding: tell staff when a round opens; close rounds whose time is up (awards proposed for review).
+  await exclusive('bid-rounds', () => perTenant((tx) => bidRoundTick(tx)));
   await exclusive('email', () => deliverOutbox(db(), mailer));
   await exclusive('sms', () => deliverSms(db(), sms));
   await exclusive('push', () => perTenant((tx) => deliverPush(tx)));
