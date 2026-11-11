@@ -1,0 +1,111 @@
+# Prometheus alert rules for FlexcityHeadquarters.
+# Every metric used here is exported by the API at /metrics (apps/api/src/lib/metrics.ts, lib/health.ts);
+# a unit test (apps/api/test/unit/alertRules.test.ts) fails if a rule names a metric the API doesn't export.
+# Thresholds are starting points for the first months: tune them with real traffic (docs/MONITORING.md).
+# Severity: page = wake someone up; ticket = look at it the next working day.
+groups:
+  - name: fh-safety
+    rules:
+      - alert: SafetyTextsLate
+        expr: fh_outbox_oldest_age_seconds{channel="sms_safety"} > 120
+        for: 1m
+        labels: { severity: page }
+        annotations:
+          summary: "A working-alone or call-out text has waited more than 2 minutes to send"
+          runbook: "docs/MONITORING.md#safety-texts-late"
+      - alert: SafetyTextAlertRaised
+        expr: increase(fh_safety_sms_overdue_alerts_total[10m]) > 0
+        labels: { severity: page }
+        annotations:
+          summary: "The API raised a safety-text overdue alert"
+          runbook: "docs/MONITORING.md#safety-texts-late"
+
+  - name: fh-availability
+    rules:
+      - alert: ApiDown
+        expr: up{job="fh-api"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "An API process isn't answering /metrics"
+          runbook: "docs/MONITORING.md#api-down"
+      - alert: DatabaseUnreachable
+        expr: fh_database_up == 0
+        for: 1m
+        labels: { severity: page }
+        annotations:
+          summary: "The API can't reach PostgreSQL"
+          runbook: "docs/MONITORING.md#database-unreachable"
+      - alert: WorkerMissing
+        expr: fh_worker_connected == 0 or fh_worker_heartbeat_age_seconds > 300
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "The background worker is gone or quiet (texts, emails, payroll jobs, reminders stop)"
+          runbook: "docs/MONITORING.md#worker-missing"
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(fh_http_requests_total{status="5xx"}[5m]))
+            / clamp_min(sum(rate(fh_http_requests_total[5m])), 1e-9) > 0.02
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "More than 2% of requests are failing with a server error"
+          runbook: "docs/MONITORING.md#high-error-rate"
+
+  - name: fh-latency
+    rules:
+      - alert: SlowRequests
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(fh_http_request_duration_seconds_bucket{route!~".*/(live|stream).*"}[10m]))) > 1
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "95th-percentile response time above 1 s for 15 minutes"
+          runbook: "docs/MONITORING.md#slow-requests"
+      - alert: SlowQueries
+        expr: increase(fh_db_slow_queries_total[15m]) > 20
+        labels: { severity: ticket }
+        annotations:
+          summary: "More than 20 slow database queries in 15 minutes"
+          runbook: "docs/MONITORING.md#slow-queries"
+      - alert: EventLoopBlocked
+        expr: fh_event_loop_delay_seconds{quantile="0.99"} > 0.2
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "An API process's event loop is regularly blocked for more than 200 ms"
+          runbook: "docs/MONITORING.md#event-loop-blocked"
+
+  - name: fh-queues
+    rules:
+      - alert: OutboxBacklog
+        expr: fh_outbox_oldest_age_seconds{channel!="sms_safety"} > 900
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Emails, texts or events have waited more than 15 minutes ({{ $labels.channel }})"
+          runbook: "docs/MONITORING.md#outbox-backlog"
+      - alert: OutboxFailures
+        expr: fh_outbox_failed > 0
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Messages or events gave up after all retries ({{ $labels.channel }})"
+          runbook: "docs/MONITORING.md#outbox-backlog"
+      - alert: WebhooksFailing
+        expr: sum(increase(fh_webhook_deliveries_total{outcome="failed"}[1h])) > 20
+        labels: { severity: ticket }
+        annotations:
+          summary: "Many webhook deliveries to customers' systems are failing"
+          runbook: "docs/MONITORING.md#webhooks-failing"
+
+  - name: fh-capacity
+    rules:
+      - alert: MemoryHigh
+        expr: fh_process_resident_memory_bytes > 1.5e9
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "An API process is using more than 1.5 GB of memory"
+          runbook: "docs/MONITORING.md#memory-high"
