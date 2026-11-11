@@ -1,9 +1,14 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
+import { useScrollFade } from '@/lib/useScrollFade';
 
-/** Segmented control for switching views; the highlight slides to the chosen option. */
+/**
+ * Segmented control for switching views; the highlight slides to the chosen option.
+ * When the options don't fit (a phone), the row scrolls sideways and fades at the edge that has more,
+ * so a cut-off option reads as "more this way" rather than as clipped.
+ */
 export function Segmented<T extends string>({ value, onChange, options, label }: { value: T; onChange: (v: T) => void; options: Array<{ value: T; label: string }>; label: string }) {
   const wrap = useRef<HTMLDivElement>(null);
   const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
@@ -11,8 +16,16 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
     const el = wrap.current?.querySelector<HTMLElement>('[aria-checked="true"]');
     if (el) setPill({ left: el.offsetLeft, width: el.offsetWidth });
   }, [value, options.length, options.map((o) => o.label).join('|')]);
+  const fade = useScrollFade(wrap);
+  // Keep the chosen option in view when the row scrolls.
+  useEffect(() => {
+    const el = wrap.current;
+    const on = el?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (!el || !on || el.scrollWidth <= el.clientWidth) return;
+    if (on.offsetLeft < el.scrollLeft || on.offsetLeft + on.offsetWidth > el.scrollLeft + el.clientWidth) el.scrollTo({ left: on.offsetLeft - 16 });
+  }, [value]);
   return (
-    <div ref={wrap} role="radiogroup" aria-label={label} className="relative inline-flex max-w-full overflow-x-auto rounded-xl bg-surface p-1">
+    <div ref={wrap} role="radiogroup" aria-label={label} className="fh-no-scrollbar relative inline-flex max-w-full overflow-x-auto rounded-xl bg-surface p-1" style={fade}>
       {pill ? (
         <span
           aria-hidden="true"

@@ -264,6 +264,8 @@ span[role='img'][aria-label='FlexcityHeadquarters'] > span.truncate { padding-bl
 /* The header logo draws in once per session (LiveLogo), unless the pointer asks for it again. */
 html[data-logo-seen] .fh-live:not([data-replay]) .fh-p { animation: none !important; }
 /* A scrolling list that continues below: its last 2 rem fade out (the sidebar under the user block). */
+.fh-no-scrollbar { scrollbar-width: none; }
+.fh-no-scrollbar::-webkit-scrollbar { display: none; }
 .fh-scroll-fade { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent); }
 
 /* Sign-in screen extras around the logo. */
