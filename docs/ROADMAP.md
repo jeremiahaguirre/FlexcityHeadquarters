@@ -69,7 +69,7 @@
 - Union Hub as its own service (`UNION_HUB_MODE=separate`): the main API then holds no union credentials.
 - Copyright notices in the app and on the website.
 - Emergency contacts: up to three per person, kept by the person or HR; a working-alone monitor sees them only once a session escalates or the person asks for help; every look audited.
-- Text and phone alerts (city switch, off by default): a confirmed mobile number, then a call and a text when a working-alone session escalates or someone asks for help, and texts for missed check-ins, call-out offers and open shifts starting within a day. Sent by the worker through Twilio; no links, contents dropped once sent.
+- Text and phone alerts (city switch, off by default): a confirmed mobile number, then a call and a text when a working-alone session escalates or someone asks for help, and texts for missed check-ins, call-out offers and open shifts starting within a day. Sent through Twilio within seconds of the alert (straight after its commit; the worker as backstop), safety alerts first with retries after 15 s and an alert if one is still unsent after 2 minutes; no links, contents dropped once sent.
 - Time in lieu: each person chooses to bank overtime at its premium up to the city's cap; days off from the bank, payouts, HR corrections with a reason, and pay-run flags for old balances and people leaving.
 - Seniority as a switch per organization (Settings and the Dev console): on, it breaks ties in the overtime order, call-outs and the assistant; off, ties go by fewest hours. Private-sector companies start with it off.
 - Shift trades between two people: both eligible for the other's shift, the other person agrees, a supervisor approves, both shifts swap together or not at all.

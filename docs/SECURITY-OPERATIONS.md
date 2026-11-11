@@ -27,6 +27,7 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
    - any change to the audit log grants;
    - a payroll provider send or bank transmission that failed;
    - a server refusing to start because its database role is too powerful.
+   - a safety text or call (working alone, call for help, call-out) unsent after 2 minutes: the error report "safety text(s) or call(s) unsent after 120s", `fh_safety_sms_overdue_alerts_total` rising, `fh_outbox_oldest_age_seconds{channel="sms_safety"}` over 120, or `/readyz` warning "safety texts waiting longer than 120s" (`SAFETY_SMS_ALERT_S`). Page someone at once: a worker alone may need help. Check the text provider's status and the `lastError` of the waiting `SmsOutbox` rows (ids only, never the contents), and phone the organization's monitors if texts can't go out;
    - `/readyz` answering 503 (`/readyz?strict=1` for the outbox and worker), `fh_outbox_oldest_age_seconds` over 15 minutes, `fh_worker_heartbeat_age_seconds` over 5 minutes, or a jump in `fh_errors_total` (see [ARCHITECTURE.md](ARCHITECTURE.md#health-metrics-and-errors)). An error report or log line carries a request id (`X-Request-Id`): search with it, not with a person's name.
 2. **Backups confirmed:** last night's automated snapshot completed; point-in-time recovery window intact.
 3. **Threat feeds skimmed:** GitHub security advisories for this repository, Dependabot pull requests, CCCS alerts, AWS security bulletins, Node.js and Next.js releases, PostgreSQL security releases.
