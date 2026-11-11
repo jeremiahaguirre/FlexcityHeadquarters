@@ -78,15 +78,15 @@ afterAll(async () => {
 });
 
 type Reason = { code: string; at?: string; n?: number[] };
-type Cells = { ok: number[]; warn: Array<[number, Reason[]]>; block: Array<[number, Reason[]]> };
-type Elig = { users: string[]; shifts: Record<string, Cells>; days: Record<string, Cells> };
+type Cells = { ok: number[]; warn: Array<[number, number]>; block: Array<[number, number]> };
+type Elig = { users: string[]; reasons: Reason[][]; shifts: Record<string, Cells>; days: Record<string, Cells> };
 const statusIn = (e: Elig, cells: Cells, userId: string) => {
   const i = e.users.indexOf(userId);
   if (cells.ok.includes(i)) return { status: 'ok', reasons: [] as Reason[] };
   const w = cells.warn.find((x) => x[0] === i);
-  if (w) return { status: 'warn', reasons: w[1] };
+  if (w) return { status: 'warn', reasons: e.reasons[w[1]]! };
   const b = cells.block.find((x) => x[0] === i);
-  if (b) return { status: 'block', reasons: b[1] };
+  if (b) return { status: 'block', reasons: e.reasons[b[1]]! };
   return { status: 'none', reasons: [] as Reason[] };
 };
 const elig = (token: string, body: object = {}, sub = SUB) => call(token, sub).post('/api/schedule/planner/eligibility', { departmentId: aquatics, from: WEEK, to: END, ...body });

@@ -25,7 +25,7 @@ import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
 import { facilitiesOf, peopleWhere, shiftInScope, shiftsWhere, userInScope } from '../people/scope.js';
 import { resolveFeatures } from '../platform/features.js';
-import { type CandidateContext, type Evaluation, type PositionSpec, type ShiftSpec, evaluateCandidate, isAvailable, parseHoursOfService } from './eligibility.js';
+import { type CandidateContext, type Evaluation, type OvertimeMemo, type PositionSpec, type ShiftSpec, evaluateCandidate, isAvailable, parseHoursOfService } from './eligibility.js';
 import { evalOpts, loadAssistantCandidates, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
 import { ALL_DEPARTMENTS, NO_DEPARTMENT, confirmedThrough, schedulableDepartments } from './fillRun.js';
 import { assignShift, cancelShift, createShift, updateShift } from './shifts.js';
@@ -229,13 +229,14 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
 
 export interface CellReason { code: string; n?: number[]; at?: string; cert?: string }
 export type Status = 'ok' | 'warn' | 'block';
-export interface Cells { ok: number[]; warn: Array<[number, CellReason[]]>; block: Array<[number, CellReason[]]> }
+/** Per shift or day: people (by index in `users`) who can, and [person, reasons index] for warnings and refusals. */
+export interface Cells { ok: number[]; warn: Array<[number, number]>; block: Array<[number, number]> }
 
 /** Flags that don't change what a scheduler should do (shown elsewhere). */
 const QUIET_FLAGS = new Set(['RULES_UNVERIFIED']);
 
 /** Numbers in the evaluator's message (hours, limits), for the translated text. */
-const numbersIn = (message: string) => [...message.matchAll(/\d+(?:\.\d+)?/g)].map((m) => Number(m[0])).filter((n) => n < 10_000);
+const numbersIn = (message: string) => [...message.replace(/\d{4}-\d{2}-\d{2}/g, '').matchAll(/\d+(?:\.\d+)?/g)].map((m) => Number(m[0]));
 
 /**
  * Maps one evaluation to a cell status. Blocks are refusals; overtime, flags and being outside
@@ -329,20 +330,36 @@ export async function plannerEligibility(tx: Tx, a: AuthContext, q: EligibilityQ
   const tzOf = new Map(c.facilities.map((f) => [f.id, f.timezone]));
   const users = people.map((p) => p.userId);
   const empty = (): Cells => ({ ok: [], warn: [], block: [] });
-  const put = (cells: Cells, i: number, r: { status: Status; reasons: CellReason[] }) => {
-    if (r.status === 'ok') cells.ok.push(i);
-    else cells[r.status].push([i, r.reasons]);
+  // The same reasons repeat across a month of shifts: each distinct list is sent once.
+  const reasons: CellReason[][] = [];
+  const reasonIndex = new Map<string, number>();
+  const intern = (r: { status: Status; reasons: CellReason[] }) => {
+    if (r.status === 'ok') return { status: r.status, ref: -1 };
+    const k = JSON.stringify(r.reasons);
+    let ref = reasonIndex.get(k);
+    if (ref === undefined) {
+      ref = reasons.push(r.reasons) - 1;
+      reasonIndex.set(k, ref);
+    }
+    return { status: r.status, ref };
   };
+  const put = (cells: Cells, i: number, r: { status: Status; ref: number }) => {
+    if (r.status === 'ok') cells.ok.push(i);
+    else cells[r.status].push([i, r.ref]);
+  };
+  const memos = new Map<string, OvertimeMemo>();
   const evaluate = (p: (typeof people)[number], shift: ShiftSpec, ownShiftId: string | null) => {
     const ctx = ownShiftId ? { ...p, existingShifts: p.existingShifts.filter((s) => s.id !== ownShiftId) } : p;
     const date = localDate(shift.start, shift.timezone);
-    const e = evaluateCandidate(ctx, shift, specs.get(shift.positionId)!, { rules: rules.rulesFor(shift.facilityId!, date), payWeekStartDay: rules.payWeekStartDay, requireAvailability: false, schoolCalendar: rules.schoolCalendar });
-    return statusOf(e, ctx, shift, certNames);
+    let overtimeMemo = memos.get(p.userId);
+    if (!overtimeMemo) memos.set(p.userId, (overtimeMemo = new WeakMap()));
+    const e = evaluateCandidate(ctx, shift, specs.get(shift.positionId)!, { rules: rules.rulesFor(shift.facilityId!, date), payWeekStartDay: rules.payWeekStartDay, requireAvailability: false, schoolCalendar: rules.schoolCalendar, overtimeMemo });
+    return intern(statusOf(e, ctx, shift, certNames));
   };
 
   let evaluations = 0;
   const shiftCells: Record<string, Cells> = {};
-  const memo = new Map<string, { status: Status; reasons: CellReason[] }>();
+  const memo = new Map<string, { status: Status; ref: number }>();
   for (const s of shifts) {
     const cells = empty();
     const spec: ShiftSpec = { id: s.id, positionId: s.positionId, facilityId: s.facilityId, timezone: tzOf.get(s.facilityId)!, start: s.startsAt, end: s.endsAt };
@@ -383,7 +400,7 @@ export async function plannerEligibility(tx: Tx, a: AuthContext, q: EligibilityQ
       dayCells[d] = cells;
     }
   }
-  return { users, shifts: shiftCells, days: dayCells, evaluations, ms: Date.now() - started };
+  return { users, reasons, shifts: shiftCells, days: dayCells, evaluations, ms: Date.now() - started };
 }
 
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
