@@ -56,6 +56,15 @@ const schema = z.object({
   PUBLIC_APP_URL: z.string().default('http://{subdomain}.localhost:3000'),
   /** Marketing site origins allowed to post enquiries (comma-separated). */
   MARKETING_ORIGINS: z.string().default('http://localhost:3100'),
+  /**
+   * Sender identification for every email (CASL s. 6(2) and the CASL regulations): FH's legal name
+   * and a mailing address valid for at least 60 days. Commercial email refuses to send in production
+   * until both are set (services/marketing/casl.ts). Empty = a marked placeholder in development.
+   */
+  COMPANY_LEGAL_NAME: z.string().default(''),
+  COMPANY_MAILING_ADDRESS: z.string().default(''),
+  /** How people reach FH about email (shown in commercial email footers); defaults to BILLING_EMAIL. */
+  COMPANY_CONTACT_EMAIL: z.string().default(''),
   /** Shown on FH's invoices to organizations. */
   BILLING_LEGAL_NAME: z.string().default('FlexcityHeadquarters'),
   BILLING_ADDRESS: z.string().default(''),

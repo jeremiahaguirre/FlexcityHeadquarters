@@ -13,6 +13,7 @@ import { resolveTenant } from './routes/context.js';
 import { api } from './routes/features.js';
 import { platformRouter } from './routes/platform/index.js';
 import { marketingRouter } from './routes/marketing.js';
+import { emailPrefsRouter } from './routes/emailPrefs.js';
 import { passkeyAuthRouter } from './routes/passkeys.js';
 import { publicLogoRouter } from './routes/publicLogo.js';
 import { publicCalendarRouter } from './routes/calendar.js';
@@ -38,6 +39,8 @@ export function createApp() {
   app.use('/api/v1', publicApiRouter);
   // The marketing site's enquiry form (no organization, its own CORS).
   app.use('/api', marketingRouter);
+  // Unsubscribing from FH commercial email (no organization, no sign-in; signed link).
+  app.use('/api', emailPrefsRouter);
   // Before the 100 kB body limit: the Dev console uploads logos and spreadsheets.
   app.use('/api/platform', platformRouter);
   // Stripe signs the raw body, so this comes before JSON parsing.

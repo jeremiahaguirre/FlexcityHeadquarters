@@ -13,6 +13,8 @@ export interface Mail {
   text: string;
   /** The branded HTML version of the same message. */
   html?: string;
+  /** Extra headers, e.g. List-Unsubscribe on commercial email (services/marketing/casl.ts). */
+  headers?: Record<string, string>;
 }
 
 export interface Mailer {
