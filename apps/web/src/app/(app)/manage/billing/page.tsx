@@ -177,7 +177,7 @@ export default function BillingPage() {
                         <th className="py-2 pr-3 text-right font-semibold">{t('billingPage.total')}</th>
                         <th className="py-2 pr-3 text-right font-semibold">{t('billingPage.owing')}</th>
                         <th className="py-2 pr-3 font-semibold">{t('billingPage.status')}</th>
-                        <th className="py-2"><span className="sr-only">{t('common.actions')}</span></th>
+                        <th className="relative py-2"><span className="sr-only">{t('common.actions')}</span></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">

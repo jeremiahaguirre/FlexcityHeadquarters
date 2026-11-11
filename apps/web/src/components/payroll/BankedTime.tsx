@@ -96,7 +96,7 @@ export function LieuBalances() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-small">
-              <thead className="text-caption uppercase text-muted"><tr><th className="py-2 pr-3 font-semibold">{t('lieu.person')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.balance')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.tooOld')}</th><th><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
+              <thead className="text-caption uppercase text-muted"><tr><th className="py-2 pr-3 font-semibold">{t('lieu.person')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.balance')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.tooOld')}</th><th className="relative"><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
               <tbody>
                 {d.people.map((r) => (
                   <tr key={r.userId} className="border-t border-line">
