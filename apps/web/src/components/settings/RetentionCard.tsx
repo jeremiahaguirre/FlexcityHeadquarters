@@ -8,9 +8,9 @@ import { Field, Input } from '@/components/ui/Field';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
 
-type Key = 'notificationsDays' | 'emailLogDays' | 'familiesInactiveDays' | 'bookingsDays';
+type Key = 'notificationsDays' | 'emailLogDays' | 'familiesInactiveDays' | 'bookingsDays' | 'messagesDays' | 'surveysDays';
 interface Retention extends Record<Key, number> { limits: Record<Key, [number, number]> }
-const KEYS: Key[] = ['notificationsDays', 'emailLogDays', 'familiesInactiveDays', 'bookingsDays'];
+const KEYS: Key[] = ['notificationsDays', 'emailLogDays', 'familiesInactiveDays', 'bookingsDays', 'messagesDays', 'surveysDays'];
 
 /** How long routine records are kept before they're deleted automatically. */
 export function RetentionCard() {

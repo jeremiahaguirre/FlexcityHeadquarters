@@ -31,6 +31,7 @@ import { sendScheduledReports } from './services/reports/scheduled.js';
 import { captureError, installProcessHandlers } from './lib/errorReporter.js';
 import { WORKER_APP_NAME, workerBeatName } from './lib/health.js';
 import { applyRetention } from './services/privacy/retention.js';
+import { surveyReminders } from './services/surveys/surveys.js';
 import { autoDraftTemplates } from './services/scheduling/shiftTemplates.js';
 import { deliverPush } from './services/notifications/push.js';
 import { dispatchAll, dispatchTenant } from './lib/outbox.js';
@@ -153,6 +154,7 @@ const hourly = async () => {
   await exclusive('people-review', () => perTenant((tx) => flagForReview(tx)));
   await exclusive('anonymize', () => perTenant((tx) => anonymizeDue(tx)));
   await exclusive('retention', () => perTenant((tx) => applyRetention(tx)));
+  await exclusive('survey-reminders', () => perTenant((tx) => surveyReminders(tx)));
   await exclusive('scheduled-reports', () => perTenant((tx) => sendScheduledReports(tx)));
   // Weekly shift templates: drafts N weeks ahead, only where the organization turned it on.
   await exclusive('shift-templates', () => perTenant((tx) => autoDraftTemplates(tx)));

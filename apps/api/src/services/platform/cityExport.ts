@@ -21,6 +21,8 @@ import { open } from '../crypto/envelope.js';
 import { csvCell } from '../payroll/export.js';
 import { accountNumber, revealSin } from '../payroll/bank.js';
 import { messageAad, openWith } from '../messaging/crypto.js';
+import { anonymousResults, type Answers, type Question } from '../surveys/results.js';
+import { isClosed } from '../surveys/surveys.js';
 
 /** Sign-in secrets and FH's own records: never in the export. */
 const SKIP_TABLES = new Set(['AuthToken', 'RefreshToken', 'MfaCode', 'Passkey', 'WebAuthnChallenge', 'PlatformAudit', 'SupportSession', 'BillingAccount', 'PadAgreement', 'PadDebit', 'TenantLogo', 'RateLimitHit']);
@@ -118,6 +120,18 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
   for (const table of tables) {
     const rows = await withTenant(tenantId, (tx) => tx.$queryRawUnsafe<Row[]>(`SELECT * FROM ${qualified('public', table)} WHERE "tenantId" = $1::uuid`, tenantId), { timeoutMs: 120_000 });
     if (!rows.length) continue;
+    if (table === 'SurveyResponse') {
+      // Anonymous answers leave only as results that respect the minimum group (never row by row, which
+      // could be matched to people); named exit-survey answers are exported as they are.
+      const surveys = await withTenant(tenantId, (tx) => tx.survey.findMany({ select: { id: true, title: true, anonymous: true, questions: true, minGroup: true, closedAt: true, closesAt: true } }));
+      for (const s of surveys.filter((x) => x.anonymous)) {
+        const rs = rows.filter((r) => r.surveyId === s.id).map((r) => ({ answers: r.answers as Answers, departmentId: (r.departmentId as string | null) ?? null, positionId: (r.positionId as string | null) ?? null }));
+        if (rs.length) add(`surveys/${s.id}-results.json`, enc.encode(JSON.stringify({ title: s.title, ...anonymousResults(s.questions as unknown as Question[], rs, s.minGroup, isClosed(s)) }, null, 2)));
+      }
+      const named = new Set(surveys.filter((x) => !x.anonymous).map((x) => x.id));
+      rows.splice(0, rows.length, ...rows.filter((r) => named.has(r.surveyId as string)).sort((x, y) => String(x.id).localeCompare(String(y.id))));
+      if (!rows.length) continue;
+    }
     const out: Row[] = [];
     for (const r of rows) {
       const row: Row = {};

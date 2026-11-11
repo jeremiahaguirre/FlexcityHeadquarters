@@ -17,6 +17,8 @@
  * Hard deletes never happen; FK relations are ON DELETE RESTRICT.
  */
 import { forgetPreferences } from '../scheduling/preferences.js';
+import { forgetMessages } from '../messaging/records.js';
+import { forgetSurveys } from '../surveys/surveys.js';
 import { forgetActive } from '../people/customRoles.js';
 import { type Tx, audit } from '../../lib/db.js';
 
@@ -73,6 +75,10 @@ export async function anonymizeUser(tx: Tx, tenantId: string, actorId: string | 
   await tx.timePunch.updateMany({ where: { userId }, data: { latitude: null, longitude: null, ipAddress: null } });
   // Shift preferences are wishes about future work: nothing to keep once someone is anonymized.
   await forgetPreferences(tx, userId);
+  // Messages they wrote are wiped ("message removed"), unless under an open report; they leave every conversation.
+  await forgetMessages(tx, userId);
+  // Survey invitations and named (exit) answers; anonymous answers were never linked to them.
+  await forgetSurveys(tx, userId);
   await audit(tx, { tenantId, actorId, action: 'privacy.anonymized', entity: 'User', entityId: userId });
   // Object storage (certification documents) is purged by the documents worker on this audit event.
 }

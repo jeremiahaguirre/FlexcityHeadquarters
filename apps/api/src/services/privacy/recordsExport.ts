@@ -11,6 +11,7 @@
 import type { Tx } from '../../lib/db.js';
 import { moreRecords } from './moreRecords.js';
 import { messageRecords } from '../messaging/records.js';
+import { surveyRecords } from '../surveys/surveys.js';
 
 export async function exportPersonRecords(tx: Tx, userId: string) {
   const user = await tx.user.findUniqueOrThrow({
@@ -42,8 +43,8 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     tx.employeeDocument.findMany({ where: { userId, deletedAt: null }, select: { title: true, kind: true, fileName: true, size: true, sha256: true, createdAt: true } }),
   ]);
   const more = await moreRecords(tx, userId);
-  const tenant = await tx.tenant.findFirstOrThrow({ select: { id: true } });
-  const messages = await messageRecords(tx, tenant.id, userId);
+  const { tenantId } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { tenantId: true } });
+  const messages = await messageRecords(tx, tenantId, userId);
   return {
     generatedAt: new Date().toISOString(),
     about: 'All records FlexcityHeadquarters holds about this person for the organization. Review before release; severing may be required for third-party information.',
@@ -75,6 +76,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     documents,
     auditTrail: auditAbout,
     messages,
+    surveys: await surveyRecords(tx, userId),
     ...more,
   };
 }

@@ -256,6 +256,8 @@ settingsRouter.put(
         emailLogDays: z.number().int().min(RETENTION_LIMITS.emailLogDays[0]).max(RETENTION_LIMITS.emailLogDays[1]),
         familiesInactiveDays: z.number().int().min(RETENTION_LIMITS.familiesInactiveDays[0]).max(RETENTION_LIMITS.familiesInactiveDays[1]).default(RETENTION_DEFAULTS.familiesInactiveDays),
         bookingsDays: z.number().int().min(RETENTION_LIMITS.bookingsDays[0]).max(RETENTION_LIMITS.bookingsDays[1]).default(RETENTION_DEFAULTS.bookingsDays),
+        messagesDays: z.number().int().min(RETENTION_LIMITS.messagesDays[0]).max(RETENTION_LIMITS.messagesDays[1]).default(RETENTION_DEFAULTS.messagesDays),
+        surveysDays: z.number().int().min(RETENTION_LIMITS.surveysDays[0]).max(RETENTION_LIMITS.surveysDays[1]).default(RETENTION_DEFAULTS.surveysDays),
       })
       .parse(req.body);
     await withTenant(a.tenantId, async (tx) => {

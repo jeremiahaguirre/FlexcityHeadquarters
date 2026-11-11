@@ -284,3 +284,37 @@ describe('reports and investigations', () => {
     expect((await as('x').get('/api/messages/conversations')).body).toEqual([]);
   });
 });
+
+describe('privacy', () => {
+  const inTenant = <T>(fn: (tx: never) => Promise<T>) =>
+    owner.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(`SELECT set_config('app.tenant_id', '${t.tenant.id}', true)`);
+      return fn(tx as never);
+    });
+
+  it('the person’s records export has the messages they wrote, opened', async () => {
+    const { exportPersonRecords } = await import('../../src/services/privacy/recordsExport.js');
+    const out = await inTenant((tx) => exportPersonRecords(tx, id.g0!));
+    expect(out.messages.messagesWritten.map((m: { text: string | null }) => m.text)).toContain('Pool opens at 6:30');
+    expect(out.excluded.join(' ')).toContain('anonymous surveys');
+  });
+
+  it('retention removes quiet conversations, but not one with an open report', async () => {
+    const { applyMessageRetention } = await import('../../src/services/messaging/records.js');
+    const old = new Date(Date.now() - 800 * 86_400_000);
+    await owner.conversation.updateMany({ where: { tenantId: t.tenant.id }, data: { lastMessageAt: old, createdAt: old } });
+    await owner.messageReport.create({ data: { tenantId: t.tenant.id, messageId: id.edited!, conversationId: id.c01!, reporterId: id.g1!, reason: 'Second report, still open' } });
+    const removed = await inTenant((tx) => applyMessageRetention(tx, 730));
+    expect(removed).toBeGreaterThan(0);
+    expect(await owner.conversation.count({ where: { tenantId: t.tenant.id } })).toBe(1);
+    expect(await owner.conversation.findUnique({ where: { id: id.c01 } })).not.toBeNull();
+  });
+
+  it('anonymizing someone wipes what they wrote (kept under an open report) and takes them out', async () => {
+    const { anonymizeUser } = await import('../../src/services/privacy/erasure.js');
+    await inTenant((tx) => anonymizeUser(tx, t.tenant.id, id.hr!, id.g0!));
+    const left = await owner.message.findMany({ where: { authorId: id.g0 } });
+    expect(left.filter((m) => m.ciphertext).map((m) => m.id)).toEqual([id.edited]);
+    expect(await owner.conversationMember.count({ where: { userId: id.g0 } })).toBe(0);
+  });
+});

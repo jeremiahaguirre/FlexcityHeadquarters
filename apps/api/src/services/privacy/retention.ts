@@ -11,6 +11,10 @@
  *   dead ones 30 days (not configurable). Pending ones are never removed.
  * - Webhook delivery records (services/integrations/webhooks.ts): 30 days once finished.
  * - Public API Idempotency-Key records (services/integrations/idempotency.ts): 24 hours.
+ * - Team messages (services/messaging/records.ts): a conversation 2 years after its last message
+ *   (messagesDays), unless a report about it is still open with HR.
+ * - Staff surveys (services/surveys): 2 years after a survey closed (surveysDays), with who was asked
+ *   and every answer.
  * - Shift preferences (services/scheduling/preferences.ts): of people who left, 90 days after the
  *   last change (not configurable); seasonal staff away keep theirs. Anonymizing deletes them at once.
  * The audit log is kept for the life of the account (it's append-only, and part of the
@@ -18,14 +22,16 @@
  */
 import type { Tx } from '../../lib/db.js';
 import { purgeInactivePreferences } from '../scheduling/preferences.js';
+import { applyMessageRetention } from '../messaging/records.js';
+import { applySurveyRetention } from '../surveys/surveys.js';
 
 /** Delivered domain events (ids and type only by then). */
 export const EVENT_DELIVERED_DAYS = 7;
 /** Job applications that didn't end in a hire. */
 export const APPLICATION_DAYS = 365;
-export const RETENTION_DEFAULTS = { notificationsDays: 730, emailLogDays: 90, familiesInactiveDays: 1095, bookingsDays: 730 } as const;
-export const RETENTION_LIMITS = { notificationsDays: [90, 3650], emailLogDays: [30, 3650], familiesInactiveDays: [365, 3650], bookingsDays: [180, 3650] } as const;
-export type Retention = { notificationsDays: number; emailLogDays: number; familiesInactiveDays: number; bookingsDays: number };
+export const RETENTION_DEFAULTS = { notificationsDays: 730, emailLogDays: 90, familiesInactiveDays: 1095, bookingsDays: 730, messagesDays: 730, surveysDays: 730 } as const;
+export const RETENTION_LIMITS = { notificationsDays: [90, 3650], emailLogDays: [30, 3650], familiesInactiveDays: [365, 3650], bookingsDays: [180, 3650], messagesDays: [180, 3650], surveysDays: [180, 3650] } as const;
+export type Retention = { notificationsDays: number; emailLogDays: number; familiesInactiveDays: number; bookingsDays: number; messagesDays: number; surveysDays: number };
 
 export function readRetention(raw: unknown): Retention {
   const r = raw && typeof raw === 'object' ? (raw as Partial<Retention>) : {};
@@ -34,7 +40,7 @@ export function readRetention(raw: unknown): Retention {
     const [lo, hi] = RETENTION_LIMITS[k];
     return Number.isFinite(v) && v >= lo && v <= hi ? v : RETENTION_DEFAULTS[k];
   };
-  return { notificationsDays: pick('notificationsDays'), emailLogDays: pick('emailLogDays'), familiesInactiveDays: pick('familiesInactiveDays'), bookingsDays: pick('bookingsDays') };
+  return { notificationsDays: pick('notificationsDays'), emailLogDays: pick('emailLogDays'), familiesInactiveDays: pick('familiesInactiveDays'), bookingsDays: pick('bookingsDays'), messagesDays: pick('messagesDays'), surveysDays: pick('surveysDays') };
 }
 
 const ago = (now: Date, days: number) => new Date(now.getTime() - days * 86_400_000);
@@ -65,7 +71,9 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const ap = await tx.jobApplication.deleteMany({ where: { status: { not: 'HIRED' }, updatedAt: { lt: year } } });
   await tx.jobApplication.updateMany({ where: { status: 'HIRED', updatedAt: { lt: year }, NOT: { ciphertext: null } }, data: { ciphertext: null, iv: null, authTag: null, wrappedKey: null, kekId: null, message: null } });
   const sp = await purgeInactivePreferences(tx, now);
-  return sp + n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + mc.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
+  const msg = await applyMessageRetention(tx, r.messagesDays, now);
+  const sv = await applySurveyRetention(tx, r.surveysDays, now);
+  return sp + msg + sv + n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + mc.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
 }
 
 /** Families with no registration or purchase since `before`: their personal details go; their payment records stay. */
