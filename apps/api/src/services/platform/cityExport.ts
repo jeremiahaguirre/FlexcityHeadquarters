@@ -20,11 +20,12 @@ import { keys } from '../../routes/context.js';
 import { open } from '../crypto/envelope.js';
 import { csvCell } from '../payroll/export.js';
 import { accountNumber, revealSin } from '../payroll/bank.js';
+import { messageAad, openWith } from '../messaging/crypto.js';
 
 /** Sign-in secrets and FH's own records: never in the export. */
 const SKIP_TABLES = new Set(['AuthToken', 'RefreshToken', 'MfaCode', 'Passkey', 'WebAuthnChallenge', 'PlatformAudit', 'SupportSession', 'BillingAccount', 'PadAgreement', 'PadDebit', 'TenantLogo', 'RateLimitHit']);
 /** Columns that are secrets or only the machinery of encryption. */
-const SKIP_COLUMNS = new Set(['passwordHash', 'tokenHash', 'ssoSubject', 'failedLoginCount', 'lockedUntil', 'oidcSecret', 'ciphertext', 'iv', 'authTag', 'wrappedDataKey', 'wrappedKey', 'kekId', 'sinCiphertext', 'sinIv', 'sinAuthTag', 'sinWrappedKey', 'sinKekId', 'accountCiphertext', 'accountIv', 'accountAuthTag', 'accountWrappedKey', 'accountKekId', 'publicKey']);
+const SKIP_COLUMNS = new Set(['passwordHash', 'tokenHash', 'ssoSubject', 'failedLoginCount', 'lockedUntil', 'oidcSecret', 'ciphertext', 'iv', 'authTag', 'wrappedDataKey', 'wrappedKey', 'kekId', 'sinCiphertext', 'sinIv', 'sinAuthTag', 'sinWrappedKey', 'sinKekId', 'accountCiphertext', 'accountIv', 'accountAuthTag', 'accountWrappedKey', 'accountKekId', 'publicKey', 'originalCiphertext', 'originalIv', 'originalAuthTag']);
 
 type Row = Record<string, unknown>;
 
@@ -94,6 +95,17 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
   const counts: Array<{ table: string; rows: number; file: string }> = [];
   const problems: string[] = [];
   let files = 0;
+  // Conversation keys, unwrapped once each for the messages and files they seal; wiped at the end.
+  const convKeys = new Map<string, Buffer>();
+  const convKey = async (conversationId: string) => {
+    let k = convKeys.get(conversationId);
+    if (!k) {
+      const c = await withTenant(tenantId, (tx) => tx.conversation.findUniqueOrThrow({ where: { id: conversationId }, select: { wrappedKey: true, kekId: true } }));
+      k = await keys().unwrapDataKey(c.kekId, Buffer.from(c.wrappedKey));
+      convKeys.set(conversationId, k);
+    }
+    return k;
+  };
 
   const tenant = await withTenant(tenantId, (tx) => tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }));
   const logo = await withTenant(tenantId, (tx) => tx.tenantLogo.findUnique({ where: { tenantId } }));
@@ -116,6 +128,19 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
         if (table === 'IncidentReport') {
           row.narrative = JSON.parse(await open(keys(), { ciphertext: r.ciphertext as Buffer, iv: r.iv as Buffer, authTag: r.authTag as Buffer, wrappedDataKey: r.wrappedDataKey as Buffer, kekId: r.kekId as string }, `incident:${tenantId}:${r.id}`));
           await withTenant(tenantId, (tx) => tx.incidentAccessLog.create({ data: { tenantId, incidentId: r.id as string, userId: by.userId, purpose: 'Organization data export' } }));
+        }
+        if (table === 'Message') {
+          const at = (part: 'text' | 'original') => messageAad(tenantId, r.conversationId as string, r.id as string, part);
+          if (r.ciphertext) row.text = openWith(await convKey(r.conversationId as string), { ciphertext: r.ciphertext as Buffer, iv: r.iv as Buffer, authTag: r.authTag as Buffer }, at('text')).toString('utf8');
+          if (r.originalCiphertext) row.originalText = openWith(await convKey(r.conversationId as string), { ciphertext: r.originalCiphertext as Buffer, iv: r.originalIv as Buffer, authTag: r.originalAuthTag as Buffer }, at('original')).toString('utf8');
+        }
+        if (table === 'MessageAttachment') {
+          const m = await withTenant(tenantId, (tx) => tx.message.findUniqueOrThrow({ where: { id: r.messageId as string }, select: { conversationId: true } }));
+          const bytes = openWith(await convKey(m.conversationId), { ciphertext: r.ciphertext as Buffer, iv: r.iv as Buffer, authTag: r.authTag as Buffer }, messageAad(tenantId, m.conversationId, r.messageId as string, 'file'));
+          const path = `files/messages/${String(r.messageId)}-${safeName(String(r.fileName))}`;
+          add(path, new Uint8Array(bytes));
+          files++;
+          row.file = path;
         }
         if (table === 'EmployeeDocument' && !r.deletedAt) {
           const b64 = await open(keys(), { ciphertext: r.ciphertext as Buffer, iv: r.iv as Buffer, authTag: r.authTag as Buffer, wrappedDataKey: r.wrappedKey as Buffer, kekId: r.kekId as string }, `doc:${tenantId}:${r.id}`);
@@ -166,6 +191,7 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
     readme:
       'csv/ has one spreadsheet per kind of record (dates in UTC, ISO 8601; nested values as JSON). json/ has the same records as JSON Lines. files/ holds documents, signatures and the logo; rows link to them by path. Contains personal information, Social Insurance Numbers and bank account numbers: store it as securely as your HR records.',
   };
+  for (const k of convKeys.values()) k.fill(0);
   add('README.json', enc.encode(JSON.stringify(manifest, null, 2)));
   zip.end();
   return { tables: counts.length, rows: counts.reduce((a, c) => a + c.rows, 0), files, problems: problems.length };

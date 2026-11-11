@@ -34,6 +34,9 @@ const TEXT: Record<string, Record<Lang, [string, string]>> = {
   lonework_escalated: { en: ['URGENT: no response', 'Someone working alone hasn’t answered. Act now.'], fr: ['URGENT : aucune réponse', 'Une personne qui travaille seule ne répond pas. Intervenez maintenant.'] },
   lonework_help: { en: ['URGENT: help requested', 'Someone working alone asked for help.'], fr: ['URGENT : demande d’aide', 'Une personne qui travaille seule demande de l’aide.'] },
   lonework_responding: { en: ['Help is on the way', 'Someone is responding to your alert.'], fr: ['L’aide arrive', 'Quelqu’un répond à votre alerte.'] },
+  message_reported: { en: ['Message reported', 'A message was reported to HR.'], fr: ['Message signalé', 'Un message a été signalé aux RH.'] },
+  survey_open: { en: ['Staff survey', 'A short survey is waiting for you.'], fr: ['Sondage du personnel', 'Un court sondage vous attend.'] },
+  survey_reminder: { en: ['Survey reminder', 'A survey closes soon.'], fr: ['Rappel de sondage', 'Un sondage se termine bientôt.'] },
   shift_available: { en: ['Shift available', 'A shift you can work is open on the board.'], fr: ['Quart offert', 'Un quart que vous pouvez faire est offert.'] },
   shift_assigned: { en: ['New shift', 'You’ve been scheduled for a shift.'], fr: ['Nouveau quart', 'Un quart vous a été attribué.'] },
   shift_changed: { en: ['Shift changed', 'One of your shifts changed.'], fr: ['Quart modifié', 'Un de vos quarts a changé.'] },
@@ -59,8 +62,15 @@ const GENERIC: Record<Lang, [string, string]> = { en: ['FlexcityHeadquarters', '
 /** Pushed with high urgency, first, and straight after the commit (services/notifications/urgent.ts). */
 export const URGENT = new Set(['lonework_help', 'lonework_escalated', 'lonework_overdue', 'lonework_check_in_now', 'callout_offer', 'closure_recommended']);
 
-export function pushPayload(n: Pick<Notification, 'id' | 'type' | 'link'>, locale: string) {
+export function pushPayload(n: Pick<Notification, 'id' | 'type' | 'link'> & { params?: unknown }, locale: string) {
   const lang: Lang = locale.startsWith('fr') ? 'fr' : 'en';
+  // Messages: who it's from; the first words only when the organization turned previews on (services/messaging).
+  if (n.type === 'message_new') {
+    const p = (n.params ?? {}) as { from?: unknown; preview?: unknown };
+    const from = typeof p.from === 'string' && p.from ? p.from : null;
+    const title = from ? (lang === 'fr' ? `Nouveau message de ${from}` : `New message from ${from}`) : lang === 'fr' ? 'Nouveau message' : 'New message';
+    return { id: n.id, title, body: typeof p.preview === 'string' ? p.preview : lang === 'fr' ? 'Touchez pour lire.' : 'Tap to read.', link: n.link ?? '/messages', urgent: false, tag: `msg-${String((n.params as { conversationId?: string } | null)?.conversationId ?? '').slice(0, 20)}` };
+  }
   const [title, body] = TEXT[n.type]?.[lang] ?? GENERIC[lang];
   return { id: n.id, title, body, link: n.link ?? '/', urgent: URGENT.has(n.type), tag: n.type };
 }

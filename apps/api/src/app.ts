@@ -61,7 +61,7 @@ export function createApp() {
   const uploadJson = express.json({ limit: '14mb' });
   const signatureJson = express.json({ limit: '400kb' });
   app.use((req, res, next) =>
-    (req.method === 'POST' && /^\/api\/(me|users\/[0-9a-f-]{36})\/documents$/.test(req.path) ? uploadJson : req.method === 'POST' && req.path === '/api/me/consent' ? signatureJson : smallJson)(req, res, next),
+    (req.method === 'POST' && (/^\/api\/(me|users\/[0-9a-f-]{36})\/documents$/.test(req.path) || /^\/api\/messages\/conversations\/[0-9a-f-]{36}\/messages$/.test(req.path)) ? uploadJson : req.method === 'POST' && req.path === '/api/me/consent' ? signatureJson : smallJson)(req, res, next),
   );
   app.use(cookieParser());
 

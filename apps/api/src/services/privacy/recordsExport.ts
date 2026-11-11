@@ -10,6 +10,7 @@
  */
 import type { Tx } from '../../lib/db.js';
 import { moreRecords } from './moreRecords.js';
+import { messageRecords } from '../messaging/records.js';
 
 export async function exportPersonRecords(tx: Tx, userId: string) {
   const user = await tx.user.findUniqueOrThrow({
@@ -41,6 +42,8 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     tx.employeeDocument.findMany({ where: { userId, deletedAt: null }, select: { title: true, kind: true, fileName: true, size: true, sha256: true, createdAt: true } }),
   ]);
   const more = await moreRecords(tx, userId);
+  const tenant = await tx.tenant.findFirstOrThrow({ select: { id: true } });
+  const messages = await messageRecords(tx, tenant.id, userId);
   return {
     generatedAt: new Date().toISOString(),
     about: 'All records FlexcityHeadquarters holds about this person for the organization. Review before release; severing may be required for third-party information.',
@@ -49,6 +52,8 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
       'Incident report narratives (sealed). Reports this person filed are listed by id; open each with a stated purpose to review for release.',
       'Signature images on discipline acknowledgements (the date signed is included).',
       'The contents of documents on file (each is listed; download them from the person’s record to include them).',
+      'Messages other people wrote in conversations with this person (counted per conversation; they are those people’s information).',
+      'Answers to anonymous surveys: they are never linked to the person who gave them, so they can’t be found.',
     ],
     person: user,
     positions: positions.map((p) => p.position.name),
@@ -69,6 +74,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     incidentReportsFiled: incidentsReported,
     documents,
     auditTrail: auditAbout,
+    messages,
     ...more,
   };
 }
