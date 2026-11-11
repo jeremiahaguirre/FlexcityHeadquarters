@@ -20,7 +20,7 @@ import { dateFormat } from '@/lib/format';
 
 const TONE: Record<LoneStatus, Tone> = { HELP: 'danger', ESCALATED: 'danger', OVERDUE: 'warn', ACTIVE: 'ok', ENDED: 'neutral' };
 
-/** Everyone working alone right now: problems first, refreshed every 20 seconds. */
+/** Everyone working alone right now, problems first. Updates arrive live (see the useLiveChange call below). */
 export default function LoneWorkMonitor() {
   const { t, i18n } = useTranslation();
   const q = useQuery<LoneSession[]>('/api/lone-work');
