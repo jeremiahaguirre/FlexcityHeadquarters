@@ -86,7 +86,7 @@ PIPEDA generally does **not** apply to employee information of provincially regu
 ### Built-in safeguards
 
 - **Retention:** payroll records are kept for `Tenant.payrollRetentionYears` (default 7) after the tax year; erasure is deferred until then, with processing restricted immediately.
-- **Automated decisions (Law 25 s.12.1):** the reliability score is advisory, never an input to scheduling or discipline, and fully explainable to the employee.
+- **Automated decisions (Law 25 s.12.1):** the reliability score is advisory, never an input to scheduling or discipline, and fully explainable to the employee: every deduction, fading deduction, recovery credit and yearly restart is listed on their file, and the same computation feeds the case file, People review flags, the HR overview, the nightly stored score and the reliability report.
 - **Minimization:** SINs only for payroll, sealed with the city's key and unsealed only into filing files; date of birth only for young-worker rules; location only at punch time and during a working-alone session the person chooses to share.
 - **Notice and consent:** each person reads the information and consent agreement at first sign-in (EN/FR, versioned), chooses notifications and location separately, and signs; the API holds everything else back until they do, and a new version is signed again. Records can't be changed by the application; FH keeps them as evidence (Dev console, Signed agreements). **The text is a draft for counsel to review.**
 - **Access logging:** incident report reads require a stated purpose and are logged.

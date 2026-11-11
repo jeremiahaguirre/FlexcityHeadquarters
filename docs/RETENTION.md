@@ -9,6 +9,7 @@ with their records retention by-law.
 | Payroll records (pay runs, statements, T4/RL-1/ROE figures) | The city's payroll retention, at least 6 years after the tax year (CRA); default 7 | The person is anonymized | Automatic (`anonymizeDue`): name, contact, SIN, bank and address removed; amounts kept for the employer's tax records |
 | Employee file (profile, HR records, documents) | While employed, then the city's retention period | Anonymized | Same job; uploaded documents' contents are wiped when deleted |
 | Time punches | With payroll records | Anonymized with the person | Clock-in never stores coordinates or IP |
+| Attendance events (late clock-ins, missed shifts, excuses) | With the employee file | Anonymized with the person | The attendance score only looks back 90 days (or to the yearly restart HR sets); older events stop counting but are never deleted for it |
 | In-app notifications | 2 years (*set by the city*) | Deleted | Hourly job |
 | Email log (address, kind of email; never contents) | 90 days (*set by the city*) | Deleted | Hourly job; contents cleared as soon as an email is sent |
 | Texts and calls (number, kind of alert; contents only until sent) | Same period as the email log (*set by the city*) | Deleted | Hourly job; contents dropped as soon as a text or call is sent, or after 5 failed tries |

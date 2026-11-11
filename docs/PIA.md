@@ -47,7 +47,10 @@ describe the product; the city adds its own purposes, authorities and decisions.
   lawfully authorized activity; BC FIPPA s. 26(c); Alberta POPA; Quebec Access Act s. 64).
 - Purposes: scheduling and paying staff, meeting employment-standards, OHS and tax obligations,
   managing HR records, delivering programs. No other use; no sale; no automated decisions about
-  people (attendance figures are advisory, Law 25 s. 12.1).
+  people (attendance figures are advisory, Law 25 s. 12.1). The attendance score is derived on read from
+  attendance events, completed punches and commendations already held; it recovers with good attendance
+  and older events fade (or it restarts yearly on a date HR chooses), every change is explained to the
+  employee, sick days and protected leave never count, and nothing is deleted to produce it.
 
 ## 4. Information flows
 

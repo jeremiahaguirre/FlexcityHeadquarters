@@ -22,5 +22,23 @@ own policy; FlexcityHeadquarters is the tool, the city decides how it's used.
 outside the app. Attendance and reliability figures are advisory; no decision about a person is made by
 the software alone (Quebec Law 25, s. 12.1).
 
+**How the attendance (reliability) score works:** it starts at 100 and is computed when someone looks at
+it, only from records already listed above (attendance events, completed punches, supervisors' commendations);
+nothing extra is collected. Late clock-ins (−2), missed shifts (−15), missed in-service training and
+short-notice shift drops (−5) lower it; picking up a shift raises it (+2). Each organization chooses how it
+recovers (Settings › Organization, HR):
+- *Gradually* (default): the last 90 days count; a deduction counts in full for 60 days, then at half, then
+  not at all. Good attendance earns points back: +1 per on-time completed shift (up to +4 a month), +2 for
+  every 10 on-time shifts in a row, +5 for every 30 days with nothing counted, +2 per commendation (up to +4 a
+  month). The score never goes above 100, and credits earned at 100 can't be saved up against later events.
+- *Every year*: everything since the restart date (January 1, or a fiscal or season date) counts in full, and
+  the score starts again at 100 on that date.
+- *Both*: gradual recovery, and a fresh start on the restart date.
+
+Sick days and protected leave never count and never break a streak; a supervisor can excuse any event with a
+reason. Every change is listed, with its reason, on the person's own file and the case file. Earlier events
+are never deleted by a restart; they stay on the record as history. Discipline records are separate and the
+score never creates or changes one.
+
 **Retention:** notifications 2 years and the email log 90 days by default (each city sets these in
 Settings); punch and pay records follow payroll retention; working-alone locations 30 days; texts and calls follow the email log.
