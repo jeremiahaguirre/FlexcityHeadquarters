@@ -220,7 +220,7 @@ resource "aws_wafv2_web_acl_association" "app" {
 # Only public pages are cached at CloudFront's edge (which may be outside Canada); no personal
 # information goes through it. The app itself is served from the Montreal load balancer only.
 resource "aws_s3_bucket" "site" {
-  bucket = "${local.name}-site-${data.aws_caller_identity.current.account_id}"
+  bucket = "${local.gname}-site-${data.aws_caller_identity.current.account_id}"
 }
 
 resource "aws_s3_bucket_public_access_block" "site" {
@@ -232,7 +232,7 @@ resource "aws_s3_bucket_public_access_block" "site" {
 }
 
 resource "aws_cloudfront_origin_access_control" "site" {
-  name                              = "${local.name}-site"
+  name                              = "${local.gname}-site"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
   signing_protocol                  = "sigv4"
@@ -240,7 +240,7 @@ resource "aws_cloudfront_origin_access_control" "site" {
 
 # The site is exported with trailing slashes (/en/plans/ is /en/plans/index.html).
 resource "aws_cloudfront_function" "index" {
-  name    = "${local.name}-index"
+  name    = "${local.gname}-index"
   runtime = "cloudfront-js-2.0"
   publish = true
   code    = <<-JS
@@ -254,7 +254,7 @@ resource "aws_cloudfront_function" "index" {
 }
 
 resource "aws_cloudfront_response_headers_policy" "site" {
-  name = "${local.name}-site"
+  name = "${local.gname}-site"
   security_headers_config {
     strict_transport_security {
       access_control_max_age_sec = 31536000

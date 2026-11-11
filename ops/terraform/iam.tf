@@ -10,7 +10,7 @@ data "aws_iam_policy_document" "ecs_assume" {
 
 # Used by ECS itself: pull images, write logs, read the app secret into the container.
 resource "aws_iam_role" "execution" {
-  name               = "${local.name}-ecs-execution"
+  name               = "${local.gname}-ecs-execution"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
@@ -22,11 +22,11 @@ resource "aws_iam_role_policy_attachment" "execution" {
 data "aws_iam_policy_document" "execution_secrets" {
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.app.arn]
+    resources = [local.app_secret_arn]
   }
   statement {
     actions   = ["kms:Decrypt"]
-    resources = [aws_kms_key.data.arn]
+    resources = local.secret_key_arns
   }
 }
 
@@ -42,7 +42,7 @@ resource "aws_iam_role_policy" "execution_secrets" {
 # in a permission, which would fail an organization's first sealed record. That is why each
 # environment gets its own AWS account (kms.tf).
 resource "aws_iam_role" "app" {
-  name               = "${local.name}-app"
+  name               = "${local.gname}-app"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }
 
@@ -91,6 +91,6 @@ resource "aws_iam_role_policy" "app" {
 
 # The web app needs no AWS permissions.
 resource "aws_iam_role" "web" {
-  name               = "${local.name}-web"
+  name               = "${local.gname}-web"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
 }

@@ -29,9 +29,9 @@ Decision (November 2026): FlexcityHeadquarters runs on **Amazon Web Services**, 
   - the database copied to Calgary (cross-region replica or automated snapshot copies)
   - S3 cross-region replication
   - keys available in both regions
-  - Route 53 health-checked failover
-  - Recovery targets (RPO/RTO) and a tested restore runbook come with the high-availability task.
-- **Infrastructure as code:** Terraform, so environments (staging, production) are reproducible and reviewed like code.
+  - DNS switched to Calgary by the recovery runbook (a deliberate decision, not automatic, so a short Montreal outage doesn't start a restore)
+  - Recovery targets, what is copied where, and the runbooks: [DISASTER-RECOVERY.md](DISASTER-RECOVERY.md).
+- **Infrastructure as code:** Terraform in [`ops/terraform`](../ops/terraform/README.md), so environments (staging, production) are reproducible and reviewed like code; container images from the root `Dockerfile`.
 
 ## Open choices for the owner
 

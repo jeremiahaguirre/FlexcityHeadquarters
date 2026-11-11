@@ -7,26 +7,30 @@
 # The platform key (KMS_KEY_ARN, alias/flexcity-platform): FH's own sealed values, such as
 # pre-authorized debit details for billing.
 resource "aws_kms_key" "platform" {
+  count               = var.recovery_mode ? 0 : 1
   description         = "FlexcityHeadquarters platform key (${var.environment})"
   multi_region        = true
   enable_key_rotation = true
 }
 
 resource "aws_kms_alias" "platform" {
+  count         = var.recovery_mode ? 0 : 1
   name          = "alias/flexcity-platform"
-  target_key_id = aws_kms_key.platform.key_id
+  target_key_id = aws_kms_key.platform[0].key_id
 }
 
 resource "aws_kms_replica_key" "platform_dr" {
+  count           = var.recovery_mode ? 0 : 1
   provider        = aws.dr
   description     = "FlexcityHeadquarters platform key (${var.environment}), recovery copy"
-  primary_key_arn = aws_kms_key.platform.arn
+  primary_key_arn = aws_kms_key.platform[0].arn
 }
 
 resource "aws_kms_alias" "platform_dr" {
+  count         = var.recovery_mode ? 0 : 1
   provider      = aws.dr
   name          = "alias/flexcity-platform"
-  target_key_id = aws_kms_replica_key.platform_dr.key_id
+  target_key_id = aws_kms_replica_key.platform_dr[0].key_id
 }
 
 # Infrastructure keys: database, backups bucket, secrets, container images.
@@ -42,13 +46,25 @@ resource "aws_kms_alias" "data" {
 
 # Encrypts the database backups and bucket copies kept in the recovery region.
 resource "aws_kms_key" "data_dr" {
+  count               = var.recovery_mode ? 0 : 1
   provider            = aws.dr
   description         = "FlexcityHeadquarters recovery copies (${var.environment})"
   enable_key_rotation = true
 }
 
 resource "aws_kms_alias" "data_dr" {
+  count         = var.recovery_mode ? 0 : 1
   provider      = aws.dr
-  name          = "alias/${local.name}-data"
-  target_key_id = aws_kms_key.data_dr.key_id
+  name          = "alias/${local.name}-recovery"
+  target_key_id = aws_kms_key.data_dr[0].key_id
+}
+
+# Recovery: the primary stack's key for its copies in this region (the replicated app secret).
+data "aws_kms_alias" "recovery" {
+  count = var.recovery_mode ? 1 : 0
+  name  = "alias/${local.name}-recovery"
+}
+
+locals {
+  platform_key_arn = var.recovery_mode ? var.existing_platform_key_arn : aws_kms_key.platform[0].arn
 }

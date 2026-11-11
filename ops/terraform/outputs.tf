@@ -13,7 +13,7 @@ output "site_bucket" {
 }
 
 output "ecr_repositories" {
-  value = { for k, r in aws_ecr_repository.repo : k => r.repository_url }
+  value = local.repo_urls
 }
 
 output "database_endpoint" {
@@ -30,11 +30,11 @@ output "database_master_secret_arn" {
 }
 
 output "app_secret_arn" {
-  value = aws_secretsmanager_secret.app.arn
+  value = local.app_secret_arn
 }
 
 output "platform_key_arn" {
-  value = aws_kms_key.platform.arn
+  value = local.platform_key_arn
 }
 
 output "cluster" {

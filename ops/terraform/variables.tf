@@ -157,3 +157,27 @@ variable "union_role_password" {
   type        = bool
   default     = false
 }
+
+# ---- Recovery (docs/DISASTER-RECOVERY.md) ----------------------------------------------------
+variable "recovery_mode" {
+  description = <<-EOT
+    true only when rebuilding production in the recovery region after losing the primary region:
+    region = "ca-west-1", dr_region = "ca-central-1". Nothing is created in dr_region (it is the
+    lost one); the database is restored from the backups copied here, and the copies of the
+    platform key, the app secret and the container images already in this region are used.
+  EOT
+  type        = bool
+  default     = false
+}
+
+variable "restore_from_backup_arn" {
+  description = "Recovery: ARN of the automated backups copied to this region (aws rds describe-db-instance-automated-backups)."
+  type        = string
+  default     = ""
+}
+
+variable "existing_platform_key_arn" {
+  description = "Recovery: ARN of the platform key's copy in this region (alias/flexcity-platform)."
+  type        = string
+  default     = ""
+}

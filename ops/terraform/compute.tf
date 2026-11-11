@@ -13,22 +13,25 @@ resource "aws_cloudwatch_log_group" "svc" {
 }
 
 locals {
-  image = { for k, r in aws_ecr_repository.repo : k => "${r.repository_url}:${var.image_tag}" }
+  image = { for k, u in local.repo_urls : k => "${u}:${var.image_tag}" }
 
   # Settings the API and worker share. Secret ones come from the app secret (var.app_secret_keys).
   app_env = merge({
-    NODE_ENV           = "production"
-    AWS_REGION         = var.region
-    KMS_KEY_ARN        = aws_kms_key.platform.arn
-    KMS_REPLICA_REGION = var.dr_region
-    ROOT_DOMAIN        = var.root_domain
-    PUBLIC_APP_URL     = "https://{subdomain}.${var.root_domain}"
-    MARKETING_ORIGINS  = var.site_domain != "" ? "https://${var.site_domain}" : "https://www.${var.root_domain}"
-    RELEASE            = var.image_tag
-    WEB_CONCURRENCY    = "1" # one process per task; scale with tasks
-  }, var.app_environment)
+    NODE_ENV          = "production"
+    AWS_REGION        = var.region
+    KMS_KEY_ARN       = local.platform_key_arn
+    ROOT_DOMAIN       = var.root_domain
+    PUBLIC_APP_URL    = "https://{subdomain}.${var.root_domain}"
+    MARKETING_ORIGINS = var.site_domain != "" ? "https://${var.site_domain}" : "https://www.${var.root_domain}"
+    RELEASE           = var.image_tag
+    WEB_CONCURRENCY   = "1" # one process per task; scale with tasks
+    },
+    # New organizations' keys are copied to the recovery region, except while running there
+    # after losing the primary (it can't be reached; their keys stay single-region).
+    var.recovery_mode ? {} : { KMS_REPLICA_REGION = var.dr_region },
+  var.app_environment)
 
-  app_secrets = [for k in var.app_secret_keys : { name = k, valueFrom = "${aws_secretsmanager_secret.app.arn}:${k}::" }]
+  app_secrets = [for k in var.app_secret_keys : { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }]
 
   log = { for k in ["api", "worker", "web", "migrate"] : k => {
     logDriver = "awslogs"
@@ -105,7 +108,7 @@ resource "aws_ecs_task_definition" "migrate" {
     image            = local.image["migrate"]
     essential        = true
     environment      = [{ name = "NODE_ENV", value = "production" }]
-    secrets          = [{ name = "DATABASE_URL", valueFrom = "${aws_secretsmanager_secret.app.arn}:DATABASE_URL::" }]
+    secrets          = [{ name = "DATABASE_URL", valueFrom = "${local.app_secret_arn}:DATABASE_URL::" }]
     logConfiguration = local.log["migrate"]
   }])
 }
@@ -131,7 +134,7 @@ resource "aws_ecs_task_definition" "db_roles" {
     command     = ["node", "scripts/set-role-passwords.mjs"]
     environment = [{ name = "NODE_ENV", value = "production" }]
     secrets = [for k in concat(["DATABASE_URL", "FLEXCITY_APP_PASSWORD"], var.union_role_password ? ["FLEXCITY_UNION_PASSWORD"] : []) :
-    { name = k, valueFrom = "${aws_secretsmanager_secret.app.arn}:${k}::" }]
+    { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }]
     logConfiguration = local.log["migrate"]
   }])
 }

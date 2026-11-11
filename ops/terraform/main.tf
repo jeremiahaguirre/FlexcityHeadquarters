@@ -1,5 +1,8 @@
 locals {
   name = "fh-${var.environment}"
+  # Account-wide names (IAM, S3, CloudFront) include the region, so a recovery stack can stand
+  # beside the primary in the same account.
+  gname = "fh-${var.environment}-${var.region}"
   tags = {
     Project       = "FlexcityHeadquarters"
     Environment   = var.environment

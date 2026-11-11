@@ -49,7 +49,7 @@ run "production_defaults" {
     error_message = "No read replica unless asked."
   }
   assert {
-    condition     = aws_kms_key.platform.multi_region && aws_kms_key.platform.enable_key_rotation
+    condition     = aws_kms_key.platform[0].multi_region && aws_kms_key.platform[0].enable_key_rotation
     error_message = "Platform key must be multi-region with rotation."
   }
   assert {
@@ -63,6 +63,18 @@ run "production_defaults" {
   assert {
     condition     = aws_lb_target_group.api.health_check[0].path == "/readyz"
     error_message = "API health check must be /readyz."
+  }
+  assert {
+    condition     = length(aws_db_instance_automated_backups_replication.dr) == 1 && length(aws_ecr_replication_configuration.dr) == 1 && length(aws_s3_bucket_replication_configuration.backups) == 1
+    error_message = "Backups, images and files must be copied to the recovery region."
+  }
+  assert {
+    condition     = one(aws_secretsmanager_secret.app[0].replica).region == "ca-west-1"
+    error_message = "The app secret must be copied to the recovery region."
+  }
+  assert {
+    condition     = length(aws_db_instance.main.restore_to_point_in_time) == 0 && aws_db_instance.main.db_name == "flexcity"
+    error_message = "A normal deployment creates a new database."
   }
   assert {
     condition     = length(aws_nat_gateway.main) == 1
@@ -123,4 +135,45 @@ run "nat_count_bounded" {
     nat_gateways = 4
   }
   expect_failures = [aws_nat_gateway.main]
+}
+
+run "recovery_in_calgary" {
+  command = plan
+  variables {
+    region                    = "ca-west-1"
+    dr_region                 = "ca-central-1"
+    recovery_mode             = true
+    restore_from_backup_arn   = "arn:aws:rds:ca-west-1:111122223333:auto-backup:ab-1"
+    existing_platform_key_arn = "arn:aws:kms:ca-west-1:111122223333:key/mrk-1"
+  }
+  assert {
+    condition     = length(aws_kms_key.platform) == 0 && length(aws_kms_key.data_dr) == 0 && length(aws_s3_bucket.backups_dr) == 0 && length(aws_db_instance_automated_backups_replication.dr) == 0
+    error_message = "Nothing may be created in the lost region."
+  }
+  assert {
+    condition     = length(aws_ecr_repository.repo) == 0 && length(aws_secretsmanager_secret.app) == 0
+    error_message = "Recovery uses the copied images and secret."
+  }
+  assert {
+    condition     = one(aws_db_instance.main.restore_to_point_in_time).source_db_instance_automated_backups_arn == "arn:aws:rds:ca-west-1:111122223333:auto-backup:ab-1"
+    error_message = "The database is restored from the copied backups."
+  }
+  assert {
+    condition     = local.app_env["KMS_KEY_ARN"] == "arn:aws:kms:ca-west-1:111122223333:key/mrk-1" && !contains(keys(local.app_env), "KMS_REPLICA_REGION")
+    error_message = "Recovery uses the platform key's copy and makes new keys single-region."
+  }
+  assert {
+    condition     = startswith(aws_iam_role.app.name, "fh-production-ca-west-1-")
+    error_message = "Account-wide names include the region."
+  }
+}
+
+run "recovery_needs_backup_and_key" {
+  command = plan
+  variables {
+    region        = "ca-west-1"
+    dr_region     = "ca-central-1"
+    recovery_mode = true
+  }
+  expect_failures = [aws_db_instance.main]
 }
