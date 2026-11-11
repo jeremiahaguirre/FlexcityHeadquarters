@@ -107,7 +107,7 @@ export function MonthView(p: ViewProps & { month: string; focusDay: string; onFo
   const focusList = byDay.get(p.focusDay) ?? [];
   return (
     <div>
-      <div role="grid" aria-label={t('planner.views.month')} className="overflow-hidden rounded-xl2 border border-line bg-panel">
+      <div role="table" aria-label={t('planner.views.month')} className="overflow-hidden rounded-xl2 border border-line bg-panel">
         <div role="row" className="grid grid-cols-7 border-b border-line bg-surface/60">
           {weekdays.map((w, i) => (
             <div key={i} role="columnheader" className="px-1 py-1.5 text-center text-caption font-semibold uppercase text-muted">
@@ -126,7 +126,7 @@ export function MonthView(p: ViewProps & { month: string; focusDay: string; onFo
               return (
                 <div
                   key={d}
-                  role="gridcell"
+                  role="cell"
                   data-drop={key}
                   aria-label={formatDate(`${d}T12:00:00`, lng, 'long')}
                   onClick={(e) => {
@@ -210,7 +210,7 @@ export function WeekView(p: ViewProps & { rows: Row[] }) {
   return (
     <>
       {/* Desktop: rows × days */}
-      <div role="grid" aria-label={t('planner.views.week')} className="hidden overflow-x-auto rounded-xl2 border border-line bg-panel lg:block">
+      <div role="table" aria-label={t('planner.views.week')} className="hidden overflow-x-auto rounded-xl2 border border-line bg-panel lg:block">
         <div role="row" className="grid min-w-[40rem] grid-cols-[6.5rem_repeat(7,minmax(4.25rem,1fr))] border-b border-line bg-surface/60">
           <div role="columnheader" className="px-2 py-2 text-caption font-semibold text-muted" />
           {p.days.map((d) => (
@@ -233,7 +233,7 @@ export function WeekView(p: ViewProps & { rows: Row[] }) {
               return (
                 <div
                   key={d}
-                  role="gridcell"
+                  role="cell"
                   data-drop={key}
                   aria-label={`${rowLabel(lng, r)}, ${formatDate(`${d}T12:00:00`, lng, 'long')}`}
                   onClick={(e) => {

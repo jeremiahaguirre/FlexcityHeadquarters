@@ -757,7 +757,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
 
   return (
     <div className={cn('grid gap-4', dragging && 'select-none')}>
-      <div aria-live="assertive" role="status" className="sr-only">
+      <div aria-live="polite" role="status" className="sr-only">
         {live}
       </div>
 
