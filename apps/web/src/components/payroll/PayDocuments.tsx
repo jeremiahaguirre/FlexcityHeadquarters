@@ -76,26 +76,26 @@ export function PayDocuments() {
         <CardHeader title={t('payroll.remittance')} description={t('payroll.remittanceHelp')} action={<Input aria-label={t('payroll.month')} type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-44" />} />
         <CardBody className="pt-2">
           {!rem.data ? <Skeleton className="h-32" /> : (
-            <dl className="grid gap-3 text-small tabular-nums sm:grid-cols-3">
+            <div className="grid gap-3 text-small tabular-nums sm:grid-cols-3">
               {(['cppEmployee', 'cppEmployer', 'eiEmployee', 'eiEmployer', 'incomeTax'] as const).map((k) => (
-                <div key={k} className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t(`payroll.rem.${k}`)}</dt><dd>{money(rem.data![k])}</dd></div>
+                <dl key={k} className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t(`payroll.rem.${k}`)}</dt><dd>{money(rem.data![k])}</dd></dl>
               ))}
-              <div className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rem.total')}</dt><dd>{money(rem.data.total)}</dd></div>
+              <dl className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rem.total')}</dt><dd>{money(rem.data.total)}</dd></dl>
               <p className="text-caption text-muted sm:col-span-3">{t('payroll.rem.due', { date: formatDate(rem.data.due, lng, 'dated'), gross: money(rem.data.grossPayroll), people: rem.data.employeesLastPay })}</p>
               {rem.data.revenuQuebec ? (
                 <div className="grid gap-3 border-t border-line pt-3 sm:col-span-3 sm:grid-cols-3">
                   <p className="text-body-strong sm:col-span-3">{t('payroll.rq.title')}</p>
                   {(['qppEmployee', 'qppEmployer', 'qpipEmployee', 'qpipEmployer', 'quebecTax'] as const).map((k) => (
-                    <div key={k} className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t(`payroll.rq.${k}`)}</dt><dd>{money(rem.data!.revenuQuebec![k])}</dd></div>
+                    <dl key={k} className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t(`payroll.rq.${k}`)}</dt><dd>{money(rem.data!.revenuQuebec![k])}</dd></dl>
                   ))}
                   {rem.data.revenuQuebec.hsf ? (
-                    <div className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t('payroll.rq.hsf', { rate: (rem.data.revenuQuebec.hsf.rate * 100).toFixed(2) })}</dt><dd>{money(rem.data.revenuQuebec.hsf.amount)}</dd></div>
+                    <dl className="flex justify-between gap-2 rounded-xl bg-surface px-3 py-2"><dt>{t('payroll.rq.hsf', { rate: (rem.data.revenuQuebec.hsf.rate * 100).toFixed(2) })}</dt><dd>{money(rem.data.revenuQuebec.hsf.amount)}</dd></dl>
                   ) : null}
-                  <div className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rq.total')}</dt><dd>{money(rem.data.revenuQuebec.total + (rem.data.revenuQuebec.hsf?.amount ?? 0))}</dd></div>
+                  <dl className="flex justify-between gap-2 rounded-xl bg-brand/10 px-3 py-2 font-semibold"><dt>{t('payroll.rq.total')}</dt><dd>{money(rem.data.revenuQuebec.total + (rem.data.revenuQuebec.hsf?.amount ?? 0))}</dd></dl>
                   <p className="text-caption text-muted sm:col-span-3">{t('payroll.rq.note')}</p>
                 </div>
               ) : null}
-            </dl>
+            </div>
           )}
         </CardBody>
       </Card>
