@@ -145,8 +145,8 @@ async function facilitiesAndEvents(tx: Tx, tenantId: string) {
   const saturday = today.plus({ days: ((6 - today.weekday + 7) % 7 || 7) });
   const friday = today.plus({ days: ((5 - today.weekday + 7) % 7 || 7) + 7 });
   const events = [
-    { facilityId: pool?.id ?? null, name: 'Okanagan Regional Swim Meet', startsOn: saturday, endsOn: saturday.plus({ days: 1 }), startMinute: 7 * 60, endMinute: 18 * 60, extraPeople: 120, percent: 10, notes: 'Hosted with the Kelowna Aquajets. Main tank closed to public swim; deck and bleachers busy.' },
-    { facilityId: null, name: 'Pro-D Day (School District 23)', startsOn: friday, endsOn: friday, startMinute: null, endMinute: null, extraPeople: null, percent: 25, notes: 'No school: expect families from mid-morning.' },
+    { facilityId: pool?.id ?? null, name: 'Lakeview Regional Swim Meet', startsOn: saturday, endsOn: saturday.plus({ days: 1 }), startMinute: 7 * 60, endMinute: 18 * 60, extraPeople: 120, percent: 10, notes: 'Hosted with the Kelowna Aquajets. Main tank closed to public swim; deck and bleachers busy.' },
+    { facilityId: null, name: 'Pro-D Day (Lakeview School District)', startsOn: friday, endsOn: friday, startMinute: null, endMinute: null, extraPeople: null, percent: 25, notes: 'No school: expect families from mid-morning.' },
   ];
   for (const e of events) {
     if (await tx.specialEvent.findFirst({ where: { name: e.name, endsOn: { gte: today.toJSDate() } } })) continue;
