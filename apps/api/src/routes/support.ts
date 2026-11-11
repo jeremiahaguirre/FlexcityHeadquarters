@@ -7,6 +7,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
+import { allow } from '../auth/rateLimit.js';
 import { signAccessToken, verifyAccessToken } from '../auth/tokens.js';
 import { config } from '../config.js';
 import { audit, db, withTenant } from '../lib/db.js';
@@ -23,6 +24,7 @@ supportAuthRouter.post(
   '/auth/support',
   h(async (req, res) => {
     const tenantId = req.tenantId!;
+    if (!(await allow(`support-code:${req.ip}`, 10, 15 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const { code } = z.object({ code: z.string().min(20).max(80) }).parse(req.body);
     const { session, grant, admin } = await redeemSupportCode(tenantId, code);
     const granter = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { id: grant.grantedById }, select: { id: true, roles: true, status: true } }));
