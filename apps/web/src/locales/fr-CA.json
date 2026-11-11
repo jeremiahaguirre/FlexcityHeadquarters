@@ -2857,7 +2857,7 @@
     "rotated": "Rotation faite. Tout le monde a avancé d’un poste.",
     "updated": "Mis à jour.",
     "closed": "Surveillance terminée. Le registre de rotation est complet.",
-    "overdue": "En retard de {{m}} min",
+    "overdue": "En retard de {{time}}",
     "moveIn": "Changer dans {{m}} min",
     "empty": "Non couvert",
     "onStation": "Au poste",
@@ -2871,11 +2871,12 @@
     "onDuty": "En service",
     "onDutyHelp": "Pointés ici. Après {{m}} minutes en poste d’affilée, une pause est nécessaire.",
     "nobodyOnDuty": "Personne n’est pointé ici.",
-    "onChairFor": "En poste {{m}} min",
-    "restedFor": "Au repos {{m}} min",
+    "onChairFor": "En poste depuis {{time}}",
+    "restedFor": "Au repos depuis {{time}}",
     "available": "Disponible",
     "yourStation": "Vous êtes à {{station}}. Changement à {{time}}.",
-    "onBreak": "Vous êtes en pause de la chaise."
+    "onBreak": "Vous êtes en pause de la chaise.",
+    "overdueLong": "En retard"
   },
   "compliance": {
     "title": "Conformité à toute minute",

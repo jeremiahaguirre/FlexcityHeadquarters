@@ -3,6 +3,7 @@
 import { Armchair, ArrowRight, Coffee, RotateCw, Square } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatElapsed } from '@/lib/format';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -25,7 +26,9 @@ const mins = (ms: number) => Math.round(ms / 60_000);
 
 /** The live chair plan: who is where, when they move, who needs a break, and one tap to rotate. */
 export default function DeckPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Past 12 hours a chair is simply overdue: the deck was left open, a count of hours helps nobody.
+  const overdue = (ms: number) => (ms > 12 * 3_600_000 ? t('deck.overdueLong') : t('deck.overdue', { time: formatElapsed(mins(ms), i18n.language) }));
   const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
   const [facilityId, setFacilityId] = useState<string | null>(null);
   useEffect(() => {
@@ -98,8 +101,8 @@ export default function DeckPage() {
                 <Card key={s.id} className={c?.overdue || (c && left < 0) ? 'border-danger/50' : ''}>
                   <CardBody className="grid gap-3">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="flex items-center gap-2 text-body-strong"><Armchair className="h-5 w-5 text-brand-text" aria-hidden="true" />{s.name}</p>
-                      {c ? <StatusPill tone={left < 0 ? 'danger' : left < 5 * 60_000 ? 'warn' : 'ok'}>{left < 0 ? t('deck.overdue', { m: mins(-left) }) : t('deck.moveIn', { m: mins(left) })}</StatusPill> : <StatusPill tone="warn">{t('deck.empty')}</StatusPill>}
+                      <p className="flex min-w-0 items-center gap-2 text-body-strong"><Armchair className="h-5 w-5 shrink-0 text-brand-text" aria-hidden="true" /><span className="min-w-0">{s.name}</span></p>
+                      {c ? <StatusPill className="shrink-0 whitespace-nowrap" tone={left < 0 ? 'danger' : left < 5 * 60_000 ? 'warn' : 'ok'}>{left < 0 ? overdue(-left) : t('deck.moveIn', { m: mins(left) })}</StatusPill> : <StatusPill className="shrink-0 whitespace-nowrap" tone="warn">{t('deck.empty')}</StatusPill>}
                     </div>
                     {c ? (
                       <div className="h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true">
@@ -156,9 +159,9 @@ export default function DeckPage() {
                       <li key={o.userId} className="flex items-center justify-between gap-2 py-2">
                         <span>{o.name}</span>
                         {o.stationId ? (
-                          <StatusPill tone={o.needsBreak ? 'danger' : o.chainMinutes > p.facility.maxOnChairMinutes * 0.75 ? 'warn' : 'neutral'}>{t('deck.onChairFor', { m: o.chainMinutes })}</StatusPill>
+                          <StatusPill tone={o.needsBreak ? 'danger' : o.chainMinutes > p.facility.maxOnChairMinutes * 0.75 ? 'warn' : 'neutral'}>{t('deck.onChairFor', { time: formatElapsed(o.chainMinutes, i18n.language) })}</StatusPill>
                         ) : (
-                          <StatusPill tone="ok">{o.restedSince ? t('deck.restedFor', { m: mins(now - new Date(o.restedSince).getTime()) }) : t('deck.available')}</StatusPill>
+                          <StatusPill tone="ok">{o.restedSince ? t('deck.restedFor', { time: formatElapsed(mins(now - new Date(o.restedSince).getTime()), i18n.language) }) : t('deck.available')}</StatusPill>
                         )}
                       </li>
                     ))}
