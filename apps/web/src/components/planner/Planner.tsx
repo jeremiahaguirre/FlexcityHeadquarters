@@ -9,7 +9,7 @@
  * keyboards do the same by picking: choose a shift for a ranked list of people, or pick a person
  * and then a shift or a day. Every change is a draft until Publish, and can be undone.
  */
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Redo2, Send, Undo2, Users, X } from 'lucide-react';
+import { CalendarDays, CalendarCog, ChevronLeft, ChevronRight, Copy, Redo2, Send, Undo2, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -68,6 +68,8 @@ import { PeoplePanel } from './PeoplePanel';
 import { type CreateRequest, type Draft, QuickCreate } from './QuickCreate';
 import { ShiftDialog } from './ShiftDialog';
 import { type PublishGroup, PublishDialog } from '@/components/PublishDialog';
+import { GeneratePanel } from '@/components/scheduling/Rotations';
+import type { ChangeEffect, ChangePreview } from '@/lib/workRules';
 import { reasonsFromError, reasonsText } from './text';
 import { MonthView, WeekView, posLabel } from './views';
 
@@ -234,6 +236,20 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
   // ---------------------------------------------------------------- overtime confirmation
   const [otAsk, setOtAsk] = useState<{ hours: string; resolve: (ok: boolean) => void } | null>(null);
   const askOvertime = (hours: string) => new Promise<boolean>((resolve) => setOtAsk({ hours, resolve }));
+  // ---------------------------------------------------------------- late change to a published shift
+  const [lateAsk, setLateAsk] = useState<{ effects: ChangeEffect[]; resolve: (ok: boolean) => void } | null>(null);
+  /** Before changing a published shift: when the notice is shorter than the agreement's, say so and ask. */
+  async function lateOk(shift: BoardShift, proposal: { startsAt?: string; endsAt?: string; userId?: string | null }) {
+    if (shift.status !== 'PUBLISHED') return true;
+    try {
+      const r = await api<ChangePreview>(`/api/shifts/${shift.id}/change-preview`, { method: 'POST', body: proposal });
+      if (!r.late) return true;
+      return await new Promise<boolean>((resolve) => setLateAsk({ effects: r.effects.filter((x) => x.late), resolve }));
+    } catch {
+      return true; // the write itself still checks everything
+    }
+  }
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const report = useCallback(
     (e: unknown) => {
       const text = reasonsFromError(t, lng, e).join(' · ');
@@ -292,6 +308,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
   const moveBodyOf = (s: BoardShift): MoveBody => ({ startsAt: new Date(s.localStartsAt).toISOString(), endsAt: new Date(s.localEndsAt).toISOString(), positionId: s.positionId, facilityId: s.facilityId, userId: s.userId });
 
   async function assign(shift: BoardShift, userId: string | null) {
+    if (!(await lateOk(shift, { userId }))) return false;
     const r = await confirmed((ack) => assignRaw(shift.id, userId, ack));
     if (!r) return false;
     push({ kind: 'assign', shiftId: shift.id, from: shift.userId, to: userId, label: userId ? t('planner.ops.assign', { name: nameOf(userId) }) : t('planner.ops.unassign', { name: nameOf(shift.userId) }) });
@@ -335,6 +352,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
   }
 
   async function move(shift: BoardShift, to: Partial<MoveBody>, copy: boolean) {
+    if (!copy && !(await lateOk(shift, { startsAt: to.startsAt, endsAt: to.endsAt, ...(to.userId !== undefined ? { userId: to.userId } : {}) }))) return false;
     const r = await confirmed((ack) => moveRaw(shift.id, { ...to, copy }, ack));
     if (!r) return false;
     const target = { ...moveBodyOf(shift), ...to };
@@ -855,6 +873,9 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
           {checking ? ` · ${t('planner.status.checking')}` : ''}
         </p>
         <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" size="sm" icon={<CalendarCog className="h-4 w-4" aria-hidden="true" />} onClick={() => setTemplatesOpen(true)}>
+            {t('planner.templates')}
+          </Button>
           <Button variant="ghost" size="sm" onClick={onOpenFill}>
             {t('fill.open')}
           </Button>
@@ -947,6 +968,62 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
       ) : null}
       {board ? <QuickCreate draft={draft} board={board} onClose={() => setDraft(null)} onCreate={create} /> : null}
       <PublishDialog open={!!publishGroups} groups={publishGroups ?? []} onClose={() => setPublishGroups(null)} onPublished={(r) => void published(r)} />
+
+      <Dialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} title={t('rotations.generateTitle')} description={t('planner.templatesHelp')} closeLabel={t('common.close')}>
+        {templatesOpen ? (
+          <div className="grid gap-3">
+            <GeneratePanel
+              departmentId={departmentId}
+              from={period.from}
+              to={period.to}
+              onDone={() => {
+                loaded.current = new Set();
+                void loadBoard().then(() => pump());
+              }}
+            />
+            <a href="/manage/rotations" className="inline-flex min-h-11 items-center text-small font-semibold text-brand-text hover:underline">{t('planner.manageTemplates')}</a>
+          </div>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={!!lateAsk}
+        onClose={() => {
+          lateAsk?.resolve(false);
+          setLateAsk(null);
+        }}
+        title={t('planner.late.title')}
+        closeLabel={t('common.close')}
+      >
+        <div className="grid gap-2 rounded-xl bg-warn-bg p-4 text-small">
+          {lateAsk?.effects.map((e, i) => (
+            <p key={i}>
+              {t(`planner.late.${e.kind}`, { name: nameOf(e.userId) || t('planner.late.someone'), hours: e.noticeHours, required: e.requiredHours ?? 0 })}{' '}
+              {e.premiumHours ? t('planner.late.premiumHours', { hours: e.premiumHours, m: e.multiplier }) : e.flatAmount ? t('planner.late.flat', { amount: e.flatAmount }) : t('planner.late.noPremium')}
+            </p>
+          ))}
+          <p className="text-caption text-muted">{t('planner.late.notify')}</p>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              lateAsk?.resolve(false);
+              setLateAsk(null);
+            }}
+          >
+            {t('common.cancel')}
+          </Button>
+          <Button
+            onClick={() => {
+              lateAsk?.resolve(true);
+              setLateAsk(null);
+            }}
+          >
+            {t('planner.late.confirm')}
+          </Button>
+        </div>
+      </Dialog>
 
       <Dialog
         open={!!otAsk}

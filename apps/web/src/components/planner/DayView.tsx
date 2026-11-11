@@ -7,6 +7,7 @@
  * bar to move it (or to another row), drag its edges to change the times. The timeline scrolls
  * sideways inside its own box on a phone.
  */
+import { AlertTriangle } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/lib/api';
@@ -171,7 +172,7 @@ const Bar = memo(function Bar({
         data-drop={`shift|${shift.id}`}
         onPointerDown={(e) => onPointerDown(e, shift, 'move')}
         onClick={() => onActivate(shift)}
-        aria-label={`${when}, ${posLabel(lng, shift)}, ${name}${shift.status === 'DRAFT' ? `, ${t('builder.status.DRAFT')}` : ''}`}
+        aria-label={`${when}, ${posLabel(lng, shift)}, ${name}${shift.status === 'DRAFT' ? `, ${t('builder.status.DRAFT')}` : ''}${shift.warnings?.length ? `, ${shift.warnings.map((w) => t(`planner.warn.${w.code}`, { a: w.n[0], b: w.n[1] })).join(', ')}` : ''}`}
         className={cn(
           'flex h-full w-full touch-manipulation items-center gap-1 overflow-hidden rounded-lg border px-2 text-left text-caption shadow-card',
           shift.assignee ? 'border-brand/40 bg-brand/15 text-ink' : 'border-new/50 bg-new-bg text-new',
@@ -182,6 +183,7 @@ const Bar = memo(function Bar({
         )}
       >
         {status ? <StatusMark status={status} className="h-3.5 w-3.5" /> : null}
+        {shift.warnings?.length ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warn" aria-hidden="true" /> : null}
         <span className="truncate font-semibold">{name}</span>
         <span className="hidden truncate text-[0.7rem] text-muted sm:inline">{when}</span>
       </button>

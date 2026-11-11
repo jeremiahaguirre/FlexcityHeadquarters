@@ -1,7 +1,7 @@
 'use client';
 
 /** The month and week views, and the shift card both use. Drop targets carry `data-drop`. */
-import { Plus } from 'lucide-react';
+import { AlertTriangle, Plus } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
@@ -73,7 +73,7 @@ export const ShiftChip = memo(function ShiftChip({
       data-drop={`shift|${shift.id}`}
       onPointerDown={(e) => onPointerDown(e, shift, 'move')}
       onClick={() => onActivate(shift)}
-      aria-label={`${when}, ${posLabel(lng, shift)}, ${showPlace ? `${shift.facility.name}, ` : ''}${name}${shift.status === 'DRAFT' ? `, ${t('builder.status.DRAFT')}` : ''}`}
+      aria-label={`${when}, ${posLabel(lng, shift)}, ${showPlace ? `${shift.facility.name}, ` : ''}${name}${shift.status === 'DRAFT' ? `, ${t('builder.status.DRAFT')}` : ''}${shift.warnings?.length ? `, ${shift.warnings.map((w) => t(`planner.warn.${w.code}`, { a: w.n[0], b: w.n[1] })).join(', ')}` : ''}`}
       className={cn(
         'w-full min-w-0 touch-manipulation rounded-lg border text-left transition-[box-shadow,background-color,border-color] duration-100',
         compact ? 'px-1.5 py-0.5' : 'px-1.5 py-1.5',
@@ -86,6 +86,7 @@ export const ShiftChip = memo(function ShiftChip({
     >
       <span className={cn('flex min-w-0 items-center gap-1', compact ? 'text-[0.7rem] leading-4' : 'text-caption')}>
         {status ? <StatusMark status={status} className="h-3.5 w-3.5" /> : null}
+        {shift.warnings?.length ? <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warn" aria-hidden="true" /> : null}
         {/* One line, short form ("9–5 p.m.", "9 h–17 h"). */}
         <span className={cn('min-w-0 truncate whitespace-nowrap font-semibold tabular-nums', !compact && 'text-[0.75rem] tracking-tight')}>{shortRange(shift.localStartsAt, shift.localEndsAt, lng).replace('\u200b', '')}</span>
       </span>

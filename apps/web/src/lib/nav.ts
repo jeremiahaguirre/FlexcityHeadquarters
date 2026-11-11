@@ -1,4 +1,4 @@
-import { BellRing, NotebookPen, ReceiptText, Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
+import { BookOpenCheck, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Activity, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
 export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
 export type ManageSection = (typeof MANAGE_SECTIONS)[number];
@@ -53,6 +53,9 @@ export const NAV: NavItem[] = [
   { href: '/manage/lone-work', key: 'loneWorkMonitor', icon: Radio, group: 'manage', section: 'safety', permission: 'lonework.monitor', ready: true },
   { href: '/manage/call-outs', key: 'callOuts', icon: Siren, group: 'manage', section: 'time', permission: 'winter.callout', ready: true },
   { href: '/manage/winter', key: 'winter', icon: Snowflake, group: 'manage', section: 'time', permission: ['winter.manage', 'winter.records'], ready: true },
+  { href: '/manage/rotations', key: 'rotations', icon: CalendarCog, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
+  { href: '/manage/on-call', key: 'onCall', icon: PhoneCall, group: 'manage', section: 'time', permission: ['schedule.write', 'winter.callout'], ready: true },
+  { href: '/manage/work-rules', key: 'workRules', icon: BookOpenCheck, group: 'manage', section: 'time', permission: ['tenant.configure', 'schedule.assist'], ready: true },
   { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', section: 'people', permission: 'reliability.read', ready: true },
   { href: '/manage/org-chart', key: 'orgChart', icon: Network, group: 'manage', section: 'people', permission: 'users.read', ready: true },
   { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', section: 'safety', permission: 'compliance.report', ready: true },

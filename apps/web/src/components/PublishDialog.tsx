@@ -17,7 +17,17 @@ import { formatDate, formatTimeRange } from '@/lib/format';
 
 export interface PublishGroup { facilityId: string; from: string; to: string; shiftIds: string[]; timezone: string }
 interface Gap { ruleId: string; rule: string; date: string; from: string; to: string; have: number; need: number; localFrom?: string; localTo?: string }
-interface Check { gaps: Gap[]; ineligible: Array<{ shiftId: string; name: string; codes: string[] }>; federalNotice: { count: number; hours: number } | null }
+interface Check {
+  gaps: Gap[];
+  ineligible: Array<{ shiftId: string; name: string; codes: string[] }>;
+  federalNotice: { count: number; hours: number } | null;
+  /** Never-alone shifts with nobody qualified alongside (hours alone). */
+  twoPerson?: Array<{ shiftId: string; name: string; startsAt: string; hours: number }>;
+  /** Shifts published later than the department's posting notice. */
+  postingNotice?: { count: number; days: number } | null;
+  breaks?: number;
+  shortShifts?: number;
+}
 
 /** A UTC instant as facility-local "YYYY-MM-DDTHH:mm:00" (what the formatters take). */
 function localOf(utc: string, tz: string) {
@@ -43,12 +53,16 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
     let live = true;
     void (async () => {
       try {
-        const all: Check & { gaps: Array<Gap & { facilityId: string }> } = { gaps: [], ineligible: [], federalNotice: null };
+        const all: Check & { gaps: Array<Gap & { facilityId: string }> } = { gaps: [], ineligible: [], federalNotice: null, twoPerson: [], postingNotice: null, breaks: 0, shortShifts: 0 };
         for (const g of groups) {
           const r = await api<Check & { gaps: Gap[] }>('/api/shifts/publish/check', { method: 'POST', body: { facilityId: g.facilityId, from: g.from, to: g.to, shiftIds: g.shiftIds } });
           all.gaps.push(...r.gaps.map((x) => ({ ...x, facilityId: g.facilityId })));
           all.ineligible.push(...r.ineligible);
           if (r.federalNotice) all.federalNotice = { count: (all.federalNotice?.count ?? 0) + r.federalNotice.count, hours: r.federalNotice.hours };
+          all.twoPerson!.push(...(r.twoPerson ?? []).map((x) => ({ ...x, tz: g.timezone })));
+          if (r.postingNotice) all.postingNotice = { count: (all.postingNotice?.count ?? 0) + r.postingNotice.count, days: Math.max(all.postingNotice?.days ?? 0, r.postingNotice.days) };
+          all.breaks! += r.breaks ?? 0;
+          all.shortShifts! += r.shortShifts ?? 0;
         }
         if (live) setCheck(all);
       } catch (e) {
@@ -62,7 +76,9 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, groups]);
 
-  const warned = !!check && (check.gaps.length > 0 || check.ineligible.length > 0 || !!check.federalNotice);
+  const warned = !!check && (check.gaps.length > 0 || check.ineligible.length > 0 || !!check.federalNotice || !!check.twoPerson?.length || !!check.postingNotice);
+  // Meal breaks and short shifts are mentioned, never a reason to confirm.
+  const notes = !!check && (!!check.breaks || !!check.shortShifts);
 
   async function publish() {
     setBusy(true);
@@ -108,7 +124,10 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
           <Skeleton className="h-16" />
         </div>
       ) : !warned ? (
-        <p className="text-small" role="status">{t('publishCheck.allClear')}</p>
+        <div className="grid gap-2" role="status">
+          <p className="text-small">{t('publishCheck.allClear')}</p>
+          {notes ? <Notes check={check} /> : null}
+        </div>
       ) : (
         <div className="grid gap-4" role="status" aria-live="polite">
           {gaps.length ? (
@@ -147,6 +166,24 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
             </section>
           ) : null}
           {check.federalNotice ? <p className="rounded-lg bg-warn-bg/60 px-2.5 py-1.5 text-small">{t('publishCheck.federal', { count: check.federalNotice.count, hours: check.federalNotice.hours })}</p> : null}
+          {check.twoPerson?.length ? (
+            <section className="grid gap-1.5">
+              <h3 className="flex items-center gap-2 text-small font-bold text-warn">
+                <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {t('publishCheck.twoPersonTitle')}
+              </h3>
+              <ul className="grid gap-1 text-small">
+                {check.twoPerson.slice(0, 8).map((x) => (
+                  <li key={x.shiftId} className="rounded-lg bg-warn-bg/60 px-2.5 py-1.5">
+                    {t('publishCheck.twoPerson', { name: x.name || t('schedule.open'), date: formatDate(localOf(x.startsAt, (x as { tz?: string }).tz ?? 'America/Toronto'), lng), hours: x.hours })}
+                  </li>
+                ))}
+              </ul>
+              {check.twoPerson.length > 8 ? <p className="text-caption text-muted">{t('publishCheck.more', { count: check.twoPerson.length - 8 })}</p> : null}
+            </section>
+          ) : null}
+          {check.postingNotice ? <p className="rounded-lg bg-warn-bg/60 px-2.5 py-1.5 text-small">{t('publishCheck.posting', { count: check.postingNotice.count, days: check.postingNotice.days })}</p> : null}
+          {notes ? <Notes check={check} /> : null}
           <label className="flex min-h-11 items-start gap-3 text-small">
             <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
             <span>{t('publishCheck.confirm')}</span>
@@ -154,5 +191,15 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
         </div>
       )}
     </Dialog>
+  );
+}
+
+function Notes({ check }: { check: Check }) {
+  const { t } = useTranslation();
+  return (
+    <ul className="grid gap-1 text-caption text-muted">
+      {check.breaks ? <li>{t('publishCheck.breaks', { count: check.breaks })}</li> : null}
+      {check.shortShifts ? <li>{t('publishCheck.shortShifts', { count: check.shortShifts })}</li> : null}
+    </ul>
   );
 }

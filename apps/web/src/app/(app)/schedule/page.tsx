@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftRight, CalendarDays, CalendarPlus, Gift } from 'lucide-react';
+import { ArrowLeftRight, CalendarDays, CalendarPlus, Gift, PhoneCall } from 'lucide-react';
 import { MyTrades, TradeDialog } from '@/components/shiftboard/Trades';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -14,7 +14,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/format';
+import { dateFormat, formatDate } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
@@ -71,6 +71,7 @@ export default function SchedulePage() {
       {view === 'mine' ? (
         <div className="mb-6 grid gap-3">
           <MyTrades onChanged={() => void mine.reload()} />
+          <MyOnCall />
           <p className="text-small"><Link href="/profile#calendar" className="inline-flex min-h-11 items-center gap-1 font-semibold text-brand-text hover:underline sm:min-h-0"><CalendarPlus className="h-4 w-4" aria-hidden="true" />{t('calendarFeed.addToCalendar')}</Link></p>
         </div>
       ) : null}
@@ -130,5 +131,26 @@ export default function SchedulePage() {
       )}
       <TradeDialog shiftId={trading} onClose={() => setTrading(null)} onDone={() => setTrading(null)} />
     </>
+  );
+}
+
+/** The person's own on-call (standby) periods, when they have any. */
+function MyOnCall() {
+  const { t, i18n } = useTranslation();
+  const q = useQuery<Array<{ id: string; startsAt: string; endsAt: string; department: { name: string; nameFr: string | null } | null; note: string | null }>>('/api/me/on-call');
+  if (!q.data?.length) return null;
+  const fmt = (iso: string) => dateFormat(i18n.language, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
+  return (
+    <section className="rounded-2xl border border-line bg-panel p-4" aria-labelledby="my-on-call">
+      <h2 id="my-on-call" className="flex items-center gap-2 text-small font-semibold"><PhoneCall className="h-4 w-4 text-brand-text" aria-hidden="true" />{t('onCall.mine')}</h2>
+      <ul className="mt-2 grid gap-1 text-small">
+        {q.data.map((p) => (
+          <li key={p.id}>
+            {fmt(p.startsAt)} – {fmt(p.endsAt)}
+            {p.department ? <span className="text-muted"> · {i18n.language === 'fr-CA' && p.department.nameFr ? p.department.nameFr : p.department.name}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

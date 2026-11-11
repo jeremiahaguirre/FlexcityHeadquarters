@@ -67,6 +67,8 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
   const [horizon, setHorizon] = useState<Horizon>(2);
   const [horizonTouched, setHorizonTouched] = useState(false);
   const [forecastPosition, setForecastPosition] = useState('');
+  // Rotation templates: generate their drafts for the horizon first, then fill the gaps.
+  const [fromTemplates, setFromTemplates] = useState(false);
   const [toggles, setToggles] = useState<Toggles | null>(null);
   const [weights, setWeights] = useState<Weights | null>(null);
   const [adjust, setAdjust] = useState(false);
@@ -131,6 +133,12 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
     let carry: Array<{ shiftId: string; userId: string }> = [];
     const facilityIds = facilityId ? [facilityId] : undefined;
     try {
+      if (fromTemplates) {
+        const end = new Date(`${weekStart}T12:00:00Z`);
+        end.setUTCDate(end.getUTCDate() + horizon * 7);
+        const g = await api<{ created: number; assigned: number; open: number }>('/api/schedule/rotations/generate', { method: 'POST', body: { departmentId, from: weekStart, to: end.toISOString().slice(0, 10) } });
+        toast(t('fill.templatesGenerated', { created: g.created, assigned: g.assigned, open: g.open }), 'ok');
+      }
       for (let i = 0; i < starts.length; i++) {
         if (cancelled.current) return;
         // The forecast's suggested shifts are a preview: proposed with the rest, created only on accept.
@@ -399,6 +407,13 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
               {notCurrent ? <Button size="sm" variant="secondary" loading={busy === 'remind'} onClick={() => void remind()}>{t('fill.remind')}</Button> : null}
             </div>
           ) : null}
+          <label className="flex min-h-11 items-start gap-3 text-small">
+            <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" checked={fromTemplates} onChange={(e) => setFromTemplates(e.target.checked)} />
+            <span>
+              <span className="block font-semibold">{t('fill.fromTemplates')}</span>
+              <span className="text-caption text-muted">{t('fill.fromTemplatesHelp')}</span>
+            </span>
+          </label>
           {deptPositions.length ? (
             <Field label={t('fill.forecast')} hint={t('fill.forecastHint')}>
               {(p) => (

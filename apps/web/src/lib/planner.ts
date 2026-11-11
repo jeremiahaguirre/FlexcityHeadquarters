@@ -25,6 +25,14 @@ export interface BoardShift {
   facility: { id: string; name: string; timezone: string };
   position: Named;
   assignee: { id: string; name: string } | null;
+  /** Unpaid meal break (the shift's, else its position's); `hours` are paid hours. */
+  unpaidBreakMinutes?: number;
+  ownBreakMinutes?: number | null;
+  neverAlone?: boolean;
+  ownNeverAlone?: boolean | null;
+  callBack?: boolean;
+  /** Missing meal break, shorter than the call-in minimum, never-alone shift left alone. */
+  warnings?: Array<{ code: 'BREAK_MISSING' | 'BREAK_SHORT' | 'SHORT_SHIFT' | 'TWO_PERSON'; n: number[] }>;
 }
 export interface BoardPerson {
   id: string;
