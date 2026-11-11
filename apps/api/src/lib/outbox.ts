@@ -24,6 +24,7 @@ import { config } from '../config.js';
 import { db, type Tx, withTenant } from './db.js';
 import { type DomainEvent, setDispatchKick } from './events.js';
 import { handleDomainEvent } from '../services/notifications/notifier.js';
+import { queueWebhookDeliveries } from '../services/integrations/webhooks.js';
 import { captureError } from './errorReporter.js';
 
 export type EventHandler = (tx: Tx, e: DomainEvent, eventId: string) => Promise<unknown>;
@@ -42,6 +43,12 @@ export interface DispatchResult {
   dead: number;
 }
 
+/** The default handler: the app's notifications, then a delivery for each subscribed webhook endpoint. */
+export const defaultHandler: EventHandler = async (tx, e, eventId) => {
+  await handleDomainEvent(tx, e, eventId);
+  await queueWebhookDeliveries(tx, e, eventId);
+};
+
 /** Wait before the next try, after `attempts` failures. */
 export const backoffMs = (attempts: number) => Math.min(5_000 * 2 ** Math.max(0, attempts - 1), 10 * 60_000);
 
@@ -50,7 +57,7 @@ const errorText = (err: unknown) => String(err instanceof Error ? err.message : 
 /** Deliver one organization's due events. */
 export async function dispatchTenant(tenantId: string, opts: DispatchOptions = {}): Promise<DispatchResult> {
   const prisma = opts.prisma ?? db();
-  const handler = opts.handler ?? handleDomainEvent;
+  const handler = opts.handler ?? defaultHandler;
   const max = opts.maxAttempts ?? config().EVENT_MAX_ATTEMPTS;
   const out: DispatchResult = { delivered: 0, retried: 0, dead: 0 };
   for (let i = 0; i < (opts.limit ?? 200); i++) {

@@ -96,6 +96,8 @@ const SECONDS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
 export const httpRequests = new Counter('fh_http_requests_total', 'HTTP requests answered, by method, route pattern and status class.');
 export const httpDuration = new Histogram('fh_http_request_duration_seconds', 'Time to answer HTTP requests, by method, route pattern and status class.', SECONDS);
 export const errorsTotal = new Counter('fh_errors_total', 'Errors captured by the error reporter, by where they came from.');
+export const publicApiRequests = new Counter('fh_public_api_requests_total', 'Public API (/api/v1) requests, by route pattern and status class (never the key or the organization).');
+export const webhookDeliveries = new Counter('fh_webhook_deliveries_total', 'Webhook delivery attempts, by event type and outcome.');
 export const dbQueryDuration = new Histogram('fh_db_query_duration_seconds', 'Time the database took per query (Prisma).', [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]);
 
 let loopDelay: IntervalHistogram | undefined;
@@ -136,7 +138,7 @@ function processGauges(): Gauge[] {
 
 /** Everything, in Prometheus text format. `extra` are gauges read at scrape time (the outbox backlog). */
 export function renderMetrics(extra: Gauge[] = []): string {
-  return [httpRequests.render(), httpDuration.render(), errorsTotal.render(), dbQueryDuration.render(), ...processGauges().map(renderGauge), ...extra.map(renderGauge)].join('\n\n') + '\n';
+  return [httpRequests.render(), httpDuration.render(), errorsTotal.render(), publicApiRequests.render(), webhookDeliveries.render(), dbQueryDuration.render(), ...processGauges().map(renderGauge), ...extra.map(renderGauge)].join('\n\n') + '\n';
 }
 
 const pathText = (p: unknown) => (Array.isArray(p) ? p.map(String).join('|') : String(p));

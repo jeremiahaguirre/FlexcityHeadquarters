@@ -5,7 +5,8 @@
  * advisory locks are re-entrant, so a job still running when its next round starts in this same
  * process is skipped here too (`running`), not run twice.
  *
- * Domain events (lib/outbox.ts) are delivered every few seconds without a lock: claiming with
+ * Domain events (lib/outbox.ts), then the webhooks they queue (services/integrations/webhooks.ts),
+ * are delivered every few seconds without a lock: claiming with
  * SKIP LOCKED already keeps any number of workers and API processes from delivering one twice.
  */
 import pg from 'pg';
@@ -26,6 +27,7 @@ import { WORKER_APP_NAME, workerBeatName } from './lib/health.js';
 import { applyRetention } from './services/privacy/retention.js';
 import { deliverPush } from './services/notifications/push.js';
 import { dispatchAll } from './lib/outbox.js';
+import { deliverAllWebhooks } from './services/integrations/webhooks.js';
 
 const cfg = config();
 installProcessHandlers();
@@ -107,6 +109,9 @@ const events = async () => {
   try {
     const r = await dispatchAll();
     if (r.delivered || r.retried || r.dead) console.log('[job] events', r);
+    // Then the webhooks those events queued (and retries that are due). Claimed with SKIP LOCKED.
+    const w = await deliverAllWebhooks();
+    if (w.sent || w.failed) console.log('[job] webhooks', w);
   } catch (err) {
     captureError(err, { source: 'job', tags: { job: 'events' } });
   } finally {

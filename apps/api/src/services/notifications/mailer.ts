@@ -132,6 +132,16 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Le compte FlexcityHeadquarters de ${p.organization} est fermé. Les administrateurs peuvent encore se connecter, seulement pour télécharger une exportation complète de vos données (dossiers du personnel, horaires, temps, paie, incidents, documents), jusqu’au ${p.until}. Après cette date, elles sont supprimées.\n${p.url}`,
     }),
   },
+  webhook_disabled: {
+    'en-CA': (p) => ({
+      subject: 'A webhook was turned off after repeated failures',
+      text: `FlexcityHeadquarters couldn't deliver events to ${p.host} (${p.failures} tries in a row failed), so the webhook was turned off. Check the receiving system, then turn it back on in Settings › Integrations. Missed events can be sent again from the deliveries list.\n${APP_URL()}/manage/settings?tab=integrations`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Un webhook a été désactivé après des échecs répétés',
+      text: `FlexcityHeadquarters n’a pas pu livrer d’événements à ${p.host} (${p.failures} essais de suite ont échoué); le webhook a donc été désactivé. Vérifiez le système qui les reçoit, puis réactivez-le dans Paramètres › Intégrations. Les événements manqués peuvent être renvoyés depuis la liste des livraisons.\n${APP_URL()}/manage/settings?tab=integrations`,
+    }),
+  },
   sso_changed: {
     'en-CA': () => ({
       subject: 'Single sign-on settings were changed',

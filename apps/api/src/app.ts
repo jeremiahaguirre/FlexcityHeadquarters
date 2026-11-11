@@ -21,6 +21,7 @@ import { captureError } from './lib/errorReporter.js';
 import { metricsMiddleware, routePattern, startProcessMetrics } from './lib/metrics.js';
 import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
 import { clientErrorsRouter, opsRouter } from './routes/observability.js';
+import { publicApiRouter } from './routes/publicApi.js';
 
 export function createApp() {
   const app = express();
@@ -33,6 +34,8 @@ export function createApp() {
   app.use(securityHeaders);
   // /healthz, /readyz, /metrics (routes/observability.ts).
   app.use(opsRouter);
+  // The public API for a city's own systems: its own API keys, not a person's session or subdomain.
+  app.use('/api/v1', publicApiRouter);
   // The marketing site's enquiry form (no organization, its own CORS).
   app.use('/api', marketingRouter);
   // Before the 100 kB body limit: the Dev console uploads logos and spreadsheets.

@@ -48,6 +48,7 @@ const TEXT: Record<string, Record<Lang, [string, string]>> = {
   coverage_gap: { en: ['Coverage gap', 'A required certificate isn’t on duty.'], fr: ['Manque de couverture', 'Un certificat requis n’est pas en service.'] },
   closure_recommended: { en: ['Closure recommended', 'A water reading calls for a closure.'], fr: ['Fermeture recommandée', 'Une lecture d’eau exige une fermeture.'] },
   front_desk_page: { en: ['Front desk', 'The front desk is calling for you.'], fr: ['Accueil', 'L’accueil vous demande.'] },
+  webhook_disabled: { en: ['Webhook turned off', 'A webhook kept failing and was turned off.'], fr: ['Webhook désactivé', 'Un webhook échouait sans cesse et a été désactivé.'] },
 };
 const GENERIC: Record<Lang, [string, string]> = { en: ['FlexcityHeadquarters', 'You have a new message.'], fr: ['FlexcityHeadquarters', 'Vous avez un nouveau message.'] };
 const URGENT = new Set(['lonework_help', 'lonework_escalated', 'lonework_overdue', 'lonework_check_in_now', 'callout_offer', 'closure_recommended']);

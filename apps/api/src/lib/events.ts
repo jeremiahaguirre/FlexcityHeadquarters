@@ -20,7 +20,29 @@ export type DomainEvent =
   | { type: 'pool.status_changed'; tenantId: string; facilityId: string; poolBodyId: string; status: string }
   | { type: 'frontdesk.page'; tenantId: string; facilityId: string; fromUserId: string; message: string }
   /** Direct notifications from features that know their recipients. */
-  | { type: 'notify'; tenantId: string; drafts: NotificationDraft[] };
+  | { type: 'notify'; tenantId: string; drafts: NotificationDraft[] }
+  /**
+   * For the organization's webhooks (services/integrations/webhooks.ts). The database writes these
+   * itself, in the transaction of the change (db/rls.sql fh_public_event), only when an endpoint
+   * wants the type: ids and the names of changed fields, never values.
+   */
+  | { type: PublicEventType; tenantId: string; data: { id: string; person_id?: string; changed?: string[] } };
+
+/** Event types a city's systems can subscribe to (docs/PUBLIC-API.md). */
+export const PUBLIC_EVENT_TYPES = [
+  'person.created',
+  'person.updated',
+  'person.terminated',
+  'shift.published',
+  'shift.updated',
+  'shift.cancelled',
+  'timeoff.approved',
+  'timeoff.cancelled',
+  'punch.approved',
+  'payrun.approved',
+] as const;
+export type PublicEventType = (typeof PUBLIC_EVENT_TYPES)[number];
+export const isPublicEvent = (e: DomainEvent): e is Extract<DomainEvent, { data: unknown }> => (PUBLIC_EVENT_TYPES as readonly string[]).includes(e.type);
 
 /** Write the events to the outbox, in the caller's transaction. Returns how many. */
 export async function recordEvents(tx: Tx, events: DomainEvent | DomainEvent[]): Promise<number> {

@@ -26,6 +26,10 @@ const schema = z.object({
   LISTEN_DATABASE_URL: z.string().url().optional(),
   /** Domain events: delivery tries before an event is set aside as dead (lib/outbox.ts). */
   EVENT_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(50).default(8),
+  /** Webhooks (services/integrations/webhooks.ts): tries per delivery, failed tries in a row before an endpoint is turned off, and how long to wait for an answer. */
+  WEBHOOK_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(8),
+  WEBHOOK_DISABLE_AFTER: z.coerce.number().int().min(1).max(1000).default(20),
+  WEBHOOK_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(10_000),
   /**
    * Where the Union Hub runs: "embedded" in this API (the default), or "separate", its own service
    * (src/unionServer.ts) behind the same address at /api/union. In "separate" mode this API holds no

@@ -160,6 +160,9 @@ export async function draftsFor(tx: Tx, e: DomainEvent): Promise<NotificationDra
     }
     case 'notify':
       return e.drafts;
+    default:
+      // Webhook events (lib/events.ts PUBLIC_EVENT_TYPES) notify nobody in the app.
+      return [];
   }
 }
 
