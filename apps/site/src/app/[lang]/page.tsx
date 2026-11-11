@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/Icon';
 import { AliveMark } from '@/components/AliveMark';
@@ -15,7 +16,7 @@ import { demoLink } from '@/lib/site';
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
   const c = copy(params.lang);
-  return pageMeta(params.lang, '', undefined, c.meta.description);
+  return pageMeta(params.lang, '', undefined, `${c.home.motto} ${c.meta.description}`);
 }
 
 export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
@@ -52,10 +53,16 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
           </div>
         </div>
         <div className="relative mx-auto grid max-w-7xl items-start gap-12 px-4 pb-14 pt-12 md:px-6 md:pb-20 md:pt-20 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
-          <div className="rise">
-            <h1 className="text-hero2 [text-wrap:balance]">{keepHyphenated(h.title)}</h1>
-            <p className="mt-6 max-w-xl text-[1.125rem] leading-8 text-white/85">{h.lead}</p>
-            <div className="mt-8 flex flex-wrap gap-3">
+          <div>
+            {/* What it is, then the motto as the headline: one heading, read as one sentence by screen readers. */}
+            <h1>
+              <span className="rise block text-[1.0625rem] font-semibold leading-7 text-[#99F6E4] md:text-[1.1875rem]">{keepHyphenated(h.title)}</span>
+              <span className="mt-3 block text-hero2">
+                <Motto text={h.motto} />
+              </span>
+            </h1>
+            <p className="rise rise-3 mt-6 max-w-xl text-[1.125rem] leading-8 text-white/85">{h.lead}</p>
+            <div className="rise rise-4 mt-8 flex flex-wrap gap-3">
               <a href={demoLink('STAFF', params.lang)} className={btnLight}>
                 {h.ctaDemo}
                 <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
@@ -64,9 +71,9 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
                 {h.ctaTalk}
               </Link>
             </div>
-            <p className="mt-4 text-caption text-white/70">{h.fine}</p>
+            <p className="rise rise-4 mt-4 text-caption text-white/70">{h.fine}</p>
           </div>
-          <div className="rise rise-2 sm:pt-28 lg:pt-24">
+          <div className="rise rise-3 sm:pt-28 lg:pt-24">
             <HeroConsole m={m} />
           </div>
         </div>
@@ -161,6 +168,39 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
           </div>
         </div>
       </Section>
+    </>
+  );
+}
+
+/**
+ * The motto in three beats ("Every shift. Every site. One HQ."): each beat rises in turn and never
+ * breaks inside itself, and a hand-drawn brand stroke underlines the last one (all static without motion).
+ */
+function Motto({ text }: { text: string }) {
+  const beats = text.split(/(?<=\.)\s+/);
+  return (
+    <>
+      {beats.map((b, i) => (
+        <span key={i}>
+          {i ? ' ' : null}
+          <span className="motto-beat relative inline-block whitespace-nowrap" style={{ '--b': i } as CSSProperties}>
+            {/* The display face sets a loose full stop at this weight: pulled in slightly. */}
+            {b.endsWith('.') ? (
+              <>
+                {b.slice(0, -1)}
+                <span className="-ml-[0.06em]">.</span>
+              </>
+            ) : (
+              b
+            )}
+            {i === beats.length - 1 ? (
+              <svg aria-hidden="true" viewBox="0 0 100 12" preserveAspectRatio="none" className="absolute -bottom-[0.14em] left-0 h-[0.22em] w-full overflow-visible" fill="none">
+                <path className="motto-stroke" d="M2 8.5C22 4 48 2.5 98 6" pathLength="100" stroke="#C5F23A" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+            ) : null}
+          </span>
+        </span>
+      ))}
     </>
   );
 }

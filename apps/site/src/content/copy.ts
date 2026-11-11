@@ -6,6 +6,8 @@ const en = {
   },
   nav: { product: 'Product', why: 'Why us', privateSector: 'Private sector', plans: 'Plans', demo: 'Demo', help: 'Help', faq: 'FAQ', contact: 'Contact', tryDemo: 'Try the demo', language: 'Français', languageLabel: 'Lire en français', menu: 'Menu', close: 'Close' },
   home: {
+    /** The brand motto: the home hero's headline and the sign-in screen's tagline (apps/web brand.motto). */
+    motto: 'Every shift. Every site. One HQ.',
     title: 'Workforce software built for Canadian cities',
     lead: 'Scheduling, time clocks and payroll export for every city department, from pools and arenas to parks and water works. Built on your province’s employment standards and your collective agreement, in English and French, on any phone.',
     ctaDemo: 'Try the live demo',
@@ -583,6 +585,7 @@ const fr: DeepString<Copy> = {
   },
   nav: { product: 'Produit', why: 'Pourquoi nous', privateSector: 'Secteur privé', plans: 'Forfaits', demo: 'Démo', help: 'Aide', faq: 'FAQ', contact: 'Contact', tryDemo: 'Essayer la démo', language: 'English', languageLabel: 'Read in English', menu: 'Menu', close: 'Fermer' },
   home: {
+    motto: 'Chaque quart. Chaque site. Un seul QG.',
     title: 'Un logiciel de main-d’œuvre conçu pour les villes canadiennes',
     lead: 'Horaires, pointage et exportation de la paie pour tous les services municipaux, des piscines et arénas aux parcs et aux travaux publics. Conçu selon les normes du travail de votre province et votre convention collective, en français et en anglais, sur tout téléphone.',
     ctaDemo: 'Essayer la démo',

@@ -126,6 +126,12 @@ details > summary::-webkit-details-marker { display: none; }
   @keyframes fh-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.55; } }
   .rise { animation: fh-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .rise-2 { animation-delay: 120ms; }
+  .rise-3 { animation-delay: 240ms; }
+  .rise-4 { animation-delay: 360ms; }
+  /* The motto's underline draws itself once the headline has risen. */
+  @keyframes fh-stroke { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+  .motto-beat { animation: fh-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(120ms + var(--b, 0) * 180ms); }
+  .motto-stroke { stroke-dasharray: 100; animation: fh-stroke 700ms cubic-bezier(0.6, 0, 0.3, 1) 1000ms both; }
   .float { animation: fh-float 6s ease-in-out infinite; }
   .pulse-dot { animation: fh-pulse 2.4s ease-in-out infinite; }
 
