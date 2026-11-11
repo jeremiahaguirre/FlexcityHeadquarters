@@ -1,7 +1,9 @@
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-export function EmptyState({ icon: Icon, title, children, action }: { icon: LucideIcon; title: ReactNode; children?: ReactNode; action?: ReactNode }) {
+/** `level` 1 when the empty state is the whole page (no page header above it), so the page still has its one h1. */
+export function EmptyState({ icon: Icon, title, children, action, level = 2 }: { icon: LucideIcon; title: ReactNode; children?: ReactNode; action?: ReactNode; level?: 1 | 2 | 3 }) {
+  const H = `h${level}` as 'h1' | 'h2' | 'h3';
   return (
     <div className="flex flex-col items-center rounded-xl2 border border-dashed border-line bg-panel px-6 py-12 text-center">
       <span className="relative mb-5 grid h-14 w-14 place-items-center">
@@ -11,7 +13,7 @@ export function EmptyState({ icon: Icon, title, children, action }: { icon: Luci
           <Icon className="h-6 w-6" aria-hidden="true" />
         </span>
       </span>
-      <h2 className="text-subheading text-ink">{title}</h2>
+      <H className="text-subheading text-ink">{title}</H>
       {children ? <p className="mt-1.5 max-w-sm text-small text-muted">{children}</p> : null}
       {action ? <div className="mt-5">{action}</div> : null}
     </div>

@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 export function NoAccess() {
   const { t } = useTranslation();
   return (
-    <EmptyState icon={Lock} title={t('noAccess.title')} action={<ButtonLink href="/today" variant="secondary">{t('noAccess.back')}</ButtonLink>}>
+    <EmptyState level={1} icon={Lock} title={t('noAccess.title')} action={<ButtonLink href="/today" variant="secondary">{t('noAccess.back')}</ButtonLink>}>
       {t('noAccess.body')}
     </EmptyState>
   );
