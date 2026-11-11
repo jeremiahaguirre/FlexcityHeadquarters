@@ -20,6 +20,7 @@ follow it. Prices are monthly, in Canadian dollars, before GST/HST and PST.
 | Benchmarks | | | ✓ | ✓ |
 | Single sign-on (Entra ID, SAML) | | | ✓ | ✓ |
 | Bank connection (SFTP) for payroll | | | ✓ | ✓ |
+| API and webhooks (read-only API keys, signed webhooks) | | | ✓ | ✓ |
 | Union hub | +$150 | +$150 | +$150 | ✓ |
 | Anything else not included | each option at its own price (below) | | | |
 | Support | Email and phone | Email and phone | Priority | Priority, success manager, 99.9% uptime commitment, test organization, multi-year price lock |
@@ -44,7 +45,7 @@ The previous model was $1,000 / $2,500 / $5,000 per facility by size, plus HR Co
 | --- | --- | --- |
 | Base only | $2,500 | Small $1,900 (new entry point) or Business $2,800 (includes Operations, programs, fleet and winter) |
 | Base + Operations | $2,875 | Business $2,800 |
-| Base + HR + Operations | $3,375 | Multi-complex $3,600 (adds single sign-on, bank connection, benchmarks, priority support) |
+| Base + HR + Operations | $3,375 | Multi-complex $3,600 (adds single sign-on, bank connection, API and webhooks, benchmarks, priority support) |
 | Everything + union hub | $3,375 + $100–$250 | Enterprise $4,500 |
 
 Extra-staff charges are new revenue for large or seasonal-heavy organizations: a Business city with 2 standard
@@ -82,6 +83,7 @@ organization:
 | Benchmarks | HR | $29 | $100 |
 | Single sign-on | Integration | $49 | $300 |
 | Bank connection | Integration | $39 | $300 |
+| API and webhooks | Integration | $49 | $300 |
 | Union hub | Union | $150 | $150 |
 
 ## Billing terms: monthly, yearly or a set term

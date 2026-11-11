@@ -20,7 +20,7 @@ Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and 
 | Shift eligibility: certifications, overlaps, time off, rest periods, young-worker limits and school calendar, availability, weekly caps | Done, unit-tested |
 | Scheduling: schedule builder with a multi-facility assistant, shift board with overtime approval and pay preview, two-person shift trades, availability, time off, a private calendar feed of your own shifts; seniority breaks ties only where the organization uses it | Done (API + web) |
 | Demand forecast from headcounts, facility opening hours (minimum on deck) and lesson registrations, adjusted for the weather (Environment and Climate Change Canada open data), statutory holidays and special events, with a reason per day and draft shifts for the gaps | Done (API + web) |
-| Timeclock with geofence, punch review; a shared facility kiosk (tablet) where staff punch with their employee number and a PIN | Done (API + web) |
+| Timeclock with geofence, punch review; punches without signal kept on the phone, sent when back online and flagged for review; a shared facility kiosk (tablet) where staff punch with their employee number and a PIN | Done (API + web) |
 | **Payroll in the app, no provider needed**: hourly and salaried staff; bonuses, retro pay and vacation payouts (CRA bonus method); allowances, reimbursements, recoveries; off-cycle runs; court and CRA orders; CPP/QPP, EI, QPIP and income tax in all 13 jurisdictions; benefits and union dues; two-person approval; direct deposit from the city's own bank (CPA-005, sent over SFTP); remittances, T4 XML, RL-1 XML, ROE Web XML; general-ledger journal | Done (API + web) — **tax tables verified by FH each year** |
 | Time in lieu (banked overtime), expense and mileage claims paid on the next run, T4A slips and XML for contractors and honoraria | Done (API + web) — **first T4A XML to go through CRA's validation** |
 | Or keep ADP, Dayforce or Wagepoint: each period sent over their API, or as a file in their layout | Done — **API access is granted by each provider** |
@@ -39,7 +39,8 @@ Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and 
 | **FH Dev console**: cities, features, menus per role, plans and billing (monthly, yearly or multi-year terms), FH's books, payroll set-up for a city, signed agreements, support visits, offboarding and data export | Done (API + web) |
 | Passkeys, single sign-on (Entra ID, SAML), multi-factor sign-in, audit log, privacy tools | Done |
 | Public API (read-only, per-organization API keys with scopes) and signed webhooks for a city's own ERP, HRIS or GIS | Done (API + web) — [docs](docs/PUBLIC-API.md) |
-| English and French throughout; light and dark mode; mobile and accessibility checked | Done |
+| Operations: request ids, readiness (`/readyz`), Prometheus metrics behind a token, scrubbed error reports (Sentry-compatible, when configured); notifications through a transactional outbox; several API processes (`WEB_CONCURRENCY`) | Done — [architecture](docs/ARCHITECTURE.md#health-metrics-and-errors) |
+| English and French throughout; light and dark mode; phone keyboards per field; keyboard and screen-reader use (WCAG 2.1 AA target, not yet independently audited) | Done |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for what is not built yet and what needs people (legal, accounting, providers) before launch.
 
@@ -129,7 +130,7 @@ Screenshots on the site come from the demo (`apps/site/public/screens`). Retake 
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) — tenancy, flows, the Union Hub service, the Dev console
+- [Architecture](docs/ARCHITECTURE.md) — tenancy, flows, events and the outbox, running several processes, health and metrics, the Union Hub service, the Dev console
 - [Compliance notes](docs/COMPLIANCE.md) — read before production use
 - [Payroll verification](docs/PAYROLL-VERIFICATION.md) — how FH checks each year's tax tables and the payroll maths
 - [Privacy impact assessment](docs/PIA.md), [electronic monitoring](docs/ELECTRONIC-MONITORING.md), [retention schedule](docs/RETENTION.md) and [subprocessors](docs/SUBPROCESSORS.md)
