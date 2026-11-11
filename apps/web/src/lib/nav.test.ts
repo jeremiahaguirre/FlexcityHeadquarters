@@ -12,12 +12,12 @@ function menu(...roles: Array<keyof typeof ROLE_PERMISSIONS>) {
 
 describe('menus per role', () => {
   it('union steward: only the Union hub, which is also their home page', () => {
-    expect(menu('UNION_STEWARD')).toEqual({ items: ['/union'], home: '/union' });
+    expect(menu('UNION_STEWARD')).toEqual({ items: ['/union', '/union/bids'], home: '/union' });
   });
 
   it('lifeguard / instructor: their own work and the pool deck tasks', () => {
     expect(menu('STAFF')).toEqual({
-      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/preferences', '/lessons', '/alone', '/pay', '/expenses', '/logbook', '/messages', '/headcount', '/ops', '/incidents', '/surveys'],
+      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/preferences', '/bids', '/lessons', '/alone', '/pay', '/expenses', '/logbook', '/messages', '/headcount', '/ops', '/incidents', '/surveys'],
       home: '/today',
     });
   });
@@ -34,7 +34,7 @@ describe('menus per role', () => {
   });
 
   it('general employee (water works, maintenance…): their own work, no pool screens at all', () => {
-    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/preferences', '/alone', '/patrol', '/pretrip', '/pay', '/expenses', '/logbook', '/messages', '/surveys'], home: '/today' });
+    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/preferences', '/bids', '/alone', '/patrol', '/pretrip', '/pay', '/expenses', '/logbook', '/messages', '/surveys'], home: '/today' });
   });
 
   it('people review is for HR and supervisors only', () => {
@@ -74,7 +74,7 @@ describe('menus per role', () => {
     };
     expect(tabsFor('STAFF')).toEqual(['/today', '/schedule', '/headcount', '/board']);
     expect(tabsFor('HR_ADMIN')).toEqual(['/messages', '/manage/hr', '/manage/approvals', '/manage/staff']);
-    expect(tabsFor('UNION_STEWARD')).toEqual(['/union']);
+    expect(tabsFor('UNION_STEWARD')).toEqual(['/union', '/union/bids']);
   });
 
   it('matches the API menu, so the Dev console can switch every item', () => {

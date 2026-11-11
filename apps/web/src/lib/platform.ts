@@ -70,6 +70,8 @@ export interface CityDetail {
   organization: { id: string; name: string; subdomain: string; defaultLocale: string; timeFormat?: string; themeColors: { primary?: string } | null; logoUrl: string | null; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number; createdAt: string; signInUrl: string };
   features: Record<string, boolean>;
   featureDefaults: Record<string, boolean>;
+  /** Features that only work while another is on (shift bidding → seniority). */
+  featureRequires?: Record<string, string>;
   facilities: Facility[];
   positions: PositionRow[];
   departments?: Array<{ id: string; name: string; nameFr: string | null; aquatic: boolean }>;

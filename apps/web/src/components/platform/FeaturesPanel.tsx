@@ -10,7 +10,7 @@ import type { PanelProps } from './types';
 
 /** Grouped as people see them in the app. */
 const GROUPS: Array<{ key: string; features: string[] }> = [
-  { key: 'scheduling', features: ['shiftBoard', 'scheduleAssistant', 'shiftTemplates', 'availability', 'shiftPreferences', 'timeOff', 'coverage', 'overtime'] },
+  { key: 'scheduling', features: ['shiftBoard', 'scheduleAssistant', 'shiftTemplates', 'availability', 'shiftPreferences', 'shiftBidding', 'timeOff', 'coverage', 'overtime'] },
   { key: 'time', features: ['timeclock', 'payroll', 'expenses'] },
   { key: 'deck', features: ['poolChemistry', 'headcounts', 'rotations', 'statusBoard', 'incidents'] },
   { key: 'programs', features: ['lessons', 'registration'] },
@@ -50,6 +50,7 @@ export function FeaturesPanel({ id, city, reload }: PanelProps) {
                         <p className="flex flex-wrap items-center gap-2 text-body-strong">
                           {label}
                           {on !== city.featureDefaults[k] ? <StatusPill tone="neutral">{t('platform.changedFromDefault')}</StatusPill> : null}
+                          {city.featureRequires?.[k] && !city.features[city.featureRequires[k]!] ? <StatusPill tone="warn">{t('platform.needsFeature', { name: t(`platform.features.${city.featureRequires[k]}.name`) })}</StatusPill> : null}
                         </p>
                         <p className="text-small text-muted">{t(`platform.features.${k}.help`)}</p>
                       </div>

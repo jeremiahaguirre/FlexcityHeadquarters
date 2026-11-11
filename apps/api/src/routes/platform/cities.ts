@@ -12,7 +12,7 @@ import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { type Tx, tenantIds, withTenant } from '../../lib/db.js';
 import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { FILE_CSP } from '../../lib/files.js';
-import { FEATURE_KEYS, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
+import { FEATURE_KEYS, FEATURE_REQUIRES, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
 import { setManagers } from '../../services/people/reporting.js';
@@ -155,6 +155,7 @@ citiesRouter.get(
         },
         features: resolveFeatures(t.features),
         featureDefaults: Object.fromEntries(FEATURE_KEYS.map((k) => [k, FEATURES[k].default])),
+        featureRequires: FEATURE_REQUIRES,
         facilities: facilities.map((f) => ({ ...f, latitude: f.latitude?.toNumber() ?? null, longitude: f.longitude?.toNumber() ?? null })),
         positions: positions.map((p) => ({ id: p.id, name: p.name, nameFr: p.nameFr, minimumAge: p.minimumAge, hoursOfService: p.hoursOfService, departmentId: p.departmentId, requiredCertificationIds: p.requirements.map((r) => r.certificationId), staff: p._count.qualifiedUsers })),
         departments: departments.departments.map(({ positions: _p, ...d }) => d),

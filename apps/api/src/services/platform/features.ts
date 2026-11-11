@@ -22,6 +22,8 @@ export const FEATURES = {
   shiftTemplates: { default: true, permissions: ['schedule.templates'] },
   /** Staff state the shifts they'd like or avoid; Fill the schedule weighs them (soft only). */
   shiftPreferences: { default: true, permissions: ['preferences.self'] },
+  /** Shift bidding by seniority: off until the organization turns it on, and only while seniority is on. */
+  shiftBidding: { default: false, permissions: ['bidding.bid', 'bidding.manage', 'bidding.observe'], requires: 'seniority' },
   timeOff: { default: true, permissions: ['timeoff.self', 'timeoff.approve'] },
   timeclock: { default: true, permissions: ['timeclock.punch', 'timeclock.review'] },
   lessons: { default: true, permissions: ['lessons.teach'] },
@@ -64,10 +66,20 @@ export const FEATURES = {
   surveys: { default: true, permissions: ['surveys.respond', 'surveys.manage', 'surveys.department'] },
   /** Urgent texts and calls (working alone, call-outs, last-minute shifts). Off until the city turns it on: messages cost money. */
   textAlerts: { default: false, permissions: [] },
-} as const satisfies Record<string, { default: boolean; permissions: readonly Permission[] }>;
+} as const satisfies Record<string, { default: boolean; permissions: readonly Permission[]; requires?: string }>;
 
 export type FeatureKey = keyof typeof FEATURES;
 export type FeatureSet = Record<FeatureKey, boolean>;
+
+/** Features that only work while another is on (shift bidding needs seniority): off with it, shown as needing it. */
+export const FEATURE_REQUIRES: Partial<Record<string, string>> = Object.fromEntries(Object.entries(FEATURES).flatMap(([k, v]) => ('requires' in v && v.requires ? [[k, v.requires]] : [])));
+
+/** Switches a feature off when what it needs is off. */
+export function withRequirements(f: FeatureSet): FeatureSet {
+  const out = { ...f };
+  for (const [k, r] of Object.entries(FEATURE_REQUIRES)) if (r && !out[r as keyof FeatureSet]) out[k as keyof FeatureSet] = false;
+  return out;
+}
 export const FEATURE_KEYS = Object.keys(FEATURES) as FeatureKey[];
 
 /** Stored switches (possibly partial or stale) → a full set with defaults. */
@@ -107,7 +119,7 @@ async function loadSettings(tenantId: string): Promise<TenantSettings> {
   // A feature the plan doesn't include is off, whatever its switch says.
   const features = resolveFeatures(row?.features);
   for (const k of Object.keys(billing.locked) as FeatureKey[]) features[k] = false;
-  const entry = { at: Date.now(), features, overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [], billing, disabledAt: row?.disabledAt ?? null, exportUntil: row?.exportUntil ?? null };
+  const entry = { at: Date.now(), features: withRequirements(features), overrides: parseOverrides(row?.roleOverrides), mfaRoles: row?.mfaRoles ?? [], billing, disabledAt: row?.disabledAt ?? null, exportUntil: row?.exportUntil ?? null };
   if (flight.fresh(gen)) cache.set(tenantId, entry);
   return entry;
 }

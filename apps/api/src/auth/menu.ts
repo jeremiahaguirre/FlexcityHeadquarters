@@ -15,6 +15,7 @@ export const MENU: MenuItem[] = [
   { href: '/time-off', key: 'timeOff', group: 'mine', permissions: ['timeoff.self'] },
   { href: '/availability', key: 'availability', group: 'mine', permissions: ['availability.self'] },
   { href: '/preferences', key: 'preferences', group: 'mine', permissions: ['preferences.self'] },
+  { href: '/bids', key: 'bids', group: 'mine', permissions: ['bidding.bid'] },
   { href: '/lessons', key: 'lessons', group: 'mine', permissions: ['lessons.teach'] },
   { href: '/alone', key: 'loneWork', group: 'mine', permissions: ['lonework.self'] },
   { href: '/patrol', key: 'patrol', group: 'mine', permissions: ['winter.patrol'] },
@@ -45,6 +46,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/winter', key: 'winter', group: 'manage', permissions: ['winter.manage', 'winter.records'] },
   { href: '/manage/rotations', key: 'rotations', group: 'manage', permissions: ['schedule.write'] },
   { href: '/manage/shift-templates', key: 'shiftTemplates', group: 'manage', permissions: ['schedule.templates'] },
+  { href: '/manage/bids', key: 'manageBids', group: 'manage', permissions: ['bidding.manage'] },
   { href: '/manage/on-call', key: 'onCall', group: 'manage', permissions: ['schedule.write', 'winter.callout'] },
   { href: '/manage/work-rules', key: 'workRules', group: 'manage', permissions: ['tenant.configure', 'schedule.assist'] },
   { href: '/manage/people', key: 'people', group: 'manage', permissions: ['reliability.read'] },
@@ -69,6 +71,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/billing', key: 'billing', group: 'manage', permissions: ['billing.manage'] },
   { href: '/manage/settings', key: 'settings', group: 'manage', permissions: ['tenant.configure', 'ops.configure'] },
   { href: '/union', key: 'union', group: 'union', permissions: ['union.hub'] },
+  { href: '/union/bids', key: 'bidAwards', group: 'union', permissions: ['bidding.observe'] },
   { href: '/surveys', key: 'surveys', group: 'mine', permissions: ['surveys.respond'] },
 ];
 export const MENU_HREFS = new Set(MENU.map((m) => m.href));

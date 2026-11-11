@@ -15,6 +15,9 @@ export const PERMISSIONS = [
   'schedule.assist', // run the scheduling assistant, configure weights
   'schedule.templates', // weekly shift templates: define, apply as drafts, undo
   'preferences.self', // state one's own shift preferences (a wish, unlike availability)
+  'bidding.bid', // rank shifts in bid rounds (only where the organization uses seniority)
+  'bidding.manage', // run bid rounds in one's departments: open, review, change with a reason, confirm
+  'bidding.observe', // union stewards: read closed rounds' seniority order, outcomes and override reasons
   'shiftboard.claim',
   'shiftboard.post',
   'shiftboard.approve', // approve overtime / override claims
@@ -96,6 +99,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 const STAFF_BASE: Permission[] = [
   'schedule.read',
   'preferences.self',
+  'bidding.bid',
   'shifts.self',
   'lessons.teach',
   'shiftboard.claim',
@@ -174,6 +178,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'schedule.write',
     'schedule.assist',
     'schedule.templates',
+    'bidding.manage',
     'shiftboard.approve',
     'shiftboard.assign_emergency',
     'timeoff.approve',
@@ -223,9 +228,9 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   STAFF: STAFF_BASE,
   // Front desk is member services: families, registrations, memberships and drop-ins.
   FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage', 'logbook.write', 'messages.use', 'surveys.respond'],
-  UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
+  UNION_STEWARD: ['union.hub', 'seniority.read', 'bidding.observe', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'preferences.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write', 'messages.use', 'surveys.respond'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'preferences.self', 'bidding.bid', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write', 'messages.use', 'surveys.respond'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {
