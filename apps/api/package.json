@@ -23,7 +23,7 @@
   "dependencies": {
     "@aws-sdk/client-kms": "3.1156.0",
     "@node-saml/node-saml": "5.2.0",
-    "@prisma/client": "5.22.0",
+    "@prisma/client": "7.10.1",
     "@simplewebauthn/server": "13.3.3",
     "compression": "1.8.2",
     "cookie-parser": "1.4.7",
