@@ -113,7 +113,7 @@ export function PayDocuments() {
           {!t4.data ? <Skeleton className="h-32" /> : (
             <>
               {t4.data.summary.missingSin.length ? <p className="rounded-xl bg-warn/10 px-3 py-2 text-small">{t('payroll.missingSin', { names: t4.data.summary.missingSin.join(', ') })}</p> : null}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-lg" tabIndex={0} role="region" aria-label={t('payroll.t4s')}>
                 <table className="w-full min-w-[46rem] text-small tabular-nums">
                   <thead className="text-left text-caption text-muted"><tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th><th className="py-1.5 font-semibold">10</th><th className="py-1.5 text-right font-semibold">14</th><th className="py-1.5 text-right font-semibold">16</th><th className="py-1.5 text-right font-semibold">16A</th>{anyQc ? <><th className="py-1.5 text-right font-semibold">17</th><th className="py-1.5 text-right font-semibold">55</th></> : null}<th className="py-1.5 text-right font-semibold">18</th><th className="py-1.5 text-right font-semibold">22</th><th className="py-1.5 text-right font-semibold">24</th><th className="py-1.5 text-right font-semibold">26</th></tr></thead>
                   <tbody className="divide-y divide-line">
@@ -140,7 +140,7 @@ export function PayDocuments() {
               <span className="text-caption text-muted">{t('payroll.filing.rl1Hint')}</span>
             </div>
             {problemList('rl1')}
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg" tabIndex={0} role="region" aria-label={t('payroll.rl1.title')}>
               <table className="w-full min-w-[46rem] text-small tabular-nums">
                 <thead className="text-left text-caption text-muted"><tr><th className="py-1.5 font-semibold">{t('payroll.employee')}</th>{(['A', 'B.A', 'B.B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as const).map((b) => <th key={b} className="py-1.5 text-right font-semibold">{b}</th>)}</tr></thead>
                 <tbody className="divide-y divide-line">
