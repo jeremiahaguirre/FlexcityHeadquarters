@@ -1,11 +1,17 @@
 import { useId } from 'react';
 
 /**
+ * intro: draws in once. loop: draws in again and again (loading, signing in).
+ * hero: draws in, then stays gently alive. idle: alive without the intro. done: a short finishing flourish.
+ */
+export type LogoMotion = 'intro' | 'loop' | 'hero' | 'idle' | 'done';
+
+/**
  * FlexcityHeadquarters (FH) mark: a flowing F drawn as sweeping ribbons (with a
  * lighter layer behind for depth) beside a soft white disc holding the city —
  * an H-shaped twin tower joined by a skybridge. Source of truth: /brand/fh-mark.svg.
  */
-export function LogoMark({ size = 40, className, animate }: { size?: number; className?: string; animate?: 'intro' | 'loop' }) {
+export function LogoMark({ size = 40, className, animate }: { size?: number; className?: string; animate?: LogoMotion }) {
   const p = useId().replace(/:/g, '');
   const F =
     'M37 110C24 88 19 60 26 40 33 20 53 10 76 8.5 87 8 95 9.5 101 12.5 85 14.5 69 18.5 58 25.5 47.5 32.5 42.5 44 42.5 58 42.5 76 41.5 94 37 110Z';
@@ -34,9 +40,24 @@ export function LogoMark({ size = 40, className, animate }: { size?: number; cla
         <clipPath id={`${p}c`}>
           <circle cx="77" cy="86" r="22" />
         </clipPath>
+        <clipPath id={`${p}f`}>
+          <path d={F} />
+        </clipPath>
+        <linearGradient id={`${p}s`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset=".5" stopColor="#FFFFFF" stopOpacity=".55" />
+          <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+        </linearGradient>
       </defs>
       <g className="fh-p fh-p1"><path transform="translate(-5 -4)" fill={`url(#${p}b)`} d={F} /></g>
       <path className="fh-p fh-p2" fill={`url(#${p}m)`} d={F} />
+      {animate === 'hero' || animate === 'idle' ? (
+        <g clipPath={`url(#${p}f)`}>
+          <g transform="skewX(-18)">
+            <rect className="fh-sheen" x="-30" y="0" width="26" height="120" fill={`url(#${p}s)`} />
+          </g>
+        </g>
+      ) : null}
       <path className="fh-p fh-p3" fill={`url(#${p}a)`} d="M42.5 60C53 50 69 47 88 48 75 52 63 56 52 64 47.5 67 43.5 64.5 42.5 60Z" />
       <circle className="fh-p fh-p4" cx="77" cy="86" r="22" fill={`url(#${p}d)`} />
       <g className="fh-p fh-p5" clipPath={`url(#${p}c)`}>
@@ -47,7 +68,7 @@ export function LogoMark({ size = 40, className, animate }: { size?: number; cla
           <rect x="89" y="92" width="5.6" height="18" rx="1.2" />
           <rect x="59.4" y="94" width="4.6" height="16" rx="1.2" />
         </g>
-        <g fill="#F2FAF8">
+        <g fill="#F2FAF8" className="fh-wins">
           <rect x="68.25" y="75.5" width="2.1" height="2.5" rx=".5" />
           <rect x="68.25" y="79.6" width="2.1" height="2.5" rx=".5" />
           <rect x="81.65" y="80.5" width="2.1" height="2.5" rx=".5" />
@@ -65,7 +86,7 @@ export function LogoMark({ size = 40, className, animate }: { size?: number; cla
  * Long form. `horizontal`: mark + "FlexcityHeadquarters" on one line.
  * `stacked`: mark above "Flexcity / HEADQUARTERS". `mark`: the mark alone.
  */
-export function Logo({ variant = 'horizontal', size = 40, animate }: { variant?: 'horizontal' | 'stacked' | 'mark'; size?: number; animate?: 'intro' | 'loop' }) {
+export function Logo({ variant = 'horizontal', size = 40, animate }: { variant?: 'horizontal' | 'stacked' | 'mark'; size?: number; animate?: LogoMotion }) {
   if (variant === 'mark') {
     return (
       <span role="img" aria-label="FlexcityHeadquarters" className="inline-flex">
