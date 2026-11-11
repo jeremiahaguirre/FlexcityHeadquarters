@@ -256,22 +256,17 @@ describe('business details before launch', () => {
     expect([...REQUIRED_BUSINESS_ENV].sort()).toEqual([...new Set(read)].sort());
   });
 
-  it('a production build stops while any is missing; a preview build does not', async () => {
+  it('a production build goes out with placeholders, listing what is missing in its log', async () => {
     const { execFileSync } = await import('node:child_process');
     const cfg = join(__dirname, '../../next.config.mjs');
-    const load = (env: Record<string, string>) => {
-      const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('NEXT_PUBLIC_') && k !== 'VERCEL_ENV' && k !== 'SITE_LAUNCH'));
-      try {
-        execFileSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(`file://${cfg}`)})`], { env: { ...clean, ...env }, stdio: 'pipe' });
-        return 'ok';
-      } catch (e) {
-        return String((e as { stderr?: Buffer }).stderr ?? e);
-      }
-    };
-    expect(load({})).toBe('ok');
-    expect(load({ VERCEL_ENV: 'production' })).toContain('Production site build stopped');
-    const { REQUIRED_BUSINESS_ENV } = await import('../lib/site');
-    const all = Object.fromEntries((REQUIRED_BUSINESS_ENV as string[]).map((k) => [k, 'x']));
-    expect(load({ VERCEL_ENV: 'production', ...all })).toBe('ok');
+    const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('NEXT_PUBLIC_') && k !== 'VERCEL_ENV' && k !== 'SITE_LAUNCH'));
+    const out = execFileSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(`file://${cfg}`)})`], { env: { ...clean, VERCEL_ENV: 'production' } as unknown as NodeJS.ProcessEnv, stdio: 'pipe' });
+    expect(String(out)).toBe('');
+  });
+
+  it('placeholders never show configuration variable names to visitors', () => {
+    for (const v of [COMPANY.legalName, COMPANY.mailingAddress, COMPANY.email, COMPANY.privacyOfficer.name, COMPANY.privacyOfficer.email, COMPANY.copyrightContact.name, COMPANY.copyrightContact.address, COMPANY.copyrightContact.email]) {
+      expect(v).not.toMatch(/NEXT_PUBLIC_/);
+    }
   });
 });

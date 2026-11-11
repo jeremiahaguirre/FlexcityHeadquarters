@@ -10,10 +10,10 @@ export const SITE = {
  * The company behind the site, for CASL sender identification (the contact form's consent request
  * must name who is asking, with a mailing address) and the copyright-notice page. Set these Vercel
  * environment variables before launch; until then the pages show obvious placeholders, never
- * invented details. The API reads the same values (COMPANY_LEGAL_NAME, COMPANY_MAILING_ADDRESS).
+ * invented details. A production build may go out with the placeholders (next.config.mjs only warns). The API reads the same values (COMPANY_LEGAL_NAME, COMPANY_MAILING_ADDRESS).
  */
 export const COMPANY = {
-  legalName: process.env.NEXT_PUBLIC_COMPANY_LEGAL_NAME || '[Company legal name — set NEXT_PUBLIC_COMPANY_LEGAL_NAME]',
+  legalName: process.env.NEXT_PUBLIC_COMPANY_LEGAL_NAME || '[Company legal name — to be added]',
   /** The name the product and company trade under (the brand). */
   operatingName: 'FlexcityHeadquarters',
   /** Optional: shown only when set. */
@@ -27,9 +27,9 @@ export const COMPANY = {
   },
   /** The province whose law governs the terms (owner to decide; counsel to confirm). */
   governingProvince: { en: process.env.NEXT_PUBLIC_GOVERNING_PROVINCE_EN || '[province — to be chosen by the owner]', fr: process.env.NEXT_PUBLIC_GOVERNING_PROVINCE_FR || '[province — à choisir par le propriétaire]' },
-  mailingAddress: process.env.NEXT_PUBLIC_COMPANY_MAILING_ADDRESS || '[Company mailing address — set NEXT_PUBLIC_COMPANY_MAILING_ADDRESS]',
+  mailingAddress: process.env.NEXT_PUBLIC_COMPANY_MAILING_ADDRESS || '[Company mailing address — to be added]',
   /** Where people write to us (the contact form also works). */
-  email: process.env.NEXT_PUBLIC_COMPANY_EMAIL || '[Contact email — to be completed: set NEXT_PUBLIC_COMPANY_EMAIL]',
+  email: process.env.NEXT_PUBLIC_COMPANY_EMAIL || '[Contact email — to be added]',
   /** Copyright Act notice-and-notice contact (ss. 41.25–41.27): where written notices of claimed infringement go. */
   copyrightContact: {
     name: process.env.NEXT_PUBLIC_COPYRIGHT_CONTACT_NAME || '[Copyright contact name or role — to be completed]',
@@ -41,7 +41,7 @@ export const COMPANY = {
 /** True while a value above is still a placeholder (tests and the launch checklist read this). */
 export const isPlaceholder = (v: string) => v.startsWith('[') && v.endsWith(']');
 
-/** Settings a production build requires (next.config.mjs stops the build without them). */
+/** Settings that replace the placeholders (next.config.mjs lists any still missing in a production build's log). */
 export { default as REQUIRED_BUSINESS_ENV } from './requiredBusinessEnv.json';
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3100').replace(/\/$/, '');
