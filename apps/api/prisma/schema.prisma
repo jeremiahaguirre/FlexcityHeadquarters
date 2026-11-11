@@ -527,6 +527,8 @@ model Position {
   hoursOfService Json?
   /// The department this position belongs to (Aquatics, Water Works…). Null = none yet.
   departmentId   String? @db.Uuid
+  /// For the public API's updated_since filter.
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 
   tenant          Tenant                    @relation(fields: [tenantId], references: [id])
   department      Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
@@ -554,6 +556,7 @@ model Department {
   /// Labour budget for the year, for budget-to-actual.
   labourBudget Decimal?            @db.Decimal(14, 2)
   createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
   tenant       Tenant              @relation(fields: [tenantId], references: [id])
   positions    Position[]
   managers     DepartmentManager[]
@@ -829,6 +832,7 @@ model TimeOffRequest {
   decidedById  String?       @db.Uuid
   decidedAt    DateTime?     @db.Timestamptz(3)
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @default(now()) @updatedAt @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -2366,6 +2370,7 @@ model PayRun {
   /// Why an off-cycle run was made.
   note               String?
   createdAt          DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime          @default(now()) @updatedAt @db.Timestamptz(3)
   statements         PayStatement[]
   transmissions      PayTransmission[]
 
@@ -3378,4 +3383,104 @@ model SavedReport {
   createdAt  DateTime       @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, ownerId])
+}
+
+// ------------------------------------------------------------------
+// PUBLIC API AND WEBHOOKS (docs/PUBLIC-API.md)
+// ------------------------------------------------------------------
+
+/// A key a city's own systems (ERP, HRIS, GIS) use to read its data through /api/v1. Only a SHA-256
+/// of the key is stored; the key itself is shown once, when it's made.
+model ApiKey {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @db.Uuid
+  name               String
+  /// The key's first characters ("fh_live_ab12cd34"), to tell keys apart. Not secret.
+  prefix             String
+  keyHash            String    @unique
+  /// What it may read: "people:read", "schedule:read"… (services/integrations/apiKeys.ts SCOPES).
+  scopes             String[]
+  /// IPv4/IPv6 addresses or CIDR ranges allowed to use it. Empty = any address.
+  allowedIps         String[]  @default([])
+  expiresAt          DateTime? @db.Timestamptz(3)
+  rateLimitPerMinute Int       @default(120)
+  lastUsedAt         DateTime? @db.Timestamptz(3)
+  lastUsedIp         String?
+  requestCount       Int       @default(0)
+  createdById        String    @db.Uuid
+  createdAt          DateTime  @default(now()) @db.Timestamptz(3)
+  revokedAt          DateTime? @db.Timestamptz(3)
+  revokedById        String?   @db.Uuid
+  /// The key this one replaced (rotation); the old one keeps working for a day.
+  rotatedFromId      String?   @db.Uuid
+
+  @@index([tenantId, createdAt])
+}
+
+/// An address on the city's own systems that FH sends signed events to (services/integrations/webhooks.ts).
+model WebhookEndpoint {
+  id                  String            @id @default(uuid()) @db.Uuid
+  tenantId            String            @db.Uuid
+  url                 String
+  description         String?
+  /// Event types it receives: "person.updated", "shift.published"…
+  events              String[]
+  /// Signing secret, sealed with the city's key (it has to be read back to sign).
+  secret              Json
+  /// After rotation, the old secret signs too until this moment, so receivers can switch over.
+  previousSecret      Json?
+  previousSecretUntil DateTime?         @db.Timestamptz(3)
+  enabled             Boolean           @default(true)
+  disabledAt          DateTime?         @db.Timestamptz(3)
+  /// "failures" when FH turned it off after too many failed attempts in a row; "manual" otherwise.
+  disabledReason      String?
+  consecutiveFailures Int               @default(0)
+  lastSuccessAt       DateTime?         @db.Timestamptz(3)
+  lastFailureAt       DateTime?         @db.Timestamptz(3)
+  createdById         String            @db.Uuid
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  deliveries          WebhookDelivery[]
+
+  @@index([tenantId])
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCEEDED
+  /// Gave up after the last attempt, or the endpoint was turned off.
+  FAILED
+}
+
+/// One event for one endpoint, and how sending it went. Never holds a secret; the receiver's answer
+/// is cut to 500 characters.
+model WebhookDelivery {
+  id             String                @id @default(uuid()) @db.Uuid
+  tenantId       String                @db.Uuid
+  endpointId     String                @db.Uuid
+  /// The event's id: the same for every endpoint and every redelivery, so receivers can drop repeats.
+  eventId        String                @db.Uuid
+  eventType      String
+  payload        Json
+  status         WebhookDeliveryStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  /// Not before: retries back off by pushing this forward (also a lease while one is being sent).
+  nextAttemptAt  DateTime              @default(now()) @db.Timestamptz(3)
+  lastAttemptAt  DateTime?             @db.Timestamptz(3)
+  responseStatus Int?
+  responseBody   String?
+  error          String?
+  durationMs     Int?
+  deliveredAt    DateTime?             @db.Timestamptz(3)
+  /// "<outbox event id>:<endpoint id>", so an event the outbox delivers twice is queued once.
+  dedupeKey      String?
+  redeliveryOfId String?               @db.Uuid
+  test           Boolean               @default(false)
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+  endpoint       WebhookEndpoint       @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, dedupeKey])
+  @@index([status, nextAttemptAt])
+  @@index([tenantId, status, nextAttemptAt])
+  @@index([endpointId, createdAt])
 }
