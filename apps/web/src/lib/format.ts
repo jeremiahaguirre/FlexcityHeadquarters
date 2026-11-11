@@ -81,6 +81,12 @@ export function formatInstant(value: Date | string, locale: Locale, style: DateS
   return style === 'long' ? out : glue(out);
 }
 
+/** A moment's time of day, in the viewer's zone, kept on one line: "9:27 p.m." · "21 h 27". */
+export function formatClock(value: Date | string, locale: Locale): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  return glue(dateFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(d));
+}
+
 /** A moment with its time, in the viewer's zone: "Nov 13, 2026, 4:30 p.m." · "13 nov. 2026, 16 h 30". */
 export function formatMoment(value: Date | string, locale: Locale): string {
   const d = typeof value === 'string' ? new Date(value) : value;

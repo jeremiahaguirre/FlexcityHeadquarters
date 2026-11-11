@@ -10,7 +10,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { formatDate, formatTimeRange, dateFormat } from '@/lib/format';
+import { formatDate, formatTimeRange, formatClock } from '@/lib/format';
 import { type Session, type Status, cacheSessions, cachedSessions, enqueue, queued, syncQueue } from '@/lib/offlineAttendance';
 import { plusDays, todayIso } from '@/lib/useQuery';
 
@@ -82,7 +82,7 @@ export default function LessonsPage() {
       {offlineSince ? (
         <p role="status" className="mb-4 flex items-center gap-2 rounded-xl bg-warn-bg px-4 py-3 text-small text-ink">
           <CloudOff className="h-5 w-5 shrink-0 text-warn" aria-hidden="true" />
-          {t('lessons.offline', { time: dateFormat(lng, { hour: 'numeric', minute: '2-digit' }).format(new Date(offlineSince)) })}
+          {t('lessons.offline', { time: formatClock(offlineSince, lng) })}
         </p>
       ) : null}
       {sessions === null ? (
