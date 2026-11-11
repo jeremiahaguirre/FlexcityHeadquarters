@@ -11,6 +11,7 @@ const { db, withTenant } = await import('../../src/lib/db.js');
 const { checkRls, runMonitors } = await import('../../src/services/trust/monitors.js');
 const { runReminders } = await import('../../src/services/trust/reminders.js');
 const { ensureTrustSeeded } = await import('../../src/services/trust/seed.js');
+const { trustGuards, trustRouter } = await import('../../src/routes/platform/trust.js');
 const { owner, seedTenant } = await import('./fixtures.js');
 
 const server = createApp();
@@ -47,6 +48,32 @@ describe('Trust: permissions and isolation', () => {
     expect((await reader.as('patch', '/trust/settings').send({ riskAppetite: 10 })).status).toBe(403);
     expect((await reader.as('post', '/trust/risks').send({})).status).toBe(403);
     expect((await request(server).get('/api/platform/trust/overview').set('x-fh-platform', '1')).status).toBe(401);
+  });
+
+  it('guards every Trust route: trust.read to see, trust.manage to change (step-up kept on exports and files)', async () => {
+    type Layer = { route?: { path: string; methods: Record<string, boolean>; stack: Array<{ handle: unknown; name: string }> } };
+    const routes = (trustRouter.stack as unknown as Layer[]).filter((l) => l.route).map((l) => ({ path: l.route!.path, method: Object.keys(l.route!.methods)[0]!, handles: l.route!.stack.map((x) => x.handle), names: l.route!.stack.map((x) => x.name) }));
+    expect(routes.length).toBeGreaterThan(30);
+    // Reads with read; everything that changes something with manage, except accepting a policy and marking alerts read (every reader does those for themselves).
+    const readWrites = new Set(['post /trust/policies/:id/ack', 'post /trust/alerts/read']);
+    for (const r of routes) {
+      const id = `${r.method} ${r.path}`;
+      const guard = r.handles.includes(trustGuards.manage) ? 'manage' : r.handles.includes(trustGuards.read) ? 'read' : null;
+      expect(guard, id).not.toBeNull();
+      // The auditor bundle holds everything (risks, vendors, every customer's commitments): managers only.
+      const want = id === 'get /trust/export/:framework.zip' ? 'manage' : r.method === 'get' || readWrites.has(id) ? 'read' : 'manage';
+      expect(guard, id).toBe(want);
+      if (/export|summary|\/file$/.test(r.path)) expect(r.names, id).toContain('requirePlatformStepUp');
+    }
+    // And over HTTP: no permission → 403 everywhere; a reader → 403 on every change.
+    const none = await admin('noperm', []);
+    const reader = await admin('readonly', ['trust.read']);
+    const concrete = (path: string) => path.replace(':framework.zip', 'soc2.zip').replace('.:format(pdf|csv|json)', '.json').replace(':step(approve|publish)', 'approve').replace(/:(id|vid)\b/g, '00000000-0000-4000-8000-000000000000').replace(':key', 'AC-01');
+    for (const r of routes) {
+      const path = concrete(r.path);
+      expect((await none.as(r.method as 'get', path).send({})).status, `none ${r.method} ${path}`).toBe(403);
+      if (r.handles.includes(trustGuards.manage)) expect((await reader.as(r.method as 'get', path).send({})).status, `reader ${r.method} ${path}`).toBe(403);
+    }
   });
 
   it('keeps FH’s trust records out of every city’s transaction', async () => {
@@ -208,6 +235,27 @@ describe('Trust: reminders', () => {
   });
 });
 
+describe('Trust: evidence limits and audit', () => {
+  it('refuses files over 10 MB and types other than PDF and images, and audits every export', async () => {
+    const big = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(10 * 1024 * 1024 + 1, 0x20)]);
+    expect((await mgr.as('post', '/trust/evidence').send({ controlKey: 'BK-02', kind: 'FILE', title: 'Too big', fileName: 'big.pdf', data: `data:application/pdf;base64,${big.toString('base64')}` })).status).toBe(413);
+    const html = Buffer.from('<html><script>alert(1)</script></html>');
+    expect((await mgr.as('post', '/trust/evidence').send({ controlKey: 'BK-02', kind: 'FILE', title: 'Page', fileName: 'x.html', data: `data:application/pdf;base64,${html.toString('base64')}` })).status).toBe(415);
+    expect((await mgr.as('post', '/trust/evidence').send({ controlKey: 'BK-02', kind: 'LINK', title: 'Plain link', url: 'http://example.com/x' })).status).toBe(400);
+    const before = await owner.platformAudit.count({ where: { adminId: mgr.id, action: { in: ['trust.export.summary', 'trust.export.auditor'] } } });
+    expect((await mgr.as('get', '/trust/summary.json')).status).toBe(200);
+    expect((await mgr.as('get', '/trust/export/pipeda.zip')).status).toBe(200);
+    expect(await owner.platformAudit.count({ where: { adminId: mgr.id, action: { in: ['trust.export.summary', 'trust.export.auditor'] } } })).toBe(before + 2);
+  });
+
+  it('the audit log test passes only while the app can’t edit either audit log', async () => {
+    const [x] = await runMonitors({ keys: ['audit_log'] });
+    expect(['PASS', 'WARN']).toContain(x!.status);
+    const t = await db().trustTest.findUniqueOrThrow({ where: { key: 'audit_log' } });
+    expect((t.lastDetails as { appendOnly: boolean }).appendOnly).toBe(true);
+  });
+});
+
 describe('Trust: posture summary for customers', () => {
   it('shares readiness bands and controls in place only, and never claims certification', async () => {
     const audits = () => owner.platformAudit.count({ where: { adminId: mgr.id, action: { in: ['trust.export.summary', 'trust.export.auditor'] } } });
@@ -247,12 +295,16 @@ describe('Trust: posture summary for customers', () => {
     expect(fr['vendors.csv']).toContain('Fournisseur,Utilité,Criticité');
   });
 
-  it('needs a passkey step-up for exports when the second factor is on', async () => {
+  it('needs a passkey step-up for exports and evidence files when the second factor is on', async () => {
+    const ev = await mgr.as('post', '/trust/evidence').send({ controlKey: 'BK-01', kind: 'FILE', title: 'Snapshot list', fileName: 'snap.pdf', data: `data:application/pdf;base64,${PDF.toString('base64')}` });
+    expect(ev.status).toBe(201);
     process.env.PLATFORM_MFA = 'required';
     try {
-      const r = await mgr.as('get', '/trust/summary.pdf');
-      expect(r.status).toBe(403);
-      expect(['MFA_REQUIRED', 'PASSKEY_STEP_UP']).toContain(r.body.code);
+      for (const path of ['/trust/summary.pdf', '/trust/summary.csv', '/trust/export/soc2.zip', `/trust/evidence/${ev.body.id}/file`]) {
+        const r = await mgr.as('get', path);
+        expect(r.status, path).toBe(403);
+        expect(['MFA_REQUIRED', 'PASSKEY_STEP_UP'], path).toContain(r.body.code);
+      }
     } finally {
       delete process.env.PLATFORM_MFA;
     }

@@ -37,6 +37,8 @@ export const requireTrust = (perm: 'trust.read' | 'trust.manage') => (req: Reque
 };
 const read = requireTrust('trust.read');
 const manage = requireTrust('trust.manage');
+/** The two guards, exported so a test can check every Trust route carries one of them. */
+export const trustGuards = { read, manage };
 
 const audit = (adminId: string, action: string, detail?: object) => db().platformAudit.create({ data: { adminId, action: `trust.${action}`, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
 
