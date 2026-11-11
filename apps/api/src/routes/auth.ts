@@ -4,7 +4,7 @@ import { appUrl, consumeAuthToken, issueAuthToken } from '../auth/authTokens.js'
 import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, hashPassword, signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword } from '../auth/tokens.js';
 import { config } from '../config.js';
-import { isCommonPassword } from '../auth/commonPasswords.js';
+import { isCommonPassword, isPersonalPassword } from '../auth/commonPasswords.js';
 import { withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { permissionsFor } from '../auth/permissions.js';
@@ -16,12 +16,25 @@ export const COOKIE = 'fc_refresh';
 const LOCKOUT_AFTER = 5;
 const LOCKOUT_MS = 15 * 60_000;
 
+/**
+ * Password rules (NIST SP 800-63B in spirit: length and a block list over composition tricks, no
+ * forced expiry): at least 12 characters, letters with numbers or symbols, at least 5 different
+ * characters, not a commonly used password. checkPersonalPassword() adds the person's own details
+ * once they are known (reset and change).
+ */
+export const PASSWORD_MIN = 12;
 export const passwordRule = z
   .string()
-  .min(10, 'Use at least 10 characters.')
-  .max(200)
+  .min(PASSWORD_MIN, `Use at least ${PASSWORD_MIN} characters.`)
+  .max(128)
   .refine((p) => /[A-Za-z]/.test(p) && /[^A-Za-z]/.test(p), 'Mix letters with numbers or symbols.')
+  .refine((p) => new Set(p).size >= 5, 'Use more different characters.')
   .refine((p) => !isCommonPassword(p), 'That password is too common. Choose something less predictable.');
+
+/** Refuses a password made from the person's own details or their organization's name. */
+export function checkPersonalPassword(password: string, about: Parameters<typeof isPersonalPassword>[1]): void {
+  if (isPersonalPassword(password, about)) throw new HttpError(400, 'PASSWORD_PERSONAL', 'Don’t use your name, email or your organization’s name in your password.');
+}
 
 export const cookieOpts = () => ({
   httpOnly: true,
@@ -164,6 +177,9 @@ authRouter.post(
     const done = await withTenant(tenantId, async (tx) => {
       const t = await consumeAuthToken(tx, body.token, ['INVITE', 'RESET']);
       if (!t) return false;
+      // Thrown inside the transaction, so a refused password leaves the link usable for another try.
+      const who = await tx.user.findUniqueOrThrow({ where: { id: t.userId }, select: { email: true, firstName: true, lastName: true, tenant: { select: { name: true, subdomain: true } } } });
+      checkPersonalPassword(body.password, { ...who, organization: who.tenant.name, subdomain: who.tenant.subdomain });
       await tx.user.update({ where: { id: t.userId }, data: { passwordHash, failedLoginCount: 0, lockedUntil: null } });
       await tx.refreshToken.updateMany({ where: { userId: t.userId, revokedAt: null }, data: { revokedAt: new Date() } });
       await notify(tx, tenantId, [{ userId: t.userId, type: t.purpose === 'INVITE' ? 'welcome' : 'password_changed', link: '/profile' }]);

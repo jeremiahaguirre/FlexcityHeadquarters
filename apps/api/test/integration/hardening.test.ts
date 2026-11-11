@@ -5,6 +5,8 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { issueAuthToken } from '../../src/auth/authTokens.js';
+import { withTenant } from '../../src/lib/db.js';
 import { hashPassword, signAccessToken } from '../../src/auth/tokens.js';
 import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
@@ -208,6 +210,16 @@ describe('access control basics', () => {
       const r = await call(tok.staff).get(path);
       expect([403, 404], `${path} → ${r.status}`).toContain(r.status);
     }
+  });
+
+  it('refuses a password made of the person’s own name, and the reset link still works for the next try', async () => {
+    const u = await owner.user.findUniqueOrThrow({ where: { id: t.users[0]!.id } });
+    const token = await withTenant(t.tenant.id, (tx) => issueAuthToken(tx, t.tenant.id, u.id, 'RESET'));
+    const reset = (password: string) => request(server).post('/api/auth/reset').set('x-tenant-subdomain', SUB).send({ token, password });
+    const personal = await reset(`${u.firstName}-${u.lastName}-2026!`.replace(/\s/g, ''));
+    expect(personal.status).toBe(400);
+    expect(personal.body.code).toBe('PASSWORD_PERSONAL');
+    expect((await reset('river-otter-paddle-42')).status).toBe(200);
   });
 
   it('refuses common passwords', async () => {

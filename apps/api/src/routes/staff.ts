@@ -9,7 +9,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { db as rootDb } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
-import { passwordRule } from './auth.js';
+import { checkPersonalPassword, passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
 import { FEATURES, type FeatureKey, tenantSettings } from '../services/platform/features.js';
 import { MENU } from '../auth/menu.js';
@@ -123,8 +123,10 @@ staffRouter.post(
     const body = z.object({ currentPassword: z.string().min(1), newPassword: passwordRule }).parse(req.body);
     const hash = await hashPassword(body.newPassword);
     const ok = await withTenant(a.tenantId, async (tx) => {
-      const u = await tx.user.findUniqueOrThrow({ where: { id: a.userId } });
+      const u = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, include: { tenant: { select: { name: true, subdomain: true } } } });
       if (!u.passwordHash || !(await verifyPassword(body.currentPassword, u.passwordHash))) return false;
+      if (body.newPassword === body.currentPassword) throw new HttpError(400, 'PASSWORD_REUSED', 'Choose a password different from your current one.');
+      checkPersonalPassword(body.newPassword, { ...u, organization: u.tenant.name, subdomain: u.tenant.subdomain });
       await tx.user.update({ where: { id: a.userId }, data: { passwordHash: hash } });
       return true;
     });

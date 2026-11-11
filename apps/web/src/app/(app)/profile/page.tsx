@@ -200,7 +200,7 @@ export default function ProfilePage() {
           <CardBody className="pt-3">
             <form onSubmit={(e) => void changePassword(e)} className="grid gap-4">
               <Field label={t('profile.currentPassword')}>{(p) => <Input {...p} name="currentPassword" type="password" autoComplete="current-password" required />}</Field>
-              <Field label={t('reset.password')} hint={t('reset.rule')}>{(p) => <Input {...p} name="newPassword" type="password" autoComplete="new-password" minLength={10} required />}</Field>
+              <Field label={t('reset.password')} hint={t('reset.rule')}>{(p) => <Input {...p} name="newPassword" type="password" autoComplete="new-password" minLength={12} required />}</Field>
               <Field label={t('reset.confirm')} error={pwError ?? undefined}>{(p) => <Input {...p} name="confirm" type="password" autoComplete="new-password" required />}</Field>
               <Button type="submit" className="justify-self-start" loading={busy === 'pw'}>
                 {t('profile.changePassword')}

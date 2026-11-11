@@ -146,13 +146,13 @@
   "reset": {
     "title": "Choose a new password",
     "inviteTitle": "Welcome! Set your password",
-    "rule": "Use at least 10 characters, mixing letters with numbers or symbols.",
+    "rule": "Use at least 12 characters, mixing letters with numbers or symbols. Avoid your name, your email and your organization’s name.",
     "password": "New password",
     "confirm": "Confirm password",
     "submit": "Save password",
     "inviteSubmit": "Set password",
     "mismatch": "The two passwords don’t match.",
-    "weak": "Use at least 10 characters, mixing letters with numbers or symbols.",
+    "weak": "That password isn’t strong enough. Use at least 12 characters, mixing letters with numbers or symbols, and avoid common passwords.",
     "expired": "This link has expired or was already used. Ask for a new one from the sign-in page.",
     "doneTitle": "Your password is saved"
   },
@@ -518,7 +518,9 @@
     "ONCALL_OVERLAP": "This person is already on call then.",
     "ONCALL_TIME_OFF": "This person has approved time off then.",
     "BUSY": "The service is very busy right now. Try again in a moment.",
-    "INTERNAL": "Something went wrong on our side. Try again; if it keeps happening, contact your administrator."
+    "INTERNAL": "Something went wrong on our side. Try again; if it keeps happening, contact your administrator.",
+    "PASSWORD_PERSONAL": "Don’t use your name, your email or your organization’s name in your password.",
+    "PASSWORD_REUSED": "Choose a password different from your current one."
   },
   "timeclock": {
     "title": "Timeclock",

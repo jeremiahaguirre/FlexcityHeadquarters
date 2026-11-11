@@ -146,13 +146,13 @@
   "reset": {
     "title": "Choisissez un nouveau mot de passe",
     "inviteTitle": "Bienvenue! Choisissez votre mot de passe",
-    "rule": "Utilisez au moins 10 caractères, en mêlant lettres et chiffres ou symboles.",
+    "rule": "Utilisez au moins 12 caractères, en mêlant lettres et chiffres ou symboles. Évitez votre nom, votre courriel et le nom de votre organisation.",
     "password": "Nouveau mot de passe",
     "confirm": "Confirmez le mot de passe",
     "submit": "Enregistrer le mot de passe",
     "inviteSubmit": "Définir le mot de passe",
     "mismatch": "Les deux mots de passe ne correspondent pas.",
-    "weak": "Utilisez au moins 10 caractères, en mêlant lettres et chiffres ou symboles.",
+    "weak": "Ce mot de passe n’est pas assez robuste. Utilisez au moins 12 caractères, en mêlant lettres et chiffres ou symboles, et évitez les mots de passe courants.",
     "expired": "Ce lien est expiré ou a déjà servi. Demandez-en un nouveau à la page de connexion.",
     "doneTitle": "Votre mot de passe est enregistré"
   },
@@ -518,7 +518,9 @@
     "ONCALL_OVERLAP": "Cette personne est déjà de garde à ce moment.",
     "ONCALL_TIME_OFF": "Cette personne a un congé approuvé à ce moment.",
     "BUSY": "Le service est très sollicité en ce moment. Réessayez dans un instant.",
-    "INTERNAL": "Une erreur s’est produite de notre côté. Réessayez; si le problème persiste, communiquez avec votre administrateur."
+    "INTERNAL": "Une erreur s’est produite de notre côté. Réessayez; si le problème persiste, communiquez avec votre administrateur.",
+    "PASSWORD_PERSONAL": "N’utilisez pas votre nom, votre courriel ni le nom de votre organisation dans votre mot de passe.",
+    "PASSWORD_REUSED": "Choisissez un mot de passe différent de votre mot de passe actuel."
   },
   "timeclock": {
     "title": "Horodateur",

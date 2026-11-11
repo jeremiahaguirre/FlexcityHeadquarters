@@ -29,6 +29,7 @@ function ResetForm() {
       setDone(true);
     } catch (err) {
       if (err instanceof ApiError && err.code === 'LINK_EXPIRED') setError(t('reset.expired'));
+      else if (err instanceof ApiError && err.code === 'PASSWORD_PERSONAL') setError(t('errors.PASSWORD_PERSONAL'));
       else if (err instanceof ApiError && err.status === 400) setError(t('reset.weak'));
       else setError(t('common.error'));
     } finally {
@@ -54,7 +55,7 @@ function ResetForm() {
       <h1 className="text-title">{invite ? t('reset.inviteTitle') : t('reset.title')}</h1>
       <p className="mt-2 text-body text-muted">{t('reset.rule')}</p>
       <form onSubmit={onSubmit} className="mt-8 grid gap-5">
-        <Field label={t('reset.password')}>{(p) => <Input {...p} name="password" type="password" autoComplete="new-password" minLength={10} required />}</Field>
+        <Field label={t('reset.password')}>{(p) => <Input {...p} name="password" type="password" autoComplete="new-password" minLength={12} required />}</Field>
         <Field label={t('reset.confirm')} error={error ?? undefined}>
           {(p) => <Input {...p} name="confirm" type="password" autoComplete="new-password" required />}
         </Field>

@@ -84,6 +84,7 @@ describe('invitations and passwords', () => {
   it('changes a password only with the current one', async () => {
     await owner.user.update({ where: { id: supId }, data: { passwordHash: await hashPassword('old-pass-123') } });
     expect((await call(sup).post('/api/me/password', { currentPassword: 'nope', newPassword: 'new-pass-456' })).status).toBe(400);
+    expect((await call(sup).post('/api/me/password', { currentPassword: 'old-pass-123', newPassword: 'old-pass-123' })).body.code).toBe('PASSWORD_REUSED');
     expect((await call(sup).post('/api/me/password', { currentPassword: 'old-pass-123', newPassword: 'new-pass-456' })).status).toBe(200);
   });
 

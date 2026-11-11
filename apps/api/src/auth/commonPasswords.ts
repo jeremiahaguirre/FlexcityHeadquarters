@@ -23,3 +23,18 @@ export function isCommonPassword(password: string, email?: string): boolean {
   if (local && local.length >= 3 && core(p).replace(/[^a-z]/g, '') === local) return true;
   return false;
 }
+
+const fold = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * True when the password contains the person's own details or their organization's name: their
+ * email name, first or last name (3 letters or more), the organization's name or subdomain.
+ * Accents, case and punctuation are ignored ("Jérémie-2026!" contains "jeremie").
+ */
+export function isPersonalPassword(password: string, about: { email?: string | null; firstName?: string | null; lastName?: string | null; organization?: string | null; subdomain?: string | null }): boolean {
+  const p = fold(password);
+  const parts = [about.email?.split('@')[0], about.firstName, about.lastName, about.subdomain, ...(about.organization ?? '').split(/\s+/).filter((w) => !/^(city|ville|of|de|du|la|le|the|town|municipality|county|district|regional|inc|ltd)$/i.test(w))]
+    .map((x) => fold(x ?? ''))
+    .filter((x) => x.length >= 3);
+  return parts.some((x) => p.includes(x));
+}
