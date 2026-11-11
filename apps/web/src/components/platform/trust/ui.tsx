@@ -36,13 +36,15 @@ export function TrustTabs() {
   useEffect(() => {
     ref.current?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
   }, [path]);
+  // The app's segmented look (a surface track, the current section on a raised panel), as links,
+  // on one line that scrolls sideways when it doesn't fit (never wraps).
   return (
-    <nav aria-label={t('trust.nav')} className="-mx-4 mb-6 md:mx-0">
-      <div ref={ref} className="flex gap-1 overflow-x-auto px-4 pb-1 md:flex-wrap md:px-0 [scrollbar-width:none]">
+    <nav aria-label={t('trust.nav')} className="mb-6">
+      <div ref={ref} className="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-xl bg-surface p-1 [scrollbar-width:none]">
         {TRUST_SECTIONS.map((s) => {
           const on = 'exact' in s && s.exact ? path === s.href : path === s.href || path.startsWith(`${s.href}/`);
           return (
-            <Link key={s.href} href={s.href} aria-current={on ? 'page' : undefined} className={cn('inline-flex min-h-[44px] shrink-0 items-center rounded-full px-3.5 text-small font-semibold transition-colors', on ? 'bg-ink text-page' : 'text-muted hover:bg-surface hover:text-ink')}>
+            <Link key={s.href} href={s.href} aria-current={on ? 'page' : undefined} className={cn('inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-lg px-3.5 text-small font-semibold transition-colors sm:min-h-9', on ? 'bg-panel text-ink shadow-card' : 'text-muted hover:text-ink')}>
               {t(`trust.section.${s.key}`)}
             </Link>
           );
