@@ -112,7 +112,7 @@ body {
   outline-offset: 2px;
 }
 /* Date and time fields: the calendar button inside them takes a Tab stop but doesn't match :focus-visible, so the field keeps its ring while any part of it has focus. */
-:is(input[type='date'], input[type='time'], input[type='datetime-local'], input[type='month'], input[type='week']):focus {
+:is(input[type='date'], input[type='time'], input[type='datetime-local'], input[type='month'], input[type='week']):focus-within {
   outline: 2px solid rgb(var(--focus));
   outline-offset: 2px;
 }
