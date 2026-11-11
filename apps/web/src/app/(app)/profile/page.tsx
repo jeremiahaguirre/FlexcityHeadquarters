@@ -31,6 +31,7 @@ import { KioskPinCard } from '@/components/kiosk/KioskCards';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
 import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
 import { MyPolicies } from '@/components/hr/Policies';
+import { ReportingCard } from '@/components/people/Reporting';
 
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
 
@@ -123,6 +124,7 @@ export default function ProfilePage() {
       ) : null}
 
       <div className="gap-6 lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
+        {me.support ? null : <ReportingCard />}
         <DocumentsCard />
         <AppearanceCard />
         <PushCard />

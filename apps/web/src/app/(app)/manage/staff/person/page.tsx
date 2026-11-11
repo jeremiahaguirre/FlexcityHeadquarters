@@ -24,6 +24,7 @@ import { EMPLOYMENT, type Position, ROLES, TIERS } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
 import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
+import { ReportingCard } from '@/components/people/Reporting';
 
 interface Detail {
   id: string;
@@ -146,6 +147,7 @@ function Person() {
       </header>
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
+        <ReportingCard userId={p.id} name={name} />
         {can('users.scheduling') ? (
           <Section title={t('staff.scheduling')} description={t('staff.schedulingHelp')}>
             <form onSubmit={(e) => void saveScheduling(e)} className="grid gap-4">

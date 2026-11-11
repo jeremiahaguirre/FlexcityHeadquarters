@@ -248,7 +248,8 @@
     "accountingShort": "Accounting",
     "manageExpensesShort": "Expenses",
     "opsShort": "Chemistry",
-    "unionShort": "Union"
+    "unionShort": "Union",
+    "orgChart": "Org chart"
   },
   "navGroups": {
     "mine": "My work",
@@ -484,7 +485,12 @@
     "PUNCH_TOO_OLD": "This punch is more than 3 days old, so it can’t be sent from the phone. Ask your supervisor to add the time.",
     "PUNCH_OUT_BEFORE_IN": "This clock-out is before the clock-in. Ask your supervisor to fix the time.",
     "PUNCH_OVERLAPS": "You already have a punch covering this time.",
-    "PUNCH_ID_TAKEN": "This punch couldn’t be matched to you. Ask your supervisor to add the time."
+    "PUNCH_ID_TAKEN": "This punch couldn’t be matched to you. Ask your supervisor to add the time.",
+    "MANAGER_SELF": "Someone can’t report to themselves.",
+    "MANAGER_CYCLE": "That person is on their team already (directly or further down), so they can’t be their manager.",
+    "MANAGER_INACTIVE": "Choose someone who still works here.",
+    "HAS_REPORTS": "Choose who their people report to now.",
+    "NO_REVIEWER": "This person has no manager yet. Choose who conducts the review."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -920,7 +926,10 @@
       "outSent": "clock-out sent at {{time}}",
       "clockOff_one": "phone clock off by {{count}} minute (corrected)",
       "clockOff_other": "phone clock off by {{count}} minutes (corrected)"
-    }
+    },
+    "whose": "Whose requests",
+    "myTeam": "My team",
+    "everyone": "Everyone I can approve"
   },
   "certs": {
     "title": "Certifications",
@@ -2030,7 +2039,7 @@
       "choose": "Choose a CSV file",
       "template": "Download a template",
       "columns": "Columns",
-      "columnsHelp": "Needed: first_name, last_name, email. Optional: employment (full-time, part-time, casual, on call, volunteer), positions (separated by ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date and date_of_birth (YYYY-MM-DD), employee_number, phone, language (en or fr), union_member (yes/no). French column names work too. roles also accepts employee (general city worker) and your city’s own role names.",
+      "columnsHelp": "Needed: first_name, last_name, email. Optional: employment (full-time, part-time, casual, on call, volunteer), positions (separated by ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date and date_of_birth (YYYY-MM-DD), employee_number, phone, language (en or fr), union_member (yes/no), manager (the email of the person they report to, on staff or in the file). French column names work too. roles also accepts employee (general city worker) and your city’s own role names.",
       "positionsKnown": "Positions in this city: {{list}}.",
       "paste": "…or paste the spreadsheet here",
       "check": "Check rows",
@@ -2065,7 +2074,8 @@
         "hireDate": "Hire date",
         "dateOfBirth": "Date of birth",
         "employeeNumber": "Employee number",
-        "row": "Row"
+        "row": "Row",
+        "manager": "Manager"
       },
       "codes": {
         "REQUIRED": "{{field}} is missing.",
@@ -2079,7 +2089,10 @@
         "DATE_FORMAT": "{{field}} “{{value}}” isn’t a date (use YYYY-MM-DD).",
         "DATE_IN_FUTURE": "{{field}} is in the future.",
         "NO_EMPLOYEE_NUMBER": "No employee number; payroll will need one.",
-        "TOO_MANY_ROWS": "Over 2,000 rows; import the rest separately."
+        "TOO_MANY_ROWS": "Over 2,000 rows; import the rest separately.",
+        "MANAGER_SELF": "Someone can’t report to themselves.",
+        "MANAGER_UNKNOWN": "No one with the email {{value}} on staff or in the file.",
+        "MANAGER_CYCLE": "The managers in the file go in a circle (through {{value}})."
       },
       "help_one": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} position to match against.",
       "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} positions to match against."
@@ -4337,7 +4350,9 @@
       "self": "Self-assessment sent",
       "manager": "Assessment sent",
       "acknowledge": "Review acknowledged"
-    }
+    },
+    "reviewerManager": "Their manager",
+    "reviewerHint": "By default, the person they report to."
   },
   "training": {
     "title": "Training",
@@ -5696,5 +5711,56 @@
     "title": "This screen isn’t part of your access",
     "body": "Your role doesn’t include it, or your organization has turned it off. Ask your supervisor or HR if you think you need it.",
     "back": "Back to Today"
+  },
+  "orgChart": {
+    "title": "Org chart",
+    "description": "Who reports to whom. People without a manager set report to their department’s manager.",
+    "expandAll": "Expand all",
+    "collapseAll": "Collapse all",
+    "search": "Search by name, position or department",
+    "found_one": "{{count}} person found",
+    "found_other": "{{count}} people found",
+    "none": "No one to show yet",
+    "noneHelp": "Once people are on staff, they appear here under their manager.",
+    "noMatch": "No one matches your search",
+    "unplaced_one": "{{count}} person without a manager or team",
+    "unplaced_other": "{{count}} people without a manager or team",
+    "unplacedHelp": "Set their manager on their staff page, or put their position in a department that has a manager.",
+    "showTeam": "Show {{name}}’s team",
+    "hideTeam": "Hide {{name}}’s team",
+    "reports_one": "{{count}} direct report",
+    "reports_other": "{{count}} direct reports",
+    "everyoneBelow_one": "{{count}} person in this team",
+    "everyoneBelow_other": "{{count}} people in this team"
+  },
+  "reporting": {
+    "title": "Reporting",
+    "myTitle": "My manager",
+    "myHelp": "Your requests (time off, expenses, trades) go to your manager first.",
+    "reportsTo": "Reports to",
+    "myManager": "My manager",
+    "directReports": "Direct reports",
+    "myTeam": "My team",
+    "noManager": "No manager yet.",
+    "noReports": "No one reports to them.",
+    "byDepartment": "Their department’s manager, by default.",
+    "byDepartmentMany": "Their department’s managers, by default.",
+    "openChart": "Open the org chart",
+    "change": "Change",
+    "changeTitle": "Who {{name}} reports to",
+    "changeHelp": "Their approvals and reviews go to this person first. The manager doesn’t get any access they didn’t already have.",
+    "manager": "Manager",
+    "managerHint": "Leave on the department’s manager to follow the department.",
+    "departmentDefault": "Their department’s manager (default)",
+    "saved": "Manager saved",
+    "bulk": "Set manager",
+    "bulkHelp": "Choose several people and who they report to. Someone can’t report to a person on their own team.",
+    "bulkPeople": "People",
+    "bulkSave": "Set manager",
+    "bulkSaved_one": "Manager set for {{count}} person",
+    "bulkSaved_other": "Manager set for {{count}} people",
+    "reassign_one": "{{count}} person reports to {{name}}. Who do they report to now?",
+    "reassign_other": "{{count}} people report to {{name}}. Who do they report to now?",
+    "reassignHint": "Their approvals and reviews move to this person."
   }
 }

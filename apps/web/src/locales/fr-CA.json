@@ -248,7 +248,8 @@
     "accountingShort": "Compta",
     "manageExpensesShort": "Dépenses",
     "opsShort": "Chimie",
-    "unionShort": "Syndicat"
+    "unionShort": "Syndicat",
+    "orgChart": "Organigramme"
   },
   "navGroups": {
     "mine": "Mon travail",
@@ -484,7 +485,12 @@
     "PUNCH_TOO_OLD": "Ce pointage date de plus de 3 jours : il ne peut pas être envoyé du téléphone. Demandez à votre superviseur d’ajouter les heures.",
     "PUNCH_OUT_BEFORE_IN": "Ce départ est avant l’arrivée. Demandez à votre superviseur de corriger l’heure.",
     "PUNCH_OVERLAPS": "Vous avez déjà un pointage pour cette période.",
-    "PUNCH_ID_TAKEN": "Ce pointage n’a pas pu vous être associé. Demandez à votre superviseur d’ajouter les heures."
+    "PUNCH_ID_TAKEN": "Ce pointage n’a pas pu vous être associé. Demandez à votre superviseur d’ajouter les heures.",
+    "MANAGER_SELF": "Une personne ne peut pas relever d’elle-même.",
+    "MANAGER_CYCLE": "Cette personne fait déjà partie de son équipe (directement ou plus bas), elle ne peut donc pas être son gestionnaire.",
+    "MANAGER_INACTIVE": "Choisissez une personne qui travaille encore ici.",
+    "HAS_REPORTS": "Choisissez de qui relèvent maintenant les membres de son équipe.",
+    "NO_REVIEWER": "Cette personne n’a pas encore de gestionnaire. Choisissez qui mène l’évaluation."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -920,7 +926,10 @@
       "outSent": "départ envoyé à {{time}}",
       "clockOff_one": "horloge du téléphone décalée de {{count}} minute (corrigé)",
       "clockOff_other": "horloge du téléphone décalée de {{count}} minutes (corrigé)"
-    }
+    },
+    "whose": "Demandes de qui",
+    "myTeam": "Mon équipe",
+    "everyone": "Tous ceux que je peux approuver"
   },
   "certs": {
     "title": "Certifications",
@@ -2030,7 +2039,7 @@
       "choose": "Choisir un fichier CSV",
       "template": "Télécharger un modèle",
       "columns": "Colonnes",
-      "columnsHelp": "Obligatoires : first_name, last_name, email. Facultatives : employment (temps plein, temps partiel, occasionnel, sur appel, bénévole), positions (séparés par ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date et date_of_birth (AAAA-MM-JJ), employee_number, phone, language (en ou fr), union_member (oui/non). Les noms de colonnes en français fonctionnent aussi. roles accepte aussi employee (employé municipal général) et les noms des rôles de votre ville.",
+      "columnsHelp": "Obligatoires : first_name, last_name, email. Facultatives : employment (temps plein, temps partiel, occasionnel, sur appel, bénévole), positions (séparés par ;), roles (staff, head lifeguard, supervisor, front desk, hr, steward), hire_date et date_of_birth (AAAA-MM-JJ), employee_number, phone, language (en ou fr), union_member (oui/non), manager (le courriel de la personne dont elle relève, dans le personnel ou le fichier). Les noms de colonnes en français fonctionnent aussi. roles accepte aussi employee (employé municipal général) et les noms des rôles de votre ville.",
       "positionsKnown": "Postes de cette ville : {{list}}.",
       "paste": "…ou collez le chiffrier ici",
       "check": "Vérifier les lignes",
@@ -2065,7 +2074,8 @@
         "hireDate": "Date d’embauche",
         "dateOfBirth": "Date de naissance",
         "employeeNumber": "Numéro d’employé",
-        "row": "Ligne"
+        "row": "Ligne",
+        "manager": "Gestionnaire"
       },
       "codes": {
         "REQUIRED": "{{field}} : valeur manquante.",
@@ -2079,7 +2089,10 @@
         "DATE_FORMAT": "{{field}} « {{value}} » n’est pas une date (AAAA-MM-JJ).",
         "DATE_IN_FUTURE": "{{field}} est dans le futur.",
         "NO_EMPLOYEE_NUMBER": "Aucun numéro d’employé; la paie en aura besoin.",
-        "TOO_MANY_ROWS": "Plus de 2 000 lignes; importez le reste séparément."
+        "TOO_MANY_ROWS": "Plus de 2 000 lignes; importez le reste séparément.",
+        "MANAGER_SELF": "Une personne ne peut pas relever d’elle-même.",
+        "MANAGER_UNKNOWN": "Personne avec le courriel {{value}} dans le personnel ou le fichier.",
+        "MANAGER_CYCLE": "Les gestionnaires du fichier tournent en rond (en passant par {{value}})."
       },
       "help_one": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} poste reconnu.",
       "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus."
@@ -4337,7 +4350,9 @@
       "self": "Autoévaluation envoyée",
       "manager": "Évaluation envoyée",
       "acknowledge": "Évaluation confirmée"
-    }
+    },
+    "reviewerManager": "Son gestionnaire",
+    "reviewerHint": "Par défaut, la personne dont elle relève."
   },
   "training": {
     "title": "Formation",
@@ -5696,5 +5711,56 @@
     "title": "Cet écran ne fait pas partie de vos accès",
     "body": "Votre rôle ne le comprend pas, ou votre organisation l’a désactivé. Parlez-en à votre superviseur ou aux RH si vous pensez en avoir besoin.",
     "back": "Retour à Aujourd’hui"
+  },
+  "orgChart": {
+    "title": "Organigramme",
+    "description": "Qui relève de qui. Les personnes sans gestionnaire désigné relèvent du gestionnaire de leur service.",
+    "expandAll": "Tout déplier",
+    "collapseAll": "Tout replier",
+    "search": "Rechercher par nom, poste ou service",
+    "found_one": "{{count}} personne trouvée",
+    "found_other": "{{count}} personnes trouvées",
+    "none": "Personne à afficher pour l’instant",
+    "noneHelp": "Dès que des personnes font partie du personnel, elles apparaissent ici sous leur gestionnaire.",
+    "noMatch": "Personne ne correspond à votre recherche",
+    "unplaced_one": "{{count}} personne sans gestionnaire ni équipe",
+    "unplaced_other": "{{count}} personnes sans gestionnaire ni équipe",
+    "unplacedHelp": "Indiquez leur gestionnaire sur leur fiche, ou placez leur poste dans un service qui a un gestionnaire.",
+    "showTeam": "Afficher l’équipe de {{name}}",
+    "hideTeam": "Masquer l’équipe de {{name}}",
+    "reports_one": "{{count}} subordonné direct",
+    "reports_other": "{{count}} subordonnés directs",
+    "everyoneBelow_one": "{{count}} personne dans cette équipe",
+    "everyoneBelow_other": "{{count}} personnes dans cette équipe"
+  },
+  "reporting": {
+    "title": "Lien hiérarchique",
+    "myTitle": "Mon gestionnaire",
+    "myHelp": "Vos demandes (congés, dépenses, échanges) vont d’abord à votre gestionnaire.",
+    "reportsTo": "Relève de",
+    "myManager": "Mon gestionnaire",
+    "directReports": "Subordonnés directs",
+    "myTeam": "Mon équipe",
+    "noManager": "Aucun gestionnaire pour l’instant.",
+    "noReports": "Personne ne relève de cette personne.",
+    "byDepartment": "Le gestionnaire de son service, par défaut.",
+    "byDepartmentMany": "Les gestionnaires de son service, par défaut.",
+    "openChart": "Ouvrir l’organigramme",
+    "change": "Modifier",
+    "changeTitle": "De qui relève {{name}}",
+    "changeHelp": "Ses approbations et évaluations vont d’abord à cette personne. Le gestionnaire n’obtient aucun accès qu’il n’avait pas déjà.",
+    "manager": "Gestionnaire",
+    "managerHint": "Laissez le gestionnaire du service pour suivre le service.",
+    "departmentDefault": "Le gestionnaire de son service (par défaut)",
+    "saved": "Gestionnaire enregistré",
+    "bulk": "Désigner un gestionnaire",
+    "bulkHelp": "Choisissez plusieurs personnes et la personne dont elles relèvent. Personne ne peut relever d’un membre de sa propre équipe.",
+    "bulkPeople": "Personnes",
+    "bulkSave": "Désigner le gestionnaire",
+    "bulkSaved_one": "Gestionnaire désigné pour {{count}} personne",
+    "bulkSaved_other": "Gestionnaire désigné pour {{count}} personnes",
+    "reassign_one": "{{count}} personne relève de {{name}}. De qui relève-t-elle maintenant?",
+    "reassign_other": "{{count}} personnes relèvent de {{name}}. De qui relèvent-elles maintenant?",
+    "reassignHint": "Leurs approbations et évaluations passent à cette personne."
   }
 }

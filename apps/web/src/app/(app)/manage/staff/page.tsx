@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, UserPlus, Users } from 'lucide-react';
+import { Network, Search, UserPlus, Users } from 'lucide-react';
 import Link from 'next/link';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,8 @@ import { type CustomRole, roleName } from '@/lib/customRoles';
 import { EMPLOYMENT, type Position, ROLES } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { DepartmentTabs } from '@/components/DepartmentTabs';
-import { departmentParam, useDepartmentTab } from '@/lib/departments';
+import { type Departments, departmentParam, useDepartmentTab } from '@/lib/departments';
+import { ManagerSelect } from '@/components/people/Reporting';
 
 interface Person {
   id: string;
@@ -40,7 +41,7 @@ interface Person {
 export default function StaffPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
-  const { can } = useSession();
+  const { can, me } = useSession();
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [q, setQ] = useState('');
   const [department, setDepartment] = useDepartmentTab();
@@ -49,6 +50,20 @@ export default function StaffPage() {
   const cityRoles = useQuery<{ roles: CustomRole[] }>('/api/roles');
   const { run, busy } = useAction();
   const [inviting, setInviting] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const departments = useQuery<Departments>('/api/departments');
+  // HR, and the managers of a department for its people (the server checks each person).
+  const canAssign = can('users.write') || !!departments.data?.departments.some((d) => d.managerIds?.includes(me?.id ?? ''));
+
+  async function assign(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const userIds = f.getAll('people').map(String);
+    if (!userIds.length) return;
+    const managerId = String(f.get('managerId') ?? '') || null;
+    const r = await run('assign', () => api<{ changed: number }>('/api/reporting/managers', { method: 'POST', body: { userIds, managerId } }), t('reporting.bulkSaved', { count: userIds.length }));
+    if (r) setAssigning(false);
+  }
   const posName = (p: Position) => (lng === 'fr-CA' && p.nameFr ? p.nameFr : p.name);
 
   async function invite(e: FormEvent<HTMLFormElement>) {
@@ -89,10 +104,19 @@ export default function StaffPage() {
         title={t('staff.title')}
         description={t('staff.description')}
         actions={
-          can('users.write') ? (
-            <Button icon={<UserPlus className="h-5 w-5" aria-hidden="true" />} onClick={() => setInviting(true)}>
-              {t('staff.invite')}
-            </Button>
+          can('users.write') || canAssign ? (
+            <>
+              {canAssign && people.data?.length ? (
+                <Button variant="secondary" icon={<Network className="h-5 w-5" aria-hidden="true" />} onClick={() => setAssigning(true)}>
+                  {t('reporting.bulk')}
+                </Button>
+              ) : null}
+              {can('users.write') ? (
+                <Button icon={<UserPlus className="h-5 w-5" aria-hidden="true" />} onClick={() => setInviting(true)}>
+                  {t('staff.invite')}
+                </Button>
+              ) : null}
+            </>
           ) : undefined
         }
       />
@@ -148,6 +172,31 @@ export default function StaffPage() {
           ))}
         </Card>
       )}
+
+      <Dialog open={assigning} onClose={() => setAssigning(false)} title={t('reporting.bulk')} description={t('reporting.bulkHelp')} closeLabel={t('common.close')}>
+        <form onSubmit={(e) => void assign(e)} className="grid gap-4">
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-small font-semibold">{t('reporting.bulkPeople')}</legend>
+            <div className="grid max-h-72 gap-1 overflow-y-auto rounded-xl border border-line p-2 sm:grid-cols-2">
+              {(people.data ?? []).map((p) => (
+                <label key={p.id} className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-small hover:bg-surface">
+                  <input type="checkbox" name="people" value={p.id} className="h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" />
+                  <span className="min-w-0 truncate">{p.name}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <ManagerSelect />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setAssigning(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button type="submit" loading={busy === 'assign'} icon={<Network className="h-4 w-4" aria-hidden="true" />}>
+              {t('reporting.bulkSave')}
+            </Button>
+          </div>
+        </form>
+      </Dialog>
 
       <Dialog open={inviting} onClose={() => setInviting(false)} title={t('staff.invite')} description={t('staff.inviteHelp')} closeLabel={t('common.close')}>
         <form onSubmit={(e) => void invite(e)} className="grid gap-4">
