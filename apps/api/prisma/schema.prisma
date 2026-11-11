@@ -215,6 +215,14 @@ enum PayCodeKey {
   STAT_HOLIDAY_PAY
   SHIFT_PREMIUM
   VACATION_PAY
+  /// Minimum call-in / reporting pay: the top-up when someone worked less than the minimum.
+  REPORTING_PAY
+  /// Late schedule change premium (collective agreement notice rule).
+  SCHEDULE_CHANGE_PREMIUM
+  /// On-call / standby pay.
+  STANDBY_PAY
+  /// Call-back minimum top-up when someone on call is called in.
+  CALLBACK_PAY
 }
 
 enum VacationPayMode {
@@ -320,6 +328,10 @@ model Tenant {
   winterSettings  Json             @default("{}")
   /// Public sign-up portal: { enabled, terms, termsFr, payment, paymentFr, privacyContact }.
   signupSettings  Json             @default("{}")
+  /// Work rules for scheduling and pay (services/scheduling/workRules.ts): unpaid meal breaks,
+  /// minimum call-in pay, schedule-change notice and premiums, shift premium rules, standby and
+  /// call-back, with per-department overrides where collective agreements differ.
+  workRules       Json             @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
@@ -665,6 +677,10 @@ model Position {
   hoursOfService Json?
   /// The department this position belongs to (Aquatics, Water Works…). Null = none yet.
   departmentId   String? @db.Uuid
+  /// Unpaid meal break minutes on this position's shifts (a shift's own value wins). Null = none.
+  unpaidBreakMinutes Int?
+  /// Never alone (working-alone rule): at least two qualified people must overlap on its shifts.
+  neverAlone     Boolean @default(false)
   /// The organization's own system's id (public API upsert). Unique per organization.
   externalId     String?
   /// For the public API's updated_since filter.
@@ -1008,6 +1024,14 @@ model Shift {
   conflictReason String?
   /// Optimistic-lock counter. Every assignment change must match + increment it.
   version        Int         @default(0)
+  /// Unpaid meal break minutes for this shift; null = the position's. Paid hours = length − break.
+  unpaidBreakMinutes Int?
+  /// Never alone for this shift; null = the position's flag.
+  neverAlone     Boolean?
+  /// A call-back (someone on call called in): the call-back minimum applies instead of reporting pay.
+  callBack       Boolean     @default(false)
+  /// Made by "Generate shifts" from a rotation template.
+  rotationTemplateId String? @db.Uuid
   createdAt      DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
 
@@ -3979,4 +4003,85 @@ model WorkerJobRun {
   lastOkAt       DateTime? @db.Timestamptz(3)
   lastErrorAt    DateTime? @db.Timestamptz(3)
   lastDurationMs Int?
+}
+
+// ------------------------------------------------------------------ Scheduling wave 2
+
+/// A change to a published shift (times or person) and the notice it gave. When the notice is
+/// shorter than the department's rule, a premium is due and flows into payroll on `payOn`.
+model ShiftChange {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  shiftId        String    @db.Uuid
+  /// The person the change affects.
+  userId         String    @db.Uuid
+  positionId     String    @db.Uuid
+  /// TIME (times moved), ADDED (newly assigned), REMOVED (unassigned or cancelled).
+  kind           String
+  oldStartsAt    DateTime? @db.Timestamptz(3)
+  oldEndsAt      DateTime? @db.Timestamptz(3)
+  newStartsAt    DateTime? @db.Timestamptz(3)
+  newEndsAt      DateTime? @db.Timestamptz(3)
+  /// Hours between the change and the (earlier of the old and new) start.
+  noticeHours    Decimal   @db.Decimal(8, 2)
+  /// The rule's threshold at the time (hours of notice required).
+  requiredHours  Decimal?  @db.Decimal(8, 2)
+  late           Boolean   @default(false)
+  /// Premium: changed hours at (multiplier − 1) × rate, or a flat amount.
+  premiumHours   Decimal?  @db.Decimal(8, 2)
+  multiplier     Decimal?  @db.Decimal(6, 3)
+  flatAmount     Decimal?  @db.Decimal(10, 2)
+  /// The local date the premium is paid on (the period that contains it pays it).
+  payOn          DateTime? @db.Date
+  waivedAt       DateTime? @db.Timestamptz(3)
+  waivedById     String?   @db.Uuid
+  waiveReason    String?
+  changedById    String    @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([tenantId, payOn])
+  @@index([shiftId])
+  @@index([userId, createdAt])
+}
+
+/// A recurring rotation (12-hour 4-on-4-off, 2-2-3 Pitman, Monday–Friday days, custom N-week cycles).
+model RotationTemplate {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @db.Uuid
+  name               String
+  departmentId       String?  @db.Uuid
+  facilityId         String   @db.Uuid
+  positionId         String   @db.Uuid
+  /// Days in one cycle (7 for a week, 8 for 4-on-4-off, 14 for 2-2-3…).
+  cycleDays          Int
+  /// Day 0 of the cycle (local date).
+  anchorDate         DateTime @db.Date
+  /// [{ day, start: "07:00", end: "19:00", label?: "day" | "night" }]: an end at or before the start runs past midnight.
+  pattern            Json
+  /// [{ name: "A", offsetDays, userIds: [], openSlots? }]: crews start the cycle offset days later.
+  crews              Json
+  unpaidBreakMinutes Int?
+  active             Boolean  @default(true)
+  createdById        String   @db.Uuid
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, departmentId])
+}
+
+/// Who is on call (standby) when, per department: water/wastewater, public works, snow.
+model OnCallPeriod {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  departmentId String   @db.Uuid
+  userId       String   @db.Uuid
+  startsAt     DateTime @db.Timestamptz(3)
+  endsAt       DateTime @db.Timestamptz(3)
+  note         String?
+  createdById  String   @db.Uuid
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, departmentId, startsAt])
+  @@index([userId, startsAt])
 }
