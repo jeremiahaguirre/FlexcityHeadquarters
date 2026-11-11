@@ -3,6 +3,7 @@
 import { ApiError } from './apiError';
 import { DEMO } from './demo';
 import { demoApi } from './demoApi';
+import { fetchRead } from './retry';
 
 export { ApiError };
 
@@ -50,16 +51,20 @@ async function refresh(): Promise<boolean> {
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}, retry = true, steppedUp = false): Promise<T> {
   if (DEMO) return demoApi<T>(path, init);
   if (!accessToken && retry && !path.startsWith('/api/auth/')) await refresh();
-  const res = await fetch(path, {
-    method: init.method ?? 'GET',
-    credentials: 'include',
-    headers: {
-      ...tenantHeader(),
-      ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
-      ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
-    },
-    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-  });
+  const method = init.method ?? 'GET';
+  const send = () =>
+    fetch(path, {
+      method,
+      credentials: 'include',
+      headers: {
+        ...tenantHeader(),
+        ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    });
+  // Reads ride out a brief overload, deployment or failover (lib/retry.ts); changes never repeat.
+  const res = method === 'GET' ? await fetchRead(send) : await send();
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { code?: string; message?: string; details?: unknown };
     // Sensitive action, sign-in not recent: confirm with a passkey or password, then try once more.
@@ -195,6 +200,7 @@ export function streamNotifications(onSignal: () => void): () => void {
   let stopped = false;
   let controller: AbortController | null = null;
   let delay = 2000;
+  let connected = false;
   const run = async () => {
     while (!stopped) {
       try {
@@ -207,6 +213,9 @@ export function streamNotifications(onSignal: () => void): () => void {
         if (res.status === 401) await refresh();
         if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
         delay = 2000;
+        // Signals sent while disconnected were missed: refetch once after every reconnection.
+        if (connected) onSignal();
+        connected = true;
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buf = '';
@@ -222,7 +231,9 @@ export function streamNotifications(onSignal: () => void): () => void {
         /* fall through to retry */
       }
       if (stopped) break;
-      await new Promise((r) => setTimeout(r, delay));
+      // Random jitter: after a deployment every open phone loses its stream at once, and they
+      // shouldn't all reconnect in the same second.
+      await new Promise((r) => setTimeout(r, delay * (0.5 + Math.random() * 0.5)));
       delay = Math.min(delay * 2, 60_000);
     }
   };

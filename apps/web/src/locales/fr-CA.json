@@ -516,7 +516,9 @@
     "CALLBACK_REST": "Ce rappel ne respecte pas les règles de repos. Confirmez qu’il s’agit d’une urgence pour rappeler la personne quand même.",
     "NOBODY_ON_CALL": "Personne n’est de garde à ce moment. Choisissez qui rappeler.",
     "ONCALL_OVERLAP": "Cette personne est déjà de garde à ce moment.",
-    "ONCALL_TIME_OFF": "Cette personne a un congé approuvé à ce moment."
+    "ONCALL_TIME_OFF": "Cette personne a un congé approuvé à ce moment.",
+    "BUSY": "Le service est très sollicité en ce moment. Réessayez dans un instant.",
+    "INTERNAL": "Une erreur s’est produite de notre côté. Réessayez; si le problème persiste, communiquez avec votre administrateur."
   },
   "timeclock": {
     "title": "Horodateur",
