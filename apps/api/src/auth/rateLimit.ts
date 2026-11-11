@@ -3,9 +3,12 @@
  *
  * In production the hits live in Postgres (RateLimitHit), shared by every API
  * server, so the limit holds however many instances run and survives restarts.
- * Elsewhere (development, tests) an in-memory map is used. The per-account
+ * Elsewhere (development, tests) an in-memory map is used, unless this is one of several
+ * processes (WEB_CONCURRENCY > 1), where a per-process count would let each process grant the
+ * full limit: those use Postgres too. The per-account
  * lockout in the database remains the durable control for passwords.
  */
+import cluster from 'node:cluster';
 import { config } from '../config.js';
 import { db } from '../lib/db.js';
 
@@ -37,7 +40,7 @@ export async function databaseAllow(key: string, limit: number, windowMs: number
   });
 }
 
-const shared = () => process.env.RATE_LIMIT_STORE === 'database' || (process.env.RATE_LIMIT_STORE !== 'memory' && config().NODE_ENV === 'production');
+const shared = () => process.env.RATE_LIMIT_STORE === 'database' || (process.env.RATE_LIMIT_STORE !== 'memory' && (config().NODE_ENV === 'production' || cluster.isWorker));
 
 export async function allow(key: string, limit: number, windowMs: number): Promise<boolean> {
   return shared() ? databaseAllow(key, limit, windowMs) : memoryAllow(key, limit, windowMs, Date.now());
