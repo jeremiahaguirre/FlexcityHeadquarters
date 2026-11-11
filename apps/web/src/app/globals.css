@@ -178,11 +178,15 @@ body {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* The FH mark, drawn in part by part: back leaf, leaf, arm, the circle, then the buildings rise.
-   .fh-mark-intro plays once (website header); .fh-mark-loop repeats (loading screens). */
+/* @logo-motion start: kept identical in apps/site/src/app/globals.css (a site test checks).
+   The FH mark, drawn in part by part: back leaf, leaf, arm, the circle, then the buildings rise.
+   intro plays once (headers); loop repeats (loading, signing in); hero draws in then stays
+   gently alive; idle is alive without the intro; done is one finishing beat.
+   .fh-mark-paused stops the motion (off screen). */
 .fh-mark .fh-p { transform-box: fill-box; transform-origin: 50% 50%; }
 .fh-sheen { opacity: 0; transform-box: fill-box; }
 .fh-mark .fh-p1, .fh-mark .fh-p2 { transform-origin: 30% 100%; }
+.fh-mark-paused .fh-p, .fh-mark-paused .fh-sheen, .fh-mark-paused .fh-wins rect { animation-play-state: paused !important; }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes fhm-leaf { from { opacity: 0; transform: rotate(-30deg) scale(0.7); } to { opacity: 1; transform: none; } }
   @keyframes fhm-arm { from { opacity: 0; transform: translateX(-16px) scaleX(0.4); } to { opacity: 1; transform: none; } }
@@ -228,6 +232,11 @@ body {
   /* Done: one confident beat as sign-in succeeds. */
   @keyframes fhm-done { 0% { transform: none; } 40% { transform: scale(1.1) rotate(-2deg); } 100% { transform: none; } }
   .fh-mark-done { animation: fhm-done 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both; transform-origin: 50% 50%; }
+}
+/* @logo-motion end */
+
+/* Sign-in screen extras around the logo. */
+@media (prefers-reduced-motion: no-preference) {
   /* Rings that ripple out from the login logo. */
   @keyframes fh-halo { 0% { opacity: 0.5; transform: scale(0.7); } 100% { opacity: 0; transform: scale(1.7); } }
   .fh-halo { animation: fh-halo 3.6s ease-out infinite; }
