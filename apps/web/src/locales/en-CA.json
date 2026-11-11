@@ -3341,7 +3341,35 @@
     "use": "Use my passkey",
     "setUp": "Set up a passkey on this device",
     "signOut": "Sign out",
-    "unsupported": "This browser can’t use passkeys. Sign in from a phone or computer with Face ID, fingerprint or Windows Hello, or ask your HR team for help."
+    "unsupported": "This browser can’t use passkeys. Sign in from a phone or computer with Face ID, fingerprint or Windows Hello, or ask your HR team for help.",
+    "titleWithCodes": "Confirm it’s you",
+    "helpWithCodes": "Your organization requires a second step for your account, on top of your password. Use a passkey (the lock you already use on this device), or get a 6-digit code.",
+    "unsupportedUseCode": "This browser can’t use passkeys. Get a code by email or text message instead.",
+    "sendCode": "Send me a code",
+    "chooseChannel": "Where should we send your code?",
+    "byEmail": "Email",
+    "bySms": "Text message",
+    "otherWay": "Use another way",
+    "sentEmail": "We emailed a 6-digit code to {{destination}}. It expires in {{minutes}} minutes.",
+    "sentSms": "We texted a 6-digit code to {{destination}}. It expires in {{minutes}} minutes.",
+    "codeLabel": "6-digit code",
+    "codeHint": "You can paste the whole message; we’ll find the code.",
+    "confirmCode": "Confirm",
+    "resend": "Send a new code",
+    "resendIn_one": "Send a new code in {{count}} second",
+    "resendIn_other": "Send a new code in {{count}} seconds",
+    "codeErrors": {
+      "MFA_CODE_WRONG": "That code isn’t right. Check it and try again.",
+      "MFA_CODE_WRONG_left_one": "That code isn’t right. You have {{count}} more try before it stops working.",
+      "MFA_CODE_WRONG_left_other": "That code isn’t right. You have {{count}} more tries before it stops working.",
+      "MFA_CODE_EXPIRED": "This code has expired or was already used. Send a new code.",
+      "MFA_CODE_LOCKED": "Too many wrong tries for this code. Send a new code.",
+      "TOO_MANY_CODES": "You’ve asked for several codes. Wait a few minutes before asking again, or use a passkey.",
+      "TOO_MANY_TRIES": "Too many tries. Wait 15 minutes, or use a passkey.",
+      "NO_VERIFIED_PHONE": "There’s no confirmed mobile number on your account. Use email instead.",
+      "MFA_CODES_OFF": "Your organization accepts only passkeys. Use a passkey to continue.",
+      "MFA_NOT_NEEDED": "You’re already confirmed. Close this and carry on."
+    }
   },
   "loneWork": {
     "title": "Working alone",
@@ -5176,7 +5204,9 @@
     "title": "Second sign-in factor",
     "help": "Choose who must confirm sign-in with a passkey (Face ID, fingerprint, Windows Hello) or your single sign-on provider’s MFA.",
     "note": "HR administrators always need one. People without a passkey are walked through setting one up at their next sign-in.",
-    "saved": "Saved"
+    "saved": "Saved",
+    "codes": "Also accept a one-time code by email or text message",
+    "codesHelp": "On: people without their passkey can confirm with a 6-digit code sent to their account email, or by text to a mobile number they confirmed. Off: passkeys only (or your single sign-on provider’s MFA). Passkeys can’t be phished; codes help people whose device doesn’t support passkeys."
   },
   "privacyNotice": {
     "menu": "Your privacy",

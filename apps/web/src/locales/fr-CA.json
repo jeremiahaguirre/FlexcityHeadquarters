@@ -3341,7 +3341,35 @@
     "use": "Utiliser ma clé d’accès",
     "setUp": "Configurer une clé d’accès sur cet appareil",
     "signOut": "Se déconnecter",
-    "unsupported": "Ce navigateur ne prend pas en charge les clés d’accès. Connectez-vous à partir d’un téléphone ou d’un ordinateur avec Face ID, empreinte digitale ou Windows Hello, ou demandez de l’aide à votre équipe RH."
+    "unsupported": "Ce navigateur ne prend pas en charge les clés d’accès. Connectez-vous à partir d’un téléphone ou d’un ordinateur avec Face ID, empreinte digitale ou Windows Hello, ou demandez de l’aide à votre équipe RH.",
+    "titleWithCodes": "Confirmez votre identité",
+    "helpWithCodes": "Votre organisation exige une deuxième étape pour votre compte, en plus de votre mot de passe. Utilisez une clé d’accès (le verrouillage que vous utilisez déjà sur cet appareil) ou recevez un code à 6 chiffres.",
+    "unsupportedUseCode": "Ce navigateur ne prend pas en charge les clés d’accès. Recevez plutôt un code par courriel ou par texto.",
+    "sendCode": "M’envoyer un code",
+    "chooseChannel": "Où voulez-vous recevoir votre code?",
+    "byEmail": "Courriel",
+    "bySms": "Texto",
+    "otherWay": "Utiliser une autre méthode",
+    "sentEmail": "Nous avons envoyé un code à 6 chiffres à {{destination}}. Il expire dans {{minutes}} minutes.",
+    "sentSms": "Nous avons envoyé un code à 6 chiffres par texto au {{destination}}. Il expire dans {{minutes}} minutes.",
+    "codeLabel": "Code à 6 chiffres",
+    "codeHint": "Vous pouvez coller le message au complet; nous y trouverons le code.",
+    "confirmCode": "Confirmer",
+    "resend": "Envoyer un nouveau code",
+    "resendIn_one": "Envoyer un nouveau code dans {{count}} seconde",
+    "resendIn_other": "Envoyer un nouveau code dans {{count}} secondes",
+    "codeErrors": {
+      "MFA_CODE_WRONG": "Ce code n’est pas le bon. Vérifiez-le et réessayez.",
+      "MFA_CODE_WRONG_left_one": "Ce code n’est pas le bon. Il vous reste {{count}} essai avant qu’il cesse de fonctionner.",
+      "MFA_CODE_WRONG_left_other": "Ce code n’est pas le bon. Il vous reste {{count}} essais avant qu’il cesse de fonctionner.",
+      "MFA_CODE_EXPIRED": "Ce code est expiré ou a déjà servi. Envoyez un nouveau code.",
+      "MFA_CODE_LOCKED": "Trop d’essais erronés pour ce code. Envoyez un nouveau code.",
+      "TOO_MANY_CODES": "Vous avez demandé plusieurs codes. Attendez quelques minutes avant d’en redemander un, ou utilisez une clé d’accès.",
+      "TOO_MANY_TRIES": "Trop d’essais. Attendez 15 minutes ou utilisez une clé d’accès.",
+      "NO_VERIFIED_PHONE": "Aucun numéro de cellulaire confirmé n’est associé à votre compte. Utilisez plutôt le courriel.",
+      "MFA_CODES_OFF": "Votre organisation accepte seulement les clés d’accès. Utilisez une clé d’accès pour continuer.",
+      "MFA_NOT_NEEDED": "Votre identité est déjà confirmée. Fermez cette fenêtre et poursuivez."
+    }
   },
   "loneWork": {
     "title": "Travail seul",
@@ -5176,7 +5204,9 @@
     "title": "Deuxième facteur de connexion",
     "help": "Choisissez qui doit confirmer sa connexion avec une clé d’accès (Face ID, empreinte, Windows Hello) ou l’AMF de votre fournisseur d’authentification unique.",
     "note": "Les administrateurs RH en ont toujours besoin. Les personnes sans clé d’accès sont guidées pour en créer une à leur prochaine connexion.",
-    "saved": "Enregistré"
+    "saved": "Enregistré",
+    "codes": "Accepter aussi un code à usage unique par courriel ou par texto",
+    "codesHelp": "Activé : les personnes qui n’ont pas leur clé d’accès peuvent confirmer avec un code à 6 chiffres envoyé au courriel de leur compte, ou par texto à un numéro de cellulaire qu’elles ont confirmé. Désactivé : clés d’accès seulement (ou l’AMF de votre fournisseur d’authentification unique). Les clés d’accès résistent à l’hameçonnage; les codes aident les personnes dont l’appareil ne prend pas en charge les clés d’accès."
   },
   "privacyNotice": {
     "menu": "Votre vie privée",

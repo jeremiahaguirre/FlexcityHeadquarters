@@ -7,24 +7,27 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
 
-/** Which access levels must use a passkey (or their provider's MFA) to sign in. HR always does. */
+/**
+ * Which access levels must use a passkey (or their provider's MFA) to sign in. HR always does.
+ * And whether a one-time code by email or text counts as the second factor too (on by default).
+ */
 export function MfaCard() {
   const { t } = useTranslation();
-  const data = useQuery<{ roles: string[]; all: string[] }>('/api/settings/mfa');
+  const data = useQuery<{ roles: string[]; all: string[]; codes?: boolean }>('/api/settings/mfa');
   const { run, busy } = useAction();
   if (data.error || !data.data) return null;
   const d = data.data;
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const r = await run('save', () => api('/api/settings/mfa', { method: 'PUT', body: { roles: f.getAll('role').map(String) } }), t('mfaSettings.saved'));
+    const r = await run('save', () => api('/api/settings/mfa', { method: 'PUT', body: { roles: f.getAll('role').map(String), codes: f.get('codes') === 'on' } }), t('mfaSettings.saved'));
     if (r !== undefined) await data.reload();
   }
   return (
     <Card>
       <CardHeader title={t('mfaSettings.title')} description={t('mfaSettings.help')} />
       <CardBody className="pt-2">
-        <form key={d.roles.join()} className="grid gap-3" onSubmit={(e) => void save(e)}>
+        <form key={`${d.roles.join()}:${d.codes !== false}`} className="grid gap-3" onSubmit={(e) => void save(e)}>
           <div className="grid gap-2 sm:grid-cols-2">
             {d.all.map((r) => (
               <label key={r} className="flex items-center gap-3 text-small">
@@ -34,6 +37,13 @@ export function MfaCard() {
             ))}
           </div>
           <p className="text-caption text-muted">{t('mfaSettings.note')}</p>
+          <label className="flex items-start gap-3 border-t border-line pt-3 text-small">
+            <input type="checkbox" name="codes" defaultChecked={d.codes !== false} aria-describedby="mfa-codes-help" className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" />
+            <span className="grid gap-1">
+              <span className="font-semibold text-ink">{t('mfaSettings.codes')}</span>
+              <span id="mfa-codes-help" className="text-caption text-muted">{t('mfaSettings.codesHelp')}</span>
+            </span>
+          </label>
           <div><Button type="submit" size="sm" loading={busy === 'save'}>{t('common.save')}</Button></div>
         </form>
       </CardBody>
