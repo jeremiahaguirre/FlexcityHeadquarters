@@ -80,7 +80,7 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={t('shell.accountMenu', { name })}
-        className={cn('flex items-center gap-3 rounded-2xl text-left hover:bg-surface', compact ? 'p-0.5' : 'w-full p-2')}
+        className={cn('flex items-center gap-3 rounded-2xl text-left hover:bg-surface', compact ? 'min-h-11 min-w-11 justify-center p-0.5' : 'w-full p-2')}
       >
         <Avatar name={name} size={compact ? 'sm' : 'md'} />
         {compact ? null : (

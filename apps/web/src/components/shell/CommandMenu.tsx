@@ -76,7 +76,7 @@ export function CommandMenu({ destinations, compact = false }: { destinations: D
         aria-label={t('jump.open')}
         className={cn(
           'flex items-center gap-2 rounded-xl text-small text-muted transition-colors hover:text-ink',
-          compact ? 'h-10 w-10 justify-center hover:bg-surface' : 'h-10 w-full max-w-xs border border-line bg-panel px-3 hover:border-ink/20',
+          compact ? 'h-11 w-11 justify-center hover:bg-surface' : 'h-10 w-full max-w-xs border border-line bg-panel px-3 hover:border-ink/20',
         )}
       >
         <Search className="h-4 w-4 shrink-0" aria-hidden="true" />

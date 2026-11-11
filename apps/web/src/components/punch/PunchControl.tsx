@@ -57,7 +57,7 @@ export function PunchControl({ variant = 'compact' }: { variant?: 'compact' | 'l
         onClick={() => (on ? setSheet(true) : void punch.clockInNow())}
         aria-label={`${on ? t('punch.onAria', { elapsed: hm(progress?.worked ?? 0) }) : t('timeclock.clockIn')}${waiting ? `. ${t('timeclock.offline.pendingAria')}` : ''}`}
         className={cn(
-          'relative flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full pl-1.5 pr-3.5 text-small font-semibold shadow-sm transition-[background-color,transform] active:scale-95 disabled:opacity-60',
+          'relative flex h-11 shrink-0 items-center md:h-10 gap-2 whitespace-nowrap rounded-full pl-1.5 pr-3.5 text-small font-semibold shadow-sm transition-[background-color,transform] active:scale-95 disabled:opacity-60',
           on ? 'border border-ok/40 bg-ok-bg text-ok hover:bg-ok-bg/70' : 'bg-brand pl-3 text-brand-contrast hover:bg-brand-hover',
         )}
       >

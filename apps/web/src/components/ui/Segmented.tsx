@@ -39,7 +39,7 @@ export function Segmented<T extends string>({ value, onChange, options, label }:
           }}
           tabIndex={value === o.value ? 0 : -1}
           className={cn(
-            'relative h-9 whitespace-nowrap rounded-lg px-3.5 text-small font-semibold transition-colors',
+            'relative h-11 whitespace-nowrap rounded-lg px-3.5 sm:h-9 text-small font-semibold transition-colors',
             value === o.value ? 'text-ink' : 'text-muted hover:text-ink',
             !pill && value === o.value && 'bg-panel shadow-card',
           )}

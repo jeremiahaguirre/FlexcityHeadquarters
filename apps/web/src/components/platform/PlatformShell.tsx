@@ -114,8 +114,8 @@ function SignedIn({ children }: { children: ReactNode }) {
             <div className="hidden flex-1 md:block"><CommandMenu destinations={destinations} /></div>
             <div className="flex items-center gap-1 md:hidden">
               <CommandMenu destinations={destinations} compact />
-              <Link href="/platform/account" className="grid h-10 w-10 place-items-center rounded-xl text-muted hover:bg-surface" aria-label={t('platform.account')}><KeyRound className="h-5 w-5" aria-hidden="true" /></Link>
-              <button type="button" onClick={signOut} className="grid h-10 w-10 place-items-center rounded-xl text-muted hover:bg-surface" aria-label={t('platform.signOut')}><LogOut className="h-5 w-5" aria-hidden="true" /></button>
+              <Link href="/platform/account" className="grid h-11 w-11 place-items-center rounded-xl text-muted hover:bg-surface" aria-label={t('platform.account')}><KeyRound className="h-5 w-5" aria-hidden="true" /></Link>
+              <button type="button" onClick={signOut} className="grid h-11 w-11 place-items-center rounded-xl text-muted hover:bg-surface" aria-label={t('platform.signOut')}><LogOut className="h-5 w-5" aria-hidden="true" /></button>
             </div>
           </div>
         </header>
