@@ -20,10 +20,11 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Category | Examples | Feature | Sensitive? |
 | --- | --- | --- | --- |
 | Identity and contact | Name, work email, phone, employee number, language | Always | — |
+| Sign-in | A one-way hash of the password (12–128 characters; common passwords and ones built from the person's name, email or organization refused); passkeys' public keys and device labels; sign-in codes by email or text kept only as a keyed HMAC (10 minutes, 5 tries, deleted 30 days after they expire); when each session started and whether it used a second factor (deleted 30 days after it ends). At sign-in the device's internet address is kept only in rate-limit counters (about a day) and the browser isn't stored | Always | No |
 | Employment | Positions, hire and seniority dates, availability, schedule, certifications, who the person reports to (it routes approvals; it gives the manager no extra access) | Always | — |
 | Time and attendance | Punch times, on-site status and distance (no coordinates), attendance events; which kiosk a punch came from, and a hashed kiosk PIN; for punches made without signal, the phone's punch id, when it reached the server and the phone's clock difference (the punch waits on the phone until sent) | Timeclock | — |
 | Emergency contacts | Names, relationship and phone numbers of up to three people outside work (third parties, who aren't told by the app) | Always | **Yes** (seen by the person, HR, and a working-alone monitor only once a session escalates or help is asked for; every look by someone else audited) |
-| Mobile number for alerts | A confirmed mobile number, whether the person wants last-minute shift texts, and the outbox of texts and calls (contents only until sent) | Text alerts | No (sent to the text provider, see [SUBPROCESSORS.md](SUBPROCESSORS.md)) |
+| Mobile number for alerts | A confirmed mobile number, whether the person wants last-minute shift texts, and the outbox of texts and calls (contents only until sent); the person can also choose to get sign-in codes at that number | Text alerts | No (sent to the text provider, see [SUBPROCESSORS.md](SUBPROCESSORS.md)) |
 | Calendar feed | A hash of the person's private link; the feed shows only their own shifts (times, position, facility), no other names | Always (the person chooses) | No |
 | Expenses | Claims, kilometres driven, receipts (encrypted like other documents) | Expenses | No |
 | Time in lieu | Each person's choice to bank overtime (time-stamped), balances, HR corrections with reasons | Payroll | No |
@@ -66,7 +67,7 @@ describe the product; the city adds its own purposes, authorities and decisions.
    writes can't include SIN, bank, pay, birth-date or health details, never delete anything, follow the same rules as
    the app (an end of employment starts offboarding; time off is pending unless the key may send it approved), and are
    audited with the key as the actor. A person's preferred name and an external id (the city's own HRIS id) can be
-   stored for this; both are part of their record, covered by the same retention and erasure as the rest of it. and, where the city turns text alerts on, urgent texts and calls through the text provider (the number and the alert's words; no links). See [SUBPROCESSORS.md](SUBPROCESSORS.md).
+   stored for this; both are part of their record, covered by the same retention and erasure as the rest of it. Where the city turns text alerts on, urgent texts and calls, and sign-in codes by text for people who choose them, go through the text provider (the number and the message's words; no links). See [SUBPROCESSORS.md](SUBPROCESSORS.md).
 4. FH staff can't see employee records; support visits need the city's consent, are read-only and
    never open individual records.
 5. At first sign-in each person reads the information and consent agreement

@@ -13,7 +13,7 @@ with their records retention by-law.
 | In-app notifications | 2 years (*set by the city*) | Deleted | Hourly job |
 | Email log (address, kind of email; never contents) | 90 days (*set by the city*) | Deleted | Hourly job; contents cleared as soon as an email is sent |
 | Texts and calls (number, kind of alert; contents only until sent) | Same period as the email log (*set by the city*) | Deleted | Hourly job; contents dropped as soon as a text or call is sent, or after 5 failed tries |
-| Mobile number for text alerts | Until the person removes it from their profile | Removed | On request (also cancels texts not yet sent); removed when the person is anonymized |
+| Mobile number for text alerts and sign-in codes by text | Until the person removes it from their profile | Removed | On request (also cancels texts not yet sent); removed when the person is anonymized |
 | Emergency contacts (other people's names and numbers) | While the person keeps them | Deleted | Replaced whenever the person or HR edits the list; deleted as soon as erasure is requested, without waiting for payroll retention |
 | Calendar feed link (a hash of its secret) | Until the person makes a new link or turns it off | Removed | On request; removed as soon as erasure is requested |
 | Kiosk PIN (a hash only) | While the account exists | — | Replaced when the person sets a new one; cleared when the person is anonymized, and refused at the kiosk once they aren't active |
@@ -30,6 +30,8 @@ with their records retention by-law.
 | Working-alone check-in locations | Deleted when the person turns sharing off; otherwise 30 days after the session | Deleted | On request; hourly job |
 | Device push subscriptions | Until the person signs out on that device or turns notifications off; dropped when the push service reports the device gone, or after 10 failed sends | Deleted | Immediately / each send |
 | Sign-in sessions and one-time links | 30 days after they end or are used | Deleted | Hourly job |
+| Sign-in codes (second factor by email or text: channel, keyed HMAC of the code, tries, times; never the code) | 30 days after they expire (a code lasts 10 minutes) | Deleted | Hourly job; kept that long only so a wrong-try lockout can be looked into. The email or text carrying the code follows the email log, its contents cleared once sent |
+| Sign-in rate-limit counters (keyed by the device's internet address or the account) | About a day | Deleted | Cleared as new attempts come in; nothing else about the device is kept at sign-in |
 | Domain events (event outbox: kind of event, ids; names or messages only until delivered) | 7 days after delivery; 30 days if delivery gave up | Deleted | Contents cleared as soon as delivered; hourly job; events not yet delivered are kept until they are |
 | Webhook delivery records (event type, status, tries, response code and the first 500 characters of the answer; ids only, never a secret) | 30 days once finished | Deleted | Hourly job |
 | API keys (name, scopes, a SHA-256 of the key) and webhook endpoints (address, events, the signing secret sealed with the city's key) | Keys: for the life of the account (a revoked key stays listed, unusable). Webhooks: until an administrator removes them | Deleted with the organization; a removed webhook is deleted with its delivery history | No personal information beyond who made them; every API request is in the audit log |
