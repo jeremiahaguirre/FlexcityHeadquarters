@@ -66,7 +66,7 @@ describe('job applications in the app', () => {
     const a = await owner.jobApplication.findFirstOrThrow({ where: { postingId, email: 'kai@example.ca' } });
     expect(a.notes).toMatch(/^Applicant is 14–15: parent or guardian Lin Ng consented on \d{4}-\d{2}-\d{2}/);
     const log = await owner.auditLog.findFirst({ where: { tenantId: t.tenant.id, action: 'application.received', entityId: a.id } });
-    expect(log?.after).toMatchObject({ age: 'YOUNG', guardianConsent: true });
+    expect(log?.after).toMatchObject({ age: 'YOUNG', guardianConsent: true, consentVersion: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
     await owner.jobApplication.delete({ where: { id: a.id } });
   });
 

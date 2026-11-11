@@ -7,7 +7,7 @@
  * time to fill the form, consent to the organization's terms and privacy
  * notice, and no information about other families is ever returned.
  */
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
@@ -201,7 +201,7 @@ publicSignupRouter.post(
           },
         },
       });
-      await audit(tx, { tenantId: req.tenantId!, actorId: null, action: 'registration.online', entity: 'LessonEnrollment', entityId: e.id, after: { setId: set.id, status: e.status, consents: b.consents, majorityAge, consentAt: now.toISOString() } });
+      await audit(tx, { tenantId: req.tenantId!, actorId: null, action: 'registration.online', entity: 'LessonEnrollment', entityId: e.id, after: { setId: set.id, status: e.status, consents: b.consents, majorityAge, consentAt: now.toISOString(), termsSha256: createHash('sha256').update(b.locale === 'fr-CA' && s.termsFr ? s.termsFr : s.terms).digest('hex') } });
       return { reference: ref, status: e.status, priceCents: set.priceCents ?? 0 };
     });
     res.status(201).json(out);

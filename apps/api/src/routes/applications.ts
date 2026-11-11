@@ -28,6 +28,8 @@ applicationsRouter.use(['/applications', '/jobs/:id/applications'], requireFeatu
 const uuid = z.string().uuid();
 const MAX_BYTES = 5 * 1024 * 1024;
 const aad = (tenantId: string, id: string) => `application:${tenantId}:${id}`;
+/** The version of the applicant notice the form shows (web locale jobs.consent / jobs.guardianConsent); bump when it changes. */
+export const APPLICANT_CONSENT_VERSION = '2026-11-11';
 const STATUSES = ['NEW', 'REVIEWING', 'INTERVIEW', 'OFFERED', 'HIRED', 'DECLINED', 'WITHDRAWN'] as const;
 
 publicApplicationsRouter.post(
@@ -87,7 +89,7 @@ publicApplicationsRouter.post(
           ...(file && sealed ? { resumeName: b.resume!.fileName.replace(/[^\w.\- ()]/g, '_'), resumeType: 'application/pdf', resumeSize: file.length, resumeSha256: sha256(file), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId } : {}),
         },
       });
-      await audit(tx, { tenantId, actorId: null, action: 'application.received', entity: 'JobApplication', entityId: id, after: { postingId: p.id, age: b.age, guardianConsent: b.age === 'YOUNG', province: ages.province, consentAt: now.toISOString() } });
+      await audit(tx, { tenantId, actorId: null, action: 'application.received', entity: 'JobApplication', entityId: id, after: { postingId: p.id, age: b.age, guardianConsent: b.age === 'YOUNG', province: ages.province, consentAt: now.toISOString(), consentVersion: APPLICANT_CONSENT_VERSION } });
       const hr = await usersWithPermission(tx, tenantId, 'jobs.manage');
       await notify(tx, tenantId, hr.map((userId) => ({ userId, type: 'application_received', params: { title: p.title, name: `${b.firstName} ${b.lastName}` }, link: '/manage/jobs' })));
     });

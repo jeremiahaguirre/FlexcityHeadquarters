@@ -99,7 +99,7 @@ describe('public sign-up portal', () => {
     // The consent is on record: the household note and the audit log.
     expect(hh.notes).toMatch(/or older; parent or guardian consent given/);
     const log = await owner.auditLog.findFirst({ where: { tenantId: t.tenant.id, action: 'registration.online' }, orderBy: { at: 'asc' } });
-    expect(log?.after).toMatchObject({ consents: { adult: true, guardian: true } });
+    expect(log?.after).toMatchObject({ consents: { adult: true, guardian: true }, termsSha256: expect.stringMatching(/^[0-9a-f]{64}$/), consentAt: expect.any(String) });
   });
 
   it('facility bookings: free times, a request, then staff confirm', async () => {
