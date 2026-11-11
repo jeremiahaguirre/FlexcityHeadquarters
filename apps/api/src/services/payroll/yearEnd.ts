@@ -7,6 +7,7 @@
  */
 import type { Tx } from '../../lib/db.js';
 import { readSettings } from './payRuns.js';
+import { statementHours } from './statementHours.js';
 import { type Deductions, hsfRate } from './tax.js';
 import { loadTaxTables } from './taxTables.js';
 
@@ -330,7 +331,7 @@ export async function roeFigures(tx: Tx, userId: string) {
     periodStart: s.payRun.periodStart.toISOString().slice(0, 10),
     periodEnd: s.payRun.periodEnd.toISOString().slice(0, 10),
     insurableEarnings: r2((s.deductions as unknown as Deductions).insurable ?? Number(s.gross)),
-    hours: Number(s.hours),
+    hours: statementHours(s.earnings, Number(s.hours)),
   }));
   return {
     userId,

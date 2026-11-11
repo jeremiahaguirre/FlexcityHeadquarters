@@ -24,9 +24,8 @@ import { claimsToPay } from './expenses.js';
 import { banks as lieuBanksOf, bankOvertime, expiredHours, lieuPolicy, regularRate, type StatementLieu } from './lieu.js';
 import { withBonusMethod } from './lumpSum.js';
 import { type Issue, IssueSet, issue } from './issues.js';
+import { NOT_HOURS } from './statementHours.js';
 
-/** Lines that pay money but no hours of their own (premiums on hours already counted, vacation, holiday pay, standby). */
-const NOT_HOURS = new Set(['VACATION_PAY', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'SCHEDULE_CHANGE_PREMIUM', 'STANDBY_PAY']);
 
 export interface PayrollSettings {
   businessNumber?: string;
