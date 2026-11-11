@@ -40,11 +40,18 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
   // Punches saved on this phone and not sent: warn before they're deleted with the sign-out.
   const [unsent, setUnsent] = useState<QueuedPunch[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+      if (e instanceof KeyboardEvent) {
+        // Escape closes and puts focus back on the avatar button, not on the page body.
+        if (e.key === 'Escape') {
+          setOpen(false);
+          button.current?.focus();
+        }
+      } else if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', close);
@@ -59,8 +66,16 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
   const item = 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-small font-medium text-ink hover:bg-surface';
 
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className="relative"
+      // Tabbing out of the open menu closes it.
+      onBlur={(e) => {
+        if (open && e.relatedTarget && !ref.current?.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       <button
+        ref={button}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}

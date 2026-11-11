@@ -2,7 +2,7 @@
 
 import { Bell, BellOff, CheckCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
 import { type AppNotification, useNotifications } from '@/lib/notifications';
@@ -22,11 +22,19 @@ export function NotificationBell() {
   const { items, unread, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
 
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === 'Escape' : !ref.current?.contains(e.target as Node)) setOpen(false);
+      if (e instanceof KeyboardEvent) {
+        // Escape closes and puts focus back on the bell, not on the page body.
+        if (e.key === 'Escape') {
+          setOpen(false);
+          button.current?.focus();
+        }
+      } else if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', close);
@@ -42,11 +50,20 @@ export function NotificationBell() {
   };
 
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className="relative"
+      // Tabbing past the last notification closes the panel instead of leaving it open behind the focus.
+      onBlur={(e) => {
+        if (open && e.relatedTarget && !ref.current?.contains(e.relatedTarget as Node)) setOpen(false);
+      }}
+    >
       <button
+        ref={button}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
         aria-label={unread ? t('shell.notificationsUnread', { count: unread }) : t('shell.notifications')}
         className="relative grid h-11 w-11 place-items-center rounded-full text-ink hover:bg-surface"
       >
@@ -58,7 +75,7 @@ export function NotificationBell() {
         ) : null}
       </button>
       {open ? (
-        <div className="fixed inset-x-3 top-16 z-40 overflow-hidden rounded-2xl border border-line bg-panel shadow-lift md:absolute md:inset-x-auto md:right-0 md:top-12 md:w-96">
+        <div id={panelId} role="region" aria-label={t('shell.notifications')} className="fixed inset-x-3 top-16 z-40 overflow-hidden rounded-2xl border border-line bg-panel shadow-lift md:absolute md:inset-x-auto md:right-0 md:top-12 md:w-96">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <h2 className="text-subheading">{t('shell.notifications')}</h2>
             {unread ? (
