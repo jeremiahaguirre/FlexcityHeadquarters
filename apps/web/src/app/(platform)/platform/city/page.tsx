@@ -24,11 +24,12 @@ import { Select } from '@/components/ui/Field';
 import { LifecyclePanel } from '@/components/platform/LifecyclePanel';
 import { ConsentsPanel } from '@/components/platform/ConsentsPanel';
 import { PayrollSetupPanel } from '@/components/platform/PayrollSetupPanel';
+import { IntegrationsPanel } from '@/components/platform/IntegrationsPanel';
 
-type Tab = 'org' | 'features' | 'access' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing' | 'payroll' | 'lifecycle' | 'consents';
+type Tab = 'org' | 'features' | 'access' | 'facilities' | 'pools' | 'positions' | 'roles' | 'import' | 'billing' | 'payroll' | 'lifecycle' | 'consents' | 'integrations';
 const SECTIONS: Array<{ key: string; tabs: Tab[] }> = [
   { key: 'setup', tabs: ['org', 'facilities', 'pools', 'positions'] },
-  { key: 'access', tabs: ['features', 'access', 'roles'] },
+  { key: 'access', tabs: ['features', 'access', 'roles', 'integrations'] },
   { key: 'people', tabs: ['import'] },
   { key: 'money', tabs: ['billing', 'payroll'] },
   { key: 'account', tabs: ['lifecycle', 'consents'] },
@@ -138,6 +139,7 @@ function City() {
         ) : null}
         {tab === 'import' ? <ImportPanel {...props} /> : null}
         {tab === 'consents' ? <ConsentsPanel id={id} /> : null}
+        {tab === 'integrations' ? <IntegrationsPanel id={id} /> : null}
         {tab === 'payroll' ? <PayrollSetupPanel id={id} /> : null}
         {tab === 'lifecycle' ? <LifecyclePanel id={id} subdomain={c.organization.subdomain} /> : null}
         {tab === 'billing' ? (

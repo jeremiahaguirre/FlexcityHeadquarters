@@ -30,6 +30,7 @@ import { SeniorityCard } from '@/components/settings/SeniorityCard';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
+import { IntegrationsSettings } from '@/components/settings/IntegrationsSettings';
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY'] as const;
 
@@ -59,7 +60,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules';
+type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -76,8 +77,14 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const { can } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules'] as const) : [])];
+  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
+  // A link can open a tab (the email about a webhook that was turned off opens Integrations).
+  useEffect(() => {
+    const want = new URLSearchParams(window.location.search).get('tab') as Tab | null;
+    if (want && tabs.includes(want)) setTab(want);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [org]);
   const settings = useQuery<Settings>(org ? '/api/settings' : null);
 
   return (
@@ -88,7 +95,9 @@ export default function SettingsPage() {
           <Segmented label={t('settings.section')} value={tab} onChange={setTab} options={tabs.map((x) => ({ value: x, label: t(`settings.tabs.${x}`) }))} />
         </div>
       ) : null}
-      {tab === 'pools' ? (
+      {tab === 'integrations' ? (
+        <IntegrationsSettings />
+      ) : tab === 'pools' ? (
         <Pools />
       ) : tab === 'departments' ? (
         <DepartmentsSettings />
