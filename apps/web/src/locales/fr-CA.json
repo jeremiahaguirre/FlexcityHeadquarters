@@ -6670,7 +6670,8 @@
       "readiness": "Préparation par cadre",
       "readinessHelp": "Autoévaluation : ni opinion d’audit ni certification.",
       "failing": "Tests en échec",
-      "noneFailing": "Aucun test en échec."
+      "noneFailing": "Aucun test en échec.",
+      "controlsByStatus": "Contrôles par statut"
     },
     "updated": "Mis à jour {{ago}}",
     "justNow": "à l’instant",
@@ -6768,8 +6769,8 @@
     "ackAdmins_one": "{{count}} administrateur",
     "ackAdmins_other": "{{count}} administrateurs",
     "alerts": {
-      "title": "Alertes et rappels récents",
-      "none": "Aucune alerte pour l’instant."
+      "title": "Rappels et rétablissements",
+      "none": "Aucun rappel ni rétablissement pour l’instant."
     },
     "libraryVersion": "Bibliothèque de contrôles {{version}}",
     "status": {

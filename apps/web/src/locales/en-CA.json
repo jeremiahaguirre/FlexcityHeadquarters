@@ -6670,7 +6670,8 @@
       "readiness": "Readiness by framework",
       "readinessHelp": "Self-assessed: not an audit opinion or a certification.",
       "failing": "Failing tests",
-      "noneFailing": "No test is failing."
+      "noneFailing": "No test is failing.",
+      "controlsByStatus": "Controls by status"
     },
     "updated": "Updated {{ago}}",
     "justNow": "just now",
@@ -6768,8 +6769,8 @@
     "ackAdmins_one": "{{count}} admin",
     "ackAdmins_other": "{{count}} admins",
     "alerts": {
-      "title": "Recent alerts and reminders",
-      "none": "No alerts yet."
+      "title": "Reminders and recoveries",
+      "none": "No reminders or recoveries yet."
     },
     "libraryVersion": "Control library {{version}}",
     "status": {

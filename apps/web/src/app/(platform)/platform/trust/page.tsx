@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, ClipboardCheck, FileWarning, Monitor, Play, ShieldAlert, Store, Timer } from 'lucide-react';
+import { ClipboardCheck, Monitor, Play } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -14,6 +14,7 @@ import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { StatTile } from '@/components/ui/StatTile';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/cn';
@@ -129,22 +130,25 @@ export default function TrustOverviewPage() {
           </Card>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <Kpi href="/platform/trust/tests?status=FAIL" icon={AlertTriangle} label={t('trust.kpi.failingTests')} value={o.kpis.failingTests} series={spark('failingTests')} bad />
-            <Kpi href="/platform/trust/evidence" icon={FileWarning} label={t('trust.kpi.overdueEvidence')} value={o.kpis.overdueEvidence} series={spark('overdueEvidence')} bad />
-            <Kpi href="/platform/trust/risks" icon={ShieldAlert} label={t('trust.kpi.highRisks')} value={o.kpis.openHighRisks} series={spark('openHighRisks')} bad />
-            <Kpi href="/platform/trust/vendors" icon={Store} label={t('trust.kpi.vendorsDue')} value={o.kpis.vendorsDue} series={spark('vendorsDue')} />
-            <Kpi href="/platform/trust/commitments" icon={Timer} label={t('trust.kpi.commitments30')} value={o.kpis.commitmentsDue30} series={spark('commitmentsDue30')} extra={o.kpis.commitmentsOverdue ? t('trust.kpi.overdue', { count: o.kpis.commitmentsOverdue }) : undefined} />
+            <Kpi href="/platform/trust/tests?status=FAIL" label={t('trust.kpi.failingTests')} value={o.kpis.failingTests} series={spark('failingTests')} bad />
+            <Kpi href="/platform/trust/evidence" label={t('trust.kpi.overdueEvidence')} value={o.kpis.overdueEvidence} series={spark('overdueEvidence')} bad />
+            <Kpi href="/platform/trust/risks" label={t('trust.kpi.highRisks')} value={o.kpis.openHighRisks} series={spark('openHighRisks')} bad />
+            <Kpi href="/platform/trust/vendors" label={t('trust.kpi.vendorsDue')} value={o.kpis.vendorsDue} series={spark('vendorsDue')} />
+            <Kpi href="/platform/trust/commitments" label={t('trust.kpi.commitments30')} value={o.kpis.commitmentsDue30} series={spark('commitmentsDue30')} extra={o.kpis.commitmentsOverdue ? t('trust.kpi.overdue', { count: o.kpis.commitmentsOverdue }) : undefined} />
           </div>
           <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)]">
             <Card>
               <CardHeader title={t('trust.overview.score')} description={t('trust.overview.scoreHelp')} />
               <CardBody className="flex flex-wrap items-center gap-5">
                 <ScoreRing score={o.score} label={t('trust.overview.score')} />
-                <ul className="grid gap-1.5 text-small">
+                <div>
+                <h3 className="text-small font-semibold">{t('trust.overview.controlsByStatus')}</h3>
+                <ul className="mt-1 grid gap-1.5 text-small">
                   {(['PASSING', 'NEEDS_EVIDENCE', 'FAILING', 'NOT_APPLICABLE'] as const).map((s) => (
                     <li key={s}><Link href={`/platform/trust/controls?status=${s}`} className="flex min-h-[44px] items-center gap-2 hover:underline"><StatusPill tone={({ PASSING: 'ok', NEEDS_EVIDENCE: 'warn', FAILING: 'danger', NOT_APPLICABLE: 'neutral' } as const)[s]}>{t(`trust.status.${s}`)}</StatusPill><span className="font-semibold tabular-nums">{o.controls[s] ?? 0}</span></Link></li>
                   ))}
                 </ul>
+                </div>
               </CardBody>
             </Card>
             <Card>
@@ -158,7 +162,7 @@ export default function TrustOverviewPage() {
               <CardBody><TrendChart points={o.trend} mode={mode} /></CardBody>
             </Card>
           </div>
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
             <Card>
               <CardHeader title={t('trust.heat.title')} description={t('trust.heat.help')} action={<Segmented label={t('trust.heat.mode')} value={heatMode} onChange={(v) => (setHeatMode(v), setCell(null))} options={[{ value: 'residual', label: t('trust.risk.residual') }, { value: 'inherent', label: t('trust.risk.inherent') }]} />} />
               <CardBody className="grid gap-4">
@@ -191,7 +195,7 @@ export default function TrustOverviewPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader title={t('trust.overview.failing')} description={failing.length ? undefined : t('trust.overview.noneFailing')} action={<Link href="/platform/trust/tests" className="text-small font-semibold text-brand-text hover:underline">{t('trust.section.tests')}</Link>} />
               <CardBody className="pt-3">
@@ -233,16 +237,15 @@ export default function TrustOverviewPage() {
 
 const chip = (on: boolean) => cn('min-h-[44px] rounded-full border px-3 text-small font-semibold transition-colors', on ? 'border-transparent bg-brand/10 text-brand-text' : 'border-line text-muted hover:bg-surface hover:text-ink');
 
-function Kpi({ href, icon: Icon, label, value, series, bad, extra }: { href: string; icon: typeof AlertTriangle; label: string; value: number; series: number[]; bad?: boolean; extra?: string }) {
-  const tone = bad && value ? 'danger' : 'brand';
+/** A KPI: the shared StatTile (sentence-case label, large tabular value), linked to its section, with a sparkline. */
+function Kpi({ href, label, value, series, bad, extra }: { href: string; label: string; value: number; series: number[]; bad?: boolean; extra?: string }) {
+  const alarm = bad && value > 0;
   return (
-    <Link href={href} className="group flex flex-col justify-between gap-2 rounded-xl2 border border-line bg-panel p-4 shadow-card hover:border-ink/30">
-      <span className="flex items-start justify-between gap-2 text-small text-muted"><span className="min-w-0">{label}</span><Icon className={cn('h-4 w-4 shrink-0', bad && value ? 'text-danger' : '')} aria-hidden="true" /></span>
-      <span className="flex items-end justify-between gap-2">
-        <span className={cn('text-title tabular-nums', bad && value ? 'text-danger' : 'text-ink')}>{value}</span>
-        <Sparkline values={series} tone={tone} />
-      </span>
-      {extra ? <span className="text-caption font-semibold text-danger">{extra}</span> : null}
+    <Link href={href} className="group block rounded-xl2 focus-visible:outline-none">
+      <StatTile label={label} value={value} tone={alarm ? 'danger' : undefined} className="flex h-full flex-col group-hover:border-ink/30 group-focus-visible:ring-2 group-focus-visible:ring-brand">
+        <div className="mt-2"><Sparkline values={series} tone={alarm ? 'danger' : 'brand'} /></div>
+        {extra ? <p className="mt-1 text-caption font-semibold text-danger">{extra}</p> : null}
+      </StatTile>
     </Link>
   );
 }
