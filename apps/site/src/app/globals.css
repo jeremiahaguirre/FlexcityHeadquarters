@@ -149,6 +149,24 @@ details > summary::-webkit-details-marker { display: none; }
   .sheen { position: relative; overflow: hidden; }
   .sheen::after { content: ''; position: absolute; inset-block: 0; left: 0; width: 35%; background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent); animation: fh-sheen 4.5s ease-in-out infinite; animation-delay: 1.5s; pointer-events: none; }
 
+  /* Device pictures (components/Device.tsx): the laptop and phone rise in, the phone then floats
+     a few pixels, and the brand shapes behind them drift slowly. */
+  @keyframes fh-duo-in { from { opacity: 0; transform: translateY(18px) scale(0.985); } to { opacity: 1; transform: none; } }
+  .duo-in { animation: fh-duo-in 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(200ms + var(--i, 0) * 140ms); }
+  .duo-in-2 { --i: 3; }
+  @keyframes fh-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  .float-y { animation: fh-float 7s ease-in-out 1.4s infinite; }
+  @keyframes fh-drift { 0%, 100% { transform: none; } 50% { transform: translate(-12px, 8px); } }
+  .shape-drift { animation: fh-drift 18s ease-in-out infinite; }
+  @keyframes fh-sway { 0%, 100% { transform: none; } 50% { transform: rotate(-2.5deg); } }
+  .shape-sway { transform-box: fill-box; transform-origin: 30% 100%; animation: fh-sway 11s ease-in-out infinite; }
+  .shape-bob { transform-box: fill-box; animation: fh-float 5s ease-in-out infinite; }
+  /* Parallax-lite: in a header, the phone lifts a little faster than the page as it scrolls. */
+  @supports (animation-timeline: scroll()) {
+    @keyframes fh-lift { from { transform: none; } to { transform: translateY(-36px); } }
+    .par-lift { animation: fh-lift linear both; animation-timeline: scroll(root); animation-range: 0 640px; }
+  }
+
   /* Day story: the rail fills as the section scrolls past (where the browser supports it). */
   @supports (animation-timeline: view()) {
     @keyframes fh-rail { from { transform: scaleY(0); } to { transform: scaleY(1); } }

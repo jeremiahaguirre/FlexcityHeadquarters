@@ -22,6 +22,7 @@ const config: Config = {
       boxShadow: {
         card: '0 1px 2px rgb(11 31 34 / 0.04), 0 1px 3px rgb(11 31 34 / 0.06)',
         lift: '0 8px 24px rgb(11 31 34 / 0.12)',
+        device: '0 34px 60px -28px rgb(11 31 34 / 0.5), 0 14px 26px -14px rgb(11 31 34 / 0.3)',
       },
       borderRadius: { xl2: '1.125rem' },
       fontFamily: {
