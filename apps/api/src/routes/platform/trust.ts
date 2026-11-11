@@ -82,7 +82,8 @@ trustRouter.get(
       p.trustVendor.findMany({ select: { criticality: true, personalInfo: true, inCanada: true, score: true, status: true } }),
       p.trustCommitment.findMany({ where: { status: 'OPEN', dueAt: { lt: new Date(now.getTime() + 90 * DAY) } }, orderBy: { dueAt: 'asc' }, select: { id: true, title: true, customer: true, kind: true, dueAt: true } }),
       policyAckProgress(p),
-      p.trustAlert.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, kind: true, title: true, titleFr: true, link: true, createdAt: true, readAt: true } }),
+      // Failing tests have their own card beside this list: here only reminders, overdue notices and recoveries.
+      p.trustAlert.findMany({ where: { kind: { not: 'test_failed' } }, orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, kind: true, title: true, titleFr: true, link: true, createdAt: true, readAt: true } }),
       p.trustTest.findFirst({ where: { lastRunAt: { not: null } }, orderBy: { lastRunAt: 'desc' }, select: { lastRunAt: true } }),
     ]);
     const body = {

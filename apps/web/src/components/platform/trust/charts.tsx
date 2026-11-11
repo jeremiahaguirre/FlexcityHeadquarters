@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { Fragment, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
 import { colon, heatCells, linePath, riskLevel, timelinePos, daysLeft, type FrameworkReadiness, type OverviewRisk, type TrendPoint, pct } from '@/lib/trust';
@@ -62,7 +62,7 @@ export function TrendChart({ points, mode }: { points: TrendPoint[]; mode: 'test
   const fmt = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' });
   if (!points.length) return <p className="py-10 text-center text-small text-muted">{t('trust.trend.collecting', { count: 0 })}</p>;
   const series = mode === 'tests'
-    ? [{ key: 'pass', label: t('trust.trend.passing'), color: C.ok }, { key: 'warn', label: t('trust.trend.warning'), color: C.warn }, { key: 'fail', label: t('trust.trend.failing'), color: C.danger }] as const
+    ? [{ key: 'pass', label: t('trust.trend.passing'), color: C.ok }, { key: 'warn', label: t('trust.trend.warning'), color: C.muted }, { key: 'fail', label: t('trust.trend.failing'), color: C.danger }] as const
     : [{ key: 'score', label: t('trust.trend.score'), color: C.brand }] as const;
   const val = (p: TrendPoint, k: string) => Number((p as unknown as Record<string, number>)[k] ?? 0);
   const total = (p: TrendPoint) => p.pass + p.warn + p.fail;
@@ -78,10 +78,11 @@ export function TrendChart({ points, mode }: { points: TrendPoint[]; mode: 'test
   const y = (v: number) => H - (v / max) * H;
   const stepPath = points.map((p, i) => `${i ? 'L' : 'M'}${(i * slot).toFixed(1)},${y(p.score).toFixed(1)} L${((i + 1) * slot).toFixed(1)},${y(p.score).toFixed(1)}`).join(' ');
   const hp = hover !== null ? points[hover] : null;
+  const hatchId = `hatch-${id.replace(/[^\w-]/g, '')}`;
   return (
     <div>
       <ul className="mb-2 flex flex-wrap gap-4 text-caption text-muted" aria-hidden="true">
-        {series.map((s) => <li key={s.key} className="flex items-center gap-1.5"><span className={cn('w-3 rounded-sm', mode === 'score' ? 'h-0.5' : 'h-3')} style={{ background: s.color }} />{s.label}</li>)}
+        {series.map((s) => <li key={s.key} className="flex items-center gap-1.5"><span className={cn('w-3 rounded-sm', mode === 'score' ? 'h-0.5' : 'h-3')} style={{ background: s.key === 'fail' ? `${HATCH_CSS}, ${s.color}` : s.color }} />{s.label}</li>)}
       </ul>
       <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-1">
         <div className="relative h-44 text-right text-[0.6875rem] tabular-nums text-muted" aria-hidden="true">
@@ -94,6 +95,12 @@ export function TrendChart({ points, mode }: { points: TrendPoint[]; mode: 'test
               setHover(Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n))));
             }}
             onPointerLeave={() => setHover(null)}>
+            <defs>
+              <pattern id={hatchId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="6" height="6" fill={C.danger} />
+                <line x1="0" y1="0" x2="0" y2="6" stroke="rgb(var(--panel))" strokeWidth="2" strokeOpacity="0.55" />
+              </pattern>
+            </defs>
             {ticks.map((v) => <line key={v} x1="0" x2={W} y1={y(v)} y2={y(v)} stroke={C.line} strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
             {hover !== null ? <rect x={hover * slot} y="0" width={slot} height={H} fill={C.surface} opacity="0.6" /> : null}
             {mode === 'tests'
@@ -109,7 +116,7 @@ export function TrendChart({ points, mode }: { points: TrendPoint[]; mode: 'test
                         const hgt = y(acc) - top;
                         acc += v;
                         // A 2px surface gap between stacked segments.
-                        return <rect key={k} x={x} y={top + 1} width={bw} height={Math.max(0, hgt - 2)} rx={Math.min(3, bw / 3)} fill={series.find((s) => s.key === k)!.color} />;
+                        return <rect key={k} x={x} y={top + 1} width={bw} height={Math.max(0, hgt - 2)} rx={Math.min(3, bw / 3)} fill={k === 'fail' ? `url(#${hatchId})` : series.find((s) => s.key === k)!.color} />;
                       })}
                     </g>
                   );
@@ -119,7 +126,7 @@ export function TrendChart({ points, mode }: { points: TrendPoint[]; mode: 'test
           {hp ? (
             <div className="pointer-events-none absolute top-0 z-10 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-caption shadow-card" style={{ left: `min(calc(${((hover! + 1) / n) * 100}% + 6px), calc(100% - 9.5rem))` }}>
               <p className="font-semibold">{fmt(hp.day)}</p>
-              {series.map((s) => <p key={s.key} className="tabular-nums"><span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />{s.label}{colon(i18n.language)}{val(hp, s.key)}</p>)}
+              {series.map((s) => <p key={s.key} className="tabular-nums"><span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: s.key === 'fail' ? `${HATCH_CSS}, ${s.color}` : s.color }} />{s.label}{colon(i18n.language)}{val(hp, s.key)}</p>)}
             </div>
           ) : null}
           <div className="mt-1 flex justify-between text-caption text-muted" aria-hidden="true"><span>{fmt(points[0]!.day)}</span>{n > 1 ? <span>{fmt(points[n - 1]!.day)}</span> : null}</div>
@@ -135,6 +142,9 @@ export function TrendChart({ points, mode }: { points: TrendPoint[]; mode: 'test
   );
 }
 
+/** The failing hatch for legend swatches (the bars use the matching SVG pattern). */
+const HATCH_CSS = 'repeating-linear-gradient(45deg, rgb(var(--panel) / 0.55) 0 1.5px, transparent 1.5px 4px)';
+
 export const levelStyle = { high: 'bg-danger-bg text-danger', medium: 'bg-warn-bg text-warn', low: 'bg-ok-bg text-ok' } as const;
 
 /** 5×5 likelihood × impact grid; cells recolour live with the risk appetite. Each cell is a button. */
@@ -142,26 +152,34 @@ export function HeatMap({ risks, appetite, mode, onCell, selected }: { risks: Ov
   const { t } = useTranslation();
   const cells = useMemo(() => heatCells(risks, mode), [risks, mode]);
   return (
-    <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2">
+    <div className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-1.5">
       <div className="flex items-center justify-center"><span className="-rotate-90 whitespace-nowrap text-caption text-muted">{t('trust.risk.impact')} →</span></div>
       <div>
-        {/* A group of buttons (not an ARIA grid, which would need rows and arrow-key navigation); each says its cell in words. */}
-        <div className="grid grid-cols-5 gap-1" role="group" aria-label={t('trust.heat.label', { appetite })}>
+        {/* A group of buttons (not an ARIA grid, which would need rows and arrow-key navigation); each says its cell in words.
+            Each row starts with its impact tick (5 at the top), and the likelihood ticks run along the bottom. */}
+        <div className="grid grid-cols-[1rem_repeat(5,minmax(0,1fr))] gap-1" role="group" aria-label={t('trust.heat.label', { appetite })}>
           {cells.map((c) => {
             const lvl = riskLevel(c.score, appetite);
             const on = selected?.likelihood === c.likelihood && selected?.impact === c.impact;
             return (
-              <button key={`${c.likelihood}-${c.impact}`} type="button" onClick={() => onCell?.(c)} aria-pressed={on}
-                aria-label={t('trust.heat.cell', { likelihood: c.likelihood, impact: c.impact, score: c.score, count: c.risks.length, level: t(`trust.level.${lvl}`) })}
-                className={cn('relative grid aspect-[4/3] min-h-[44px] place-items-center rounded-lg text-small font-bold tabular-nums motion-safe:transition-colors', levelStyle[lvl], on && 'ring-2 ring-ink ring-offset-2 ring-offset-panel')}>
-                {c.risks.length || ''}
-                {/* Full-strength colour (no opacity): the small score keeps AA contrast on every level's background. */}
-                <span className="absolute bottom-0.5 right-1 text-[0.625rem] font-medium" aria-hidden="true">{c.score}</span>
-              </button>
+              <Fragment key={`${c.likelihood}-${c.impact}`}>
+                {c.likelihood === 1 ? <span className="grid place-items-center text-caption tabular-nums text-muted" aria-hidden="true">{c.impact}</span> : null}
+                <button type="button" onClick={() => onCell?.(c)} aria-pressed={on}
+                  aria-label={t('trust.heat.cell', { likelihood: c.likelihood, impact: c.impact, score: c.score, count: c.risks.length, level: t(`trust.level.${lvl}`) })}
+                  className={cn('relative grid aspect-[4/3] min-h-[44px] place-items-center rounded-lg text-small font-bold tabular-nums motion-safe:transition-colors', levelStyle[lvl], on && 'ring-2 ring-ink ring-offset-2 ring-offset-panel')}>
+                  {c.risks.length || ''}
+                  {/* Full-strength colour (no opacity): the small score keeps AA contrast on every level's background. */}
+                  <span className="absolute bottom-0.5 right-1 text-[0.625rem] font-medium" aria-hidden="true">{c.score}</span>
+                </button>
+              </Fragment>
             );
           })}
         </div>
-        <p className="mt-1.5 text-center text-caption text-muted">{t('trust.risk.likelihood')} →</p>
+        <div className="mt-1 grid grid-cols-[1rem_repeat(5,minmax(0,1fr))] gap-1 text-center text-caption tabular-nums text-muted" aria-hidden="true">
+          <span />
+          {[1, 2, 3, 4, 5].map((v) => <span key={v}>{v}</span>)}
+        </div>
+        <p className="mt-0.5 pl-5 text-center text-caption text-muted">{t('trust.risk.likelihood')} →</p>
       </div>
     </div>
   );
@@ -191,21 +209,37 @@ export function Timeline({ items, onOpen }: { items: Array<{ id: string; title: 
   const color = { danger: C.danger, warn: C.warn, brand: C.brand };
   const fmt = (d: string) => new Date(d).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric', timeZone: 'UTC' });
   if (!items.length) return <p className="py-6 text-center text-small text-muted">{t('trust.timeline.none')}</p>;
+  // Dots closer than ~5% of the axis (overdue ones all sit at Today) merge into one dot with a count,
+  // coloured by the most urgent of them.
+  const rank = { danger: 0, warn: 1, brand: 2 } as const;
+  const clusters: Array<{ pos: number; tone: 'danger' | 'warn' | 'brand'; items: typeof items }> = [];
+  for (const c of [...items].sort((a, b) => a.dueAt.localeCompare(b.dueAt))) {
+    const pos = timelinePos(c.dueAt, start, 90);
+    const last = clusters[clusters.length - 1];
+    if (last && pos - last.pos < 0.05) {
+      last.items.push(c);
+      if (rank[tone(c.dueAt)] < rank[last.tone]) last.tone = tone(c.dueAt);
+    } else clusters.push({ pos, tone: tone(c.dueAt), items: [c] });
+  }
   return (
     <div>
       <div className="relative mx-2 h-10" aria-hidden="true">
         <div className="absolute inset-x-0 top-1/2 h-px bg-line" />
         {[0, 30, 60, 90].map((d) => <span key={d} className="absolute top-[calc(50%+6px)] -translate-x-1/2 text-[0.625rem] text-muted" style={{ left: `${(d / 90) * 100}%` }}>{d ? `+${d}` : t('trust.timeline.today')}</span>)}
-        {items.map((c) => <span key={c.id} className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-panel" style={{ left: `${timelinePos(c.dueAt, start, 90) * 100}%`, background: color[tone(c.dueAt)] }} />)}
+        {clusters.map((g) => (
+          <span key={g.items[0]!.id} className={cn('absolute top-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[0.625rem] font-bold tabular-nums text-page ring-2 ring-panel', g.items.length > 1 ? 'h-4 min-w-4 px-1' : 'h-3 w-3')} style={{ left: `${g.pos * 100}%`, background: color[g.tone] }}>
+            {g.items.length > 1 ? g.items.length : null}
+          </span>
+        ))}
       </div>
       <ul className="mt-3 divide-y divide-line text-small">
         {items.slice(0, 6).map((c) => {
           const left = daysLeft(c.dueAt);
           return (
             <li key={c.id}>
-              <button type="button" onClick={() => onOpen?.(c.id)} className="flex min-h-[44px] w-full items-center gap-3 py-1.5 text-left">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color[tone(c.dueAt)] }} aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate"><span className="font-semibold">{c.customer}</span> · {c.title}</span>
+              <button type="button" onClick={() => onOpen?.(c.id)} className="flex min-h-[44px] w-full items-start gap-3 py-2 text-left">
+                <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color[tone(c.dueAt)] }} aria-hidden="true" />
+                <span className="line-clamp-2 min-w-0 flex-1"><span className="font-semibold">{c.customer}</span> · {c.title}</span>
                 <span className={cn('shrink-0 tabular-nums', left < 0 ? 'font-semibold text-danger' : left <= 7 ? 'font-semibold text-warn' : 'text-muted')}>{left < 0 ? t('trust.timeline.overdue', { count: -left }) : `${fmt(c.dueAt)} · ${t('trust.timeline.inDays', { count: left })}`}</span>
               </button>
             </li>

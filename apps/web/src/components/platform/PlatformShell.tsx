@@ -53,7 +53,6 @@ function SignedIn({ children }: { children: ReactNode }) {
   ];
   const [more, setMore] = useState(false);
   const moreOn = NAV.some((n) => !PHONE_MAIN.includes(n.href) && active(n));
-  const inTrust = path === '/platform/trust' || path.startsWith('/platform/trust/');
   return (
     <div className="min-h-screen bg-page md:grid md:grid-cols-[16.5rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-line bg-panel md:flex print:hidden">
@@ -70,23 +69,10 @@ function SignedIn({ children }: { children: ReactNode }) {
               const on = active(n);
               return (
                 <div key={n.href}>
-                  <Link href={n.href} aria-current={on && !(n.href === '/platform/trust' && path !== n.href) ? 'page' : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-small font-semibold transition-colors ${on ? 'bg-brand/10 text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>
+                  <Link href={n.href} aria-current={on ? (path === n.href ? 'page' : 'true') : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-small font-semibold transition-colors ${on ? 'bg-brand/10 text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>
                     <n.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
                     {t(n.key)}
                   </Link>
-                  {/* Trust's own sections, listed under it while you're in it. */}
-                  {n.href === '/platform/trust' && inTrust ? (
-                    <ul className="mb-1 ml-[1.375rem] mt-0.5 grid gap-0.5 border-l border-line pl-3">
-                      {TRUST_SECTIONS.slice(1).map((s) => {
-                        const here = path === s.href || path.startsWith(`${s.href}/`);
-                        return (
-                          <li key={s.href}>
-                            <Link href={s.href} aria-current={here ? 'page' : undefined} className={`block rounded-lg px-2 py-1.5 text-small ${here ? 'font-semibold text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>{t(`trust.section.${s.key}`)}</Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : null}
                 </div>
               );
             })}
