@@ -3243,6 +3243,7 @@
       "extra_one": "+{{count}} person",
       "extra_other": "+{{count}} people",
       "holiday": "{{name}} (statutory holiday)",
+      "holidayObserved": "{{name}} (statutory holiday, observed)",
       "school": "No school: {{name}}"
     }
   },

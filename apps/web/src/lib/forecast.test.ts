@@ -15,6 +15,7 @@ describe('forecast reasons', () => {
     expect(norm(reasonText(rain, en.t, 'en-CA'))).toBe('-35% rain (learned from 9 days here)');
     expect(norm(reasonText({ kind: 'weather', bucket: 'mild', condition: 'partly', high: 18, pct: 0, source: 'default' }, en.t, 'en-CA'))).toBe('No change expected: mild (18 °C)');
     expect(norm(reasonText({ kind: 'holiday', name: 'Canada Day', nameFr: 'Fête du Canada', pct: 15 }, fr.t, 'fr-CA'))).toBe('+15 % Fête du Canada (jour férié)');
+    expect(norm(reasonText({ kind: 'holiday', name: 'Christmas Day', nameFr: 'Noël', pct: 10, observed: true }, fr.t, 'fr-CA'))).toBe('+10 % Noël (jour férié, observé)');
     expect(reasonText({ kind: 'event', id: 'e', name: 'Swim meet', pct: null, extra: 40, startMinute: 780, endMinute: 900, cityWide: false, notes: null }, en.t, 'en-CA')).toMatch(/^\+40 people Swim meet \(1\s?p\.m\.–3\s?p\.m\.\)$/);
     expect(reasonText({ kind: 'school', name: 'Spring break' }, fr.t, 'fr-CA')).toBe('Pas d’école : Spring break');
   });

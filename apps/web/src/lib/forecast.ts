@@ -6,7 +6,7 @@ export type Bucket = 'thunder' | 'rain' | 'snow' | 'hot' | 'warm' | 'mild' | 'co
 
 export type Adjustment =
   | { kind: 'weather'; bucket: Bucket; condition: Condition; high: number | null; pct: number; source: 'learned' | 'default'; days?: number }
-  | { kind: 'holiday'; name: string; nameFr: string | null; pct: number }
+  | { kind: 'holiday'; name: string; nameFr: string | null; pct: number; observed?: boolean }
   | { kind: 'event'; id: string; name: string; pct: number | null; extra: number | null; startMinute: number | null; endMinute: number | null; cityWide: boolean; notes: string | null }
   | { kind: 'school'; name: string };
 
@@ -56,7 +56,7 @@ export function reasonText(a: Adjustment, t: TFunction, lng: string): string {
       return a.pct ? `${pct(a.pct, lng)} ${weatherWords(a, t, lng)}${learned}` : `${t('forecast.wx.noEffect', { what: weatherWords(a, t, lng) })}${learned}`;
     }
     case 'holiday':
-      return `${pct(a.pct, lng)} ${t('forecast.events.holiday', { name: fr && a.nameFr ? a.nameFr : a.name })}`;
+      return `${pct(a.pct, lng)} ${t(a.observed ? 'forecast.events.holidayObserved' : 'forecast.events.holiday', { name: fr && a.nameFr ? a.nameFr : a.name })}`;
     case 'event': {
       const parts = [a.pct ? pct(a.pct, lng) : '', a.extra ? t('forecast.events.extra', { count: a.extra }) : ''].filter(Boolean).join(' ');
       const when = a.startMinute !== null && a.endMinute !== null ? ` (${clock(a.startMinute, lng)}–${clock(a.endMinute, lng)})` : '';

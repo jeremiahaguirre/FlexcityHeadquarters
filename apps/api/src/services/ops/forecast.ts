@@ -19,6 +19,7 @@ import { addDays, dayOfWeek, localDate, localHour, localIso, startOfLocalDay } f
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { lifeguardsRequired } from './chemistry.js';
 import { coversHour, holidayEffect, occursOn, type EventRow } from './specialEvents.js';
+import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { learnEffects, profileOf, weatherEffect, type Bucket, type Condition, type WeatherDay } from './weather.js';
 
 const WEEKS = 8;
@@ -75,7 +76,7 @@ const asDate = (s: string) => new Date(`${s}T00:00:00Z`);
 
 export type Adjustment =
   | { kind: 'weather'; bucket: string; condition: Condition; high: number | null; pct: number; source: 'learned' | 'default'; days?: number }
-  | { kind: 'holiday'; name: string; nameFr: string | null; pct: number }
+  | { kind: 'holiday'; name: string; nameFr: string | null; pct: number; observed?: boolean }
   | { kind: 'event'; id: string; name: string; pct: number | null; extra: number | null; startMinute: number | null; endMinute: number | null; cityWide: boolean; notes: string | null }
   | { kind: 'school'; name: string };
 
@@ -113,7 +114,7 @@ async function learnedFor(tx: Tx, facilityId: string, tz: string, site: string, 
 }
 
 export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string, positionId: string | null) {
-  const facility = await tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true, name: true, province: true, exposure: true, venueKind: true, weatherSite: true, weatherSiteAuto: true } });
+  const facility = await tx.facility.findUniqueOrThrow({ where: { id: facilityId }, select: { timezone: true, name: true, province: true, exposure: true, venueKind: true, weatherSite: true, weatherSiteAuto: true, tenant: { select: { holidayObservance: true } } } });
   const tz = facility.timezone;
   const profile = profileOf(facility.exposure, facility.venueKind);
   const site = facility.weatherSite ?? facility.weatherSiteAuto;
@@ -154,7 +155,7 @@ export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string
   const weekTo = asDate(weekEnd);
   const [eventRows, holidays, siteRow, fcDays, obsDays, learned] = await Promise.all([
     tx.specialEvent.findMany({ where: { OR: [{ facilityId }, { facilityId: null }], startsOn: { lte: weekTo } }, orderBy: { startsOn: 'asc' } }),
-    tx.statutoryHoliday.findMany({ where: { province: facility.province, date: { gte: weekFrom, lte: weekTo } } }),
+    holidaysTouching(tx, facility.province, weekStart, addDays(weekStart, 7)),
     site ? tx.weatherSite.findUnique({ where: { site } }) : null,
     site ? tx.weatherForecastDay.findMany({ where: { site, date: { gte: weekFrom, lte: weekTo } } }) : [],
     site ? tx.weatherObservation.findMany({ where: { site, date: { gte: weekFrom, lte: weekTo } } }) : [],
@@ -191,9 +192,11 @@ export async function forecastWeek(tx: Tx, facilityId: string, weekStart: string
       adjustments.push({ kind: 'weather', bucket: eff.bucket, condition: weather.condition, high: weather.high, pct: eff.pct, source: eff.source, ...(eff.days ? { days: eff.days } : {}) });
       dayFactor *= 1 + eff.pct / 100;
     }
-    for (const hd of holidays.filter((x) => iso(x.date) === day)) {
+    // A holiday counts on its own date, on the day the law moves it to (Canada Day on a Sunday →
+    // July 2) and on the weekday the organization observes it, once each: more people are off on all of them.
+    for (const hd of holidays.filter((x) => new Set([x.date, statutoryDay(x), organizationDay(x, facility.tenant.holidayObservance)]).has(day))) {
       const pct = holidayEffect(profile);
-      adjustments.push({ kind: 'holiday', name: hd.name, nameFr: hd.nameFr, pct });
+      adjustments.push({ kind: 'holiday', name: hd.name, nameFr: hd.nameFr, pct, ...(day !== hd.date ? { observed: true } : {}) });
       dayFactor *= 1 + pct / 100;
     }
     const todays = events.filter((e) => occursOn(e, day));
