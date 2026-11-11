@@ -11,5 +11,5 @@ export async function generateMetadata(props: { params: Promise<{ lang: Lang }> 
 
 export default async function Page(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
-  return <LegalPage doc="terms" lang={params.lang} />;
+  return <LegalPage doc="copyright" lang={params.lang} />;
 }
