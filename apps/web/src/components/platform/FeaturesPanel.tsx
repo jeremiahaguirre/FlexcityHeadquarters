@@ -10,7 +10,7 @@ import type { PanelProps } from './types';
 
 /** Grouped as people see them in the app. */
 const GROUPS: Array<{ key: string; features: string[] }> = [
-  { key: 'scheduling', features: ['shiftBoard', 'scheduleAssistant', 'availability', 'timeOff', 'coverage', 'overtime'] },
+  { key: 'scheduling', features: ['shiftBoard', 'scheduleAssistant', 'shiftTemplates', 'availability', 'shiftPreferences', 'timeOff', 'coverage', 'overtime'] },
   { key: 'time', features: ['timeclock', 'payroll', 'expenses'] },
   { key: 'deck', features: ['poolChemistry', 'headcounts', 'rotations', 'statusBoard', 'incidents'] },
   { key: 'programs', features: ['lessons', 'registration'] },

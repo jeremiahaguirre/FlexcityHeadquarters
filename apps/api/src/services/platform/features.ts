@@ -18,6 +18,10 @@ export const FEATURES = {
   shiftBoard: { default: true, permissions: ['shiftboard.claim', 'shiftboard.post', 'shiftboard.approve', 'shiftboard.assign_emergency'] },
   scheduleAssistant: { default: true, permissions: ['schedule.assist'] },
   availability: { default: true, permissions: ['availability.self'] },
+  /** Weekly shift templates: a department's standard week applied to future weeks as drafts. */
+  shiftTemplates: { default: true, permissions: ['schedule.templates'] },
+  /** Staff state the shifts they'd like or avoid; Fill the schedule weighs them (soft only). */
+  shiftPreferences: { default: true, permissions: ['preferences.self'] },
   timeOff: { default: true, permissions: ['timeoff.self', 'timeoff.approve'] },
   timeclock: { default: true, permissions: ['timeclock.punch', 'timeclock.review'] },
   lessons: { default: true, permissions: ['lessons.teach'] },

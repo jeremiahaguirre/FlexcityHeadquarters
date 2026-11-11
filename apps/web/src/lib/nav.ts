@@ -1,4 +1,4 @@
-import { MessagesSquare, MessageSquareWarning, ClipboardPen, BookOpenCheck, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, Gauge, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
+import { MessagesSquare, MessageSquareWarning, ClipboardPen, BookOpenCheck, Heart, LayoutTemplate, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, Gauge, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
 /** The app menu. It must match the API's menu (apps/api/src/auth/menu.ts); nav.test.ts checks. */
 export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
@@ -27,6 +27,7 @@ export const NAV: NavItem[] = [
   { href: '/timeclock', key: 'timeclock', icon: Clock, group: 'mine', permission: 'timeclock.punch', tab: 5, ready: true },
   { href: '/time-off', key: 'timeOff', icon: CalendarClock, group: 'mine', permission: 'timeoff.self', ready: true },
   { href: '/availability', key: 'availability', icon: CalendarCheck, group: 'mine', permission: 'availability.self', ready: true },
+  { href: '/preferences', key: 'preferences', icon: Heart, group: 'mine', permission: 'preferences.self', ready: true },
   { href: '/lessons', key: 'lessons', icon: GraduationCap, group: 'mine', permission: 'lessons.teach', ready: true },
   { href: '/alone', key: 'loneWork', icon: ShieldCheck, group: 'mine', permission: 'lonework.self', ready: true },
   { href: '/patrol', key: 'patrol', icon: Snowflake, group: 'mine', permission: 'winter.patrol', ready: true },
@@ -57,6 +58,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/call-outs', key: 'callOuts', icon: Siren, group: 'manage', section: 'time', permission: 'winter.callout', ready: true },
   { href: '/manage/winter', key: 'winter', icon: Snowflake, group: 'manage', section: 'time', permission: ['winter.manage', 'winter.records'], ready: true },
   { href: '/manage/rotations', key: 'rotations', icon: CalendarCog, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
+  { href: '/manage/shift-templates', key: 'shiftTemplates', icon: LayoutTemplate, group: 'manage', section: 'time', permission: 'schedule.templates', ready: true },
   { href: '/manage/on-call', key: 'onCall', icon: PhoneCall, group: 'manage', section: 'time', permission: ['schedule.write', 'winter.callout'], ready: true },
   { href: '/manage/work-rules', key: 'workRules', icon: BookOpenCheck, group: 'manage', section: 'time', permission: ['tenant.configure', 'schedule.assist'], ready: true },
   { href: '/manage/people', key: 'people', icon: UserCheck, group: 'manage', section: 'people', permission: 'reliability.read', ready: true },

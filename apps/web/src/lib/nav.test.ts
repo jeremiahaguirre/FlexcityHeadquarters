@@ -17,7 +17,7 @@ describe('menus per role', () => {
 
   it('lifeguard / instructor: their own work and the pool deck tasks', () => {
     expect(menu('STAFF')).toEqual({
-      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/lessons', '/alone', '/pay', '/expenses', '/logbook', '/headcount', '/ops', '/incidents'],
+      items: ['/today', '/schedule', '/board', '/timeclock', '/time-off', '/availability', '/preferences', '/lessons', '/alone', '/pay', '/expenses', '/logbook', '/headcount', '/ops', '/incidents'],
       home: '/today',
     });
   });
@@ -34,7 +34,7 @@ describe('menus per role', () => {
   });
 
   it('general employee (water works, maintenance…): their own work, no pool screens at all', () => {
-    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/alone', '/patrol', '/pretrip', '/pay', '/expenses', '/logbook'], home: '/today' });
+    expect(menu('EMPLOYEE')).toEqual({ items: ['/today', '/schedule', '/timeclock', '/time-off', '/availability', '/preferences', '/alone', '/patrol', '/pretrip', '/pay', '/expenses', '/logbook'], home: '/today' });
   });
 
   it('people review is for HR and supervisors only', () => {

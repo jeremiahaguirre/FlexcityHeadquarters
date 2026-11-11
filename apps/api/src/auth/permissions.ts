@@ -13,6 +13,8 @@ export const PERMISSIONS = [
   'schedule.read',
   'schedule.write',
   'schedule.assist', // run the scheduling assistant, configure weights
+  'schedule.templates', // weekly shift templates: define, apply as drafts, undo
+  'preferences.self', // state one's own shift preferences (a wish, unlike availability)
   'shiftboard.claim',
   'shiftboard.post',
   'shiftboard.approve', // approve overtime / override claims
@@ -93,6 +95,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 const STAFF_BASE: Permission[] = [
   'schedule.read',
+  'preferences.self',
   'shifts.self',
   'lessons.teach',
   'shiftboard.claim',
@@ -170,6 +173,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'certs.verify',
     'schedule.write',
     'schedule.assist',
+    'schedule.templates',
     'shiftboard.approve',
     'shiftboard.assign_emergency',
     'timeoff.approve',
@@ -221,7 +225,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage', 'logbook.write', 'messages.use', 'surveys.respond'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write', 'messages.use', 'surveys.respond'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'preferences.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write', 'messages.use', 'surveys.respond'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {
