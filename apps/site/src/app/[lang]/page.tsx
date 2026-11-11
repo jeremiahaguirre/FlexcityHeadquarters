@@ -1,6 +1,7 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Icon } from '@/components/Icon';
+import { AliveMark } from '@/components/AliveMark';
 import { LogoMark } from '@/components/Logo';
 import { CountUp } from '@/components/Motion';
 import { reveal } from '@/lib/reveal';
@@ -44,8 +45,14 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
       {/* Hero: always dark, the statement across the full width, the product picture beside the pitch */}
-      <section className="night grain overflow-hidden">
-        <div className="mx-auto max-w-7xl px-4 pb-14 pt-12 md:px-6 md:pb-20 md:pt-20">
+      <section className="night grain relative overflow-hidden">
+        {/* The FH mark, large and faded, drawing itself in behind the statement and then staying gently alive. */}
+        <div aria-hidden="true" className="pointer-events-none absolute -right-28 -top-20 md:-right-12 md:-top-28">
+          <div className="opacity-[0.13]">
+            <AliveMark size={560} className="mark-breathe h-[22rem] w-[22rem] md:h-[38rem] md:w-[38rem]" />
+          </div>
+        </div>
+        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-12 md:px-6 md:pb-20 md:pt-20">
           <div className="rise">
             <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-caption font-semibold text-white">
               <span className="pulse-dot h-2 w-2 rounded-full bg-[#C5F23A]" aria-hidden="true" />

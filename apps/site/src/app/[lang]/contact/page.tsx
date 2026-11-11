@@ -1,5 +1,6 @@
 import { pageMeta } from '@/lib/seo';
 import { ContactForm } from '@/components/ContactForm';
+import { AliveMark } from '@/components/AliveMark';
 import { LogoMark } from '@/components/Logo';
 import { Kicker } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
@@ -20,7 +21,7 @@ export default async function Contact(props: { params: Promise<{ lang: Lang }> }
         <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-16 md:-right-10 md:-top-24">
           <div className="opacity-[0.13]">
             <div className="mark-in">
-              <LogoMark size={560} className="mark-breathe h-[22rem] w-[22rem] md:h-[36rem] md:w-[36rem]" />
+              <AliveMark size={560} className="mark-breathe h-[22rem] w-[22rem] md:h-[36rem] md:w-[36rem]" />
             </div>
           </div>
         </div>
