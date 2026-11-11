@@ -15,7 +15,7 @@ import { lieuAvailable, lieuPolicy } from '../payroll/lieu.js';
 import { readSettings } from '../payroll/payRuns.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { addDays } from '../../lib/time.js';
-import { usersWithRoles } from '../notifications/notifier.js';
+import { approversFor } from './reporting.js';
 import { postOffer } from '../shiftboard/offers.js';
 import { leaveHoursFrom, scheduledShifts } from './leaveHours.js';
 
@@ -80,7 +80,8 @@ export async function requestTimeOff(
     where: { userId, status: 'PUBLISHED', startsAt: { lt: input.endsAt }, endsAt: { gt: input.startsAt } },
     select: { id: true },
   });
-  const approvers = await usersWithRoles(tx, ['AQUATIC_SUPERVISOR'], [userId]);
+  // Their manager first; then their department's managers; then everyone who approves time off.
+  const approvers = (await approversFor(tx, tenantId, [userId], 'timeoff.approve')).to;
   const events: DomainEvent[] = [
     {
       type: 'notify',

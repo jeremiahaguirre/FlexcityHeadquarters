@@ -12,6 +12,7 @@ import type { DomainEvent } from '../../lib/events.js';
 import { type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
 import { resolveFeatures } from '../platform/features.js';
 import { parseOverrides, rolePermissions } from '../platform/roleOverrides.js';
+import { approversFor } from '../people/reporting.js';
 
 export const NOTIFY_CHANNEL = 'fh_notifications';
 /** Open shifts starting this soon also go out by text to people who asked. */
@@ -132,7 +133,8 @@ export async function draftsFor(tx: Tx, e: DomainEvent): Promise<NotificationDra
       return out;
     }
     case 'shift.offer.pending_approval': {
-      const sups = await usersWithRoles(tx, ['AQUATIC_SUPERVISOR'], [e.claimantId]);
+      // The claimant's manager first (services/people/reporting.ts), else everyone who approves claims.
+      const sups = (await approversFor(tx, e.tenantId, [e.claimantId], 'shiftboard.approve')).to;
       return [
         ...sups.map((userId) => ({
           userId,

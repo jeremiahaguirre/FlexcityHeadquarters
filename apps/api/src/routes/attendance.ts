@@ -8,6 +8,7 @@ import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localIso } from '../lib/time.js';
 import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
 import { decidePunches, punchVariance } from '../services/timeclock/review.js';
+import { teamOf, teamQuery } from '../services/people/reporting.js';
 import { h } from './context.js';
 
 export const attendanceRouter = Router();
@@ -95,10 +96,11 @@ attendanceRouter.get(
   requirePermission('timeoff.approve'),
   h(async (req, res) => {
     const a = authOf(req);
-    const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'DENIED', 'CANCELLED']).default('PENDING') }).parse(req.query);
+    const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'DENIED', 'CANCELLED']).default('PENDING'), team: teamQuery }).parse(req.query);
     const rows = await withTenant(a.tenantId, async (tx) => {
+      const team = q.team ? await teamOf(tx, a.userId) : null;
       const list = await tx.timeOffRequest.findMany({
-        where: { status: q.status, user: peopleWhere(a.scope) },
+        where: { status: q.status, user: peopleWhere(a.scope), ...(team ? { userId: { in: team } } : {}) },
         include: { user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { startsAt: 'asc' },
         take: 200,
@@ -176,10 +178,17 @@ attendanceRouter.get(
   requirePermission('timeclock.review'),
   h(async (req, res) => {
     const a = authOf(req);
-    const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'), facilityId: uuid.optional() }).parse(req.query);
-    const rows = await withTenant(a.tenantId, (tx) =>
+    const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'), facilityId: uuid.optional(), team: teamQuery }).parse(req.query);
+    const rows = await withTenant(a.tenantId, async (tx) =>
       tx.timePunch.findMany({
-        where: { status: q.status, ...(q.facilityId ? { facilityId: q.facilityId } : {}), user: peopleWhere(a.scope), ...(a.scope?.facilityIds.length ? { facilityId: { in: a.scope.facilityIds } } : {}) },
+        where: {
+          status: q.status,
+          ...(q.facilityId ? { facilityId: q.facilityId } : {}),
+          user: peopleWhere(a.scope),
+          ...(a.scope?.facilityIds.length ? { facilityId: { in: a.scope.facilityIds } } : {}),
+          // "My team" only narrows what the permission already shows.
+          ...(q.team ? { userId: { in: await teamOf(tx, a.userId) } } : {}),
+        },
         include: { ...punchInclude, user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { clockIn: 'asc' },
         take: 300,

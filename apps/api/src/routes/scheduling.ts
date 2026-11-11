@@ -10,6 +10,7 @@ import { dispatchSoon, withEvents } from '../lib/events.js';
 import { assignShift, cancelShift, createShift, publishShifts, rankCandidates, updateShift } from '../services/scheduling/shifts.js';
 import { previewShiftPay } from '../services/payroll/payPreview.js';
 import { notFound } from '../lib/errors.js';
+import { teamOf, teamQuery } from '../services/people/reporting.js';
 import { h } from './context.js';
 import { shiftInclude, shiftView } from './serializers.js';
 
@@ -208,9 +209,10 @@ schedulingRouter.get(
   requirePermission('shiftboard.approve'),
   h(async (req, res) => {
     const a = authOf(req);
-    const offers = await withTenant(a.tenantId, (tx) =>
+    const { team } = z.object({ team: teamQuery }).parse(req.query);
+    const offers = await withTenant(a.tenantId, async (tx) =>
       tx.shiftOffer.findMany({
-        where: { status: 'PENDING_APPROVAL', shift: shiftsWhere(a.scope) },
+        where: { status: 'PENDING_APPROVAL', shift: shiftsWhere(a.scope), ...(team ? { claimedById: { in: await teamOf(tx, a.userId) } } : {}) },
         include: {
           shift: { include: shiftInclude },
           claimedBy: { select: { id: true, firstName: true, lastName: true } },

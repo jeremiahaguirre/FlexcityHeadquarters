@@ -5,7 +5,8 @@ import { authOf, requireFeature, requirePermission } from '../auth/middleware.js
 import type { Tx } from '../lib/db.js';
 import { withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
-import { notify, usersWithPermission } from '../services/notifications/notifier.js';
+import { notify } from '../services/notifications/notifier.js';
+import { approversFor, teamOf, teamQuery } from '../services/people/reporting.js';
 import { shiftInScope } from '../services/people/scope.js';
 import { approveTrade, checkTrade, denyTrade, proposeTrade, respondTrade, staleTrade } from '../services/shiftboard/trades.js';
 import { h } from './context.js';
@@ -118,7 +119,8 @@ for (const [path, accept] of [['accept', true], ['decline', false]] as const) {
         await notify(tx, a.tenantId, [{ userId: t.fromUserId, type: accept ? 'trade_accepted' : 'trade_declined', params: { name, tradeId: id }, link: '/board' }]);
         if (accept) {
           const shifts = await tx.shift.findMany({ where: { id: { in: [t.fromShiftId, t.toShiftId] } }, select: { positionId: true, facilityId: true } });
-          const approvers = await usersWithPermission(tx, a.tenantId, 'shiftboard.approve', [t.fromUserId, t.toUserId]);
+          // Both people's managers first, then everyone who approves trades.
+          const approvers = (await approversFor(tx, a.tenantId, [t.fromUserId, t.toUserId], 'shiftboard.approve')).to;
           await notify(tx, a.tenantId, approvers.map((userId) => ({ userId, type: 'trade_to_approve', params: { tradeId: id, count: shifts.length }, link: '/manage/approvals' })));
         }
         return false;
@@ -150,9 +152,11 @@ tradesRouter.get(
   requirePermission('shiftboard.approve'),
   h(async (req, res) => {
     const a = authOf(req);
+    const { team: mine } = z.object({ team: teamQuery }).parse(req.query);
     res.json(
       await withTenant(a.tenantId, async (tx) => {
-        const list = await tx.shiftTrade.findMany({ where: { status: 'ACCEPTED' }, orderBy: { createdAt: 'asc' }, take: 100 });
+        const team = mine ? await teamOf(tx, a.userId) : null;
+        const list = await tx.shiftTrade.findMany({ where: { status: 'ACCEPTED', ...(team ? { OR: [{ fromUserId: { in: team } }, { toUserId: { in: team } }] } : {}) }, orderBy: { createdAt: 'asc' }, take: 100 });
         const all = await views(tx, list);
         return all.filter((t) => t.from.shift && t.to.shift && shiftInScope(a.scope, t.from.shift) && shiftInScope(a.scope, t.to.shift));
       }),

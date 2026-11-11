@@ -5,7 +5,8 @@ import { authOf, requireFeature, requirePermission } from '../auth/middleware.js
 import type { Tx } from '../lib/db.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
-import { notify, usersWithPermission } from '../services/notifications/notifier.js';
+import { notify } from '../services/notifications/notifier.js';
+import { approversFor, teamOf, teamQuery } from '../services/people/reporting.js';
 import { kmThisYear, mileageAmount, mileagePolicy } from '../services/payroll/expenses.js';
 import { readSettings } from '../services/payroll/payRuns.js';
 import { peopleInScope, userInScope } from '../services/people/scope.js';
@@ -93,7 +94,8 @@ expensesRouter.post(
         await tx.expenseItem.create({ data: { tenantId: a.tenantId, claimId: claim.id, date: new Date(r.date), category: r.category, description: r.description, amount: r.amount, km: r.km ?? null, centsPerKm: r.centsPerKm, salesTax: r.salesTax ?? null, receiptDocumentId: doc?.id ?? null } });
       }
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'expense.submit', entity: 'ExpenseClaim', entityId: claim.id, after: { total, items: rows.length } });
-      const approvers = (await usersWithPermission(tx, a.tenantId, 'expenses.approve', [a.userId])).slice(0, 50);
+      // Their manager first, then their department's managers, then everyone who approves expenses.
+      const approvers = (await approversFor(tx, a.tenantId, [a.userId], 'expenses.approve')).to.slice(0, 50);
       const me = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { firstName: true, lastName: true } });
       await notify(tx, a.tenantId, approvers.map((userId) => ({ userId, type: 'expense_submitted', params: { name: `${me.firstName} ${me.lastName}`, total }, link: '/manage/expenses' })));
       return view(await tx.expenseClaim.findUniqueOrThrow({ where: { id: claim.id }, include: { items: { orderBy: { date: 'asc' } } } }));
@@ -123,10 +125,12 @@ expensesRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const status = z.enum(['SUBMITTED', 'APPROVED', 'PAID', 'REJECTED']).default('SUBMITTED').parse(req.query.status);
+    const { team: mine } = z.object({ team: teamQuery }).parse(req.query);
     res.json(
       await withTenant(a.tenantId, async (tx) => {
         const scope = await peopleInScope(tx, a.scope);
-        const claims = await tx.expenseClaim.findMany({ where: { status, ...(scope ? { userId: { in: [...scope] } } : {}) }, orderBy: { submittedAt: 'asc' }, take: 200, include: { items: { orderBy: { date: 'asc' } } } });
+        const team = mine ? await teamOf(tx, a.userId) : null;
+        const claims = await tx.expenseClaim.findMany({ where: { status, AND: [scope ? { userId: { in: [...scope] } } : {}, team ? { userId: { in: team } } : {}] }, orderBy: { submittedAt: 'asc' }, take: 200, include: { items: { orderBy: { date: 'asc' } } } });
         const people = await tx.user.findMany({ where: { id: { in: claims.map((c) => c.userId) } }, select: { id: true, firstName: true, lastName: true } });
         return claims.map((c) => {
           const p = people.find((x) => x.id === c.userId);
