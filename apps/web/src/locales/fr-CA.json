@@ -184,7 +184,7 @@
     "incidents": "Incidents",
     "manageSchedule": "Création d’horaires",
     "approvals": "Approbations",
-    "staff": "Personnel",
+    "staff": "Employés",
     "certifications": "Certifications",
     "payroll": "Paie",
     "settings": "Paramètres",
@@ -989,7 +989,7 @@
     "daysLeft_other": "{{count}} jours restants"
   },
   "staff": {
-    "title": "Personnel",
+    "title": "Employés",
     "description": "Toute votre équipe, ses rôles, postes et certifications.",
     "invite": "Inviter",
     "inviteHelp": "La personne recevra un courriel pour choisir un mot de passe. Le lien est valide 7 jours.",

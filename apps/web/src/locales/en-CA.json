@@ -4896,7 +4896,7 @@
   },
   "enquiries": {
     "nav": "Enquiries",
-    "navShort": "Leads",
+    "navShort": "Enquiries",
     "title": "Website enquiries",
     "description": "Messages from the website’s contact form: sales questions, demo requests and support. Follow each one up and record where it stands.",
     "filter": {
