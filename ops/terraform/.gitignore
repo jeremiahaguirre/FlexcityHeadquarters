@@ -1,0 +1,8 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+crash.log
+# Generate with registry access for every platform the team uses (README.md), then commit it.
+.terraform.lock.hcl
