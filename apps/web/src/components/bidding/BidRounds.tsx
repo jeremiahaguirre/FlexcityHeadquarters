@@ -10,11 +10,10 @@ import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { MultiSelect } from '@/components/ui/MultiSelect';
-import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { type RoundDetail, type RoundHead, type RoundStatus, outcomeText } from '@/lib/bidding';
+import { type RoundDetail, type RoundHead, type RoundStatus, itemWhen, outcomeText } from '@/lib/bidding';
 import { formatDate, formatMoment } from '@/lib/format';
 import { useLiveChange } from '@/lib/useLiveChange';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
@@ -77,7 +76,14 @@ function NewRound({ open, onClose, onCreated }: { open: boolean; onClose: () => 
       ) : (
         <div className="grid gap-4">
           <Field label={t('bids.roundName')} hint={t('bids.roundNameHint')}>{(p) => <Input {...p} value={name} maxLength={80} autoComplete="off" onChange={(e) => setName(e.target.value)} />}</Field>
-          <Segmented label={t('bids.kind')} value={kind} onChange={setKind} options={[{ value: 'LINES', label: t('bids.kindLines') }, { value: 'SHIFTS', label: t('bids.kindShifts') }]} />
+          <Field label={t('bids.kind')}>
+            {(p) => (
+              <Select {...p} value={kind} onChange={(e) => setKind(e.target.value as 'SHIFTS' | 'LINES')}>
+                <option value="LINES">{t('bids.kindLines')}</option>
+                <option value="SHIFTS">{t('bids.kindShifts')}</option>
+              </Select>
+            )}
+          </Field>
           <p className="-mt-2 text-caption text-muted">{t(kind === 'LINES' ? 'bids.linesHelp' : 'bids.shiftsHelp')}</p>
           {kind === 'LINES' ? (
             <Field label={t('bids.template')}>
@@ -239,7 +245,7 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
                       return it ? (
                         <li key={o.itemId} className="flex flex-wrap items-center gap-2">
                           <span className="text-caption text-muted">#{o.rank ?? '—'}</span>
-                          <span className="min-w-0">{it.facility} · {formatDate(it.localStartsAt.slice(0, 10), lng)}</span>
+                          <span className="min-w-0">{itemWhen(it, lng, t('shiftTemplates.everyDay'))} · {it.facility}</span>
                           <StatusPill tone={o.result === 'AWARDED' ? 'ok' : o.result === 'NOT_ELIGIBLE' ? 'warn' : 'neutral'}>{outcomeText(o, t)}</StatusPill>
                         </li>
                       ) : null;

@@ -371,6 +371,21 @@ async function prepareMessagesSurveys() {
   }
 }
 
+/** Shift bidding (needs seniority, on in the demo city): a summer lines round open now, and a guard's ranking. */
+async function prepareBids() {
+  const sup = await apiAs('supervisor');
+  const guard = await apiAs('guard');
+  const list = await sup.call('GET', '/api/bids/rounds');
+  if (!list?.rounds || list.rounds.length) return;
+  const summer = (await sup.call('GET', '/api/schedule/templates')).templates?.find((x) => x.name === 'Summer');
+  if (!summer?.validFrom || !summer.validTo) return;
+  const positions = [...new Set(summer.slots.map((s) => s.positionId))];
+  const to = iso(new Date(Date.parse(`${summer.validTo}T12:00:00Z`) + 86_400_000));
+  const r = await sup.call('POST', '/api/bids/rounds', { name: 'Summer lines', kind: 'LINES', positionIds: positions, templateId: summer.id, from: summer.validFrom, to, opensAt: new Date(Date.now() - 3_600_000).toISOString(), closesAt: new Date(Date.now() + 10 * 86_400_000).toISOString(), maxAwardsPerPerson: 1 });
+  const mine = (await guard.call('GET', '/api/me/bids')).find((x) => x.id === r?.id);
+  if (mine?.items?.length) await guard.call('PUT', `/api/me/bids/${mine.id}/choices`, { itemIds: mine.items.slice(0, 3).map((i) => i.id) });
+}
+
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
   for (const who of Object.values(ROLES)) await apiAs(who);
@@ -387,6 +402,11 @@ async function prepare() {
   if (city && !(await dev('GET', `/billing/pad/${city.id}`)).active && (await dev('GET', `/billing/accounts/${city.id}`)).account) {
     await dev('PUT', '/billing/pad-originator', { originatorId: 'DEMO000001', dataCentre: '00000', shortName: 'FLEXCITY HQ', longName: 'FLEXCITYHEADQUARTERS (DEMO)', returns: { institution: '000', transit: '00000', account: '0000000' } });
     await dev('POST', `/billing/pad/${city.id}`, { payorName: 'City of Kelowna (demo)', signerName: 'Alex Morgan', signerTitle: 'Director of Finance', institution: '001', transit: '00011', account: '1234567', waivedPreNotice: false, agree: true, formOnFile: true });
+  }
+  // Shift bidding is off by default; the demo city uses seniority, so it's on there.
+  if (city) {
+    await dev('PATCH', `/tenants/${city.id}`, { features: { shiftBidding: true } });
+    await prepareBids();
   }
   if (city && !city.logoUrl) {
     const png = readFileSync(join(__dirname, 'demo-city-logo.png')).toString('base64');

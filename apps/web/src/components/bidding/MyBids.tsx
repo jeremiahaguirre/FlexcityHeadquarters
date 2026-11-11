@@ -121,11 +121,11 @@ function RoundCard({ round, onSaved }: { round: MyRound; onSaved: () => void }) 
                     const it = byId.get(id);
                     if (!it) return null;
                     return (
-                      <li key={id} className="flex items-center gap-2 rounded-xl border border-line bg-panel p-2">
+                      <li key={id} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel p-2">
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand text-caption font-bold text-brand-contrast" aria-hidden="true">{i + 1}</span>
-                        <span className="min-w-0 flex-1"><ItemLine item={it} /></span>
+                        <span className="min-w-0 flex-1 basis-48"><ItemLine item={it} /></span>
                         {open ? (
-                          <span className="flex shrink-0">
+                          <span className="ml-auto flex shrink-0">
                             <Button variant="ghost" size="sm" className="h-11 w-11 px-0" aria-label={t('bids.moveUp', { n: i + 1 })} disabled={i === 0} icon={<ArrowUp className="h-4 w-4" aria-hidden="true" />} onClick={() => set(move(ranked, i, -1))} />
                             <Button variant="ghost" size="sm" className="h-11 w-11 px-0" aria-label={t('bids.moveDown', { n: i + 1 })} disabled={i === ranked.length - 1} icon={<ArrowDown className="h-4 w-4" aria-hidden="true" />} onClick={() => set(move(ranked, i, 1))} />
                             <Button variant="ghost" size="sm" className="h-11 w-11 px-0" aria-label={t('bids.remove', { n: i + 1 })} icon={<X className="h-4 w-4" aria-hidden="true" />} onClick={() => set(ranked.filter((x) => x !== id))} />
