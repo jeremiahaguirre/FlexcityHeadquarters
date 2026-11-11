@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -76,6 +77,19 @@ describe('departments', () => {
     // Their department list shows aquatics only.
     const d = (await call(tok.sup).get('/api/departments')).body;
     expect(d.departments.map((x: { name: string }) => x.name)).toEqual(['Aquatics']);
+  });
+
+  it('an aquatic supervisor can’t read or record onboarding for a water works employee (central department guard)', async () => {
+    expect((await call(tok.sup).get(`/api/onboarding/people/${ids.guard}`)).status).toBe(200);
+    const theirs = await call(tok.sup).get(`/api/onboarding/people/${ids.water}`);
+    expect(theirs.status).toBe(404);
+    const item = randomUUID();
+    const rec = await call(tok.sup).post(`/api/onboarding/people/${ids.water}/items/${item}`, { action: 'complete', completedOn: new Date().toISOString().slice(0, 10) });
+    expect(rec.status).toBe(404);
+    expect(rec.body.message).toBe('Person not found'); // the department guard in routes/features.ts
+    // In their own department the person is found (the made-up item is what's missing).
+    const own = await call(tok.sup).post(`/api/onboarding/people/${ids.guard}/items/${item}`, { action: 'complete', completedOn: new Date().toISOString().slice(0, 10) });
+    expect(own.body.message).toMatch(/Onboarding item/);
   });
 
   it('a supervisor HR hasn’t chosen to run a department sees no one', async () => {
