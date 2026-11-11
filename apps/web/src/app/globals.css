@@ -7,7 +7,9 @@
  * Brand tokens (--brand, --accent…) are injected per tenant in layout.tsx.
  * Balance: soft neutrals ~70%, teal ~20%, accents < 10% and only with a meaning.
  */
-:root {
+/* .fh-paper: printed documents (invoices) stay light in dark mode, so their text uses the light colours too. */
+:root,
+.fh-paper {
   /* Softer than paper white: a muted sage ground with off-white cards, easier on the eyes all shift long. */
   --page: 226 233 231;        /* app background */
   --panel: 245 248 247;       /* cards, sheets (not pure white) */

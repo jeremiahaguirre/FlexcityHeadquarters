@@ -101,15 +101,17 @@ function Invoice() {
       </div>
 
       {/* The invoice itself: paper-like, prints on one page */}
-      <article className="mx-auto w-full max-w-3xl rounded-2xl border border-line bg-white p-6 text-[#0B1F22] shadow-sm sm:p-10 print:max-w-none print:border-0 print:p-0 print:shadow-none">
+      <article className="fh-paper mx-auto w-full max-w-3xl rounded-2xl border border-line bg-white p-6 text-[#0B1F22] shadow-sm sm:p-10 print:max-w-none print:border-0 print:p-0 print:shadow-none">
         <header className="flex flex-wrap items-start justify-between gap-6">
           <div className="grid gap-2">
             <Logo size={34} />
             <p className="whitespace-pre-line text-small text-[#56696B]">{[i.issuer.legalName, i.issuer.address, i.issuer.email].filter(Boolean).join('\n')}</p>
           </div>
           <div className="text-right">
-            <p className="text-label uppercase tracking-[0.18em] text-[#56696B]">{t('billing.invoice')}</p>
-            <p className="font-display text-title">{i.number ?? t('billing.draftLabel')}</p>
+            <h1>
+              <span className="block text-label uppercase tracking-[0.18em] text-[#56696B]">{t('billing.invoice')}</span>
+              <span className="block font-display text-title">{i.number ?? t('billing.draftLabel')}</span>
+            </h1>
             <div className="mt-1 print:hidden">
               <StatusPill tone={STATUS_TONE[i.status]}>{t(`billing.status.${i.status}`)}</StatusPill>
             </div>
@@ -145,7 +147,7 @@ function Invoice() {
               <th className="py-2 pl-3 text-right font-semibold">{t('billing.qty')}</th>
               <th className="whitespace-nowrap py-2 pl-4 text-right font-semibold">{t('billing.unit')}</th>
               <th className="py-2 pl-4 text-right font-semibold">{t('billing.amount')}</th>
-              {i.status === 'DRAFT' ? <th className="w-8 print:hidden"><span className="sr-only">{t('common.actions')}</span></th> : null}
+              {i.status === 'DRAFT' ? <th className="relative w-8 print:hidden"><span className="sr-only">{t('common.actions')}</span></th> : null}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#D9E3E1]">
