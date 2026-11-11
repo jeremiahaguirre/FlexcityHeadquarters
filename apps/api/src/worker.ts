@@ -35,6 +35,10 @@ import { dispatchAll } from './lib/outbox.js';
 import { deliverAllWebhooks } from './services/integrations/webhooks.js';
 import { refreshWeather } from './services/ops/weather.js';
 import { sharedListener } from './lib/listen.js';
+import { runMonitors, pruneTrustHistory } from './services/trust/monitors.js';
+import { snapshot } from './services/trust/posture.js';
+import { deliverTrustAlerts, runReminders } from './services/trust/reminders.js';
+import { ensureTrustSeeded } from './services/trust/seed.js';
 import { checkOverdueSafety, enableInlineUrgent, kickUrgent, tenantsWithDueSms, URGENT_CHANNEL } from './services/notifications/urgent.js';
 
 const cfg = config();
@@ -96,12 +100,18 @@ async function locked(name: string, fn: () => Promise<unknown>) {
   const { rows } = await lockClient.query<{ ok: boolean }>('SELECT pg_try_advisory_lock(hashtext($1)) AS ok', [`fh-job:${name}`]);
   if (!rows[0]?.ok) return;
   const started = Date.now();
+  // When each job last ran and finished (WorkerJobRun), for the Trust tests. Never fatal.
+  const note = (data: { lastStartedAt?: Date; lastOkAt?: Date; lastErrorAt?: Date; lastDurationMs?: number }) =>
+    db().workerJobRun.upsert({ where: { name }, create: { name, ...data }, update: data }).catch(() => undefined);
+  await note({ lastStartedAt: new Date(started) });
   try {
     const result = await fn();
+    await note({ lastOkAt: new Date(), lastDurationMs: Date.now() - started });
     // Counts only: a job's result could otherwise carry people's details into the log.
     const counts = typeof result === 'number' ? result : result && typeof result === 'object' ? Object.fromEntries(Object.entries(result).filter(([, v]) => typeof v === 'number')) : '';
     console.log(`[job] ${name} ok in ${Date.now() - started}ms`, counts);
   } catch (err) {
+    await note({ lastErrorAt: new Date(), lastDurationMs: Date.now() - started });
     captureError(err, { source: 'job', tags: { job: name } });
   } finally {
     await lockClient.query('SELECT pg_advisory_unlock(hashtext($1))', [`fh-job:${name}`]);
@@ -137,6 +147,8 @@ const hourly = async () => {
   await exclusive('retention', () => perTenant((tx) => applyRetention(tx)));
   await exclusive('scheduled-reports', () => perTenant((tx) => sendScheduledReports(tx)));
   await exclusive('benchmarks', () => computeBenchmarks(db()));
+  await exclusive('trust-reminders', () => runReminders(db()));
+  await exclusive('trust-prune', () => pruneTrustHistory(db()));
   // Each distinct forecast site every WEATHER_REFRESH_HOURS (3 by default); failures are recorded, never fatal.
   await exclusive('weather', () => refreshWeather());
 };
@@ -159,6 +171,17 @@ const events = async () => {
   }
 };
 
+/** Trust tests (each on its own frequency), an hourly posture snapshot, then any new alert emails. */
+const trust = async () => {
+  await exclusive('trust-tests', async () => {
+    const ran = await runMonitors();
+    await snapshot(db());
+    return ran.length;
+  });
+  await exclusive('trust-alerts', () => deliverTrustAlerts(db(), mailer));
+};
+
+await ensureTrustSeeded(db()).catch((err) => captureError(err, { source: 'job', tags: { job: 'trust-seed' } }));
 await events();
 await minutely();
 await heartbeat();
@@ -167,4 +190,7 @@ setInterval(() => void events(), 5_000);
 setInterval(() => void urgentSweep(), 5_000);
 setInterval(() => void minutely().then(heartbeat), 60_000);
 setInterval(() => void hourly(), 60 * 60_000);
+// Trust tests check every few minutes; the first round waits a minute so readiness sees this worker's heartbeat.
+setTimeout(() => void trust(), 60_000);
+setInterval(() => void trust(), 5 * 60_000);
 console.log('FlexcityHeadquarters worker running');

@@ -17,7 +17,7 @@ export const PLATFORM_COOKIE = 'fh_platform';
 export const PLATFORM_HEADER = 'x-fh-platform';
 const SESSION_MS = 8 * 3_600_000;
 
-export interface PlatformContext { adminId: string; email: string; name: string; signedInAt: Date; sessionId: string; mfa: boolean; mfaAt: Date | null }
+export interface PlatformContext { adminId: string; email: string; name: string; signedInAt: Date; sessionId: string; mfa: boolean; mfaAt: Date | null; /** "trust.read", "trust.manage" */ permissions: string[] }
 
 /**
  * The Dev console needs a passkey as a second factor. Always in production;
@@ -78,7 +78,7 @@ export async function requirePlatformSession(req: Request, _res: Response, next:
     if (!raw) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console');
     const s = await db().platformSession.findUnique({ where: { tokenHash: sha256(raw) }, include: { admin: true } });
     if (!s || s.revokedAt || s.expiresAt < new Date() || s.admin.disabledAt) throw new HttpError(401, 'UNAUTHENTICATED', 'Session expired');
-    req.platform = { adminId: s.admin.id, email: s.admin.email, name: s.admin.name, signedInAt: s.createdAt, sessionId: s.id, mfa: !!s.mfaAt, mfaAt: s.mfaAt };
+    req.platform = { adminId: s.admin.id, email: s.admin.email, name: s.admin.name, signedInAt: s.createdAt, sessionId: s.id, mfa: !!s.mfaAt, mfaAt: s.mfaAt, permissions: s.admin.permissions };
     next();
   } catch (e) {
     next(e);

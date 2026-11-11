@@ -53,6 +53,6 @@ platformAuthRouter.get(
   h(async (req, res) => {
     const p = platformOf(req);
     const hasPasskey = (await db().platformPasskey.count({ where: { adminId: p.adminId } })) > 0;
-    res.json({ id: p.adminId, email: p.email, name: p.name, mfa: p.mfa, mfaRequired: platformMfaRequired() && !p.mfa, hasPasskey });
+    res.json({ id: p.adminId, email: p.email, name: p.name, mfa: p.mfa, mfaRequired: platformMfaRequired() && !p.mfa, hasPasskey, permissions: p.permissions });
   }),
 );
