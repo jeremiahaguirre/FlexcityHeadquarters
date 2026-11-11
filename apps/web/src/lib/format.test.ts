@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { dateFormat, formatDate, formatHours, formatMoney, formatNumber, formatTime, formatTimeRange, setTimeFormat } from './format';
+import { dateFormat, formatDate, formatDuration, formatElapsed, formatHours, formatInstant, formatSpan, formatMoney, formatNumber, formatTime, formatTimeRange, setTimeFormat } from './format';
 
 const NBSP = ' ';
 const at = '2026-11-14T06:30:00.000-07:00';
@@ -14,12 +14,31 @@ describe('format helpers (FH Typography doc examples)', () => {
     expect(formatTimeRange('2026-11-14T06:00:00-07:00', '2026-11-14T14:00:00-07:00', 'fr-CA')).toBe(`6${NBSP}h – 14${NBSP}h`);
   });
   it('dates', () => {
-    expect(formatDate(at, 'en-CA')).toBe('Sat, Nov 14');
-    expect(formatDate(at, 'fr-CA')).toBe('sam. 14 nov.');
+    expect(formatDate(at, 'en-CA')).toBe(`Sat,${NBSP}Nov${NBSP}14`);
+    expect(formatDate(at, 'fr-CA')).toBe(`sam.${NBSP}14${NBSP}nov.`);
     expect(formatDate(at, 'en-CA', 'long')).toBe('Saturday, November 14');
     expect(formatDate(at, 'fr-CA', 'long')).toBe('samedi 14 novembre');
-    expect(formatDate(at, 'en-CA', 'dated')).toBe('Nov 14, 2026');
-    expect(formatDate(at, 'fr-CA', 'dated')).toBe('14 nov. 2026');
+    expect(formatDate(at, 'en-CA', 'dated')).toBe(`Nov${NBSP}14,${NBSP}2026`);
+    expect(formatDate(at, 'fr-CA', 'dated')).toBe(`14${NBSP}nov.${NBSP}2026`);
+  });
+  it('calendar days and moments', () => {
+    expect(formatInstant('2026-11-01', 'en-CA')).toBe(`Nov${NBSP}1,${NBSP}2026`);
+    expect(formatInstant('2026-11-01', 'fr-CA')).toBe(`1${NBSP}nov.${NBSP}2026`);
+    expect(formatInstant(new Date(2026, 10, 14, 23, 30), 'en-CA', 'short')).toBe(`Sat,${NBSP}Nov${NBSP}14`);
+  });
+  it('spans that end on another day repeat the date', () => {
+    expect(formatSpan('2026-11-09T13:33:00-08:00', '2026-11-09T18:01:00-08:00', 'en-CA')).toBe(`1:33${NBSP}p.m.–6:01${NBSP}p.m.`);
+    expect(formatSpan('2026-11-09T13:33:00-08:00', '2026-11-10T18:01:00-08:00', 'en-CA')).toBe(`Mon,${NBSP}Nov${NBSP}9, 1:33${NBSP}p.m. – Tue,${NBSP}Nov${NBSP}10, 6:01${NBSP}p.m.`);
+  });
+  it('durations and elapsed time', () => {
+    expect(formatDuration(28.47, 'en-CA')).toBe(`28${NBSP}h${NBSP}28${NBSP}min`);
+    expect(formatDuration(7.5, 'fr-CA')).toBe(`7${NBSP}h${NBSP}30${NBSP}min`);
+    expect(formatDuration(8, 'en-CA')).toBe(`8${NBSP}h`);
+    expect(formatDuration(0.75, 'en-CA')).toBe(`45${NBSP}min`);
+    expect(formatElapsed(35, 'en-CA')).toBe(`35${NBSP}min`);
+    expect(formatElapsed(2112, 'en-CA')).toBe(`35${NBSP}h`);
+    expect(formatElapsed(3000, 'en-CA')).toBe(`2${NBSP}days`);
+    expect(formatElapsed(3000, 'fr-CA')).toBe(`2${NBSP}jours`);
   });
   it('hours, money and numbers', () => {
     expect(formatHours(7.5, 'en-CA')).toBe(`7.5${NBSP}h`);

@@ -61,8 +61,52 @@ const DATE_STYLES = {
  * short: "Sat, Nov 14" · "sam. 14 nov."; long: "Saturday, November 14" · "samedi 14 novembre";
  * dated (expiries, records, rates — anything that can be in another year): "Nov 14, 2026" · "14 nov. 2026"
  */
-export function formatDate(localIso: string, locale: Locale, style: keyof typeof DATE_STYLES = 'short'): string {
-  return fmt(locale, DATE_STYLES[style]).format(wallClock(localIso));
+export function formatDate(localIso: string, locale: Locale, style: DateStyle = 'short'): string {
+  const out = fmt(locale, DATE_STYLES[style]).format(wallClock(localIso));
+  // Short dates never break across lines ("Due Dec 10, / 2026").
+  return style === 'long' ? out : glue(out);
+}
+
+export type DateStyle = keyof typeof DATE_STYLES;
+
+/**
+ * Dates that are moments rather than facility wall-clock times (a Date, or an ISO string ending in Z):
+ * shown in the viewer's own time zone, in the same styles as formatDate. A plain "2026-11-01" is a
+ * calendar day and is shown as is.
+ */
+export function formatInstant(value: Date | string, locale: Locale, style: DateStyle = 'dated'): string {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return formatDate(value, locale, style);
+  const d = typeof value === 'string' ? new Date(value) : value;
+  const out = dateFormat(locale, DATE_STYLES[style]).format(d);
+  return style === 'long' ? out : glue(out);
+}
+
+/** Both ends of a punch; the date is repeated when it ends on another day ("Mon, Nov 9, 1:33 p.m. – Tue, Nov 10, 6:01 p.m."). */
+export function formatSpan(startIso: string, endIso: string, locale: Locale): string {
+  if (localDateKey(startIso) === localDateKey(endIso)) return formatTimeRange(startIso, endIso, locale);
+  const at = (iso: string) => `${formatDate(iso, locale)}, ${formatTime(iso, locale)}`;
+  return `${at(startIso)} – ${at(endIso)}`;
+}
+
+/** A length of time: "45 min", "7 h 30 min", "28 h" (both languages). */
+export function formatDuration(hours: number | string, locale: Locale): string {
+  const total = Math.round((typeof hours === 'string' ? Number(hours) : hours) * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  const n = (x: number) => new Intl.NumberFormat(locale).format(x);
+  if (!h) return glue(`${n(m)} min`);
+  return glue(m ? `${n(h)} h ${String(m).padStart(locale.startsWith('fr') ? 2 : 1, '0')} min` : `${n(h)} h`);
+}
+
+/**
+ * How long ago or how late, rounded to what a person reads at a glance: minutes up to 90,
+ * then whole hours, then days from 48 h ("35 min", "3 h", "2 days" · "2 jours").
+ */
+export function formatElapsed(minutes: number, locale: Locale): string {
+  const m = Math.max(0, Math.round(minutes));
+  if (m <= 90) return glue(`${new Intl.NumberFormat(locale).format(m)} min`);
+  if (m < 48 * 60) return glue(`${new Intl.NumberFormat(locale).format(Math.floor(m / 60))} h`);
+  return glue(new Intl.NumberFormat(locale, { style: 'unit', unit: 'day', unitDisplay: 'long' }).format(Math.floor(m / 1440)));
 }
 
 /** schedule: "7.5 h" · "7,5 h"; payroll: "7.50 h" · "7,50 h" */
