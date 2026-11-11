@@ -182,6 +182,9 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
     return { ok: true, blob: new Blob([csv], { type: 'text/csv' }), headers: new Headers() } as T;
   }
 
+  // The schedule builder's batch check is a POST that only reads: replay the recorded answer.
+  if (path === '/api/schedule/planner/eligibility' && method === 'POST') return (data.get(path) ?? { users: [], reasons: [], shifts: {}, days: {}, evaluations: 0, ms: 0 }) as T;
+
   if (method === 'GET') {
     const body = data.get(path);
     if (body === undefined) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');

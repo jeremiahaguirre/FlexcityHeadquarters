@@ -47,7 +47,8 @@ export function shiftDates<T>(value: T, days: number): T {
   if (value === '__DEMO_LOGO__') return DEMO_LOGO as T;
   if (typeof value === 'string') return shiftDate(value, days) as T;
   if (Array.isArray(value)) return value.map((v) => shiftDates(v, days)) as T;
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shiftDates(v, days)])) as T;
+  // Keys that are dates (a planner's availability per day) move too.
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [/^\d{4}-\d{2}-\d{2}$/.test(k) ? shiftDate(k, days) : k, shiftDates(v, days)])) as T;
   return value;
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadFixtures, lookupKey, shiftDate, within } from './demoFixtures';
+import { loadFixtures, lookupKey, shiftDate, shiftDates, within } from './demoFixtures';
 
 describe('demo fixtures', () => {
   it('ignores date range bounds when looking up a response', () => {
@@ -14,6 +14,7 @@ describe('demo fixtures', () => {
     expect(shiftDate('2026-11-09T06:00:00-08:00', 3)).toBe('2026-11-12T06:00:00-08:00');
     expect(shiftDate('2026-12-30', 3)).toBe('2027-01-02');
     expect(shiftDate('Main Tank', 3)).toBe('Main Tank');
+    expect(shiftDates({ '2026-11-09': [[360, 840]], name: 'x' }, 1)).toEqual({ '2026-11-10': [[360, 840]], name: 'x' });
   });
 
   it('filters lists to the requested range', () => {
