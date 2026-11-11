@@ -85,10 +85,10 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
   const go = (a: Area, children: ReactNode, className: string) =>
     a.href ? <Link href={a.href} className={className}>{children}</Link> : <button type="button" onClick={() => onTab(a.tab!)} className={`${className} w-full text-left`}>{children}</button>;
   const numbers = [
-    { label: t('hr.num.staff'), value: d.staff, icon: Users, tint: 'bg-brand/10 text-brand-text' },
-    { label: t('hr.num.enrolled'), value: d.enrolled, icon: HeartPulse, tint: 'bg-new-bg text-new' },
-    { label: t('hr.num.reviews'), value: d.reviewsOpen, icon: ClipboardCheck, tint: 'bg-ok-bg text-ok' },
-    { label: t('hr.num.jobs'), value: d.openJobs, icon: Briefcase, tint: 'bg-surface text-ink' },
+    { label: t('hr.num.staff'), value: d.staff, icon: Users },
+    { label: t('hr.num.enrolled'), value: d.enrolled, icon: HeartPulse },
+    { label: t('hr.num.reviews'), value: d.reviewsOpen, icon: ClipboardCheck },
+    { label: t('hr.num.jobs'), value: d.openJobs, icon: Briefcase },
   ];
   // A gentle colour per area so the directory isn't a wall of grey icons.
   const TINTS = ['bg-brand/10 text-brand-text', 'bg-new-bg text-new', 'bg-ok-bg text-ok', 'bg-surface text-ink'];
@@ -133,7 +133,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
       <section aria-label={t('hr.numbers')}>
         <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
           {numbers.map((n) => (
-            <StatTile key={n.label} label={n.label} icon={n.icon} iconClassName={n.tint} value={<CountUp value={n.value} format={(x) => new Intl.NumberFormat(lng).format(x)} />} />
+            <StatTile key={n.label} label={n.label} icon={n.icon} iconClassName="bg-surface text-muted" value={<CountUp value={n.value} format={(x) => new Intl.NumberFormat(lng).format(x)} />} />
           ))}
         </div>
       </section>
