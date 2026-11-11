@@ -228,6 +228,21 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période du ${p.period} s'élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.padAccount ? `Selon votre entente de débit préautorisé, ${p.total} sera prélevé du compte ${p.padAccount} à compter du ${p.dueDate}. Vous n'avez rien d'autre à faire.` : p.remittance}\n\nQuestions sur cette facture : ${p.contact}`,
     }),
   },
+  /**
+   * Transactional (CASL s. 6(6)(c): information about an ongoing subscription), sent to the billing
+   * contact 30 days before a committed term ends (services/billing/renewal.ts). It states what
+   * happens at renewal, at what price, and how and by when to cancel. Not marketing: no unsubscribe.
+   */
+  renewal_reminder: {
+    'en-CA': (p) => ({
+      subject: `Your FlexcityHeadquarters term ends on ${p.termEnd}`,
+      text: `Hello ${p.organization},\n\nYour ${p.termLength} term ends on ${p.termEnd}. Unless you tell us otherwise, it then renews automatically month to month at the same rates without the ${p.discount}% commitment discount: about ${p.monthly} a month before tax (plus staff beyond your allowance, billed monthly).\n\nTo sign a new term (and keep a commitment discount), or to cancel, write to ${p.contact} before ${p.termEnd}. Cancelling stops invoicing after the period already billed; you can download your data before the account closes.\n\nYour billing details:\n${p.url}`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `Votre durée FlexcityHeadquarters se termine le ${p.termEnd}`,
+      text: `Bonjour ${p.organization},\n\nVotre engagement de ${p.termLength} se termine le ${p.termEnd}. Sauf avis contraire de votre part, il se renouvelle ensuite automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement de ${p.discount} % : environ ${p.monthly} par mois avant taxes (plus le personnel au-delà de votre allocation, facturé au mois).\n\nPour signer une nouvelle durée (et conserver un rabais d’engagement) ou pour résilier, écrivez à ${p.contact} avant le ${p.termEnd}. La résiliation met fin à la facturation après la période déjà facturée; vous pouvez télécharger vos données avant la fermeture du compte.\n\nVos renseignements de facturation :\n${p.url}`,
+    }),
+  },
   pad_confirmation: {
     'en-CA': (p) => ({
       subject: `Pre-authorized debit agreement confirmed: ${p.payee}`,
@@ -243,7 +258,29 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
 export function renderEmail(template: string, locale: string, params: Params): { subject: string; text: string } {
   const t = TEMPLATES[template];
   if (!t) throw new Error(`Unknown email template: ${template}`);
-  return (locale.startsWith('fr') ? t['fr-CA'] : t['en-CA'])(params);
+  const m = (locale.startsWith('fr') ? t['fr-CA'] : t['en-CA'])(params);
+  return { subject: m.subject, text: `${m.text}\n\n${transactionalFooter(template, locale)}` };
+}
+
+/**
+ * Every template above is transactional (CASL s. 6(6): account, safety, payroll, billing, booking and
+ * registration messages), so none carries an unsubscribe link; FH commercial email goes through
+ * services/marketing/casl.ts instead. Each one still names the sender, and staff messages say where
+ * the choice of emails is made.
+ */
+const STAFF_NOTIFICATIONS = new Set(['injury_report_due', 'vehicle_out_of_service', 'coverage_gap', 'bank_changed', 'bank_active', 'bank_rejected', 'pay_statement_ready', 'report_ready', 'callout_offer', 'lonework_escalated', 'lonework_help', 'webhook_disabled', 'sso_changed', 'shift_assigned', 'claim_needs_approval', 'time_off_decided', 'cert_expiring']);
+export const EMAIL_KIND: Record<string, 'transactional'> = Object.fromEntries(Object.keys(TEMPLATES).map((k) => [k, 'transactional' as const]));
+
+export function transactionalFooter(template: string, locale: string): string {
+  const name = process.env.COMPANY_LEGAL_NAME?.trim();
+  const fr = locale.startsWith('fr');
+  const who = fr
+    ? `Message de service envoyé par FlexcityHeadquarters${name ? ` (${name})` : ''} pour votre organisation.`
+    : `Service message sent by FlexcityHeadquarters${name ? ` (${name})` : ''} for your organization.`;
+  if (!STAFF_NOTIFICATIONS.has(template)) return `—\n${who}`;
+  return fr
+    ? `—\n${who} Votre organisation choisit quels avis sont envoyés par courriel; les textos et les notifications se gèrent dans votre profil.`
+    : `—\n${who} Your organization chooses which notices are emailed; texts and push notifications are managed in your profile.`;
 }
 
 export function hasEmailTemplate(template: string): boolean {
