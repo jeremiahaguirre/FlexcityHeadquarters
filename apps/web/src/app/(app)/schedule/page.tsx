@@ -52,7 +52,8 @@ export default function SchedulePage() {
     run(`give-${s.id}`, () => api(`/api/shifts/${s.id}/offer`, { method: 'POST' }), t('schedule.posted')).then(() => mine.reload());
 
   return (
-    <>
+    // A readable column on wide screens: shift cards and trades don't need the full width.
+    <div className="max-w-4xl">
       <PageHeader
         title={t('schedule.title')}
         description={t('schedule.description')}
@@ -131,7 +132,7 @@ export default function SchedulePage() {
         </div>
       )}
       <TradeDialog shiftId={trading} onClose={() => setTrading(null)} onDone={() => setTrading(null)} />
-    </>
+    </div>
   );
 }
 

@@ -62,20 +62,51 @@ export default function TodayPage() {
   const poolIssues = pools.data?.filter((p) => p.status !== 'OPEN') ?? [];
 
   return (
-    <div className="grid gap-8">
-      <Hero eyebrow={formatDate(new Date().toISOString(), i18n.language, 'long')} title={`${greeting}, ${me?.firstName ?? ''}`} />
-      <MyCare />
-      <PoliciesBanner />
-      <MyAnnouncements />
-      <MyStation />
-      <MyOnboarding compact />
+    // Wide screens: two columns, what to do now (clock in, next shift, coming up) beside what to know
+    // (notices, station, onboarding, totals). Below xl the column wrappers dissolve (display: contents)
+    // and "order" keeps the phone's single-column sequence exactly as it was.
+    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,22rem)] xl:items-start">
+      <div className="grid gap-8 xl:col-span-2">
+        <Hero eyebrow={formatDate(new Date().toISOString(), i18n.language, 'long')} title={`${greeting}, ${me?.firstName ?? ''}`} />
+        <MyCare />
+        <PoliciesBanner />
+      </div>
+      <div className="contents xl:col-start-2 xl:row-start-2 xl:grid xl:gap-6">
+        <div className="max-xl:order-1 empty:hidden">
+          <MyAnnouncements />
+        </div>
+        <div className="max-xl:order-1 empty:hidden">
+          <MyStation />
+        </div>
+        <div className="max-xl:order-1 empty:hidden">
+          <MyOnboarding compact />
+        </div>
+        <section aria-label={t('today.atAGlance')} className="fh-stagger grid gap-3 empty:hidden max-xl:order-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
+          {can('shiftboard.claim') ? (
+            <Tile href="/board" icon={<Repeat className="h-5 w-5" aria-hidden="true" />} value={openCount} label={t('today.openShifts', { count: openCount })} tone={openCount ? 'new' : undefined} />
+          ) : null}
+          {can('timeclock.review') || can('shiftboard.approve') ? (
+            <Tile href="/manage/approvals" icon={<ClipboardCheck className="h-5 w-5" aria-hidden="true" />} value={approvals} label={t('today.approvals', { count: approvals })} tone={approvals ? 'warn' : undefined} />
+          ) : null}
+          {can('ops.status.read') ? (
+            <Tile
+              href="/status"
+              icon={<Waves className="h-5 w-5" aria-hidden="true" />}
+              value={poolIssues.length ? poolIssues.length : t('today.allOpen')}
+              label={poolIssues.length ? t('today.poolsNeedAttention', { count: poolIssues.length }) : t('today.poolsOk')}
+              tone={poolIssues.length ? 'warn' : undefined}
+            />
+          ) : null}
+        </section>
+      </div>
+      <div className="contents xl:col-start-1 xl:row-start-2 xl:grid xl:gap-8">
 
       {can('timeclock.punch') ? (
-        <section aria-label={t('timeclock.title')}>
+        <section aria-label={t('timeclock.title')} className="max-xl:order-2">
           <PunchControl variant="large" />
         </section>
       ) : null}
-      <section aria-labelledby="next-h" className="grid gap-3">
+      <section aria-labelledby="next-h" className="grid gap-3 max-xl:order-2">
         <h2 id="next-h" className="text-heading">
           {t('today.nextShift')}
         </h2>
@@ -107,26 +138,8 @@ export default function TodayPage() {
         )}
       </section>
 
-      <section aria-label={t('today.atAGlance')} className="fh-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {can('shiftboard.claim') ? (
-          <Tile href="/board" icon={<Repeat className="h-5 w-5" aria-hidden="true" />} value={openCount} label={t('today.openShifts', { count: openCount })} tone={openCount ? 'new' : undefined} />
-        ) : null}
-        {can('timeclock.review') || can('shiftboard.approve') ? (
-          <Tile href="/manage/approvals" icon={<ClipboardCheck className="h-5 w-5" aria-hidden="true" />} value={approvals} label={t('today.approvals', { count: approvals })} tone={approvals ? 'warn' : undefined} />
-        ) : null}
-        {can('ops.status.read') ? (
-          <Tile
-            href="/status"
-            icon={<Waves className="h-5 w-5" aria-hidden="true" />}
-            value={poolIssues.length ? poolIssues.length : t('today.allOpen')}
-            label={poolIssues.length ? t('today.poolsNeedAttention', { count: poolIssues.length }) : t('today.poolsOk')}
-            tone={poolIssues.length ? 'warn' : undefined}
-          />
-        ) : null}
-      </section>
-
       {shifts.data && shifts.data.length > 1 ? (
-        <Card className="p-5">
+        <Card className="p-5 max-xl:order-4">
           <h2 className="text-subheading">{t('today.comingUp')}</h2>
           <ul className="mt-3 divide-y divide-line">
             {shifts.data.slice(1, 5).map((s) => (
@@ -140,6 +153,7 @@ export default function TodayPage() {
           </ul>
         </Card>
       ) : null}
+      </div>
     </div>
   );
 }
