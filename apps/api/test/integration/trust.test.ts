@@ -61,7 +61,7 @@ describe('Trust: permissions and isolation', () => {
     const a = await mgr.as('get', '/trust/overview?days=30');
     expect(a.status).toBe(200);
     expect(a.body.frameworks.map((f: { key: string }) => f.key)).toEqual(['soc2', 'iso27001', 'hipaa', 'pipeda', 'provincial', 'law25']);
-    const b = await mgr.as('get', '/trust/overview?days=30').set('If-None-Match', a.headers.etag);
+    const b = await mgr.as('get', '/trust/overview?days=30').set('If-None-Match', String(a.headers.etag));
     expect(b.status).toBe(304);
   });
 });
