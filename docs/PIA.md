@@ -39,7 +39,8 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | T4A payees | Contractors and honoraria recipients: name or business, SIN or business number, address, amounts by box | Payroll | **Yes** (SIN sealed with the city's key, last 3 digits shown; full SIN only in the T4A XML, with a passkey, audited) |
 | Signed agreement | Version and language seen, typed name, drawn signature, notification and location choices, time, device address and browser | Always (first sign-in) | No — kept as evidence, can't be changed |
 | Union | Union membership (HR, discipline writers), union hub content (union only) | Union hub | **Yes** |
-| Public: families and children | Guardian contacts, children's names, ages, safety notes | Programs | **Yes** (minors) |
+| Public: families and children | Guardian contacts, children's names, dates of birth (for age-based levels), safety notes; the guardian's confirmation that they are of the age of majority and the child's parent or guardian, with the time and a fingerprint of the terms shown (audit log) | Programs | **Yes** (minors) |
+| Applicants' age | An age range only ("16 or older" or "14 or 15"); for 14–15, a parent's or guardian's name and consent. No date of birth | Jobs | No |
 
 ## 3. Authority and purpose
 
@@ -90,7 +91,7 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Other people's details (emergency contacts) | Kept only for emergencies; a monitor sees them only once a session escalates; deleted as soon as erasure is requested | Tell staff to ask their contacts first |
 | Applicants' information | Short privacy notice the applicant agrees to; résumés encrypted, each download logged; deleted a year after the last change unless hired | Review the notice; a public body keeps information used for a decision at least a year |
 | Shared kiosk tablets | No one's details stay on screen; PINs hashed, easy ones refused; a number locks for 15 minutes after 5 wrong PINs; removing a kiosk stops it at once | Mount tablets where the screen can't be overlooked |
-| Children's information | Collected only for registration; instructors see only their class list; families' files logged; inactive families anonymized | Program terms and consent wording |
+| Children's information | Entered only by an adult who confirms the age of majority and that they are the parent or guardian (enforced by the API); collected only for registration; instructors see only their class list; families' files logged; inactive families anonymized | Program terms and consent wording |
 
 ## 6. Residual risk and sign-off
 

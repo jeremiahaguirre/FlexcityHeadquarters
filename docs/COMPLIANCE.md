@@ -123,3 +123,175 @@ PIPEDA generally does **not** apply to employee information of provincially regu
 
 - Chemical thresholds and bather-to-lifeguard ratios come from each facility's permit and provincial pool regulation. The seed's values are placeholders.
 - Incident reports may need to go to WorkSafeBC / WSIB / the health authority; envelope encryption (rather than user-held keys) keeps that possible.
+
+## Legal risk review (November 2026)
+
+What was checked and changed for six legal risks and the follow-up scope. Drafted by engineering from
+the code; **this does not replace a lawyer's review**. Every judgment call is in the counsel list at
+the end. Related: [LEGAL-REGISTER.md](LEGAL-REGISTER.md) (laws, open risks, owner actions),
+[LEGAL-OPS.md](LEGAL-OPS.md) (copyright notices), [ASSET-LICENCES.md](ASSET-LICENCES.md).
+
+### Age and consent
+
+- **Staff accounts** are created by employers (invites); there is no self sign-up. No change.
+- **Program sign-up portal:** the person filling the form confirms they are of the age of majority where
+  the program or facility is (19 in BC, NB, NL, NS, NT, NU, YT; 18 elsewhere; unknown province → 19),
+  and, for a child, that they are the parent or legal guardian and consent to the child's information
+  being collected. Someone under the age of majority can't register themself (`MINOR_SELF`). The API
+  refuses the form without these (`consents.adult`, `consents.guardian`); the household note and the
+  audit log record them with the time and a fingerprint of the organization's terms as shown.
+  Bookings require the adult confirmation too. Code: `apps/api/src/routes/signup.ts`,
+  `services/legal/ages.ts`.
+- **Careers page:** no date of birth. The applicant picks "16 or older" or "14 or 15"; 14–15 needs a
+  parent's or guardian's name and consent; under 14 is not taken online. The province is the posting's
+  facility (or the organization's first facility); BC's young-worker page is linked. The answer goes in
+  the application's notes for HR and in the audit log with the notice version.
+- **Website contact form:** for organizations, says not to include children's information; the
+  marketing box is separate and unticked; the consent request names who is asking (CASL s. 10(1)).
+
+### Fonts
+
+Both apps already self-host Plus Jakarta Sans with `next/font/local` (OFL). No Google Fonts link in
+code, emails (font named in CSS only, nothing fetched), PDFs (PDFKit built-in Helvetica) or the Dev
+console. The app's CSP already had `font-src 'self'`; the website now sends a CSP header too
+(`font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`).
+A test greps the sources and any built output for Google Fonts URLs
+(`apps/site/src/content/compliance.test.ts`). Built site output checked: no match.
+
+### Session replay and error reports
+
+No session replay or recording SDK (Sentry Replay, LogRocket, Hotjar, FullStory, PostHog, Clarity,
+rrweb…) in any app. A test fails if one is added to a manifest, the lockfile or the code; adding one
+needs opt-in consent, input masking on by default, a SUBPROCESSORS entry and a privacy-policy update in
+the same change. The browser error reporter sends error name, message, stack, a path with ids removed
+and the build only; the API scrubs it again (`lib/scrub.ts`). It never reads the DOM or form values.
+
+### Cookies, storage and website analytics (decision)
+
+- Inventory (code, then Playwright): the website sets **no cookies**; after the consent choice it keeps
+  `fh-analytics` in localStorage. The app sets `fc_refresh` (HttpOnly, 14 days), `fh_platform` (Dev
+  console, 8 h), `fc_sso` (10 min), `fc_locale` (1 year) and the local/session storage keys listed on
+  the website's Cookies page (a test checks the page lists every key the code defines). Playwright on
+  the site (all pages, EN/FR, 390/1280, light/dark) and the app sign-in saw **no third-party requests
+  and no iframes**.
+- **Decision:** everything except website analytics is strictly necessary or functional and is
+  disclosed (PIPEDA implied consent for necessary items). Vercel Web Analytics is cookieless and keeps no
+  identifier past a day, so a banner may not be legally required; but Law 25 s. 8.1 asks that technology
+  able to identify, locate or profile a person be off by default, so the website now keeps analytics
+  **off until the visitor allows it** (small non-blocking consent bar; the script isn't even loaded
+  before "Allow"), honours Global Privacy Control and Do Not Track, and has a footer switch. The app
+  has no non-essential items, so it has no banner.
+
+### CASL (commercial email)
+
+- Every outbox template (`services/notifications/mailer.ts`) is transactional: account, security,
+  safety, schedule, pay, billing (invoices, PAD, renewal reminder), registration and booking messages.
+  Each now ends with a sender line; staff notices say where email choices are made (the organization's
+  switch; texts and push in the profile). A unit test keeps every template classified.
+- FH sends **no commercial email today** (no newsletter, no nurture, no Dev console bulk email). If one
+  is added, it must go through `services/marketing/casl.ts` `sendCommercialEmail`, which:
+  refuses in production until `COMPANY_LEGAL_NAME` and `COMPANY_MAILING_ADDRESS` are set; checks
+  consent (express from the website box with its wording and date; implied for 6 months after an
+  enquiry, s. 10(10)(b); withdrawn by any unsubscribe until the person opts in again); adds the legal
+  name, mailing address, a contact and a one-click unsubscribe link (signed token, no sign-in, works
+  indefinitely, effective immediately); and sets `List-Unsubscribe` and
+  `List-Unsubscribe-Post: List-Unsubscribe=One-Click` (RFC 8058). Landing page: `/unsubscribe` in the
+  app. The Dev console's Enquiries page shows each address's CASL status.
+- **No new table:** unsubscribes are Lead rows of kind `UNSUBSCRIBE`, hidden from the enquiries list and
+  kept indefinitely (the retention job never clears them). A dedicated `EmailSuppression` table
+  (email, source, created at) is cleaner: **schema change needed** when convenient.
+- Website enquiries: personal details removed two years after the last exchange unless won (hourly
+  job), matching the privacy policy.
+
+### Renewal terms and refunds
+
+- Billing behaviour (from `services/billing/terms.ts`): a term holds prices with a commitment discount;
+  when it ends it continues month to month at the same rates without the discount; usage beyond the
+  allowance is billed monthly; no proration (changes apply from the next invoice); credit notes are
+  manual in the Dev console.
+- The organization's Billing page shows, beside every pay, bank-debit and plan button: price before tax
+  (GST/HST/QST), frequency, term and end date, automatic renewal and its price, how and by when to cancel,
+  the 30-day reminder and the refund line. The Dev console previews it. Website: the same summary beside
+  every "Get a quote" button, and Terms and Refund policy pages. Tests check each button has it.
+- New **renewal reminder** email to the billing contact 30 days before a committed term ends
+  (transactional; hourly job; once per term).
+
+### Copyright notices
+
+Website page (EN/FR) on Canada's notice-and-notice regime only (Copyright Act ss. 41.25–41.27):
+required notice contents, where to send (config placeholder), forwarding, record retention (6 months /
+1 year), no fee, no identity disclosure without a court order, invalid notices (s. 41.25(3)), hedged
+takedown wording. Procedure: [LEGAL-OPS.md](LEGAL-OPS.md).
+
+### Claims on the website
+
+Before → after (EN and FR):
+- "A customer success manager and a 99.9% uptime commitment" → "… a service level agreement (terms in
+  your order form)"; plan table row "99.9% uptime commitment" → "Service level agreement (terms in your
+  order form)"; same in the app's plan labels (`plans.service.sla`).
+- "An operator in charge always scheduled, with gap alerts" → "A gap alert when no operator in charge is
+  scheduled".
+- "Schedules that follow the rules" / "Des horaires conformes" → "Schedules checked against your rules" /
+  "Des horaires vérifiés selon vos règles".
+- FR lead "… conforme au droit du travail canadien" (not in the English) → translated the English lead.
+- FAQ "Is it legal under Canadian privacy and employment law?" / "Est-ce conforme…?" → "How does it
+  handle Canadian privacy and employment law?" / "Comment tient-il compte…?".
+- No testimonials, ratings, customer logos, user counts, savings statistics or certification claims were
+  found. Screenshots use the fictional "City of Lakeview (demo)". `docs/PRICING.md` still mentions the
+  99.9% figure as an internal plan note: remove it if no SLA is offered.
+
+### Data minimization (forms reviewed)
+
+| Form | Field | Decision |
+| --- | --- | --- |
+| Website contact | name, work email, message | Kept: needed to reply |
+| | organization, role, province, facilities | Kept, optional: sizing a quote |
+| | marketing consent | Kept, optional, unticked |
+| Careers apply | name, email, message, certifications, résumé | Kept (phone, message, certifications, résumé optional) |
+| | age | Range only ("16 or older" / "14 or 15"); no date of birth |
+| | guardian name and consent | Only for 14–15 |
+| Program sign-up | guardian name, email, phone | Kept: confirmation and contact (phone needed by facilities for safety) |
+| | address | Already optional |
+| | emergency contact | Kept: child safety during programs |
+| | participant date of birth | Kept: places the child in an age-based level (the API checks it) |
+| | safety note, photo consent | Optional |
+| Booking request | name, email, phone | Kept; organization and notes optional |
+| App profile and payroll | home address, SIN, bank | Only when payroll runs in the app (existing design; see PIA) |
+| — | gender | Not collected anywhere |
+
+### Accessibility
+
+axe-core 4.10 (WCAG 2.0/2.1 A and AA rules) on every website page, EN/FR, at 390 and 1280 px, light and
+dark: **no violations**; no horizontal overflow (the contact form overflowed at 390 px because of long
+placeholder text; fixed). New controls (consent bar, footer switch, age questions, unsubscribe page)
+use labelled native inputs, 44 px targets and live regions. Not repeated this round: a full app-wide
+axe pass (done earlier), an independent audit.
+
+### Counsel review (legal judgment calls, November 2026)
+
+1. Working-age table: uniform "16 alone / 14–15 with guardian consent / under 14 not online", and only
+   BC's link; verify each province and add links (`services/legal/ages.ts`).
+2. Age-of-majority confirmation and guardian-consent wording on the sign-up portal; whether an adult
+   registering a child they are not the guardian of (e.g. a grandparent) should be allowed.
+3. Law 25 s. 8.1 reading that leads to opt-in website analytics; whether the cookieless analytics needs
+   it at all.
+4. CASL: implied-consent window used (6 months after an enquiry); treating any later enquiry as not
+   reviving consent after an unsubscribe; footer wording; classification of every template as
+   transactional (s. 6(6)), including the renewal reminder.
+5. Using Lead rows as the suppression list until a table exists.
+6. Renewal disclosure and the 30-day reminder as a B2B courtesy vs. Ontario/Quebec consumer rules;
+   whether consumer customers should be refused.
+7. Refund policy choices taken from the code: no partial-period refunds, no proration, prepaid terms not
+   refunded on early cancellation, 60-day window to report billing errors (**the 60 days is a business
+   choice for the owner**).
+8. Privacy policy v2: the two-role description, transfer wording (Vercel, CloudFront, Twilio, payment
+   processor, push services), the "planned" hosting statement, rights (portability, de-indexing),
+   incident wording, 30-day response time.
+9. Terms v2: subscription summary deferring to the agreement, liability and indemnity summary, no
+   uptime figure, suspension after the grace period, data export until the deletion date, governing
+   province (**placeholder; owner to choose**; the old draft said British Columbia), dispute clause,
+   language clause under the Charter of the French Language.
+10. Copyright notice page and `LEGAL-OPS.md` §9.
+11. Accessibility statement: AODA/ACA references and "no full conformance claimed".
+12. Working-alone "aid, not a replacement" wording in the app and terms.
+13. Claims rewrites listed above.
