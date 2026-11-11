@@ -227,6 +227,22 @@ describe('Trust: posture summary for customers', () => {
     expect(await owner.platformAudit.count({ where: { adminId: mgr.id, action: { in: ['trust.export.summary', 'trust.export.auditor'] } } })).toBe(3);
   });
 
+  it('writes the auditor bundle in French when asked, with the French test sentences', async () => {
+    const { strFromU8, unzipSync } = await import('fflate');
+    const { auditorBundle } = await import('../../src/services/trust/exports.js');
+    await runMonitors({ keys: ['data_residency'], force: true, trigger: 'manual' });
+    const files = (z: Uint8Array) => Object.fromEntries(Object.entries(unzipSync(z)).map(([k, v]) => [k, strFromU8(v)]));
+    const en = files((await auditorBundle(db(), 'soc2')).zip);
+    const fr = files((await auditorBundle(db(), 'soc2', new Date(), true)).zip);
+    expect(en['requirements.csv']).toContain('Requirement,Group,Title');
+    expect(fr['requirements.csv']).toContain('Exigence,Groupe,Titre');
+    expect(fr['requirements.csv']).toContain('CC6 Accès logique et physique');
+    expect(fr['README.txt']).toContain('dossier de preuves SOC 2');
+    expect(fr['tests.csv']).toContain('Hébergé dans une région canadienne');
+    expect(fr['tests.csv']).toMatch(/Région [a-z0-9-]+ /);
+    expect(fr['vendors.csv']).toContain('Fournisseur,Utilité,Criticité');
+  });
+
   it('needs a passkey step-up for exports when the second factor is on', async () => {
     process.env.PLATFORM_MFA = 'required';
     try {

@@ -766,8 +766,9 @@ trustRouter.get(
   requirePlatformStepUp,
   h(async (req, res) => {
     const fw = z.enum(FRAMEWORK_KEYS as [FrameworkKey, ...FrameworkKey[]]).parse(req.params.framework);
-    const out = await auditorBundle(db(), fw);
-    await audit(platformOf(req).adminId, 'export.auditor', { framework: fw, files: out.files, bytes: out.zip.length });
+    const fr = String(req.query.lang ?? '').startsWith('fr');
+    const out = await auditorBundle(db(), fw, new Date(), fr);
+    await audit(platformOf(req).adminId, 'export.auditor', { framework: fw, lang: fr ? 'fr' : 'en', files: out.files, bytes: out.zip.length });
     res.setHeader('content-type', 'application/zip');
     res.setHeader('content-disposition', `attachment; filename="fh-${fw}-evidence-${new Date().toISOString().slice(0, 10)}.zip"`);
     res.send(Buffer.from(out.zip));

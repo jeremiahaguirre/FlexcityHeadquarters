@@ -18,7 +18,63 @@ import { frameworkReadiness, postureScore, readinessBand } from './scoring.js';
 const csv = (rows: Array<Array<string | number | null | undefined>>) => `﻿${rows.map((r) => r.map((v) => csvCell(v === null || v === undefined ? '' : String(v))).join(',')).join('\r\n')}\r\n`;
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : '');
 
-export async function auditorBundle(p: PrismaClient, fw: FrameworkKey, now = new Date()): Promise<{ zip: Uint8Array; files: number }> {
+/** Column headings and words of the auditor bundle, in English and French. Status codes (PASSING, FAIL…) stay as codes. */
+const BUNDLE = {
+  en: {
+    title: (fw: string) => `FlexcityHeadquarters: ${fw} evidence bundle`,
+    generated: (at: string, lib: string) => `Generated ${at} from control library ${lib}.`,
+    readiness: (r: { readiness: number; met: number; partial: number; gaps: number; notApplicable: number }) => `Readiness: ${r.readiness}% (${r.met} requirements met, ${r.partial} partly, ${r.gaps} gaps, ${r.notApplicable} not applicable).`,
+    notOpinion: 'This is a self-assessment prepared for an auditor. It is not an audit opinion or a certification.',
+    files: [
+      'requirements.csv  each requirement, the controls mapped to it and their status',
+      'controls.csv      each control: owner, status, how it is proven (tests, evidence), justification',
+      'evidence.csv      every evidence item with its SHA-256; files can be opened in the Dev console',
+      'tests.csv         the latest result of each automated test',
+      'test-history.csv  test results over the last 12 months (a row per change, at most hourly)',
+      'policies.csv, risks.csv, vendors.csv',
+    ],
+    requirements: ['Requirement', 'Group', 'Title', 'Controls', 'Statuses', 'Not applicable'],
+    controls: ['Control', 'Title', 'Category', 'Status', 'Owner', 'Automated tests', 'Evidence renewed (days)', 'Inherited', 'Justification', 'Requirements'],
+    evidence: ['Evidence id', 'Control', 'Kind', 'Title', 'Link', 'CI result', 'File', 'Bytes', 'SHA-256', 'Valid until', 'Added', 'Added by', 'Removed', 'From test'],
+    tests: ['Test', 'Title', 'Status', 'Summary', 'Last run', 'Owner', 'Controls'],
+    history: ['At', 'Test', 'Status', 'Summary', 'Trigger', 'Duration (ms)'],
+    policies: ['Policy', 'Version', 'Status', 'Approved', 'Approved by', 'Published', 'Acknowledgements', 'Next review'],
+    risks: ['Ref', 'Title', 'Category', 'Likelihood', 'Impact', 'Residual likelihood', 'Residual impact', 'Treatment', 'Plan', 'Owner', 'Due', 'Last reviewed', 'Status', 'Controls'],
+    vendors: ['Vendor', 'Purpose', 'Criticality', 'Personal information', 'Data location', 'In Canada', 'DPA signed', 'DPA expires', 'SOC 2 expires', 'ISO expires', 'Last review', 'Next review', 'Questionnaire score', 'Status'],
+    yes: 'yes',
+    no: 'no',
+  },
+  fr: {
+    title: (fw: string) => `FlexcityHeadquarters : dossier de preuves ${fw}`,
+    generated: (at: string, lib: string) => `Produit le ${at} à partir de la bibliothèque de contrôles ${lib}.`,
+    readiness: (r: { readiness: number; met: number; partial: number; gaps: number; notApplicable: number }) => `Préparation : ${r.readiness} % (${r.met} exigences satisfaites, ${r.partial} en partie, ${r.gaps} lacunes, ${r.notApplicable} sans objet).`,
+    notOpinion: 'Autoévaluation préparée pour un auditeur. Ce n’est ni une opinion d’audit ni une certification.',
+    files: [
+      'requirements.csv  chaque exigence, les contrôles qui y répondent et leur état',
+      'controls.csv      chaque contrôle : responsable, état, façon de le prouver (tests, preuves), justification',
+      'evidence.csv      chaque preuve avec son SHA-256; les fichiers s’ouvrent dans la console Dev',
+      'tests.csv         le dernier résultat de chaque test automatisé',
+      'test-history.csv  les résultats des tests des 12 derniers mois (une ligne par changement, au plus une par heure)',
+      'policies.csv, risks.csv, vendors.csv',
+    ],
+    requirements: ['Exigence', 'Groupe', 'Titre', 'Contrôles', 'États', 'Sans objet'],
+    controls: ['Contrôle', 'Titre', 'Catégorie', 'État', 'Responsable', 'Tests automatisés', 'Preuve renouvelée (jours)', 'Hérité', 'Justification', 'Exigences'],
+    evidence: ['Identifiant de la preuve', 'Contrôle', 'Type', 'Titre', 'Lien', 'Résultat CI', 'Fichier', 'Octets', 'SHA-256', 'Valide jusqu’au', 'Ajoutée', 'Ajoutée par', 'Retirée', 'Issue du test'],
+    tests: ['Test', 'Titre', 'État', 'Résumé', 'Dernière exécution', 'Responsable', 'Contrôles'],
+    history: ['Moment', 'Test', 'État', 'Résumé', 'Déclencheur', 'Durée (ms)'],
+    policies: ['Politique', 'Version', 'État', 'Approuvée', 'Approuvée par', 'Publiée', 'Acceptations', 'Prochaine revue'],
+    risks: ['Réf.', 'Titre', 'Catégorie', 'Probabilité', 'Impact', 'Probabilité résiduelle', 'Impact résiduel', 'Traitement', 'Plan', 'Responsable', 'Échéance', 'Dernière revue', 'État', 'Contrôles'],
+    vendors: ['Fournisseur', 'Utilité', 'Criticité', 'Renseignements personnels', 'Lieu des données', 'Au Canada', 'Entente signée', 'Entente expire', 'SOC 2 expire', 'ISO expire', 'Dernière revue', 'Prochaine revue', 'Score du questionnaire', 'État'],
+    yes: 'oui',
+    no: 'non',
+  },
+};
+
+/** The French sentence a test result carries in its details. */
+const summaryFr = (details: unknown, fallback: string | null | undefined) => (details && typeof details === 'object' && typeof (details as { summaryFr?: unknown }).summaryFr === 'string' ? (details as { summaryFr: string }).summaryFr : fallback);
+
+export async function auditorBundle(p: PrismaClient, fw: FrameworkKey, now = new Date(), fr = false): Promise<{ zip: Uint8Array; files: number }> {
+  const L = fr ? BUNDLE.fr : BUNDLE.en;
   const framework = frameworkByKey.get(fw)!;
   const { statuses, states } = await controlStatuses(p, now);
   const ready = frameworkReadiness(fw, statuses);
@@ -37,36 +93,31 @@ export async function auditorBundle(p: PrismaClient, fw: FrameworkKey, now = new
   const files: Record<string, Uint8Array> = {};
   files['README.txt'] = strToU8(
     [
-      `FlexcityHeadquarters: ${framework.name} evidence bundle`,
-      `Generated ${now.toISOString()} from control library ${LIBRARY_VERSION}.`,
-      `Readiness: ${ready.readiness}% (${ready.met} requirements met, ${ready.partial} partly, ${ready.gaps} gaps, ${ready.notApplicable} not applicable).`,
-      'This is a self-assessment prepared for an auditor. It is not an audit opinion or a certification.',
+      L.title(fr ? framework.nameFr : framework.name),
+      L.generated(now.toISOString(), LIBRARY_VERSION),
+      L.readiness(ready),
+      L.notOpinion,
       '',
-      'requirements.csv  each requirement, the controls mapped to it and their status',
-      'controls.csv      each control: owner, status, how it is proven (tests, evidence), justification',
-      'evidence.csv      every evidence item with its SHA-256; files can be opened in the Dev console',
-      'tests.csv         the latest result of each automated test',
-      'test-history.csv  test results over the last 12 months (a row per change, at most hourly)',
-      'policies.csv, risks.csv, vendors.csv',
+      ...L.files,
     ].join('\r\n'),
   );
-  files['requirements.csv'] = strToU8(csv([['Requirement', 'Group', 'Title', 'Controls', 'Statuses', 'Not applicable'], ...framework.requirements.map((r) => {
+  files['requirements.csv'] = strToU8(csv([L.requirements, ...framework.requirements.map((r) => {
     const cs = inFw.filter((c) => c.maps.includes(`${fw}:${r.id}`));
-    return [r.id, r.group, r.title, cs.map((c) => c.key).join(' '), cs.map((c) => statuses[c.key]).join(' '), r.na ?? ''];
+    return [r.id, fr ? r.groupFr : r.group, fr ? r.titleFr : r.title, cs.map((c) => c.key).join(' '), cs.map((c) => statuses[c.key]).join(' '), (fr ? r.naFr : r.na) ?? ''];
   })]));
-  files['controls.csv'] = strToU8(csv([['Control', 'Title', 'Category', 'Status', 'Owner', 'Automated tests', 'Evidence renewed (days)', 'Inherited', 'Justification', 'Requirements'], ...inFw.map((c) => {
+  files['controls.csv'] = strToU8(csv([L.controls, ...inFw.map((c) => {
     const s = states.find((x) => x.key === c.key);
-    return [c.key, c.title, c.category, statuses[c.key], who(s?.ownerId), c.tests.join(' '), c.evidenceDays ?? '', c.inherited ? 'yes' : '', s?.justification ?? '', c.maps.filter((x) => x.startsWith(`${fw}:`)).map((x) => x.split(':')[1]).join(' ')];
+    return [c.key, fr ? c.titleFr : c.title, c.category, statuses[c.key], who(s?.ownerId), c.tests.join(' '), c.evidenceDays ?? '', c.inherited ? L.yes : '', s?.justification ?? '', c.maps.filter((x) => x.startsWith(`${fw}:`)).map((x) => x.split(':')[1]).join(' ')];
   })]));
-  files['evidence.csv'] = strToU8(csv([['Evidence id', 'Control', 'Kind', 'Title', 'Link', 'CI result', 'File', 'Bytes', 'SHA-256', 'Valid until', 'Added', 'Added by', 'Removed', 'From test'], ...evidence.map((e) => [e.id, e.controlKey, e.kind, e.title, e.url, e.result, e.fileName, e.size, e.sha256, iso(e.validUntil), iso(e.createdAt), who(e.addedById), iso(e.deletedAt), e.testKey])]));
-  files['tests.csv'] = strToU8(csv([['Test', 'Title', 'Status', 'Summary', 'Last run', 'Owner', 'Controls'], ...MONITORS.map((m) => {
+  files['evidence.csv'] = strToU8(csv([L.evidence, ...evidence.map((e) => [e.id, e.controlKey, e.kind, e.title, e.url, e.result, e.fileName, e.size, e.sha256, iso(e.validUntil), iso(e.createdAt), who(e.addedById), iso(e.deletedAt), e.testKey])]));
+  files['tests.csv'] = strToU8(csv([L.tests, ...MONITORS.map((m) => {
     const t = tests.find((x) => x.key === m.key);
-    return [m.key, m.title, t?.lastStatus, t?.lastSummary, iso(t?.lastRunAt), who(t?.ownerId), CONTROLS.filter((c) => c.tests.includes(m.key)).map((c) => c.key).join(' ')];
+    return [m.key, fr ? m.titleFr : m.title, t?.lastStatus, fr ? summaryFr(t?.lastDetails, t?.lastSummary) : t?.lastSummary, iso(t?.lastRunAt), who(t?.ownerId), CONTROLS.filter((c) => c.tests.includes(m.key)).map((c) => c.key).join(' ')];
   })]));
-  files['test-history.csv'] = strToU8(csv([['At', 'Test', 'Status', 'Summary', 'Trigger', 'Duration (ms)'], ...runs.map((x) => [iso(x.at), x.testKey, x.status, x.summary, x.trigger, x.durationMs])]));
-  files['policies.csv'] = strToU8(csv([['Policy', 'Version', 'Status', 'Approved', 'Approved by', 'Published', 'Acknowledgements', 'Next review'], ...policies.flatMap((x) => x.versions.map((v) => [x.title, v.version, v.status, iso(v.approvedAt), who(v.approvedById), iso(v.publishedAt), v._count.acks, iso(x.nextReviewAt)]))]));
-  files['risks.csv'] = strToU8(csv([['Ref', 'Title', 'Category', 'Likelihood', 'Impact', 'Residual likelihood', 'Residual impact', 'Treatment', 'Plan', 'Owner', 'Due', 'Last reviewed', 'Status', 'Controls'], ...risks.map((x) => [x.ref, x.title, x.category, x.likelihood, x.impact, x.residualLikelihood, x.residualImpact, x.treatment, x.treatmentPlan, who(x.ownerId), iso(x.dueAt), iso(x.lastReviewedAt), x.status, x.controlKeys.join(' ')])]));
-  files['vendors.csv'] = strToU8(csv([['Vendor', 'Purpose', 'Criticality', 'Personal information', 'Data location', 'In Canada', 'DPA signed', 'DPA expires', 'SOC 2 expires', 'ISO expires', 'Last review', 'Next review', 'Questionnaire score', 'Status'], ...vendors.map((v) => [v.name, v.purpose, v.criticality, v.personalInfo ? 'yes' : 'no', v.dataLocation, v.inCanada ? 'yes' : 'no', iso(v.dpaSignedAt), iso(v.dpaExpiresAt), iso(v.soc2ExpiresAt), iso(v.isoExpiresAt), iso(v.lastReviewedAt), iso(v.nextReviewAt), v.score, v.status])]));
+  files['test-history.csv'] = strToU8(csv([L.history, ...runs.map((x) => [iso(x.at), x.testKey, x.status, fr ? summaryFr(x.details, x.summary) : x.summary, x.trigger, x.durationMs])]));
+  files['policies.csv'] = strToU8(csv([L.policies, ...policies.flatMap((x) => x.versions.map((v) => [fr ? x.titleFr : x.title, v.version, v.status, iso(v.approvedAt), who(v.approvedById), iso(v.publishedAt), v._count.acks, iso(x.nextReviewAt)]))]));
+  files['risks.csv'] = strToU8(csv([L.risks, ...risks.map((x) => [x.ref, (fr ? x.titleFr : null) ?? x.title, x.category, x.likelihood, x.impact, x.residualLikelihood, x.residualImpact, x.treatment, x.treatmentPlan, who(x.ownerId), iso(x.dueAt), iso(x.lastReviewedAt), x.status, x.controlKeys.join(' ')])]));
+  files['vendors.csv'] = strToU8(csv([L.vendors, ...vendors.map((v) => [v.name, (fr ? v.purposeFr : null) ?? v.purpose, v.criticality, v.personalInfo ? L.yes : L.no, v.dataLocation, v.inCanada ? L.yes : L.no, iso(v.dpaSignedAt), iso(v.dpaExpiresAt), iso(v.soc2ExpiresAt), iso(v.isoExpiresAt), iso(v.lastReviewedAt), iso(v.nextReviewAt), v.score, v.status])]));
   return { zip: zipSync(files, { level: 6 }), files: Object.keys(files).length };
 }
 
@@ -104,7 +155,7 @@ export async function postureSummaryCsv(p: PrismaClient, fr: boolean): Promise<s
     [fr ? 'Contrôles en place' : 'Controls in place'],
     ...s.inPlace.map((c) => [c.key, fr ? c.titleFr : c.title]),
     [],
-    [fr ? 'Sous-traitants' : 'Subprocessors', fr ? 'Fin' : 'Purpose', fr ? 'Lieu des données' : 'Data location'],
+    [fr ? 'Sous-traitants' : 'Subprocessors', fr ? 'Utilité' : 'Purpose', fr ? 'Lieu des données' : 'Data location'],
     ...s.subprocessors.map((v) => [v.name, fr ? (v.purposeFr ?? v.purpose) : v.purpose, v.dataLocation]),
   ]);
 }
@@ -126,7 +177,7 @@ export async function postureSummaryPdf(p: PrismaClient, fr: boolean): Promise<B
   doc.moveDown(1).fontSize(13).fillColor(ink).text(fr ? 'Cadres' : 'Frameworks');
   for (const f of s.frameworks) {
     const y = doc.y + 6;
-    doc.fontSize(10).fillColor(ink).text(`${fr ? f.nameFr : f.name}: ${fr ? 'en préparation' : 'preparing'} (${f.readiness} %)`, 56, y);
+    doc.fontSize(10).fillColor(ink).text(fr ? `${f.nameFr} : en préparation (${f.readiness} %)` : `${f.name}: preparing (${f.readiness}%)`, 56, y);
     doc.roundedRect(330, y + 2, 200, 7, 3.5).fill('#E3ECEB');
     if (f.readiness > 0) doc.roundedRect(330, y + 2, Math.max(7, 2 * f.readiness), 7, 3.5).fill(accent);
     doc.x = 56;
@@ -137,7 +188,7 @@ export async function postureSummaryPdf(p: PrismaClient, fr: boolean): Promise<B
   if (!s.inPlace.length) doc.fillColor(muted).text(fr ? 'Les contrôles sont en cours de vérification.' : 'Controls are being verified.');
   doc.moveDown(1).fontSize(13).fillColor(ink).text(fr ? 'Sous-traitants qui traitent des renseignements personnels' : 'Subprocessors handling personal information');
   doc.moveDown(0.2).fontSize(9.5);
-  for (const v of s.subprocessors) doc.fillColor(ink).text(`${v.name}`, { continued: true }).fillColor(muted).text(`: ${fr ? (v.purposeFr ?? v.purpose) : v.purpose} (${v.dataLocation})`, { width });
+  for (const v of s.subprocessors) doc.fillColor(ink).text(`${v.name}`, { continued: true }).fillColor(muted).text(`${fr ? ' : ' : ': '}${fr ? (v.purposeFr ?? v.purpose) : v.purpose} (${v.dataLocation})`, { width });
   doc.moveDown(1).fontSize(9).fillColor(muted).text(fr ? 'Signaler un problème de sécurité : security@flexcityhq.example' : 'Report a security issue: security@flexcityhq.example');
   doc.end();
   return done;

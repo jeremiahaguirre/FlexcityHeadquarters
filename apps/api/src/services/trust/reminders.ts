@@ -87,7 +87,8 @@ export async function deliverTrustAlerts(p: PrismaClient, mailer: Mailer): Promi
     const to = owner ? [owner] : managers;
     for (const r of to) {
       try {
-        await mailer.send({ to: r.email, subject: `[FH Trust] ${a.title}`, text: `${a.title}\n${a.titleFr}\n\n${APP()}${a.link ?? '/platform/trust'}\n` });
+        // Console admins have no language setting: every alert email is in English and French.
+        await mailer.send({ to: r.email, subject: `[FH Trust / Confiance] ${a.title} / ${a.titleFr}`, text: `${a.title}\n${a.titleFr}\n\nOpen / Ouvrir : ${APP()}${a.link ?? '/platform/trust'}\n` });
         n++;
       } catch (err) {
         console.warn(`[trust] alert email to ${maskEmail(r.email)} failed`, err instanceof Error ? err.name : '');
