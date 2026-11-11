@@ -246,3 +246,32 @@ describe('claims about FH staff access match the Dev console', () => {
     expect(all).not.toMatch(/prix garantis|prices guaranteed/i);
   });
 });
+
+describe('business details before launch', () => {
+  it('every company setting the site reads is in the list a production build requires', async () => {
+    const { REQUIRED_BUSINESS_ENV } = await import('../lib/site');
+    const src = readFileSync(join(__dirname, '../lib/site.ts'), 'utf8');
+    const read = [...src.matchAll(/process\.env\.(NEXT_PUBLIC_[A-Z_]+) \|\| '\[/g)].map((m) => m[1]);
+    expect(read.length).toBeGreaterThan(5);
+    expect([...REQUIRED_BUSINESS_ENV].sort()).toEqual([...new Set(read)].sort());
+  });
+
+  it('a production build stops while any is missing; a preview build does not', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const cfg = join(__dirname, '../../next.config.mjs');
+    const load = (env: Record<string, string>) => {
+      const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('NEXT_PUBLIC_') && k !== 'VERCEL_ENV' && k !== 'SITE_LAUNCH'));
+      try {
+        execFileSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(`file://${cfg}`)})`], { env: { ...clean, ...env }, stdio: 'pipe' });
+        return 'ok';
+      } catch (e) {
+        return String((e as { stderr?: Buffer }).stderr ?? e);
+      }
+    };
+    expect(load({})).toBe('ok');
+    expect(load({ VERCEL_ENV: 'production' })).toContain('Production site build stopped');
+    const { REQUIRED_BUSINESS_ENV } = await import('../lib/site');
+    const all = Object.fromEntries((REQUIRED_BUSINESS_ENV as string[]).map((k) => [k, 'x']));
+    expect(load({ VERCEL_ENV: 'production', ...all })).toBe('ok');
+  });
+});

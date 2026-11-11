@@ -41,6 +41,9 @@ export const COMPANY = {
 /** True while a value above is still a placeholder (tests and the launch checklist read this). */
 export const isPlaceholder = (v: string) => v.startsWith('[') && v.endsWith(']');
 
+/** Settings a production build requires (next.config.mjs stops the build without them). */
+export { default as REQUIRED_BUSINESS_ENV } from './requiredBusinessEnv.json';
+
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3100').replace(/\/$/, '');
 
 /**
