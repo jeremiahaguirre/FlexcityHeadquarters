@@ -32,6 +32,12 @@ beforeAll(async () => {
       { tenantId, userId: u, familyId: crypto.randomUUID(), tokenHash: 'live', expiresAt: days(-10), authenticatedAt: days(1) },
     ],
   });
+  await owner.mfaCode.createMany({
+    data: [
+      { id: crypto.randomUUID(), tenantId, userId: u, channel: 'EMAIL', codeHash: 'old', expiresAt: days(31) },
+      { id: crypto.randomUUID(), tenantId, userId: u, channel: 'SMS', codeHash: 'recent', expiresAt: days(2) },
+    ],
+  });
 });
 afterAll(async () => {
   await appDb.$disconnect();
@@ -39,12 +45,13 @@ afterAll(async () => {
 });
 
 describe('retention', () => {
-  it('removes old notifications, finished emails and ended sessions, nothing current', async () => {
+  it('removes old notifications, finished emails, ended sessions and old sign-in codes, nothing current', async () => {
     const removed = await withTenant(t.tenant.id, (tx) => applyRetention(tx));
-    expect(removed).toBe(3);
+    expect(removed).toBe(4);
     expect((await owner.notification.findMany({ where: { tenantId: t.tenant.id } })).map((n) => n.type)).toEqual(['recent']);
     expect((await owner.emailOutbox.findMany({ where: { tenantId: t.tenant.id } })).map((e) => e.toEmail).sort()).toEqual(['b@x.test', 'c@x.test']);
     expect((await owner.refreshToken.findMany({ where: { tenantId: t.tenant.id } })).map((r) => r.tokenHash)).toEqual(['live']);
+    expect((await owner.mfaCode.findMany({ where: { tenantId: t.tenant.id } })).map((c) => c.codeHash)).toEqual(['recent']);
   });
 
   it('each organization sets its own periods, within limits', async () => {

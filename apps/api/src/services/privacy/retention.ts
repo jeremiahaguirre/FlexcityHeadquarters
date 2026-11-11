@@ -52,6 +52,8 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const ik = await tx.apiIdempotencyKey.deleteMany({ where: { expiresAt: { lt: now } } });
   const s = await tx.refreshToken.deleteMany({ where: { OR: [{ expiresAt: { lt: old } }, { revokedAt: { lt: old } }] } });
   const l = await tx.authToken.deleteMany({ where: { OR: [{ expiresAt: { lt: old } }, { usedAt: { lt: old } }] } });
+  // Sign-in codes are useless once expired; kept 30 days only so a wrong-try lockout can be looked into.
+  const mc = await tx.mfaCode.deleteMany({ where: { expiresAt: { lt: old } } });
   const g = await tx.loneWorkSession.updateMany({ where: { status: { not: 'ACTIVE' }, lastCheckInAt: { lt: old }, OR: [{ latitude: { not: null } }, { longitude: { not: null } }] }, data: { latitude: null, longitude: null } });
   const b = await tx.bookingRequest.updateMany({ where: { endsAt: { lt: ago(now, r.bookingsDays) }, NOT: { name: 'Former requester' } }, data: { name: 'Former requester', email: '', phone: '', organization: null, notes: null } });
   // Job applicants: kept a year after the last change (public bodies must keep personal information
@@ -59,7 +61,7 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const year = ago(now, APPLICATION_DAYS);
   const ap = await tx.jobApplication.deleteMany({ where: { status: { not: 'HIRED' }, updatedAt: { lt: year } } });
   await tx.jobApplication.updateMany({ where: { status: 'HIRED', updatedAt: { lt: year }, NOT: { ciphertext: null } }, data: { ciphertext: null, iv: null, authTag: null, wrappedKey: null, kekId: null, message: null } });
-  return n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
+  return n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + mc.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
 }
 
 /** Families with no registration or purchase since `before`: their personal details go; their payment records stay. */
