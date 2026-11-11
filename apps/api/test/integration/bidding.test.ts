@@ -124,7 +124,7 @@ describe('a round, start to finish', () => {
     const d = await call(tok.sup).get(`/api/bids/rounds/${roundId}`);
     expect(d.body.status).toBe('REVIEW');
     expect(d.body.order.map((e: { userId: string }) => e.userId)).toEqual(t.users.map((u) => u.id));
-    const award = (item: string) => d.body.awards.find((x: { itemId: string }) => x.itemId === item)?.userId;
+    const award = (item: string | undefined) => d.body.awards.find((x: { itemId: string }) => x.itemId === item)?.userId;
     expect(award(A)).toBe(t.users[0]!.id);
     expect(award(B)).toBe(t.users[2]!.id);
     const g1 = d.body.order.find((e: { userId: string }) => e.userId === t.users[1]!.id);
