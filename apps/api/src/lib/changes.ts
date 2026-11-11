@@ -10,11 +10,21 @@
 import type { Tx } from './db.js';
 
 export const CHANGE_CHANNEL = 'fh_changes';
-export const CHANGE_TOPICS = ['lonework', 'deck'] as const;
+export const CHANGE_TOPICS = ['lonework', 'deck', 'messages'] as const;
 export type ChangeTopic = (typeof CHANGE_TOPICS)[number];
 
 export async function announceChange(tx: Tx, tenantId: string, topic: ChangeTopic): Promise<void> {
   await tx.$executeRaw`SELECT pg_notify(${CHANGE_CHANNEL}, ${JSON.stringify({ tenantId, topic })})`;
+}
+
+/**
+ * A change only some people should hear about (a conversation's members): the same signal, sent
+ * only to those people's live streams. Still no content: the organization, the topic and who to tell.
+ * Sent in chunks so a big group stays under pg_notify's 8 kB payload limit.
+ */
+export async function announceChangeTo(tx: Tx, tenantId: string, topic: ChangeTopic, userIds: readonly string[]): Promise<void> {
+  const ids = [...new Set(userIds)];
+  for (let i = 0; i < ids.length; i += 150) await tx.$executeRaw`SELECT pg_notify(${CHANGE_CHANNEL}, ${JSON.stringify({ tenantId, topic, userIds: ids.slice(i, i + 150) })})`;
 }
 
 /** Domain events waiting in the outbox (lib/outbox.ts): the worker LISTENs and delivers at once. */

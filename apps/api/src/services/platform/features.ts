@@ -54,6 +54,10 @@ export const FEATURES = {
   emailNotifications: { default: true, permissions: [] },
   logbook: { default: true, permissions: ['logbook.write'] },
   announcements: { default: true, permissions: ['announcements.post'] },
+  /** Team messaging: one to one, shift, department and group conversations (services/messaging). */
+  messaging: { default: true, permissions: ['messages.use', 'messages.groups', 'messages.investigate'] },
+  /** Short staff surveys: anonymous pulse check-ins and exit surveys (services/surveys). Part of the HR suite option. */
+  surveys: { default: true, permissions: ['surveys.respond', 'surveys.manage', 'surveys.department'] },
   /** Urgent texts and calls (working alone, call-outs, last-minute shifts). Off until the city turns it on: messages cost money. */
   textAlerts: { default: false, permissions: [] },
 } as const satisfies Record<string, { default: boolean; permissions: readonly Permission[] }>;

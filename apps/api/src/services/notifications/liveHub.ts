@@ -36,8 +36,11 @@ export async function startLiveHub(connectionString: string): Promise<() => Prom
     // Shared-state changes (lib/changes.ts): an organization and a topic, nothing else.
     const offChange = l.on(CHANGE_CHANNEL, (payload) => {
       try {
-        const c = JSON.parse(payload) as { tenantId?: unknown; topic?: unknown };
-        if (typeof c.tenantId === 'string' && (CHANGE_TOPICS as readonly unknown[]).includes(c.topic)) local.emit(`tenant:${c.tenantId}`, c.topic as ChangeTopic);
+        const c = JSON.parse(payload) as { tenantId?: unknown; topic?: unknown; userIds?: unknown };
+        if (typeof c.tenantId !== 'string' || !(CHANGE_TOPICS as readonly unknown[]).includes(c.topic)) return;
+        // Some people only (lib/changes.ts announceChangeTo): each one's own streams, under their organization.
+        if (Array.isArray(c.userIds)) for (const u of c.userIds) typeof u === 'string' && local.emit(`userchange:${u}`, c.tenantId, c.topic as ChangeTopic);
+        else local.emit(`tenant:${c.tenantId}`, c.topic as ChangeTopic);
       } catch {
         /* ignore malformed payloads */
       }
@@ -58,6 +61,18 @@ export async function stopLiveHub(): Promise<void> {
 export function onUserSignal(userId: string, fn: (s: LiveSignal) => void): () => void {
   const key = `user:${userId}`;
   const resync = () => fn({ tenantId: '', userId, id: '', resync: true });
+  local.on(key, fn);
+  local.on('resync', resync);
+  return () => {
+    local.off(key, fn);
+    local.off('resync', resync);
+  };
+}
+
+/** Changes sent to one person (lib/changes.ts announceChangeTo), with the organization they belong to. Null after a reconnect. */
+export function onUserChange(userId: string, fn: (tenantId: string | null, topic: ChangeTopic | null) => void): () => void {
+  const key = `userchange:${userId}`;
+  const resync = () => fn(null, null);
   local.on(key, fn);
   local.on('resync', resync);
   return () => {

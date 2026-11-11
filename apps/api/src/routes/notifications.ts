@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { onTenantChange, onUserSignal } from '../services/notifications/liveHub.js';
+import { onTenantChange, onUserChange, onUserSignal } from '../services/notifications/liveHub.js';
 import { config } from '../config.js';
 import { pushEnabled } from '../services/notifications/push.js';
 import { h } from './context.js';
@@ -65,11 +65,16 @@ notificationsRouter.get('/notifications/stream', (req, res) => {
   });
   // Shared screens (working alone, the deck) refetch when their topic changes (lib/changes.ts).
   const offChange = onTenantChange(a.tenantId, (topic) => res.write(`event: change\ndata: ${JSON.stringify({ topic: topic ?? '*' })}\n\n`));
+  // Changes meant for this person only (their conversations); a reconnect is covered by the line above.
+  const offMine = onUserChange(a.userId, (tenantId, topic) => {
+    if (topic && tenantId === a.tenantId) res.write(`event: change\ndata: ${JSON.stringify({ topic })}\n\n`);
+  });
   const heartbeat = setInterval(() => res.write(`: keep-alive\n\n`), 25_000);
   req.on('close', () => {
     clearInterval(heartbeat);
     off();
     offChange();
+    offMine();
   });
 });
 

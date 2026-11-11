@@ -50,7 +50,7 @@ export const ITEMS = {
   reliability: { group: 'hr', features: ['reliability'], privateCents: 2_900, publicCents: 25_000 },
   discipline: { group: 'hr', features: ['discipline'], privateCents: 2_900, publicCents: 25_000 },
   accommodation: { group: 'hr', features: ['accommodation'], privateCents: 1_900, publicCents: 20_000 },
-  hrSuite: { group: 'hr', features: ['hrSuite'], privateCents: 6_900, publicCents: 50_000 },
+  hrSuite: { group: 'hr', features: ['hrSuite', 'surveys'], privateCents: 6_900, publicCents: 50_000 },
   benchmarks: { group: 'hr', features: ['benchmarks'], privateCents: 2_900, publicCents: 10_000 },
   sso: { group: 'integration', features: [], privateCents: 4_900, publicCents: 30_000 },
   bankConnection: { group: 'integration', features: [], privateCents: 3_900, publicCents: 30_000 },

@@ -1,4 +1,4 @@
-import { BookOpenCheck, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, Gauge, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
+import { MessagesSquare, MessageSquareWarning, ClipboardPen, BookOpenCheck, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, Gauge, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
 /** The app menu. It must match the API's menu (apps/api/src/auth/menu.ts); nav.test.ts checks. */
 export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
@@ -34,6 +34,8 @@ export const NAV: NavItem[] = [
   { href: '/pay', key: 'myPay', icon: Wallet, group: 'mine', permission: 'timeclock.punch', ready: true },
   { href: '/expenses', key: 'expenses', icon: ReceiptText, group: 'mine', permission: 'expenses.self', ready: true },
   { href: '/logbook', key: 'logbook', icon: NotebookPen, group: 'mine', permission: 'logbook.write', ready: true },
+  { href: '/messages', key: 'messages', icon: MessagesSquare, group: 'mine', permission: 'messages.use', ready: true },
+  { href: '/surveys', key: 'surveys', icon: ClipboardPen, group: 'mine', permission: 'surveys.respond', ready: true },
   { href: '/headcount', key: 'headcount', icon: Calculator, group: 'deck', permission: 'ops.headcount.record', tab: 3, ready: true },
   { href: '/deck', key: 'deck', icon: Armchair, group: 'deck', permission: 'deck.rotate', ready: true },
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
@@ -73,6 +75,8 @@ export const NAV: NavItem[] = [
   { href: '/manage/bookings', key: 'bookings', icon: Globe, group: 'manage', section: 'programs', permission: 'bookings.manage', ready: true },
   { href: '/manage/reports', key: 'reports', icon: BarChart3, group: 'manage', section: 'organization', permission: ['timeclock.review', 'payroll.export', 'overtime.manage', 'accounting.manage', 'leave.manage', 'timeoff.approve', 'certs.verify', 'training.manage', 'incidents.read', 'lonework.monitor', 'policies.manage', 'expenses.approve'], ready: true },
   { href: '/manage/announcements', key: 'announcements', icon: BellRing, group: 'manage', section: 'organization', permission: 'announcements.post', ready: true },
+  { href: '/manage/messages', key: 'messageReports', icon: MessageSquareWarning, group: 'manage', section: 'people', permission: 'messages.investigate', ready: true },
+  { href: '/manage/surveys', key: 'manageSurveys', icon: ClipboardPen, group: 'manage', section: 'people', permission: ['surveys.manage', 'surveys.department'], ready: true },
   { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', section: 'organization', permission: 'roles.manage', ready: true },
   { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', section: 'organization', permission: 'billing.manage', ready: true },
   { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', section: 'organization', permission: ['tenant.configure', 'ops.configure'], ready: true },

@@ -81,6 +81,12 @@ export const PERMISSIONS = [
   'policies.manage', // publish policies staff read and sign, and see who has
   'logbook.write', // read and add to the facility shift log
   'announcements.post', // post notices to staff
+  'messages.use', // message colleagues: one to one, shift, department and group conversations
+  'messages.groups', // make group conversations and shift or department conversations for others
+  'messages.investigate', // reported messages, and opening a conversation for an investigation (audited, with a reason)
+  'surveys.respond', // answer staff surveys sent to you
+  'surveys.manage', // create staff surveys for the organization and read their results
+  'surveys.department', // create surveys for your departments (when the organization allows managers to)
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -100,6 +106,8 @@ const STAFF_BASE: Permission[] = [
   'lonework.self',
   'expenses.self',
   'logbook.write',
+  'messages.use',
+  'surveys.respond',
 ];
 
 export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
@@ -145,6 +153,11 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'expenses.approve',
     'policies.manage',
     'announcements.post',
+    'messages.use',
+    'messages.groups',
+    'messages.investigate',
+    'surveys.respond',
+    'surveys.manage',
     'seniority.read',
     'tenant.configure',
     'positions.manage',
@@ -190,6 +203,8 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'injury.manage',
     'expenses.approve',
     'announcements.post',
+    'messages.groups',
+    'surveys.department',
   ],
   HEAD_LIFEGUARD: [
     ...STAFF_BASE,
@@ -203,10 +218,10 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   ],
   STAFF: STAFF_BASE,
   // Front desk is member services: families, registrations, memberships and drop-ins.
-  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage', 'logbook.write'],
+  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage', 'logbook.write', 'messages.use', 'surveys.respond'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write', 'messages.use', 'surveys.respond'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {
