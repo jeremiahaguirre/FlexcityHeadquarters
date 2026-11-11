@@ -1,3 +1,4 @@
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { stripeWebhookRouter } from './routes/billing.js';
 import { publicSignupRouter } from './routes/signup.js';
@@ -33,6 +34,9 @@ export function createApp() {
   // First: every request gets an id (X-Request-Id, in every log line and error body) and is counted.
   app.use(requestIdMiddleware, metricsMiddleware);
   app.use(securityHeaders);
+  // gzip/brotli for answers over 1 KB. The live notification stream (text/event-stream) is left
+  // alone: compressing it would buffer events instead of sending them as they happen.
+  app.use(compression({ filter: (req, res) => !String(res.getHeader('Content-Type') ?? '').includes('text/event-stream') && compression.filter(req, res) }));
   // /healthz, /readyz, /metrics (routes/observability.ts).
   app.use(opsRouter);
   // The public API for a city's own systems: its own API keys, not a person's session or subdomain.
