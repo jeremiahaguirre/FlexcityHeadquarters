@@ -75,7 +75,7 @@ The first run, before the fixes below, failed many requests in scenarios 1 and 4
 | --- | --- |
 | Up to ~10 cities, or a few thousand staff | One API instance, `WEB_CONCURRENCY` = its cores, managed Postgres with 2 vCPU |
 | 30 cities × 300 staff (this test) | Two API instances with 2–4 cores each, behind a load balancer; Postgres with 4 vCPU and 16 GB |
-| More | Add API instances; put PgBouncer (transaction mode) in front of Postgres; read replica for reports and exports |
+| More | Add API instances; put PgBouncer (transaction mode) in front of Postgres; a read replica for reports (`READ_REPLICA_URL`) |
 
 **Connections:** each API process holds up to `DB_POOL_SIZE` connections plus one `LISTEN` connection. The worker (`npm run worker`) holds its own pool plus its advisory-lock connection. The `LISTEN` and lock connections must reach Postgres directly (`LISTEN_DATABASE_URL`, default `APP_DATABASE_URL`), or PgBouncer in session mode: transaction pooling loses `LISTEN` subscriptions and session locks. Request traffic can go through PgBouncer in transaction mode. Keep
 
@@ -86,6 +86,32 @@ below Postgres's `max_connections` (100 by default) with room for administration
 **Row-level security** adds little: every query already filters by city, and every large table's indexes start with the city.
 
 **Pay runs** are the heaviest request. A 300-person city-wide run takes 7–15 s while 30 others run at the same time. Cities pay on different days in practice. Very large cities can run by department.
+
+## Database growth, replicas, caching and sharding
+
+**How fast the data grows.** Measured in the load database, including indexes: a shift takes about 330 bytes and a punch about 475 bytes. A worker with five shifts a week adds about 260 of each a year, roughly 210 KB. So 100,000 workers add about 21 GB a year of shifts and punches. Everything else is small next to that or is pruned by the retention job (`services/privacy/retention.ts`): notifications, the email and text logs, delivered events, webhook records, sign-in sessions. A single RDS PostgreSQL instance, scaled up as needed, holds many years of this.
+
+**Read replica.** With `READ_REPLICA_URL` set (an RDS read replica, connected as the app role), running reports reads from the replica, so a month-long report never competes with clock-ins. Those reads run in a read-only transaction with the same row-level security. Without a replica they run read-only on the primary. A replica can be a few seconds behind, so only reads that tolerate that move there. Anything a person has just changed is read from the primary. CSV exports read on the replica and record the export in the audit log on the primary.
+
+**Caching.** Each API process caches, for 30 seconds:
+- an organization's settings (features, role overrides, billing state);
+- a person's custom roles, managed departments, and whether they're still active.
+
+Changes clear these caches in every process through `pg_notify` (`lib/cacheBus.ts`). Requests that miss the cache at the same moment share one load (`lib/singleFlight.ts`); without this, a phone opening Today would repeat the same lookups once per request. A shared cache server (ElastiCache/Redis) isn't needed at this size. It would add a network hop, a second copy of personal information to secure, and one more thing to fail over. Reconsider it if the database's CPU is mostly spent on these lookups.
+
+**Connection pooling.** See *Connections* above. With PgBouncer in transaction mode, add `pgbouncer=true` to the Prisma connection URL (it turns off prepared statements, which transaction pooling can't carry). The tenant setting is transaction-local (`set_config(…, true)`) and locks are transaction-level (`pg_advisory_xact_lock`), so both work through transaction pooling. `LISTEN` and the worker's session lock don't, which is why they connect directly.
+
+**Partitioning (later).** The audit log is kept for the life of an account, and shifts and punches grow forever. When one of them passes roughly 50–100 million rows, or its index maintenance shows in the slow-query log, convert it to monthly range partitions with a SQL migration. Old months can then be detached and archived to S3 in Canada once an organization's retention allows. Postgres needs the partition column in every unique index, so `TimePunch`'s `(tenantId, clientInId)` and `(tenantId, clientOutId)` keys would have to include `clockIn` first. Plan that change before partitioning punches.
+
+**Sharding plan (when one database is no longer enough).** Every organization's data carries its `tenantId`, and row-level security already isolates organizations, so the natural shard is a whole organization:
+
+1. A small control database keeps what is shared: the list of organizations and which database cluster each lives in, the Dev console, billing and the trust center.
+2. Each cluster (an RDS primary with its replica, in `ca-central-1`) holds a set of whole organizations. No request ever needs two clusters, because no screen joins data across organizations.
+3. The API picks the cluster from the organization (already resolved from the subdomain or token) and keeps one connection pool per cluster.
+4. Anonymous benchmarks are computed per cluster and combined from the aggregates; no personal row leaves its cluster.
+5. Moving an organization between clusters: copy its rows to the target during a short read-only window, then switch its entry in the control database. The full export offboarding produces (`services/platform/cityExport.ts`) is a starting point. A matching import tool doesn't exist yet and would be written then.
+
+The trigger to start: the largest sensible RDS instance class staying above about 60% CPU or write I/O at peak after the replica takes the reports, or a large customer contractually needing its own database. Until then a bigger instance is cheaper and simpler.
 
 ## Running the tests again
 
