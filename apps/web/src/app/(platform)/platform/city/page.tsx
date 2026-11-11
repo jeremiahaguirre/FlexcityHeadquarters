@@ -20,7 +20,7 @@ import { PoolsEditor } from '@/components/pools/PoolsEditor';
 import { RoleEditor } from '@/components/roles/RoleEditor';
 import { type CityDetail, papi, usePlatformQuery } from '@/lib/platform';
 import { DepartmentsEditor } from '@/components/DepartmentsEditor';
-import { Select } from '@/components/ui/Field';
+import { Segmented } from '@/components/ui/Segmented';
 import { LifecyclePanel } from '@/components/platform/LifecyclePanel';
 import { ConsentsPanel } from '@/components/platform/ConsentsPanel';
 import { PayrollSetupPanel } from '@/components/platform/PayrollSetupPanel';
@@ -68,15 +68,9 @@ function City() {
           {c.organization.signInUrl.replace(/^https?:\/\//, '').replace(/\/login$/, '')}
         </a>
       </header>
-      {/* Phones: one menu. Wider screens: a settings rail beside the page, grouped. */}
+      {/* Phones and tablets: the console's segmented tabs on one line that scrolls sideways. Wider screens: a settings rail beside the page, grouped. */}
       <div className="lg:hidden">
-        <Select aria-label={t('settings.section')} value={tab} onChange={(e) => setTab(e.target.value as Tab)}>
-          {SECTIONS.map((g) => (
-            <optgroup key={g.key} label={t(`platform.railGroups.${g.key}`)}>
-              {g.tabs.map((x) => <option key={x} value={x}>{t(`platform.tabs.${x}`)}</option>)}
-            </optgroup>
-          ))}
-        </Select>
+        <Segmented<Tab> label={t('settings.section')} value={tab} onChange={setTab} options={SECTIONS.flatMap((g) => g.tabs.map((x) => ({ value: x, label: t(`platform.tabs.${x}`) })))} />
       </div>
       <div className="grid gap-8 lg:grid-cols-[12rem_minmax(0,1fr)]">
       <nav aria-label={t('settings.section')} className="hidden lg:block">
