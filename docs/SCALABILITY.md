@@ -127,6 +127,14 @@ Changes clear these caches in every process through `pg_notify` (`lib/cacheBus.t
 
 The trigger to start: the largest sensible RDS instance class staying above about 60% CPU or write I/O at peak after the replica takes the reports, or a large customer contractually needing its own database. Until then a bigger instance is cheaper and simpler.
 
+## Network and data transfer
+
+- **Compression.** The API gzips or brotli-compresses answers over 1 KB when the browser accepts it (`compression` in `apps/api/src/app.ts`). Measured on the load data, 200 shifts as JSON go from 60 KB to 7 KB with gzip. The live notification stream (`text/event-stream`) is never compressed, because compression would hold events back until a buffer fills; a test checks this. The web app's pages and scripts are compressed by Next.js.
+- **Caching in the browser.** The web app's `/_next/static` files have content-hashed names and are cached for a year (`immutable`). App icons are cached for a day; the service worker is always revalidated, so fixes reach installed phones on the next visit. API answers carry personal information and are marked `no-store`.
+- **Trimmed payloads.** Lists select only the fields their screens show and are capped (the shift board at 200 rows); long lists page with `before` cursors (notifications, the deck logbook).
+- **CDN.** The marketing site is static and served by CloudFront from S3 in Montreal (`ops/terraform/edge.tf`). The app itself is served from the Montreal load balancer only: its pages and API answers hold personal information and are never cached at CloudFront's edge, which may be outside Canada. If the app's static scripts ever need an edge cache, only `/_next/static/*` (no personal information) could move behind CloudFront, after confirming customers accept it (INFRASTRUCTURE.md, open choices).
+- **Inside AWS.** Containers reach S3 through a VPC gateway endpoint (no NAT charges), and the database sits in subnets with no route out.
+
 ## Running the tests again
 
 Seed once:
