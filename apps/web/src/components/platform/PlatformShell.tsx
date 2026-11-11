@@ -7,7 +7,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Logo, LogoMark } from '@/components/Logo';
+import { LiveLogo } from '@/components/LiveLogo';
+import { LogoMark } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
 import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
 import { platformAddPasskey } from '@/lib/passkeys';
@@ -42,7 +43,7 @@ function SignedIn({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-page md:grid md:grid-cols-[16.5rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-line bg-panel md:flex print:hidden">
         <div className="px-5 pb-4 pt-6">
-          <Link href="/platform" className="inline-block rounded-xl" aria-label={t('platform.home')}><Logo size={32} /></Link>
+          <Link href="/platform" className="inline-block rounded-xl" aria-label={t('platform.home')}><LiveLogo size={32} /></Link>
           <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-ink px-2.5 py-1 text-caption font-semibold text-page">
             <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
             {t('platform.badge')}

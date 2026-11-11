@@ -1,4 +1,4 @@
-import { Logo } from './Logo';
+import { LiveLogo } from './LiveLogo';
 
 export interface Organization {
   name: string;
@@ -32,10 +32,10 @@ export function CoBrand({ org, logoSize = 32, citySize = 'md' }: { org: Organiza
   return (
     <span className="inline-flex min-w-0 items-center gap-3">
       <span className="inline-flex sm:hidden">
-        <Logo variant="mark" size={logoSize} />
+        <LiveLogo variant="mark" size={logoSize} />
       </span>
       <span className="hidden sm:inline-flex">
-        <Logo size={logoSize} />
+        <LiveLogo size={logoSize} />
       </span>
       <span aria-hidden="true" className="h-7 w-px shrink-0 bg-line" />
       <CityBrand org={org} size={citySize} />

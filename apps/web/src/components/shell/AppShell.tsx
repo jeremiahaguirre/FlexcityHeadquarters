@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CityBrand, CoBrand, type Organization } from '@/components/CoBrand';
-import { Logo } from '@/components/Logo';
+import { LiveLogo } from '@/components/LiveLogo';
 import { Dialog } from '@/components/ui/Dialog';
 import { cn } from '@/lib/cn';
 import { MANAGE_SECTIONS, NAV, type NavItem, phoneTabs, visibleNav } from '@/lib/nav';
@@ -103,7 +103,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-line bg-panel md:flex">
         <div className="px-5 pb-4 pt-6">
           <Link href="/" className="inline-block rounded-xl" aria-label="FlexcityHeadquarters">
-            <Logo size={40} />
+            <LiveLogo size={40} />
           </Link>
           {/* The organization sits under the FH logo, never in its place. */}
           <div className="mt-4 flex min-h-[2.5rem] items-center border-t border-line pt-4">
