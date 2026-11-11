@@ -224,17 +224,24 @@ export const breakAfterHoursFor = (b: Pick<BreakSettings, 'breakAfterHours'>, ru
 
 // ------------------------------------------------------------------ minimum call-in / reporting pay
 
-export interface ReportingMinimum { minHours: number; source: 'organization' | 'province' }
+export interface ReportingMinimum {
+  minHours: number;
+  source: 'organization' | 'province';
+  /** The statute's own minimum for this shift (0 when none is encoded): a floor nothing goes below. */
+  statutoryHours: number;
+}
 
-/** The minimum paid hours for someone who reports for a shift scheduled for `scheduledHours`. */
+/**
+ * The minimum paid hours for someone who reports for a shift scheduled for `scheduledHours`.
+ * The statute's minimum always applies (it can't be switched off or lowered); `callIn.enabled`
+ * and `callIn.minHours` add the organization's own, higher minimum on top.
+ */
 export function reportingMinimum(callIn: CallInSettings, rule: ReportingPayRule | null | undefined, scheduledHours: number): ReportingMinimum | null {
-  if (!callIn.enabled) return null;
   const statutory = rule ? (rule.longShiftOverHours && rule.longShiftMinHours && scheduledHours > rule.longShiftOverHours ? rule.longShiftMinHours : rule.minHours) : 0;
-  // The organization's minimum never goes below the statute.
-  const own = callIn.minHours ?? 0;
+  const own = callIn.enabled ? (callIn.minHours ?? 0) : 0;
   const min = Math.max(statutory, own);
   if (min <= 0) return null;
-  return { minHours: min, source: own >= statutory && callIn.minHours !== null ? 'organization' : 'province' };
+  return { minHours: min, source: own > statutory || (own === statutory && callIn.enabled && callIn.minHours !== null) ? 'organization' : 'province', statutoryHours: statutory };
 }
 
 /** Hours to top up: the minimum less the hours worked (0 when they worked enough, or not at all). */
@@ -383,7 +390,10 @@ export function standbyPay(periods: ReadonlyArray<{ start: Date; end: Date }>, f
   return { days, hours: Math.round(hours * 100) / 100, amount: Math.round(amount * 100) / 100 };
 }
 
-/** The call-back minimum for a department: its own, else the call-in minimum, else 3 hours. */
+/**
+ * The call-back minimum for a department: its own, else the call-in minimum, else 3 hours, and
+ * never below the statute's call-in minimum (a call-back is reporting for work too).
+ */
 export function callbackMinimum(s: StandbySettings, reporting: ReportingMinimum | null): number {
-  return s.callbackMinHours ?? reporting?.minHours ?? 3;
+  return Math.max(s.callbackMinHours ?? reporting?.minHours ?? 3, reporting?.statutoryHours ?? 0);
 }

@@ -91,7 +91,7 @@ export function workRuleIntervals(ps: ReadonlyArray<PunchLike>, ctx: { rules: Pr
       const reporting = reportingMinimum(w.callIn, ctx.rules.reportingPay, scheduled);
       if (sh.callBack) {
         const min = callbackMinimum(w.standby, reporting);
-        const hours = reportingTopUp(worked, { minHours: min, source: 'organization' });
+        const hours = reportingTopUp(worked, { minHours: min, source: 'organization', statutoryHours: reporting?.statutoryHours ?? 0 });
         if (hours > 0) out.push({ code: 'CALLBACK_PAY', positionId: sh.positionId, hours, multiplier: w.standby.callbackMultiplier, localDate: day });
       } else {
         const hours = reportingTopUp(worked, reporting);

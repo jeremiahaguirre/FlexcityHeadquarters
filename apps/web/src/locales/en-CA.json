@@ -7447,7 +7447,7 @@
     },
     "byProvince": "The province’s rule",
     "callIn": {
-      "enabled": "Pay the minimum",
+      "enabled": "Pay our own minimum (the law’s minimum always applies)",
       "help": "Someone who reports for a shift and works less than the minimum is paid the minimum (a top-up line on their statement). Shorter shifts are flagged, and the forecast proposes no shorter shift.",
       "minHours": "Minimum hours",
       "minHoursHelp": "Blank: the province’s minimum. A higher number wins; a lower one never goes below the law.",
@@ -7582,7 +7582,7 @@
     "saved": "Work rules saved.",
     "standby": {
       "callbackMin": "Call-back minimum (hours)",
-      "callbackMinHelp": "Blank: the minimum call-in pay.",
+      "callbackMinHelp": "Blank: the minimum call-in pay. Never less than the law’s call-in minimum.",
       "callbackMultiplier": "Call-back top-up paid at (×)",
       "help": "Standby pay for each day on call, and the minimum paid when someone is called back in.",
       "hoursPerDay": "Or hours per day…",

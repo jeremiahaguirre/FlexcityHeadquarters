@@ -121,17 +121,19 @@ describe('minimum call-in (reporting) pay', () => {
     expect(reportingMinimum({ enabled: true, minHours: null }, on, 4)?.minHours).toBe(3);
     expect(reportingMinimum({ enabled: true, minHours: null }, bc, 8)?.minHours).toBe(2);
     expect(reportingMinimum({ enabled: true, minHours: null }, bc, 10)?.minHours).toBe(4);
-    expect(reportingMinimum({ enabled: true, minHours: 4 }, on, 4)).toEqual({ minHours: 4, source: 'organization' });
+    expect(reportingMinimum({ enabled: true, minHours: 4 }, on, 4)).toEqual({ minHours: 4, source: 'organization', statutoryHours: 3 });
     expect(reportingMinimum({ enabled: true, minHours: 1 }, on, 4)?.minHours).toBe(3);
-    expect(reportingMinimum({ enabled: false, minHours: 4 }, on, 4)).toBeNull();
+    // Switching the organization's minimum off leaves the law's.
+    expect(reportingMinimum({ enabled: false, minHours: 4 }, on, 4)).toEqual({ minHours: 3, source: 'province', statutoryHours: 3 });
   });
   it('tops up only someone who worked less than the minimum', () => {
-    const m = { minHours: 3, source: 'province' as const };
+    const m = { minHours: 3, source: 'province' as const, statutoryHours: 3 };
     expect(reportingTopUp(1.5, m)).toBe(1.5);
     expect(reportingTopUp(3, m)).toBe(0);
     expect(reportingTopUp(0, m)).toBe(0);
     expect(minimumShiftHours({ enabled: true, minHours: null }, reportingPayRule('BC'), 3)).toBe(2);
-    expect(minimumShiftHours({ enabled: false, minHours: null }, reportingPayRule('BC'), 3)).toBe(3);
+    expect(minimumShiftHours({ enabled: false, minHours: null }, reportingPayRule('BC'), 3)).toBe(2);
+    expect(minimumShiftHours({ enabled: false, minHours: null }, null, 3)).toBe(3);
   });
   it('the top-up line adds vacation pay like any wage', () => {
     const r = calculatePay(base({ intervals: [iv('2026-07-06 08:00', '2026-07-06 09:30')] }));
@@ -233,8 +235,8 @@ describe('standby and call-back', () => {
     expect(standbyPay([{ start: at('2026-07-06 08:00'), end: at('2026-07-07 08:00') }], from, to, { ...s, perDay: null, hoursPerDay: null, percent: null }, 40).amount).toBe(0);
   });
   it('call-back minimum: the department’s, else the call-in minimum, else 3 hours', () => {
-    expect(callbackMinimum({ perDay: null, hoursPerDay: null, percent: null, callbackMinHours: 4, callbackMultiplier: 1 }, { minHours: 3, source: 'province' })).toBe(4);
-    expect(callbackMinimum({ perDay: null, hoursPerDay: null, percent: null, callbackMinHours: null, callbackMultiplier: 1 }, { minHours: 2, source: 'province' })).toBe(2);
+    expect(callbackMinimum({ perDay: null, hoursPerDay: null, percent: null, callbackMinHours: 4, callbackMultiplier: 1 }, { minHours: 3, source: 'province', statutoryHours: 3 })).toBe(4);
+    expect(callbackMinimum({ perDay: null, hoursPerDay: null, percent: null, callbackMinHours: null, callbackMultiplier: 1 }, { minHours: 2, source: 'province', statutoryHours: 2 })).toBe(2);
     expect(callbackMinimum({ perDay: null, hoursPerDay: null, percent: null, callbackMinHours: null, callbackMultiplier: 1 }, null)).toBe(3);
   });
 });

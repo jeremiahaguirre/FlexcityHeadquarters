@@ -7447,7 +7447,7 @@
     },
     "byProvince": "La règle de la province",
     "callIn": {
-      "enabled": "Payer le minimum",
+      "enabled": "Payer notre propre minimum (le minimum de la loi s’applique toujours)",
       "help": "Une personne qui se présente pour un quart et travaille moins que le minimum est payée le minimum (ligne d’ajustement sur son relevé). Les quarts plus courts sont signalés et la prévision n’en propose pas de plus courts.",
       "minHours": "Heures minimales",
       "minHoursHelp": "Vide : le minimum de la province. Un nombre plus élevé l’emporte; un plus bas ne descend jamais sous la loi.",
@@ -7582,7 +7582,7 @@
     "saved": "Règles de travail enregistrées.",
     "standby": {
       "callbackMin": "Minimum de rappel (heures)",
-      "callbackMinHelp": "Vide : la paie minimale de rappel.",
+      "callbackMinHelp": "Vide : la paie minimale de rappel. Jamais moins que le minimum prévu par la loi.",
       "callbackMultiplier": "Ajustement de rappel payé à (×)",
       "help": "L’indemnité pour chaque jour de garde et le minimum payé quand une personne est rappelée au travail.",
       "hoursPerDay": "Ou heures par jour…",
