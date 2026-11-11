@@ -207,7 +207,8 @@ and the build only; the API scrubs it again (`lib/scrub.ts`). It never reads the
 
 - Inventory (code, then Playwright): the website sets **no cookies**; after the consent choice it keeps
   `fh-analytics` in localStorage. The app sets `fc_refresh` (HttpOnly, 14 days), `fh_platform` (Dev
-  console, 8 h), `fc_sso` (10 min), `fc_locale` (1 year) and the local/session storage keys listed on
+  console, 8 h), `fc_sso` (10 min), `fh_kiosk` (HttpOnly, facility kiosks only, 400 days), `fh_support`
+  (HttpOnly, an FH support visit), `fc_locale` (1 year) and the local/session storage keys listed on
   the website's Cookies page (a test checks the page lists every key the code defines). Playwright on
   the site (all pages, EN/FR, 390/1280, light/dark) and the app sign-in saw **no third-party requests
   and no iframes**.

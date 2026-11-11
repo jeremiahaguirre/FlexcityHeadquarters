@@ -97,7 +97,7 @@ Status values:
 | --- | --- | --- |
 | Patch management (48 hours for critical CVEs) | App + Ops | Dependabot, CI audit; target windows in the runbook. H2 and H3 fixed Nov 10, 2026. |
 | Who has administrative privileges | App | Permissions are role-based and checked on every request. The Dev console shows and toggles each role's access per city, and every change is audited. Run a quarterly access review (runbook). |
-| MFA enforced globally | App (fixed, H1) | Passkey required for the Dev console (and step-up for its sensitive actions); per access level for each city (HR by default); SSO with Entra ID or SAML. |
+| MFA enforced globally | App (fixed, H1) | Passkey required for the Dev console (and step-up for its sensitive actions); per access level for each city (HR by default): a passkey, or a one-time 6-digit code by email or text (HMAC-hashed, 10 minutes, 5 tries) unless the city allows passkeys only; SSO with Entra ID or SAML. |
 | Terminated employees de-provisioned instantly | App (fixed, F1) | Status change revokes refresh tokens and blocks the next request. Dev console admins: remove in `PlatformAdmin`; their sessions are server-side and end immediately. |
 | Cloud configuration drift (exposed buckets, open security groups, over-privileged accounts) | Ops | No buckets are needed; logos are stored in the database. Use AWS Config / Security Hub with the CIS benchmark; the database is private-subnet only; the app role has no DDL rights and can't edit audit logs. |
 | Network perimeter (firewall, IPS, API gateway) | Ops | Load balancer with WAF (AWS managed rules + rate rules), TLS 1.2+, the Dev console behind an IP allow-list (M6). The API already refuses cross-site requests: strict same-site cookies and CORS limited to the marketing site's address for the enquiry form. |
@@ -131,8 +131,8 @@ Status values:
 | Control | Detail |
 | --- | --- |
 | Tenant isolation | PostgreSQL row-level security, enabled and forced on every city table, with the app connecting as a non-owner role; a test fails if a table is missed. |
-| Passwords | scrypt with per-user salt; lockout after 5 failures; reset links expire in 1 hour; invitations in 7 days. |
-| Sessions | 15-minute access tokens; 14-day refresh tokens rotated on use with reuse detection (a reused token revokes the family); HTTP-only, `SameSite=Strict`, secure cookies. |
+| Passwords | 12–128 characters, letters with numbers or symbols, at least 5 different characters; commonly used passwords refused, and ones built from the person's name, email or organization when they set or change one; scrypt with per-user salt; lockout for 15 minutes after 5 failures; reset links expire in 1 hour; invitations in 7 days. |
+| Sessions | 15-minute access tokens kept in memory only (never in browser storage); 14-day refresh tokens in the HTTP-only `fc_refresh` cookie, rotated on use with reuse detection (a reused token revokes the family). A facility kiosk's credential is the HTTP-only `fh_kiosk` cookie (the old `fh-kiosk-token` localStorage entry is moved and deleted), and an FH support visit's is the HTTP-only `fh_support` cookie with only a `fh-support-mode` flag in sessionStorage. All `SameSite=Strict`, `Secure` in production. |
 | Step-up | Payroll export, pay rates, role changes, erasure, records export, suspensions and terminations, passkey changes need a sign-in within 10 minutes. |
 | Encryption | TLS in transit; incident narratives and Union Hub content encrypted with envelope encryption (per-local keys for the union; AWS KMS in production). |
 | Audit | Append-only audit log (the app can't update or delete it), incident access log with stated purpose, Dev console actions logged twice. |
@@ -312,9 +312,9 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 | **Statutory payroll rules** | Yearly tables verified against T4127 / TP-1015.F before any pay run; parallel run before go-live; tests | [PAYROLL-VERIFICATION.md](PAYROLL-VERIFICATION.md) |
 | **Retention and disposal** | Schedule per category, automatic jobs, crypto-shredding of a purged city's key, backup expiry | [RETENTION.md](RETENTION.md) |
 | **Encryption in transit** | TLS + HSTS to browsers; database connections must use TLS in production (the API refuses to start otherwise) | `apps/api/src/config.ts` |
-| **Encryption at rest** | Encrypted database and backups (AWS); SINs, bank accounts, incident narratives, documents sealed with the city's own KMS key; devices keep only class rosters, cleared at sign-out | §4, `apps/web/public/sw.js` |
+| **Encryption at rest** | Encrypted database and backups (AWS); SINs, bank accounts, incident narratives, documents sealed with the city's own KMS key; devices keep class rosters and the timeclock's offline state (cleared at sign-out) and punches made without signal until they're sent | §4, `apps/web/public/sw.js` |
 | **Role-based access** | Staff can't see colleagues' pay, banking or payroll files (tested); department scope for managers | `hardening.test.ts` |
-| **MFA and passwords** | Passkeys and SSO; MFA required for HR, and for any access level the city chooses in Settings; 10+ characters, mixed, common passwords refused; lockout | Settings → Second sign-in factor |
+| **MFA and passwords** | Passkeys, sign-in codes by email or text (unless the city allows passkeys only) and SSO; MFA required for HR by default, and for any access level the city chooses in Settings; 12–128 characters, mixed, common and personal passwords refused; lockout | Settings → Second sign-in factor |
 | **Vendor vetting** | Subprocessor register and checks (DPA, SOC 2/ISO 27001, Canadian location, exit) | [SUBPROCESSORS.md](SUBPROCESSORS.md) |
 | **Regular security audits** | CodeQL and dependency audit on every change and weekly; adversarial and privacy reviews recorded; yearly independent penetration test; disclosure policy | `.github/workflows/security.yml`, [SECURITY.md](../SECURITY.md) |
 | **Privacy impact assessment** | Pre-filled template for each city, to complete before go-live and before new tracking or HR features | [PIA.md](PIA.md) |
