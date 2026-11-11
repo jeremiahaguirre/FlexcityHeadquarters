@@ -302,15 +302,30 @@ api.post(
 
 // ----------------------------------------------------------------- Timeclock
 const location = z.object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180), accuracyM: z.number().nonnegative().nullable() }).nullable();
+/** A phone may send a punch it saved without a connection: its id, when it happened and its own clock. */
+const timing = {
+  clientId: uuid.optional(),
+  occurredAt: z.coerce.date().optional(),
+  sentAt: z.coerce.date().optional(),
+  offline: z.boolean().optional(),
+};
+const punchView = (p: { id: string; locationStatus: string; recordedOffline: boolean; clockIn: Date; clockOut: Date | null }) => ({
+  id: p.id,
+  locationStatus: p.locationStatus,
+  recordedOffline: p.recordedOffline,
+  clockIn: p.clockIn,
+  clockOut: p.clockOut,
+});
 
 api.post(
   '/timeclock/in',
   requirePermission('timeclock.punch'),
   h(async (req, res) => {
     const a = authOf(req);
-    const body = z.object({ facilityId: uuid, shiftId: uuid.optional(), positionId: uuid.optional(), location }).parse(req.body);
-    const punch = await withTenant(a.tenantId, (tx) => clockIn(tx, { ...body, tenantId: a.tenantId, userId: a.userId, ip: req.ip ?? null }));
-    res.status(201).json({ id: punch.id, locationStatus: punch.locationStatus });
+    const { clientId, occurredAt, sentAt, offline, ...body } = z.object({ facilityId: uuid, shiftId: uuid.optional(), positionId: uuid.optional(), location: location.optional().default(null), ...timing }).parse(req.body);
+    const punch = await withTenant(a.tenantId, (tx) => clockIn(tx, { ...body, tenantId: a.tenantId, userId: a.userId, ip: req.ip ?? null, timing: { clientId, occurredAt, sentAt, offline } }));
+    // A re-sent punch gets the same answer as the first time.
+    res.status(punch.duplicate ? 200 : 201).json(punchView(punch));
   }),
 );
 
@@ -319,8 +334,9 @@ api.post(
   requirePermission('timeclock.punch'),
   h(async (req, res) => {
     const a = authOf(req);
-    const punch = await withTenant(a.tenantId, (tx) => clockOut(tx, a.userId));
-    res.json({ id: punch.id });
+    const body = z.object(timing).parse(req.body ?? {});
+    const punch = await withTenant(a.tenantId, (tx) => clockOut(tx, a.userId, body));
+    res.json(punchView(punch));
   }),
 );
 

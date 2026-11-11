@@ -151,6 +151,7 @@ attendanceRouter.get(
         status: p.status,
         locationStatus: p.locationStatus,
         varianceReason: p.varianceReason,
+        recordedOffline: p.recordedOffline,
         facility: p.facility,
         localClockIn: localIso(p.clockIn, p.facility.timezone),
         localClockOut: p.clockOut ? localIso(p.clockOut, p.facility.timezone) : null,
@@ -166,7 +167,7 @@ attendanceRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const p = await withTenant(a.tenantId, (tx) => tx.timePunch.findFirst({ where: { userId: a.userId, clockOut: null }, include: punchInclude }));
-    res.json(p ? { id: p.id, clockIn: p.clockIn, localClockIn: localIso(p.clockIn, p.facility.timezone), facility: p.facility, locationStatus: p.locationStatus, shift: p.shift } : null);
+    res.json(p ? { id: p.id, clockIn: p.clockIn, localClockIn: localIso(p.clockIn, p.facility.timezone), facility: p.facility, locationStatus: p.locationStatus, recordedOffline: p.recordedOffline, shift: p.shift } : null);
   }),
 );
 
@@ -198,6 +199,11 @@ attendanceRouter.get(
         hours: p.clockOut ? (p.clockOut.getTime() - p.clockIn.getTime()) / 3_600_000 : null,
         locationStatus: p.locationStatus,
         distanceM: p.distanceM,
+        // Offline punches: when it happened (above) and when it reached us.
+        recordedOffline: p.recordedOffline,
+        localClockInReceivedAt: p.clockInReceivedAt ? localIso(p.clockInReceivedAt, p.facility.timezone) : null,
+        localClockOutReceivedAt: p.clockOutReceivedAt ? localIso(p.clockOutReceivedAt, p.facility.timezone) : null,
+        clockSkewS: p.clockSkewS,
         ...v,
       };
     });

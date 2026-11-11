@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateWindows } from '../../src/services/people/timeOff.js';
+import { resolveTiming } from '../../src/services/timeclock/punches.js';
 import { punchVariance } from '../../src/services/timeclock/review.js';
 
 describe('availability windows', () => {
@@ -27,5 +28,32 @@ describe('punch variance', () => {
   it('flags unscheduled and unfinished punches', () => {
     const v = punchVariance({ clockIn: new Date(), clockOut: null, shift: null, locationStatus: 'NO_LOCATION' });
     expect(v.attention).toEqual(['UNSCHEDULED', 'NO_CLOCK_OUT', 'LOCATION_UNVERIFIED']);
+  });
+});
+
+describe('offline punch timing', () => {
+  const now = new Date('2026-07-06T18:00:00Z');
+  const ago = (min: number) => new Date(now.getTime() - min * 60_000);
+  it('uses the server clock for a punch sent live', () => {
+    expect(resolveTiming(undefined, now)).toEqual({ at: now, offline: false, receivedAt: null, skewS: null });
+    expect(resolveTiming({ occurredAt: ago(0.2), sentAt: ago(0.2) }, now).offline).toBe(false);
+  });
+  it('keeps the time a late punch happened and when it arrived', () => {
+    const r = resolveTiming({ occurredAt: ago(90), sentAt: now, offline: true }, now);
+    expect(r).toEqual({ at: ago(90), offline: true, receivedAt: now, skewS: null });
+    // Sent late without saying so still counts as offline.
+    expect(resolveTiming({ occurredAt: ago(30) }, now).offline).toBe(true);
+  });
+  it('corrects the time by how far the phone clock is off', () => {
+    // Phone 10 minutes behind: it says 16:20 and "now" is 17:50 on it.
+    const r = resolveTiming({ occurredAt: ago(100), sentAt: ago(10), offline: true }, now);
+    expect(r.at).toEqual(ago(90));
+    expect(r.skewS).toBe(600);
+    expect(punchVariance({ clockIn: r.at, clockOut: now, shift: null, locationStatus: 'VERIFIED', recordedOffline: true, clockSkewS: r.skewS }).attention).toEqual(['UNSCHEDULED', 'RECORDED_OFFLINE', 'CLOCK_SKEW']);
+  });
+  it('allows a little clock drift but refuses the future and very old punches', () => {
+    expect(resolveTiming({ occurredAt: new Date(now.getTime() + 60_000), offline: true }, now).at).toEqual(now);
+    expect(() => resolveTiming({ occurredAt: new Date(now.getTime() + 5 * 60_000), offline: true }, now)).toThrow(/future/);
+    expect(() => resolveTiming({ occurredAt: ago(73 * 60), offline: true }, now)).toThrow(/3 days/);
   });
 });
