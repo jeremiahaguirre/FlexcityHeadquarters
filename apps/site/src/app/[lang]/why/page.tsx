@@ -37,7 +37,8 @@ export default async function Why(props: { params: Promise<{ lang: Lang }> }) {
       </PageHero>
       {/* 06 Why FH is different: compared with today's workarounds, never with named products */}
       <Section id="why" className="scroll-mt-16">
-        <SectionHead n="01" eyebrow={k.why} title={h.whyTitle} lead={h.whyLead} />
+        {/* The page title already asks "why": this section names what it compares with. */}
+        <SectionHead n="01" eyebrow={k.why} title={h.pages.whyCompareTitle} lead={h.whyLead} />
         <div {...reveal()} className="overflow-hidden rounded-3xl border border-line bg-panel shadow-card">
           <div className="hidden grid-cols-[1.1fr_1fr_1.4fr] gap-6 border-b border-line bg-surface px-7 py-4 text-label uppercase text-muted md:grid">
             <span />
