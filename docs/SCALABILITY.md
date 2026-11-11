@@ -65,6 +65,7 @@ The first run, before the fixes below, failed many requests in scenarios 1 and 4
   - caches are dropped in every process through `pg_notify`;
   - rate limits are counted in Postgres;
   - scheduled jobs run only in the worker, each under an advisory lock.
+- **Background traffic that grows with use:** webhook deliveries are claimed by the worker with `FOR UPDATE SKIP LOCKED` and sent outside any transaction (10 s timeout each), so several workers can share them; public API keys are rate-limited per key in Postgres (120 a minute by default). The weather is fetched once per distinct forecast site every 3 hours and shared by every city near it, so it grows with the number of sites, not cities. None of these was part of the load runs above.
 - **Lighter shift board:** it selects only the fields it shows, at most 200 rows.
 - **Index** on punches by `(tenantId, status, clockIn)` for punch review.
 

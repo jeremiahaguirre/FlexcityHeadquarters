@@ -70,6 +70,18 @@ Off-cycle runs carry only their one-time items. A second person approves; the de
 
 Chemical readings are checked against each pool's configured thresholds; there are no built-in defaults. Out-of-range readings **recommend** closure, and a Head Lifeguard or Supervisor confirms or dismisses with a note.
 
+### Demand forecast (`services/ops/forecast.ts`, `weather.ts`, `specialEvents.ts`)
+
+Expected attendance per hour comes from the facility's own headcounts, its opening hours and lesson registrations, then is adjusted per day for the weather, statutory holidays (the payroll holiday table), school breaks (the school calendar) and special events (per facility or city, extra people or a percentage, optionally yearly). Weather is Environment and Climate Change Canada open data (MSC GeoMet, `api.weather.gc.ca`, no key), fetched by the worker for each distinct forecast site and cached in tables shared by every city with no organization's data in them ([SUBPROCESSORS.md](SUBPROCESSORS.md)). The weather's effect is a rule of thumb per kind of facility until it is learned from the facility's own counts against observed weather. Every adjustment carries its reason, the unadjusted figures are kept, and the forecast works without weather (and says so). The parser was written against the documented format with recorded fixtures; the first live fetch is still to be checked ([roadmap](ROADMAP.md#next)).
+
+### Reporting lines (`services/people/reporting.ts`)
+
+`User.reportsToId` (same organization, never oneself or someone below; changes audited), defaulting to the department's managers. Requests (time off, expenses, trades, overtime claims) notify the manager first, then the department's managers, then everyone holding the permission; queues take `?team=mine`. Routing only: a manager is told about, or can act on, a request only when their permissions and department scope already allow it.
+
+### Offline punches (`services/timeclock/punches.ts`, web `lib/offlinePunches.ts`)
+
+Without a connection the web app keeps each punch on the phone, per person, with its own id and the time it happened, and sends the queue in order when the connection returns. The server recognises a re-sent id (never a double punch), corrects for the phone's clock difference, refuses future, out-of-order or more-than-3-days-old punches with a reason, and flags the rest "Recorded offline" for review, with when each part arrived.
+
 ## Sensitive data
 
 | Data | Protection |
@@ -96,6 +108,7 @@ Nothing a change causes is kept only in memory, so a process that stops at the w
 - **Dispatcher** (`src/lib/outbox.ts`). Straight after the commit the route calls `dispatchSoon(tenantId)`, and the same API process delivers the event within milliseconds. The worker runs `dispatchAll()` every 5 seconds as the backstop (an API process that stopped, a delivery that failed). Each event is claimed with `SELECT … FOR UPDATE SKIP LOCKED` inside its organization's transaction, its handler (`handleDomainEvent`: notifications, emails, texts) runs in that same transaction, and the event is marked `DELIVERED` before it commits: the handler's writes and the mark commit together. Any number of dispatchers can run at once; none waits for another and none delivers an event twice. A crash mid-delivery rolls everything back and the event is delivered later: **at least once**. Notifications written for an event carry a dedupe key (`<event id>:<hash of recipient, type, params>`, unique per organization), so a second delivery adds nothing, emails and texts included.
 - **Failures** roll back to a savepoint; the attempt count, the error and the next try are recorded (backoff 5 s, 10 s, 20 s … 10 min). After `EVENT_MAX_ATTEMPTS` (8) the event is `DEAD`, reported to the error reporter and counted in `outbox_backlog()` (channel `events`) for `/readyz` and `/metrics`. To retry one by hand: set its `status` back to `PENDING` and `availableAt` to now.
 - **Across organizations** the worker asks `tenants_with_due_events()` (`SECURITY DEFINER`, ids only), then claims each organization's events under its own context, as other jobs do with `all_tenant_ids()`.
+- **Public webhook events** (`person.*`, `shift.*`, `timeoff.*`, `punch.approved`, `payrun.approved`) are written to the same outbox by Postgres triggers (`fh_public_event` in `db/rls.sql`) in the change's own transaction, only when an enabled endpoint wants that type. The dispatcher queues one `WebhookDelivery` per endpoint; the worker sends them outside any transaction with retries and auto-disable ([PUBLIC-API.md](PUBLIC-API.md)).
 - **Retention:** a delivered event's payload is cleared at once; delivered rows are deleted after 7 days, dead ones after 30 (`services/privacy/retention.ts`).
 
 Notifications are announced with `pg_notify` inside the transaction that writes them, so Postgres delivers the signal only on commit. Browsers listen over server-sent events (`/api/notifications/stream`), and emails, texts and calls go out through the outboxes the worker drains. Web push to phones and computers follows the same notifications (`services/notifications/push.ts`); the lock screen shows a short heading only.
@@ -127,11 +140,14 @@ Most of `/api` needs a signed-in person. These don't (`src/app.ts`):
 - **Facility kiosk** (`/api/kiosk`, `/api/kiosk/punch`, `routes/kiosk.ts`): the tablet sends its own token in `x-kiosk-token` (organization id and secret, stored hashed), not a person's session. A person is identified by employee number and PIN; wrong PINs are limited per number (5 in 15 minutes) and per tablet. Revoking a kiosk stops it at once.
 - **Job applications** (`POST /api/public/jobs/:id/apply`, `routes/applications.ts`): on the organization's subdomain, for postings that take applications in the app, with the same bot checks and rate limits as public sign-up.
 
+- **Public API** (`/api/v1`, `routes/publicApi.ts`): an organization's API key (`Authorization: Bearer fh_live_…`, stored as a SHA-256), never a person's session; the organization comes from the key, and every read runs under its RLS context. Read-only, scoped, rate-limited per key, every request audited. `GET /api/v1/openapi.json` needs no key. See [PUBLIC-API.md](PUBLIC-API.md).
+- **Health and metrics** (`/healthz`, `/readyz`; `/metrics` only with `METRICS_TOKEN`) and browser error reports; see below.
+
 They sit beside the older public routes: the city logo, the careers page, public sign-up and the sign-in routes.
 
 ## Background worker
 
-`npm run worker --workspace apps/api` (`src/worker.ts`) runs each job under a Postgres advisory lock, so several worker processes never run the same job at once. Every 5 seconds: domain events their API process didn't deliver (see Events). Every minute: working-alone escalation, call-out timeouts, rotation alerts, and delivery of email, texts and calls (`deliverSms`: Twilio, or logged when `SMS_PROVIDER=console`; up to 5 tries) and web push. Every hour: reminders, anonymization, retention, scheduled reports (`services/reports/scheduled.ts`: each saved report is run with its owner's access at that moment and emailed weekly or monthly; someone who lost access stops getting it), and benchmarks.
+`npm run worker --workspace apps/api` (`src/worker.ts`) runs each job under a Postgres advisory lock, so several worker processes never run the same job at once. Every 5 seconds: domain events their API process didn't deliver (see Events), then the webhook deliveries they queued and retries that are due. Every minute: working-alone escalation, call-out timeouts, rotation alerts, and delivery of email, texts and calls (`deliverSms`: Twilio, or logged when `SMS_PROVIDER=console`; up to 5 tries) and web push. Every hour: reminders, anonymization, retention, scheduled reports (`services/reports/scheduled.ts`: each saved report is run with its owner's access at that moment and emailed weekly or monthly; someone who lost access stops getting it), benchmarks, and the weather for each distinct forecast site once its `WEATHER_REFRESH_HOURS` (3) have passed (`WEATHER=off` turns it off).
 
 ## Health, metrics and errors
 
