@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { useLiveChange } from '@/lib/useLiveChange';
 
 interface Plan {
   facility: { id: string; name: string; rotationMinutes: number; maxOnChairMinutes: number };
@@ -40,13 +41,12 @@ export default function DeckPage() {
   const { run, busy } = useAction();
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
+    // The clock only: times on deck and "rotate now" follow it without asking the server.
     const i = setInterval(() => setNow(Date.now()), 15_000);
-    const r = setInterval(() => void plan.reload(), 60_000);
-    return () => {
-      clearInterval(i);
-      clearInterval(r);
-    };
-  }, [plan]);
+    return () => clearInterval(i);
+  }, []);
+  // Rotations, closing, station changes and clock-ins/outs at the pool arrive as they're saved.
+  useLiveChange('deck', () => void plan.reload());
   const p = plan.data;
   const name = (id: string | null) => p?.onDuty.find((o) => o.userId === id)?.name ?? '—';
 

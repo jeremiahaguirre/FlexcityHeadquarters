@@ -2,7 +2,7 @@
 
 import { MapPin, Phone, ShieldCheck, Siren, UserRound } from 'lucide-react';
 import { type Contact, ContactList } from '@/components/people/EmergencyContacts';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -15,6 +15,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { type LoneSession, type LoneStatus, mapLink } from '@/lib/loneWork';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { useLiveChange } from '@/lib/useLiveChange';
 import { dateFormat } from '@/lib/format';
 
 const TONE: Record<LoneStatus, Tone> = { HELP: 'danger', ESCALATED: 'danger', OVERDUE: 'warn', ACTIVE: 'ok', ENDED: 'neutral' };
@@ -26,11 +27,9 @@ export default function LoneWorkMonitor() {
   const { run, busy } = useAction();
   const [closing, setClosing] = useState<LoneSession | null>(null);
   const [contacts, setContacts] = useState<{ person: string; list: Contact[] } | null>(null);
-  useEffect(() => {
-    const id = setInterval(() => void q.reload(), 20_000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Check-ins, help requests and escalations appear the moment they're saved (live stream), with a
+  // slow safety net if the stream can't connect.
+  useLiveChange('lonework', () => void q.reload(), 120_000);
   const time = (iso: string) => dateFormat(i18n.language, { timeStyle: 'short' }).format(new Date(iso));
   const open = (q.data ?? []).filter((s) => s.status !== 'ENDED');
   const ended = (q.data ?? []).filter((s) => s.status === 'ENDED');

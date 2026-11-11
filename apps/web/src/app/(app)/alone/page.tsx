@@ -15,6 +15,7 @@ import { INTERVALS, type LoneSession, currentPosition, watchLocation } from '@/l
 import { keepAwake, wakeLockSupported } from '@/lib/device';
 import { PushCard } from '@/components/device/PushCard';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { useLiveChange } from '@/lib/useLiveChange';
 import { dateFormat } from '@/lib/format';
 
 /** Working alone: start a session, check in on a timer, or ask for help. */
@@ -28,14 +29,11 @@ export default function AlonePage() {
   const [share, setShare] = useState(true);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
-    // Pick up a monitor's "I'm on it" or a missed check-in without a reload.
-    const poll = setInterval(() => void q.reload(), 30_000);
-    return () => {
-      clearInterval(id);
-      clearInterval(poll);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => clearInterval(id);
   }, []);
+  // A monitor's "I'm on it", a missed check-in or an escalation shows the moment it's saved
+  // (the server announces it on the live stream); a slow safety net if the stream can't connect.
+  useLiveChange('lonework', () => void q.reload(), 120_000);
   const s = q.data;
   const sharing = !!s && s.shareLocation && s.status !== 'ENDED';
   const [locError, setLocError] = useState<'denied' | 'unavailable' | null>(null);

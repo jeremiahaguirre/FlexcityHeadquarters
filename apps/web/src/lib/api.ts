@@ -195,6 +195,25 @@ export async function logout() {
  * Live notification signals over Server-Sent Events, read with fetch() so the
  * Bearer token can be sent. Reconnects with backoff; returns a stop function.
  */
+const changeListeners = new Map<string, Set<() => void>>();
+
+/**
+ * Subscribe to an organization's shared-state changes (the API's lib/changes.ts topics: 'lonework',
+ * 'deck'), carried by the live stream that streamNotifications() keeps open. The callback should
+ * refetch. It also runs after the stream reconnects, since changes in between were missed.
+ */
+export function onLiveChange(topic: string, fn: () => void): () => void {
+  let set = changeListeners.get(topic);
+  if (!set) changeListeners.set(topic, (set = new Set()));
+  set.add(fn);
+  return () => void set!.delete(fn);
+}
+
+function emitChange(topic: string) {
+  const sets = topic === '*' ? [...changeListeners.values()] : [changeListeners.get(topic)];
+  for (const set of sets) for (const fn of set ?? []) fn();
+}
+
 export function streamNotifications(onSignal: () => void): () => void {
   if (DEMO) return () => undefined;
   let stopped = false;
@@ -214,7 +233,10 @@ export function streamNotifications(onSignal: () => void): () => void {
         if (!res.ok || !res.body) throw new Error(`stream ${res.status}`);
         delay = 2000;
         // Signals sent while disconnected were missed: refetch once after every reconnection.
-        if (connected) onSignal();
+        if (connected) {
+          onSignal();
+          emitChange('*');
+        }
         connected = true;
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -226,6 +248,16 @@ export function streamNotifications(onSignal: () => void): () => void {
           const events = buf.split('\n\n');
           buf = events.pop() ?? '';
           if (events.some((e) => e.includes('event: notification'))) onSignal();
+          for (const e of events) {
+            if (!e.includes('event: change')) continue;
+            const data = /^data: (.*)$/m.exec(e)?.[1];
+            try {
+              const topic = (JSON.parse(data ?? '{}') as { topic?: unknown }).topic;
+              if (typeof topic === 'string') emitChange(topic);
+            } catch {
+              /* ignore a malformed signal */
+            }
+          }
         }
       } catch {
         /* fall through to retry */
