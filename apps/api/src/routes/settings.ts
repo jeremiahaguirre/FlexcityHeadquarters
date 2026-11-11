@@ -52,7 +52,14 @@ settingsRouter.get(
           payrollRetentionYears: tenant.payrollRetentionYears,
           features: (await tenantSettings(a.tenantId)).features,
         },
-        facilities: facilities.map((f) => ({ ...f, latitude: f.latitude?.toNumber() ?? null, longitude: f.longitude?.toNumber() ?? null })),
+        facilities: await (async () => {
+          const codes = [...new Set(facilities.map((f) => f.weatherSite ?? f.weatherSiteAuto).filter((x): x is string => !!x))];
+          const sites = codes.length ? await tx.weatherSite.findMany({ where: { site: { in: codes } }, select: { site: true, nameEn: true, nameFr: true } }) : [];
+          return facilities.map((f) => {
+            const s = sites.find((x) => x.site === (f.weatherSite ?? f.weatherSiteAuto));
+            return { ...f, latitude: f.latitude?.toNumber() ?? null, longitude: f.longitude?.toNumber() ?? null, weatherSiteName: s ? { en: s.nameEn, fr: s.nameFr ?? s.nameEn } : null };
+          });
+        })(),
         payCodes,
         ruleOverrides: overrides.map((o) => ({ ...o, effectiveFrom: iso(o.effectiveFrom), effectiveTo: iso(o.effectiveTo) })),
         schoolCalendar: calendar.map((c) => ({ id: c.id, kind: c.kind, name: c.name, startsOn: iso(c.startsOn), endsOn: iso(c.endsOn) })),
@@ -101,6 +108,11 @@ export const facilityBody = z.object({
   costCenter: z.string().max(40).nullable(),
   rotationMinutes: z.number().int().min(10).max(120).optional(),
   maxOnChairMinutes: z.number().int().min(30).max(480).optional(),
+  /** Demand forecast: how the weather is expected to move attendance. */
+  exposure: z.enum(['INDOOR', 'OUTDOOR', 'MIXED']).optional(),
+  venueKind: z.enum(['POOL', 'PARK', 'BEACH', 'ARENA', 'COMMUNITY_CENTRE', 'OTHER']).optional(),
+  /** An ECCC city forecast site such as "bc-48"; null = the nearest to the coordinates. */
+  weatherSite: z.string().trim().toLowerCase().regex(/^[a-z]{2}-\d{1,4}$/, 'A forecast site looks like bc-48.').nullable().optional(),
 });
 
 settingsRouter.post(
@@ -122,7 +134,9 @@ settingsRouter.patch(
     await withTenant(a.tenantId, async (tx) => {
       const before = await tx.facility.findUnique({ where: { id } });
       if (!before) throw notFound('Facility');
-      await tx.facility.update({ where: { id }, data: body });
+      // Moved: the weather job finds the nearest forecast site again.
+      const moved = (body.latitude !== undefined && body.latitude !== before.latitude?.toNumber()) || (body.longitude !== undefined && body.longitude !== before.longitude?.toNumber());
+      await tx.facility.update({ where: { id }, data: { ...body, ...(moved ? { weatherSiteAuto: null } : {}) } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'facility.update', entity: 'Facility', entityId: id, before, after: body });
     });
     res.json({ ok: true });
