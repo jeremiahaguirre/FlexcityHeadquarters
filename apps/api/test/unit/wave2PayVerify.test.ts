@@ -194,3 +194,40 @@ describe('settings validation', () => {
     expect(t(8)).toBe(false);
   });
 });
+
+describe('statement and ROE hours', () => {
+  it('premium, change-premium, standby, vacation and holiday-pay lines add no hours; call-in and call-back top-ups do', async () => {
+    const { statementHours } = await import('../../src/services/payroll/statementHours.js');
+    const earnings = [
+      { code: 'REGULAR', hours: 75, amount: 1875 },
+      { code: 'SHIFT_PREMIUM', hours: 45, amount: 56.25 }, // a premium on 45 of those 75 hours
+      { code: 'REPORTING_PAY', hours: 2, amount: 50 },
+      { code: 'CALLBACK_PAY', hours: 1.5, amount: 37.5 },
+      { code: 'SCHEDULE_CHANGE_PREMIUM', hours: 2, amount: 25 },
+      { code: 'STANDBY_PAY', hours: 0, amount: 60 },
+      { code: 'VACATION_PAY', hours: 0, amount: 80 },
+    ];
+    // A statement stored before the fix said 125.5 h (75 + 45 + 2 + 1.5 + 2): the ROE reads 78.5.
+    expect(statementHours(earnings, 125.5)).toBe(78.5);
+    expect(statementHours(null, 40)).toBe(40);
+    expect(statementHours([{ hours: 3 }], 40)).toBe(40);
+  });
+});
+
+describe('provider exports of the new lines', () => {
+  it('ADP: a late-change premium (2 h × $25 × 0.5 = $25) goes as its amount, not 2 hours at $25; standby as an amount', async () => {
+    const { buildPayrollCsv } = await import('../../src/services/payroll/export.js');
+    const D = (n: number) => new Decimal(n);
+    const lines = [
+      { code: 'SCHEDULE_CHANGE_PREMIUM' as const, positionId: null, hours: D(2), rate: D(25), multiplier: D(0.5), amount: D(25) },
+      { code: 'STANDBY_PAY' as const, positionId: null, hours: D(0), rate: D(0), multiplier: D(0), amount: D(60) },
+      { code: 'REPORTING_PAY' as const, positionId: null, hours: D(2), rate: D(25), multiplier: D(1), amount: D(50) },
+    ];
+    const r = buildPayrollCsv([{ userId: 'u', employeeNumber: 'E1', displayName: 'A', costCenter: 'CC', lines }], { resolve: (k) => k }, { start: '2026-07-05', end: '2026-07-18' }, { format: 'adp', adpCompanyCode: 'K7X', adpBatchId: '1' });
+    if (!r.ok) throw new Error('export refused');
+    const rows = r.csv.trim().split('\r\n').slice(1).map((x) => x.split(','));
+    expect(rows[0]).toEqual(['K7X', '1', 'E1', 'CC', '', '', '', '', '', 'SCHEDULE_CHANGE_PREMIUM', '25.00']);
+    expect(rows[1]).toEqual(['K7X', '1', 'E1', 'CC', '', '', '', '', '', 'STANDBY_PAY', '60.00']);
+    expect(rows[2]).toEqual(['K7X', '1', 'E1', 'CC', '25.00', '', '', 'REPORTING_PAY', '2.00', '', '']);
+  });
+});

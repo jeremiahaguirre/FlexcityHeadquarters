@@ -46,6 +46,9 @@ export interface ExportOptions {
 
 interface Row { employee: string; key: PayCodeKey; code: string; hours: number; rate: number; amount: number; costCenter: string }
 
+/** Lines ADP gets as earnings amounts even when they carry hours (premiums on hours paid elsewhere). */
+const AMOUNT_ONLY: ReadonlySet<PayCodeKey> = new Set(['SCHEDULE_CHANGE_PREMIUM']);
+
 const HEADER = ['Employee_ID', 'Pay_Code', 'Hours', 'Rate', 'Amount', 'Cost_Center', 'Period_Start', 'Period_End'];
 const n2 = (n: number) => n.toFixed(2);
 
@@ -54,11 +57,13 @@ const LAYOUTS: Record<ExportFormat, { header: string[]; row: (r: Row, period: { 
   adp: {
     header: ['Co Code', 'Batch ID', 'File #', 'Temp Dept', 'Temp Rate', 'Reg Hours', 'O/T Hours', 'Hours 3 Code', 'Hours 3 Amount', 'Earnings 3 Code', 'Earnings 3 Amount'],
     row: (r, _p, o) => {
-      const base = [o.adpCompanyCode ?? '', o.adpBatchId ?? '', r.employee, r.costCenter, r.hours ? n2(r.rate) : ''];
+      const base = [o.adpCompanyCode ?? '', o.adpBatchId ?? '', r.employee, r.costCenter, r.hours && !AMOUNT_ONLY.has(r.key) ? n2(r.rate) : ''];
       // Regular and time-and-a-half hours go in their own columns; other hours by code; amounts without hours as earnings.
       if (r.key === 'REGULAR') return [...base, n2(r.hours), '', '', '', '', ''];
       if (r.key === 'OVERTIME_1_5') return [...base, '', n2(r.hours), '', '', '', ''];
-      if (r.hours) return [...base, '', '', r.code, n2(r.hours), '', ''];
+      // A late-change premium is the extra part only ((multiplier − 1) × rate on the changed
+      // hours): sent as its amount, so ADP doesn't pay the hours again at the full rate.
+      if (r.hours && !AMOUNT_ONLY.has(r.key)) return [...base, '', '', r.code, n2(r.hours), '', ''];
       return [...base, '', '', '', '', r.code, n2(r.amount)];
     },
   },
