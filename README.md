@@ -28,7 +28,7 @@ Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and 
 | Pool deck: rotations with fatigue limits, headcounts, chemical log with closure workflow, sealed incident reports | Done (API + web) |
 | Safety: working alone with check-ins and location sharing, emergency contacts, injury-report deadlines, care after critical incidents, required coverage | Done (API + web) |
 | Text and phone alerts for working-alone escalation, missed check-ins, call-outs and last-minute shifts (Twilio; each city switches it on) | Done — **text provider's DPA to sign** |
-| People and HR: directory, roles, pay rates, certifications, onboarding, reliability, discipline with signatures, accommodation, leave balances, reviews, training, grievances, offboarding, encrypted documents, read-and-sign policies | Done (API + web) |
+| People and HR: directory, reporting lines and an org chart (approvals go to the manager first), roles, pay rates, certifications, onboarding, reliability, discipline with signatures, accommodation, leave balances, reviews, training, grievances, offboarding, encrypted documents, read-and-sign policies | Done (API + web) |
 | Hiring: job postings, a careers page and applications in the app (résumé encrypted), hired straight into an invitation | Done (API + web) |
 | Facility logbook (append-only) and staff announcements with read counts | Done (API + web) |
 | Reports: nine built-in reports, CSV download, saved and emailed weekly or monthly | Done (API + web) |
