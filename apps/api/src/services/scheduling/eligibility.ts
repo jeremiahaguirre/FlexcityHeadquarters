@@ -163,7 +163,15 @@ export interface EvaluateOptions {
   /** Assistant-generated schedules require availability; voluntary claims do not. */
   requireAvailability: boolean;
   schoolCalendar?: SchoolCalendar;
+  /**
+   * Batch callers (the planner's eligibility grid) pass one per person: the overtime already in
+   * the person's other shifts is computed once per pay period instead of once per shift checked.
+   */
+  overtimeMemo?: OvertimeMemo;
 }
+
+/** Overtime hours of a set of existing shifts, per rules in force. */
+export type OvertimeMemo = WeakMap<ProvinceRules, Map<string, Decimal>>;
 
 export interface Evaluation {
   userId: string;
@@ -410,7 +418,7 @@ export function isAvailable(windows: CandidateContext['availability'], shift: Pi
 export function projectOvertime(
   existing: Array<Interval & { positionId: string }>,
   shift: ShiftSpec,
-  opts: Pick<EvaluateOptions, 'rules' | 'payWeekStartDay'>,
+  opts: Pick<EvaluateOptions, 'rules' | 'payWeekStartDay' | 'overtimeMemo'>,
 ): { overtimeHours: Decimal; weeklyHoursAfter: Decimal } {
   const tz = shift.timezone;
   const periodStart = payWeekStart(localDate(shift.start, tz), opts.payWeekStartDay);
@@ -432,11 +440,19 @@ export function projectOvertime(
   const otOf = (r: ReturnType<typeof run>) =>
     r.lines.filter((l) => l.code === 'OVERTIME_1_5' || l.code === 'OVERTIME_2_0').reduce((s, l) => s.plus(l.hours), new Decimal(0));
   const nonOverlapping = existing.filter((s) => !overlaps(s, shift));
-  const before = run(nonOverlapping);
+  let beforeOt: Decimal;
+  const memo = opts.overtimeMemo;
+  if (memo) {
+    const byRules = memo.get(opts.rules) ?? new Map<string, Decimal>();
+    memo.set(opts.rules, byRules);
+    const key = `${periodStart}|${weeks}|${tz}|${nonOverlapping.map((s) => `${s.start.getTime()}-${s.end.getTime()}-${s.positionId}`).sort().join(',')}`;
+    beforeOt = byRules.get(key) ?? otOf(run(nonOverlapping));
+    byRules.set(key, beforeOt);
+  } else beforeOt = otOf(run(nonOverlapping));
   const after = run([...nonOverlapping, shift]);
 
   const weekFrom = startOfLocalDay(periodStart, tz);
   const weekTo = startOfLocalDay(addDays(periodStart, 7), tz);
   const weeklyHoursAfter = new Decimal(sumHoursWithin([...nonOverlapping, shift], weekFrom, weekTo));
-  return { overtimeHours: Decimal.max(otOf(after).minus(otOf(before)), 0), weeklyHoursAfter };
+  return { overtimeHours: Decimal.max(otOf(after).minus(beforeOt), 0), weeklyHoursAfter };
 }

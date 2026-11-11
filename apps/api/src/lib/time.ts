@@ -1,5 +1,24 @@
 import { DateTime } from 'luxon';
 
+/**
+ * Time-zone conversions are the slowest part of checking a shift (each one formats a date
+ * through Intl). These functions are pure, so batch work (a month of shifts × a department,
+ * a pay run) remembers recent answers. Bounded: the memory is dropped past a limit.
+ */
+const LIMIT = 20_000;
+function remember<A extends unknown[], R>(fn: (...a: A) => R, key: (...a: A) => string): (...a: A) => R {
+  const m = new Map<string, R>();
+  return (...a: A) => {
+    const k = key(...a);
+    const hit = m.get(k);
+    if (hit !== undefined) return hit;
+    const r = fn(...a);
+    if (m.size >= LIMIT) m.clear();
+    m.set(k, r);
+    return r;
+  };
+}
+
 /** Half-open interval [start, end). */
 export interface Interval {
   start: Date;
@@ -16,9 +35,10 @@ export function hoursBetween(start: Date, end: Date): number {
 }
 
 /** ISO local date ("2026-07-01") of an instant in a timezone. */
-export function localDate(at: Date, timezone: string): string {
-  return DateTime.fromJSDate(at, { zone: timezone }).toISODate()!;
-}
+export const localDate = remember(
+  (at: Date, timezone: string): string => DateTime.fromJSDate(at, { zone: timezone }).toISODate()!,
+  (at, timezone) => `${timezone}|${at.getTime()}`,
+);
 
 /** Facility-local ISO timestamp with offset, e.g. "2026-11-13T07:00:00.000-07:00". */
 export function localIso(at: Date, timezone: string): string {
@@ -31,15 +51,26 @@ export function localHour(isoDate: string, hour: number, timezone: string): Date
 }
 
 /** Start instant of a local calendar date in a timezone (DST-safe). */
+const startOfLocalDayMs = remember(
+  (isoDate: string, timezone: string): number => DateTime.fromISO(isoDate, { zone: timezone }).startOf('day').toMillis(),
+  (isoDate, timezone) => `${timezone}|${isoDate}`,
+);
 export function startOfLocalDay(isoDate: string, timezone: string): Date {
-  return DateTime.fromISO(isoDate, { zone: timezone }).startOf('day').toJSDate();
+  return new Date(startOfLocalDayMs(isoDate, timezone));
 }
 
 /**
  * Splits an interval at local midnights so each piece lies within one local
  * calendar day. A 22:00–06:00 shift becomes two pieces on two work days.
  */
-export function splitByLocalDay(
+export function splitByLocalDay(interval: Interval, timezone: string): Array<Interval & { localDate: string }> {
+  return splitCached(interval.start.getTime(), interval.end.getTime(), timezone).map((p) => ({ start: new Date(p.start), end: new Date(p.end), localDate: p.localDate }));
+}
+const splitCached = remember(
+  (start: number, end: number, timezone: string) => splitByLocalDayUncached({ start: new Date(start), end: new Date(end) }, timezone).map((p) => ({ start: p.start.getTime(), end: p.end.getTime(), localDate: p.localDate })),
+  (start, end, timezone) => `${timezone}|${start}|${end}`,
+);
+function splitByLocalDayUncached(
   interval: Interval,
   timezone: string,
 ): Array<Interval & { localDate: string }> {
@@ -56,20 +87,19 @@ export function splitByLocalDay(
 }
 
 /** Local ISO date of the first day of the pay week containing `isoDate`. weekStartDay: 0=Sunday. */
-export function payWeekStart(isoDate: string, weekStartDay: number): string {
-  const d = DateTime.fromISO(isoDate);
-  const dow = d.weekday % 7; // luxon: Mon=1..Sun=7 → Sun=0
-  const back = (dow - weekStartDay + 7) % 7;
-  return d.minus({ days: back }).toISODate()!;
-}
+export const payWeekStart = remember(
+  (isoDate: string, weekStartDay: number): string => {
+    const d = DateTime.fromISO(isoDate);
+    const dow = d.weekday % 7; // luxon: Mon=1..Sun=7 → Sun=0
+    const back = (dow - weekStartDay + 7) % 7;
+    return d.minus({ days: back }).toISODate()!;
+  },
+  (isoDate, weekStartDay) => `${isoDate}|${weekStartDay}`,
+);
 
-export function addDays(isoDate: string, days: number): string {
-  return DateTime.fromISO(isoDate).plus({ days }).toISODate()!;
-}
+export const addDays = remember((isoDate: string, days: number): string => DateTime.fromISO(isoDate).plus({ days }).toISODate()!, (isoDate, days) => `${isoDate}|${days}`);
 
-export function dayOfWeek(isoDate: string): number {
-  return DateTime.fromISO(isoDate).weekday % 7;
-}
+export const dayOfWeek = remember((isoDate: string): number => DateTime.fromISO(isoDate).weekday % 7, (isoDate) => isoDate);
 
 /** Whole years between two ISO dates (age, years of service). */
 export function wholeYearsBetween(fromIso: string, toIso: string): number {
