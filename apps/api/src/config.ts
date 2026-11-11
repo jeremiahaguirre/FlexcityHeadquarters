@@ -60,6 +60,28 @@ const schema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:support@flexcityhq.example'),
+  /** Bearer token for GET /metrics (Prometheus). Unset = /metrics answers 404. */
+  METRICS_TOKEN: z.string().min(16).optional(),
+  /**
+   * Error reports to a Sentry-compatible service (Sentry, GlitchTip), e.g. https://key@errors.example.ca/3.
+   * Unset = errors are only logged. Reports are scrubbed of personal information first (lib/scrub.ts).
+   */
+  SENTRY_DSN: z.string().url().optional(),
+  /** Shown on error reports: which deployment ("production", "staging") and which build. */
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  RELEASE: z.string().optional(),
+  /** Readiness (GET /readyz): how long the database check may take, in milliseconds. */
+  READY_DB_TIMEOUT_MS: z.coerce.number().int().min(100).max(10_000).default(1500),
+  /** Readiness fails when the oldest unsent email or text has waited longer than this (seconds). */
+  READY_OUTBOX_MAX_AGE_S: z.coerce.number().int().min(60).default(15 * 60),
+  /** Readiness fails when no background worker has reported in for this long (seconds). */
+  READY_WORKER_MAX_AGE_S: z.coerce.number().int().min(60).default(5 * 60),
+  /**
+   * Whether a stale outbox or a missing worker makes /readyz answer 503. Off by default: they're
+   * reported in the body either way, but a load balancer shouldn't pull every API server out
+   * because the worker is down. Turn it on where /readyz feeds an alert rather than routing.
+   */
+  READY_STRICT: z.enum(['on', 'off']).default('off'),
 });
 
 export type Config = z.infer<typeof schema>;
