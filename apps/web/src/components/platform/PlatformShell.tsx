@@ -1,11 +1,13 @@
 'use client';
 
-import { BookOpen, Building2, Inbox, KeyRound, Landmark, LogOut, Receipt, Scale, Terminal } from 'lucide-react';
+import { BookOpen, Building2, Inbox, KeyRound, Landmark, LogOut, MoreHorizontal, Receipt, Scale, ShieldCheck, Terminal } from 'lucide-react';
+import { Dialog } from '@/components/ui/Dialog';
+import { TRUST_SECTIONS } from '@/components/platform/trust/ui';
 import { CommandMenu, type Destination } from '@/components/shell/CommandMenu';
 import { SchemePicker } from '@/components/shell/SchemePicker';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LiveLogo } from '@/components/LiveLogo';
 import { LogoMark } from '@/components/Logo';
@@ -28,7 +30,10 @@ const NAV = [
   { href: '/platform/books', key: 'books.nav', icon: BookOpen },
   { href: '/platform/enquiries', key: 'enquiries.nav', icon: Inbox },
   { href: '/platform/payroll-tax', key: 'payTax.nav', icon: Scale },
+  { href: '/platform/trust', key: 'trust.nav', icon: ShieldCheck },
 ] as const;
+/** Phone tab bar: these four, then More for the rest. */
+const PHONE_MAIN: string[] = ['/platform', '/platform/billing', '/platform/enquiries', '/platform/trust'];
 
 function SignedIn({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
@@ -38,7 +43,14 @@ function SignedIn({ children }: { children: ReactNode }) {
   const path = pathname.replace(/\/$/, '').replace(/^.*?(\/platform)/, '$1');
   const active = (n: (typeof NAV)[number]) => ('exact' in n && n.exact ? path === n.href || path.startsWith('/platform/city') : path === n.href || path.startsWith(`${n.href}/`));
   const signOut = () => void papi('/auth/logout', { method: 'POST' }).finally(() => router.replace('/platform/login'));
-  const destinations: Destination[] = [...NAV.map((n) => ({ href: n.href, label: t(n.key), group: t('platform.badge'), icon: n.icon })), { href: '/platform/account', label: t('platform.account'), group: t('platform.badge'), icon: KeyRound }];
+  const destinations: Destination[] = [
+    ...NAV.map((n) => ({ href: n.href, label: t(n.key), group: t('platform.badge'), icon: n.icon })),
+    ...TRUST_SECTIONS.slice(1).map((s) => ({ href: s.href, label: `${t('trust.nav')} › ${t(`trust.section.${s.key}`)}`, group: t('trust.nav'), icon: ShieldCheck })),
+    { href: '/platform/account', label: t('platform.account'), group: t('platform.badge'), icon: KeyRound },
+  ];
+  const [more, setMore] = useState(false);
+  const moreOn = NAV.some((n) => !PHONE_MAIN.includes(n.href) && active(n));
+  const inTrust = path === '/platform/trust' || path.startsWith('/platform/trust/');
   return (
     <div className="min-h-screen bg-page md:grid md:grid-cols-[16.5rem_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-screen flex-col border-r border-line bg-panel md:flex print:hidden">
@@ -54,10 +66,25 @@ function SignedIn({ children }: { children: ReactNode }) {
             {NAV.map((n) => {
               const on = active(n);
               return (
-                <Link key={n.href} href={n.href} aria-current={on ? 'page' : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-small font-semibold transition-colors ${on ? 'bg-brand/10 text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>
-                  <n.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  {t(n.key)}
-                </Link>
+                <div key={n.href}>
+                  <Link href={n.href} aria-current={on && !(n.href === '/platform/trust' && path !== n.href) ? 'page' : undefined} className={`flex items-center gap-3 rounded-xl px-3 py-2 text-small font-semibold transition-colors ${on ? 'bg-brand/10 text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>
+                    <n.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                    {t(n.key)}
+                  </Link>
+                  {/* Trust's own sections, listed under it while you're in it. */}
+                  {n.href === '/platform/trust' && inTrust ? (
+                    <ul className="mb-1 ml-[1.375rem] mt-0.5 grid gap-0.5 border-l border-line pl-3">
+                      {TRUST_SECTIONS.slice(1).map((s) => {
+                        const here = path === s.href || path.startsWith(`${s.href}/`);
+                        return (
+                          <li key={s.href}>
+                            <Link href={s.href} aria-current={here ? 'page' : undefined} className={`block rounded-lg px-2 py-1.5 text-small ${here ? 'font-semibold text-brand-text' : 'text-muted hover:bg-surface hover:text-ink'}`}>{t(`trust.section.${s.key}`)}</Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                </div>
               );
             })}
           </div>
@@ -98,8 +125,8 @@ function SignedIn({ children }: { children: ReactNode }) {
 
       {/* Phone: every console page one tap away. */}
       <nav aria-label={t('platform.badge')} className="fh-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">
-        <ul className="grid grid-cols-6">
-          {NAV.map((n) => {
+        <ul className="grid grid-cols-5">
+          {PHONE_MAIN.map((href) => NAV.find((n) => n.href === href)!).map((n) => {
             const on = active(n);
             return (
               <li key={n.href}>
@@ -110,8 +137,26 @@ function SignedIn({ children }: { children: ReactNode }) {
               </li>
             );
           })}
+          <li>
+            {/* The less-used pages, one tap away in a sheet. */}
+            <button type="button" onClick={() => setMore(true)} aria-haspopup="dialog" className={`flex w-full flex-col items-center gap-1 px-1 py-2 text-[0.6875rem] font-semibold ${moreOn ? 'text-brand-text' : 'text-muted'}`}>
+              <span className={`grid h-7 w-12 place-items-center rounded-full ${moreOn ? 'bg-brand/10' : ''}`}><MoreHorizontal className="h-5 w-5" aria-hidden="true" /></span>
+              <span className="max-w-full truncate">{t('nav.more')}</span>
+            </button>
+          </li>
         </ul>
       </nav>
+      <Dialog open={more} onClose={() => setMore(false)} title={t('nav.more')} closeLabel={t('common.close')}>
+        <ul className="grid gap-1">
+          {NAV.filter((n) => !PHONE_MAIN.includes(n.href)).map((n) => (
+            <li key={n.href}>
+              <Link href={n.href} onClick={() => setMore(false)} aria-current={active(n) ? 'page' : undefined} className="flex min-h-[48px] items-center gap-3 rounded-xl px-3 text-body-strong hover:bg-surface aria-[current=page]:text-brand-text">
+                <n.icon className="h-5 w-5 text-muted" aria-hidden="true" />{t(n.key)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Dialog>
       <PasskeyPrompt userId={me.data?.id} list={() => papi<unknown[]>('/passkeys')} add={platformAddPasskey} />
     </div>
   );
