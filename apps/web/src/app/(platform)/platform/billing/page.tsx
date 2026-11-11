@@ -79,11 +79,11 @@ export default function BillingPage() {
           ) : null}
         </div>
       ) : null}
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label={t('billing.atAGlance')}>
+      <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label={t('billing.atAGlance')}>
         {!s
           ? Array.from({ length: 4 }, (_, i) => <div key={i} className="h-24 animate-pulse rounded-xl2 bg-surface" />)
           : tiles.map((x) => (
-              <StatTile key={x.label} label={x.label} value={x.value} hint={x.hint} tone={x.danger ? 'danger' : undefined} />
+              <StatTile key={x.label} className="max-sm:p-4" label={x.label} value={x.value} hint={x.hint} tone={x.danger ? 'danger' : undefined} />
             ))}
       </section>
 
