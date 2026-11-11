@@ -24,7 +24,9 @@ test.describe('schedule builder on a phone', () => {
     await signInAs(page, 'AQUATIC_SUPERVISOR');
     await open(page, '/manage/schedule');
     await page.getByRole('radio', { name: 'Week', exact: true }).tap();
-    await page.getByRole('button', { name: /^People \(\d+\)$/ }).tap();
+    // On phones the people list sits in the More actions sheet with the less-used actions.
+    await page.getByRole('button', { name: 'More actions' }).tap();
+    await page.locator('dialog[open]').getByRole('button', { name: /^People \(\d+\)$/ }).tap();
     const person = page.locator('dialog[open] [role=listitem] button[aria-pressed]').first();
     const name = ((await person.getAttribute('aria-label')) ?? '').split('.')[0]!;
     await person.tap();
