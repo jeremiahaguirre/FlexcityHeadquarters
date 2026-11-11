@@ -10,6 +10,7 @@
  * - Domain events (lib/outbox.ts): delivered ones 7 days (their contents are cleared on delivery),
  *   dead ones 30 days (not configurable). Pending ones are never removed.
  * - Webhook delivery records (services/integrations/webhooks.ts): 30 days once finished.
+ * - Public API Idempotency-Key records (services/integrations/idempotency.ts): 24 hours.
  * The audit log is kept for the life of the account (it's append-only, and part of the
  * organization's records); offboarding deletes it with everything else.
  */
@@ -48,6 +49,7 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const old = ago(now, 30);
   const ev = await tx.eventOutbox.deleteMany({ where: { OR: [{ status: 'DELIVERED', deliveredAt: { lt: ago(now, EVENT_DELIVERED_DAYS) } }, { status: 'DEAD', createdAt: { lt: old } }] } });
   const wh = await tx.webhookDelivery.deleteMany({ where: { status: { not: 'PENDING' }, createdAt: { lt: old } } });
+  const ik = await tx.apiIdempotencyKey.deleteMany({ where: { expiresAt: { lt: now } } });
   const s = await tx.refreshToken.deleteMany({ where: { OR: [{ expiresAt: { lt: old } }, { revokedAt: { lt: old } }] } });
   const l = await tx.authToken.deleteMany({ where: { OR: [{ expiresAt: { lt: old } }, { usedAt: { lt: old } }] } });
   const g = await tx.loneWorkSession.updateMany({ where: { status: { not: 'ACTIVE' }, lastCheckInAt: { lt: old }, OR: [{ latitude: { not: null } }, { longitude: { not: null } }] }, data: { latitude: null, longitude: null } });
@@ -57,7 +59,7 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const year = ago(now, APPLICATION_DAYS);
   const ap = await tx.jobApplication.deleteMany({ where: { status: { not: 'HIRED' }, updatedAt: { lt: year } } });
   await tx.jobApplication.updateMany({ where: { status: 'HIRED', updatedAt: { lt: year }, NOT: { ciphertext: null } }, data: { ciphertext: null, iv: null, authTag: null, wrappedKey: null, kekId: null, message: null } });
-  return n.count + e.count + ev.count + wh.count + s.count + l.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
+  return n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
 }
 
 /** Families with no registration or purchase since `before`: their personal details go; their payment records stay. */

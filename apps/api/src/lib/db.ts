@@ -83,17 +83,31 @@ export async function audit(
   tx: Tx,
   entry: { tenantId: string; actorId: string | null; action: string; entity: string; entityId?: string; before?: unknown; after?: unknown },
 ): Promise<void> {
+  // A public API write: the key is the actor, whichever service records the change.
+  const key = apiKeyActors.get(tx);
+  const after = key ? { ...(entry.after && typeof entry.after === 'object' && !Array.isArray(entry.after) ? entry.after : entry.after === undefined ? {} : { value: entry.after }), actor: `API key ${key.name}` } : entry.after;
   await tx.auditLog.create({
     data: {
       tenantId: entry.tenantId,
-      actorId: entry.actorId,
+      actorId: key ? null : entry.actorId,
+      apiKeyId: key?.id ?? null,
       action: entry.action,
       entity: entry.entity,
       entityId: entry.entityId,
       before: entry.before === undefined ? undefined : (JSON.parse(JSON.stringify(entry.before)) as Prisma.InputJsonValue),
-      after: entry.after === undefined ? undefined : (JSON.parse(JSON.stringify(entry.after)) as Prisma.InputJsonValue),
+      after: after === undefined ? undefined : (JSON.parse(JSON.stringify(after)) as Prisma.InputJsonValue),
     },
   });
+}
+
+const apiKeyActors = new WeakMap<object, { id: string; name: string }>();
+
+/**
+ * Everything audit() records in this withTenant() transaction names the organization API key as
+ * its actor (apiKeyId, "API key <name>"), not a person: for the public API's writes.
+ */
+export function actAsApiKey(tx: Tx, key: { id: string; name: string }): void {
+  apiKeyActors.set(tx, key);
 }
 
 /** Every tenant id (via a SECURITY DEFINER function), for background jobs. */

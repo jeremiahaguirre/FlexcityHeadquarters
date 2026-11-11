@@ -4,17 +4,24 @@
  * - A key looks like `fh_live_ab12cd34_<43 random characters>`. The first part (the prefix) tells
  *   keys apart on screens and in logs; the rest is the secret. Only a SHA-256 of the whole key is
  *   stored, and the key is shown once, when it's made or rotated.
- * - Each key has scopes (read-only in this version), an optional IP allow list and an optional
- *   expiry. Revoking is immediate; rotating makes a new key and lets the old one work for a day.
- * - Someone can only give a key the access they hold themselves (SCOPE_PERMISSIONS).
+ * - Each key has scopes, an optional IP allow list and an optional expiry. Read scopes are the
+ *   default; write scopes ("Can change data") are opt-in per key. Revoking is immediate; rotating
+ *   makes a new key and lets the old one work for a day.
+ * - Someone can only give a key the access they hold themselves (SCOPE_PERMISSIONS), and write
+ *   scopes only with access to the whole organization (keys are organization-wide). A key's writes
+ *   also stop when the person who made it leaves or loses that permission.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { BlockList, isIP } from 'node:net';
 import type { Permission } from '../../auth/permissions.js';
 import type { FeatureKey } from '../platform/features.js';
 
-export const SCOPES = ['people:read', 'departments:read', 'positions:read', 'facilities:read', 'schedule:read', 'timesheets:read', 'timeoff:read', 'payroll:read'] as const;
+export const READ_SCOPES = ['people:read', 'departments:read', 'positions:read', 'facilities:read', 'schedule:read', 'timesheets:read', 'timeoff:read', 'payroll:read'] as const;
+/** Scopes that change data: never given unless asked for. */
+export const WRITE_SCOPES = ['people:write', 'departments:write', 'positions:write', 'timeoff:write', 'timeoff:approve'] as const;
+export const SCOPES = [...READ_SCOPES, ...WRITE_SCOPES] as const;
 export type ApiScope = (typeof SCOPES)[number];
+export const isWriteScope = (s: string) => (WRITE_SCOPES as readonly string[]).includes(s);
 
 /** What the person making the key must hold to give it each scope (any one). */
 export const SCOPE_PERMISSIONS: Record<ApiScope, Permission[]> = {
@@ -26,6 +33,12 @@ export const SCOPE_PERMISSIONS: Record<ApiScope, Permission[]> = {
   'timesheets:read': ['timeclock.review'],
   'timeoff:read': ['leave.manage', 'timeoff.approve'],
   'payroll:read': ['payroll.export'],
+  'people:write': ['users.write'],
+  'departments:write': ['tenant.configure'],
+  'positions:write': ['positions.manage'],
+  'timeoff:write': ['leave.manage', 'timeoff.approve'],
+  // Time off sent in already approved (an HRIS that approves leave itself).
+  'timeoff:approve': ['timeoff.approve'],
 };
 
 /** A scope's data is unavailable while its feature is switched off for the organization. */
@@ -33,6 +46,8 @@ export const SCOPE_FEATURES: Partial<Record<ApiScope, FeatureKey>> = {
   'timesheets:read': 'timeclock',
   'timeoff:read': 'timeOff',
   'payroll:read': 'payroll',
+  'timeoff:write': 'timeOff',
+  'timeoff:approve': 'timeOff',
 };
 
 export const KEY_PREFIX = 'fh_live_';

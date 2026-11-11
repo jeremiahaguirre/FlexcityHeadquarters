@@ -72,12 +72,16 @@ async function setManagers(tx: Tx, tenantId: string, departmentId: string, wante
   if (add.length) await tx.departmentManager.createMany({ data: add.map((userId) => ({ tenantId, departmentId, userId })) });
 }
 
-export async function saveDepartment(tx: Tx, tenantId: string, id: string | null, body: z.infer<typeof departmentBody>) {
+/** `extra.externalId`: the organization's own system's id (public API); left out, it stays as it is. */
+export async function saveDepartment(tx: Tx, tenantId: string, id: string | null, body: z.infer<typeof departmentBody>, extra: { externalId?: string | null } = {}) {
   const clash = await tx.department.findFirst({ where: { name: { equals: body.name, mode: 'insensitive' }, ...(id ? { id: { not: id } } : {}) } });
-  if (clash) throw conflict('DEPARTMENT_EXISTS', 'There is already a department with that name.');
+  if (clash) throw conflict('DEPARTMENT_EXISTS', 'There is already a department with that name.', { field: 'name' });
+  if (extra.externalId && (await tx.department.findFirst({ where: { externalId: extra.externalId, ...(id ? { id: { not: id } } : {}) }, select: { id: true } }))) {
+    throw conflict('EXTERNAL_ID_TAKEN', 'Another department already has this external id.', { field: 'external_id' });
+  }
   const positionIds = [...new Set(body.positionIds)];
   if ((await tx.position.count({ where: { id: { in: positionIds } } })) !== positionIds.length) throw new HttpError(400, 'UNKNOWN_POSITION', 'Unknown position.');
-  const data = { name: body.name, nameFr: body.nameFr ?? null, aquatic: body.aquatic };
+  const data = { name: body.name, nameFr: body.nameFr ?? null, aquatic: body.aquatic, ...(extra.externalId !== undefined ? { externalId: extra.externalId } : {}) };
   if (id && !(await tx.department.findUnique({ where: { id } }))) throw notFound('Department');
   const d = id ? await tx.department.update({ where: { id }, data }) : await tx.department.create({ data: { ...data, tenantId } });
   // A position belongs to one department: listing it here moves it from any other.

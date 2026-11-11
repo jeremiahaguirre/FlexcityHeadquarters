@@ -3,7 +3,8 @@
  *
  * Administrators with tenant.configure manage them; making or rotating a key or a signing secret
  * needs a recent sign-in, and the secret is in that one answer only. A key can only be given
- * scopes whose data its maker can see. Plans without the option can look, not add
+ * scopes whose data its maker can see; write scopes ("Can change data") only by someone with that
+ * power across the whole organization. Plans without the option can look, not add
  * (403 PLAN_REQUIRED). Everything is in the audit log; secrets never are.
  */
 import { Router } from 'express';
@@ -14,7 +15,7 @@ import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, notFound } from '../lib/errors.js';
 import { hasModule } from '../services/billing/entitlements.js';
-import { type ApiScope, SCOPES, SCOPE_PERMISSIONS, newKey, parseIpEntry } from '../services/integrations/apiKeys.js';
+import { type ApiScope, SCOPES, SCOPE_PERMISSIONS, isWriteScope, newKey, parseIpEntry } from '../services/integrations/apiKeys.js';
 import { WEBHOOK_EVENT_TYPES, attemptDelivery, checkWebhookUrl, newSigningSecret, redeliver, sealSecret, sendTestEvent } from '../services/integrations/webhooks.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
@@ -32,6 +33,8 @@ const keyView = (k: ApiKey) => ({
   name: k.name,
   prefix: k.prefix,
   scopes: k.scopes,
+  /** It has a write scope: it can change data. */
+  write: k.scopes.some(isWriteScope),
   allowedIps: k.allowedIps,
   expiresAt: k.expiresAt,
   lastUsedAt: k.lastUsedAt,
@@ -72,7 +75,8 @@ const deliveryView = (d: WebhookDelivery) => ({
   nextAttemptAt: d.status === 'PENDING' ? d.nextAttemptAt : null,
 });
 
-const mayGrant = (perms: Set<Permission>, scope: ApiScope) => SCOPE_PERMISSIONS[scope].some((p) => perms.has(p));
+/** The scope's data must be the maker's own; a write scope also needs access to the whole organization (keys are organization-wide). */
+const mayGrant = (a: { permissions: Set<Permission>; scope: unknown }, scope: ApiScope) => SCOPE_PERMISSIONS[scope].some((p) => a.permissions.has(p)) && (!isWriteScope(scope) || !a.scope);
 
 integrationsRouter.get(
   '/integrations',
@@ -82,7 +86,7 @@ integrationsRouter.get(
     const [keys, endpoints] = await withTenant(a.tenantId, (tx) => Promise.all([tx.apiKey.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }), tx.webhookEndpoint.findMany({ orderBy: { createdAt: 'asc' } })]));
     res.json({
       inPlan,
-      scopes: SCOPES.map((s) => ({ scope: s, allowed: mayGrant(a.permissions, s) })),
+      scopes: SCOPES.map((s) => ({ scope: s, allowed: mayGrant(a, s), write: isWriteScope(s) })),
       events: WEBHOOK_EVENT_TYPES,
       keys: keys.map(keyView),
       webhooks: endpoints.map(endpointView),
@@ -120,7 +124,7 @@ integrationsRouter.post(
     const a = authOf(req);
     const b = keyBody.parse(req.body);
     const scopes = [...new Set(b.scopes)];
-    const refused = scopes.filter((s) => !mayGrant(a.permissions, s));
+    const refused = scopes.filter((s) => !mayGrant(a, s));
     if (refused.length) throw new HttpError(403, 'SCOPE_NOT_YOURS', 'You can only give a key access to data you can see yourself.', { scopes: refused });
     const expiresAt = b.expiresAt ? new Date(b.expiresAt) : null;
     if (expiresAt && expiresAt <= new Date()) throw badRequest('Choose an expiry date in the future.');
@@ -128,7 +132,7 @@ integrationsRouter.post(
     const row = await withTenant(a.tenantId, async (tx) => {
       if ((await tx.apiKey.count({ where: { revokedAt: null } })) >= MAX_KEYS) throw new HttpError(409, 'TOO_MANY_KEYS', `An organization can have ${MAX_KEYS} keys. Revoke one you no longer use.`);
       const row = await tx.apiKey.create({ data: { tenantId: a.tenantId, name: b.name, prefix: k.prefix, keyHash: k.hash, scopes, allowedIps: b.allowedIps, expiresAt, createdById: a.userId } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'api_key.create', entity: 'ApiKey', entityId: row.id, after: { name: b.name, prefix: k.prefix, scopes, allowedIps: b.allowedIps, expiresAt } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'api_key.create', entity: 'ApiKey', entityId: row.id, after: { name: b.name, prefix: k.prefix, scopes, write: scopes.some(isWriteScope), allowedIps: b.allowedIps, expiresAt } });
       return row;
     });
     res.status(201).json({ key: k.key, apiKey: keyView(row) });
@@ -147,8 +151,8 @@ integrationsRouter.post(
     const row = await withTenant(a.tenantId, async (tx) => {
       const old = await tx.apiKey.findUnique({ where: { id } });
       if (!old || old.revokedAt || (old.expiresAt && old.expiresAt <= new Date())) throw notFound('API key');
-      const refused = old.scopes.filter((s) => (SCOPES as readonly string[]).includes(s) && !mayGrant(a.permissions, s as ApiScope));
-      if (refused.length) throw new HttpError(403, 'SCOPE_NOT_YOURS', 'This key reads data you can’t see yourself. Ask someone who can to rotate it.', { scopes: refused });
+      const refused = old.scopes.filter((s) => (SCOPES as readonly string[]).includes(s) && !mayGrant(a, s as ApiScope));
+      if (refused.length) throw new HttpError(403, 'SCOPE_NOT_YOURS', 'This key has access you don’t hold yourself. Ask someone who can to rotate it.', { scopes: refused });
       const graceEnd = new Date(Date.now() + ROTATION_OVERLAP_MS);
       await tx.apiKey.update({ where: { id }, data: { expiresAt: old.expiresAt && old.expiresAt < graceEnd ? old.expiresAt : graceEnd } });
       const row = await tx.apiKey.create({ data: { tenantId: a.tenantId, name: old.name, prefix: k.prefix, keyHash: k.hash, scopes: old.scopes, allowedIps: old.allowedIps, expiresAt: old.expiresAt, rateLimitPerMinute: old.rateLimitPerMinute, createdById: a.userId, rotatedFromId: old.id } });
