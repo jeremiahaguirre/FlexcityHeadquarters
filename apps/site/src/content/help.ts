@@ -60,14 +60,30 @@ export const ARTICLES: Article[] = [
     en: {
       title: 'Clocking in and out',
       summary: 'Slide to clock in for your shift, and back out at the end.',
-      steps: ['Open Today, or tap Clock in at the top of any screen.', 'Slide the button to the right. If your shift starts within 30 minutes or has started, you’re clocked into it.', 'No shift right now? Choose the facility and position, then clock in.', 'At the end, slide to clock out. Your supervisor reviews punches before payroll.', 'No signal? Punch anyway: it’s saved on your phone and sent by itself when you’re back online. Your supervisor sees it was recorded offline. Don’t sign out until it’s sent.'],
+      steps: ['Open Today, or tap Clock in at the top of any screen.', 'Slide the button to the right. If your shift starts within 30 minutes or has started, you’re clocked into it.', 'No shift right now? Choose the facility and position, then clock in.', 'At the end, slide to clock out. Your supervisor reviews punches before payroll.', 'No signal? Punch anyway: it’s saved on your phone and sent by itself when you’re back online. Your supervisor sees it was recorded offline. Don’t sign out until it’s sent (see Clocking in without signal).'],
       tip: 'Your location is checked only at the moment you punch, to confirm you’re on site. You are never tracked.',
     },
     fr: {
       title: 'Pointer l’arrivée et la sortie',
       summary: 'Glissez pour pointer votre quart, puis pour pointer la sortie.',
-      steps: ['Ouvrez Aujourd’hui, ou touchez Pointer en haut de n’importe quel écran.', 'Glissez le bouton vers la droite. Si votre quart commence dans 30 minutes ou est en cours, vous y êtes pointé.', 'Pas de quart en ce moment? Choisissez l’installation et le poste, puis pointez.', 'À la fin, glissez pour pointer la sortie. Votre superviseur révise les pointages avant la paie.', 'Pas de réseau? Pointez quand même : le pointage est enregistré sur votre téléphone et envoyé de lui-même à votre retour en ligne. Votre superviseur voit qu’il a été enregistré hors ligne. Ne vous déconnectez pas avant l’envoi.'],
+      steps: ['Ouvrez Aujourd’hui, ou touchez Pointer en haut de n’importe quel écran.', 'Glissez le bouton vers la droite. Si votre quart commence dans 30 minutes ou est en cours, vous y êtes pointé.', 'Pas de quart en ce moment? Choisissez l’installation et le poste, puis pointez.', 'À la fin, glissez pour pointer la sortie. Votre superviseur révise les pointages avant la paie.', 'Pas de réseau? Pointez quand même : le pointage est enregistré sur votre téléphone et envoyé de lui-même à votre retour en ligne. Votre superviseur voit qu’il a été enregistré hors ligne. Ne vous déconnectez pas avant l’envoi (voir Pointer sans réseau).'],
       tip: 'Votre position est vérifiée seulement au moment du pointage, pour confirmer que vous êtes sur place. Vous n’êtes jamais suivi.',
+    },
+  },
+  {
+    slug: 'clock-in-without-signal',
+    audience: 'staff',
+    en: {
+      title: 'Clocking in without signal',
+      summary: 'Punch in and out at a rink, a works yard or an outdoor site with no connection. The punch waits on your phone and sends itself.',
+      steps: ['Slide to clock in or out as usual. With no connection you’ll see Saved on this phone, with the time of your punch.', 'Stay signed in. Saved punches send by themselves, in order, as soon as your phone is back online. You can also tap Try sending now.', 'When they’re sent, a short message confirms it. Your supervisor sees the punch marked Recorded offline, with the time it happened.', 'If a punch isn’t accepted (for example, it’s more than 3 days old), it stays on screen with the reason. Tap Send details to my supervisor so they can add the time.'],
+      tip: 'Signing out deletes punches that haven’t been sent from that phone, so the app asks first. Your saved punches are yours: someone else signing in on the same phone never sees or sends them.',
+    },
+    fr: {
+      title: 'Pointer sans réseau',
+      summary: 'Pointez à l’aréna, à la cour des travaux publics ou à l’extérieur sans connexion. Le pointage attend sur votre téléphone et s’envoie de lui-même.',
+      steps: ['Glissez pour pointer l’arrivée ou le départ comme d’habitude. Sans connexion, vous verrez Enregistré sur ce téléphone, avec l’heure du pointage.', 'Restez connecté. Les pointages enregistrés s’envoient d’eux-mêmes, dans l’ordre, dès que votre téléphone retrouve le réseau. Vous pouvez aussi toucher Essayer d’envoyer maintenant.', 'Une fois envoyés, un court message le confirme. Votre superviseur voit le pointage marqué Enregistré hors ligne, avec l’heure où il a eu lieu.', 'Si un pointage n’est pas accepté (par exemple s’il date de plus de 3 jours), il reste à l’écran avec la raison. Touchez Envoyer les détails à mon superviseur pour qu’il ajoute les heures.'],
+      tip: 'Se déconnecter supprime du téléphone les pointages pas encore envoyés : l’application vous le demande d’abord. Vos pointages enregistrés sont les vôtres : une autre personne qui se connecte sur le même téléphone ne les voit ni ne les envoie jamais.',
     },
   },
   {
@@ -158,6 +174,22 @@ export const ARTICLES: Article[] = [
       title: 'Préparer et publier l’horaire',
       summary: 'Ébauchez la semaine, remplissez-la avec l’assistant, puis publiez.',
       steps: ['Ouvrez Préparation d’horaire et choisissez l’installation et la semaine.', 'Ajoutez des quarts chaque jour, ou copiez une semaine passée.', 'Touchez Remplir avec l’assistant : il propose des personnes et justifie chaque choix selon les règles.', 'Publiez. Le personnel est avisé et les quarts ouverts vont au babillard.'],
+    },
+  },
+  {
+    slug: 'forecast-weather-and-events',
+    audience: 'leads',
+    en: {
+      title: 'Weather and special events in the forecast',
+      summary: 'Let the forecast account for the weather, holidays and your own events, and see why each day moved.',
+      steps: ['In Settings › Facilities, give each facility its location (or use Fill in from a city centre), whether it’s indoor or outdoor, and its kind (pool, beach, park, arena). The nearest Environment Canada forecast is used, or enter a site code.', 'Open Forecast and choose the facility and week. Each day shows its weather and why the figures changed, like “+18% hot and sunny (31 °C)”.', 'Under Special events, tap Add event for a tournament, a swim meet or a festival: this facility or every facility in the city, the dates (and times if needed), and extra people or a percentage. Tick Every year for yearly events.', 'Statutory holidays and the breaks in your school calendar are included by themselves.', 'To compare, switch Figures shown to Without adjustments. Draft shifts use the figures with weather and events.'],
+      tip: 'Weather forecasts reach about six days ahead. Until a facility has its own history, the weather’s effect is a rule of thumb for its kind; then it’s learned from your headcounts. If the weather can’t be fetched, the forecast still works and says so.',
+    },
+    fr: {
+      title: 'La météo et les événements spéciaux dans les prévisions',
+      summary: 'Faites tenir compte de la météo, des jours fériés et de vos événements, et voyez pourquoi chaque jour a changé.',
+      steps: ['Dans Paramètres › Installations, indiquez pour chaque installation son emplacement (ou utilisez Remplir à partir d’un centre-ville), si elle est intérieure ou extérieure, et son type (piscine, plage, parc, aréna). Les prévisions d’Environnement Canada les plus proches sont utilisées, ou entrez un code de lieu.', 'Ouvrez Prévisions et choisissez l’installation et la semaine. Chaque jour affiche sa météo et pourquoi les chiffres ont changé, comme « +18 % chaud et ensoleillé (31 °C) ».', 'Sous Événements spéciaux, touchez Ajouter un événement pour un tournoi, une compétition de natation ou un festival : cette installation ou toutes celles de la ville, les dates (et les heures au besoin), et des personnes de plus ou un pourcentage. Cochez Chaque année pour un événement annuel.', 'Les jours fériés et les congés de votre calendrier scolaire sont inclus d’eux-mêmes.', 'Pour comparer, passez Chiffres affichés à Sans ajustements. Les quarts provisoires utilisent les chiffres avec météo et événements.'],
+      tip: 'Les prévisions météo couvrent environ six jours. Tant qu’une installation n’a pas son propre historique, l’effet de la météo suit une règle générale selon son type; il est ensuite appris de vos dénombrements. Si la météo n’est pas disponible, les prévisions fonctionnent quand même et l’indiquent.',
     },
   },
   {
@@ -282,12 +314,44 @@ export const ARTICLES: Article[] = [
     en: {
       title: 'Importing staff from a spreadsheet',
       summary: 'Upload a CSV, check every row, then import.',
-      steps: ['Add your positions first so they can be matched.', 'Download the template, or export your HR list as CSV.', 'Upload it: every row is checked and problems are explained line by line.', 'Import the ready rows, with or without invitation emails. Fix the rest and upload again; nobody is added twice.'],
+      steps: ['Add your positions first so they can be matched.', 'Download the template, or export your HR list as CSV. The manager column (their manager’s email) is optional.', 'Upload it: every row is checked and problems are explained line by line.', 'Import the ready rows, with or without invitation emails. Fix the rest and upload again; nobody is added twice.'],
     },
     fr: {
       title: 'Importer le personnel d’un chiffrier',
       summary: 'Téléversez un CSV, vérifiez chaque ligne, puis importez.',
-      steps: ['Ajoutez d’abord vos postes pour qu’ils soient reconnus.', 'Téléchargez le modèle, ou exportez votre liste RH en CSV.', 'Téléversez-le : chaque ligne est vérifiée et les problèmes expliqués.', 'Importez les lignes prêtes, avec ou sans courriel d’invitation. Corrigez les autres et téléversez de nouveau; personne n’est ajouté deux fois.'],
+      steps: ['Ajoutez d’abord vos postes pour qu’ils soient reconnus.', 'Téléchargez le modèle, ou exportez votre liste RH en CSV. La colonne manager (le courriel du gestionnaire) est facultative.', 'Téléversez-le : chaque ligne est vérifiée et les problèmes expliqués.', 'Importez les lignes prêtes, avec ou sans courriel d’invitation. Corrigez les autres et téléversez de nouveau; personne n’est ajouté deux fois.'],
+    },
+  },
+  {
+    slug: 'managers-and-org-chart',
+    audience: 'admin',
+    en: {
+      title: 'Setting a person’s manager and the org chart',
+      summary: 'Choose who each person reports to, so their requests reach the right manager first.',
+      steps: ['Open Staff and choose a person. Next to Reports to, tap Change.', 'Pick their manager, or leave it on their department’s manager (the default) so they follow the department.', 'For several people at once, tap Set manager on Staff, choose the people and who they report to. Importing staff? Fill in the manager column.', 'Open Org chart to see who reports to whom. Search by name, position or department, and open or close each team.', 'When someone leaves, offboarding asks who their people report to now.'],
+      tip: 'Time off, expenses, trades and overtime claims go to the manager first, and My team in Approvals shows only their people. Setting a manager never gives them access they didn’t already have. Nobody can report to someone on their own team.',
+    },
+    fr: {
+      title: 'Désigner le gestionnaire d’une personne et l’organigramme',
+      summary: 'Choisissez de qui relève chaque personne, pour que ses demandes aillent d’abord au bon gestionnaire.',
+      steps: ['Ouvrez Personnel et choisissez une personne. À côté de Relève de, touchez Modifier.', 'Choisissez son gestionnaire, ou laissez le gestionnaire de son service (par défaut) pour qu’elle suive le service.', 'Pour plusieurs personnes à la fois, touchez Désigner un gestionnaire dans Personnel, puis choisissez les personnes et de qui elles relèvent. Vous importez du personnel? Remplissez la colonne manager.', 'Ouvrez Organigramme pour voir qui relève de qui. Cherchez par nom, poste ou service, et dépliez ou repliez chaque équipe.', 'Quand une personne part, le départ demande de qui relèvent maintenant les membres de son équipe.'],
+      tip: 'Les congés, les dépenses, les échanges et les heures supplémentaires vont d’abord au gestionnaire, et Mon équipe dans Approbations n’affiche que son équipe. Désigner un gestionnaire ne lui donne jamais d’accès qu’il n’avait pas déjà. Personne ne peut relever d’une personne de sa propre équipe.',
+    },
+  },
+  {
+    slug: 'api-keys-and-webhooks',
+    audience: 'admin',
+    en: {
+      title: 'API keys and webhooks for IT',
+      summary: 'Let your ERP, HRIS or GIS read your data with its own key, and be told when something changes.',
+      steps: ['Open Settings › Integrations. It needs the API and webhooks option, standard in Multi-complex and Enterprise.', 'Under API keys, tap New key. Name it after the system that will use it, choose what it can read, and if you like limit it to your addresses or give it an expiry date.', 'Copy the key when it’s shown: it appears only once. Your IT team keeps it in their secret store and sends it as a bearer token.', 'To replace a key, tap Rotate: the old one keeps working for one more day. Revoke stops a key at once.', 'Under Webhooks, tap New webhook, enter an https address and the events to send, and copy the signing secret. Send test event checks your system answers.', 'Recent deliveries shows what was sent and how your system answered. Failed messages are retried for about two days; Send again resends one.'],
+      tip: 'The API is read-only for now and described at /api/v1/openapi.json. Webhook messages hold ids only and carry an FH-Signature header (HMAC-SHA256): check it before trusting a message. A webhook that keeps failing is turned off and administrators are told. Every request is in your audit log.',
+    },
+    fr: {
+      title: 'Clés d’API et webhooks pour les TI',
+      summary: 'Permettez à votre ERP, SIRH ou SIG de lire vos données avec sa propre clé, et d’être avisé quand quelque chose change.',
+      steps: ['Ouvrez Paramètres › Intégrations. Il faut l’option API et webhooks, incluse dans Multicomplexe et Entreprise.', 'Sous Clés d’API, touchez Nouvelle clé. Nommez-la d’après le système qui l’utilisera, choisissez ce qu’elle peut lire et, au besoin, limitez-la à vos adresses ou donnez-lui une date d’expiration.', 'Copiez la clé quand elle s’affiche : elle n’apparaît qu’une fois. Votre équipe des TI la garde dans son coffre à secrets et l’envoie comme jeton porteur (bearer).', 'Pour remplacer une clé, touchez Remplacer : l’ancienne fonctionne encore une journée. Révoquer arrête une clé sur-le-champ.', 'Sous Webhooks, touchez Nouveau webhook, entrez une adresse https et les événements à envoyer, et copiez le secret de signature. Envoyer un événement test vérifie que votre système répond.', 'Livraisons récentes montre ce qui a été envoyé et la réponse de votre système. Les messages en échec sont réessayés pendant environ deux jours; Renvoyer en envoie un de nouveau.'],
+      tip: 'L’API est en lecture seule pour l’instant et décrite à /api/v1/openapi.json. Les messages des webhooks ne contiennent que des identifiants et portent un en-tête FH-Signature (HMAC-SHA256) : vérifiez-le avant de vous fier à un message. Un webhook qui échoue sans cesse est désactivé et les administrateurs en sont avisés. Chaque requête figure à votre journal d’audit.',
     },
   },
   {
