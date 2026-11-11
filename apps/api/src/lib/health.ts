@@ -3,7 +3,9 @@
  *
  *  - database: `SELECT 1` answers within READY_DB_TIMEOUT_MS. Failing it always means 503.
  *  - outbox: the oldest email or text still waiting to go out (outbox_backlog() in db/rls.sql:
- *    counts and an age across organizations, no addresses or ids).
+ *    counts and an age across organizations, no addresses or ids). Safety texts and calls
+ *    (channel "sms_safety", also counted under "sms") warn after SAFETY_SMS_ALERT_S (2 min), the
+ *    rest after READY_OUTBOX_MAX_AGE_S; `oldestSafetyS` is the oldest unsent safety message's age.
  *  - worker: the background worker's last heartbeat. The worker is its own process; after each
  *    round of jobs it sets its database connection's application_name to "fh-worker beat=<unix s>",
  *    which pg_stat_activity shows to the same role. No table, nothing to clean up, and the beat
@@ -120,9 +122,17 @@ export async function readiness(opts: { strict?: boolean } = {}): Promise<Readin
     const [b, w] = await Promise.allSettled([outboxBacklog(0), workerHeartbeatAge()]);
     if (b.status === 'fulfilled') {
       const oldest = Math.max(0, ...b.value.map((r) => (r.pending ? r.oldestAgeS : 0)));
-      const late = b.value.filter((r) => r.pending && r.oldestAgeS > cfg.READY_OUTBOX_MAX_AGE_S).map((r) => r.channel);
+      // Safety texts and calls are held to a much shorter limit than the rest.
+      const limitOf = (channel: string) => (channel === 'sms_safety' ? cfg.SAFETY_SMS_ALERT_S : cfg.READY_OUTBOX_MAX_AGE_S);
+      const late = b.value.filter((r) => r.pending && r.oldestAgeS > limitOf(r.channel));
       const counts = Object.fromEntries(b.value.map((r) => [r.channel, { pending: r.pending, failed: r.failed, oldestAgeS: r.pending ? r.oldestAgeS : 0 }]));
-      outbox = late.length ? { status: soft, reason: `${late.join(' and ')} waiting longer than ${cfg.READY_OUTBOX_MAX_AGE_S}s`, oldestAgeS: oldest, ...counts } : { status: 'ok', oldestAgeS: oldest, ...counts };
+      const reasons = [
+        ...(late.some((r) => r.channel === 'sms_safety') ? [`safety texts waiting longer than ${cfg.SAFETY_SMS_ALERT_S}s`] : []),
+        ...(late.some((r) => r.channel !== 'sms_safety') ? [`${late.filter((r) => r.channel !== 'sms_safety').map((r) => r.channel).join(' and ')} waiting longer than ${cfg.READY_OUTBOX_MAX_AGE_S}s`] : []),
+      ];
+      const safety = b.value.find((r) => r.channel === 'sms_safety');
+      const oldestSafetyS = safety?.pending ? safety.oldestAgeS : 0;
+      outbox = reasons.length ? { status: soft, reason: reasons.join('; '), oldestAgeS: oldest, oldestSafetyS, ...counts } : { status: 'ok', oldestAgeS: oldest, oldestSafetyS, ...counts };
     } else {
       outbox = { status: soft, reason: `outbox backlog ${reasonOf(b.reason)}` };
     }
