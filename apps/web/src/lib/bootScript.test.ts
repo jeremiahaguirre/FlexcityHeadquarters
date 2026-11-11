@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOOT_SCRIPT } from './bootScript';
+import { BOOT_SCRIPT, LOGO_SEEN_KEY, SCHEME_KEY } from './bootScript';
 
 describe('boot script', () => {
   it('is plain script text that runs', () => {
@@ -8,5 +8,7 @@ describe('boot script', () => {
     const store = (v: string | null) => ({ getItem: () => v });
     new Function('document', 'localStorage', 'sessionStorage', BOOT_SCRIPT)({ documentElement: el }, store('dark'), store('1'));
     expect(el.dataset).toEqual({ theme: 'dark', logoSeen: '1' });
+    expect(BOOT_SCRIPT).toContain(`'${SCHEME_KEY}'`);
+    expect(BOOT_SCRIPT).toContain(`'${LOGO_SEEN_KEY}'`);
   });
 });

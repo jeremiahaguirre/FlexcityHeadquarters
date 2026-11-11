@@ -8,6 +8,7 @@ export const SCHEME_KEY = 'fh-color-scheme';
 export const LOGO_SEEN_KEY = 'fh-logo-seen';
 
 /** A dark or light choice never flashes the other; the header logo draws in once per session. */
+// One plain literal (the keys written out; a test checks them): the production minifier mangled the
+// same script built from template literals.
 export const BOOT_SCRIPT =
-  `try{var s=localStorage.getItem('${SCHEME_KEY}');if(s==='light'||s==='dark')document.documentElement.dataset.theme=s}catch(e){}` +
-  `try{if(sessionStorage.getItem('${LOGO_SEEN_KEY}'))document.documentElement.dataset.logoSeen='1'}catch(e){}`;
+  "try{var s=localStorage.getItem('fh-color-scheme');if(s==='light'||s==='dark')document.documentElement.dataset.theme=s}catch(e){}try{if(sessionStorage.getItem('fh-logo-seen'))document.documentElement.dataset.logoSeen='1'}catch(e){}";
