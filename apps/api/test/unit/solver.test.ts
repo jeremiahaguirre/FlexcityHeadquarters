@@ -17,7 +17,7 @@ function violations(input: SolverInput, result: ReturnType<typeof solve>): strin
     const mine = ids.map((id) => bySlot.get(id)!);
     for (const s of mine) {
       const others = [...p.existingShifts, ...mine.filter((x) => x !== s).map((x) => ({ start: x.shift.start, end: x.shift.end, positionId: x.shift.positionId, facilityId: x.shift.facilityId }))];
-      const e = evaluateCandidate({ ...p, existingShifts: others }, s.shift, s.position, { rules: s.rules, payWeekStartDay: 0, requireAvailability: true });
+      const e = evaluateCandidate({ ...p, existingShifts: others }, s.shift, s.position, { rules: s.rules, payWeekStartDay: 0, requireAvailability: true, limits: { maxDailyHours: input.options.maxDailyHours, maxConsecutiveDays: input.options.maxConsecutiveDays } });
       if (!e.eligible) out.push(`${userId}@${s.id}: ${e.blocks.map((b) => b.code).join(',')}`);
       if (input.options.avoidOvertime && e.overtimeHours.gt(0)) out.push(`${userId}@${s.id}: overtime`);
       const travel = input.options.travelMinutes * 60_000;
@@ -261,3 +261,56 @@ describe('solver settings', () => {
 });
 
 void RULES;
+
+describe('solve: scheduler review fixes', () => {
+  const wide = [0, 1, 2, 3, 4, 5, 6].map((d) => ({ dayOfWeek: d, startMinute: 0, endMinute: 2880, effectiveFrom: '2026-01-01', effectiveTo: null }));
+  it('never proposes a shift longer than the max hours a day, overnight included', () => {
+    const r = solve({ slots: [slot('ov', '2026-07-07 16:00', '2026-07-08 08:00')], people: [person('a', { availability: wide })], options: options({ avoidOvertime: false, maxDailyHours: 12 }) });
+    expect(r.summary.filled).toBe(0);
+    expect(r.unfilled[0]!.counts[0]!.code).toBe('DAILY_HOURS');
+  });
+  it('BC: estimates overnight overtime on the 24-hour day from the shift start', () => {
+    const r = solve({ slots: [slot('ov', '2026-07-07 22:00', '2026-07-08 08:00')], people: [person('a', { availability: wide })], options: options({ avoidOvertime: false }) });
+    expect(r.summary.filled).toBe(1);
+    expect(r.summary.overtimeHours).toBe(2);
+  });
+  it('BC: keeps 32 hours off in a row each pay week', () => {
+    const days = ['2026-07-05', '2026-07-06', '2026-07-07', '2026-07-08', '2026-07-09', '2026-07-10'];
+    const r = solve({ slots: days.map((d, k) => slot(`e${k}`, `${d} 15:00`, `${d} 23:00`)), people: [person('a', { availability: wide })], options: options({ avoidOvertime: false }) });
+    expect(r.summary.filled).toBe(5);
+  });
+  it('checks coverage certificates on each window’s own date', () => {
+    const days = ['2026-07-08', '2026-07-09'];
+    const pre = days.map((d) => ({ start: at(`${d} 08:00`), end: at(`${d} 16:00`), positionId: 'front', facilityId: 'f1' }));
+    const r = solve({ slots: [], people: [person('exp', { certExpiry: new Map([['nls', '2026-07-08']]), existingShifts: pre })], coverage: [{ id: 'c', name: 'NLS', facilityId: 'f1', certificationId: 'nls', minCount: 1, windows: days.map((d) => ({ start: at(`${d} 08:00`), end: at(`${d} 16:00`) })) }], options: options() });
+    expect(r.coverageGaps[0]!.shortHours).toBe(8);
+  });
+  it('gives hours to full-time staff before part-time, and part-time before casual', () => {
+    const slots = DAYS.slice(1, 4).map((d, k) => slot(`s${k}`, `${d} 08:00`, `${d} 16:00`));
+    const r = solve({ slots, people: [person('cas', { employmentStatus: 'CASUAL' }), person('pt', { employmentStatus: 'PART_TIME' }), person('ft', { employmentStatus: 'FULL_TIME', targetHours: 24 })], options: options() });
+    const h = Object.fromEntries(r.people.map((p) => [p.userId, p.hours]));
+    expect(h.ft).toBe(24);
+    const r2 = solve({ slots: slots.slice(0, 1), people: [person('cas', { employmentStatus: 'CASUAL' }), person('pt', { employmentStatus: 'PART_TIME' })], options: options() });
+    expect(r2.proposals[0]!.userId).toBe('pt');
+  });
+  it('rotates statutory holidays and counts their cost', () => {
+    const hol = slot('hol', '2026-07-06 08:00', '2026-07-06 16:00', { statHoliday: true });
+    const r = solve({ slots: [hol], people: [person('a', { prior: { hours: 0, weekends: 0, evenings: 0, weeks: 1, holidays: 2 } }), person('b', { prior: { hours: 0, weekends: 0, evenings: 0, weeks: 1, holidays: 0 } })], options: options() });
+    expect(r.proposals[0]!.userId).toBe('b');
+    expect(r.proposals[0]!.reasons.map((x) => x.code)).toContain('STAT_HOLIDAY');
+    expect(r.people.find((p) => p.userId === 'b')!.holidays).toBe(1);
+  });
+  it('flags a missing date of birth on the proposal', () => {
+    const r = solve({ slots: [slot('k', '2026-07-08 09:00', '2026-07-08 15:00')], people: [person('kid', { dateOfBirth: null })], options: options() });
+    expect(r.proposals[0]!.reasons.map((x) => x.code)).toContain('DOB_MISSING');
+  });
+  it('says whether a run is reproducible (iterations, not the clock, ended it)', () => {
+    const r = solve(randomWeek(3, 20, 40, { maxIterations: 500 }));
+    expect(r.summary.reproducible).toBe(true);
+  });
+  it('matches availability in wall-clock minutes on DST days and past midnight', () => {
+    const late = [{ dayOfWeek: 6, startMinute: 1320, endMinute: 1800, effectiveFrom: '2026-01-01', effectiveTo: null }];
+    const r = solve({ slots: [slot('n', '2026-07-12 00:30', '2026-07-12 05:30')], people: [person('a', { availability: late })], options: options({ windowEnd: at('2026-07-13 00:00') }) });
+    expect(r.summary.filled).toBe(1);
+  });
+});

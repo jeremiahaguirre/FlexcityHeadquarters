@@ -38,11 +38,12 @@
  * The fast rule checks in steps 2–3 are a model of the compliance rules; step 4 is the authority.
  */
 import { Decimal } from '../../lib/money.js';
-import { type Interval, dayOfWeek, localDate, payWeekStart, splitByLocalDay, startOfLocalDay } from '../../lib/time.js';
-import type { ProvinceRules } from '../compliance/provincialRules.js';
+import { type Interval, localDate, payWeekStart, splitByLocalDay } from '../../lib/time.js';
+import { type ProvinceRules, maxConsecutiveDaysAllowed } from '../compliance/provincialRules.js';
+import type { DayDefinition } from '../compliance/workDay.js';
 import { accommodationBlocks } from '../people/accommodation.js';
 import type { EmploymentStatus } from './assistant.js';
-import { type CandidateContext, type PositionSpec, type SchoolCalendar, type ShiftSpec, checkRestBetweenShifts, evaluateCandidate } from './eligibility.js';
+import { type CandidateContext, type PositionSpec, type SchoolCalendar, type ShiftSpec, availableAt, checkDailyRest, checkRestBetweenShifts, checkWeeklyRest, consecutiveDays, evaluateCandidate, wallMinutes } from './eligibility.js';
 import type { SolverWeights } from './solverSettings.js';
 
 export interface SolverSlot {
@@ -55,6 +56,10 @@ export interface SolverSlot {
   currentUserId?: string | null;
   /** Beyond the availability planning window: filled, but marked tentative. */
   tentative?: boolean;
+  /** A statutory holiday (as observed) at this slot's facility: paid at the province's worked multiplier. */
+  statHoliday?: boolean;
+  /** Extra $/h on this shift. */
+  premiumPerHour?: number;
 }
 
 export interface SolverPerson extends CandidateContext {
@@ -71,7 +76,7 @@ export interface SolverPerson extends CandidateContext {
   /** Overtime hours charged this equalization period (the ledger). */
   overtimeCharged: number;
   /** Earlier weeks of the same horizon (already proposed or worked), for fairness across it. */
-  prior: { hours: number; weekends: number; evenings: number; weeks: number };
+  prior: { hours: number; weekends: number; evenings: number; weeks: number; holidays?: number };
   /** Availability confirmed through this ISO date (null = never confirmed). */
   confirmedThrough: string | null;
 }
@@ -105,6 +110,8 @@ export interface SolverOptions {
   /** Skip local search (for comparisons). */
   greedyOnly?: boolean;
   defaultRate?: number;
+  /** Facility → time zone, for shifts people already have elsewhere (default: the first slot's). */
+  facilityTimezones?: ReadonlyMap<string, string>;
 }
 
 export interface SolverInput {
@@ -146,7 +153,7 @@ export interface SolverResult {
   proposals: Proposal[];
   unfilled: Unfilled[];
   coverageGaps: Array<{ needId: string; name: string; shortHours: number }>;
-  people: Array<{ userId: string; hours: number; weekends: number; evenings: number }>;
+  people: Array<{ userId: string; hours: number; weekends: number; evenings: number; holidays: number }>;
   summary: {
     slots: number;
     filled: number;
@@ -160,6 +167,8 @@ export interface SolverResult {
     iterations: number;
     ms: number;
     stoppedBy: 'iterations' | 'time' | 'converged' | 'greedy';
+    /** False when the time budget, not the iteration budget, ended the search: the same seed may then differ. */
+    reproducible: boolean;
     seed: number;
     droppedByVerification: number;
   };
@@ -173,7 +182,7 @@ const COVER = 60; // per short hour of required coverage
 const EPS = 1e-9;
 
 interface Piece { date: string; week: string; hours: number }
-interface Iv { start: number; end: number; facilityId?: string; positionId: string; pieces: Piece[]; slot: number }
+interface Iv { start: number; end: number; facilityId?: string; positionId: string; slot: number; tz: string }
 interface SlotMeta {
   start: number;
   end: number;
@@ -186,7 +195,9 @@ interface SlotMeta {
   endMin: number;
   weekend: boolean;
   evening: boolean;
+  holiday: boolean;
   tz: string;
+  def: DayDefinition;
   exact: boolean;
 }
 
@@ -209,28 +220,27 @@ export function orderKey(seed: number, id: string): number {
   return h;
 }
 
-const memo = new Map<string, number>();
-function dayStartMs(date: string, tz: string): number {
-  const k = `${date}|${tz}`;
-  let v = memo.get(k);
+
+const pieceMemo = new Map<string, Piece[]>();
+/**
+ * An interval's hours per day and pay week, in a time zone. Where the province's day for daily
+ * overtime starts at a shift past midnight (BC/AB, workDay.ts), all of that shift's hours count on
+ * its start date (weeks still split at the pay-week boundary). A fast model: the shared evaluator
+ * verifies every proposal with the exact day windows.
+ */
+function piecesOf(iv: { start: number; end: number }, tz: string, payWeekStartDay: number, def: DayDefinition = 'calendar'): Piece[] {
+  const k = `${iv.start}|${iv.end}|${tz}|${payWeekStartDay}|${def}`;
+  let v = pieceMemo.get(k);
   if (v === undefined) {
-    v = startOfLocalDay(date, tz).getTime();
-    if (memo.size > 20_000) memo.clear();
-    memo.set(k, v);
+    const parts = splitByLocalDay({ start: new Date(iv.start), end: new Date(iv.end) }, tz);
+    const first = parts[0]?.localDate;
+    v = parts.map((p) => ({ date: def === 'shift_start_past_midnight' && first ? first : p.localDate, week: payWeekStart(p.localDate, payWeekStartDay), hours: (p.end.getTime() - p.start.getTime()) / H }));
+    if (pieceMemo.size > 50_000) pieceMemo.clear();
+    pieceMemo.set(k, v);
   }
   return v;
 }
 
-function piecesOf(iv: Interval, tz: string, payWeekStartDay: number): Piece[] {
-  return splitByLocalDay(iv, tz).map((p) => ({ date: p.localDate, week: payWeekStart(p.localDate, payWeekStartDay), hours: (p.end.getTime() - p.start.getTime()) / H }));
-}
-
-/** ISO date arithmetic without luxon (hot path). */
-function plusDays(iso: string, n: number): string {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
 /** Whole years from one ISO date to another (age), without luxon. */
 function age(dob: string, on: string): number {
   const years = Number(on.slice(0, 4)) - Number(dob.slice(0, 4));
@@ -253,6 +263,7 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 export function solve(input: SolverInput): SolverResult {
   const t0 = Date.now();
   const o = input.options;
+  const maxDays = (r: ProvinceRules) => Math.min(o.maxConsecutiveDays, maxConsecutiveDaysAllowed(r));
   const W = o.weights;
   const travelMs = o.travelMinutes * 60_000;
   const people = input.people.filter((p) => p.employmentStatus !== 'VOLUNTEER');
@@ -268,33 +279,39 @@ export function solve(input: SolverInput): SolverResult {
   // ---- slot metadata (local dates, pay weeks, evening/weekend) — computed once
   const sm: SlotMeta[] = slots.map((s) => {
     const tz = s.shift.timezone;
-    const startDate = localDate(s.shift.start, tz);
+    const def = s.rules.overtime.dayDefinition ?? 'calendar';
+    // Wall-clock minutes (DST-correct): 09:00–17:00 is 540–1020 on a changeover day too.
+    const wall = wallMinutes(s.shift);
+    const startDate = wall.date;
     const endDate = localDate(new Date(s.shift.end.getTime() - 1), tz);
-    const ds = dayStartMs(startDate, tz);
-    const startMin = (s.shift.start.getTime() - ds) / 60_000;
-    const endMin = (s.shift.end.getTime() - ds) / 60_000;
-    const dow = dayOfWeek(startDate);
+    const dow = new Date(`${startDate}T12:00:00Z`).getUTCDay();
     return {
       start: s.shift.start.getTime(),
       end: s.shift.end.getTime(),
       hours: (s.shift.end.getTime() - s.shift.start.getTime()) / H,
-      pieces: piecesOf(s.shift, tz, o.payWeekStartDay),
+      pieces: piecesOf({ start: s.shift.start.getTime(), end: s.shift.end.getTime() }, tz, o.payWeekStartDay, def),
       startDate,
       endDate,
       dow,
-      startMin,
-      endMin,
+      startMin: wall.startMin,
+      endMin: wall.endMin,
       weekend: dow === 0 || dow === 6,
-      evening: endMin > 19 * 60,
+      evening: wall.endMin > 19 * 60,
+      holiday: !!s.statHoliday,
       tz,
+      def,
       exact: !!s.position.hoursOfService,
     };
   });
 
   // ---- people: pre-existing intervals, seeded order, seniority rank (only when on)
+  // Shifts people already have keep their own facility's time zone (multi-time-zone departments).
+  const tzOfFacility = (f?: string) => (f && o.facilityTimezones?.get(f)) || slots.find((x) => x.shift.facilityId === f)?.shift.timezone || defaultTz;
   const pre: Iv[][] = people.map((p) =>
-    p.existingShifts.map((e) => ({ start: e.start.getTime(), end: e.end.getTime(), facilityId: e.facilityId, positionId: e.positionId, pieces: piecesOf(e, defaultTz, o.payWeekStartDay), slot: -1 })),
+    p.existingShifts.map((e) => ({ start: e.start.getTime(), end: e.end.getTime(), facilityId: e.facilityId, positionId: e.positionId, slot: -1, tz: tzOfFacility(e.facilityId) })),
   );
+  /** An interval's pieces as the slot being checked counts days (its time zone and day definition). */
+  const pcs = (x: Iv, m: Pick<SlotMeta, 'tz' | 'def'>) => piecesOf(x, m.tz, o.payWeekStartDay, m.def);
   const key = people.map((p) => orderKey(o.seed, p.userId));
   const juniority = new Array<number>(nP).fill(0);
   if (o.useSeniority && W.seniority > 0 && nP > 1) {
@@ -334,14 +351,17 @@ export function solve(input: SolverInput): SolverResult {
   // ---- coverage needs: segments and which slots/people help
   const needs = (input.coverage ?? []).map((n) => {
     const relevant = slots.map((s, j) => j).filter((j) => slots[j]!.shift.facilityId === n.facilityId && n.windows.some((w) => sm[j]!.start < w.end.getTime() && sm[j]!.end > w.start.getTime()));
-    const segs: Array<{ a: number; b: number; base: number; slots: number[] }> = [];
+    const segs: Array<{ a: number; b: number; base: number; slots: number[]; holder: boolean[] }> = [];
     for (const w of n.windows) {
+      // Certificates are checked on the window's own date (one that lapses mid-week stops counting).
+      const wDate = localDate(w.start, defaultTz);
+      const holderHere = people.map((p) => holdsCert(p, n.certificationId, wDate));
       const ws = w.start.getTime();
       const we = w.end.getTime();
       const pts = new Set<number>([ws, we]);
       for (const j of relevant) for (const x of [sm[j]!.start, sm[j]!.end]) if (x > ws && x < we) pts.add(x);
       const holderPre = [
-        ...people.flatMap((p, i) => (holdsCert(p, n.certificationId, localDate(w.start, defaultTz)) ? pre[i]!.filter((iv) => iv.facilityId === n.facilityId) : [])),
+        ...people.flatMap((p, i) => (holderHere[i] ? pre[i]!.filter((iv) => iv.facilityId === n.facilityId) : [])),
         ...(n.covered ?? []).map((c) => ({ start: c.start.getTime(), end: c.end.getTime() })),
       ];
       for (const x of holderPre) for (const y of [x.start, x.end]) if (y > ws && y < we) pts.add(y);
@@ -349,10 +369,11 @@ export function solve(input: SolverInput): SolverResult {
       for (let k = 0; k < sorted.length - 1; k++) {
         const a = sorted[k]!;
         const b = sorted[k + 1]!;
-        segs.push({ a, b, base: holderPre.filter((x) => x.start <= a && x.end >= b).length, slots: relevant.filter((j) => sm[j]!.start <= a && sm[j]!.end >= b) });
+        segs.push({ a, b, base: holderPre.filter((x) => x.start <= a && x.end >= b).length, slots: relevant.filter((j) => sm[j]!.start <= a && sm[j]!.end >= b), holder: holderHere });
       }
     }
-    const holder = people.map((p) => holdsCert(p, n.certificationId, localDate(n.windows[0]?.start ?? new Date(winStart), defaultTz)));
+    // Holds the certificate on any of the windows (for explanations).
+    const holder = people.map((_, i) => segs.some((g) => g.holder[i]));
     return { n, segs, holder, relevant: new Set(relevant) };
   });
   const needsOfSlot: number[][] = slots.map((_, j) => needs.map((x, k) => (x.relevant.has(j) ? k : -1)).filter((k) => k >= 0));
@@ -365,7 +386,7 @@ export function solve(input: SolverInput): SolverResult {
 
   const intervalsOf = (i: number, without = -1): Iv[] => {
     const out = [...pre[i]!];
-    for (const j of mine[i]!) if (j !== without) out.push({ start: sm[j]!.start, end: sm[j]!.end, facilityId: slots[j]!.shift.facilityId, positionId: slots[j]!.shift.positionId, pieces: sm[j]!.pieces, slot: j });
+    for (const j of mine[i]!) if (j !== without) out.push({ start: sm[j]!.start, end: sm[j]!.end, facilityId: slots[j]!.shift.facilityId, positionId: slots[j]!.shift.positionId, slot: j, tz: sm[j]!.tz });
     return out;
   };
 
@@ -381,29 +402,13 @@ export function solve(input: SolverInput): SolverResult {
     }
     const asIntervals = ivs.map((x) => ({ start: new Date(x.start), end: new Date(x.end) }));
     if (checkRestBetweenShifts(asIntervals, s.shift, s.rules)) return 'REST_BETWEEN_SHIFTS';
-    const rest = s.rules.rest.dailyConsecutiveHours;
-    if (rest !== null) {
-      for (const pc of m.pieces) {
-        const ds = dayStartMs(pc.date, m.tz);
-        const de = dayStartMs(plusDays(pc.date, 1), m.tz);
-        const busy = [...ivs, { start: m.start, end: m.end }]
-          .filter((x) => x.start < de && x.end > ds)
-          .map((x) => [Math.max(x.start, ds), Math.min(x.end, de)] as const)
-          .sort((a, b) => a[0] - b[0]);
-        let longest = 0;
-        let cur = ds;
-        for (const [a, b] of busy) {
-          longest = Math.max(longest, (a - cur) / H);
-          cur = Math.max(cur, b);
-        }
-        longest = Math.max(longest, (de - cur) / H);
-        if (longest + EPS < rest) return 'DAILY_REST';
-      }
-    }
-    // Hours per local day and per pay week, with this shift.
+    if (checkDailyRest(asIntervals, s.shift, s.rules)) return 'DAILY_REST';
+    if (checkWeeklyRest(asIntervals, s.shift, s.rules, m.tz, o.payWeekStartDay)) return 'WEEKLY_REST';
+    // A shift longer than the max hours a day (overnight shifts included), then hours per day and pay week.
+    if (m.hours > o.maxDailyHours + EPS) return 'DAILY_HOURS';
     const day = new Map<string, number>();
     const week = new Map<string, number>();
-    for (const x of ivs) for (const pc of x.pieces) {
+    for (const x of ivs) for (const pc of pcs(x, m)) {
       day.set(pc.date, (day.get(pc.date) ?? 0) + pc.hours);
       week.set(pc.week, (week.get(pc.week) ?? 0) + pc.hours);
     }
@@ -423,14 +428,8 @@ export function solve(input: SolverInput): SolverResult {
       if (p.weeklyMaxHours !== null && h > Number(p.weeklyMaxHours.toString()) + EPS) return 'OVER_PERSONAL_WEEKLY_MAX';
       if (o.avoidOvertime && ot.weeklyHours !== null && h > ot.weeklyHours + EPS) return 'OVERTIME';
     }
-    // Consecutive working days, counting shifts just before and after the run.
-    const worked = new Set(day.keys());
-    for (const pc of m.pieces) {
-      let run = 1;
-      for (let d = plusDays(pc.date, -1); worked.has(d); d = plusDays(d, -1)) run++;
-      for (let d = plusDays(pc.date, 1); worked.has(d); d = plusDays(d, 1)) run++;
-      if (run > o.maxConsecutiveDays) return 'CONSECUTIVE_DAYS';
-    }
+    // Days in a row with a shift starting (each shift counts on its start date), capped by weekly rest.
+    if (consecutiveDays([...asIntervals, s.shift], s.shift, m.tz) > maxDays(s.rules)) return 'CONSECUTIVE_DAYS';
     // Young workers, hours of service and weekly restrictions: the full check, cached.
     if (exactPerson[i] || m.exact) {
       const k = `${i}|${j}|${version[i]}|${without}`;
@@ -449,7 +448,8 @@ export function solve(input: SolverInput): SolverResult {
     const p = people[i]!;
     const s = slots[j]!;
     const ctx = { ...p, existingShifts: intervalsOf(i, without).filter((x) => x.slot !== j).map((x) => ({ start: new Date(x.start), end: new Date(x.end), positionId: x.positionId, facilityId: x.facilityId })) };
-    return evaluateCandidate(ctx, s.shift, s.position, { rules: s.rules, payWeekStartDay: o.payWeekStartDay, requireAvailability: true, schoolCalendar: s.schoolCalendar });
+    // The same check, with the same limits, as every other path (manual assign, Shift Board, planner).
+    return evaluateCandidate(ctx, s.shift, s.position, { rules: s.rules, payWeekStartDay: o.payWeekStartDay, requireAvailability: true, schoolCalendar: s.schoolCalendar, limits: { maxDailyHours: o.maxDailyHours, maxConsecutiveDays: o.maxConsecutiveDays } });
   }
 
   // ---- costs
@@ -458,16 +458,21 @@ export function solve(input: SolverInput): SolverResult {
     let hours = 0;
     let weekends = 0;
     let evenings = 0;
+    let holidays = 0;
+    let holidayExtra = 0;
+    let premium = 0;
     let offPrimary = 0;
     let tentativeUnconfirmed = 0;
     const facilities = new Set<string>();
     const day = new Map<string, number>();
     const week = new Map<string, number>();
+    const first = mine[i]!.length ? sm[mine[i]![0]!]! : sm[0];
+    const ref = { tz: first?.tz ?? defaultTz, def: first?.def ?? ('calendar' as DayDefinition) };
     for (const x of pre[i]!) {
       if (x.end <= winStart || x.start >= winEnd) continue;
       hours += (Math.min(x.end, winEnd) - Math.max(x.start, winStart)) / H;
       if (x.facilityId) facilities.add(x.facilityId);
-      for (const pc of x.pieces) {
+      for (const pc of pcs(x, ref)) {
         day.set(pc.date, (day.get(pc.date) ?? 0) + pc.hours);
         week.set(pc.week, (week.get(pc.week) ?? 0) + pc.hours);
       }
@@ -478,6 +483,13 @@ export function solve(input: SolverInput): SolverResult {
       hours += m.hours;
       if (m.weekend) weekends++;
       if (m.evening) evenings++;
+      const rate = p.rates.get(slots[j]!.shift.positionId) ?? defaultRate;
+      if (m.holiday) {
+        holidays++;
+        // Hours on a statutory holiday cost the province's worked multiplier (1.5; NL 2.0).
+        holidayExtra += m.hours * rate * Math.max(0, slots[j]!.rules.statutoryHoliday.workedMultiplier - 1);
+      }
+      premium += m.hours * (slots[j]!.premiumPerHour ?? 0);
       facilities.add(slots[j]!.shift.facilityId);
       if (p.primaryPositionId && slots[j]!.shift.positionId !== p.primaryPositionId) offPrimary += m.hours;
       if (slots[j]!.tentative && !(p.confirmedThrough && p.confirmedThrough >= m.endDate)) tentativeUnconfirmed++;
@@ -487,12 +499,15 @@ export function solve(input: SolverInput): SolverResult {
         week.set(pc.week, (week.get(pc.week) ?? 0) + pc.hours);
       }
     }
-    // Overtime estimate (stacked: daily excess, then weekly on the rest), with the first slot's rules.
+    // Overtime estimate (stacked: daily excess, then weekly on the rest), with the first slot's rules;
+    // hours past the daily double-time threshold (BC: 12) count at 2.0.
     let otHours = 0;
+    let dtHours = 0;
     const r = (mine[i]!.length ? slots[mine[i]![0]!]! : slots[0])?.rules.overtime;
     if (r) {
       const dailyOt = new Map<string, number>();
       for (const [d, h] of day) dailyOt.set(d, r.dailyHours !== null ? Math.max(0, h - r.dailyHours) : 0);
+      if (r.dailyDoubleTimeHours !== null) for (const h of day.values()) dtHours += Math.max(0, h - r.dailyDoubleTimeHours);
       const weekOf = new Map<string, number>();
       for (const [d, h] of day) {
         const w = weekOfDate(d, o.payWeekStartDay);
@@ -501,7 +516,9 @@ export function solve(input: SolverInput): SolverResult {
       otHours = sum([...dailyOt.values()]) + (r.weeklyHours !== null ? sum([...weekOf.values()].map((h) => Math.max(0, h - r.weeklyHours!))) : 0);
     }
     const avgRate = hours > 0 && mine[i]!.length ? rateHours / sum(mine[i]!.map((j) => sm[j]!.hours)) : (p.rates.values().next().value ?? defaultRate);
-    return { hours, weekends, evenings, offPrimary, tentativeUnconfirmed, facilities: facilities.size, otHours, avgRate };
+    // Overtime cost in "1.5 units": double-time hours cost a third more.
+    const otCost = (otHours + dtHours / 3) * avgRate * 1.5;
+    return { hours, weekends, evenings, holidays, holidayExtra, premium, offPrimary, tentativeUnconfirmed, facilities: facilities.size, otHours, dtHours, otCost, avgRate };
   };
 
   const personCost = (i: number): number => {
@@ -517,14 +534,17 @@ export function solve(input: SolverInput): SolverResult {
     const horizonHours = p.prior.hours + st.hours;
     const extra = Math.max(0, horizonHours - target * (p.prior.weeks + 1));
     const assignedHours = sum(mine[i]!.map((j) => sm[j]!.hours));
-    const tier = p.employmentStatus === 'CASUAL' ? 0.3 : p.employmentStatus === 'ON_CALL' ? 0.6 : 0;
+    // Hours go to full-time first, then part-time, then casual and on-call staff.
+    const tier = TIER[p.employmentStatus] ?? 0;
     const wk = p.prior.weekends + st.weekends;
     const ev = p.prior.evenings + st.evenings;
+    const hol = (p.prior.holidays ?? 0) + st.holidays;
     return (
       W.targetHours * (0.1 * short * short + tier * assignedHours) +
       W.fairness * 0.05 * extra * extra +
-      W.overtime * (0.05 * st.otHours * st.avgRate * 1.5 + 0.05 * st.otHours * p.overtimeCharged) +
-      W.spread * 3 * (wk * wk + ev * ev) +
+      W.overtime * (0.05 * st.otCost + 0.05 * st.otHours * p.overtimeCharged + 0.05 * (st.holidayExtra + st.premium)) +
+      // Weekends, evenings and statutory holidays rotate fairly.
+      W.spread * 3 * (wk * wk + ev * ev + 2 * hol * hol) +
       W.continuity * 15 * Math.max(0, st.facilities - 1) +
       W.preferences * (0.5 * st.offPrimary + 4 * st.tentativeUnconfirmed) +
       (o.useSeniority ? W.seniority * 1.5 * assignedHours * juniority[i]! : 0)
@@ -543,7 +563,7 @@ export function solve(input: SolverInput): SolverResult {
     let c = 0;
     for (const seg of x.segs) {
       let have = seg.base;
-      for (const j of seg.slots) if (assignee[j]! >= 0 && x.holder[assignee[j]!]) have++;
+      for (const j of seg.slots) if (assignee[j]! >= 0 && seg.holder[assignee[j]!]) have++;
       if (have < x.n.minCount) c += (x.n.minCount - have) * ((seg.b - seg.a) / H);
     }
     return c * COVER;
@@ -649,7 +669,9 @@ export function solve(input: SolverInput): SolverResult {
 
   // ---- 3. local search
   const rand = rng(o.seed);
-  const maxIter = o.greedyOnly ? 0 : (o.maxIterations ?? Math.min(250_000, 300 * Math.max(1, nS)));
+  // Size-based budget: big runs get fewer iterations per slot, so the iteration budget (reproducible
+  // for a seed) rather than the clock usually ends the search. When time does, the summary says so.
+  const maxIter = o.greedyOnly ? 0 : (o.maxIterations ?? Math.min(250_000, 300 * Math.max(1, nS), Math.floor(4_000_000 / Math.max(1, nP))));
   let iterations = 0;
   let stoppedBy: SolverResult['summary']['stoppedBy'] = o.greedyOnly ? 'greedy' : 'iterations';
   let cost = total();
@@ -716,11 +738,7 @@ export function solve(input: SolverInput): SolverResult {
     const e = exactEval(i, j);
     const ivs = intervalsOf(i, j);
     const travelBad = ivs.some((x) => travelMs && x.facilityId && x.facilityId !== slots[j]!.shift.facilityId && sm[j]!.start - x.end < travelMs && x.start - sm[j]!.end < travelMs);
-    return { ok: e.eligible && (!o.avoidOvertime || e.overtimeHours.eq(0)) && !travelBad && !limitBlock(i, j), e };
-  };
-  const limitBlock = (i: number, j: number) => {
-    const code = dynamicBlock(i, j, j);
-    return code === 'DAILY_HOURS' || code === 'CONSECUTIVE_DAYS';
+    return { ok: e.eligible && (!o.avoidOvertime || e.overtimeHours.eq(0)) && !travelBad, e };
   };
   for (let changed = true; changed; ) {
     changed = false;
@@ -782,6 +800,9 @@ export function solve(input: SolverInput): SolverResult {
     if (st.otHours > EPS && others.every((x) => people[x]!.overtimeCharged >= p.overtimeCharged)) out.push({ code: 'FEWEST_OVERTIME' });
     if (o.useSeniority && W.seniority > 0 && others.every((x) => juniority[x]! >= juniority[i]!)) out.push({ code: 'SENIORITY' });
     if (s.tentative) out.push({ code: p.confirmedThrough && p.confirmedThrough >= m.endDate ? 'CONFIRMED' : 'TENTATIVE' });
+    if (m.holiday) out.push({ code: 'STAT_HOLIDAY' });
+    // Without a date of birth, minimum-age and young-worker rules couldn't be checked.
+    if (!p.dateOfBirth) out.push({ code: 'DOB_MISSING' });
     return out;
   };
 
@@ -861,9 +882,9 @@ export function solve(input: SolverInput): SolverResult {
     const st = personStats(i);
     if (mine[i]!.length) {
       overtimeHours += st.otHours;
-      overtimeCost += st.otHours * st.avgRate * 1.5;
+      overtimeCost += st.otCost;
     }
-    return { userId: p.userId, hours: round(p.prior.hours + st.hours), weekends: p.prior.weekends + st.weekends, evenings: p.prior.evenings + st.evenings };
+    return { userId: p.userId, hours: round(p.prior.hours + st.hours), weekends: p.prior.weekends + st.weekends, evenings: p.prior.evenings + st.evenings, holidays: (p.prior.holidays ?? 0) + st.holidays };
   });
 
   return {
@@ -883,6 +904,7 @@ export function solve(input: SolverInput): SolverResult {
       iterations,
       ms: Date.now() - t0,
       stoppedBy,
+      reproducible: stoppedBy !== 'time',
       seed: o.seed,
       droppedByVerification: dropped,
     },
@@ -890,6 +912,9 @@ export function solve(input: SolverInput): SolverResult {
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;
+
+/** Cost per assigned hour by employment status (weighted by "contracted hours first"). */
+const TIER: Partial<Record<EmploymentStatus, number>> = { FULL_TIME: 0, PART_TIME: 0.15, CASUAL: 0.35, ON_CALL: 0.5 };
 
 function holdsCert(p: CandidateContext, certId: string, onDate: string): boolean {
   if (!p.certExpiry.has(certId)) return false;
@@ -914,10 +939,7 @@ function staticBlock(p: SolverPerson, s: SolverSlot, m: SlotMeta): string | null
     if (years < Math.max(s.position.minimumAge ?? 0, s.rules.youngWorkers.minimumAge)) return 'UNDER_MINIMUM_AGE';
   }
   if (p.approvedTimeOff.some((t) => t.start.getTime() < m.end && t.end.getTime() > m.start)) return 'ON_APPROVED_TIME_OFF';
-  const available = p.availability.some(
-    (w) => w.dayOfWeek === m.dow && w.effectiveFrom <= m.startDate && (w.effectiveTo === null || w.effectiveTo >= m.startDate) && w.startMinute <= m.startMin && w.endMinute >= m.endMin,
-  );
-  if (!available) return 'NOT_AVAILABLE';
+  if (!availableAt(p.availability, m.startDate, m.startMin, m.endMin)) return 'NOT_AVAILABLE';
   if ((p.restrictions ?? []).length && accommodationBlocks(p.restrictions!, { start: s.shift.start, end: s.shift.end, positionId: s.shift.positionId, timezone: s.shift.timezone }, new Decimal(0)).length) return 'ACCOMMODATION';
   return null;
 }
