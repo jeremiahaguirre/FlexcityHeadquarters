@@ -24,6 +24,40 @@ Modelled on Ontario's ESA s. 22(7) and common municipal collective agreements (`
 - Vacation pay is paid on overtime when it's worked, banked or not, and not again when banked time is taken or paid out.
 - **For counsel:** whether the in-app choice is the written agreement each province asks for, and each province's own banked-time rules (they differ outside Ontario).
 
+### Statutory holidays on a weekend or a day off
+
+Code: `services/payroll/statHolidays.ts` (dates, and the moves the law fixes) and `services/payroll/holidayRules.ts` (what someone gets when a holiday is their day off), with each section cited in comments. Two things are kept apart:
+
+- **Calendar moves fixed by law**, the same for everyone, stored on the holiday row (`observedOn`, `kind`): Canada Day on a Sunday is **July 2** (Holidays Act, R.S.C. 1985, c. H-5, s. 2; Quebec LNT s. 60 4°; the other provinces and territories don't set a date of their own and observed July 2 in 2018), except **Nova Scotia** (the Labour Standards Code defines Canada Day as July 1) and **Newfoundland and Labrador** (July 1 is also Memorial Day). Quebec's **Fête nationale** on a Sunday is **June 25** for people who don't usually work Sundays (CQLR c. F-1.1, s. 2); those who do keep June 24. Nothing else moves by law. The next one: both on a Sunday in 2029.
+- **The person's own schedule**: whether a holiday is someone's day off follows their pattern of work, not the calendar weekend: the weekday they worked in at least 5 of the 9 weeks before (the test Alberta's Code uses, s. 27, applied everywhere as the default). Worked out per person in each pay run.
+
+What someone gets when the holiday falls on their day off:
+
+| Jurisdiction | Default | Employer may choose | Source |
+| --- | --- | --- | --- |
+| Federal (Canada Labour Code) | Another day with pay: for the six fixed-date holidays on a non-working Saturday or Sunday, the working day before or after; otherwise at another time or added to vacation | Substitute only | CLC ss. 193, 195 (verify subsections); Holidays Act s. 2 |
+| British Columbia | Average day's pay (whether or not it's their day off) | Pay, or a substitute day by written agreement | ESA ss. 44, 45, 48 |
+| Alberta | Nothing, when it isn't a normal work day and they don't work it | Pay or substitute (more generous) | ESC ss. 27–28 (verify) |
+| Saskatchewan | Public holiday pay (5% of the 4 weeks) for every holiday | Pay or substitute | SEA s. 2-32 |
+| Manitoba | Next working day off with general holiday pay, or a day agreed | Substitute only | ESC, general holidays (verify section) |
+| Ontario | Substitute day off with public holiday pay (within 3 months, 12 by agreement) | Pay alone, with the employee's written agreement | ESA s. 27(1)–(2) |
+| Quebec | Holiday indemnity (1/20 of the 4 weeks) | Indemnity or a compensatory day | LNT ss. 60, 62, 64–65; Fête nationale Act ss. 2–4 |
+| New Brunswick | Another day off with regular pay | Day's regular pay instead | ESA s. 18 (verify) |
+| Nova Scotia | Day off with pay, next working day or a day agreed; **Remembrance Day: nothing** | Substitute only | LSC s. 38 (verify); Remembrance Day Act |
+| Prince Edward Island | Another day off with pay, usually the next working day | Substitute only | ESA, paid holiday on a non-working day (verify) |
+| Newfoundland and Labrador | Another day off with the same pay | Substitute only | LSA ss. 14–17 (verify) |
+| Yukon | Holiday with pay on the next working day | Substitute only | ESA, general holidays (verify) |
+| Northwest Territories | Holiday pay, or another day off with pay | Pay or substitute | ESA, general holidays (verify) |
+| Nunavut | Holiday with pay on the next working day | Substitute only | LSA, general holidays (verify) |
+
+How the app uses it:
+
+- **Payroll settings › When a holiday falls on a weekend** (EN/FR): close on the statutory day (default) or the **next weekday** that isn't already a holiday, as most municipal collective agreements do (Christmas 2027 on a Saturday → Monday the 27th, Boxing Day on the Sunday → Tuesday the 28th); and, where the province allows a choice, a substitute day or pay. A choice the province doesn't allow is ignored there. Changes are audited.
+- **Pay runs**: hours worked on the person's statutory day are paid at the holiday rate, and where the organization observes the next weekday, hours on that weekday too (an agreement adds to the statute; it doesn't move the statutory premium away). Holiday pay is paid once per holiday. When it falls on their day off: the rule above; a substitute day owed is flagged on the run (unless the organization's observed weekday was a day off they'd usually work), and the holiday pay is on the run with the holiday.
+- **Forecast**: the holiday's effect applies on its own date, on the day the law moves it to and on the organization's observed weekday, marked "observed". The shift-pay preview uses the same days.
+- **Time off and HR leave** list the coming holidays with their own date and the day off for each.
+- **Not built:** a "federally regulated" switch for organizations under the Canada Labour Code (the federal rules are encoded and shown, but pay runs follow the facility's province); leave charges still count weekdays without skipping holidays.
+
 ### Review checklist for counsel
 
 1. Daily/weekly OT thresholds and the stacked vs. greater-of method per province.
@@ -33,6 +67,7 @@ Modelled on Ontario's ESA s. 22(7) and common municipal collective agreements (`
 5. Vacation pay tiers and the wage base (whether OT and stat pay are included).
 6. Holiday pay eligibility formulas.
 7. Time in lieu: the agreement, the take-within period and payout on leaving, per province.
+8. Holidays on a weekend or a day off: the table above, the sections marked "verify", the 5-of-9-weeks test outside Alberta, Canada Day on July 2 in provinces that don't set a date, and paying holiday pay with the holiday when a substitute day is owed later.
 
 ## Privacy law by customer type
 

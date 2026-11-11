@@ -369,6 +369,32 @@ export const ARTICLES: Article[] = [
     },
   },
   {
+    slug: 'holidays-on-a-weekend',
+    audience: 'admin',
+    en: {
+      title: 'Statutory holidays on a weekend',
+      summary: 'Choose which day you close for a weekend holiday, and see what each province gives someone whose day off it falls on.',
+      steps: [
+        'Holidays keep their own date. Where the law moves one, FH uses the moved day for everyone: Canada Day on a Sunday is Monday, July 2 (not in Nova Scotia or Newfoundland and Labrador). In Quebec, the Fête nationale on a Sunday is June 25 for people who don’t usually work Sundays; those who do keep June 24.',
+        'In Settings › Pay codes, under When a holiday falls on a weekend, choose the day you close: the statutory day, or the next weekday as most municipal collective agreements do (Christmas on a Saturday on Monday, Boxing Day on the Sunday on Tuesday). Hours worked on the observed day are paid at the holiday rate, and so are hours on the holiday itself.',
+        'Under A holiday on someone’s day off, follow each province’s rule or choose another day off with holiday pay, or holiday pay alone. Your choice applies only where the province lets the employer choose; the card explains each of your provinces’ rules.',
+        'Whether a holiday is someone’s day off follows their own pattern of work (the weekday they worked in at least 5 of the 9 weeks before), not the calendar weekend. When a substitute day is owed, the pay run says so: give them that day off.',
+      ],
+      tip: 'Everyone sees the coming holidays and the day off for each on their Time off page. The rules are our reading of each statute and are being reviewed by employment counsel.',
+    },
+    fr: {
+      title: 'Les jours fériés la fin de semaine',
+      summary: 'Choisissez le jour de fermeture pour un jour férié la fin de semaine, et voyez ce que chaque province accorde à une personne dont c’est le jour de congé.',
+      steps: [
+        'Les jours fériés gardent leur propre date. Quand la loi en déplace un, FH utilise le jour où il est déplacé pour tout le monde : la fête du Canada un dimanche est le lundi 2 juillet (sauf en Nouvelle-Écosse et à Terre-Neuve-et-Labrador). Au Québec, la Fête nationale un dimanche est le 25 juin pour les personnes qui ne travaillent pas habituellement le dimanche; les autres gardent le 24 juin.',
+        'Dans Paramètres › Codes de paie, sous Quand un jour férié tombe la fin de semaine, choisissez le jour de fermeture : le jour prévu par la loi, ou le jour de semaine suivant comme la plupart des conventions collectives municipales (Noël un samedi le lundi, le lendemain de Noël le dimanche, le mardi). Les heures travaillées le jour observé sont payées au taux du jour férié, tout comme celles du jour férié lui-même.',
+        'Sous Un jour férié pendant un jour de congé, suivez la règle de chaque province ou choisissez un autre jour de congé avec l’indemnité, ou l’indemnité seule. Votre choix s’applique seulement là où la province laisse le choix à l’employeur; la carte explique la règle de chacune de vos provinces.',
+        'Le jour de congé dépend de l’horaire habituel de la personne (le jour de semaine travaillé au moins 5 des 9 semaines précédentes), et non de la fin de semaine du calendrier. Quand un jour de remplacement est dû, la paie l’indique : accordez-lui ce congé.',
+      ],
+      tip: 'Chacun voit les prochains jours fériés et le jour de congé pour chacun à sa page Congés. Les règles sont notre lecture de chaque loi et sont en cours de révision par un avocat en droit du travail.',
+    },
+  },
+  {
     slug: 'city-roles',
     audience: 'admin',
     en: {

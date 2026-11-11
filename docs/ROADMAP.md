@@ -15,7 +15,7 @@
 
 ## Next
 
-- [ ] Weather in the forecast: confirm the first live fetches from `api.weather.gc.ca` (city page and daily climate collections) match the parser, which was built against the documented format and recorded fixtures; add statutory holidays for every province and future years to the holiday table (the forecast and payroll both read it).
+- [ ] Weather in the forecast: confirm the first live fetches from `api.weather.gc.ca` (city page and daily climate collections) match the parser, which was built against the documented format and recorded fixtures.
 - [ ] Metrics: Prisma's connection-pool metrics (a preview feature that needs a schema flag).
 - [ ] Public API: write scopes (v1 is read-only), once a city asks for a specific write.
 
@@ -32,7 +32,7 @@
 - Staff directory, invitations, roles, pay rates, verified certifications, discipline records with signature capture.
 - Login lockout and rate limits, password reset by email.
 - Demand forecast adjusted for the weather (Environment and Climate Change Canada open data, one fetch per forecast site shared by every city, learned per facility over time), statutory holidays and special events, with a reason per day and a view without adjustments.
-- Payroll CSV export with overtime, statutory holiday pay and vacation pay.
+- Payroll CSV export with overtime, statutory holiday pay and vacation pay; weekend holidays on the day the law or the organization observes them, and each province's rule for a holiday on someone's day off.
 - In-house payroll: pay runs for the whole city or one department, CPP/CPP2/EI and federal and provincial income tax (T4127 method, yearly tables FH verifies before use), pay statements, CPA-005 direct deposit files, PD7A remittance totals, T4 slip figures and ROE figures. Two-person approval and passkey release by default; bank accounts and SINs sealed with the city's key.
 - Bank connection: approved pay runs sent to the city's bank over SFTP (host key pinned, optional PGP encryption), automatically or by hand, with the credentials sealed with the city's key.
 - Benefits and deductions: pension (RPP), health, dental, life, disability, EAP and union dues, with employee and employer shares, taxable benefits, and T4 boxes 20, 40 and 44; amounts owed to each provider by month.
