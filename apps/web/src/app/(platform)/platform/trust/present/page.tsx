@@ -1,6 +1,6 @@
 'use client';
 
-import { Download, Eye, EyeOff, Maximize2, X } from 'lucide-react';
+import { AlertTriangle, Download, Eye, EyeOff, Maximize2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,9 @@ export default function PresentPage() {
   const o = live.data;
   const [details, setDetails] = useState(false);
   const ago = useAgo(o?.updatedAt ?? null);
+  // The quickest tests run every 5 minutes: three missed rounds means the checks have stopped, so the
+  // page stops saying "live" and says so instead of showing an old figure as current.
+  const stale = !!o && (!o.updatedAt || Date.now() - new Date(o.updatedAt).getTime() > STALE_AFTER_MS);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !document.fullscreenElement) window.history.back();
@@ -54,8 +57,8 @@ export default function PresentPage() {
         <div className="mt-8 grid flex-1 content-center gap-10">
           <section className="text-center">
             <p className="text-label uppercase text-muted">{t('trust.present.eyebrow')}</p>
-            <h1 className="mt-2 text-display [text-wrap:balance]">{t('trust.present.title')}</h1>
-            <p className="mx-auto mt-3 max-w-2xl text-body text-muted">{t('trust.present.lead')}</p>
+            <h1 className="mt-2 text-display [text-wrap:balance]">{stale ? t('trust.present.titleStale') : t('trust.present.title')}</h1>
+            <p className="mx-auto mt-3 max-w-2xl text-body text-muted">{stale ? t('trust.present.leadStale') : t('trust.present.lead')}</p>
           </section>
           {o ? (
             <>
@@ -73,7 +76,7 @@ export default function PresentPage() {
               <section className="grid gap-3 sm:grid-cols-3">
                 <Stat label={t('trust.present.testsPassing')} value={`${o.tests.filter((x) => x.status === 'PASS').length} / ${o.tests.length}`} />
                 <Stat label={t('trust.present.residency')} value={o.tests.find((x) => x.key === 'data_residency')?.status === 'PASS' ? t('trust.present.canada') : '—'} />
-                <Stat label={t('trust.present.checked')} value={ago} />
+                <Stat label={t('trust.present.checked')} value={ago} warn={stale ? t('trust.present.behind') : undefined} />
               </section>
               {details ? (
                 <section className="rounded-xl2 border border-line bg-panel p-6 shadow-card">
@@ -91,11 +94,19 @@ export default function PresentPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+const STALE_AFTER_MS = 15 * 60_000;
+
+function Stat({ label, value, warn }: { label: string; value: string; warn?: string }) {
   return (
-    <div className="rounded-xl2 border border-line bg-panel p-5 text-center shadow-card">
+    <div className={`rounded-xl2 border bg-panel p-5 text-center shadow-card ${warn ? 'border-warn/60' : 'border-line'}`}>
       <p className="text-small text-muted">{label}</p>
       <p className="mt-1 text-heading">{value}</p>
+      {warn ? (
+        <p className="mt-1 inline-flex items-center gap-1.5 text-small font-semibold text-warn">
+          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+          {warn}
+        </p>
+      ) : null}
     </div>
   );
 }

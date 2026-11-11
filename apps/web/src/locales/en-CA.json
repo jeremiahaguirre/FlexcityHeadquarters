@@ -7239,7 +7239,9 @@
     "present": {
       "eyebrow": "Security at FlexcityHeadquarters",
       "title": "Our security posture, live",
+      "titleStale": "Our security posture",
       "lead": "Automated tests check the platform every few minutes. These figures are our own continuous assessment.",
+      "leadStale": "Automated tests normally check the platform every few minutes, but they haven’t run recently. These figures may be out of date until they run again.",
       "frameworks": "Frameworks we’re preparing for",
       "notCertified": "Preparing: readiness is self-assessed, not a certification.",
       "controlsInPlace_one": "{{count}} control verified",
@@ -7248,6 +7250,7 @@
       "residency": "Data residency",
       "canada": "Canada",
       "checked": "Last checked",
+      "behind": "Behind schedule",
       "showDetails": "Show details",
       "hideDetails": "Hide details",
       "fullscreen": "Full screen",

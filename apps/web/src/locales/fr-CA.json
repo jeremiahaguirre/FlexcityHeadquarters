@@ -7239,7 +7239,9 @@
     "present": {
       "eyebrow": "La sécurité chez FlexcityHeadquarters",
       "title": "Notre posture de sécurité, en direct",
+      "titleStale": "Notre posture de sécurité",
       "lead": "Des tests automatisés vérifient la plateforme aux quelques minutes. Ces chiffres sont notre propre évaluation continue.",
+      "leadStale": "Des tests automatisés vérifient normalement la plateforme aux quelques minutes, mais ils n’ont pas été exécutés récemment. Ces chiffres pourraient ne plus être à jour d’ici leur prochaine exécution.",
       "frameworks": "Cadres auxquels nous nous préparons",
       "notCertified": "En préparation : autoévaluation, et non une certification.",
       "controlsInPlace_one": "{{count}} contrôle vérifié",
@@ -7248,6 +7250,7 @@
       "residency": "Résidence des données",
       "canada": "Canada",
       "checked": "Dernière vérification",
+      "behind": "En retard sur l’horaire",
       "showDetails": "Afficher les détails",
       "hideDetails": "Masquer les détails",
       "fullscreen": "Plein écran",
