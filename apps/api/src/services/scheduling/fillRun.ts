@@ -28,6 +28,7 @@ import { type BundleCache, evalOpts, loadAssistantCandidates, loadCandidate, loa
 import { lockForAssignment } from './locks.js';
 import { chargeOvertime, parsePolicy, periodStart, reverseOvertime } from './overtime.js';
 import { createShift } from './shifts.js';
+import { type StatedPreferences, loadPreferences } from './preferences.js';
 import { type CoverageNeed, type SolverPerson, type SolverSlot, orderKey, solve } from './solver.js';
 import { breakAfterHoursFor, breakMinutesOf, effectiveWorkRules, paidIntervals, parseWorkRules, premiumPieces } from './workRules.js';
 import { isNeverAlone } from './twoPerson.js';
@@ -222,6 +223,8 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
     tx.position.findMany({ select: { id: true, departmentId: true, department: { select: { name: true, nameFr: true } } } }),
   ]);
   const policy = parsePolicy(tenant.overtimePolicy);
+  // Stated shift preferences (where the organization uses them): soft weights only.
+  const prefs = resolveFeatures(tenant.features).shiftPreferences ? await loadPreferences(tx, userIds) : new Map<string, StatedPreferences>();
   const deptOfPosition = new Map(positions.map((p) => [p.id, p]));
   const runDeptIds = new Set(runDepartments.map((d) => d.id));
   const carryById = new Map<string, { id: string; startsAt: Date; endsAt: Date; positionId: string; facilityId: string }>(carried.map((c) => [c.id, c]));
@@ -263,6 +266,7 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
         weeks: req.weekIndex,
       },
       confirmedThrough: confirmations.get(c.userId)?.through ?? null,
+      preferences: prefs.get(c.userId),
     };
   });
 

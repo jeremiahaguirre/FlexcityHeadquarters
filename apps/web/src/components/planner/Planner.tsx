@@ -763,6 +763,7 @@ export function Planner({ onOpenFill, refreshKey }: { onOpenFill: () => void; re
         weekScope={board.hoursScope === 'week'}
         people={board.people}
         positions={board.positions}
+        facilities={board.facilities}
         days={period.days.length === 7 ? period.days : [focus]}
         focusDay={focus}
         selected={selected}

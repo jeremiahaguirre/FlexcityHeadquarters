@@ -11,10 +11,13 @@
  *   dead ones 30 days (not configurable). Pending ones are never removed.
  * - Webhook delivery records (services/integrations/webhooks.ts): 30 days once finished.
  * - Public API Idempotency-Key records (services/integrations/idempotency.ts): 24 hours.
+ * - Shift preferences (services/scheduling/preferences.ts): of people who left, 90 days after the
+ *   last change (not configurable); seasonal staff away keep theirs. Anonymizing deletes them at once.
  * The audit log is kept for the life of the account (it's append-only, and part of the
  * organization's records); offboarding deletes it with everything else.
  */
 import type { Tx } from '../../lib/db.js';
+import { purgeInactivePreferences } from '../scheduling/preferences.js';
 
 /** Delivered domain events (ids and type only by then). */
 export const EVENT_DELIVERED_DAYS = 7;
@@ -61,7 +64,8 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   const year = ago(now, APPLICATION_DAYS);
   const ap = await tx.jobApplication.deleteMany({ where: { status: { not: 'HIRED' }, updatedAt: { lt: year } } });
   await tx.jobApplication.updateMany({ where: { status: 'HIRED', updatedAt: { lt: year }, NOT: { ciphertext: null } }, data: { ciphertext: null, iv: null, authTag: null, wrappedKey: null, kekId: null, message: null } });
-  return n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + mc.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
+  const sp = await purgeInactivePreferences(tx, now);
+  return sp + n.count + e.count + ev.count + wh.count + ik.count + s.count + l.count + mc.count + g.count + b.count + ap.count + (await forgetInactiveFamilies(tx, ago(now, r.familiesInactiveDays)));
 }
 
 /** Families with no registration or purchase since `before`: their personal details go; their payment records stay. */

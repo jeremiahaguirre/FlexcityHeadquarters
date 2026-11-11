@@ -1,3 +1,4 @@
+import type { StatedPreferences } from './shiftTemplates';
 /**
  * Scheduling by hand (the schedule builder's planner): shapes from the API and the pure helpers
  * the views use — periods, snapping, lanes, people filters, status lookup and the undo stack.
@@ -51,6 +52,8 @@ export interface BoardPerson {
   hasAvailability: boolean;
   confirmedThrough: string | null;
   availabilityCurrent: boolean;
+  /** Stated shift preferences (where the organization uses them; schedulers of their department only). */
+  preferences?: StatedPreferences | null;
 }
 export interface Board {
   range: { from: string; to: string; timezone: string; today: string };

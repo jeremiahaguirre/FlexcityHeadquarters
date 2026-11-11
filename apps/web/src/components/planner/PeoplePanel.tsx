@@ -7,20 +7,25 @@
  * (or several, ticked) onto the schedule; tap or press Enter to pick them and then choose a shift.
  * The list is windowed so a department of a few hundred stays smooth.
  */
-import { BadgeCheck, CalendarCheck, PanelLeftClose, Search } from 'lucide-react';
+import { BadgeCheck, CalendarCheck, Heart, PanelLeftClose, Search } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Input, Select } from '@/components/ui/Field';
 import { cn } from '@/lib/cn';
 import { formatHours } from '@/lib/format';
 import { shortRange } from './views';
+import { preferenceSummary } from '@/lib/shiftTemplates';
 import { type BoardPerson, type Named, type PeopleFilter, type PeopleSort, filterPeople, hhmm, hoursShare, isOffAllDay } from '@/lib/planner';
 
-const ROW = 124;
+const ROW_BASE = 124;
+/** One more line when someone has stated shift preferences. */
+const ROW_PREFS = 142;
 
 export interface PanelProps {
   people: BoardPerson[];
   positions: Named[];
+  /** For naming facilities in people's stated preferences. */
+  facilities?: Array<{ id: string; name: string }>;
   days: string[];
   focusDay: string;
   selected: ReadonlySet<string>;
@@ -60,10 +65,15 @@ export function PeoplePanel(p: PanelProps) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  const ROW = p.people.some((x) => x.preferences) ? ROW_PREFS : ROW_BASE;
   const first = Math.max(0, Math.floor(top / ROW) - 4);
   const last = Math.min(list.length, Math.ceil((top + viewH) / ROW) + 4);
   const posName = (x: Named) => (lng === 'fr-CA' && x.nameFr ? x.nameFr : x.name);
   const posById = useMemo(() => new Map(p.positions.map((x) => [x.id, x])), [p.positions]);
+  const prefNames = useMemo(() => {
+    const fac = new Map((p.facilities ?? []).map((f) => [f.id, f.name]));
+    return { position: (id: string) => { const x = posById.get(id); return x ? (lng === 'fr-CA' && x.nameFr ? x.nameFr : x.name) : undefined; }, facility: (id: string) => fac.get(id) };
+  }, [posById, p.facilities, lng]);
 
   return (
     <section
@@ -122,6 +132,7 @@ export function PeoplePanel(p: PanelProps) {
                 focusDay={p.focusDay}
                 selected={p.selected.has(person.id)}
                 picked={!!p.picking?.includes(person.id)}
+                prefNames={prefNames}
                 posNames={person.positionIds.map((id) => posById.get(id)).filter((x): x is Named => !!x).map(posName)}
                 weekScope={!!p.weekScope}
                 onToggle={p.onToggle}
@@ -152,6 +163,7 @@ const PersonCard = memo(function PersonCard({
   selected,
   picked,
   posNames,
+  prefNames,
   weekScope,
   onToggle,
   onPick,
@@ -164,6 +176,7 @@ const PersonCard = memo(function PersonCard({
   selected: boolean;
   picked: boolean;
   posNames: string[];
+  prefNames: { position: (id: string) => string | undefined; facility: (id: string) => string | undefined };
   onToggle: (id: string) => void;
   onPick: (id: string) => void;
   onDragStart: (e: React.PointerEvent, id: string) => void;
@@ -190,6 +203,7 @@ const PersonCard = memo(function PersonCard({
       ? t(weekScope ? 'planner.people.hoursOfWeek' : 'planner.people.hoursOf', { hours: half(person.scheduledHours), target: half(person.targetHours) })
       : t(weekScope ? 'planner.people.hoursWeek' : 'planner.people.hours', { hours: half(person.scheduledHours) });
   // A certificate named like one of their positions (e.g. "Swim Instructor") isn't shown twice.
+  const prefText = preferenceSummary(person.preferences, t, lng, prefNames).join(' · ');
   const certs = person.certifications.filter((c) => !posNames.some((n) => n.toLowerCase() === (lng === 'fr-CA' && c.nameFr ? c.nameFr : c.name).toLowerCase() || n.toLowerCase() === c.name.toLowerCase()));
   return (
     <div
@@ -206,7 +220,7 @@ const PersonCard = memo(function PersonCard({
         onPointerDown={(e) => onDragStart(e, person.id)}
         onClick={() => onPick(person.id)}
         aria-pressed={picked}
-        aria-label={`${person.name}. ${hoursLabel}. ${availText}.${dept ? ` ${t('planner.people.from', { department: dept })}.` : ''} ${t('planner.people.pickHint')}`}
+        aria-label={`${person.name}. ${hoursLabel}. ${availText}.${dept ? ` ${t('planner.people.from', { department: dept })}.` : ''}${prefText ? ` ${prefText}.` : ''} ${t('planner.people.pickHint')}`}
         className="min-w-0 flex-1 cursor-grab touch-manipulation text-left active:cursor-grabbing"
       >
         <div className="flex items-center gap-2">
@@ -239,6 +253,12 @@ const PersonCard = memo(function PersonCard({
         </div>
         {days.length === 7 ? <WeekStrip person={person} days={days} /> : null}
         <p className={cn('mt-1 truncate text-[0.75rem]', off ? 'font-semibold text-danger' : windows?.length ? 'text-ok' : 'text-muted')}>{availText}</p>
+        {prefText ? (
+          <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[0.75rem] text-muted" title={prefText}>
+            <Heart className="h-3 w-3 shrink-0" aria-hidden="true" />
+            <span className="truncate">{prefText}</span>
+          </p>
+        ) : null}
       </button>
     </div>
   );

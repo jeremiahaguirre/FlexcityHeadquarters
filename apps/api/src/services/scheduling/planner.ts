@@ -34,6 +34,7 @@ import { effectiveSettings, parseSolverSettings } from './solverSettings.js';
 import { type ShiftWarning, shiftWarnings } from './shiftWarnings.js';
 import { isNeverAlone } from './twoPerson.js';
 import { breakMinutesOf, paidHours } from './workRules.js';
+import { type StatedPreferences, loadPreferences } from './preferences.js';
 
 const H = 3_600_000;
 export const MAX_PLANNER_DAYS = 42;
@@ -195,6 +196,8 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
     tx.position.findMany({ select: { id: true, departmentId: true, department: { select: { name: true, nameFr: true } } } }),
   ]);
   const conf = await confirmedThrough(tx, users.map((u) => u.id));
+  // Stated shift preferences, for the people panel (schedulers of their department only, as here).
+  const prefs = resolveFeatures(tenant.features).shiftPreferences ? await loadPreferences(tx, users.map((u) => u.id)) : new Map<string, StatedPreferences>();
   // Meal breaks, shifts under the call-in minimum, never-alone shifts left alone.
   const warnings = await shiftWarnings(tx, shifts);
   const today = localDate(new Date(), tz);
@@ -237,6 +240,7 @@ export async function plannerBoard(tx: Tx, a: AuthContext, q: PlannerRange) {
       hasAvailability: avail.length > 0,
       confirmedThrough: confirmed,
       availabilityCurrent: !!confirmed && confirmed >= through,
+      preferences: prefs.get(u.id) ?? null,
     };
   });
 

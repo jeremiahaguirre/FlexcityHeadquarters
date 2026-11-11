@@ -13,6 +13,7 @@
  *     travelMinutes,                     // time needed between two facilities (default 30)
  *     federallyRegulated,                // schedule under the Canada Labour Code rule set
  *     holidayClosedFacilityIds,          // facilities closed on statutory holidays (forecast proposes nothing)
+ *     templateAutoCreate,                // the worker keeps weekly shift templates' next weeks drafted (default off)
  *     lastHorizonWeeks,                  // the last horizon someone ran (shown as a hint)
  *     departments: { [departmentId]: { planAheadWeeks?, weights?, toggles?, useSeniority?, targetHours?, limits?, federallyRegulated? } }
  *   }
@@ -72,6 +73,8 @@ export interface SolverSettings {
   travelMinutes: number;
   federallyRegulated: boolean;
   holidayClosedFacilityIds: string[];
+  /** Weekly shift templates: the worker drafts each template's next weeks (its autoWeeksAhead). Off by default. */
+  templateAutoCreate: boolean;
   departments: Record<string, DepartmentSolverSettings>;
 }
 
@@ -94,6 +97,7 @@ export const orgExtrasBody = z.object({
   travelMinutes: z.number().int().min(0).max(240),
   federallyRegulated: z.boolean(),
   holidayClosedFacilityIds: z.array(z.string().uuid()).max(500),
+  templateAutoCreate: z.boolean(),
 }).partial();
 export const departmentBody = z.object({
   planAheadWeeks: horizonBody.optional(),
@@ -142,6 +146,7 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
     ...(s.travelMinutes !== undefined ? { travelMinutes: s.travelMinutes } : {}),
     ...(s.federallyRegulated !== undefined ? { federallyRegulated: s.federallyRegulated } : {}),
     ...(s.holidayClosedFacilityIds !== undefined ? { holidayClosedFacilityIds: s.holidayClosedFacilityIds } : {}),
+    ...(s.templateAutoCreate !== undefined ? { templateAutoCreate: s.templateAutoCreate } : {}),
   });
   const x = extras.success ? extras.data : {};
   // An older stored 13 (before the weekly-rest cap) reads as 12.
@@ -159,6 +164,7 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
     travelMinutes: x.travelMinutes ?? DEFAULT_TRAVEL_MINUTES,
     federallyRegulated: x.federallyRegulated ?? false,
     holidayClosedFacilityIds: x.holidayClosedFacilityIds ?? [],
+    templateAutoCreate: x.templateAutoCreate ?? false,
     departments,
   };
 }

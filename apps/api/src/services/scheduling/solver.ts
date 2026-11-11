@@ -15,7 +15,8 @@
  *   fill every slot first, then required coverage (e.g. a certified operator on site), then
  *   contracted/target hours, fair hours across the horizon, overtime cost and the overtime
  *   ledger, weekends/evenings rotation, continuity (same facility, keep existing drafts),
- *   preferences (main position, people who confirmed availability for tentative weeks) and —
+ *   preferences (main position, people who confirmed availability for tentative weeks, and the
+ *   shifts people said they'd prefer or avoid and the most hours/days a week they'd like) and —
  *   only when the organization and department use it — seniority. With seniority off, it is
  *   never read: not as a weight, a tie-break or a reason.
  *
@@ -46,6 +47,7 @@ import type { EmploymentStatus } from './assistant.js';
 import { type CandidateContext, type PositionSpec, type SchoolCalendar, type ShiftSpec, availableAt, checkDailyRest, checkRestBetweenShifts, checkWeeklyRest, consecutiveDays, evaluateCandidate, wallMinutes } from './eligibility.js';
 import type { SolverWeights } from './solverSettings.js';
 import { breakWindow } from './workRules.js';
+import { type StatedPreferences, hasStated, preferenceScore } from './preferences.js';
 import { twoPersonViolations } from './twoPerson.js';
 
 export interface SolverSlot {
@@ -85,6 +87,8 @@ export interface SolverPerson extends CandidateContext {
   prior: { hours: number; weekends: number; evenings: number; weeks: number; holidays?: number };
   /** Availability confirmed through this ISO date (null = never confirmed). */
   confirmedThrough: string | null;
+  /** Stated shift preferences (a wish, not availability): soft, weighed with "preferences". */
+  preferences?: StatedPreferences;
 }
 
 export interface CoverageNeed {
@@ -341,6 +345,12 @@ export function solve(input: SolverInput): SolverResult {
   const firstDate = sm.reduce((m, x) => (x.startDate < m ? x.startDate : m), sm[0]?.startDate ?? '9999-12-31');
   const youngest = Math.max(0, ...slots.map((s) => maxUnder(s.rules)));
   const exactPerson = people.map((p) => (p.restrictions ?? []).some((r) => r.maxWeeklyHours !== null) || (!!p.dateOfBirth && age(p.dateOfBirth, firstDate) < youngest));
+  // Stated preferences: +1 prefers shifts like this one, −1 would rather avoid it (per person × slot).
+  const stated = people.map((p) => hasStated(p.preferences));
+  const prefers = people.map((p) => !!p.preferences?.windows.some((w) => w.kind === 'PREFER'));
+  const pref = new Int8Array(stated.some(Boolean) ? nP * nS : 0);
+  if (pref.length) for (let i = 0; i < nP; i++) if (people[i]!.preferences?.windows.length) for (let j = 0; j < nS; j++) pref[i * nS + j] = preferenceScore(people[i]!.preferences, { dow: sm[j]!.dow, startMinute: sm[j]!.startMin, positionId: slots[j]!.shift.positionId, facilityId: slots[j]!.shift.facilityId });
+  const prefOf = (i: number, j: number) => (pref.length ? pref[i * nS + j]! : 0);
 
   // ---- 1. static screen
   const candidates: number[][] = []; // slot → people who pass the static screen
@@ -480,6 +490,9 @@ export function solve(input: SolverInput): SolverResult {
     let premium = 0;
     let offPrimary = 0;
     let tentativeUnconfirmed = 0;
+    let avoided = 0;
+    let notPreferred = 0;
+    let preferredMet = 0;
     const facilities = new Set<string>();
     const day = new Map<string, number>();
     const week = new Map<string, number>();
@@ -511,6 +524,10 @@ export function solve(input: SolverInput): SolverResult {
       facilities.add(slots[j]!.shift.facilityId);
       if (p.primaryPositionId && slots[j]!.shift.positionId !== p.primaryPositionId) offPrimary += m.hours;
       if (slots[j]!.tentative && !(p.confirmedThrough && p.confirmedThrough >= m.endDate)) tentativeUnconfirmed++;
+      const ps = prefOf(i, j);
+      if (ps < 0) avoided++;
+      else if (ps > 0) preferredMet++;
+      else if (prefers[i]) notPreferred++;
       rateHours += (p.rates.get(slots[j]!.shift.positionId) ?? defaultRate) * m.hours;
       for (const pc of m.pieces) {
         day.set(pc.date, (day.get(pc.date) ?? 0) + pc.hours);
@@ -536,7 +553,11 @@ export function solve(input: SolverInput): SolverResult {
     const avgRate = hours > 0 && mine[i]!.length ? rateHours / sum(mine[i]!.map((j) => sm[j]!.hours)) : (p.rates.values().next().value ?? defaultRate);
     // Overtime cost in "1.5 units": double-time hours cost a third more.
     const otCost = (otHours + dtHours / 3) * avgRate * 1.5;
-    return { hours, weekends, evenings, holidays, holidayExtra, premium, offPrimary, tentativeUnconfirmed, facilities: facilities.size, otHours, dtHours, otCost, avgRate };
+    // Stated limits: hours above the most they'd like this week, days above the most days they'd like.
+    const pr = p.preferences;
+    const overHours = pr?.maxWeeklyHours != null ? Math.max(0, hours - pr.maxWeeklyHours) : 0;
+    const overDays = pr?.maxDaysPerWeek != null ? Math.max(0, new Set([...day.entries()].filter(([, h]) => h > EPS).map(([d]) => d)).size - pr.maxDaysPerWeek) : 0;
+    return { hours, weekends, evenings, holidays, holidayExtra, premium, offPrimary, tentativeUnconfirmed, avoided, notPreferred, preferredMet, overHours, overDays, facilities: facilities.size, otHours, dtHours, otCost, avgRate };
   };
 
   const personCost = (i: number): number => {
@@ -564,7 +585,7 @@ export function solve(input: SolverInput): SolverResult {
       // Weekends, evenings and statutory holidays rotate fairly.
       W.spread * 3 * (wk * wk + ev * ev + 2 * hol * hol) +
       W.continuity * 15 * Math.max(0, st.facilities - 1) +
-      W.preferences * (0.5 * st.offPrimary + 4 * st.tentativeUnconfirmed) +
+      W.preferences * (0.5 * st.offPrimary + 4 * st.tentativeUnconfirmed + (stated[i] ? 3 * st.avoided + st.notPreferred - 1.5 * st.preferredMet + 0.3 * st.overHours * st.overHours + 4 * st.overDays : 0)) +
       (o.useSeniority ? W.seniority * 1.5 * assignedHours * juniority[i]! : 0)
     );
   };
@@ -838,6 +859,15 @@ export function solve(input: SolverInput): SolverResult {
     if (m.weekend && people[i]!.prior.weekends + st.weekends <= minOf(otherStats.map((x, k) => people[others[k]!]!.prior.weekends + x.weekends)) + 1) out.push({ code: 'FEWEST_WEEKENDS' });
     if (m.evening && people[i]!.prior.evenings + st.evenings <= minOf(otherStats.map((x, k) => people[others[k]!]!.prior.evenings + x.evenings)) + 1) out.push({ code: 'FEWEST_EVENINGS' });
     if (p.primaryPositionId && p.primaryPositionId !== s.shift.positionId) out.push({ code: 'SECOND_POSITION' });
+    // Stated preferences: honoured, or not (and why it went to them anyway shows in the other reasons).
+    if (stated[i]) {
+      const ps = prefOf(i, j);
+      if (ps > 0) out.push({ code: 'PREFERENCE_MET' });
+      else if (ps < 0) out.push({ code: 'PREFERENCE_AVOIDED' });
+      else if (prefers[i]) out.push({ code: 'PREFERENCE_OUTSIDE' });
+      if (st.overHours > EPS) out.push({ code: 'PREFERENCE_OVER_HOURS', params: { hours: p.preferences!.maxWeeklyHours! } });
+      if (st.overDays > 0) out.push({ code: 'PREFERENCE_OVER_DAYS', params: { days: p.preferences!.maxDaysPerWeek! } });
+    }
     if (st.otHours > EPS) out.push({ code: 'OVERTIME', params: { hours: round(st.otHours) } });
     if (st.otHours > EPS && others.every((x) => people[x]!.overtimeCharged >= p.overtimeCharged)) out.push({ code: 'FEWEST_OVERTIME' });
     if (o.useSeniority && W.seniority > 0 && others.every((x) => juniority[x]! >= juniority[i]!)) out.push({ code: 'SENIORITY' });
