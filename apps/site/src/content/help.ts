@@ -209,6 +209,38 @@ export const ARTICLES: Article[] = [
     },
   },
   {
+    slug: 'schedule-by-hand',
+    audience: 'leads',
+    en: {
+      title: 'Schedule by hand: drag and drop',
+      summary: 'Put people on shifts yourself in a month, week or day view, with every rule checked as you go.',
+      steps: [
+        'Open Schedule builder, choose the department (and a facility if you like), then Month, Week or Day. Your choice is remembered.',
+        'The People list shows everyone you can schedule, including people from other departments who hold a position here: their positions and certifications, hours so far against their target, availability and time off for the days you see, and a check mark when they’ve confirmed availability. Search, filter by position, availability or under-target hours, and sort by fewest hours.',
+        'Drag a person onto a shift to assign them. While you drag, every shift and day shows green (OK), amber (OK with a warning, such as “Overtime 2 h” or “Outside their availability”) or red (not allowed, such as “Not certified”, “On approved time off” or “Already working 9–1”).',
+        'Drop a person on an empty day, or on the Day view’s timeline at the time they should start, to make a new shift for them. The times, position and facility come from their availability and your department’s usual shifts; change them before you create it.',
+        'Drag a shift to another day to move it, hold Alt / Option (or turn on Copy) to copy it, drag a bar’s edges on the Day view to change the times, or drag it back to the People list to leave it open. Tick several people to put them all on one shift: each gets a spot.',
+        'Use Copy last week (or Copy the day before) to start from what worked. People are kept only where every rule still allows it; the rest stay open.',
+        'Undo and Redo (Ctrl / ⌘ + Z) step through this session’s changes. Everything is a draft until you tap Publish.',
+      ],
+      tip: 'On a phone, or with a keyboard, tap a shift for a ranked list of who can work it, or pick a person and then a shift or a day. Each drop is checked again by the same rules as the shift board; a refusal says why, and overtime asks you first.',
+    },
+    fr: {
+      title: 'Planifier à la main : glisser-déposer',
+      summary: 'Placez vous-même les personnes sur les quarts en vue mois, semaine ou jour, avec chaque règle vérifiée au fur et à mesure.',
+      steps: [
+        'Ouvrez Création d’horaires, choisissez le service (et une installation si vous voulez), puis Mois, Semaine ou Jour. Votre choix est retenu.',
+        'La liste Personnes montre tous ceux que vous pouvez planifier, y compris les personnes d’autres services qui occupent un poste chez vous : postes et certifications, heures jusqu’ici par rapport à leur cible, disponibilités et congés pour les jours affichés, et un crochet quand leurs disponibilités sont confirmées. Cherchez, filtrez par poste, disponibilité ou heures sous la cible, et triez par moins d’heures.',
+        'Glissez une personne sur un quart pour l’affecter. Pendant que vous glissez, chaque quart et chaque journée s’affiche en vert (permis), en ambre (permis avec un avertissement, comme « Heures supplémentaires 2 h » ou « En dehors de ses disponibilités ») ou en rouge (non permis, comme « Non certifié·e », « En congé approuvé » ou « Travaille déjà 9 h – 13 h »).',
+        'Déposez une personne sur une journée vide, ou sur la chronologie de la vue Jour à l’heure où elle commence, pour lui créer un quart. Les heures, le poste et l’installation viennent de ses disponibilités et des quarts habituels de votre service; modifiez-les avant de créer.',
+        'Glissez un quart vers une autre journée pour le déplacer, maintenez Alt / Option (ou activez Copier) pour le copier, glissez les bords d’une barre dans la vue Jour pour changer les heures, ou ramenez-le vers la liste Personnes pour le laisser ouvert. Cochez plusieurs personnes pour les mettre toutes sur un même quart : chacune obtient une place.',
+        'Utilisez Copier la semaine dernière (ou Copier la veille) pour partir de ce qui a fonctionné. Les personnes ne sont gardées que là où toutes les règles le permettent encore; les autres quarts restent ouverts.',
+        'Annuler et Rétablir (Ctrl / ⌘ + Z) parcourent les changements de cette session. Tout reste en brouillon jusqu’à ce que vous touchiez Publier.',
+      ],
+      tip: 'Sur un téléphone, ou au clavier, touchez un quart pour voir qui peut le faire, en ordre, ou choisissez une personne puis un quart ou une journée. Chaque dépôt est vérifié de nouveau selon les mêmes règles que le tableau des quarts; un refus dit pourquoi, et les heures supplémentaires vous sont d’abord demandées.',
+    },
+  },
+  {
     slug: 'confirm-your-availability',
     audience: 'staff',
     en: {
