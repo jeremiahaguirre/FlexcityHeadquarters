@@ -1,5 +1,6 @@
 'use client';
 
+import { doneBeat, setAuthMotion } from '@/lib/authMotion';
 import { Building2, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -60,11 +61,15 @@ function LoginForm() {
   async function withPasskey() {
     setBusy(true);
     setError(null);
+    setAuthMotion('working');
     try {
       await signInWithPasskey();
+      setAuthMotion('done');
+      await doneBeat();
       const next = params.get('next');
       router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
     } catch (err) {
+      setAuthMotion('idle');
       if (!cancelled(err)) setError(err instanceof ApiError && err.code === 'PASSKEY_UNKNOWN' ? t('passkeys.unknown') : t('passkeys.failed'));
     } finally {
       setBusy(false);
@@ -74,16 +79,20 @@ function LoginForm() {
   async function signIn(email: string, password: string) {
     setBusy(true);
     setError(null);
+    setAuthMotion('working');
     try {
       await login(email, password);
+      setAuthMotion('done');
       try {
         sessionStorage.setItem(OFFER_FLAG, '1'); // offer Face ID / fingerprint / Windows Hello next
       } catch {
         /* storage blocked */
       }
+      await doneBeat();
       const next = closed ? '/export' : params.get('next');
       router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
     } catch (err) {
+      setAuthMotion('idle');
       if (err instanceof ApiError && err.code === 'ORG_DISABLED') setError(t('login.closedNoAccess'));
       else if (err instanceof ApiError && err.status === 401) setError(t('login.invalid'));
       else if (err instanceof ApiError && err.status === 423) setError(t('login.locked'));
