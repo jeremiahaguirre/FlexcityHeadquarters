@@ -1,6 +1,7 @@
 import { ArrowRight, Check } from 'lucide-react';
 import Link from 'next/link';
-import { RenewalNote } from '@/components/RenewalNote';
+import { RenewalNote, RenewalTerms } from '@/components/RenewalNote';
+import { btnPrimary, btnSecondary } from '@/lib/buttons';
 import { PageHero } from '@/components/PageHero';
 import { PhoneClip } from '@/components/PhoneClip';
 import { Icon } from '@/components/Icon';
@@ -26,15 +27,15 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
     <>
       <PageHero eyebrow={all.nav.privateSector} title={c.title} lead={c.lead} aside={<PhoneClip clip="board" lang={params.lang} label={all.home.see.clips[0]!.title} />}>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link href={`/${params.lang}/contact/?kind=SALES`} className="inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] shadow-[0_10px_30px_-8px_rgb(197_242_58/0.55)] hover:bg-[#D4F767]">
+          <Link href={`/${params.lang}/contact/?kind=SALES`} className={btnPrimary}>
             {c.cta}
             <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
           </Link>
-          <a href={demoLink('STAFF', params.lang)} className="inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15">
+          <a href={demoLink('STAFF', params.lang)} className={btnSecondary}>
             {all.home.ctaDemo}
           </a>
         </div>
-        <RenewalNote lang={params.lang} dark className="mt-4 max-w-2xl" />
+        <RenewalNote lang={params.lang} className="mt-4 max-w-2xl" />
       </PageHero>
       <Section tone="panel">
         <SectionHead title={c.whoTitle} />
@@ -78,7 +79,8 @@ export default async function PrivateSector(props: { params: Promise<{ lang: Lan
             </Link>
           </aside>
         </div>
-        <p className="mt-10 max-w-3xl text-caption text-muted">
+        <RenewalTerms lang={params.lang} className="mt-10 max-w-3xl leading-6" />
+        <p className="mt-4 max-w-3xl text-caption text-muted">
           {c.privacy}{' '}
           <Link href={`/${params.lang}/privacy/`} className="underline">{all.footer.privacy}</Link>
         </p>
