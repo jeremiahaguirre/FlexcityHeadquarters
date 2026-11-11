@@ -16,7 +16,7 @@ follow it. Prices are monthly, in Canadian dollars, before GST/HST and PST.
 | Programs and registration: campaigns, online sign-up, member services | | ✓ | ✓ | ✓ |
 | Fleet and winter: pre-trip inspections, licences, hours of service, call-outs, patrols | | ✓ | ✓ | ✓ |
 | HR Compliance: onboarding checks, people review, discipline, accommodation | | | ✓ | ✓ |
-| HR Suite: leave balances, reviews, training, grievances, offboarding | | | ✓ | ✓ |
+| HR Suite: leave balances, reviews, training, grievances, offboarding, staff surveys (pulse and exit) | | | ✓ | ✓ |
 | Benchmarks | | | ✓ | ✓ |
 | Single sign-on (Entra ID, SAML) | | | ✓ | ✓ |
 | Bank connection (SFTP) for payroll | | | ✓ | ✓ |
@@ -79,7 +79,7 @@ organization:
 | People review | HR | $29 | $250 |
 | Discipline records | HR | $29 | $250 |
 | Accommodation cases | HR | $19 | $200 |
-| HR Suite: leave, reviews, training, grievances, offboarding | HR | $69 | $500 |
+| HR Suite: leave, reviews, training, grievances, offboarding, staff surveys | HR | $69 | $500 |
 | Benchmarks | HR | $29 | $100 |
 | Single sign-on | Integration | $49 | $300 |
 | Bank connection | Integration | $39 | $300 |
@@ -114,7 +114,7 @@ Set per organization in the Dev console (city → Billing → Billing terms); lo
 
 Safety and legal duties (working alone, injury reports, the provincial rules engine: overtime, rest periods, young-worker
 limits), payroll itself, security (passkeys, multi-factor sign-in) and privacy rights (audit log, records export,
-retention settings, the in-app privacy notice) are core in every plan. Selling legal compliance as an upsell creates
+retention settings, the in-app privacy notice) are core in every plan, and so is team communication (announcements, the logbook, team messaging with its harassment reporting). Selling legal compliance as an upsell creates
 liability when a customer doesn't buy it.
 
 ## What sits behind which module
