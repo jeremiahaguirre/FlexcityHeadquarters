@@ -17,6 +17,7 @@ import type { PayCodeKey } from '@prisma/client';
 import { Decimal, ZERO, cents, hoursDec } from '../../lib/money.js';
 import { addDays, dayOfWeek, payWeekStart, splitByLocalDay, startOfLocalDay } from '../../lib/time.js';
 import { type ProvinceRules, vacationPercent } from '../compliance/provincialRules.js';
+import { workDayWindows } from '../compliance/workDay.js';
 import { type Issue, issue } from './issues.js';
 
 export interface WorkedInterval {
@@ -73,6 +74,8 @@ interface Portion {
   end: Date;
   hours: Decimal;
   localDate: string;
+  /** The "day" for daily overtime (a calendar date, or a 24-hour day from a shift's start: workDay.ts). */
+  workDay: string;
   positionId: string;
   premiumPerHour: Decimal | null;
   bucket: Bucket;
@@ -94,21 +97,28 @@ export function calculatePay(input: PayCalcInput): PayResult {
   const periodStartInstant = startOfLocalDay(input.periodStart, timezone);
   const periodEndInstant = startOfLocalDay(periodEndDate, timezone);
 
-  // 1. Clip to the period and split at local midnights.
+  // 1. Clip to the period and split at local midnights (and, where a shift past midnight starts a
+  //    24-hour day, at that day's boundaries: dailyOvertimeDays()).
+  for (const iv of input.intervals) if (iv.end <= iv.start) throw new Error('Interval end must be after start');
+  const days = dailyOvertimeDays(input.intervals, timezone, rules);
   const pieces: Array<Omit<Portion, 'bucket' | 'hours'>> = [];
   for (const iv of input.intervals) {
-    if (iv.end <= iv.start) throw new Error('Interval end must be after start');
     const start = iv.start < periodStartInstant ? periodStartInstant : iv.start;
     const end = iv.end > periodEndInstant ? periodEndInstant : iv.end;
     if (end <= start) continue;
     for (const p of splitByLocalDay({ start, end }, timezone)) {
-      pieces.push({ ...p, positionId: iv.positionId, premiumPerHour: iv.premiumPerHour ?? null });
+      for (const w of days ? days.filter((d) => d.start < p.end.getTime() && d.end > p.start.getTime()) : [null]) {
+        const s2 = w ? new Date(Math.max(w.start, p.start.getTime())) : p.start;
+        const e2 = w ? new Date(Math.min(w.end, p.end.getTime())) : p.end;
+        if (e2 <= s2) continue;
+        pieces.push({ start: s2, end: e2, localDate: p.localDate, workDay: w ? w.key : p.localDate, positionId: iv.positionId, premiumPerHour: iv.premiumPerHour ?? null });
+      }
     }
   }
   pieces.sort((a, b) => a.start.getTime() - b.start.getTime());
 
   // 2. Daily classification.
-  const byDay = groupBy(pieces, (p) => p.localDate);
+  const byDay = groupBy(pieces, (p) => p.workDay);
   const portions: Portion[] = [];
   for (const day of [...byDay.keys()].sort()) {
     let dayHours = ZERO;
@@ -181,6 +191,17 @@ export function calculatePay(input: PayCalcInput): PayResult {
   }
 
   return { lines, totalHours, grossWages, vacationPercent: pct, vacationPay, vacationAccrued, dailyWages, dailyHours, warnings };
+}
+
+/**
+ * The days daily overtime is counted in, when they aren't plain calendar days: in BC and Alberta
+ * (our reading, PENDING COUNSEL REVIEW, docs/COMPLIANCE.md) a shift that continues past midnight
+ * starts a 24-hour day at its start, so a 16:00–08:00 shift is one 16-hour day (8 regular, then
+ * overtime, then double time in BC) rather than 8 + 8 on two dates. Null = calendar days.
+ */
+export function dailyOvertimeDays(intervals: ReadonlyArray<{ start: Date; end: Date }>, timezone: string, rules: Pick<ProvinceRules, 'overtime'>) {
+  if ((rules.overtime.dayDefinition ?? 'calendar') === 'calendar') return null;
+  return workDayWindows(intervals, timezone, rules.overtime.dayDefinition);
 }
 
 /** Split one piece of a day into REG / OT15 / OT20 given hours already worked that day. */

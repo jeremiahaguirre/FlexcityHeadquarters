@@ -28,7 +28,8 @@ import {
   wholeYearsBetween,
 } from '../../lib/time.js';
 import { type Restriction, accommodationBlocks } from '../people/accommodation.js';
-import type { ProvinceRules } from '../compliance/provincialRules.js';
+import { type ProvinceRules, maxConsecutiveDaysAllowed } from '../compliance/provincialRules.js';
+import { hoursPerWorkDay } from '../compliance/workDay.js';
 import { calculatePay } from '../payroll/payCalc.js';
 
 export type BlockCode =
@@ -49,7 +50,10 @@ export type BlockCode =
   | 'ACCOMMODATION'
   | 'HOS_DAILY'
   | 'HOS_REST'
-  | 'HOS_WEEKLY';
+  | 'HOS_WEEKLY'
+  | 'DAILY_HOURS'
+  | 'CONSECUTIVE_DAYS'
+  | 'WEEKLY_REST';
 
 export type FlagCode = 'OVERTIME' | 'PARENTAL_CONSENT_REQUIRED' | 'RULES_UNVERIFIED' | 'DATE_OF_BIRTH_MISSING';
 
@@ -168,6 +172,18 @@ export interface EvaluateOptions {
    * the person's other shifts is computed once per pay period instead of once per shift checked.
    */
   overtimeMemo?: OvertimeMemo;
+  /**
+   * The organization's (or department's) own limits, enforced on every path: manual assign, the
+   * Shift Board, Fill, the planner, trades and call-outs. Omitted = not enforced (unit tests).
+   */
+  limits?: OrgLimits | null;
+}
+
+export interface OrgLimits {
+  /** Most hours a person may work in a day: the shift itself, and everything in the day it falls in. */
+  maxDailyHours: number | null;
+  /** Most days in a row with a shift starting (capped by what weekly rest allows). */
+  maxConsecutiveDays: number | null;
 }
 
 /** Overtime hours of a set of existing shifts, per rules in force. */
@@ -242,20 +258,11 @@ export function evaluateCandidate(
   // Rest periods ---------------------------------------------------------------
   const restBlock = checkRestBetweenShifts(c.existingShifts, shift, rules);
   if (restBlock) blocks.push(restBlock);
-  if (rules.rest.dailyConsecutiveHours !== null) {
-    const required = rules.rest.dailyConsecutiveHours;
-    const all = [...c.existingShifts, shift];
-    for (let d = shiftStartDate; d <= shiftEndDate; d = addDays(d, 1)) {
-      const longest = longestFreeGapInDay(all, d, tz);
-      if (longest < required) {
-        blocks.push({
-          code: 'DAILY_REST',
-          message: `Would leave only ${longest.toFixed(1)}h consecutive rest on ${d} (${required}h required).`,
-        });
-        break;
-      }
-    }
-  }
+  const dailyRest = checkDailyRest(c.existingShifts, shift, rules);
+  if (dailyRest) blocks.push(dailyRest);
+  const weeklyRest = checkWeeklyRest(c.existingShifts, shift, rules, tz, opts.payWeekStartDay);
+  if (weeklyRest) blocks.push(weeklyRest);
+  if (opts.limits) blocks.push(...checkOrgLimits(c.existingShifts, shift, rules, opts.limits));
 
   // Age -------------------------------------------------------------------------
   if (c.dateOfBirth === null) {
@@ -278,14 +285,16 @@ export function evaluateCandidate(
   }
 
   // Hours & overtime -----------------------------------------------------------
-  const { overtimeHours, weeklyHoursAfter } = projectOvertime(c.existingShifts, shift, opts);
-  if (c.weeklyMaxHours !== null && weeklyHoursAfter.gt(c.weeklyMaxHours)) {
+  const { overtimeHours, weeklyHoursAfter, weeks } = projectOvertime(c.existingShifts, shift, opts);
+  // Every pay week the shift touches (an overnight shift can cross into the next one).
+  const busiest = weeks.reduce((m, w) => (w.hours.gt(m.hours) ? w : m), weeks[0]!);
+  if (c.weeklyMaxHours !== null && busiest.hours.gt(c.weeklyMaxHours)) {
     blocks.push({
       code: 'OVER_PERSONAL_WEEKLY_MAX',
-      message: `Would reach ${weeklyHoursAfter.toFixed(2)}h this week (cap ${c.weeklyMaxHours.toFixed(2)}h).`,
+      message: `Would reach ${busiest.hours.toFixed(2)}h in the week of ${busiest.weekStart} (cap ${c.weeklyMaxHours.toFixed(2)}h).`,
     });
   }
-  for (const message of accommodationBlocks(c.restrictions ?? [], { start: shift.start, end: shift.end, positionId: shift.positionId, timezone: tz }, weeklyHoursAfter)) {
+  for (const message of accommodationBlocks(c.restrictions ?? [], { start: shift.start, end: shift.end, positionId: shift.positionId, timezone: tz }, busiest.hours)) {
     blocks.push({ code: 'ACCOMMODATION', message });
   }
   if (overtimeHours.gt(0)) {
@@ -315,22 +324,138 @@ export function checkRestBetweenShifts(existing: Interval[], shift: Interval, ru
   return null;
 }
 
-/** Longest stretch with no work inside one local calendar day, in hours. */
-function longestFreeGapInDay(shifts: Interval[], isoDate: string, tz: string): number {
-  const dayStart = startOfLocalDay(isoDate, tz);
-  const dayEnd = startOfLocalDay(addDays(isoDate, 1), tz);
-  const busy = mergeIntervals(
-    shifts
-      .filter((s) => overlaps(s, { start: dayStart, end: dayEnd }))
-      .map((s) => ({ start: s.start < dayStart ? dayStart : s.start, end: s.end > dayEnd ? dayEnd : s.end })),
-  );
+const DAY_MS = 86_400_000;
+const H_MS = 3_600_000;
+
+/** Longest stretch with no work inside [from, to), in hours. */
+export function longestFree(busy: ReadonlyArray<{ start: number; end: number }>, from: number, to: number): number {
+  const parts = busy
+    .filter((b) => b.start < to && b.end > from)
+    .map((b) => [Math.max(b.start, from), Math.min(b.end, to)] as const)
+    .sort((a, b) => a[0] - b[0]);
   let longest = 0;
-  let cursor = dayStart;
-  for (const b of busy) {
-    longest = Math.max(longest, hoursBetween(cursor, b.start));
-    cursor = b.end;
+  let cursor = from;
+  for (const [a, b] of parts) {
+    longest = Math.max(longest, a - cursor);
+    cursor = Math.max(cursor, b);
   }
-  return Math.max(longest, hoursBetween(cursor, dayEnd));
+  return Math.max(longest, to - cursor) / H_MS;
+}
+
+const ms = (xs: ReadonlyArray<Interval>) => xs.map((x) => ({ start: x.start.getTime(), end: x.end.getTime() }));
+
+/**
+ * Daily rest (ON: 11 consecutive hours off in each day). Our reading, pending counsel review
+ * (docs/COMPLIANCE.md): every 24 hours that start at the start of a shift must hold that many
+ * consecutive hours off, and the rest may cross midnight, so ordinary day shifts (09–17, 07–19)
+ * and nights (19–07) pass, while 07–15 then 23–03 (8 h and 4 h off) does not. Refuses only when
+ * this shift makes a 24-hour period short of rest (an existing shortfall isn't blamed on it).
+ */
+export function checkDailyRest(existing: ReadonlyArray<Interval>, shift: Interval, rules: ProvinceRules): Reason<BlockCode> | null {
+  const required = rules.rest.dailyConsecutiveHours;
+  if (required === null) return null;
+  const before = ms(existing.filter((s) => !overlaps(s, shift)));
+  const after = [...before, { start: shift.start.getTime(), end: shift.end.getTime() }];
+  const a = shift.start.getTime();
+  const b = shift.end.getTime();
+  // 24-hour periods that can contain this shift: those starting at a shift start in (start − 24 h, end).
+  const starts = after.map((x) => x.start).filter((t) => t > a - DAY_MS && t < b);
+  for (const t of [...new Set(starts)].sort((x, y) => x - y)) {
+    const free = longestFree(after, t, t + DAY_MS);
+    if (free + 1e-9 >= required) continue;
+    const had = t === a ? 24 : longestFree(before, t, t + DAY_MS);
+    if (free < had - 1e-9) return { code: 'DAILY_REST', message: `Would leave only ${free.toFixed(1)}h consecutive rest in the 24 hours from a shift start (${required}h required).` };
+  }
+  return null;
+}
+
+/**
+ * Weekly rest: the longest consecutive time off inside each pay week the shift touches must be
+ * at least the province's hours (BC 32, QC 32, ON/AB and most others 24). Ontario also allows 48
+ * consecutive hours in each period of two consecutive work weeks (pairs counted from a fixed
+ * week). With 'rolling7', every 7 days ending in the shift are checked instead. Refuses only when
+ * this shift creates or worsens the shortfall.
+ */
+export function checkWeeklyRest(existing: ReadonlyArray<Interval>, shift: Interval, rules: ProvinceRules, tz: string, payWeekStartDay: number): Reason<BlockCode> | null {
+  const required = rules.rest.weeklyConsecutiveHours;
+  if (!required) return null;
+  const before = ms(existing.filter((s) => !overlaps(s, shift)));
+  const after = [...before, { start: shift.start.getTime(), end: shift.end.getTime() }];
+  const fail = (hours: number) => ({ code: 'WEEKLY_REST' as const, message: `Would leave only ${hours.toFixed(1)}h off in a row that week (${required}h required).` });
+  if (rules.rest.weeklyRestPeriod === 'rolling7') {
+    for (let t = shift.start.getTime() - 7 * DAY_MS + H_MS; t <= shift.end.getTime(); t += H_MS) {
+      const free = longestFree(after, t, t + 7 * DAY_MS);
+      if (free + 1e-9 < required && free < longestFree(before, t, t + 7 * DAY_MS) - 1e-9) return fail(free);
+    }
+    return null;
+  }
+  const weekBounds = (w: string) => [startOfLocalDay(w, tz).getTime(), startOfLocalDay(addDays(w, 7), tz).getTime()] as const;
+  const touched = [...new Set([payWeekStart(localDate(shift.start, tz), payWeekStartDay), payWeekStart(localDate(new Date(shift.end.getTime() - 1), tz), payWeekStartDay)])];
+  const two = rules.rest.weeklyRestTwoWeekHours ?? null;
+  // Fixed pairs of weeks (ON's two-week alternative): pair index from a fixed Sunday.
+  const pairStart = (w: string) => {
+    const n = Math.round((Date.parse(`${w}T12:00:00Z`) - Date.parse('2000-01-02T12:00:00Z')) / (7 * DAY_MS));
+    return n % 2 === 0 ? w : addDays(w, -7);
+  };
+  const ok = (busy: typeof after, w: string) => {
+    const [ws, we] = weekBounds(w);
+    const free = longestFree(busy, ws, we);
+    if (free + 1e-9 >= required) return { ok: true, free };
+    if (two) {
+      const p = pairStart(w);
+      const [ps] = weekBounds(p);
+      const [, pe] = weekBounds(addDays(p, 7));
+      if (longestFree(busy, ps, pe) + 1e-9 >= two) return { ok: true, free };
+    }
+    return { ok: false, free };
+  };
+  // With the two-week alternative, the other week of the pair can change too.
+  const weeks = two ? [...new Set(touched.flatMap((w) => [pairStart(w), addDays(pairStart(w), 7)]))] : touched;
+  for (const w of weeks) {
+    const now = ok(after, w);
+    if (now.ok) continue;
+    const was = ok(before, w);
+    if (was.ok || now.free < was.free - 1e-9) return fail(now.free);
+  }
+  return null;
+}
+
+/**
+ * The organization's limits: a shift may not be longer than the max hours a day, nor bring the
+ * day it falls in over it (a calendar day, or in BC/AB the 24 hours from the start of a shift past
+ * midnight: workDay.ts); and no more than the max days in a row with a shift starting (capped by
+ * what weekly rest allows).
+ */
+export function checkOrgLimits(existing: ReadonlyArray<Interval>, shift: ShiftSpec, rules: ProvinceRules, limits: OrgLimits): Reason<BlockCode>[] {
+  const out: Reason<BlockCode>[] = [];
+  const tz = shift.timezone;
+  const others = existing.filter((s) => !overlaps(s, shift));
+  const max = limits.maxDailyHours;
+  if (max) {
+    const len = hoursOf(shift);
+    if (len > max + 1e-9) out.push({ code: 'DAILY_HOURS', message: `This shift is ${len.toFixed(1)}h (limit ${max}h a day).` });
+    else {
+      const days = hoursPerWorkDay([...others, shift], tz, rules.overtime.dayDefinition ?? 'calendar');
+      const over = days.find((d) => d.start < shift.end.getTime() && d.end > shift.start.getTime() && d.hours > max + 1e-9);
+      if (over) out.push({ code: 'DAILY_HOURS', message: `Would be ${over.hours.toFixed(1)}h on ${over.date} (limit ${max}h a day).` });
+    }
+  }
+  if (limits.maxConsecutiveDays) {
+    const cap = Math.min(limits.maxConsecutiveDays, maxConsecutiveDaysAllowed(rules));
+    const run = consecutiveDays([...others, shift], shift, tz);
+    if (run > cap) out.push({ code: 'CONSECUTIVE_DAYS', message: `Would be ${run} days in a row (limit ${cap}).` });
+  }
+  return out;
+}
+
+/** Days in a row with a shift starting, through the day this shift starts (each shift counts on its start date). */
+export function consecutiveDays(all: ReadonlyArray<Interval>, shift: Interval, tz: string): number {
+  const worked = new Set(all.map((s) => localDate(s.start, tz)));
+  const d0 = localDate(shift.start, tz);
+  let run = 1;
+  for (let d = addDays(d0, -1); worked.has(d); d = addDays(d, -1)) run++;
+  for (let d = addDays(d0, 1); worked.has(d); d = addDays(d, 1)) run++;
+  return run;
 }
 
 function checkYoungWorkerLimits(
@@ -366,11 +491,7 @@ function checkYoungWorkerLimits(
       out.push({ code: 'YOUNG_WORKER_LIMIT', message: `${label} ${hoursInWeek.toFixed(1)}h this week exceeds ${weekMax}h.` });
     }
     if (lim.noWorkDuringSchoolHours && schoolDay) {
-      const s = startOfLocalDay(day, tz).getTime();
-      const school = {
-        start: new Date(s + cal.schoolHours.startMinute * 60_000),
-        end: new Date(s + cal.schoolHours.endMinute * 60_000),
-      };
+      const school = { start: wallClock(day, cal.schoolHours.startMinute, tz), end: wallClock(day, cal.schoolHours.endMinute, tz) };
       if (overlaps(shift, school)) {
         out.push({ code: 'YOUNG_WORKER_LIMIT', message: `${label} may not work during school hours.` });
       }
@@ -394,21 +515,41 @@ function sumHoursWithin(intervals: Interval[], from: Date, to: Date): number {
   }, 0);
 }
 
-/** Within the person's submitted availability (a hard rule for generated schedules, a warning for manual ones). */
+/** The instant of a wall-clock time (minutes after midnight; past 1440 runs into the next day) on a local date (DST-correct). */
+export function wallClock(isoDate: string, minute: number, tz: string): Date {
+  const extra = Math.floor(minute / 1440);
+  const m = minute - extra * 1440;
+  return DateTime.fromISO(addDays(isoDate, extra), { zone: tz }).set({ hour: Math.floor(m / 60), minute: m % 60, second: 0, millisecond: 0 }).toJSDate();
+}
+
+/**
+ * A shift in wall-clock minutes from its start date's midnight (09:00–17:00 is 540–1020 on a DST
+ * changeover day too; 22:00–06:00 is 1320–1800).
+ */
+export function wallMinutes(shift: Pick<ShiftSpec, 'start' | 'end' | 'timezone'>): { date: string; startMin: number; endMin: number } {
+  const s = DateTime.fromJSDate(shift.start, { zone: shift.timezone });
+  const e = DateTime.fromJSDate(shift.end, { zone: shift.timezone });
+  const date = s.toISODate()!;
+  const days = Math.round((Date.parse(`${e.toISODate()}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`)) / DAY_MS);
+  return { date, startMin: s.hour * 60 + s.minute, endMin: days * 1440 + e.hour * 60 + e.minute };
+}
+
+/**
+ * Inside submitted availability (a hard rule for generated schedules, a warning for manual ones).
+ * Wall-clock minutes, so DST days work; a window may run past midnight (endMinute > 1440), and a
+ * shift starting after midnight is also matched against the previous day's late window.
+ */
+export function availableAt(windows: CandidateContext['availability'], date: string, startMin: number, endMin: number): boolean {
+  const fits = (d: string, offset: number) => {
+    const dow = dayOfWeek(d);
+    return windows.some((w) => w.dayOfWeek === dow && w.effectiveFrom <= d && (w.effectiveTo === null || w.effectiveTo >= d) && w.startMinute <= startMin + offset && w.endMinute >= endMin + offset);
+  };
+  return fits(date, 0) || fits(addDays(date, -1), 1440);
+}
+
 export function isAvailable(windows: CandidateContext['availability'], shift: Pick<ShiftSpec, 'start' | 'end' | 'timezone'>): boolean {
-  const day = localDate(shift.start, shift.timezone);
-  const dow = dayOfWeek(day);
-  const dayStartMs = startOfLocalDay(day, shift.timezone).getTime();
-  const startMin = (shift.start.getTime() - dayStartMs) / 60_000;
-  const endMin = (shift.end.getTime() - dayStartMs) / 60_000;
-  return windows.some(
-    (w) =>
-      w.dayOfWeek === dow &&
-      w.effectiveFrom <= day &&
-      (w.effectiveTo === null || w.effectiveTo >= day) &&
-      w.startMinute <= startMin &&
-      w.endMinute >= endMin,
-  );
+  const w = wallMinutes(shift);
+  return availableAt(windows, w.date, w.startMin, w.endMin);
 }
 
 /**
@@ -419,7 +560,7 @@ export function projectOvertime(
   existing: Array<Interval & { positionId: string }>,
   shift: ShiftSpec,
   opts: Pick<EvaluateOptions, 'rules' | 'payWeekStartDay' | 'overtimeMemo'>,
-): { overtimeHours: Decimal; weeklyHoursAfter: Decimal } {
+): { overtimeHours: Decimal; weeklyHoursAfter: Decimal; weeks: Array<{ weekStart: string; hours: Decimal }> } {
   const tz = shift.timezone;
   const periodStart = payWeekStart(localDate(shift.start, tz), opts.payWeekStartDay);
   const lastWeek = payWeekStart(localDate(new Date(shift.end.getTime() - 1), tz), opts.payWeekStartDay);
@@ -451,8 +592,8 @@ export function projectOvertime(
   } else beforeOt = otOf(run(nonOverlapping));
   const after = run([...nonOverlapping, shift]);
 
-  const weekFrom = startOfLocalDay(periodStart, tz);
-  const weekTo = startOfLocalDay(addDays(periodStart, 7), tz);
-  const weeklyHoursAfter = new Decimal(sumHoursWithin([...nonOverlapping, shift], weekFrom, weekTo));
-  return { overtimeHours: Decimal.max(otOf(after).minus(beforeOt), 0), weeklyHoursAfter };
+  const all = [...nonOverlapping, shift];
+  const weekList = weeks === 1 ? [periodStart] : [periodStart, lastWeek];
+  const perWeek = weekList.map((w) => ({ weekStart: w, hours: new Decimal(sumHoursWithin(all, startOfLocalDay(w, tz), startOfLocalDay(addDays(w, 7), tz))) }));
+  return { overtimeHours: Decimal.max(otOf(after).minus(beforeOt), 0), weeklyHoursAfter: perWeek[0]!.hours, weeks: perWeek };
 }

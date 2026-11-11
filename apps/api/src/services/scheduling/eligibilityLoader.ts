@@ -13,9 +13,15 @@ import { localDate } from '../../lib/time.js';
 import { type ProvinceRules, resolveRules } from '../compliance/provincialRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
-import { type CandidateContext, type EvaluateOptions, type PositionSpec, type SchoolCalendar, type ShiftSpec, parseHoursOfService } from './eligibility.js';
+import { resolveFeatures } from '../platform/features.js';
+import { type CandidateContext, type EvaluateOptions, type OrgLimits, type PositionSpec, type SchoolCalendar, type ShiftSpec, parseHoursOfService } from './eligibility.js';
+import { effectiveSettings, parseSolverSettings } from './solverSettings.js';
 
-const NEIGHBOURHOOD_MS = 8 * 86_400_000; // enough for rest + weekly checks
+/**
+ * Shifts loaded around the one checked: enough for rest, weekly rest over two pay weeks (ON's
+ * two-week alternative) and the longest run of days in a row the settings allow (12), each way.
+ */
+export const NEIGHBOURHOOD_MS = 15 * 86_400_000;
 
 export interface ShiftBundle {
   shift: ShiftSpec & { tenantId: string; facilityId: string; userId: string | null; version: number; status: string };
@@ -24,11 +30,29 @@ export interface ShiftBundle {
   rules: ProvinceRules;
   payWeekStartDay: number;
   schoolCalendar: SchoolCalendar;
+  /** The organization's/department's limits (max hours a day, days in a row): every path enforces them. */
+  limits: OrgLimits;
+  /** Minutes needed between two facilities. */
+  travelMinutes: number;
+  /** Seniority in use for this shift's department (the organization's switch narrowed by the department's). */
+  useSeniority: boolean;
+  departmentId: string | null;
 }
 
 /** Evaluation options for a shift — every caller uses this so none forgets a rule input. */
 export function evalOpts(bundle: ShiftBundle, requireAvailability = false): EvaluateOptions {
-  return { rules: bundle.rules, payWeekStartDay: bundle.payWeekStartDay, requireAvailability, schoolCalendar: bundle.schoolCalendar };
+  return { rules: bundle.rules, payWeekStartDay: bundle.payWeekStartDay, requireAvailability, schoolCalendar: bundle.schoolCalendar, limits: bundle.limits };
+}
+
+/** The scheduling settings that apply to a department: limits, travel time, seniority, federal rules. */
+export function departmentRuleSettings(overtimePolicy: unknown, features: unknown, departmentId: string | null) {
+  const eff = effectiveSettings(parseSolverSettings(overtimePolicy), departmentId, resolveFeatures(features).seniority);
+  return {
+    limits: { maxDailyHours: eff.limits.maxDailyHours, maxConsecutiveDays: eff.limits.maxConsecutiveDays } satisfies OrgLimits,
+    travelMinutes: eff.travelMinutes,
+    useSeniority: eff.useSeniority,
+    federal: eff.federallyRegulated,
+  };
 }
 
 export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBundle | null> {
@@ -42,6 +66,7 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
   if (!s) return null;
   const tz = s.facility.timezone;
   const onDate = localDate(s.startsAt, tz);
+  const dept = departmentRuleSettings(s.facility.tenant.overtimePolicy, s.facility.tenant.features, s.position.departmentId);
   const rules = resolveRules(
     s.facility.province,
     onDate,
@@ -52,6 +77,7 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
       effectiveFrom: o.effectiveFrom.toISOString().slice(0, 10),
       effectiveTo: o.effectiveTo?.toISOString().slice(0, 10) ?? null,
     })),
+    { federal: dept.federal },
   );
   const periods = await tx.schoolCalendarPeriod.findMany();
   const schoolCalendar = buildSchoolCalendar(
@@ -86,6 +112,10 @@ export async function loadShiftBundle(tx: Tx, shiftId: string): Promise<ShiftBun
     rules,
     payWeekStartDay: s.facility.tenant.payWeekStartDay,
     schoolCalendar,
+    limits: dept.limits,
+    travelMinutes: dept.travelMinutes,
+    useSeniority: dept.useSeniority,
+    departmentId: s.position.departmentId,
   };
 }
 

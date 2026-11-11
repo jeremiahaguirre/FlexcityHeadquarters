@@ -14,6 +14,10 @@
  * rather than silently enforcing a guess.
  */
 import type { Province } from '@prisma/client';
+import type { DayDefinition } from './workDay.js';
+
+/** A province, or the federal jurisdiction (Canada Labour Code) for federally regulated work. */
+export type Jurisdiction = Province | 'FED';
 
 export type OvertimeMethod =
   /** Daily OT first; weekly threshold counts only hours not already paid as daily OT (BC, SK, MB...). */
@@ -43,7 +47,7 @@ export interface YoungWorkerLimit {
 }
 
 export interface ProvinceRules {
-  province: Province;
+  province: Jurisdiction;
   effectiveFrom: string; // ISO date
   verified: boolean;
   sources: string[];
@@ -52,6 +56,8 @@ export interface ProvinceRules {
     dailyDoubleTimeHours: number | null;
     weeklyHours: number | null;
     method: OvertimeMethod;
+    /** What a "day" is for daily overtime and daily hour limits (default: calendar day). See workDay.ts. */
+    dayDefinition?: DayDefinition;
   };
   rest: {
     /** Minimum hours off between the end of one shift and the start of the next. */
@@ -60,10 +66,17 @@ export interface ProvinceRules {
     splitShiftMaxSpanHours?: number | null;
     /** ON: the between-shift rest does not apply if total time worked on the successive shifts is at most this. */
     betweenShiftsExemptIfWorkedAtMost?: number | null;
-    /** Minimum consecutive hours off within each local calendar day. */
+    /**
+     * Minimum consecutive hours off in each "day". Measured in every 24 hours that start at the
+     * start of a shift (rest may cross midnight): our reading of ON ESA s. 18(1), pending counsel.
+     */
     dailyConsecutiveHours: number | null;
-    /** Minimum consecutive hours off in each work week. */
+    /** Minimum consecutive hours off in each work week (the longest off period inside the pay week). */
     weeklyConsecutiveHours: number | null;
+    /** How the week for weekly rest is counted: the pay week (default) or any rolling 7 days. */
+    weeklyRestPeriod?: 'pay_week' | 'rolling7';
+    /** ON s. 18(4)(b): instead, this many consecutive hours in every period of two consecutive work weeks. */
+    weeklyRestTwoWeekHours?: number | null;
   };
   vacation: {
     /** Highest tier whose minYears ≤ completed years of service applies. */
@@ -96,7 +109,7 @@ const base = (
 const RULES: ProvinceRules[] = [
   base('BC', {
     sources: ['Employment Standards Act (BC) ss. 35, 36, 40, 44, 58, Part 5; Employment Standards Regulation s. 45.1', PENDING_REVIEW],
-    overtime: { dailyHours: 8, dailyDoubleTimeHours: 12, weeklyHours: 40, method: 'stacked' },
+    overtime: { dailyHours: 8, dailyDoubleTimeHours: 12, weeklyHours: 40, method: 'stacked', dayDefinition: 'shift_start_past_midnight' },
     rest: { betweenShiftsHours: 8, splitShiftMaxSpanHours: 12, dailyConsecutiveHours: null, weeklyConsecutiveHours: 32 },
     vacation: { tiers: [{ minYears: 0, percent: 4 }, { minYears: 5, percent: 6 }] },
     statutoryHoliday: { workedMultiplier: 1.5, holidayPayFormula: 'BC_30_DAY' },
@@ -118,7 +131,7 @@ const RULES: ProvinceRules[] = [
   base('ON', {
     sources: ['Employment Standards Act, 2000 (ON) ss. 18, 22, 24, 35.2; O. Reg. 285/01', PENDING_REVIEW],
     overtime: { dailyHours: null, dailyDoubleTimeHours: null, weeklyHours: 44, method: 'stacked' },
-    rest: { betweenShiftsHours: 8, betweenShiftsExemptIfWorkedAtMost: 13, dailyConsecutiveHours: 11, weeklyConsecutiveHours: 24 },
+    rest: { betweenShiftsHours: 8, betweenShiftsExemptIfWorkedAtMost: 13, dailyConsecutiveHours: 11, weeklyConsecutiveHours: 24, weeklyRestTwoWeekHours: 48 },
     vacation: { tiers: [{ minYears: 0, percent: 4 }, { minYears: 5, percent: 6 }] },
     statutoryHoliday: { workedMultiplier: 1.5, holidayPayFormula: 'FOUR_WEEK_DIV_20' },
     youngWorkers: {
@@ -129,7 +142,7 @@ const RULES: ProvinceRules[] = [
   }),
   base('AB', {
     sources: ['Employment Standards Code (AB) ss. 18, 21, 22, 34, 41; Employment Standards Regulation Part 3', PENDING_REVIEW],
-    overtime: { dailyHours: 8, dailyDoubleTimeHours: null, weeklyHours: 44, method: 'greater_of' },
+    overtime: { dailyHours: 8, dailyDoubleTimeHours: null, weeklyHours: 44, method: 'greater_of', dayDefinition: 'shift_start_past_midnight' },
     rest: { betweenShiftsHours: 8, dailyConsecutiveHours: null, weeklyConsecutiveHours: 24 },
     vacation: { tiers: [{ minYears: 0, percent: 4 }, { minYears: 5, percent: 6 }] },
     statutoryHoliday: { workedMultiplier: 1.5, holidayPayFormula: null },
@@ -221,6 +234,27 @@ const RULES: ProvinceRules[] = [
   }),
 ];
 
+/**
+ * Federally regulated work (Canada Labour Code Part III; Canada Labour Standards Regulations).
+ * Used for scheduling when the organization (or a department) is marked federally regulated.
+ * Payroll still follows the facility's province (see docs/COMPLIANCE.md).
+ */
+const FEDERAL: ProvinceRules = {
+  province: 'FED',
+  verified: false,
+  effectiveFrom: '2019-09-01',
+  sources: ['Canada Labour Code Part III ss. 169, 173, 173.01, 173.1, 174, 179; Canada Labour Standards Regulations', PENDING_REVIEW],
+  overtime: { dailyHours: 8, dailyDoubleTimeHours: null, weeklyHours: 40, method: 'stacked' },
+  rest: { betweenShiftsHours: 8, dailyConsecutiveHours: null, weeklyConsecutiveHours: 24 },
+  vacation: { tiers: [{ minYears: 0, percent: 4 }, { minYears: 5, percent: 6 }, { minYears: 10, percent: 8 }] },
+  statutoryHoliday: { workedMultiplier: 1.5, holidayPayFormula: 'FOUR_WEEK_5PCT' },
+  // Under 17 may work only in limited cases and never 11 p.m.–6 a.m.; we require 17 (counsel to confirm).
+  youngWorkers: { minimumAge: 17, parentalConsentUnder: null, limits: [] },
+};
+
+/** Hours of notice the Canada Labour Code (s. 173.1) asks for a work schedule. */
+export const FEDERAL_SCHEDULE_NOTICE_HOURS = 96;
+
 export interface RuleOverrideInput {
   province: Province | null;
   ruleKey: string; // dotted path, e.g. "overtime.dailyHours"
@@ -250,7 +284,17 @@ export function resolveRules(
   province: Province,
   onDate: string,
   overrides: RuleOverrideInput[] = [],
+  opts: { federal?: boolean } = {},
 ): ProvinceRules {
+  if (opts.federal) {
+    const rules: ProvinceRules = structuredClone(FEDERAL);
+    for (const o of overrides.filter((x) => x.province === null && x.effectiveFrom <= onDate && (x.effectiveTo === null || x.effectiveTo >= onDate)).sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))) {
+      if (!ALLOWED_OVERRIDE_KEYS.has(o.ruleKey)) throw new Error(`Rule override key not allowed: ${o.ruleKey}`);
+      const [group, key] = o.ruleKey.split('.') as [keyof ProvinceRules, string];
+      (rules[group] as unknown as Record<string, unknown>)[key] = o.value;
+    }
+    return rules;
+  }
   const candidates = RULES.filter((r) => r.province === province && r.effectiveFrom <= onDate).sort((a, b) =>
     b.effectiveFrom.localeCompare(a.effectiveFrom),
   );
@@ -285,4 +329,18 @@ export function vacationPercent(rules: ProvinceRules, completedYears: number): n
 
 export function allRuleSets(): readonly ProvinceRules[] {
   return RULES;
+}
+
+/** The federal rule set (for the compliance screen). */
+export function federalRules(): ProvinceRules {
+  return FEDERAL;
+}
+
+/**
+ * The most consecutive working days the weekly-rest rule leaves possible: with a full day off
+ * required in each pay week, at most 12 calendar days in a row (off on the first day of one week
+ * and the last day of the next). The organization's "max days in a row" is capped by this.
+ */
+export function maxConsecutiveDaysAllowed(rules: Pick<ProvinceRules, 'rest'>): number {
+  return rules.rest.weeklyConsecutiveHours ? 12 : 13;
 }

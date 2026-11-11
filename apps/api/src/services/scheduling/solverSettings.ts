@@ -7,9 +7,14 @@
  *                                        // window AND the default fill horizon
  *     weights: { fairness, overtime, continuity, targetHours, spread, preferences, seniority },  // 0–10
  *     toggles: { keepAssigned, avoidOvertime, spreadWeekends, sameFacility },
- *     limits:  { maxConsecutiveDays, maxDailyHours },
+ *     limits:  { maxConsecutiveDays, maxDailyHours },   // enforced on EVERY path (evaluateCandidate)
+ *     fullTimeTargetHours,               // weekly hours full-time staff aim for (org-wide; a department's wins)
+ *     minShiftHours,                     // shortest shift the forecast proposes (default 3)
+ *     travelMinutes,                     // time needed between two facilities (default 30)
+ *     federallyRegulated,                // schedule under the Canada Labour Code rule set
+ *     holidayClosedFacilityIds,          // facilities closed on statutory holidays (forecast proposes nothing)
  *     lastHorizonWeeks,                  // the last horizon someone ran (shown as a hint)
- *     departments: { [departmentId]: { planAheadWeeks?, weights?, toggles?, useSeniority?, targetHours? } }
+ *     departments: { [departmentId]: { planAheadWeeks?, weights?, toggles?, useSeniority?, targetHours?, limits?, federallyRegulated? } }
  *   }
  *
  * A department's own values win; anything it leaves out falls back to the organization's.
@@ -50,6 +55,10 @@ export interface DepartmentSolverSettings {
   useSeniority?: boolean | null;
   /** Weekly hours full-time staff in this department aim for when they have no contracted minimum. */
   targetHours?: number | null;
+  /** The department's own limits (stricter or looser than the organization's). */
+  limits?: Partial<SolverLimits>;
+  /** null/undefined = the organization's. */
+  federallyRegulated?: boolean | null;
 }
 
 export interface SolverSettings {
@@ -58,6 +67,11 @@ export interface SolverSettings {
   toggles: SolverToggles;
   limits: SolverLimits;
   lastHorizonWeeks: HorizonWeeks | null;
+  fullTimeTargetHours: number | null;
+  minShiftHours: number;
+  travelMinutes: number;
+  federallyRegulated: boolean;
+  holidayClosedFacilityIds: string[];
   departments: Record<string, DepartmentSolverSettings>;
 }
 
@@ -65,18 +79,30 @@ export const DEFAULT_WEIGHTS: SolverWeights = { fairness: 6, overtime: 7, contin
 export const DEFAULT_TOGGLES: SolverToggles = { keepAssigned: true, avoidOvertime: true, spreadWeekends: true, sameFacility: true };
 export const DEFAULT_LIMITS: SolverLimits = { maxConsecutiveDays: 6, maxDailyHours: 12 };
 export const DEFAULT_PLAN_AHEAD: HorizonWeeks = 2;
+export const DEFAULT_MIN_SHIFT_HOURS = 3;
+export const DEFAULT_TRAVEL_MINUTES = 30;
 
 const weight = z.number().min(0).max(10);
 export const weightsBody = z.object({ fairness: weight, overtime: weight, continuity: weight, targetHours: weight, spread: weight, preferences: weight, seniority: weight }).partial();
 export const togglesBody = z.object({ keepAssigned: z.boolean(), avoidOvertime: z.boolean(), spreadWeekends: z.boolean(), sameFacility: z.boolean() }).partial();
 export const horizonBody = z.union([z.literal(1), z.literal(2), z.literal(4), z.literal(13)]);
-export const limitsBody = z.object({ maxConsecutiveDays: z.number().int().min(1).max(13), maxDailyHours: z.number().min(4).max(24) }).partial();
+// 12 days in a row is the most weekly rest (a day off in each pay week) leaves possible.
+export const limitsBody = z.object({ maxConsecutiveDays: z.number().int().min(1).max(12), maxDailyHours: z.number().min(4).max(24) }).partial();
+export const orgExtrasBody = z.object({
+  fullTimeTargetHours: z.number().min(0).max(60).nullable(),
+  minShiftHours: z.number().min(1).max(12),
+  travelMinutes: z.number().int().min(0).max(240),
+  federallyRegulated: z.boolean(),
+  holidayClosedFacilityIds: z.array(z.string().uuid()).max(500),
+}).partial();
 export const departmentBody = z.object({
   planAheadWeeks: horizonBody.optional(),
   weights: weightsBody.optional(),
   toggles: togglesBody.optional(),
   useSeniority: z.boolean().nullable().optional(),
   targetHours: z.number().min(0).max(60).nullable().optional(),
+  limits: limitsBody.optional(),
+  federallyRegulated: z.boolean().nullable().optional(),
 });
 
 const isHorizon = (n: unknown): n is HorizonWeeks => HORIZONS.includes(n as HorizonWeeks);
@@ -94,7 +120,6 @@ function readToggles(v: unknown): Partial<SolverToggles> {
 /** Reads `overtimePolicy.solver`; anything missing or invalid takes the default. */
 export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
   const s = obj(obj(overtimePolicy).solver);
-  const limits = limitsBody.safeParse(obj(s.limits));
   const departments: Record<string, DepartmentSolverSettings> = {};
   for (const [id, raw] of Object.entries(obj(s.departments))) {
     const d = obj(raw);
@@ -104,14 +129,36 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
       toggles: readToggles(d.toggles),
       useSeniority: typeof d.useSeniority === 'boolean' ? d.useSeniority : null,
       targetHours: typeof d.targetHours === 'number' && d.targetHours >= 0 && d.targetHours <= 60 ? d.targetHours : null,
+      limits: (() => {
+        const r = limitsBody.safeParse(obj(d.limits));
+        return r.success ? r.data : {};
+      })(),
+      federallyRegulated: typeof d.federallyRegulated === 'boolean' ? d.federallyRegulated : null,
     };
   }
+  const extras = orgExtrasBody.safeParse({
+    ...(s.fullTimeTargetHours !== undefined ? { fullTimeTargetHours: s.fullTimeTargetHours } : {}),
+    ...(s.minShiftHours !== undefined ? { minShiftHours: s.minShiftHours } : {}),
+    ...(s.travelMinutes !== undefined ? { travelMinutes: s.travelMinutes } : {}),
+    ...(s.federallyRegulated !== undefined ? { federallyRegulated: s.federallyRegulated } : {}),
+    ...(s.holidayClosedFacilityIds !== undefined ? { holidayClosedFacilityIds: s.holidayClosedFacilityIds } : {}),
+  });
+  const x = extras.success ? extras.data : {};
+  // An older stored 13 (before the weekly-rest cap) reads as 12.
+  const rawLimits = { ...obj(s.limits) };
+  if (typeof rawLimits.maxConsecutiveDays === 'number' && rawLimits.maxConsecutiveDays > 12) rawLimits.maxConsecutiveDays = 12;
+  const limits = limitsBody.safeParse(rawLimits);
   return {
     planAheadWeeks: isHorizon(s.planAheadWeeks) ? s.planAheadWeeks : DEFAULT_PLAN_AHEAD,
     weights: { ...DEFAULT_WEIGHTS, ...readWeights(s.weights) },
     toggles: { ...DEFAULT_TOGGLES, ...readToggles(s.toggles) },
     limits: { ...DEFAULT_LIMITS, ...(limits.success ? limits.data : {}) },
     lastHorizonWeeks: isHorizon(s.lastHorizonWeeks) ? s.lastHorizonWeeks : null,
+    fullTimeTargetHours: x.fullTimeTargetHours ?? null,
+    minShiftHours: x.minShiftHours ?? DEFAULT_MIN_SHIFT_HOURS,
+    travelMinutes: x.travelMinutes ?? DEFAULT_TRAVEL_MINUTES,
+    federallyRegulated: x.federallyRegulated ?? false,
+    holidayClosedFacilityIds: x.holidayClosedFacilityIds ?? [],
     departments,
   };
 }
@@ -122,7 +169,11 @@ export interface EffectiveSettings {
   toggles: SolverToggles;
   limits: SolverLimits;
   useSeniority: boolean;
+  /** Weekly hours a full-time person aims for: the department's, else the organization's. */
   targetHours: number | null;
+  federallyRegulated: boolean;
+  travelMinutes: number;
+  minShiftHours: number;
   /** Where the plan-ahead window comes from. */
   planAheadFrom: 'department' | 'organization';
 }
@@ -140,9 +191,12 @@ export function effectiveSettings(s: SolverSettings, departmentId: string | null
     planAheadFrom: d.planAheadWeeks ? 'department' : 'organization',
     weights: { ...weights, seniority: useSeniority ? weights.seniority : 0 },
     toggles: { ...s.toggles, ...(d.toggles ?? {}) },
-    limits: s.limits,
+    limits: { ...s.limits, ...(d.limits ?? {}) },
     useSeniority,
-    targetHours: d.targetHours ?? null,
+    targetHours: d.targetHours ?? s.fullTimeTargetHours ?? null,
+    federallyRegulated: d.federallyRegulated ?? s.federallyRegulated,
+    travelMinutes: s.travelMinutes,
+    minShiftHours: s.minShiftHours,
   };
 }
 
