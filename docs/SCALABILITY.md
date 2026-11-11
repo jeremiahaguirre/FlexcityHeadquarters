@@ -135,6 +135,35 @@ The trigger to start: the largest sensible RDS instance class staying above abou
 - **CDN.** The marketing site is static and served by CloudFront from S3 in Montreal (`ops/terraform/edge.tf`). The app itself is served from the Montreal load balancer only: its pages and API answers hold personal information and are never cached at CloudFront's edge, which may be outside Canada. If the app's static scripts ever need an edge cache, only `/_next/static/*` (no personal information) could move behind CloudFront, after confirming customers accept it (INFRASTRUCTURE.md, open choices).
 - **Inside AWS.** Containers reach S3 through a VPC gateway endpoint (no NAT charges), and the database sits in subnets with no route out.
 
+## What people feel when it's busy
+
+### Latency budgets
+
+These are what the load runs above measured on a 4-core test machine with two API processes. Production, with the database on its own server and autoscaling, should do better.
+
+| Action | Budget | Measured, steady arrivals (scenario 5) | Measured, everyone at once (scenario 1) |
+| --- | --- | --- | --- |
+| Clock in or out | 0.5 s | — | p50 0.38 s, p95 0.9 s |
+| Open Today (me, shifts, notifications) | 1 s | p95 17–29 ms | p50 1.0 s, p95 1.6 s |
+| Shift board | 1 s | p95 40 ms | p50 1.4 s (scenario 2) |
+| Claim an open shift | 1 s | — | p95 75 ms, exactly one taker per shift |
+| City-wide pay run (300 people) | 30 s | — | 8.5 s with 30 cities running at once |
+
+### The spikes a city has, and what happens
+
+- **Shift change** (everyone clocks in within minutes): the burst in scenario 1. Requests queue rather than fail; access checks that miss the cache together share one load. The API scales out on CPU (60%) and on requests per task (3,000 a minute).
+- **Shift-board rush** (an attractive shift posted to hundreds of people): one claim wins: claims on the same shift take turns under a lock. Everyone else gets "already claimed" at once instead of waiting (scenario 3).
+- **Storm call-outs** (a snowstorm, many workers called at once): texts and calls go through the outbox. Safety and call-out texts are sent straight after the request commits (`services/notifications/urgent.ts`), and the worker is the backstop; the *Safety texts late* alert pages if any wait more than 2 minutes. This hasn't been load-tested: the text provider's own sending rate is the likely limit, and it should be confirmed with the provider before winter.
+- **Payroll day**: each pay run gets its own long time limit (120 s). Cities run on different days in practice; 30 at once still finished in 8.5 s.
+
+### What the person sees
+
+- **Reads ride out a blip.** When the API is overloaded it answers `503 BUSY` with `Retry-After: 2`; the load balancer answers 502/503/504 during a deployment or a database failover. The app retries a read twice, with jitter, before showing anything (`apps/web/src/lib/retry.ts`). Changes are never repeated automatically.
+- **Punches never wait on the network.** With no connection, a punch is queued on the phone and sent when it's back (`lib/offlinePunches.ts`).
+- **Clear words when it fails.** "The service is very busy right now. Try again in a moment." / « Le service est très sollicité en ce moment. Réessayez dans un instant. », not a generic error.
+- **Live updates come back on their own.** The notification stream reconnects with jitter, so a deployment doesn't bring every phone back in the same second, and it refetches once after reconnecting, so nothing sent in between is missed.
+- **The firewall doesn't block a city hall.** The per-address limit is 20,000 requests in 5 minutes, because a whole building can share one address at a shift change. The API's own limits (sign-in, kiosk PINs, public API keys) are the fine-grained ones.
+
 ## Running the tests again
 
 Seed once:
