@@ -88,6 +88,27 @@ describe('support access, only with consent', () => {
     expect((await city(sup).get('/api/me')).body.code).toBe('SUPPORT_ENDED');
   });
 
+  it('the visit’s token is kept in an HttpOnly cookie, not handed to the page’s storage; a reload gets it back', async () => {
+    await city(hr).post('/api/support-access', { hours: 1, level: 'SETUP', reason: 'Reload check' });
+    const v = await dev('post', `/tenants/${t.tenant.id}/support-visit`);
+    const s = await redeem(codeOf(v.body.url));
+    const set = String(s.headers['set-cookie']);
+    expect(set).toMatch(/^fh_support=/);
+    expect(set).toMatch(/HttpOnly/i);
+    expect(set).toMatch(/SameSite=Strict/i);
+    expect(set).toMatch(/Path=\/api\/auth\/support/i);
+    const jar = set.split(';')[0]!;
+    const resume = (headers: Record<string, string>) => request(server).post('/api/auth/support/resume').set('x-tenant-subdomain', SUB).set(headers).send({});
+    const r = await resume({ cookie: jar, 'x-fh-support': '1' });
+    expect(r.status).toBe(200);
+    expect(r.body.accessToken).toBe(s.body.accessToken);
+    expect((await resume({ cookie: jar })).status).toBe(401); // the cookie alone, as a forged request would carry it
+    expect((await resume({ 'x-fh-support': '1' })).status).toBe(401);
+    const end = await request(server).post('/api/auth/support/end').set('x-tenant-subdomain', SUB).set('cookie', jar).send({});
+    expect(end.status).toBe(204);
+    expect(String(end.headers['set-cookie'])).toMatch(/fh_support=;/);
+  });
+
   it('full access lets support read what HR reads, still without changing anything', async () => {
     await city(hr).post('/api/support-access', { hours: 1, level: 'FULL' });
     const v = await dev('post', `/tenants/${t.tenant.id}/support-visit`);

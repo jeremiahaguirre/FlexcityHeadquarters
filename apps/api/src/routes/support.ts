@@ -7,11 +7,15 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
-import { signAccessToken } from '../auth/tokens.js';
+import { signAccessToken, verifyAccessToken } from '../auth/tokens.js';
+import { config } from '../config.js';
 import { audit, db, withTenant } from '../lib/db.js';
-import { forbidden, notFound } from '../lib/errors.js';
+import { HttpError, forbidden, notFound } from '../lib/errors.js';
 import { redeemSupportCode } from '../services/platform/support.js';
 import { h } from './context.js';
+
+export const SUPPORT_COOKIE = 'fh_support';
+const supportCookieOpts = (maxAge?: number) => ({ httpOnly: true, secure: config().NODE_ENV === 'production', sameSite: 'strict' as const, path: '/api/auth/support', ...(maxAge ? { maxAge } : {}) });
 
 /** Mounted with the organization's sign-in routes (no session yet). */
 export const supportAuthRouter = Router();
@@ -26,7 +30,38 @@ supportAuthRouter.post(
     const ttl = Math.max(60, Math.floor((session.endsAt.getTime() - Date.now()) / 1000));
     const accessToken = await signAccessToken({ sub: granter.id, tid: tenantId, roles: grant.level === 'FULL' ? granter.roles : ['HR_ADMIN'], mfa: true, sup: session.id }, ttl);
     await withTenant(tenantId, (tx) => audit(tx, { tenantId, actorId: null, action: 'support.session.start', entity: 'SupportSession', entityId: session.id, after: { admin: admin.name, level: grant.level, endsAt: session.endsAt } }));
+    // The page keeps the token in memory only; a reload gets it back from this HttpOnly cookie
+    // (POST /auth/support/resume), so it is never in the browser's storage where a script could read it.
+    res.cookie(SUPPORT_COOKIE, accessToken, supportCookieOpts(ttl * 1000));
     res.json({ accessToken, support: { admin: admin.name, level: grant.level, endsAt: session.endsAt } });
+  }),
+);
+
+/**
+ * After a reload during a support visit: the token from the HttpOnly cookie, while it is valid for
+ * this organization. Needs the x-fh-support header too, which another site can't add (no request
+ * forgery). Every request made with it is still checked against the visit (requireAuth).
+ */
+supportAuthRouter.post(
+  '/auth/support/resume',
+  h(async (req, res) => {
+    const raw = req.cookies?.[SUPPORT_COOKIE] as string | undefined;
+    if (req.header('x-fh-support') !== '1' || !raw) throw new HttpError(401, 'SUPPORT_ENDED', 'This support visit has ended.');
+    const claims = await verifyAccessToken(raw).catch(() => null);
+    if (!claims?.sup || claims.tid !== req.tenantId) {
+      res.clearCookie(SUPPORT_COOKIE, supportCookieOpts());
+      throw new HttpError(401, 'SUPPORT_ENDED', 'This support visit has ended.');
+    }
+    res.json({ accessToken: raw });
+  }),
+);
+
+/** Ends the visit in this browser. */
+supportAuthRouter.post(
+  '/auth/support/end',
+  h(async (_req, res) => {
+    res.clearCookie(SUPPORT_COOKIE, supportCookieOpts());
+    res.status(204).end();
   }),
 );
 

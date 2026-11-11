@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Logo } from '@/components/Logo';
-import { SUPPORT_TOKEN_KEY, setAccessToken } from '@/lib/api';
+import { SUPPORT_MODE_KEY, setAccessToken } from '@/lib/api';
 
 /** Where an FH support link lands: trades its one-time code for a read-only visit, then opens the app. */
 function Support() {
@@ -22,9 +22,10 @@ function Support() {
         const b = (await r.json().catch(() => ({}))) as { accessToken?: string; message?: string };
         if (!r.ok || !b.accessToken) return setError(b.message ?? t('support.failed'));
         try {
-          sessionStorage.setItem(SUPPORT_TOKEN_KEY, b.accessToken);
+          // Only a flag: the token stays in memory, and the server's HttpOnly cookie restores it on reload.
+          sessionStorage.setItem(SUPPORT_MODE_KEY, '1');
         } catch {
-          /* this tab only, then */
+          /* no reloads, then */
         }
         setAccessToken(b.accessToken);
         router.replace('/');

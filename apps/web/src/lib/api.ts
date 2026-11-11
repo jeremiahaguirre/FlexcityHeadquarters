@@ -13,16 +13,19 @@ export { ApiError };
  *   lift a long-lived credential. The refresh token is an HTTP-only cookie.
  * - On 401, it refreshes once and retries.
  */
-export const SUPPORT_TOKEN_KEY = 'fh-support-token';
-/** An FH support visit keeps its short read-only token for this tab only. */
-function supportToken(): string | null {
+/**
+ * An FH support visit: this tab only remembers *that* it is one (no secret). The token itself is
+ * in memory, and after a reload comes back from an HttpOnly cookie (POST /api/auth/support/resume).
+ */
+export const SUPPORT_MODE_KEY = 'fh-support-mode';
+export function isSupportVisit(): boolean {
   try {
-    return typeof window === 'undefined' ? null : sessionStorage.getItem(SUPPORT_TOKEN_KEY);
+    return typeof window !== 'undefined' && sessionStorage.getItem(SUPPORT_MODE_KEY) === '1';
   } catch {
-    return null;
+    return false;
   }
 }
-let accessToken: string | null = supportToken();
+let accessToken: string | null = null;
 let refreshing: Promise<boolean> | null = null;
 
 function tenantHeader(): Record<string, string> {
@@ -33,9 +36,9 @@ function tenantHeader(): Record<string, string> {
 }
 
 async function refresh(): Promise<boolean> {
-  // A support visit can't be renewed: when it ends, it ends.
-  if (supportToken()) return false;
-  refreshing ??= fetch('/api/auth/refresh', { method: 'POST', credentials: 'include', headers: tenantHeader() })
+  // A support visit isn't renewed (when it ends, it ends): a reload only gets its token back.
+  const support = isSupportVisit();
+  refreshing ??= fetch(support ? '/api/auth/support/resume' : '/api/auth/refresh', { method: 'POST', credentials: 'include', headers: { ...tenantHeader(), ...(support ? { 'x-fh-support': '1' } : {}) } })
     .then(async (r) => {
       if (!r.ok) return false;
       accessToken = ((await r.json()) as { accessToken: string }).accessToken;
@@ -175,10 +178,11 @@ export async function ssoExchange(code: string) {
 export async function logout() {
   // This device stops getting the person's push notifications (shared tablets and deck phones).
   await import('./device').then((d) => d.forgetPushDevice()).catch(() => undefined);
+  if (isSupportVisit()) await api('/api/auth/support/end', { method: 'POST' }, false).catch(() => undefined);
   await api('/api/auth/logout', { method: 'POST' }, false).catch(() => undefined);
   accessToken = null;
   try {
-    sessionStorage.removeItem(SUPPORT_TOKEN_KEY);
+    sessionStorage.removeItem(SUPPORT_MODE_KEY);
   } catch {
     /* fine */
   }
