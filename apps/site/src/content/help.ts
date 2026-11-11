@@ -12,13 +12,13 @@ export const ARTICLES: Article[] = [
     en: {
       title: 'Your first sign-in',
       summary: 'Set your password from the invitation and add a passkey.',
-      steps: ['Open the invitation email from your organization and choose a password (the link works for 7 days).', 'Sign in at your organization’s web address (it’s in the invitation email).', 'When asked, set up a passkey so next time you can sign in with Face ID, your fingerprint or Windows Hello.', 'On your phone, tap Get the app on your phone on the sign-in page to add it to your home screen (no app store).'],
+      steps: ['Open the invitation email from your organization and choose a password (the link works for 7 days).', 'Sign in at your organization’s web address (it’s in the invitation email).', 'When asked, set up a passkey so next time you can sign in with Face ID, your fingerprint or Windows Hello.', 'If your organization asks for a second step and your passkey isn’t at hand, choose Send me a code: a 6-digit code comes by email (or by text, if you confirmed your mobile number in your profile) and works once, for 10 minutes. Your organization may accept passkeys only.', 'On your phone, tap Get the app on your phone on the sign-in page to add it to your home screen (no app store).'],
       tip: 'Invitation expired? Ask your supervisor to resend it from Staff.',
     },
     fr: {
       title: 'Votre première connexion',
       summary: 'Choisissez votre mot de passe depuis l’invitation et ajoutez une clé d’accès.',
-      steps: ['Ouvrez le courriel d’invitation de votre organisation et choisissez un mot de passe (le lien est valide 7 jours).', 'Connectez-vous à l’adresse Web de votre organisation (elle figure dans le courriel d’invitation).', 'Si on vous le propose, configurez une clé d’accès pour vous connecter avec Face ID, votre empreinte ou Windows Hello.', 'Sur votre téléphone, touchez Installer l’application sur votre téléphone à la page de connexion pour l’ajouter à votre écran d’accueil (sans boutique d’applications).'],
+      steps: ['Ouvrez le courriel d’invitation de votre organisation et choisissez un mot de passe (le lien est valide 7 jours).', 'Connectez-vous à l’adresse Web de votre organisation (elle figure dans le courriel d’invitation).', 'Si on vous le propose, configurez une clé d’accès pour vous connecter avec Face ID, votre empreinte ou Windows Hello.', 'Si votre organisation demande une deuxième étape et que vous n’avez pas votre clé d’accès sous la main, choisissez M’envoyer un code : un code à 6 chiffres arrive par courriel (ou par texto, si vous avez confirmé votre numéro de cellulaire dans votre profil) et ne sert qu’une fois, pendant 10 minutes. Votre organisation peut n’accepter que les clés d’accès.', 'Sur votre téléphone, touchez Installer l’application sur votre téléphone à la page de connexion pour l’ajouter à votre écran d’accueil (sans boutique d’applications).'],
       tip: 'Invitation expirée? Demandez à votre superviseur de la renvoyer depuis Personnel.',
     },
   },

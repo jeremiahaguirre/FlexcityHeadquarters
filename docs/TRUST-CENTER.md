@@ -37,7 +37,7 @@ a secret are dropped before they're stored (`scrubDetails`).
 | Test | Checks | Status meaning |
 | --- | --- | --- |
 | `platform_mfa` | Passkeys required for the Dev console, and every active admin has one | Fails while `PLATFORM_MFA=off` |
-| `city_mfa` | Each organization requires a passkey (or MFA SSO) for HR administrators | Warns: the city's choice |
+| `city_mfa` | Each organization requires a second factor (a passkey, a sign-in code by email or text where allowed, or MFA SSO) for HR administrators | Warns: the city's choice |
 | `rls` | Every table with a `tenantId` has row-level security on, a policy, and (except FH's cross-city records) forced; every table in `db/rls.sql` exists with RLS on | |
 | `db_role` | The app's role isn't a superuser, can't bypass RLS, has no schema rights, owns no tables | |
 | `kek` | AWS KMS with no local key, the key in a Canadian region (read from its ARN, else `AWS_REGION`); production fails without KMS; a 32-byte local key elsewhere | Warns in development |

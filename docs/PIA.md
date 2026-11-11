@@ -83,7 +83,7 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Risk | Mitigation in the product | City's part |
 | --- | --- | --- |
 | Someone sees more than they need | Role-based access with department scope; HR-only categories; reviewed role by role ([SECURITY-LEGAL-AUDIT.md](SECURITY-LEGAL-AUDIT.md) §5A) | Assign roles carefully; review access yearly |
-| Account takeover | MFA (HR by default, any access level by choice), passkeys, SSO, lockout, rate limits, common-password block | Require MFA broadly; use SSO |
+| Account takeover | MFA (HR by default, any access level by choice): a passkey, or a one-time code by email or text unless the organization allows passkeys only; SSO, lockout, rate limits, common-password block | Require MFA broadly; use SSO |
 | Insider misuse | Audit log of changes and of views of sensitive records; no self-approval anywhere in pay or HR | Review the audit log; act on misuse |
 | Breach at the provider | Encryption in transit and at rest, per-city keys, Canadian hosting, tested backups, incident runbook | Contract terms: breach notice, audits |
 | Over-collection / monitoring | No continuous tracking; clock-in keeps on-site status only; signed agreement at first sign-in with separate notification and location choices; notice in the app ("Your privacy") and [ELECTRONIC-MONITORING.md](ELECTRONIC-MONITORING.md) | Written monitoring policy (Ontario ESA Part XI.1) |
