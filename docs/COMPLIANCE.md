@@ -9,12 +9,45 @@ See also the [security and legal audit](SECURITY-LEGAL-AUDIT.md) and the [operat
 - Rules follow the **province where the work is done** (the facility), not the employer's head office.
 - Values are effective-dated. When a law changes, add a new rule set with a new `effectiveFrom`; past periods keep recalculating with the old rules.
 - Collective agreements are applied as `RuleOverride` rows (e.g. OT after 7.5 h/day) with a cited source.
-- Items deliberately left unautomated (surfaced as warnings): statutory holiday pay formulas outside BC, ON, QC and SK; averaging agreements; unpaid meal breaks (an 8.5-hour shift with a 30-minute unpaid lunch is counted as 8.5 hours worked, so it can show daily overtime in BC/AB; modelling breaks needs a schema change).
+- Items deliberately left unautomated (surfaced as warnings): statutory holiday pay formulas outside BC, ON, QC and SK; averaging agreements; unpaid meal breaks are now modelled (see "Work rules" below).
 - **The "day" for daily overtime and daily hour limits** (`services/compliance/workDay.ts`, used by payroll's daily overtime in `payCalc.ts` and by scheduling's projections and limits): a calendar day, except in **BC and Alberta**, where a shift that continues past midnight starts a 24-hour day at its start (BC ESA s. 1 "day" (b); Alberta ESC "work day"). So BC 16:00–08:00 is one 16-hour day: 8 regular, 4 at 1.5, 4 at 2.0; 22:00–08:00 has 2 hours of daily overtime. Windows never overlap: the rolling day cuts the calendar day it starts in, and the rest of the calendar day after it is a day of its own. **Counsel to verify** (checklist item 9).
 - **Daily rest (Ontario, 11 consecutive hours each day, ESA s. 18(1))**: measured in every 24 hours that start at the start of a shift, with rest allowed to cross midnight. Ordinary day shifts (07–15, 08–16, 09–17, 07–19) and 12-hour nights pass; 07–15 then 23–03 (8 h and 4 h off) is refused. A strict midnight-to-midnight reading would refuse almost every day shift, which isn't how the Ministry applies it. **Counsel to verify** (item 10).
 - **Weekly rest**: the longest consecutive time off inside each pay week must reach the province's hours (BC 32, Quebec 32, Ontario 24 or 48 in each fixed pair of consecutive weeks, Alberta and the others 24); `rolling7` is supported for a province that counts any 7 days. The organization's "most days in a row" can't exceed 12 (a day off each pay week). Refused only when the new shift causes or worsens the shortfall. **Counsel to verify** the pay-week reading and Ontario's pairing (item 11).
 - **Federally regulated** organizations or departments (Fill settings, `overtimePolicy.solver.federallyRegulated`) are scheduled under the Canada Labour Code set (8 h/day and 40 h/week overtime, 8 h between shifts, 24 h off each week, minimum age 17 for most work, 96 hours' schedule notice warned on publish). **Payroll still follows the facility's province**: a federal pay calculation is not built.
 - **Seniority is optional per organization** (Settings, or the Dev console's Features). On, the default for cities, seniority dates and hours break ties in the overtime order, call-outs and the scheduling assistant. Off, ties go by fewest hours then name, seniority isn't shown on people's records or the overtime order, and the assistant fills shifts evenly. Private-sector companies created in the Dev console start with it off. Where a collective agreement sets seniority rules, keep it on.
+
+### Work rules: meal breaks, call-in pay, notice, premiums, standby, working alone
+
+Code: `services/scheduling/workRules.ts` (pure rules, shared by payroll and scheduling), `services/payroll/workRulePay.ts` (payroll), `services/compliance/provincialRules.ts` (`mealBreak`, `reportingPay`), `services/scheduling/changeNotice.ts`, `onCall.ts`, `rotations.ts`, `twoPerson.ts`. Settings in `Tenant.workRules`, organization-wide with per-department overrides (Work rules screen; pay rules need `tenant.configure`, a department's scheduler may set its meal-break placement and warnings).
+
+**Statutory meal breaks and minimum call-in pay (our reading, PENDING COUNSEL REVIEW).**
+
+| Jurisdiction | Meal break | Minimum call-in (reporting) pay | Sources |
+| --- | --- | --- | --- |
+| BC | 30 min so no one works > 5 h in a row | 2 h; 4 h when scheduled > 8 h | ESA ss. 32, 34 |
+| AB | 30 min per 5 h of work (verify the 10-hour second break) | 3 h (verify) | ESC ss. 18, 21 |
+| SK | 30 min per 5 h (verify the short-shift exception) | 3 h (verify) | SEA s. 2-23; Regulations |
+| MB | 30 min after 5 h | 3 h (verify) | ESC ss. 50, 51 |
+| ON | 30 min so no one works > 5 h in a row (two 15-min by agreement) | 3 h, "three-hour rule" for someone who regularly works > 3 h a day (verify the wage basis) | ESA s. 20; O. Reg. 285/01 s. 21.2 |
+| QC | 30 min unpaid after 5 h | 3 h | LNT ss. 58, 79 |
+| NB, NS, PE | 30 min after 5 h (verify) | 3 h (verify) | ESA (NB) s. 17.1; LSC (NS) s. 66A; ESA (PE) s. 16; minimum wage orders |
+| NL | 1 h after 5 h (verify) | 3 h (verify) | LSA; Regulations |
+| YT | 30 min after 5 h (verify) | not encoded | ESA s. 11 |
+| NT, NU | not encoded | not encoded | — |
+| Federal | 30 min in every 5 h | 3 h | CLC s. 169.1; CLSR s. 11.1 |
+
+How the app applies them:
+
+- **Unpaid meal breaks.** Each position has an unpaid break (applied to its shifts longer than 5 hours); a shift can set its own. Paid hours = shift length − unpaid break, everywhere: overtime projections, Fill (cost, targets, "avoid overtime"), planner hours, pay previews and payroll. Payroll takes the planned break out of a punch only when the person punched once for the shift and the punch covers the planned break window (placed mid-shift, starting no later than the province's 5 hours or the organization's placement); two or more punches for a shift mean the break was punched and the punches are paid as recorded. Unscheduled punches are paid as recorded. A shift long enough to need a break with none (or too little) planned is a **warning** (planner, publish check), never a refusal: the break may be paid at the post.
+- **Minimum call-in pay.** Someone who reports for a scheduled shift and works less than the minimum gets a `REPORTING_PAY` top-up at their rate. The minimum is the province's (above) or the organization's/department's if higher (never lower). Shifts shorter than the minimum are flagged in the planner and before publishing, and the forecast's minimum shift length defaults to it when the organization hasn't set one. Not automated: Ontario's "regularly works more than 3 hours" condition and minimum-wage basis, and a shift cancelled after the person arrived without a punch (add a pay adjustment).
+- **Call-backs** (a call-back shift from the on-call roster, and winter call-outs) get the department's call-back minimum (default 3 h, else the call-in minimum) as `CALLBACK_PAY`, at its multiplier. Rest after a call-back: the shared rule check refuses a call-back that breaks the province's rest rules unless the supervisor confirms an emergency (audited), and a next shift inside the province's between-shift rest is flagged to the department's schedulers.
+- **Schedule notice and late-change premiums** (collective agreements; no general statute except the federal 96 h, already warned). Every change a scheduler makes to a published shift (times, person added or removed, cancellation) is recorded with the notice given. When it's shorter than the department's `lateChangeHours`: a warning before saving, the person is notified, and a premium is recorded: the changed hours (new hours outside the old shift; a whole shift for someone added) at (multiplier − 1) × rate, or a flat amount per change. It is paid as `SCHEDULE_CHANGE_PREMIUM` in the period of the shift's date and can be waived (audited). Trades and Shift Board claims are the person's choice and earn nothing. "Post N days ahead" asks for confirmation before publishing later.
+- **Shift premiums** by rule (evening, night, weekend, statutory holiday; wall-clock windows past midnight and DST-correct; $/h or % of the rate; per department or position) are paid as `SHIFT_PREMIUM` lines on paid hours and costed by Fill. Every matching rule applies (they stack). A shift's own `premiumPerHour` still applies on top.
+- **Standby pay**: per day on call (each started 24 hours inside the pay period) and/or hours per day at a percent of the rate, as `STANDBY_PAY`.
+- **Two-person minimum (working alone).** Positions or shifts marked "never alone" need a second person qualified for the position at the same facility for the whole shift. Fill leaves such a shift open (`TWO_PERSON`) rather than put someone alone, the planner and publish check list violations, and publishing needs a confirmation. This complements, not replaces, the province's working-alone procedures (OHS regulations).
+- **Regression**: shifts and punches with none of these rules pay exactly as before (tests).
+
+**For counsel:** every row marked "verify" above; whether deducting a planned unpaid break from a single punch is acceptable where the person was not relieved (the app relies on supervisors approving punches); Ontario's three-hour rule basis; whether call-back minimums and change premiums count for overtime and vacation pay (the app pays vacation pay on them and doesn't count them as hours worked for overtime).
 
 ### Time in lieu (banked overtime)
 
@@ -75,6 +108,7 @@ How the app uses it:
 9. The BC/Alberta "day" for shifts past midnight (24 hours from the shift's start) in daily overtime and daily hour limits, how a rolling day meets the calendar day around it, and whether Alberta applies it to every shift or only those past midnight.
 10. Ontario's 11-hour daily rest measured in the 24 hours from each shift start (rest may cross midnight).
 11. Weekly rest per pay week (longest time off in a row), Ontario's 48 hours over two weeks counted in fixed pairs, the 12-day cap on days in a row, and the federal rule set (CLC ss. 169, 173, 173.01, 173.1, 174, 179) used for scheduling only.
+12. Work rules: the meal-break and call-in table above, the single-punch break deduction, the call-back and late-change premium treatment (see "Work rules").
 
 ## Privacy law by customer type
 

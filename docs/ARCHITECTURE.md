@@ -69,6 +69,17 @@ The schedule builder's month, week and day views put a people panel beside the s
 
 Speed: time-zone conversions in `lib/time.ts` remember recent answers and batch checks share a person's existing overtime per pay period; a month for 300 people and 420 shifts checks in about 5 s in the background (one person: under 0.2 s; a refresh after a change: about 0.1 s).
 
+### Work rules, rotations and on call (`services/scheduling/workRules.ts`, `rotations.ts`, `onCall.ts`, `changeNotice.ts`, `twoPerson.ts`, `shiftWarnings.ts`, `services/payroll/workRulePay.ts`)
+
+Settings live in `Tenant.workRules` (breaks, call-in minimum, notice, standby, premium rules; `departments` overrides), read with `parseWorkRules`/`effectiveWorkRules`; the department's limits and federal switch stay in the Fill settings (`overtimePolicy.solver.departments`), edited on the same Work rules screen.
+
+- **Paid hours.** `breakMinutesOf(shift, position)` (the shift's own break, else the position's on shifts over 5 h) and `paidIntervals()` carve the unpaid break out of a shift. `calculatePay` does it for any interval carrying `breakMinutes`/`breakAt`, so payroll, the pay preview and `projectOvertime` (Shift Board, planner, assign, Fill verification) agree; the solver's fast model splits pieces the same way. Rest, overlap and shift-length checks still use the whole shift.
+- **Payroll** (`workRulePay.ts`): breaks taken out of single punches that cover the planned window; rule premiums through `calculatePay`'s `rulePremiums` callback; `REPORTING_PAY`/`CALLBACK_PAY` top-ups per scheduled shift; `SCHEDULE_CHANGE_PREMIUM` from `ShiftChange` rows with `payOn` in the period; `STANDBY_PAY` from `OnCallPeriod`. Each line adds vacation pay.
+- **Change notice**: `updateShift`, `assignShift` and `cancelShift` call `recordShiftChange()` for published shifts (planner moves go through them); `POST /shifts/:id/change-preview` gives the web the same answer before saving.
+- **Two-person minimum**: `twoPersonViolations()` (pure) is used by the solver (a soft coverage need, then a hard pass that leaves a lone never-alone shift open with `TWO_PERSON`), by `shiftWarnings()` (planner board) and by `publishCheck()` (a confirmation to publish).
+- **Rotations**: `RotationTemplate` (cycle days, anchor date, pattern of days with wall-clock times, crews with offsets, people and open slots). `generateFromTemplates()` makes drafts (`rotationTemplateId`), wall-clock per date (DST), skipping statutory holidays at facilities closed on them, idempotent; crew members are placed only when `evaluateCandidate()` passes without overtime and the date is inside the plan-ahead window, otherwise the shift stays open with the reason for Fill or the planner. Routes in `routes/rotations.ts`; the planner's Templates action and Fill's "Start from rotation templates" call it.
+- **On call**: `OnCallPeriod` per department; rotate, swap/reassign (both notified), call-backs (`callBack` shifts, rule-checked, emergency override audited, short rest before the next shift flagged). `onCallAt()` puts the person on call first in winter call-out lists and first among working-alone escalation contacts.
+
 ### Shift Board (`services/shiftboard/offers.ts`)
 
 ```
