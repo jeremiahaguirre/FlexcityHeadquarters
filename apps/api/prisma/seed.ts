@@ -8,6 +8,7 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/auth/tokens.js';
 import { seedCityWorkers } from './seedCityWorkers.js';
+import { seedNewScreens } from './seedNewScreens.js';
 import { seedStatHolidays } from '../src/services/payroll/statHolidays.js';
 
 const prisma = new PrismaClient(); // owner connection (DATABASE_URL)
@@ -27,7 +28,9 @@ async function main() {
 
   const existing = await prisma.tenant.findUnique({ where: { subdomain: 'kelowna' } });
   if (existing) {
-    console.log('Seed data already present (tenant "kelowna"). Skipping.');
+    // Newer screens' sample data is topped up on every run (each part only adds what's missing).
+    await seedNewScreens(existing.id);
+    console.log('Seed data already present (tenant "kelowna"); sample data for the newer screens topped up.');
     return;
   }
 
@@ -138,6 +141,9 @@ async function main() {
     await prisma.$executeRaw`
       INSERT INTO union_hub.member_access (local_id, user_id, is_steward) VALUES (${local!.id}::uuid, ${m.id}::uuid, ${m.roles.includes('UNION_STEWARD')})`;
   }
+
+  // Shift trades, time in lieu, text alerts, applications, reporting lines, forecast events, integrations.
+  await seedNewScreens(tenant.id);
 
   console.log('Seeded tenant "kelowna". Log in at http://kelowna.localhost:3000 with e.g. guard@kelowna.test / flexcity-dev');
 }
