@@ -2,7 +2,7 @@
 
 import { CornerDownLeft, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { type ComponentType, useEffect, useMemo, useRef, useState } from 'react';
+import { type ComponentType, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '@/components/ui/Dialog';
 import { cn } from '@/lib/cn';
@@ -19,12 +19,17 @@ export function CommandMenu({ destinations, compact = false }: { destinations: D
   const [q, setQ] = useState('');
   const [i, setI] = useState(0);
   const input = useRef<HTMLInputElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const uid = useId();
+  const listId = `${uid}-list`;
+  const optId = (n: number) => `${uid}-opt-${n}`;
   const [mac, setMac] = useState(false);
   useEffect(() => setMac(/Mac|iPhone|iPad/.test(navigator.platform)), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      // The shell renders one menu for phones and one for desktops; only the visible one answers.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && trigger.current?.offsetParent !== null) {
         e.preventDefault();
         setOpen((o) => !o);
       }
@@ -50,6 +55,12 @@ export function CommandMenu({ destinations, compact = false }: { destinations: D
       .map((x) => x.d);
   }, [q, destinations]);
 
+  // Keep the highlighted option in view while arrowing through a long list.
+  useEffect(() => {
+    if (open) document.getElementById(optId(i))?.scrollIntoView({ block: 'nearest' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, open]);
+
   const go = (d: Destination | undefined) => {
     if (!d) return;
     setOpen(false);
@@ -59,6 +70,7 @@ export function CommandMenu({ destinations, compact = false }: { destinations: D
   return (
     <>
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen(true)}
         aria-label={t('jump.open')}
@@ -100,30 +112,32 @@ export function CommandMenu({ destinations, compact = false }: { destinations: D
               }}
               role="combobox"
               aria-expanded="true"
-              aria-controls="jump-list"
-              aria-activedescendant={results[i] ? `jump-${i}` : undefined}
+              aria-controls={listId}
+              aria-activedescendant={results[i] ? optId(i) : undefined}
               aria-label={t('jump.placeholder')}
               placeholder={t('jump.placeholder')}
               className="h-11 w-full rounded-xl border border-field bg-panel pl-9 pr-3 text-body outline-none focus:border-focus focus:ring-2 focus:ring-focus/30"
             />
           </div>
-          <ul id="jump-list" role="listbox" className="-mx-1 max-h-[50vh] overflow-y-auto">
+          <ul id={listId} role="listbox" aria-label={t('jump.title')} className="-mx-1 max-h-[50vh] overflow-y-auto">
             {results.map((d, n) => (
-              <li key={d.href} id={`jump-${n}`} role="option" aria-selected={n === i}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setI(n)}
-                  onClick={() => go(d)}
-                  className={cn('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left', n === i ? 'bg-brand/10 text-brand-text' : 'text-ink')}
-                >
-                  <d.icon className="h-[18px] w-[18px] shrink-0" />
-                  <span className="flex-1 text-small font-semibold">{d.label}</span>
-                  <span className="text-caption text-muted">{d.group}</span>
-                  {n === i ? <CornerDownLeft className="h-3.5 w-3.5 text-muted" aria-hidden="true" /> : null}
-                </button>
+              // Options are picked with the arrow keys from the search box (aria-activedescendant), or by click; no nested buttons inside the listbox.
+              <li
+                key={d.href}
+                id={optId(n)}
+                role="option"
+                aria-selected={n === i}
+                onMouseEnter={() => setI(n)}
+                onClick={() => go(d)}
+                className={cn('flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left', n === i ? 'bg-brand/10 text-brand-text' : 'text-ink')}
+              >
+                <span aria-hidden="true" className="shrink-0"><d.icon className="h-[18px] w-[18px]" /></span>
+                <span className="flex-1 text-small font-semibold">{d.label}</span>
+                <span className="text-caption text-muted">{d.group}</span>
+                {n === i ? <CornerDownLeft className="h-3.5 w-3.5 text-muted" aria-hidden="true" /> : null}
               </li>
             ))}
-            {!results.length ? <li className="px-3 py-6 text-center text-small text-muted">{t('jump.none')}</li> : null}
+            {!results.length ? <li role="presentation" className="px-3 py-6 text-center text-small text-muted">{t('jump.none')}</li> : null}
           </ul>
         </div>
       </Dialog>
