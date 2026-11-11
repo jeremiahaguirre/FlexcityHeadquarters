@@ -7198,5 +7198,29 @@
     "confirm": "J’ai vérifié et je veux publier quand même (c’est consigné).",
     "publish": "Publier",
     "publishAnyway": "Publier quand même"
+  },
+  "renewal": {
+    "title": "Prix et renouvellement",
+    "ourBilling": "notre équipe de facturation",
+    "none": "Votre prix, la fréquence de facturation et la durée sont fixés dans votre bon de commande. Demandez-en une copie à {{contact}}.",
+    "price": "{{amount}} par mois pour votre forfait, avant taxes (TPS/TVH, et TVQ au Québec), plus le personnel au-delà de votre allocation, facturé chaque mois.",
+    "priceDiscount": "{{amount}} par mois pour votre forfait après votre rabais d’engagement de {{percent}} %, avant taxes (TPS/TVH, et TVQ au Québec), plus le personnel au-delà de votre allocation, facturé chaque mois.",
+    "frequency": {
+      "MONTHLY": "Facturé chaque mois.",
+      "ANNUAL": "Facturé tous les 12 mois, d’avance : {{amount}} avant taxes.",
+      "TERM": "Toute la durée est facturée d’avance : {{amount}} avant taxes."
+    },
+    "months_one": "{{count}} mois",
+    "months_other": "{{count}} mois",
+    "term": "Durée : {{length}}, jusqu’au {{end}}.",
+    "monthToMonth": "Sans durée fixe : au mois.",
+    "renewsTerm": "À la fin de la durée, l’abonnement se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement : {{amount}} par mois avant taxes.",
+    "renewsMonthly": "Il se renouvelle automatiquement chaque mois aux mêmes tarifs.",
+    "cancelTerm": "Pour résilier, ou pour signer une nouvelle durée, écrivez à {{contact}} avant le {{end}}. La facturation s’arrête après la période déjà facturée.",
+    "cancelMonthly": "Pour résilier, écrivez à {{contact}} avant le début du mois suivant. La facturation s’arrête après le mois déjà facturé.",
+    "notice": "Nous envoyons un rappel par courriel à votre contact de facturation {{days}} jours avant la fin de la durée.",
+    "refund": "Remboursements : les montants déjà facturés ne sont pas remboursés pour une partie de période, et les changements de forfait s’appliquent à partir de la facture suivante.",
+    "consoleTitle": "Ce que voit l’organisation",
+    "consoleHelp": "Affiché à côté des boutons de paiement, de débit bancaire et de forfait sur la page Facturation de l’organisation, avec ces conditions une fois enregistrées."
   }
 }

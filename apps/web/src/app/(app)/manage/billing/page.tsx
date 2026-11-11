@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { AutoDebitCard } from '@/components/billing/AutoDebitCard';
+import { RenewalTerms } from '@/components/billing/RenewalTerms';
 import { api } from '@/lib/api';
 import type { PadAgreement } from '@/lib/books';
 import { useSession } from '@/lib/session';
@@ -27,7 +28,7 @@ interface Billing {
   plan: { legalName?: string; plan: 'MUNICIPAL' | 'CLUB'; level: PlanLevel; rateCents: number | null; items: ItemState[]; paymentTermsDays: number; preferredPayment: string; poNumber: string | null } | null;
   catalog: Catalog;
   staff: StaffUsage | null;
-  term: { cycle: 'MONTHLY' | 'ANNUAL' | 'TERM'; termMonths: number | null; termStart: string | null; termEnd: string | null; discountPercent: number; perInvoiceFixedCents: number; perInvoiceMonths: number; nextFixedInvoice: string | null } | null;
+  term: { cycle: 'MONTHLY' | 'ANNUAL' | 'TERM'; termMonths: number | null; termStart: string | null; termEnd: string | null; discountPercent: number; monthlyFixedCents?: number; monthlyFixedAfterDiscountCents?: number; perInvoiceFixedCents: number; perInvoiceMonths: number; nextFixedInvoice: string | null } | null;
   invoices: InvoiceRow[];
   payment: { online: boolean; remittance: string; payee: string; contact: string };
   pad?: { agreement: PadAgreement | null; terms: string[] };
@@ -140,6 +141,8 @@ export default function BillingPage() {
                   })}
                 </ul>
                 <p className="text-caption text-muted">{t('billingPage.changePlan', { contact: b.payment.contact })}</p>
+                {/* Beside the plan and its change path: what the price is and how it renews (CPA-style disclosure, B2B courtesy). */}
+                {b.plan ? <RenewalTerms term={b.term} contact={b.payment.contact} id="renewal-plan" /> : null}
               </CardBody>
             </Card>
             <Card>
@@ -160,7 +163,7 @@ export default function BillingPage() {
               </CardBody>
             </Card>
           </div>
-          {b.plan && b.pad ? <AutoDebitCard pad={b.pad} payor={b.plan.legalName ?? ''} reload={q.reload} /> : null}
+          {b.plan && b.pad ? <AutoDebitCard pad={b.pad} payor={b.plan.legalName ?? ''} reload={q.reload} renewal={<RenewalTerms term={b.term} contact={b.payment.contact} id="renewal-pad" />} /> : null}
           <Card>
             <CardHeader title={t('billingPage.invoices')} />
             <CardBody className="pt-2">
@@ -192,8 +195,8 @@ export default function BillingPage() {
                           <td className="py-3">
                             {i.balanceCents > 0 && b.payment.online ? (
                               <div className="flex justify-end gap-2">
-                                <Button size="sm" loading={busy === `card${i.id}`} icon={<CreditCard className="h-4 w-4" aria-hidden="true" />} onClick={() => void pay(i.id, 'card')}>{t('billingPage.payCard')}</Button>
-                                <Button size="sm" variant="secondary" loading={busy === `pad${i.id}`} onClick={() => void pay(i.id, 'pad')}>{t('billingPage.payPad')}</Button>
+                                <Button size="sm" aria-describedby="renewal-pay" loading={busy === `card${i.id}`} icon={<CreditCard className="h-4 w-4" aria-hidden="true" />} onClick={() => void pay(i.id, 'card')}>{t('billingPage.payCard')}</Button>
+                                <Button size="sm" variant="secondary" aria-describedby="renewal-pay" loading={busy === `pad${i.id}`} onClick={() => void pay(i.id, 'pad')}>{t('billingPage.payPad')}</Button>
                               </div>
                             ) : null}
                           </td>
@@ -203,6 +206,7 @@ export default function BillingPage() {
                   </table>
                 </div>
               )}
+              {b.invoices.some((i) => i.balanceCents > 0) && b.payment.online ? <div className="mt-3"><RenewalTerms term={b.term} contact={b.payment.contact} id="renewal-pay" /></div> : null}
             </CardBody>
           </Card>
         </>

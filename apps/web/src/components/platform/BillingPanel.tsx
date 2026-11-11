@@ -1,5 +1,6 @@
 'use client';
 
+import { RenewalTerms } from '@/components/billing/RenewalTerms';
 import { Building2, FilePlus2, RotateCcw, Users } from 'lucide-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -467,6 +468,23 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
                 ))}
               </dl>
               <p className="text-caption text-muted">{t('billing.termsFoot')}</p>
+              {/* The plain-language terms the organization sees beside its pay and debit buttons, live as FH edits them. */}
+              <div className="grid gap-1">
+                <p className="text-caption text-muted">{t('renewal.consoleHelp')}</p>
+                <RenewalTerms
+                  title={t('renewal.consoleTitle')}
+                  term={{
+                    cycle,
+                    termMonths: hasStart ? termMonths : null,
+                    termEnd: hasStart && termMonths ? (() => { const [y, m] = startMonth.split('-').map(Number) as [number, number]; return new Date(Date.UTC(y, m - 1 + termMonths, 1) - 86_400_000).toISOString().slice(0, 10); })() : null,
+                    discountPercent: effDiscount,
+                    monthlyFixedCents: fixedCents,
+                    monthlyFixedAfterDiscountCents: fixedAfter,
+                    perInvoiceFixedCents: fixedAfter * perInvoiceMonths,
+                    perInvoiceMonths,
+                  }}
+                />
+              </div>
             </Part>
 
             <Part n={++n} title={t('billing.accessTitle')}>

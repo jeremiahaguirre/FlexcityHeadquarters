@@ -7198,5 +7198,29 @@
     "confirm": "I’ve reviewed these and want to publish anyway (this is recorded).",
     "publish": "Publish",
     "publishAnyway": "Publish anyway"
+  },
+  "renewal": {
+    "title": "Price and renewal terms",
+    "ourBilling": "our billing team",
+    "none": "Your price, billing frequency and term are set in your order form. Ask {{contact}} for a copy.",
+    "price": "{{amount}} a month for your plan, before tax (GST/HST, and QST in Quebec), plus staff beyond your allowance, billed each month.",
+    "priceDiscount": "{{amount}} a month for your plan after your {{percent}}% commitment discount, before tax (GST/HST, and QST in Quebec), plus staff beyond your allowance, billed each month.",
+    "frequency": {
+      "MONTHLY": "Invoiced every month.",
+      "ANNUAL": "Invoiced every 12 months in advance: {{amount}} before tax.",
+      "TERM": "The whole term is invoiced up front: {{amount}} before tax."
+    },
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months",
+    "term": "Term: {{length}}, ending {{end}}.",
+    "monthToMonth": "No fixed term: month to month.",
+    "renewsTerm": "When the term ends it renews automatically, month to month, at the same rates without the commitment discount: {{amount}} a month before tax.",
+    "renewsMonthly": "It renews automatically each month at the same rates.",
+    "cancelTerm": "To cancel, or to sign a new term, write to {{contact}} before {{end}}. Invoicing stops after the period already billed.",
+    "cancelMonthly": "To cancel, write to {{contact}} before the next month starts. Invoicing stops after the month already billed.",
+    "notice": "We email your billing contact a reminder {{days}} days before the term ends.",
+    "refund": "Refunds: amounts already invoiced aren’t refunded for part of a period, and plan changes apply from the next invoice.",
+    "consoleTitle": "What the organization sees",
+    "consoleHelp": "Shown beside the pay, bank debit and plan buttons on the organization’s Billing page, with these terms once saved."
   }
 }

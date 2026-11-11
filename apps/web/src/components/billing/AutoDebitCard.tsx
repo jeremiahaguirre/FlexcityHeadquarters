@@ -1,7 +1,7 @@
 'use client';
 
 import { Landmark } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PadAgreementForm, type PadInput, PadSummary } from '@/components/billing/PadAgreementForm';
 import { Button } from '@/components/ui/Button';
@@ -12,7 +12,7 @@ import type { PadAgreement } from '@/lib/books';
 import { useAction } from '@/lib/useQuery';
 
 /** The city pays each invoice automatically from its bank account: authorize, see what's on file, cancel. */
-export function AutoDebitCard({ pad, payor, reload }: { pad: { agreement: PadAgreement | null; terms: string[] }; payor: string; reload: () => Promise<void> }) {
+export function AutoDebitCard({ pad, payor, reload, renewal }: { pad: { agreement: PadAgreement | null; terms: string[] }; payor: string; reload: () => Promise<void>; /** Price and renewal terms, shown beside the set-up and authorize buttons. */ renewal?: ReactNode }) {
   const { t } = useTranslation();
   const { run, busy } = useAction();
   const [mode, setMode] = useState<'view' | 'new' | 'cancel'>('view');
@@ -33,6 +33,7 @@ export function AutoDebitCard({ pad, payor, reload }: { pad: { agreement: PadAgr
       <CardBody className="grid gap-4 pt-2">
         {mode === 'new' ? (
           <>
+            {renewal}
             <PadAgreementForm terms={pad.terms} defaultPayor={payor} busy={busy === 'pad'} onSubmit={(b) => void authorize(b)} />
             <div><Button size="sm" variant="ghost" onClick={() => setMode('view')}>{t('common.cancel')}</Button></div>
           </>
@@ -57,7 +58,10 @@ export function AutoDebitCard({ pad, payor, reload }: { pad: { agreement: PadAgr
             )}
           </>
         ) : (
-          <p className="text-small text-muted">{t('pad.cityNone')}</p>
+          <>
+            <p className="text-small text-muted">{t('pad.cityNone')}</p>
+            {renewal}
+          </>
         )}
       </CardBody>
     </Card>
