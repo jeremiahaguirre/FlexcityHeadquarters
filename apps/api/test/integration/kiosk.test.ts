@@ -10,6 +10,7 @@ const SUB = 'kiosk';
 let t: Awaited<ReturnType<typeof seedTenant>>;
 const tok: Record<string, string> = {};
 let device = '';
+let cookie = '';
 const as = (who: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(tok[who]!, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(tok[who]!, { type: 'bearer' }).send(b),
@@ -73,9 +74,26 @@ describe('facility kiosk', () => {
     expect((await tablet().punch('E100', '4826')).body.code).toBe('KIOSK_LOCKED');
   });
 
-  it('a revoked tablet stops working', async () => {
+  it('pairing keeps the secret in an HttpOnly cookie that only counts with the tablet’s own header', async () => {
+    const pair = await request(server).post('/api/kiosk/pair').send({ token: device });
+    expect(pair.status).toBe(200);
+    const set = String(pair.headers['set-cookie']);
+    expect(set).toMatch(/^fh_kiosk=/);
+    expect(set).toMatch(/HttpOnly/i);
+    expect(set).toMatch(/SameSite=Strict/i);
+    expect(set).toMatch(/Path=\/api\/kiosk/i);
+    expect(pair.body).toEqual({ ok: true }); // the page is never handed the secret back
+    cookie = set.split(';')[0]!;
+    expect((await request(server).get('/api/kiosk').set('cookie', cookie).set('x-fh-kiosk', '1')).status).toBe(200);
+    // The cookie alone (as a request forged from another site would carry it) is not enough.
+    expect((await request(server).get('/api/kiosk').set('cookie', cookie)).status).toBe(401);
+    expect((await request(server).post('/api/kiosk/pair').send({ token: `${t.tenant.id}.not-the-real-secret-at-all-0000` })).status).toBe(401);
+  });
+
+  it('a revoked tablet stops working, whether it pairs by cookie or the old header', async () => {
     const list = (await as('sup').get('/api/kiosks')).body as Array<{ id: string }>;
     expect((await as('sup').del(`/api/kiosks/${list[0]!.id}`)).status).toBe(204);
     expect((await tablet().get()).status).toBe(401);
+    expect((await request(server).get('/api/kiosk').set('cookie', cookie).set('x-fh-kiosk', '1')).status).toBe(401);
   });
 });

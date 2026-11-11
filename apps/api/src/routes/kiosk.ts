@@ -113,8 +113,19 @@ async function kioskOf(tx: Tx, header: string | undefined) {
 }
 const tenantOfHeader = (header: string | undefined) => /^([0-9a-f-]{36})\./.exec(header ?? '')?.[1] ?? null;
 
-async function withKiosk<T>(req: { header: (n: string) => string | undefined }, fn: (tx: Tx, k: NonNullable<Awaited<ReturnType<typeof kioskOf>>>) => Promise<T>) {
-  const header = req.header('x-kiosk-token');
+/**
+ * The tablet's secret lives in an HttpOnly cookie (set by POST /kiosk/pair), so no script on the
+ * page can read it. The cookie only counts with the x-fh-kiosk header, which a page on another site
+ * can't add to a request without our permission (no cross-site request forgery). The old
+ * x-kiosk-token header still works for tablets paired before the cookie, until they pair again.
+ */
+export const KIOSK_COOKIE = 'fh_kiosk';
+type KioskReq = { header: (n: string) => string | undefined; cookies?: Record<string, string> };
+const kioskCredential = (req: KioskReq) => req.header('x-kiosk-token') ?? (req.header('x-fh-kiosk') === '1' ? req.cookies?.[KIOSK_COOKIE] : undefined);
+const kioskCookieOpts = () => ({ httpOnly: true, secure: config().NODE_ENV === 'production', sameSite: 'strict' as const, path: '/api/kiosk', maxAge: 400 * 86_400_000 });
+
+async function withKiosk<T>(req: KioskReq, fn: (tx: Tx, k: NonNullable<Awaited<ReturnType<typeof kioskOf>>>) => Promise<T>) {
+  const header = kioskCredential(req);
   const tenantId = tenantOfHeader(header);
   if (!tenantId || !uuid.safeParse(tenantId).success) throw new HttpError(401, 'KIOSK_UNKNOWN', 'This tablet isn’t set up. Ask a supervisor.');
   return withTenant(tenantId, async (tx) => {
@@ -125,6 +136,30 @@ async function withKiosk<T>(req: { header: (n: string) => string | undefined }, 
     return fn(tx, k);
   });
 }
+
+/**
+ * Pair the tablet: the secret from the setup link (or one an older tablet kept in its storage)
+ * becomes an HttpOnly cookie, and the page keeps nothing. Refused for an unknown or revoked secret.
+ */
+kioskRouter.post(
+  '/kiosk/pair',
+  h(async (req, res) => {
+    if (!(await allow(`kiosk-pair:${req.ip}`, 20, 15 * 60_000))) throw new HttpError(429, 'KIOSK_SLOW_DOWN', 'Too many tries on this tablet. Wait a few minutes.');
+    const { token } = z.object({ token: z.string().min(40).max(120) }).parse(req.body);
+    await withKiosk({ header: (n) => (n === 'x-kiosk-token' ? token : undefined) }, async () => undefined);
+    res.cookie(KIOSK_COOKIE, token, kioskCookieOpts());
+    res.json({ ok: true });
+  }),
+);
+
+/** Forget this tablet (a supervisor setting it up again elsewhere). */
+kioskRouter.post(
+  '/kiosk/unpair',
+  h(async (_req, res) => {
+    res.clearCookie(KIOSK_COOKIE, { ...kioskCookieOpts(), maxAge: undefined });
+    res.json({ ok: true });
+  }),
+);
 
 /** What the tablet shows: the facility and organization. */
 kioskRouter.get(
@@ -145,7 +180,7 @@ kioskRouter.post(
   '/kiosk/punch',
   h(async (req, res) => {
     const b = z.object({ employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4,6}$/) }).parse(req.body);
-    const header = req.header('x-kiosk-token');
+    const header = kioskCredential(req);
     const tenantId = tenantOfHeader(header) ?? 'none';
     // Wrong guesses: a few per person, more per tablet, then a pause.
     if (!(await allow(`kiosk-tablet:${tenantId}:${sha(header ?? '').slice(0, 16)}`, 60, 15 * 60_000))) throw new HttpError(429, 'KIOSK_SLOW_DOWN', 'Too many tries on this tablet. Wait a few minutes.');

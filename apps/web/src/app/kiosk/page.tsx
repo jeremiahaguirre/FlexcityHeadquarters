@@ -8,23 +8,27 @@ import { Button } from '@/components/ui/Button';
 import { dateFormat } from '@/lib/format';
 
 /**
- * The shared tablet at a facility. Set up once from the link a supervisor makes
- * (its secret arrives after the #, is kept on this tablet only, and is removed
- * from the address bar). Staff type their employee number and PIN to punch in
+ * The shared tablet at a facility. Set up once from the link a supervisor makes:
+ * its secret arrives after the #, is handed to the server, which keeps it in an
+ * HttpOnly cookie on this tablet (no script can read it), and is removed from
+ * the address bar. The page itself stores no secret. Staff type their employee number and PIN to punch in
  * or out. No one signs in, and nothing about anyone stays on screen.
  */
-const KEY = 'fh-kiosk-token';
+/** Where tablets paired before the cookie kept their secret: moved to the cookie, then deleted. */
+const LEGACY_KEY = 'fh-kiosk-token';
 interface Info { kiosk: string; facility: string; organization: string; timezone: string; locale: string }
 type Result = { action: 'IN' | 'OUT'; name: string; at: string; scheduled?: boolean } | { error: string };
 
-async function call<T>(path: string, token: string, body?: object): Promise<{ ok: boolean; status: number; data: T & { code?: string; message?: string } }> {
-  const r = await fetch(`/api${path}`, { method: body ? 'POST' : 'GET', headers: { 'x-kiosk-token': token, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+async function call<T>(path: string, body?: object): Promise<{ ok: boolean; status: number; data: T & { code?: string; message?: string } }> {
+  // The cookie identifies the tablet; the header proves the request comes from this page.
+  const r = await fetch(`/api${path}`, { method: body ? 'POST' : 'GET', credentials: 'same-origin', headers: { 'x-fh-kiosk': '1', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
   return { ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) };
 }
 
 export default function KioskPage() {
   const { t, i18n } = useTranslation();
-  const [token, setToken] = useState<string | null>(null);
+  /** null while pairing; true once the server holds this tablet's cookie (or held it already). */
+  const [paired, setPaired] = useState<boolean | null>(null);
   const [info, setInfo] = useState<Info | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [step, setStep] = useState<'number' | 'pin'>('number');
@@ -36,31 +40,42 @@ export default function KioskPage() {
   const reset = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    let stored: string | null = null;
+    // A secret from the setup link, or one an older version kept in this tablet's storage.
+    let secret: string | null = window.location.hash.slice(1) || null;
+    if (secret) history.replaceState(null, '', window.location.pathname);
     try {
-      const fromLink = window.location.hash.slice(1);
-      if (fromLink) {
-        localStorage.setItem(KEY, fromLink);
-        history.replaceState(null, '', window.location.pathname);
-      }
-      stored = localStorage.getItem(KEY);
+      secret ??= localStorage.getItem(LEGACY_KEY);
     } catch {
-      stored = window.location.hash.slice(1) || null;
+      /* storage blocked: nothing to move */
     }
-    setToken(stored);
+    const pair = secret
+      ? call('/kiosk/pair', { token: secret }).then((r) => {
+          try {
+            localStorage.removeItem(LEGACY_KEY);
+          } catch {
+            /* nothing stored */
+          }
+          return r.ok;
+        })
+      : Promise.resolve(true);
+    // Without a new secret, the cookie from an earlier pairing (if any) is checked by GET /kiosk.
+    void pair.then(setPaired);
     const tick = setInterval(() => setNow(new Date()), 15_000);
     return () => clearInterval(tick);
   }, []);
 
   useEffect(() => {
-    if (!token) return;
-    void call<Info>('/kiosk', token).then((r) => {
+    if (!paired) {
+      if (paired === false) setProblem('KIOSK_UNKNOWN');
+      return;
+    }
+    void call<Info>('/kiosk').then((r) => {
       if (r.ok) {
         setInfo(r.data);
         setProblem(null);
       } else setProblem(r.data.code ?? 'KIOSK_UNKNOWN');
     });
-  }, [token]);
+  }, [paired]);
 
   const clear = () => {
     setNumber('');
@@ -79,9 +94,9 @@ export default function KioskPage() {
       if (number) setStep('pin');
       return;
     }
-    if (pin.length < 4 || !token) return;
+    if (pin.length < 4 || !info) return;
     setBusy(true);
-    const r = await call<{ action: 'IN' | 'OUT'; name: string; at: string; scheduled?: boolean }>('/kiosk/punch', token, { employeeNumber: number, pin });
+    const r = await call<{ action: 'IN' | 'OUT'; name: string; at: string; scheduled?: boolean }>('/kiosk/punch', { employeeNumber: number, pin });
     setBusy(false);
     clear();
     setResult(r.ok ? r.data : { error: r.data.code ?? 'ERROR' });
@@ -93,7 +108,11 @@ export default function KioskPage() {
   const clock = info ? dateFormat(lng, { timeZone: info.timezone, hour: 'numeric', minute: '2-digit' }).format(now) : '';
   const day = info ? dateFormat(lng, { timeZone: info.timezone, weekday: 'long', month: 'long', day: 'numeric' }).format(now) : '';
 
-  if (!token || problem) {
+  // Pairing or loading: a quiet blank page, never a flash of "not set up".
+  if (!info && !problem) {
+    return <main id="main" className="min-h-screen bg-page" aria-busy="true" />;
+  }
+  if (!info || problem) {
     return (
       <main id="main" className="grid min-h-screen place-items-center bg-page p-6 text-center">
         <div className="grid max-w-md justify-items-center gap-4">
