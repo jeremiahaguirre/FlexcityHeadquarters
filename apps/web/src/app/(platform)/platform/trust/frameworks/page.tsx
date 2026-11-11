@@ -14,9 +14,9 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/cn';
 import { usePlatformQuery } from '@/lib/platform';
-import { controlTone, fr, pick, type ControlStatus, type FrameworkKey } from '@/lib/trust';
+import { colon, controlTone, fr, pct, pick, type ControlStatus, type FrameworkKey } from '@/lib/trust';
 
-interface Req { id: string; title: string; titleFr: string; group: string; na?: string; controls: Array<{ key: string; status: ControlStatus }> }
+interface Req { id: string; title: string; titleFr: string; group: string; groupFr?: string; na?: string; naFr?: string; controls: Array<{ key: string; status: ControlStatus }> }
 interface Fw { key: FrameworkKey; name: string; nameFr: string; description: string; descriptionFr: string; note: string | null; noteFr: string | null; optional: boolean; readiness: number; met: number; partial: number; gaps: number; uncovered: number; notApplicable: number; total: number; requirements: Req[] }
 type ReqState = 'met' | 'partial' | 'gap' | 'na';
 const stateOf = (r: Req): ReqState => {
@@ -43,7 +43,7 @@ export default function FrameworksPage() {
   const L = i18n.language;
   async function exportZip() {
     try {
-      await trustDownload(`/trust/export/${sel}.zip`, `fh-${sel}-evidence.zip`);
+      await trustDownload(`/trust/export/${sel}.zip?lang=${fr(L) ? 'fr' : 'en'}`, `fh-${sel}-evidence.zip`);
     } catch (e) {
       toast(errorText(e, t), 'warn');
     }
@@ -57,7 +57,7 @@ export default function FrameworksPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {data.data.map((f) => (
               <button key={f.key} type="button" aria-pressed={sel === f.key} onClick={() => setSel(f.key)} className={cn('rounded-xl2 border bg-panel p-4 text-left shadow-card transition-colors', sel === f.key ? 'border-brand-text ring-1 ring-brand-text' : 'border-line hover:border-ink/30')}>
-                <span className="flex items-baseline justify-between gap-2"><span className="text-body-strong">{fr(L) ? f.nameFr : f.name}</span><span className="text-heading tabular-nums">{f.readiness}%</span></span>
+                <span className="flex items-baseline justify-between gap-2"><span className="text-body-strong">{fr(L) ? f.nameFr : f.name}</span><span className="text-heading tabular-nums">{pct(f.readiness, L)}</span></span>
                 <span className="mt-2 block h-2 overflow-hidden rounded-full bg-surface"><span className="block h-full rounded-full bg-brand-text" style={{ width: `${f.readiness}%` }} /></span>
                 <span className="mt-2 block text-caption text-muted">{t('trust.frameworks.counts', { met: f.met, partial: f.partial, gaps: f.gaps, na: f.notApplicable })}</span>
                 {f.optional ? <span className="mt-2 inline-block"><StatusPill tone="neutral">{t('trust.frameworks.optional')}</StatusPill></span> : null}
@@ -84,12 +84,12 @@ export default function FrameworksPage() {
                 emptyTitle={t('trust.table.none')}
                 filters={[
                   { key: 'state', label: t('trust.frameworks.state'), options: (['met', 'partial', 'gap', 'na'] as const).map((s) => ({ value: s, label: t(`trust.req.${s}`) })), value: stateOf },
-                  { key: 'group', label: t('trust.frameworks.group'), options: [...new Set(fw.requirements.map((r) => r.group))].map((g) => ({ value: g, label: g })), value: (r) => r.group },
+                  { key: 'group', label: t('trust.frameworks.group'), options: [...new Set(fw.requirements.map((r) => r.group))].map((g) => ({ value: g, label: pick(fw.requirements.find((r) => r.group === g)!, 'group', L) })), value: (r) => r.group },
                 ]}
                 columns={[
                   { key: 'id', label: t('trust.frameworks.requirement'), value: (r) => r.id, className: 'whitespace-nowrap' },
                   { key: 'title', label: t('trust.table.title'), value: (r) => pick(r, 'title', L), wide: true },
-                  { key: 'group', label: t('trust.frameworks.group'), value: (r) => r.group, wide: true },
+                  { key: 'group', label: t('trust.frameworks.group'), value: (r) => pick(r, 'group', L), wide: true },
                   { key: 'controls', label: t('trust.section.controls'), value: (r) => r.controls.map((c) => c.key).join(' '), render: (r) => <span className="flex flex-wrap gap-1">{r.controls.map((c) => <StatusPill key={c.key} tone={controlTone[c.status]}>{c.key}</StatusPill>)}</span> },
                   { key: 'state', label: t('trust.table.status'), value: (r) => stateOf(r), render: (r) => <StatusPill tone={TONE[stateOf(r)]}>{t(`trust.req.${stateOf(r)}`)}</StatusPill> },
                 ]}
@@ -98,10 +98,10 @@ export default function FrameworksPage() {
           ) : null}
         </div>
       )}
-      <Drawer open={!!open} onClose={() => setOpen(null)} title={open ? `${open.id} · ${pick(open, 'title', L)}` : ''} subtitle={open?.group}>
+      <Drawer open={!!open} onClose={() => setOpen(null)} title={open ? `${open.id} · ${pick(open, 'title', L)}` : ''} subtitle={open ? pick(open, 'group', L) : null}>
         {open ? (
           <>
-            {open.na ? <p className="text-small">{t('trust.frameworks.na')}: {open.na}</p> : null}
+            {open.na ? <p className="text-small">{t('trust.frameworks.na')}{colon(L)}{pick(open, 'na', L)}</p> : null}
             <h3 className="text-small font-semibold">{t('trust.frameworks.mappedControls')}</h3>
             {open.controls.length ? (
               <ul className="grid gap-2">{open.controls.map((c) => <li key={c.key}><Link href={`/platform/trust/controls?id=${c.key}`} className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-line px-3 hover:bg-surface"><span className="font-semibold">{c.key}</span><StatusPill tone={controlTone[c.status]}>{t(`trust.status.${c.status}`)}</StatusPill></Link></li>)}</ul>

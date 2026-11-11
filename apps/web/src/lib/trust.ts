@@ -38,6 +38,10 @@ export interface Overview {
 export const controlTone: Record<ControlStatus, Tone> = { PASSING: 'ok', FAILING: 'danger', NEEDS_EVIDENCE: 'warn', NOT_APPLICABLE: 'neutral' };
 export const testTone = (s: TestStatus | null): Tone => (s === 'PASS' ? 'ok' : s === 'FAIL' || s === 'ERROR' ? 'danger' : s === 'WARN' ? 'warn' : 'neutral');
 export const fr = (lang: string) => lang.startsWith('fr');
+/** A whole-number percentage the way the language writes it ("51%", "51 %"). */
+export const pct = (n: number, lang: string) => new Intl.NumberFormat(lang, { style: 'percent', maximumFractionDigits: 0 }).format(n / 100);
+/** "Label: " in English, "Label : " (non-breaking space) in French. */
+export const colon = (lang: string) => (fr(lang) ? '\u00a0: ' : ': ');
 /** The French field when the interface is in French and the field exists. */
 export const pick = (o: object, field: string, lang: string): string => {
   const r = o as Record<string, unknown>;

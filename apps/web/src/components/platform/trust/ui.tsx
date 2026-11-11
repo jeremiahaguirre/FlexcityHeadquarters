@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Input, Select } from '@/components/ui/Field';
 import { cn } from '@/lib/cn';
 import { ApiError } from '@/lib/apiError';
-import { compareValues } from '@/lib/trust';
+import { colon, compareValues } from '@/lib/trust';
 import type { LucideIcon } from 'lucide-react';
 
 /** The Trust area's sections, in menu order (also used by the Dev console's sidebar and command menu). */
@@ -105,7 +105,7 @@ export function DataTable<T>({ rows, columns, filters = [], rowKey, onOpen, init
         {filters.map((f) => (
           <div key={f.key} className="w-[calc(50%-0.25rem)] sm:w-auto sm:min-w-[11rem]">
             <Select aria-label={f.label} value={sel[f.key] ?? ''} onChange={(e) => setSel({ ...sel, [f.key]: e.target.value })} className="h-11">
-              <option value="">{f.label}: {t('trust.table.all')}</option>
+              <option value="">{f.label}{colon(i18n.language)}{t('trust.table.all')}</option>
               {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </Select>
           </div>

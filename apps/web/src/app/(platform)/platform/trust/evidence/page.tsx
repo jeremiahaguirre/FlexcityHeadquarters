@@ -80,7 +80,7 @@ export default function EvidencePage() {
             columns={[
               { key: 'title', label: t('trust.table.title'), value: (e) => e.title },
               { key: 'control', label: t('trust.table.control'), value: (e) => e.controlKey },
-              { key: 'kind', label: t('trust.evidence.kind'), value: (e) => t(`trust.evidence.kinds.${e.kind}`), render: (e) => <StatusPill tone={e.kind === 'CI' ? (e.result === 'PASS' ? 'ok' : 'danger') : 'neutral'}>{t(`trust.evidence.kinds.${e.kind}`)}{e.kind === 'CI' ? ` · ${e.result}` : ''}</StatusPill> },
+              { key: 'kind', label: t('trust.evidence.kind'), value: (e) => t(`trust.evidence.kinds.${e.kind}`), render: (e) => <StatusPill tone={e.kind === 'CI' ? (e.result === 'PASS' ? 'ok' : 'danger') : 'neutral'}>{t(`trust.evidence.kinds.${e.kind}`)}{e.kind === 'CI' && e.result ? ` · ${t(`trust.testStatus.${e.result}`)}` : ''}</StatusPill> },
               { key: 'added', label: t('trust.evidence.added'), value: (e) => e.createdAt, render: (e) => date(e.createdAt) },
               { key: 'by', label: t('trust.evidence.by'), value: (e) => e.addedBy ?? '', wide: true },
             ]}

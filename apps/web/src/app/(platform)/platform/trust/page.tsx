@@ -186,7 +186,7 @@ export default function TrustOverviewPage() {
                 <CardBody><VendorBars dist={o.vendors} /></CardBody>
               </Card>
               <Card>
-                <CardBody><Progress done={o.policyAcks.done} total={o.policyAcks.required} label={t('trust.ackProgress', { policies: o.policyAcks.policies, admins: o.policyAcks.admins })} /></CardBody>
+                <CardBody><Progress done={o.policyAcks.done} total={o.policyAcks.required} label={t('trust.ackProgress', { policies: o.policyAcks.policies, admins: o.policyAcks.admins, count: o.policyAcks.admins })} /></CardBody>
               </Card>
             </div>
           </div>

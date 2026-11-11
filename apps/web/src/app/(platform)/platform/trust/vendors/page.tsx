@@ -15,7 +15,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/cn';
 import { papi, usePlatformQuery } from '@/lib/platform';
-import { daysLeft, pick } from '@/lib/trust';
+import { colon, daysLeft, pick } from '@/lib/trust';
 
 interface Vendor { id: string; name: string; purpose: string; purposeFr: string | null; criticality: string; dataAccessed: string; personalInfo: boolean; dataLocation: string; inCanada: boolean; website: string | null; dpaSignedAt: string | null; dpaExpiresAt: string | null; soc2ExpiresAt: string | null; isoExpiresAt: string | null; reviewEveryMonths: number; lastReviewedAt: string | null; nextReviewAt: string | null; status: string; questionnaire: Record<string, string> | null; score: number | null; ownerId: string | null; owner: string | null; notes: string | null; risk: 'low' | 'medium' | 'high'; risks: string[] }
 const DATES = ['dpaSignedAt', 'dpaExpiresAt', 'soc2ExpiresAt', 'isoExpiresAt', 'nextReviewAt'] as const;
@@ -136,7 +136,7 @@ function VendorDrawer({ vendor, questions, onClose, onSaved, canManage, lang }: 
           ))}
         </section>
         <Field label={t('trust.notes')}>{(p) => <Textarea {...p} rows={3} maxLength={4000} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />}</Field>
-        {v?.risks.length ? <p className="text-small">{t('trust.vendors.linkedRisks')}: {v.risks.join(', ')}</p> : null}
+        {v?.risks.length ? <p className="text-small">{t('trust.vendors.linkedRisks')}{colon(lang)}{v.risks.join(', ')}</p> : null}
       </fieldset>
     </Drawer>
   );

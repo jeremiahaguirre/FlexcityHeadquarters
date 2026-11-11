@@ -3,7 +3,7 @@
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/cn';
-import { heatCells, linePath, riskLevel, timelinePos, daysLeft, type FrameworkReadiness, type OverviewRisk, type TrendPoint } from '@/lib/trust';
+import { colon, heatCells, linePath, riskLevel, timelinePos, daysLeft, type FrameworkReadiness, type OverviewRisk, type TrendPoint, pct } from '@/lib/trust';
 
 /**
  * Trust charts: inline SVG, the app's own tokens (status colours keep their meaning: green ok,
@@ -36,7 +36,7 @@ export function ReadinessBars({ frameworks, onPick }: { frameworks: FrameworkRea
           <>
             <span className="flex items-baseline justify-between gap-3 text-small">
               <span className={cn('min-w-0 truncate font-semibold', !f.inScope && 'text-muted')}>{name}{!f.inScope ? ` · ${t('trust.outOfScope')}` : ''}</span>
-              <span className="shrink-0 tabular-nums text-muted"><span className="font-semibold text-ink">{f.readiness}%</span> · {t('trust.metOf', { met: f.met, total: f.total - f.notApplicable })}</span>
+              <span className="shrink-0 tabular-nums text-muted"><span className="font-semibold text-ink">{pct(f.readiness, i18n.language)}</span> · {t('trust.metOf', { met: f.met, total: f.total - f.notApplicable })}</span>
             </span>
             <span className="mt-1.5 block h-2.5 overflow-hidden rounded-full bg-surface" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={f.readiness} aria-label={t('trust.readinessOf', { name })}>
               <span className="block h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700" style={{ width: `${f.readiness}%`, background: f.inScope ? C.brand : C.muted }} />
@@ -118,7 +118,7 @@ export function TrendChart({ points, mode }: { points: TrendPoint[]; mode: 'test
           {hp ? (
             <div className="pointer-events-none absolute top-0 z-10 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-caption shadow-card" style={{ left: `min(calc(${((hover! + 1) / n) * 100}% + 6px), calc(100% - 9.5rem))` }}>
               <p className="font-semibold">{fmt(hp.day)}</p>
-              {series.map((s) => <p key={s.key} className="tabular-nums"><span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />{s.label}: {val(hp, s.key)}</p>)}
+              {series.map((s) => <p key={s.key} className="tabular-nums"><span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: s.color }} />{s.label}{colon(i18n.language)}{val(hp, s.key)}</p>)}
             </div>
           ) : null}
           <div className="mt-1 flex justify-between text-caption text-muted" aria-hidden="true"><span>{fmt(points[0]!.day)}</span>{n > 1 ? <span>{fmt(points[n - 1]!.day)}</span> : null}</div>
@@ -214,12 +214,13 @@ export function Timeline({ items, onOpen }: { items: Array<{ id: string; title: 
 }
 
 export function Progress({ done, total, label }: { done: number; total: number; label: string }) {
-  const pct = total ? Math.round((100 * done) / total) : 0;
+  const { i18n } = useTranslation();
+  const share = total ? Math.round((100 * done) / total) : 0;
   return (
     <div>
-      <div className="flex items-baseline justify-between text-small"><span>{label}</span><span className="tabular-nums"><span className="font-semibold">{done}</span> / {total} · {pct}%</span></div>
+      <div className="flex items-baseline justify-between text-small"><span>{label}</span><span className="tabular-nums"><span className="font-semibold">{done}</span> / {total} · {pct(share, i18n.language)}</span></div>
       <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-surface" role="progressbar" aria-valuemin={0} aria-valuemax={total || 1} aria-valuenow={done} aria-label={label}>
-        <div className="h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700" style={{ width: `${pct}%`, background: pct === 100 ? C.ok : C.brand }} />
+        <div className="h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700" style={{ width: `${share}%`, background: share === 100 ? C.ok : C.brand }} />
       </div>
     </div>
   );
