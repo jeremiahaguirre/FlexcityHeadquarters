@@ -3,13 +3,13 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
+import { sniff } from '../lib/files.js';
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError, badRequest, conflict } from '../lib/errors.js';
 import { CONSENT_VERSION, agreementFor, canonicalText, sha256 } from '../services/privacy/consent.js';
 import { h } from './context.js';
 
 export const consentRouter = Router();
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 /** Whether this person still has to sign the current version. FH support visits never do. */
 export async function consentRequired(tx: Parameters<Parameters<typeof withTenant>[1]>[0], userId: string): Promise<boolean> {
@@ -84,7 +84,7 @@ consentRouter.post(
     // Signing a version other than the current one would record agreement to text no one was shown.
     if (b.version !== CONSENT_VERSION) throw conflict('CONSENT_OUTDATED', 'The agreement was updated. Read the new version and sign again.');
     const png = Buffer.from(b.signature.slice('data:image/png;base64,'.length), 'base64');
-    if (png.length < 100 || png.length > 220_000 || !png.subarray(0, 8).equals(PNG_MAGIC)) throw badRequest('The signature could not be read. Sign again.');
+    if (png.length < 100 || png.length > 220_000 || sniff(png) !== 'image/png') throw badRequest('The signature could not be read. Sign again.');
     const textSha256 = sha256(canonicalText(CONSENT_VERSION, agreementFor(b.locale)));
     const rec = await withTenant(a.tenantId, async (tx) => {
       const r = await tx.consentRecord.create({

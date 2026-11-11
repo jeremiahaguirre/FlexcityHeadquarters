@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { RECENT_AUTH_MS, authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
+import { sniff } from '../lib/files.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { POINTS } from '../services/reliability/score.js';
@@ -14,7 +15,6 @@ import { type SignableRecord, recordFingerprint, sha256, signatureCheck } from '
 export const disciplineRouter = Router();
 const uuid = z.string().uuid();
 const MAX_SIGNATURE_BYTES = 200_000;
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 type Row = SignableRecord & {
   signedSha256: string | null;
@@ -144,7 +144,7 @@ disciplineRouter.post(
     const id = uuid.parse(req.params.id);
     const { signature } = z.object({ signature: z.string().startsWith('data:image/png;base64,').max(300_000) }).parse(req.body);
     const png = Buffer.from(signature.slice('data:image/png;base64,'.length), 'base64');
-    if (png.length > MAX_SIGNATURE_BYTES || !png.subarray(0, 8).equals(PNG_MAGIC)) throw badRequest('The signature image could not be read. Sign again.');
+    if (png.length > MAX_SIGNATURE_BYTES || sniff(png) !== 'image/png') throw badRequest('The signature image could not be read. Sign again.');
     await withTenant(a.tenantId, async (tx) => {
       const r = await tx.disciplinaryRecord.findUnique({ where: { id } });
       if (!r || r.userId !== a.userId) throw notFound('Record');
