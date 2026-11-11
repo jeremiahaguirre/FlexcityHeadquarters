@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronsRight } from 'lucide-react';
+import { Check, ChevronsRight } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { Spinner } from './Spinner';
@@ -28,6 +28,8 @@ export function SlideToConfirm({
   const [pos, setPos] = useState(0); // 0..1
   const [dragging, setDragging] = useState(false);
   const [width, setWidth] = useState(0);
+  /** A short "done" beat after a confirm: the thumb shows a tick and the track glows once. */
+  const [confirmed, setConfirmed] = useState(false);
   const THUMB = 56;
   useEffect(() => {
     const el = track.current;
@@ -45,15 +47,21 @@ export function SlideToConfirm({
     } catch {
       /* no haptics */
     }
+    setConfirmed(true);
     onConfirm();
-    setTimeout(() => setPos(0), 900);
+    setTimeout(() => {
+      setPos(0);
+      setConfirmed(false);
+    }, 900);
   }, [onConfirm]);
 
   return (
     <div
       ref={track}
       className={cn(
-        'relative h-16 select-none overflow-hidden rounded-full p-1 touch-pan-y',
+        // Full width on phones; on larger screens a comfortable length to drag across.
+        'relative h-16 w-full select-none overflow-hidden rounded-full p-1 touch-pan-y sm:max-w-[26rem]',
+        confirmed && 'fh-slide-done',
         tone === 'brand' ? 'bg-brand/15' : 'bg-danger/12',
         busy && 'opacity-80',
       )}
@@ -106,7 +114,7 @@ export function SlideToConfirm({
           start.current = null;
           setDragging(false);
           if (pos > 0.85) done();
-          else setPos(0);
+          else setPos(0); // springs back (the transition below)
         }}
         onPointerCancel={() => {
           start.current = null;
@@ -116,11 +124,12 @@ export function SlideToConfirm({
         className={cn(
           'relative z-10 grid h-14 w-14 cursor-grab touch-none place-items-center rounded-full shadow-lift active:cursor-grabbing',
           tone === 'brand' ? 'bg-brand text-brand-contrast' : 'bg-danger text-white dark:text-page',
-          !dragging && 'transition-transform duration-300 ease-out',
+          // Released, it springs back (or snaps home) with a little overshoot; held, it grows slightly under the finger.
+          !dragging && 'transition-transform duration-300 ease-[cubic-bezier(0.3,1.4,0.5,1)]',
         )}
-        style={{ transform: `translateX(${pos * max()}px)` }}
+        style={{ transform: `translateX(${pos * max()}px) scale(${dragging ? 1.06 : 1})` }}
       >
-        {busy ? <Spinner /> : icon}
+        {busy && !confirmed ? <Spinner /> : confirmed ? <Check className="fh-tick h-6 w-6" strokeWidth={3} aria-hidden="true" /> : icon}
       </button>
     </div>
   );
