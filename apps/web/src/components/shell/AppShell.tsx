@@ -110,12 +110,11 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
             <CityBrand org={organization} showName={!!organization.logoUrl} />
           </div>
         </div>
-        <nav aria-label={t('shell.mainNav')} className="flex-1 overflow-y-auto px-3 pb-6">
+        <nav aria-label={t('shell.mainNav')} className="fh-scroll-fade flex-1 overflow-y-auto px-3 pb-8">
           <SideNav items={items} locked={me?.lockedMenu ?? []} activeHref={items.find((n) => isActive(pathname, n.href))?.href ?? null} link={(n) => link(n)} lockedLink={lockedLink} />
         </nav>
         <div className="border-t border-line p-3">
           <UserMenu placement="up" />
-          <Copyright className="mt-2 px-1 text-center" />
         </div>
       </aside>
 

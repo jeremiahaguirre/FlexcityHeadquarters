@@ -12,7 +12,7 @@ import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
 import { currentTenant } from '@/lib/tenant';
 import { themeVars } from '@/lib/theme';
 import './globals.css';
-import { SCHEME_SCRIPT } from '@/lib/colorScheme';
+import { LOGO_SEEN_SCRIPT, SCHEME_SCRIPT } from '@/lib/colorScheme';
 
 // Brand typeface (wordmark + UI). Self-hosted by Next at build time.
 // Self-hosted (SIL OFL, see src/fonts): builds never depend on Google Fonts being reachable.
@@ -46,7 +46,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           React error #418 on some loads). Browsers hide a nonce from the DOM, hence suppressHydrationWarning.
         */}
         {/* eslint-disable-next-line react/no-danger */}
-        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: SCHEME_SCRIPT }} />
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: SCHEME_SCRIPT + LOGO_SEEN_SCRIPT }} />
         <Providers locale={locale}>
           <SkipLink />
           <KeyboardInset />

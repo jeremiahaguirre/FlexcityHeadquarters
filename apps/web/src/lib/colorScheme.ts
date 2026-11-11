@@ -8,6 +8,11 @@ export const SCHEME_KEY = 'fh-color-scheme';
 /** Runs in <head> before the page paints, so a dark choice never flashes white. */
 export const SCHEME_SCRIPT = `try{var s=localStorage.getItem('${SCHEME_KEY}');if(s==='light'||s==='dark')document.documentElement.dataset.theme=s}catch(e){}`;
 
+/** Set once the header logo (LiveLogo) has drawn itself in this browser session (tab). */
+export const LOGO_SEEN_KEY = 'fh-logo-seen';
+/** Runs with SCHEME_SCRIPT before the first paint: later full page loads in the session show the logo still. */
+export const LOGO_SEEN_SCRIPT = `try{if(sessionStorage.getItem('${LOGO_SEEN_KEY}'))document.documentElement.dataset.logoSeen='1'}catch(e){}`;
+
 export function readScheme(): Scheme {
   try {
     const s = localStorage.getItem(SCHEME_KEY);

@@ -258,6 +258,14 @@ html[data-kb='open'] .fh-savebar { bottom: calc(var(--kb, 0px) + 0.75rem); }
 }
 /* @logo-motion end */
 
+/* Wordmark descenders (the y and q): truncate clips at the padding box, so give it room below.
+   Logo.tsx itself stays byte-identical to the website's copy (a site test checks). */
+span[role='img'][aria-label='FlexcityHeadquarters'] > span.truncate { padding-block: 0.14em; }
+/* The header logo draws in once per session (LiveLogo), unless the pointer asks for it again. */
+html[data-logo-seen] .fh-live:not([data-replay]) .fh-p { animation: none !important; }
+/* A scrolling list that continues below: its last 2 rem fade out (the sidebar under the user block). */
+.fh-scroll-fade { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent); }
+
 /* Sign-in screen extras around the logo. */
 @media (prefers-reduced-motion: no-preference) {
   /* Rings that ripple out from the login logo. */
