@@ -5193,7 +5193,7 @@
     "notifications": "In-app notifications (days)",
     "emailLog": "Email log (days)",
     "range": "Between {{min}} and {{max}} days.",
-    "fixed": "Families: names, birth dates, contacts and safety notes are removed; payment records stay. Working-alone locations are removed 30 days after the session, ended sign-in sessions and used links after 30 days. Staff records, pay, incidents and the audit log follow their own legal retention.",
+    "fixed": "Families: names, birth dates, contacts and safety notes are removed; payment records stay. Working-alone locations are removed 30 days after the session, ended sign-in sessions, used links and expired sign-in codes after 30 days. Staff records, pay, incidents and the audit log follow their own legal retention.",
     "saved": "Retention periods saved",
     "notificationsDays": "In-app notifications (days)",
     "emailLogDays": "Email log (days)",
@@ -5216,6 +5216,7 @@
       "title": "What’s kept, and why",
       "items": [
         "Who you are and how to reach you: name, work email, phone, language, employee number.",
+        "How you sign in: a one-way hash of your password, your passkeys’ public keys, and one-time sign-in codes, kept only as a keyed hash and deleted 30 days after they expire. If you confirm a mobile number, you can choose to get sign-in codes there by text.",
         "Your work: positions, certifications, availability, schedule, time off and leave balances.",
         "Your time: clock-in and clock-out times, and corrections with the reason, for pay.",
         "Pay, if your employer pays you through the app: pay rate, tax claim amounts (TD1), deductions, your bank account (sealed) and Social Insurance Number (sealed), and your home mailing address for tax slips.",
@@ -5246,7 +5247,8 @@
       "title": "How long it’s kept",
       "items": [
         "Pay records: the years your employer must keep them for tax (at least six after the year).",
-        "In-app notifications: 2 years by default; the email log: 90 days, and it never holds the email's contents.",
+        "In-app notifications: 2 years by default; the log of emails and texts: 90 days by default, and it keeps a message’s contents only until it’s sent.",
+        "Ended sign-in sessions and sign-in codes: 30 days.",
         "When you leave, your file is kept for your employer's legal retention period, then anonymized."
       ]
     },
@@ -5263,7 +5265,7 @@
       "items": [
         "Encrypted in transit and at rest; SINs, bank accounts, incident narratives and documents are additionally sealed with your employer's own key.",
         "Each organization's data is walled off by the database itself.",
-        "Passkeys and multi-factor sign-in; sensitive actions ask you to confirm it's you."
+        "Passwords of 12 to 128 characters, with common ones refused; a second step at sign-in with a passkey or a one-time code by email or text; sensitive actions ask you to confirm it’s you."
       ]
     },
     "footer": "This notice describes the app. Your employer’s own privacy and electronic monitoring policies apply too; ask HR for them."

@@ -5193,7 +5193,7 @@
     "notifications": "Notifications dans l’application (jours)",
     "emailLog": "Journal des courriels (jours)",
     "range": "Entre {{min}} et {{max}} jours.",
-    "fixed": "Familles : noms, dates de naissance, coordonnées et notes de sécurité sont supprimés; les dossiers de paiement restent. Les positions du travail seul sont supprimées 30 jours après la session, les sessions terminées et les liens utilisés après 30 jours. Les dossiers du personnel, la paie, les incidents et le journal d’audit suivent leur propre conservation légale.",
+    "fixed": "Familles : noms, dates de naissance, coordonnées et notes de sécurité sont supprimés; les dossiers de paiement restent. Les positions du travail seul sont supprimées 30 jours après la session, les sessions terminées, les liens utilisés et les codes de connexion expirés après 30 jours. Les dossiers du personnel, la paie, les incidents et le journal d’audit suivent leur propre conservation légale.",
     "saved": "Durées de conservation enregistrées",
     "notificationsDays": "Notifications dans l’application (jours)",
     "emailLogDays": "Journal des courriels (jours)",
@@ -5216,6 +5216,7 @@
       "title": "Ce qui est conservé, et pourquoi",
       "items": [
         "Qui vous êtes et comment vous joindre : nom, courriel de travail, téléphone, langue, numéro d’employé.",
+        "Comment vous vous connectez : une empreinte irréversible de votre mot de passe, la clé publique de vos clés d’accès et les codes de connexion à usage unique, conservés uniquement sous forme d’empreinte à clé et supprimés 30 jours après leur expiration. Si vous confirmez un numéro de cellulaire, vous pouvez choisir d’y recevoir vos codes de connexion par texto.",
         "Votre travail : postes, certifications, disponibilités, horaire, congés et soldes de congés.",
         "Votre temps : heures d’arrivée et de départ, et corrections avec le motif, pour la paie.",
         "La paie, si votre employeur vous paie par l’application : taux de salaire, montants de demande (TD1), retenues, compte bancaire (scellé), numéro d’assurance sociale (scellé) et adresse postale pour les feuillets fiscaux.",
@@ -5246,7 +5247,8 @@
       "title": "Combien de temps",
       "items": [
         "Dossiers de paie : les années que votre employeur doit les conserver pour l’impôt (au moins six après l’année).",
-        "Notifications dans l’application : 2 ans par défaut; journal des courriels : 90 jours, sans jamais le contenu des courriels.",
+        "Notifications dans l’application : 2 ans par défaut; journal des courriels et des textos : 90 jours par défaut, qui ne conserve le contenu d’un message que jusqu’à son envoi.",
+        "Sessions terminées et codes de connexion : 30 jours.",
         "À votre départ, votre dossier est conservé pendant la période légale de votre employeur, puis anonymisé."
       ]
     },
@@ -5263,7 +5265,7 @@
       "items": [
         "Chiffrés en transit et au repos; les NAS, comptes bancaires, récits d’incident et documents sont en plus scellés avec la clé propre à votre employeur.",
         "Les données de chaque organisation sont isolées par la base de données elle-même.",
-        "Clés d’accès et authentification multifacteur; les actions sensibles vous demandent de confirmer votre identité."
+        "Mots de passe de 12 à 128 caractères, les plus courants étant refusés; une deuxième étape à la connexion avec une clé d’accès ou un code à usage unique par courriel ou par texto; les actions sensibles vous demandent de confirmer votre identité."
       ]
     },
     "footer": "Cet avis décrit l’application. Les politiques de votre employeur sur la vie privée et la surveillance électronique s’appliquent aussi; demandez-les aux RH."
