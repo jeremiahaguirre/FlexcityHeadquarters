@@ -16,8 +16,8 @@ Code: `apps/api/src/services/trust/` (library, scoring, monitors, posture, remin
 | Section | What it holds |
 | --- | --- |
 | Overview | Posture score (ring), readiness per framework, KPI tiles with sparklines (failing tests, overdue evidence, open high risks, vendors due, commitments due in 30 days), stacked daily test results or the score over time, a 5×5 risk heat map, vendor risk, the next 90 days of commitments, policy acknowledgement progress, recent alerts. A time-range slider (7 days to 12 months), a risk-appetite slider (saved for everyone by a Trust manager) and a framework scope (recalculates the score; "make this the default" saves it). Live: polls every 20 s with an ETag, so an unchanged posture costs a 304. |
-| Frameworks | SOC 2 (2017 Trust Services Criteria: CC1–CC9, A1, C1, P), ISO/IEC 27001:2022 (clauses 4–10 and all 93 Annex A controls), HIPAA Security Rule (optional; US health information only), PIPEDA (the ten principles and breach reporting), provincial public-sector privacy as customer requirements (BC FIPPA incl. the 2021 residency change, Ontario MFIPPA, Alberta FOIP/POPA), Quebec Law 25. Each requirement shows the FH controls that meet it and whether it is met, partly met, a gap or not applicable. The auditor bundle is exported here. |
-| Controls | ~50 FH controls (access, encryption, tenant isolation, logging, backups, vulnerabilities, secure development, change, incidents, continuity, vendors, people, retention, privacy, physical, governance): owner, how each is proven (tests, evidence window, inherited), status, and an optional manual status that needs a justification (e.g. not applicable). |
+| Frameworks | SOC 2 (2017 Trust Services Criteria: CC1–CC9, A1, C1, P), ISO/IEC 27001:2022 (clauses 4–10 and all 93 Annex A controls), HIPAA Security Rule (optional; US health information only), PIPEDA (the ten principles of Schedule 1, and breach reporting and records under ss. 10.1 and 10.3), provincial public-sector privacy as customer requirements (BC FIPPA incl. the 2021 residency change, Ontario MFIPPA, Alberta FOIP/POPA), Quebec Law 25. Provincial and Law 25 section numbers are as commonly cited and the framework notes say to have counsel confirm them before quoting them in a contract. Requirement titles are FH's own paraphrases, not the standards' text. Each requirement shows the FH controls that meet it and whether it is met, partly met, a gap or not applicable. The auditor bundle is exported here. |
+| Controls | 50 FH controls (access, encryption, tenant isolation, logging, backups, vulnerabilities, secure development, change, incidents, continuity, vendors, people, retention, privacy, physical, governance): owner, how each is proven (tests, evidence window, inherited), status, and an optional manual status that needs a justification (e.g. not applicable). |
 | Tests | The automated monitors below: owner, frequency, last run, result and details, on/off, 90 days of history, run now. |
 | Evidence | Files (sealed like employee documents), links, notes and CI results per control; evidence requests with owners and due dates. |
 | Policies | Twelve FH policy templates (information security, acceptable use, access control, incident response, continuity and DR, vendor management, retention, privacy, encryption, change management, secure development, HR security), EN and FR. Draft → approve → publish (a new version retires the old), yearly review date, and acceptance by every console admin with reminders. |
@@ -25,7 +25,7 @@ Code: `apps/api/src/services/trust/` (library, scoring, monitors, posture, remin
 | Vendors | Seeded from [SUBPROCESSORS.md](SUBPROCESSORS.md): criticality, data handled, location (Canada or not), DPA, SOC 2 and ISO expiry, review cadence, a built-in 10-question security questionnaire with a score, and linked risks. |
 | Commitments | What FH promised each customer: contract security clauses, uptime and support SLAs, data residency, breach-notice windows, pen tests, report delivery, questionnaire answers, custom terms. Linked to the organization, owner, due date and recurrence; marking a recurring one met records it and moves it to the next date. Table and calendar views, plus the 90-day timeline. |
 | Questionnaires | Approved answers (EN and FR) to the questions cities ask in security questionnaires and RFPs, with who reviewed them and when; flagged after a year. |
-| Present | Full-screen posture for a call or screen share: score, frameworks "preparing" with readiness, tests passing, data residency. Failing-test details are hidden unless the presenter turns them on. PDF and CSV posture summary downloads. |
+| Present | Full-screen posture for a call or screen share: score, frameworks "preparing" with readiness, tests passing, data residency. Failing-test details are hidden unless the presenter turns them on. PDF and CSV posture summary downloads. The "report a security issue" line (Present and the PDF) shows `SECURITY_EMAIL`, and is left out while it isn't set. |
 
 ## What is automated and what is manual
 
@@ -40,16 +40,16 @@ a secret are dropped before they're stored (`scrubDetails`).
 | `city_mfa` | Each organization requires a passkey (or MFA SSO) for HR administrators | Warns: the city's choice |
 | `rls` | Every table with a `tenantId` has row-level security on, a policy, and (except FH's cross-city records) forced; every table in `db/rls.sql` exists with RLS on | |
 | `db_role` | The app's role isn't a superuser, can't bypass RLS, has no schema rights, owns no tables | |
-| `kek` | AWS KMS in production with no local key; a 32-byte local key elsewhere | Warns in development |
-| `jwt_secret` | Length, variety, not a development value (only the length is recorded) | |
+| `kek` | AWS KMS with no local key, the key in a Canadian region (read from its ARN, else `AWS_REGION`); production fails without KMS; a 32-byte local key elsewhere | Warns in development |
+| `jwt_secret` | Length, variety, not a development value (only the length and the number of distinct characters are recorded) | |
 | `security_headers` | HSTS (production), CSP, frame, sniffing, referrer headers on `/healthz` (`TRUST_SELF_URL` checks the deployed address) | Warns without HSTS outside production |
 | `db_tls` | `sslmode=require/verify-*` on the database URL | Warns in development |
 | `readiness`, `outbox` | `/readyz` in strict mode: database, worker heartbeat, email/text backlog | |
 | `error_tracking`, `metrics_token` | `SENTRY_DSN`, `METRICS_TOKEN` set | `error_tracking` fails until a vendor is chosen |
-| `data_residency` | A Canadian AWS region | |
+| `data_residency` | The configured `AWS_REGION` is Canadian (production also refuses to start otherwise) | |
 | `backup_evidence`, `restore_evidence` | A backup confirmation in the last 8 days, a restore test in the last 35 | Manual evidence: the app has no backup job of its own |
 | `retention_job` | The retention job finished in the last 25 hours (`WorkerJobRun`, which the worker now writes for every job) | |
-| `audit_log` | The app can't update or delete `AuditLog`; an entry in the last 24 hours | Warns on a quiet day |
+| `audit_log` | The role the app connects as can't update or delete `AuditLog` (cities) or `PlatformAudit` (Dev console); an entry in the last 24 hours | Warns on a quiet day |
 | `dependency_audit` | The latest recorded CI security run (evidence of kind CI on VM-01) passed and is under 8 days old | Warns with none: record the `Security` workflow's result; there is no network secret to read GitHub |
 | `stale_admins`, `offboarded_admins` | Console accounts unused for 90 days; disabled accounts with an open session | |
 | `api_key_age`, `webhooks_failing` | Organizations' API keys over a year old; webhook endpoints failing or turned off | Warn: the organization acts |
@@ -80,8 +80,11 @@ reviews, vendor documents and every customer commitment are entered by people, w
 
 ## Permissions and audit
 
-`PlatformAdmin.permissions`: `trust.read` sees Trust, `trust.manage` changes it (every existing admin
-was given both). Accepting a policy needs only `trust.read`. Every change is written to
+`PlatformAdmin.permissions`: `trust.read` sees Trust, `trust.manage` changes it. Every existing admin
+was given both, and a new admin gets both by default (the column's default); there is no screen to
+narrow them yet, so a read-only admin is set in the database. Accepting a policy and marking the
+alert feed read need only `trust.read` (the feed's read state is shared). Downloading the auditor
+bundle needs `trust.manage`. An integration test checks every Trust route carries one of the two. Every change is written to
 `PlatformAudit` as `trust.*`. Exports (auditor bundle, posture summary) and opening an evidence file
 need a passkey confirmation from the last 10 minutes and are audited. Row-level security keeps every
 Trust table out of any city's transaction (`fh_only_tables` in `db/rls.sql`).
