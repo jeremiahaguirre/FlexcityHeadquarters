@@ -32,7 +32,7 @@ export type GrievanceStatus = (typeof GRIEVANCE_STATUSES)[number];
 export interface Grievance { id: string; number: number; userId: string | null; grievor: string | null; kind: 'INDIVIDUAL' | 'GROUP' | 'POLICY'; title: string; articles: string | null; filedOn: string; status: GrievanceStatus; dueOn: string | null; outcome: string | null; history: Array<{ at: string; by: string; status: GrievanceStatus; note: string | null }> }
 
 export const OFFBOARD_REASONS = ['RESIGNATION', 'RETIREMENT', 'END_OF_SEASON', 'END_OF_CONTRACT', 'DISMISSAL', 'LAYOFF', 'OTHER'] as const;
-export interface Offboarding { id: string; userId: string; name: string; lastDay: string; reason: (typeof OFFBOARD_REASONS)[number]; checklist: Array<{ key: string; done: boolean; doneAt: string | null }>; completedAt: string | null }
+export interface Offboarding { id: string; userId: string; name: string; lastDay: string; reason: (typeof OFFBOARD_REASONS)[number]; checklist: Array<{ key: string; done: boolean; doneAt: string | null }>; completedAt: string | null; /** People whose manager is set to them: completing asks who they report to now. */ reports?: number }
 
 export interface HrOverview { staff: number; openJobs: number; draftRuns: number; pendingBank: number; plans: number; enrolled: number; openClaims: number; activeAccommodations: number; openGrievances: number; reviewsOpen: number; reviewsLate: number; offboarding: number; flagged: number; trainingDue: number }
 

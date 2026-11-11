@@ -13,6 +13,7 @@ import { Field, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { TradeApprovals } from '@/components/shiftboard/Trades';
+import { TeamScopeSwitch, useTeamScope } from '@/components/people/Reporting';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
@@ -45,15 +46,19 @@ export default function ApprovalsPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const { can } = useSession();
-  const claims = useQuery<Claim[]>(can('shiftboard.approve') ? '/api/offers/pending' : null);
-  const timeOff = useQuery<TimeOff[]>(can('timeoff.approve') ? '/api/time-off' : null);
-  const punches = useQuery<Punch[]>(can('timeclock.review') ? '/api/punches' : null);
+  // "My team" (the people who report to me) is the default for managers; "Everyone I can approve" is the full queue, as before.
+  const scope = useTeamScope();
+  const { team, ready } = scope;
+  const tq = scope.query ? `?${scope.query}` : '';
+  const claims = useQuery<Claim[]>(ready && can('shiftboard.approve') ? `/api/offers/pending${tq}` : null);
+  const timeOff = useQuery<TimeOff[]>(ready && can('timeoff.approve') ? `/api/time-off${tq}` : null);
+  const punches = useQuery<Punch[]>(ready && can('timeclock.review') ? `/api/punches${tq}` : null);
   const [tab, setTab] = useState<Tab>('claims');
   const { run, busy } = useAction();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejecting, setRejecting] = useState<{ kind: 'punch' | 'timeoff'; ids: string[]; protectedLeave?: boolean } | null>(null);
 
-  const trades = useQuery<unknown[]>(can('shiftboard.approve') ? '/api/trades' : null);
+  const trades = useQuery<unknown[]>(ready && can('shiftboard.approve') ? `/api/trades${tq}` : null);
   const count = { claims: claims.data?.length ?? 0, trades: trades.data?.length ?? 0, timeoff: timeOff.data?.length ?? 0, punches: punches.data?.length ?? 0 };
   const decideClaim = (id: string, decision: 'APPROVE' | 'DENY') =>
     run(`${decision}-${id}`, () => api(`/api/offers/${id}/decision`, { method: 'POST', body: { decision } }), t(`approvals.claim.${decision}`)).then(() => claims.reload());
@@ -90,6 +95,11 @@ export default function ApprovalsPage() {
           />
         }
       />
+      {scope.hasTeam ? (
+        <div className="mb-4">
+          <TeamScopeSwitch scope={scope} />
+        </div>
+      ) : null}
 
       {tab === 'claims' ? (
         claims.loading ? (
@@ -163,7 +173,7 @@ export default function ApprovalsPage() {
         )
       ) : null}
 
-      {tab === 'trades' ? <TradeApprovals /> : null}
+      {tab === 'trades' ? <TradeApprovals key={tq} team={team} /> : null}
 
       {tab === 'punches' ? (
         punches.loading ? (

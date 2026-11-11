@@ -137,9 +137,10 @@ export function MyTrades({ onChanged }: { onChanged?: () => void }) {
 }
 
 /** Supervisors: trades both people agreed to. */
-export function TradeApprovals() {
+/** `team`: only trades involving the people who report to me ("My team" on the approvals page). */
+export function TradeApprovals({ team = false }: { team?: boolean } = {}) {
   const { t } = useTranslation();
-  const q = useQuery<Trade[]>('/api/trades');
+  const q = useQuery<Trade[]>(team ? '/api/trades?team=mine' : '/api/trades');
   const { run, busy } = useAction();
   if (q.loading) return <Skeleton className="h-40" />;
   if (!q.data?.length) return <EmptyState icon={ArrowLeftRight} title={t('trades.noneToApprove')}>{t('trades.noneToApproveBody')}</EmptyState>;

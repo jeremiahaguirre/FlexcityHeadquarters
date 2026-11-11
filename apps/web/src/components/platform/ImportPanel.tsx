@@ -14,9 +14,9 @@ import { type ImportIssue, type ImportPreview, papi } from '@/lib/platform';
 import type { PanelProps } from './types';
 
 const TEMPLATE = [
-  'first_name,last_name,email,employment,positions,roles,hire_date,date_of_birth,employee_number,phone,language,union_member',
-  'Jordan,Singh,jordan.singh@example.ca,part-time,Lifeguard; Swim Instructor,staff,2024-05-01,2001-06-01,E1001,250-555-0101,en,yes',
-  'Camille,Roy,camille.roy@example.ca,casual,Lifeguard,,2025-06-15,,E1002,,fr,no',
+  'first_name,last_name,email,employment,positions,roles,hire_date,date_of_birth,employee_number,phone,language,union_member,manager',
+  'Jordan,Singh,jordan.singh@example.ca,part-time,Lifeguard; Swim Instructor,staff,2024-05-01,2001-06-01,E1001,250-555-0101,en,yes,camille.roy@example.ca',
+  'Camille,Roy,camille.roy@example.ca,casual,Lifeguard,,2025-06-15,,E1002,,fr,no,',
 ].join('\r\n');
 const TONE = { create: 'ok', exists: 'neutral', error: 'warn' } as const;
 

@@ -12,6 +12,7 @@ import { Field, Input, Select } from '@/components/ui/Field';
 import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
+import { TeamScopeSwitch, useTeamScope } from '@/components/people/Reporting';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useAction, useQuery, todayIso } from '@/lib/useQuery';
@@ -134,13 +135,17 @@ export function ExpenseApprovals() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const [status, setStatus] = useState<'SUBMITTED' | 'APPROVED' | 'PAID' | 'REJECTED'>('SUBMITTED');
-  const q = useQuery<Claim[]>(`/api/expenses?status=${status}`);
+  const scope = useTeamScope();
+  const q = useQuery<Claim[]>(scope.ready ? `/api/expenses?status=${status}${scope.query ? `&${scope.query}` : ''}` : null);
   const { run, busy } = useAction();
   const [rejecting, setRejecting] = useState<Claim | null>(null);
   const decide = (id: string, decision: 'APPROVE' | 'REJECT', note?: string) => run(`${decision}${id}`, () => api(`/api/expenses/${id}/decision`, { method: 'POST', body: { decision, note: note ?? null } }), decision === 'APPROVE' ? t('expenses.approved') : t('expenses.rejected')).then(() => q.reload());
   return (
     <div className="grid gap-4">
-      <Segmented label={t('expenses.show')} value={status} onChange={setStatus} options={(['SUBMITTED', 'APPROVED', 'PAID', 'REJECTED'] as const).map((s) => ({ value: s, label: t(`expenses.status.${s}`) }))} />
+      <div className="flex flex-wrap items-center gap-3">
+        <Segmented label={t('expenses.show')} value={status} onChange={setStatus} options={(['SUBMITTED', 'APPROVED', 'PAID', 'REJECTED'] as const).map((s) => ({ value: s, label: t(`expenses.status.${s}`) }))} />
+        <TeamScopeSwitch scope={scope} />
+      </div>
       {q.loading ? <ListSkeleton /> : !q.data?.length ? (
         <EmptyState icon={ReceiptText} title={t('expenses.noneHere')}>{status === 'SUBMITTED' ? t('expenses.noneWaiting') : null}</EmptyState>
       ) : (

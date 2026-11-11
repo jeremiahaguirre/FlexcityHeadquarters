@@ -143,7 +143,7 @@ export function ReviewsPanel() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const goals = String(f.get('goals') ?? '').split('\n').map((g) => g.trim()).filter((g) => g.length >= 2);
-    const r = await run('new', () => api('/api/reviews', { method: 'POST', body: { userId: f.get('userId'), reviewerId: f.get('reviewerId'), cycle: String(f.get('cycle')).trim(), dueOn: f.get('dueOn'), goals } }), t('reviews.created'));
+    const r = await run('new', () => api('/api/reviews', { method: 'POST', body: { userId: f.get('userId'), reviewerId: f.get('reviewerId') || undefined, cycle: String(f.get('cycle')).trim(), dueOn: f.get('dueOn'), goals } }), t('reviews.created'));
     if (r !== undefined) {
       setAdding(false);
       await data.reload();
@@ -161,7 +161,7 @@ export function ReviewsPanel() {
       <Dialog open={adding} onClose={() => setAdding(false)} title={t('reviews.start')}>
         <form onSubmit={(e) => void create(e)} className="grid gap-3">
           <Field label={t('reviews.employee')}>{(p) => <Select {...p} name="userId" required>{(people.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>}</Field>
-          <Field label={t('reviews.reviewer')}>{(p) => <Select {...p} name="reviewerId" required>{(people.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>}</Field>
+          <Field label={t('reviews.reviewer')} hint={t('reviews.reviewerHint')}>{(p) => <Select {...p} name="reviewerId" defaultValue=""><option value="">{t('reviews.reviewerManager')}</option>{(people.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</Select>}</Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label={t('reviews.cycle')}>{(p) => <Input {...p} name="cycle" required minLength={2} maxLength={60} defaultValue={t('reviews.cycleDefault', { year: new Date().getFullYear() })} />}</Field>
             <Field label={t('reviews.due')}>{(p) => <Input {...p} name="dueOn" type="date" required />}</Field>

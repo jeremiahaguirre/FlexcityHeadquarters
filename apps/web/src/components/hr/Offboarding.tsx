@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { OFFBOARD_REASONS, type Offboarding } from '@/lib/hr';
 import { useAction, useQuery } from '@/lib/useQuery';
+import { ManagerSelect } from '@/components/people/Reporting';
 
 /** Leaving the city: a checklist per person, then benefits end and sign-in stops. */
 export function OffboardingPanel() {
@@ -38,8 +39,8 @@ export function OffboardingPanel() {
     const r = await run(`${o.id}-${key}`, () => api(`/api/offboarding/${o.id}/items/${key}`, { method: 'PATCH', body: { done } }));
     if (r !== undefined) await data.reload();
   }
-  async function complete(o: Offboarding) {
-    const r = await run('complete', () => api(`/api/offboarding/${o.id}/complete`, { method: 'POST' }), t('offboarding.completed', { name: o.name }));
+  async function complete(o: Offboarding, reassignTo?: string | null) {
+    const r = await run('complete', () => api(`/api/offboarding/${o.id}/complete`, { method: 'POST', body: o.reports ? { reassignTo: reassignTo ?? null } : {} }), t('offboarding.completed', { name: o.name }));
     setConfirming(null);
     if (r !== undefined) await data.reload();
   }
@@ -94,13 +95,22 @@ export function OffboardingPanel() {
       </Dialog>
       <Dialog open={!!confirming} onClose={() => setConfirming(null)} title={t('offboarding.confirmTitle', { name: confirming?.name ?? '' })}>
         {confirming ? (
-          <div className="grid gap-4">
+          <form
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void complete(confirming, String(new FormData(e.currentTarget).get('reassignTo') ?? '') || null);
+            }}
+          >
             <p>{t('offboarding.confirmBody', { date: formatDate(confirming.lastDay, lng, 'dated') })}</p>
+            {confirming.reports ? (
+              <ManagerSelect name="reassignTo" exclude={[confirming.userId]} label={t('reporting.reassign', { count: confirming.reports, name: confirming.name })} hint={t('reporting.reassignHint')} />
+            ) : null}
             <div className="flex gap-2">
-              <Button variant="danger" loading={busy === 'complete'} onClick={() => void complete(confirming)}>{t('offboarding.finish')}</Button>
+              <Button type="submit" variant="danger" loading={busy === 'complete'}>{t('offboarding.finish')}</Button>
               <Button variant="ghost" onClick={() => setConfirming(null)}>{t('common.cancel')}</Button>
             </div>
-          </div>
+          </form>
         ) : null}
       </Dialog>
     </Card>
