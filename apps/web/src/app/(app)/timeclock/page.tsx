@@ -12,6 +12,7 @@ import { formatDate, formatHours, formatTime, formatTimeRange, dateFormat } from
 import { useQuery } from '@/lib/useQuery';
 import { PunchControl } from '@/components/punch/PunchControl';
 import { usePunch } from '@/components/punch/PunchProvider';
+import { SavedPunches } from '@/components/punch/SavedPunches';
 
 interface Punch { id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; localClockIn: string; localClockOut: string | null; hours: number | null; varianceReason: string | null; locationStatus: string; facility: { name: string } }
 
@@ -56,6 +57,7 @@ export default function TimeclockPage() {
             <p className="mt-1 text-small text-muted">{dateFormat(lng, { weekday: 'long', month: 'long', day: 'numeric' }).format(now)}</p>
           </div>
           {!punch || punch.loading ? <Skeleton className="h-24 w-full" /> : <PunchControl variant="large" />}
+          <SavedPunches />
           {punch && !punch.open ? (
             <div className="grid gap-2">
               {others.map((s) => (
@@ -78,6 +80,8 @@ export default function TimeclockPage() {
           <h2 className="text-subheading">{t('timeclock.recent')}</h2>
           {recent.loading ? (
             <Skeleton className="mt-4 h-40" />
+          ) : !recent.data && recent.error ? (
+            <p className="mt-4 text-small text-muted">{t('timeclock.offline.recentLater')}</p>
           ) : !recent.data?.length ? (
             <p className="mt-4 text-small text-muted">{t('timeclock.noPunches')}</p>
           ) : (

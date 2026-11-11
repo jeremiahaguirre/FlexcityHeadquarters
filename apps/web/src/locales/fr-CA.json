@@ -477,7 +477,12 @@
     "BAD_PGP_KEY": "Ce n’est pas une clé publique PGP.",
     "BANK_CREDENTIAL": "Entrez le mot de passe ou la clé privée fournis par votre banque.",
     "ALREADY_ENROLLED": "Cette personne est déjà inscrite à ce régime. Terminez d’abord cette inscription.",
-    "PLAN_EXISTS": "Il existe déjà un régime de ce nom."
+    "PLAN_EXISTS": "Il existe déjà un régime de ce nom.",
+    "PUNCH_IN_FUTURE": "Ce pointage est daté dans le futur. Vérifiez la date et l’heure de votre téléphone.",
+    "PUNCH_TOO_OLD": "Ce pointage date de plus de 3 jours : il ne peut pas être envoyé du téléphone. Demandez à votre superviseur d’ajouter les heures.",
+    "PUNCH_OUT_BEFORE_IN": "Ce départ est avant l’arrivée. Demandez à votre superviseur de corriger l’heure.",
+    "PUNCH_OVERLAPS": "Vous avez déjà un pointage pour cette période.",
+    "PUNCH_ID_TAKEN": "Ce pointage n’a pas pu vous être associé. Demandez à votre superviseur d’ajouter les heures."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -508,6 +513,37 @@
       "PENDING": "En attente de révision",
       "APPROVED": "Approuvé",
       "REJECTED": "À corriger"
+    },
+    "offline": {
+      "savedIn": "Arrivée enregistrée sur ce téléphone. Elle sera envoyée à votre retour en ligne.",
+      "savedOut": "Départ enregistré sur ce téléphone. Il sera envoyé à votre retour en ligne.",
+      "savedOnPhone": "Enregistré sur ce téléphone — sera envoyé à votre retour en ligne",
+      "savedTitle": "Enregistré sur ce téléphone",
+      "whenBack": "Pas de connexion pour l’instant. Vos pointages sont en sécurité ici et seront envoyés d’eux-mêmes à votre retour en ligne.",
+      "soon": "Envoi dans un instant. Vous pouvez continuer à utiliser l’application.",
+      "sending": "Envoi de vos pointages enregistrés…",
+      "waitingPill": "En attente d’envoi",
+      "sendingPill": "Envoi…",
+      "refusedPill": "Non accepté",
+      "tryNow": "Essayer d’envoyer maintenant",
+      "inAt": "Arrivée · {{date}}, {{time}}",
+      "outAt": "Départ · {{date}}, {{time}}",
+      "tellSupervisor": "Ces heures n’ont pas été enregistrées. Prévenez votre superviseur pour qu’il les ajoute.",
+      "share": "Envoyer les détails à mon superviseur",
+      "dismiss": "Compris",
+      "copied": "Détails copiés. Collez-les dans un message à votre superviseur.",
+      "forSupervisor": "Bonjour, mon pointage n’a pas été accepté. {{punch}}. Raison : {{reason}} Pourriez-vous ajouter les heures?",
+      "sentToast_one": "Votre pointage enregistré a été envoyé.",
+      "sentToast_other": "Vos {{count}} pointages enregistrés ont été envoyés.",
+      "refusedToast_one": "Un pointage enregistré n’a pas été accepté. Ouvrez l’horodateur pour savoir pourquoi.",
+      "refusedToast_other": "{{count}} pointages enregistrés n’ont pas été acceptés. Ouvrez l’horodateur pour savoir pourquoi.",
+      "pendingAria": "Pointages enregistrés sur ce téléphone, en attente d’envoi",
+      "recentLater": "Vos pointages récents s’afficheront ici à votre retour en ligne.",
+      "signOutTitle": "Pointages pas encore envoyés",
+      "signOutBody_one": "1 pointage enregistré sur ce téléphone n’a pas été envoyé. Si vous vous déconnectez, il sera supprimé de ce téléphone. Restez connecté pour qu’il soit envoyé à votre retour en ligne, ou notez l’heure et prévenez votre superviseur.",
+      "signOutBody_other": "{{count}} pointages enregistrés sur ce téléphone n’ont pas été envoyés. Si vous vous déconnectez, ils seront supprimés de ce téléphone. Restez connecté pour qu’ils soient envoyés à votre retour en ligne, ou notez les heures et prévenez votre superviseur.",
+      "signOutDelete": "Me déconnecter et supprimer",
+      "signOutStay": "Rester connecté"
     }
   },
   "timeOff": {
@@ -856,7 +892,9 @@
       "STAYED_LATE": "Resté plus tard",
       "NO_CLOCK_OUT": "Sortie non pointée",
       "OUTSIDE_GEOFENCE": "Loin de l’installation",
-      "LOCATION_UNVERIFIED": "Position imprécise"
+      "LOCATION_UNVERIFIED": "Position imprécise",
+      "RECORDED_OFFLINE": "Enregistré hors ligne",
+      "CLOCK_SKEW": "Horloge du téléphone décalée"
     },
     "punch": {
       "APPROVE_one": "{{count}} pointage approuvé.",
@@ -873,6 +911,13 @@
     "timeOffDone": {
       "APPROVE": "Approuvé. Ses quarts pendant cette période sont au tableau.",
       "DENY": "Refusé. L’employé voit votre motif."
+    },
+    "offline": {
+      "recorded": "Enregistré hors ligne",
+      "inSent": "arrivée envoyée à {{time}}",
+      "outSent": "départ envoyé à {{time}}",
+      "clockOff_one": "horloge du téléphone décalée de {{count}} minute (corrigé)",
+      "clockOff_other": "horloge du téléphone décalée de {{count}} minutes (corrigé)"
     }
   },
   "certs": {

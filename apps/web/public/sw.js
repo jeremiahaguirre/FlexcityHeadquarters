@@ -1,5 +1,5 @@
-// FlexcityHeadquarters service worker: keeps the app shell and the last
-// rosters available on the pool deck when the connection drops.
+// FlexcityHeadquarters service worker: keeps the app shell, the last rosters (pool deck)
+// and what the timeclock needs (arenas, works yards, outdoor sites) available when the connection drops.
 // Network first, cache as fallback; never caches anything but GETs.
 // v2: v1 also kept people's own pay, documents and HR files on the device; those caches are deleted.
 const CACHE = 'fh-v2';
@@ -19,10 +19,12 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  // Only what the deck needs offline: who you are and your class rosters. Pay, documents, HR files
-  // and everything else stay live and are never written to the device.
+  // Only what works offline: who you are, your class rosters, and for the timeclock whether you're
+  // clocked in, today's shifts and the facility list. Pay, documents, HR files and everything else
+  // stay live and are never written to the device. Punches made offline wait in the app, not here.
   const api = url.pathname.startsWith('/api/');
-  if (api && url.pathname !== '/api/me' && !url.pathname.startsWith('/api/me/lessons')) return;
+  const offlineApi = url.pathname === '/api/me' || url.pathname.startsWith('/api/me/lessons') || url.pathname === '/api/me/punch/open' || url.pathname === '/api/me/shifts' || url.pathname === '/api/facilities';
+  if (api && !offlineApi) return;
   if (url.pathname.startsWith('/api/notifications') || url.pathname.startsWith('/api/auth')) return;
 
   event.respondWith(
@@ -34,7 +36,13 @@ self.addEventListener('fetch', (event) => {
         }
         return res;
       })
-      .catch(() => caches.match(req).then((hit) => hit || caches.match('/lessons') || Response.error())),
+      .catch(() =>
+        caches
+          .match(req)
+          // A screen never opened on this phone: the timeclock if it was, else the deck.
+          .then((hit) => hit || (req.mode === 'navigate' ? caches.match('/timeclock').then((tc) => tc || caches.match('/lessons')) : undefined))
+          .then((res) => res || Response.error()),
+      ),
   );
 });
 

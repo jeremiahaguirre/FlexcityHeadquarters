@@ -32,6 +32,11 @@ interface Punch {
   localShiftEnd: string | null;
   hours: number | null;
   attention: string[];
+  /** Saved on the person's phone without a connection; when each part reached the server. */
+  recordedOffline?: boolean;
+  localClockInReceivedAt?: string | null;
+  localClockOutReceivedAt?: string | null;
+  clockSkewS?: number | null;
 }
 type Tab = 'claims' | 'trades' | 'timeoff' | 'punches';
 const PROTECTED = new Set(['SICK', 'PROTECTED_LEAVE']);
@@ -212,6 +217,7 @@ export default function ApprovalsPage() {
                       {t('approvals.punched')}: {p.localClockOut ? formatTimeRange(p.localClockIn, p.localClockOut, lng) : `${formatTime(p.localClockIn, lng)} – …`}
                       {p.localShiftStart && p.localShiftEnd ? ` · ${t('approvals.scheduled')}: ${formatTimeRange(p.localShiftStart, p.localShiftEnd, lng)}` : ''}
                     </p>
+                    {p.recordedOffline ? <OfflineNote p={p} lng={lng} /> : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {p.attention.map((a) => (
@@ -263,4 +269,22 @@ export default function ApprovalsPage() {
 function ClaimFairness({ shiftId, userId }: { shiftId: string; userId: string }) {
   const check = useQuery<{ overtime: boolean; skipped: Array<{ userId: string; name: string; chargedHours: number; seniorityDate: string | null }>; clause: string | null }>(`/api/overtime/check?shiftId=${shiftId}&userId=${userId}`);
   return check.data?.overtime ? <OvertimeOrder skipped={check.data.skipped} clause={check.data.clause} /> : null;
+}
+
+/** "Recorded offline · clock-in sent at 11:45 a.m." — when it happened (above) vs when it reached us. */
+function OfflineNote({ p, lng }: { p: Punch; lng: string }) {
+  const { t } = useTranslation();
+  const when = (at: string, happened: string) => (at.slice(0, 10) === happened.slice(0, 10) ? formatTime(at, lng) : `${formatDate(at, lng)} ${formatTime(at, lng)}`);
+  const parts = [
+    p.localClockInReceivedAt ? t('approvals.offline.inSent', { time: when(p.localClockInReceivedAt, p.localClockIn) }) : null,
+    p.localClockOutReceivedAt && p.localClockOut ? t('approvals.offline.outSent', { time: when(p.localClockOutReceivedAt, p.localClockOut) }) : null,
+  ].filter(Boolean);
+  const skewMin = p.clockSkewS ? Math.round(Math.abs(p.clockSkewS) / 60) : 0;
+  return (
+    <p className="mt-0.5 text-caption tabular-nums text-muted">
+      {t('approvals.offline.recorded')}
+      {parts.length ? ` · ${parts.join(' · ')}` : ''}
+      {skewMin >= 1 ? ` · ${t('approvals.offline.clockOff', { count: skewMin })}` : ''}
+    </p>
+  );
 }

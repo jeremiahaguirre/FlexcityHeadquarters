@@ -477,7 +477,12 @@
     "BAD_PGP_KEY": "That isn’t a PGP public key.",
     "BANK_CREDENTIAL": "Enter the password or private key your bank gave you.",
     "ALREADY_ENROLLED": "This person is already enrolled in this plan. End that enrollment first.",
-    "PLAN_EXISTS": "There is already a plan with that name."
+    "PLAN_EXISTS": "There is already a plan with that name.",
+    "PUNCH_IN_FUTURE": "This punch is dated in the future. Check the date and time on your phone.",
+    "PUNCH_TOO_OLD": "This punch is more than 3 days old, so it can’t be sent from the phone. Ask your supervisor to add the time.",
+    "PUNCH_OUT_BEFORE_IN": "This clock-out is before the clock-in. Ask your supervisor to fix the time.",
+    "PUNCH_OVERLAPS": "You already have a punch covering this time.",
+    "PUNCH_ID_TAKEN": "This punch couldn’t be matched to you. Ask your supervisor to add the time."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -508,6 +513,37 @@
       "PENDING": "Waiting for review",
       "APPROVED": "Approved",
       "REJECTED": "Needs correcting"
+    },
+    "offline": {
+      "savedIn": "Clock-in saved on this phone. It will send when you’re back online.",
+      "savedOut": "Clock-out saved on this phone. It will send when you’re back online.",
+      "savedOnPhone": "Saved on this phone — will send when you’re back online",
+      "savedTitle": "Saved on this phone",
+      "whenBack": "No connection right now. Your punches are safe here and will send by themselves when you’re back online.",
+      "soon": "Sending in a moment. You can keep using the app.",
+      "sending": "Sending your saved punches…",
+      "waitingPill": "Waiting to send",
+      "sendingPill": "Sending…",
+      "refusedPill": "Not accepted",
+      "tryNow": "Try sending now",
+      "inAt": "Clock in · {{date}}, {{time}}",
+      "outAt": "Clock out · {{date}}, {{time}}",
+      "tellSupervisor": "This time wasn’t recorded. Let your supervisor know so they can add it.",
+      "share": "Send details to my supervisor",
+      "dismiss": "Got it",
+      "copied": "Details copied. Paste them in a message to your supervisor.",
+      "forSupervisor": "Hi, my punch wasn’t accepted. {{punch}}. Reason: {{reason}} Could you add the time?",
+      "sentToast_one": "Your saved punch was sent.",
+      "sentToast_other": "Your {{count}} saved punches were sent.",
+      "refusedToast_one": "A saved punch wasn’t accepted. Open the timeclock to see why.",
+      "refusedToast_other": "{{count}} saved punches weren’t accepted. Open the timeclock to see why.",
+      "pendingAria": "Punches saved on this phone, waiting to send",
+      "recentLater": "Your recent punches will show here when you’re back online.",
+      "signOutTitle": "Punches not sent yet",
+      "signOutBody_one": "1 punch saved on this phone hasn’t been sent. If you sign out, it’s deleted from this phone. Stay signed in and it sends when you’re back online, or note the time and tell your supervisor.",
+      "signOutBody_other": "{{count}} punches saved on this phone haven’t been sent. If you sign out, they’re deleted from this phone. Stay signed in and they send when you’re back online, or note the times and tell your supervisor.",
+      "signOutDelete": "Sign out and delete",
+      "signOutStay": "Stay signed in"
     }
   },
   "timeOff": {
@@ -856,7 +892,9 @@
       "STAYED_LATE": "Stayed late",
       "NO_CLOCK_OUT": "No clock-out",
       "OUTSIDE_GEOFENCE": "Away from facility",
-      "LOCATION_UNVERIFIED": "Location unclear"
+      "LOCATION_UNVERIFIED": "Location unclear",
+      "RECORDED_OFFLINE": "Recorded offline",
+      "CLOCK_SKEW": "Phone clock off"
     },
     "punch": {
       "APPROVE_one": "{{count}} punch approved.",
@@ -873,6 +911,13 @@
     "timeOffDone": {
       "APPROVE": "Approved. Their shifts in that time went to the board.",
       "DENY": "Declined. They can see your reason."
+    },
+    "offline": {
+      "recorded": "Recorded offline",
+      "inSent": "clock-in sent at {{time}}",
+      "outSent": "clock-out sent at {{time}}",
+      "clockOff_one": "phone clock off by {{count}} minute (corrected)",
+      "clockOff_other": "phone clock off by {{count}} minutes (corrected)"
     }
   },
   "certs": {

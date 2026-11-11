@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
+import { Dialog } from '@/components/ui/Dialog';
 import { cn } from '@/lib/cn';
+import { formatDate, formatTime } from '@/lib/format';
+import { type QueuedPunch, clearPunches, deviceLocalIso, queuedPunches } from '@/lib/offlinePunches';
 import { SchemePicker } from './SchemePicker';
 import { LOCALE_COOKIE } from '@/lib/i18n';
 import { useSession } from '@/lib/session';
@@ -33,6 +37,8 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
   const { me, signOut } = useSession();
   const { switchLanguage } = useLanguageSwitch();
   const [open, setOpen] = useState(false);
+  // Punches saved on this phone and not sent: warn before they're deleted with the sign-out.
+  const [unsent, setUnsent] = useState<QueuedPunch[] | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -96,12 +102,56 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
             {t('app.language')}
           </button>
           <div className="px-1.5 py-1.5"><SchemePicker /></div>
-          <button type="button" className={item} onClick={() => void signOut()}>
+          <button
+            type="button"
+            className={item}
+            onClick={() => {
+              const kept = me ? queuedPunches(me.id) : [];
+              if (kept.length) {
+                setOpen(false);
+                setUnsent(kept);
+              } else void signOut();
+            }}
+          >
             <LogOut className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('shell.signOut')}
           </button>
         </div>
       ) : null}
+      <Dialog
+        open={unsent !== null}
+        onClose={() => setUnsent(null)}
+        title={t('timeclock.offline.signOutTitle')}
+        description={t('timeclock.offline.signOutBody', { count: unsent?.length ?? 0 })}
+        closeLabel={t('common.close')}
+        footer={
+          <>
+            <Button
+              variant="danger"
+              onClick={() => {
+                clearPunches(me.id);
+                setUnsent(null);
+                void signOut();
+              }}
+            >
+              {t('timeclock.offline.signOutDelete')}
+            </Button>
+            <Button onClick={() => setUnsent(null)}>{t('timeclock.offline.signOutStay')}</Button>
+          </>
+        }
+      >
+        <ul className="grid gap-1.5 text-small tabular-nums">
+          {unsent?.map((p) => {
+            const local = deviceLocalIso(p.occurredAt);
+            return (
+              <li key={p.clientId}>
+                {t(p.kind === 'in' ? 'timeclock.offline.inAt' : 'timeclock.offline.outAt', { date: formatDate(local, i18n.language), time: formatTime(local, i18n.language) })}
+                {p.place ? ` · ${p.place}` : ''}
+              </li>
+            );
+          })}
+        </ul>
+      </Dialog>
     </div>
   );
 }

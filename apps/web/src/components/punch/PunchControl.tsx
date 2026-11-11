@@ -1,6 +1,6 @@
 'use client';
 
-import { LogIn, LogOut, PartyPopper, Waves } from 'lucide-react';
+import { CloudOff, LogIn, LogOut, PartyPopper, Waves } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '@/components/ui/Dialog';
@@ -11,6 +11,7 @@ import { useSession } from '@/lib/session';
 import { Bubbles } from './Bubbles';
 import { ProgressRing } from './ProgressRing';
 import { usePunch } from './PunchProvider';
+import { SavedPunches } from './SavedPunches';
 
 function useTick(active: boolean, ms = 15_000) {
   const [now, setNow] = useState(() => Date.now());
@@ -43,6 +44,8 @@ export function PunchControl({ variant = 'compact' }: { variant?: 'compact' | 'l
   const [sheet, setSheet] = useState(false);
   if (!punch?.enabled) return null;
   const on = !!punch.open;
+  const waiting = punch.queue.some((p) => p.state === 'waiting');
+  const refused = punch.queue.some((p) => p.state === 'rejected');
 
   if (variant === 'large') return <PunchCard />;
 
@@ -52,9 +55,9 @@ export function PunchControl({ variant = 'compact' }: { variant?: 'compact' | 'l
         type="button"
         disabled={punch.loading || punch.busy !== null}
         onClick={() => (on ? setSheet(true) : void punch.clockInNow())}
-        aria-label={on ? t('punch.onAria', { elapsed: hm(progress?.worked ?? 0) }) : t('timeclock.clockIn')}
+        aria-label={`${on ? t('punch.onAria', { elapsed: hm(progress?.worked ?? 0) }) : t('timeclock.clockIn')}${waiting ? `. ${t('timeclock.offline.pendingAria')}` : ''}`}
         className={cn(
-          'flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full pl-1.5 pr-3.5 text-small font-semibold shadow-sm transition-[background-color,transform] active:scale-95 disabled:opacity-60',
+          'relative flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full pl-1.5 pr-3.5 text-small font-semibold shadow-sm transition-[background-color,transform] active:scale-95 disabled:opacity-60',
           on ? 'border border-ok/40 bg-ok-bg text-ok hover:bg-ok-bg/70' : 'bg-brand pl-3 text-brand-contrast hover:bg-brand-hover',
         )}
       >
@@ -71,9 +74,16 @@ export function PunchControl({ variant = 'compact' }: { variant?: 'compact' | 'l
             {punch.busy === 'in' ? t('punch.clocking') : t('punch.in')}
           </>
         )}
+        {waiting || refused ? (
+          // Small "saved on this phone" mark: punches waiting to send (or one that needs a look).
+          <span aria-hidden="true" className={cn('absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-page', refused ? 'bg-warn text-white dark:text-page' : 'bg-panel text-muted')}>
+            <CloudOff className="h-3 w-3" />
+          </span>
+        ) : null}
       </button>
       <Dialog open={sheet && on} onClose={() => setSheet(false)} title={t('timeclock.onTheClock')} closeLabel={t('common.close')}>
         <PunchCard bare onDone={() => setSheet(false)} />
+        <SavedPunches className="mt-4" />
       </Dialog>
     </>
   );
@@ -156,6 +166,12 @@ function PunchCard({ bare = false, onDone }: { bare?: boolean; onDone?: () => vo
                 {progress?.left !== null && progress?.left !== undefined ? ` · ${progress.left > 0 ? t('punch.toGo', { time: hm(progress.left) }) : t('punch.overtimeNow')}` : ''}
               </p>
             </div>
+            {punch.open!.pending ? (
+              <p className="flex items-center justify-center gap-1.5 text-caption text-muted sm:justify-start">
+                <CloudOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {t('timeclock.offline.savedOnPhone')}
+              </p>
+            ) : null}
             <SlideToConfirm label={t('punch.slideOut')} tone="danger" busy={punch.busy === 'out'} icon={<LogOut className="h-6 w-6" aria-hidden="true" />} onConfirm={() => void clockOut()} />
           </div>
         </div>
