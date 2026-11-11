@@ -113,8 +113,8 @@ function ProviderExport() {
                 </Field>
                 {fmt === 'adp' ? (
                   <>
-                    <Field label={t('payroll.provider.adpCompanyCode')}>{(p) => <Input {...p} key={`c-${saved.data?.adpCompanyCode}`} name="adpCompanyCode" required maxLength={3} defaultValue={saved.data?.adpCompanyCode ?? ''} className="uppercase" />}</Field>
-                    <Field label={t('payroll.provider.adpBatchId')}>{(p) => <Input {...p} key={`b-${saved.data?.adpBatchId}`} name="adpBatchId" maxLength={10} defaultValue={saved.data?.adpBatchId ?? ''} />}</Field>
+                    <Field label={t('payroll.provider.adpCompanyCode')}>{(p) => <Input {...p} key={`c-${saved.data?.adpCompanyCode}`} name="adpCompanyCode" autoCapitalize="none" autoCorrect="off" spellCheck={false} required maxLength={3} defaultValue={saved.data?.adpCompanyCode ?? ''} className="uppercase" />}</Field>
+                    <Field label={t('payroll.provider.adpBatchId')}>{(p) => <Input {...p} key={`b-${saved.data?.adpBatchId}`} name="adpBatchId" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={10} defaultValue={saved.data?.adpBatchId ?? ''} />}</Field>
                   </>
                 ) : null}
               </div>

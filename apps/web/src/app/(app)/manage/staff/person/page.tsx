@@ -232,7 +232,7 @@ function Person() {
                 {me?.features?.seniority !== false ? <Field label={t('staff.seniorityDate')}>{(f) => <Input {...f} name="seniorityDate" type="date" defaultValue={p.seniorityDate ?? ''} />}</Field> : null}
                 <Field label={t('staff.vsc')} hint={t('staff.vscHint')}>{(f) => <Input {...f} name="vsc" type="date" defaultValue={p.vscClearedDate ?? ''} />}</Field>
                 <Field label={t('staff.dob')}>{(f) => <Input {...f} name="dob" type="date" defaultValue={p.dateOfBirth ?? ''} />}</Field>
-                <Field label={t('staff.employeeNumber')}>{(f) => <Input {...f} name="employeeNumber" defaultValue={p.employeeNumber ?? ''} />}</Field>
+                <Field label={t('staff.employeeNumber')}>{(f) => <Input {...f} name="employeeNumber" defaultValue={p.employeeNumber ?? ''} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />}</Field>
               </div>
               <label className="flex items-center gap-2 text-small font-semibold">
                 <input type="checkbox" name="union" defaultChecked={p.unionMember} className="h-5 w-5 accent-[rgb(var(--brand))]" />

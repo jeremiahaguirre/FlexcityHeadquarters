@@ -179,7 +179,7 @@ export default function StaffPage() {
             <Field label={t('staff.hireDate')}>{(p) => <Input {...p} name="hireDate" type="date" />}</Field>
             <Field label={t('staff.dob')} hint={t('staff.dobHint')}>{(p) => <Input {...p} name="dob" type="date" />}</Field>
           </div>
-          <Field label={t('staff.employeeNumber')} hint={t('staff.employeeNumberHint')}>{(p) => <Input {...p} name="employeeNumber" />}</Field>
+          <Field label={t('staff.employeeNumber')} hint={t('staff.employeeNumberHint')}>{(p) => <Input {...p} name="employeeNumber" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />}</Field>
           <fieldset className="grid gap-2">
             <legend className="mb-1 text-small font-semibold">{t('staff.roles')}</legend>
             <div className="grid gap-2 sm:grid-cols-2">

@@ -79,8 +79,8 @@ export default function FleetPage() {
       <Dialog open={adding} onClose={() => setAdding(false)} title={t('fleet.add')} closeLabel={t('common.cancel')}>
         <form className="grid gap-4" onSubmit={(e) => void add(e)}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label={t('fleet.unit')}>{(p) => <Input {...p} name="unit" required maxLength={30} placeholder="P-12" />}</Field>
-            <Field label={t('fleet.plate')} hint={t('common.optional')}>{(p) => <Input {...p} name="plate" maxLength={15} />}</Field>
+            <Field label={t('fleet.unit')}>{(p) => <Input {...p} name="unit" required maxLength={30} placeholder="P-12" autoCapitalize="characters" autoCorrect="off" spellCheck={false} />}</Field>
+            <Field label={t('fleet.plate')} hint={t('common.optional')}>{(p) => <Input {...p} name="plate" maxLength={15} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />}</Field>
           </div>
           <Field label={t('fleet.descriptionLabel')}>{(p) => <Input {...p} name="description" required minLength={2} maxLength={120} placeholder={t('fleet.descriptionPlaceholder')} />}</Field>
           <div className="grid grid-cols-2 gap-3">

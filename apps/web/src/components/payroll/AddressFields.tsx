@@ -23,7 +23,7 @@ export function AddressFields({ prefix = 'addr_', value, disabled }: { prefix?: 
             </Select>
           )}
         </Field>
-        <Field label={t('address.postalCode')}>{(p) => <Input {...p} name={`${prefix}postalCode`} defaultValue={value?.postalCode ?? ''} autoComplete="postal-code" maxLength={7} disabled={disabled} />}</Field>
+        <Field label={t('address.postalCode')}>{(p) => <Input {...p} name={`${prefix}postalCode`} defaultValue={value?.postalCode ?? ''} autoComplete="postal-code" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={7} disabled={disabled} />}</Field>
       </div>
     </div>
   );

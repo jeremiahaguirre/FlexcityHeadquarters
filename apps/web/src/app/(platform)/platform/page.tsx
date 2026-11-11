@@ -146,7 +146,7 @@ export default function CitiesPage() {
                   </Select>
                 )}
               </Field>
-              <Field label={t('settings.costCentre')}>{(p) => <Input {...p} name="costCentre" />}</Field>
+              <Field label={t('settings.costCentre')}>{(p) => <Input {...p} name="costCentre" autoCapitalize="none" autoCorrect="off" spellCheck={false} />}</Field>
             </div>
           </fieldset>
           <fieldset className="grid gap-4 rounded-xl bg-surface p-4">

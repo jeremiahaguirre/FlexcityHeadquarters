@@ -169,7 +169,7 @@ function Accounts() {
           {(labour.data?.budgets ?? []).map((d) => (
             <form key={d.id} onSubmit={(e) => void saveDept(e, d.id)} className="grid items-end gap-3 rounded-xl border border-line p-3 sm:grid-cols-[1fr_9rem_10rem_auto]">
               <p className="font-semibold">{lng === 'fr-CA' && d.nameFr ? d.nameFr : d.name}</p>
-              <Field label={t('accounting.glCode')}>{(p) => <Input {...p} name="gl" defaultValue={d.glCode ?? ''} className="font-mono" />}</Field>
+              <Field label={t('accounting.glCode')}>{(p) => <Input {...p} name="gl" autoCapitalize="none" autoCorrect="off" spellCheck={false} defaultValue={d.glCode ?? ''} className="font-mono" />}</Field>
               <Field label={t('accounting.budget')}>{(p) => <Input {...p} name="budget" type="number" min={0} step="1" defaultValue={d.labourBudget ?? ''} />}</Field>
               <Button type="submit" size="sm" variant="secondary" loading={busy === `d-${d.id}`}>{t('common.save')}</Button>
             </form>

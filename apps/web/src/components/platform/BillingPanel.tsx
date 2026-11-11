@@ -519,7 +519,7 @@ function AccountEditor({ id, city, d, invoices, reload }: { id: string; city: Pa
                     </Select>
                   )}
                 </Field>
-                <Field label={t('billing.postal')}>{(fp) => <Input {...fp} name="postal" defaultValue={a?.postalCode ?? ''} />}</Field>
+                <Field label={t('billing.postal')}>{(fp) => <Input {...fp} name="postal" defaultValue={a?.postalCode ?? ''} autoComplete="postal-code" autoCapitalize="characters" autoCorrect="off" spellCheck={false} maxLength={7} />}</Field>
               </div>
               <Field label={t('billing.terms')}>
                 {(fp) => (

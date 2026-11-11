@@ -116,11 +116,11 @@ export function PayrollSetupPanel({ id }: { id: string }) {
         />
         <CardBody className="pt-2">
           <form onSubmit={saveBank} className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('payrollSetup.host')}>{(p) => <Input {...p} name="host" required defaultValue={v.bank.host ?? ''} placeholder="sftp.yourbank.com" />}</Field>
+            <Field label={t('payrollSetup.host')}>{(p) => <Input {...p} name="host" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={v.bank.host ?? ''} placeholder="sftp.yourbank.com" />}</Field>
             <Field label={t('payrollSetup.port')}>{(p) => <Input {...p} name="port" inputMode="numeric" defaultValue={v.bank.port ?? 22} />}</Field>
-            <Field label={t('payrollSetup.username')}>{(p) => <Input {...p} name="username" required defaultValue={v.bank.username ?? ''} autoComplete="off" />}</Field>
-            <Field label={t('payrollSetup.remoteDir')}>{(p) => <Input {...p} name="remoteDir" required defaultValue={v.bank.remoteDir ?? '/'} />}</Field>
-            <div className="sm:col-span-2"><Field label={t('payrollSetup.hostKey')} hint={t('payrollSetup.hostKeyHint')}>{(p) => <Input {...p} name="hostKeySha256" required defaultValue={v.bank.hostKeySha256 ? `SHA256:${v.bank.hostKeySha256}` : ''} className="font-mono" />}</Field></div>
+            <Field label={t('payrollSetup.username')}>{(p) => <Input {...p} name="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={v.bank.username ?? ''} autoComplete="off" />}</Field>
+            <Field label={t('payrollSetup.remoteDir')}>{(p) => <Input {...p} name="remoteDir" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={v.bank.remoteDir ?? '/'} />}</Field>
+            <div className="sm:col-span-2"><Field label={t('payrollSetup.hostKey')} hint={t('payrollSetup.hostKeyHint')}>{(p) => <Input {...p} name="hostKeySha256" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={v.bank.hostKeySha256 ? `SHA256:${v.bank.hostKeySha256}` : ''} className="font-mono" />}</Field></div>
             <div className="sm:col-span-2"><Field label={t('payrollSetup.secret')} hint={v.bank.configured ? t('payrollSetup.secretKept') : t('payrollSetup.secretHint')}>{(p) => <Textarea {...p} name="secret" rows={2} required={!v.bank.configured} autoComplete="off" className="font-mono text-caption" />}</Field></div>
             <div className="sm:col-span-2"><Field label={t('payrollSetup.pgp')} hint={t('payrollSetup.pgpHint')}>{(p) => <Textarea {...p} name="pgpPublicKey" rows={2} className="font-mono text-caption" />}</Field></div>
             <label className="flex items-center gap-2 text-small sm:col-span-2"><input type="checkbox" name="autoSend" defaultChecked={v.bank.autoSend ?? true} className="h-5 w-5 accent-[rgb(var(--brand))]" />{t('payrollSetup.autoSend')}</label>

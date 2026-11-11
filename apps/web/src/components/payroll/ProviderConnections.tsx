@@ -185,23 +185,23 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
               {provider === 'adp' ? (
                 <>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label={t('payroll.connect.clientId')}>{(p) => <Input {...p} name="clientId" required defaultValue={view.adp?.clientId ?? ''} autoComplete="off" />}</Field>
+                    <Field label={t('payroll.connect.clientId')}>{(p) => <Input {...p} name="clientId" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={view.adp?.clientId ?? ''} autoComplete="off" />}</Field>
                     <Field label={t('payroll.connect.clientSecret')} hint={secretHint}>{(p) => <Input {...p} name="clientSecret" type="password" required={!conn} autoComplete="new-password" />}</Field>
-                    <Field label={t('payroll.provider.adpCompanyCode')}>{(p) => <Input {...p} name="companyCode" required maxLength={3} defaultValue={view.adp?.companyCode ?? ''} className="uppercase" />}</Field>
-                    <Field label={t('payroll.provider.adpBatchId')}>{(p) => <Input {...p} name="batchId" maxLength={10} defaultValue={view.adp?.batchId ?? ''} />}</Field>
+                    <Field label={t('payroll.provider.adpCompanyCode')}>{(p) => <Input {...p} name="companyCode" autoCapitalize="none" autoCorrect="off" spellCheck={false} required maxLength={3} defaultValue={view.adp?.companyCode ?? ''} className="uppercase" />}</Field>
+                    <Field label={t('payroll.provider.adpBatchId')}>{(p) => <Input {...p} name="batchId" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={10} defaultValue={view.adp?.batchId ?? ''} />}</Field>
                   </div>
                   <Field label={t('payroll.connect.certificate')} hint={secretHint ?? t('payroll.connect.certificateHint')}>{(p) => <Textarea {...p} name="certificate" rows={3} required={!conn} placeholder="-----BEGIN CERTIFICATE-----" className="font-mono text-caption" />}</Field>
                   <Field label={t('payroll.connect.privateKey')} hint={secretHint}>{(p) => <Textarea {...p} name="privateKey" rows={3} required={!conn} placeholder={t('payroll.connect.privateKeyPlaceholder')} className="font-mono text-caption" />}</Field>
                 </>
               ) : provider === 'dayforce' ? (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label={t('payroll.connect.clientNamespace')} hint={t('payroll.connect.clientNamespaceHint')}>{(p) => <Input {...p} name="clientNamespace" required defaultValue={view.dayforce?.clientNamespace ?? ''} />}</Field>
-                  <Field label={t('payroll.connect.clientId')}>{(p) => <Input {...p} name="clientId" required defaultValue={view.dayforce?.clientId ?? ''} autoComplete="off" />}</Field>
+                  <Field label={t('payroll.connect.clientNamespace')} hint={t('payroll.connect.clientNamespaceHint')}>{(p) => <Input {...p} name="clientNamespace" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={view.dayforce?.clientNamespace ?? ''} />}</Field>
+                  <Field label={t('payroll.connect.clientId')}>{(p) => <Input {...p} name="clientId" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={view.dayforce?.clientId ?? ''} autoComplete="off" />}</Field>
                   <Field label={t('payroll.connect.clientSecret')} hint={secretHint}>{(p) => <Input {...p} name="clientSecret" type="password" required={!conn} autoComplete="new-password" />}</Field>
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field label={t('payroll.connect.companyId')}>{(p) => <Input {...p} name="companyId" required defaultValue={view.wagepoint?.companyId ?? ''} />}</Field>
+                  <Field label={t('payroll.connect.companyId')}>{(p) => <Input {...p} name="companyId" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={view.wagepoint?.companyId ?? ''} />}</Field>
                   <Field label={t('payroll.connect.apiKey')} hint={secretHint}>{(p) => <Input {...p} name="apiKey" type="password" required={!conn} autoComplete="new-password" />}</Field>
                 </div>
               )}

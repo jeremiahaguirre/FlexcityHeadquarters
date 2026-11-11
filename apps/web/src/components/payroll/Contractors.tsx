@@ -87,7 +87,7 @@ export function Contractors() {
           {adding === 'BUSINESS' ? (
             <>
               <Field label={t('t4a.businessName')}>{(f) => <Input {...f} name="businessName" required maxLength={120} />}</Field>
-              <Field label={t('t4a.businessNumber')} hint={t('t4a.businessNumberHint')}>{(f) => <Input {...f} name="bn" maxLength={15} />}</Field>
+              <Field label={t('t4a.businessNumber')} hint={t('t4a.businessNumberHint')}>{(f) => <Input {...f} name="bn" maxLength={15} autoCapitalize="characters" autoCorrect="off" spellCheck={false} />}</Field>
             </>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
