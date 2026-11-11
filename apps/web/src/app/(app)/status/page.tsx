@@ -14,7 +14,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
-import { formatTime, dateFormat } from '@/lib/format';
+import { formatDate, formatTime, localDateKey, dateFormat } from '@/lib/format';
 import { POOL_TONE, type PoolView } from '@/lib/pools';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
@@ -24,6 +24,12 @@ const BAND = { OPEN: 'bg-ok', CLOSURE_RECOMMENDED: 'bg-warn', CLOSED: 'bg-danger
 /** Front-desk view: refreshes every 15 seconds; status is text + shape + colour. */
 export default function StatusPage() {
   const { t, i18n } = useTranslation();
+  // Which day, unless it was today: a reading from yesterday afternoon isn't this afternoon's.
+  const lastReading = (at: string) => {
+    const time = formatTime(at, i18n.language);
+    const today = localDateKey(new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString());
+    return localDateKey(at) === today ? t('status.lastReadingToday', { time }) : t('status.lastReading', { time: `${formatDate(at, i18n.language)}, ${time}` });
+  };
   const { can } = useSession();
   const pools = useQuery<PoolView[]>('/api/ops/pools');
   const { run, busy } = useAction();
@@ -79,7 +85,7 @@ export default function StatusPage() {
                       <Droplets className="h-3.5 w-3.5" aria-hidden="true" />
                       {t('status.chlorine')}
                     </dt>
-                    <dd className="text-body-strong tabular-nums">{p.lastReading?.freeChlorinePpm ?? '—'}</dd>
+                    <dd className="text-body-strong tabular-nums">{p.lastReading?.freeChlorinePpm ?? '—'}{p.lastReading?.freeChlorinePpm ? <span className="text-caption font-normal text-muted"> ppm</span> : null}</dd>
                   </div>
                   <div className="rounded-xl bg-surface px-2 py-2">
                     <dt className="text-caption text-muted">pH</dt>
@@ -98,7 +104,7 @@ export default function StatusPage() {
                   </div>
                 </dl>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-caption text-muted">
-                  <span>{p.lastReading ? t('status.lastReading', { time: formatTime(p.lastReading.localRecordedAt, i18n.language) }) : t('status.noReading')}</span>
+                  <span>{p.lastReading ? lastReading(p.lastReading.localRecordedAt) : t('status.noReading')}</span>
                   {p.lifeguardsRequired ? (
                     <span className="flex items-center gap-1 font-semibold text-ink">
                       <LifeBuoy className="h-4 w-4" aria-hidden="true" />

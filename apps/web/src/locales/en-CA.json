@@ -71,7 +71,7 @@
     "payHint": "Estimated pay for this shift before deductions, using your rate and this week’s hours. Payroll has the final figure."
   },
   "status": {
-    "title": "Pool Status",
+    "title": "Pool status",
     "OPEN": "Open",
     "CLOSURE_RECOMMENDED": "Closure recommended — awaiting Head Lifeguard",
     "CLOSED": "Closed",
@@ -89,7 +89,8 @@
     "lastReading": "Last reading {{time}}",
     "noReading": "No reading yet today",
     "guardsNeeded_one": "{{count}} guard needed",
-    "guardsNeeded_other": "{{count}} guards needed"
+    "guardsNeeded_other": "{{count}} guards needed",
+    "lastReadingToday": "Last reading today at {{time}}"
   },
   "blocks": {
     "NOT_ACTIVE": "Your account is not active.",

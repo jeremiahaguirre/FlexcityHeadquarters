@@ -86,10 +86,11 @@
     "emptyBody": "Un superviseur ajoute les bassins et les limites du permis dans Paramètres.",
     "chlorine": "Cl libre",
     "bathers": "Baigneurs",
-    "lastReading": "Dernière mesure à {{time}}",
+    "lastReading": "Dernière mesure : {{time}}",
     "noReading": "Aucune mesure aujourd’hui",
     "guardsNeeded_one": "{{count}} sauveteur requis",
-    "guardsNeeded_other": "{{count}} sauveteurs requis"
+    "guardsNeeded_other": "{{count}} sauveteurs requis",
+    "lastReadingToday": "Dernière mesure aujourd’hui à {{time}}"
   },
   "blocks": {
     "NOT_ACTIVE": "Votre compte n’est pas actif.",
