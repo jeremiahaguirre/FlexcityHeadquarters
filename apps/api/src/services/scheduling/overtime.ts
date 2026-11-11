@@ -9,6 +9,7 @@ import type { Tx } from '../../lib/db.js';
 import { dec } from '../../lib/money.js';
 import { evaluateCandidate } from './eligibility.js';
 import { evalOpts, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
+import { effectiveSettings, parseSolverSettings } from './solverSettings.js';
 
 export interface OvertimePolicy { countRefusals: boolean; clause: string | null; periodStartMonth: number }
 
@@ -36,10 +37,11 @@ export function rank(a: Standing, b: Standing): number {
 }
 
 export async function standings(tx: Tx, positionId: string, now = new Date()) {
-  const tenant = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true, features: true } });
+  const [tenant, position] = await Promise.all([tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true, features: true } }), tx.position.findUnique({ where: { id: positionId }, select: { departmentId: true } })]);
   const policy = parsePolicy(tenant.overtimePolicy);
-  // Organizations that don't use seniority: ties go by name, and no seniority is shown.
-  const useSeniority = resolveFeatures(tenant.features).seniority;
+  // Organizations (or departments) that don't use seniority: ties go by name, and no seniority is
+  // shown. A department's own switch can turn it off where its agreement doesn't use it.
+  const useSeniority = effectiveSettings(parseSolverSettings(tenant.overtimePolicy), position?.departmentId ?? null, resolveFeatures(tenant.features).seniority).useSeniority;
   const from = periodStart(now, policy.periodStartMonth);
   const users = await tx.user.findMany({
     where: { status: 'ACTIVE', anonymizedAt: null, positions: { some: { positionId } } },
@@ -84,6 +86,18 @@ export async function fairnessCheck(tx: Tx, shiftId: string, userId: string) {
     if (skipped.length >= 5) break;
   }
   return { overtime: true as const, overtimeHours: e.overtimeHours.toFixed(2), skipped, clause: policy.clause };
+}
+
+/**
+ * When an assignment with charged overtime is undone (unassigned, reassigned, cancelled or a Fill
+ * accept undone) before it's worked, the charge comes off the ledger: a reversing entry, so the
+ * history stays. Refusals and no-answers stay as the agreement counts them.
+ */
+export async function reverseOvertime(tx: Tx, tenantId: string, actorId: string, userId: string, shiftId: string, note: string) {
+  const rows = await tx.overtimeEntry.findMany({ where: { userId, shiftId, kind: 'ACCEPTED' }, select: { hours: true, positionId: true } });
+  const net = rows.reduce((s, r) => s.plus(dec(r.hours)), dec(0));
+  if (!net.gt(0)) return;
+  await tx.overtimeEntry.create({ data: { tenantId, userId, shiftId, positionId: rows[0]?.positionId ?? null, kind: 'ACCEPTED', hours: net.neg().toFixed(2), occurredAt: new Date(), recordedById: actorId, note } });
 }
 
 /** Called when overtime is approved or assigned: charge the hours to the person. */

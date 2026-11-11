@@ -27,6 +27,7 @@
 import type { Decimal } from '../../lib/money.js';
 import type { ProvinceRules } from '../compliance/provincialRules.js';
 import {
+  type OrgLimits,
   type BlockCode,
   type CandidateContext,
   type PositionSpec,
@@ -49,7 +50,8 @@ export interface AssistantCandidate extends CandidateContext {
 
 export interface AssistantInput {
   /** Each shift may bring its own facility's rules and school calendar; otherwise `rules` applies. */
-  shifts: Array<{ shift: ShiftSpec; position: PositionSpec; rules?: ProvinceRules; schoolCalendar?: SchoolCalendar }>;
+  /** `limits`: the organization's/department's max hours a day and days in a row (as every path enforces). */
+  shifts: Array<{ shift: ShiftSpec; position: PositionSpec; rules?: ProvinceRules; schoolCalendar?: SchoolCalendar; limits?: OrgLimits | null }>;
   /** Minimum gap between shifts at two different facilities (default 30). */
   travelMinutes?: number;
   candidates: AssistantCandidate[];
@@ -97,6 +99,7 @@ export function proposeSchedule(input: AssistantInput): AssistantOutput {
       payWeekStartDay: input.payWeekStartDay,
       requireAvailability: true,
       schoolCalendar: it.schoolCalendar ?? input.schoolCalendar,
+      limits: it.limits ?? null,
     });
     return { c, e, travel: !tooLittleTravel(c, it.shift, travelMs) };
   };

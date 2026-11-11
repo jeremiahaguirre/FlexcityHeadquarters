@@ -12,7 +12,8 @@ import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { evaluateCandidate } from '../scheduling/eligibility.js';
 import { evalOpts, loadCandidate, loadShiftBundle } from '../scheduling/eligibilityLoader.js';
-import { chargeOvertime } from '../scheduling/overtime.js';
+import { chargeOvertime, reverseOvertime } from '../scheduling/overtime.js';
+import { lockForAssignment } from '../scheduling/locks.js';
 
 export interface Side { userId: string; shiftId: string; eligible: boolean; overtimeHours: string; blocks: Array<{ code: string; message: string }> }
 export interface TradeCheck { from: Side; to: Side; versions: { from: number; to: number } }
@@ -93,6 +94,8 @@ export async function approveTrade(tx: Tx, tenantId: string, actorId: string, id
   if (actorId === t.fromUserId || actorId === t.toUserId) throw forbidden('You can’t approve a trade you’re part of.');
   await advisoryLock(tx, `shift:${[t.fromShiftId, t.toShiftId].sort()[0]}`);
   await advisoryLock(tx, `shift:${[t.fromShiftId, t.toShiftId].sort()[1]}`);
+  // Then both people (sorted), as every assigning path does.
+  await lockForAssignment(tx, { userIds: [t.fromUserId, t.toUserId] });
   const check = await checkTrade(tx, t.fromShiftId, t.toShiftId);
   if (check.from.userId !== t.fromUserId || check.to.userId !== t.toUserId || !check.from.eligible || !check.to.eligible) {
     await tx.shiftTrade.update({ where: { id }, data: { status: 'EXPIRED', check: check as unknown as Prisma.InputJsonValue } });
@@ -102,7 +105,10 @@ export async function approveTrade(tx: Tx, tenantId: string, actorId: string, id
   const b = await tx.shift.updateMany({ where: { id: t.toShiftId, version: check.versions.to, userId: t.toUserId }, data: { userId: t.fromUserId, version: { increment: 1 }, conflictReason: null } });
   if (a.count !== 1 || b.count !== 1) throw conflict('SHIFT_CHANGED', 'A shift changed while approving. Nothing was swapped; try again.');
   await tx.shiftTrade.update({ where: { id }, data: { status: 'APPROVED', decidedById: actorId, decidedAt: new Date(), decisionNote: note, check: check as unknown as Prisma.InputJsonValue } });
-  // Overtime a trade creates is charged like any other, so the overtime order stays fair.
+  // Overtime charged for the shifts each person gave away comes off; overtime the trade creates is
+  // charged like any other, so the overtime order stays fair.
+  await reverseOvertime(tx, tenantId, actorId, t.fromUserId, t.fromShiftId, 'Traded away');
+  await reverseOvertime(tx, tenantId, actorId, t.toUserId, t.toShiftId, 'Traded away');
   const [sa, sb] = await Promise.all([tx.shift.findUniqueOrThrow({ where: { id: t.fromShiftId } }), tx.shift.findUniqueOrThrow({ where: { id: t.toShiftId } })]);
   if (Number(check.from.overtimeHours) > 0) await chargeOvertime(tx, tenantId, actorId, t.fromUserId, sb.id, check.from.overtimeHours, sb.positionId);
   if (Number(check.to.overtimeHours) > 0) await chargeOvertime(tx, tenantId, actorId, t.toUserId, sa.id, check.to.overtimeHours, sa.positionId);

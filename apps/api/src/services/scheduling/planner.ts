@@ -25,8 +25,9 @@ import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
 import { facilitiesOf, peopleWhere, shiftInScope, shiftsWhere, userInScope } from '../people/scope.js';
 import { resolveFeatures } from '../platform/features.js';
-import { type CandidateContext, type Evaluation, type OvertimeMemo, type PositionSpec, type ShiftSpec, evaluateCandidate, isAvailable, parseHoursOfService } from './eligibility.js';
-import { evalOpts, loadAssistantCandidates, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
+import { type CandidateContext, type Evaluation, type OvertimeMemo, type PositionSpec, type ShiftSpec, evaluateCandidate, isAvailable, parseHoursOfService, wallClock } from './eligibility.js';
+import { departmentRuleSettings, evalOpts, loadAssistantCandidates, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
+import { lockForAssignment } from './locks.js';
 import { ALL_DEPARTMENTS, NO_DEPARTMENT, confirmedThrough, schedulableDepartments } from './fillRun.js';
 import { assignShift, cancelShift, createShift, updateShift } from './shifts.js';
 import { effectiveSettings, parseSolverSettings } from './solverSettings.js';
@@ -71,13 +72,17 @@ const minutesOf = (d: Date, tz: string) => {
   return x.hour * 60 + x.minute;
 };
 
-/** Windows of one day in minutes after local midnight, from weekly availability. */
+/**
+ * Windows of one day in minutes after local midnight, from weekly availability. A window that
+ * runs past midnight (endMinute > 1440) shows on its own day up to midnight and on the next
+ * morning from midnight.
+ */
 function availabilityOn(rows: CandidateContext['availability'], date: string): Array<[number, number]> {
-  const dow = dayOfWeek(date);
-  return rows
-    .filter((w) => w.dayOfWeek === dow && w.effectiveFrom <= date && (w.effectiveTo === null || w.effectiveTo >= date))
-    .map((w) => [w.startMinute, Math.min(w.endMinute, 1440)] as [number, number])
-    .sort((x, y) => x[0] - y[0]);
+  const on = (d: string) => rows.filter((w) => w.dayOfWeek === dayOfWeek(d) && w.effectiveFrom <= d && (w.effectiveTo === null || w.effectiveTo >= d));
+  return [
+    ...on(date).map((w) => [w.startMinute, Math.min(w.endMinute, 1440)] as [number, number]),
+    ...on(addDays(date, -1)).filter((w) => w.endMinute > 1440).map((w) => [0, Math.min(w.endMinute - 1440, 1440)] as [number, number]),
+  ].sort((x, y) => x[0] - y[0]);
 }
 
 /** Pieces of intervals falling on one local day, in minutes. */
@@ -263,18 +268,22 @@ export function statusOf(e: Evaluation, ctx: Pick<CandidateContext, 'existingShi
   return warn.length ? { status: 'warn', reasons: warn } : { status: 'ok', reasons: [] };
 }
 
-async function ruleInputs(tx: Tx, facilities: Array<{ id: string; province: string; timezone: string }>) {
+async function ruleInputs(tx: Tx, facilities: Array<{ id: string; province: string; timezone: string }>, positionIds: string[]) {
   const tenant = await tx.tenant.findFirstOrThrow({ include: { ruleOverrides: true } });
   const overrides = tenant.ruleOverrides.map((o) => ({ province: o.province, ruleKey: o.ruleKey, value: o.value, effectiveFrom: o.effectiveFrom.toISOString().slice(0, 10), effectiveTo: o.effectiveTo?.toISOString().slice(0, 10) ?? null }));
   const byId = new Map(facilities.map((f) => [f.id, f]));
+  // Each position's department settings: its limits and whether it's federally regulated.
+  const depts = new Map((await tx.position.findMany({ where: { id: { in: positionIds } }, select: { id: true, departmentId: true } })).map((p) => [p.id, departmentRuleSettings(tenant.overtimePolicy, tenant.features, p.departmentId)]));
   const cache = new Map<string, ReturnType<typeof resolveRules>>();
-  const rulesFor = (facilityId: string, date: string) => {
-    const k = `${facilityId}|${date}`;
-    if (!cache.has(k)) cache.set(k, resolveRules(byId.get(facilityId)!.province as Parameters<typeof resolveRules>[0], date, overrides));
+  const rulesFor = (facilityId: string, date: string, positionId: string) => {
+    const federal = !!depts.get(positionId)?.federal;
+    const k = `${facilityId}|${date}|${federal}`;
+    if (!cache.has(k)) cache.set(k, resolveRules(byId.get(facilityId)!.province as Parameters<typeof resolveRules>[0], date, overrides, { federal }));
     return cache.get(k)!;
   };
+  const limitsFor = (positionId: string) => depts.get(positionId)?.limits ?? null;
   const schoolCalendar = buildSchoolCalendar((await tx.schoolCalendarPeriod.findMany()).map((x) => ({ kind: x.kind, startsOn: x.startsOn.toISOString().slice(0, 10), endsOn: x.endsOn.toISOString().slice(0, 10) })));
-  return { rulesFor, schoolCalendar, payWeekStartDay: tenant.payWeekStartDay };
+  return { rulesFor, limitsFor, schoolCalendar, payWeekStartDay: tenant.payWeekStartDay };
 }
 
 async function positionSpecs(tx: Tx, positionIds: string[]) {
@@ -324,7 +333,7 @@ export async function plannerEligibility(tx: Tx, a: AuthContext, q: EligibilityQ
       orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
     }),
     positionSpecs(tx, positionIds),
-    ruleInputs(tx, c.facilities),
+    ruleInputs(tx, c.facilities, positionIds),
     q.days ? tx.shift.findMany({ where: { status: { not: 'CANCELLED' }, positionId: { in: positionIds }, facilityId: { in: facilityIds }, startsAt: { gte: new Date(fromI.getTime() - 28 * 86_400_000), lt: toI } }, select: { positionId: true, startsAt: true, endsAt: true } }) : Promise.resolve([]),
   ]);
   const tzOf = new Map(c.facilities.map((f) => [f.id, f.timezone]));
@@ -353,7 +362,8 @@ export async function plannerEligibility(tx: Tx, a: AuthContext, q: EligibilityQ
     const date = localDate(shift.start, shift.timezone);
     let overtimeMemo = memos.get(p.userId);
     if (!overtimeMemo) memos.set(p.userId, (overtimeMemo = new WeakMap()));
-    const e = evaluateCandidate(ctx, shift, specs.get(shift.positionId)!, { rules: rules.rulesFor(shift.facilityId!, date), payWeekStartDay: rules.payWeekStartDay, requireAvailability: false, schoolCalendar: rules.schoolCalendar, overtimeMemo });
+    // The same rule set, with the same organization/department limits, as every write path.
+    const e = evaluateCandidate(ctx, shift, specs.get(shift.positionId)!, { rules: rules.rulesFor(shift.facilityId!, date, shift.positionId), payWeekStartDay: rules.payWeekStartDay, requireAvailability: false, schoolCalendar: rules.schoolCalendar, overtimeMemo, limits: rules.limitsFor(shift.positionId) });
     return intern(statusOf(e, ctx, shift, certNames));
   };
 
@@ -392,8 +402,8 @@ export async function plannerEligibility(tx: Tx, a: AuthContext, q: EligibilityQ
         const candidates = (usual[positionId] ?? []).map((u) => [toMin(u.start), toMin(u.end) <= toMin(u.start) ? toMin(u.end) + 1440 : toMin(u.end)] as [number, number]);
         let span = candidates.find(([st, en]) => window && st >= window[0] && en <= window[1]) ?? candidates[0] ?? [9 * 60, 17 * 60];
         if (window && !(span[0] >= window[0] && span[1] <= window[1]) && window[1] - window[0] >= 120 && window[1] - window[0] <= 12 * 60) span = window;
-        const base = DateTime.fromISO(d, { zone: tz }).startOf('day');
-        const spec: ShiftSpec = { id: `day:${d}`, positionId, facilityId, timezone: tz, start: base.plus({ minutes: span[0] }).toJSDate(), end: base.plus({ minutes: span[1] }).toJSDate() };
+        // Wall-clock times (DST-correct).
+        const spec: ShiftSpec = { id: `day:${d}`, positionId, facilityId, timezone: tz, start: wallClock(d, span[0], tz), end: wallClock(d, span[1], tz) };
         put(cells, i, evaluate(p, spec, null));
         evaluations++;
       });
@@ -434,6 +444,7 @@ export interface CreateInput {
 export async function plannerCreate(tx: Tx, a: AuthContext, input: CreateInput) {
   if (!shiftInScope(a.scope, input)) throw forbidden('This shift isn’t in your department.');
   await assertPeopleInScope(tx, a, input.userIds);
+  await lockForAssignment(tx, { userIds: input.userIds });
   const actor = { userId: a.userId, tenantId: a.tenantId };
   const events: DomainEvent[] = [];
   const ids: string[] = [];
@@ -473,6 +484,7 @@ export async function plannerMove(tx: Tx, a: AuthContext, shiftId: string, m: Mo
   if (!shiftInScope(a.scope, target)) throw forbidden('This shift isn’t in your department.');
   const userId = m.userId === undefined ? s.userId : m.userId;
   if (userId && userId !== s.userId) await assertPeopleInScope(tx, a, [userId]);
+  await lockForAssignment(tx, { shiftIds: [shiftId], userIds: [userId, s.userId] });
   const actor = { userId: a.userId, tenantId: a.tenantId };
   const startsAt = m.startsAt ?? s.startsAt;
   const endsAt = m.endsAt ?? s.endsAt;
@@ -516,6 +528,7 @@ export async function plannerAssignMany(tx: Tx, a: AuthContext, shiftId: string,
   if (s.status === 'CANCELLED') throw conflict('SHIFT_CANCELLED', 'This shift was cancelled.');
   if (s.version !== expectedVersion) throw conflict('SHIFT_CHANGED', 'Someone else changed this shift. Refresh and try again.');
   await assertPeopleInScope(tx, a, userIds);
+  await lockForAssignment(tx, { shiftIds: [shiftId], userIds: [...userIds, s.userId] });
   const bundle = (await loadShiftBundle(tx, shiftId))!;
   const actor = { userId: a.userId, tenantId: a.tenantId };
   const results: Array<{ userId: string; shiftId: string | null; code: string | null }> = [];
@@ -590,6 +603,7 @@ export async function plannerCopy(tx: Tx, a: AuthContext, q: CopyInput) {
     const k = `${e.facilityId}|${e.positionId}|${e.startsAt.getTime()}|${e.endsAt.getTime()}`;
     taken.set(k, (taken.get(k) ?? 0) + 1);
   }
+  if (q.withPeople) await lockForAssignment(tx, { userIds: source.map((s) => s.userId) });
   const actor = { userId: a.userId, tenantId: a.tenantId };
   const created: string[] = [];
   const leftOpen: Array<{ shiftId: string; userId: string; code: string }> = [];

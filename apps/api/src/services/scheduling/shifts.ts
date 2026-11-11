@@ -4,7 +4,8 @@
  * needs an explicit acknowledgement from the person assigning.
  */
 import type { Prisma, ShiftType } from '@prisma/client';
-import { chargeOvertime, fairnessCheck } from './overtime.js';
+import { chargeOvertime, fairnessCheck, reverseOvertime } from './overtime.js';
+import { lockForAssignment } from './locks.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';
@@ -13,6 +14,9 @@ import { type Evaluation, evaluateCandidate } from './eligibility.js';
 import { evalOpts, loadCandidate, loadShiftBundle } from './eligibilityLoader.js';
 import { postOffer } from '../shiftboard/offers.js';
 import type { NotificationDraft } from '../notifications/notifier.js';
+import { coverageGaps } from '../coverage/gaps.js';
+import { addDays, localDate } from '../../lib/time.js';
+import { FEDERAL_SCHEDULE_NOTICE_HOURS } from '../compliance/provincialRules.js';
 
 export interface Actor {
   userId: string;
@@ -128,6 +132,10 @@ export async function assignShift(
   expectedVersion: number,
   acknowledgeOvertime = false,
 ): Promise<AssignResult> {
+  const head = await tx.shift.findUnique({ where: { id: shiftId }, select: { userId: true } });
+  if (!head) throw notFound('Shift');
+  // One check-and-write per person at a time: no two writers can both book the same person.
+  await lockForAssignment(tx, { shiftIds: [shiftId], userIds: [userId, head.userId] });
   const bundle = await loadShiftBundle(tx, shiftId);
   if (!bundle) throw notFound('Shift');
   if (bundle.shift.status === 'CANCELLED') throw conflict('SHIFT_CANCELLED', 'This shift was cancelled.');
@@ -169,6 +177,7 @@ export async function assignShift(
     after: { userId, overtimeAcknowledged: acknowledgeOvertime && !!evaluation?.overtimeHours.gt(0), overtimeHours: evaluation?.overtimeHours.toString() },
   });
 
+  if (previous && previous !== userId) await reverseOvertime(tx, actor.tenantId, actor.userId, previous, shiftId, userId ? 'Reassigned' : 'Unassigned');
   if (userId && evaluation?.overtimeHours.gt(0)) await chargeOvertime(tx, actor.tenantId, actor.userId, userId, shiftId, evaluation.overtimeHours.toFixed(2), bundle.shift.positionId);
   const shift = await tx.shift.findUniqueOrThrow({ where: { id: shiftId } });
   const drafts: NotificationDraft[] = [];
@@ -184,6 +193,7 @@ export async function cancelShift(tx: Tx, actor: Actor, shiftId: string, reason:
   if (!shift) throw notFound('Shift');
   if (shift.status === 'CANCELLED') return { events: [] as DomainEvent[] };
   await tx.shift.update({ where: { id: shiftId }, data: { status: 'CANCELLED', version: { increment: 1 }, conflictReason: reason } });
+  if (shift.userId) await reverseOvertime(tx, actor.tenantId, actor.userId, shift.userId, shiftId, 'Shift cancelled');
   await tx.shiftOffer.updateMany({ where: { shiftId, status: { in: ['OPEN', 'PENDING_APPROVAL'] } }, data: { status: 'CANCELLED' } });
   await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: 'shift.cancel', entity: 'Shift', entityId: shiftId, after: { reason } });
   const events: DomainEvent[] =
@@ -223,12 +233,42 @@ export async function publishShifts(tx: Tx, actor: Actor, facilityId: string, fr
   return { published: drafts.length, posted, events };
 }
 
+/**
+ * Before publishing: the required-coverage gaps the schedule would leave (counting the drafts
+ * being published), assigned drafts whose person can no longer work them (a certificate lapsed,
+ * onboarding expired…), and, for federally regulated work, shifts inside the 96-hour notice.
+ * Warnings only: the person publishing confirms to go ahead (audited).
+ */
+export async function publishCheck(tx: Tx, facilityId: string, from: Date, to: Date, only: Prisma.ShiftWhereInput = {}) {
+  const facility = await tx.facility.findUnique({ where: { id: facilityId }, select: { timezone: true } });
+  if (!facility) throw notFound('Facility');
+  const tz = facility.timezone;
+  const scope: Prisma.ShiftWhereInput = { ...only, facilityId, status: 'DRAFT', startsAt: { gte: from, lt: to } };
+  const firstDay = localDate(from, tz);
+  const days = Math.max(1, Math.round((Date.parse(`${localDate(new Date(to.getTime() - 1), tz)}T12:00:00Z`) - Date.parse(`${firstDay}T12:00:00Z`)) / 86_400_000) + 1);
+  const gaps = await coverageGaps(tx, firstDay, Math.min(days, 62), facilityId, scope);
+  const drafts = await tx.shift.findMany({ where: { ...scope, userId: { not: null } }, select: { id: true, userId: true, startsAt: true, user: { select: { firstName: true, lastName: true } } }, orderBy: { startsAt: 'asc' }, take: 500 });
+  const ineligible: Array<{ shiftId: string; userId: string; name: string; codes: string[] }> = [];
+  let federalLate = 0;
+  const now = Date.now();
+  for (const d of drafts) {
+    const bundle = await loadShiftBundle(tx, d.id);
+    if (!bundle) continue;
+    if (bundle.rules.province === 'FED' && d.startsAt.getTime() - now < FEDERAL_SCHEDULE_NOTICE_HOURS * 3_600_000) federalLate++;
+    const c = await loadCandidate(tx, bundle, d.userId!);
+    const e = c && evaluateCandidate(c, bundle.shift, bundle.position, evalOpts(bundle));
+    if (e && !e.eligible) ineligible.push({ shiftId: d.id, userId: d.userId!, name: d.user ? `${d.user.firstName} ${d.user.lastName}` : '', codes: [...new Set(e.blocks.map((b) => b.code))] });
+  }
+  return { gaps, ineligible, federalNotice: federalLate ? { count: federalLate, hours: FEDERAL_SCHEDULE_NOTICE_HOURS } : null, through: addDays(firstDay, days - 1) };
+}
+
 /** Everyone qualified for a shift, ranked: eligible without overtime, then with, then blocked. */
-export async function rankCandidates(tx: Tx, shiftId: string) {
+/** `people`: only people the caller may schedule (their scope). */
+export async function rankCandidates(tx: Tx, shiftId: string, people: Prisma.UserWhereInput = {}) {
   const bundle = await loadShiftBundle(tx, shiftId);
   if (!bundle) throw notFound('Shift');
   const qualified = await tx.user.findMany({
-    where: { status: 'ACTIVE', anonymizedAt: null, positions: { some: { positionId: bundle.shift.positionId } }, id: bundle.shift.userId ? { not: bundle.shift.userId } : undefined },
+    where: { ...people, status: 'ACTIVE', anonymizedAt: null, positions: { some: { positionId: bundle.shift.positionId } }, id: bundle.shift.userId ? { not: bundle.shift.userId } : undefined },
     select: { id: true, firstName: true, lastName: true, employmentStatus: true },
   });
   const out: Array<{

@@ -149,12 +149,13 @@ winterRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const { answer: ans } = z.object({ answer: z.enum(['ACCEPTED', 'DECLINED', 'NO_ANSWER']) }).parse(req.body);
-    await withTenant(a.tenantId, async (tx) => {
+    const r = await withTenant(a.tenantId, async (tx) => {
       const c = await tx.callOutContact.findFirst({ where: { id: uuid.parse(req.params.contactId), callOutId: uuid.parse(req.params.id) } });
       if (!c) throw notFound('Contact');
-      await answer(tx, c, ans as Answer, a.userId);
+      return answer(tx, c, ans as Answer, a.userId);
     });
-    res.json({ ok: true });
+    // Accepted but no longer eligible: they were skipped and the next person asked.
+    res.json({ ok: true, accepted: r.accepted, skippedReason: r.reason });
   }),
 );
 
@@ -195,13 +196,13 @@ winterRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const { answer: ans } = z.object({ answer: z.enum(['ACCEPTED', 'DECLINED']) }).parse(req.body);
-    await withTenant(a.tenantId, async (tx) => {
+    const r = await withTenant(a.tenantId, async (tx) => {
       const c = await tx.callOutContact.findFirst({ where: { id: uuid.parse(req.params.id), userId: a.userId } });
       if (!c) throw notFound('Call-out');
       if (c.status !== 'OFFERED') throw conflict('NOT_YOUR_TURN', 'This call-out isn’t offered to you right now.');
-      await answer(tx, c, ans, null);
+      return answer(tx, c, ans, null);
     });
-    res.json({ ok: true });
+    res.json({ ok: true, accepted: r.accepted, skippedReason: r.reason });
   }),
 );
 

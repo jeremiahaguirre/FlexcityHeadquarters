@@ -1,6 +1,6 @@
 import { exportPersonRecords } from '../services/privacy/recordsExport.js';
 import { recordsPdf } from '../services/privacy/recordsPdf.js';
-import { assertShiftInScope, hrRecordsBy, incidentsWhere, peopleInScope, userInScope } from '../services/people/scope.js';
+import { assertShiftInScope, hrRecordsBy, incidentsWhere, peopleInScope, peopleWhere, shiftInScope, userInScope } from '../services/people/scope.js';
 import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
@@ -18,7 +18,9 @@ import { requestErasure } from '../services/privacy/erasure.js';
 import { loadReliability } from '../services/reliability/load.js';
 import { RULES } from '../services/reliability/score.js';
 import { proposeSchedule } from '../services/scheduling/assistant.js';
-import { loadAssistantCandidates, loadShiftBundle } from '../services/scheduling/eligibilityLoader.js';
+import { lockForAssignment } from '../services/scheduling/locks.js';
+import { evaluateCandidate } from '../services/scheduling/eligibility.js';
+import { evalOpts, loadAssistantCandidates, loadCandidate, loadShiftBundle } from '../services/scheduling/eligibilityLoader.js';
 import { cancelOffer, claimOffer, decideOffer, postOffer } from '../services/shiftboard/offers.js';
 import { clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
 import { h, keys, tenantKekId } from './context.js';
@@ -282,11 +284,12 @@ api.post(
       const open = await tx.shift.findMany({
         where: { facilityId: { in: facilityIds }, userId: null, status: { in: ['DRAFT', 'PUBLISHED'] }, startsAt: { gte: body.from, lt: body.to } },
       });
-      const bundles = (await Promise.all(open.map((s) => loadShiftBundle(tx, s.id)))).filter((b) => b !== null);
-      const candidates = await loadAssistantCandidates(tx, body.from, body.to);
+      // Only shifts and people in the caller's scope; the same rules and limits as every other path.
+      const bundles = (await Promise.all(open.filter((s) => shiftInScope(a.scope, s)).map((s) => loadShiftBundle(tx, s.id)))).filter((b) => b !== null);
+      const candidates = await loadAssistantCandidates(tx, body.from, body.to, peopleWhere(a.scope));
       const proposal = proposeSchedule({
-        // Each shift with its own facility's rules (provinces can differ) and school calendar.
-        shifts: bundles.map((b) => ({ shift: b.shift, position: b.position, rules: b.rules, schoolCalendar: b.schoolCalendar })),
+        // Each shift with its own facility's rules (provinces can differ), school calendar and limits.
+        shifts: bundles.map((b) => ({ shift: b.shift, position: b.position, rules: b.rules, schoolCalendar: b.schoolCalendar, limits: b.limits })),
         candidates,
         travelMinutes: body.travelMinutes,
         // Same rules (incl. collective-agreement overrides) and school calendar as every other check.
@@ -298,9 +301,14 @@ api.post(
         schoolCalendar: bundles[0]?.schoolCalendar,
       });
       if (body.apply) {
-        // Drafts only — a supervisor still publishes. Compare-and-set on version.
+        // Drafts only — a supervisor still publishes. Compare-and-set on version, under the same locks.
+        await lockForAssignment(tx, { shiftIds: proposal.assignments.map((x) => x.shiftId), userIds: proposal.assignments.map((x) => x.userId) });
         for (const asg of proposal.assignments) {
-          const v = bundles.find((b) => b.shift.id === asg.shiftId)!.shift.version;
+          const b = bundles.find((x) => x.shift.id === asg.shiftId)!;
+          const v = b.shift.version;
+          // Re-checked under the lock (another writer may have booked this person meanwhile).
+          const c = await loadCandidate(tx, b, asg.userId);
+          if (!c || !evaluateCandidate(c, b.shift, b.position, evalOpts(b, true)).eligible) continue;
           await tx.shift.updateMany({ where: { id: asg.shiftId, version: v, userId: null }, data: { userId: asg.userId, version: { increment: 1 }, conflictReason: null } });
         }
         for (const u of proposal.unfilled) await tx.shift.update({ where: { id: u.shiftId }, data: { conflictReason: u.reason } });

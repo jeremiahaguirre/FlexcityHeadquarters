@@ -11,7 +11,7 @@
  *    time off may have changed since the claim.
  *  - The original holder remains assigned (and responsible) until COMPLETED.
  */
-import { chargeOvertime } from '../scheduling/overtime.js';
+import { chargeOvertime, reverseOvertime } from '../scheduling/overtime.js';
 import { Prisma } from '@prisma/client';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
@@ -209,6 +209,8 @@ async function completeTransfer(
     data: { userId: toUserId, version: { increment: 1 }, conflictReason: null },
   });
   if (updated.count !== 1) throw conflict('SHIFT_ALREADY_CLAIMED', 'This shift was changed by someone else.');
+  // Whoever gave the shift away no longer carries its overtime charge.
+  if (fromUserId) await reverseOvertime(tx, actor.tenantId, actor.userId, fromUserId, offer.shiftId, 'Given away on the Shift Board');
 
   await tx.shiftOffer.update({
     where: { id: offerId },
