@@ -44,7 +44,7 @@ fillRouter.get(
         const defaultDepartmentId = own?.id ?? departments[0]?.id ?? null;
         const orgSeniority = resolveFeatures(tenant.features).seniority;
         return {
-          departments: departments.map((d) => ({ id: d.id, name: d.name, nameFr: d.nameFr, own: d.own, planAheadWeeks: d.planAheadWeeks, ...(orgSeniority ? { useSeniority: d.useSeniority } : {}) })),
+          departments: departments.map((d) => ({ id: d.id, name: d.name, nameFr: d.nameFr, own: d.own, positionIds: d.positionIds, planAheadWeeks: d.planAheadWeeks, ...(orgSeniority ? { useSeniority: d.useSeniority } : {}) })),
           defaultDepartmentId,
           canAll: departments.length > 1,
           facilities,
@@ -110,9 +110,9 @@ fillRouter.post(
 /** The organization's settings and one department's own values (what it overrides). */
 fillRouter.get(
   '/schedule/fill/settings',
-  requirePermission('schedule.write'),
   h(async (req, res) => {
     const a = authOf(req);
+    if (!a.permissions.has('schedule.write') && !a.permissions.has('tenant.configure')) throw forbidden();
     const departmentId = z.union([uuid, z.literal(NO_DEPARTMENT)]).optional().parse(req.query.departmentId);
     res.json(
       await withTenant(a.tenantId, async (tx) => {
@@ -138,7 +138,6 @@ fillRouter.get(
  */
 fillRouter.put(
   '/schedule/fill/settings',
-  requirePermission('schedule.write'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = z

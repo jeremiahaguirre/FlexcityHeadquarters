@@ -758,13 +758,16 @@ export function solve(input: SolverInput): SolverResult {
     return { people: hs.length, mean: round(mean), stdev: round(stdev), min: round(hs.length ? Math.min(...hs) : 0), max: round(hs.length ? Math.max(...hs) : 0) };
   }
 
+  /** Hours this person works in the run's window before this shift starts ("so far this week"). */
+  const hoursBeforeSlot = (i: number, j: number) =>
+    round(sum(intervalsOf(i, j).filter((x) => x.start < sm[j]!.start && x.end > winStart && x.start < winEnd).map((x) => (Math.min(x.end, winEnd, sm[j]!.start) - Math.max(x.start, winStart)) / H)));
   const minOf = (xs: number[]) => (xs.length ? Math.min(...xs) : 0);
   const reasonsFor = (i: number, j: number, others: number[]): Why[] => {
     const p = people[i]!;
     const s = slots[j]!;
     const m = sm[j]!;
     const st = personStats(i);
-    const out: Why[] = [{ code: 'QUALIFIED_AVAILABLE', params: { hours: round(st.hours - (assignee[j] === i ? m.hours : 0)) } }];
+    const out: Why[] = [{ code: 'QUALIFIED_AVAILABLE', params: { hours: hoursBeforeSlot(i, j) } }];
     if (s.currentUserId === p.userId) out.push({ code: 'KEPT' });
     if (candidates[j]!.length === 1) out.push({ code: 'ONLY_OPTION' });
     if (p.targetHours && st.hours <= p.targetHours + EPS) out.push({ code: 'BELOW_TARGET', params: { target: p.targetHours } });
@@ -808,7 +811,7 @@ export function solve(input: SolverInput): SolverResult {
       slotId: slots[j]!.id,
       userId: people[i]!.userId,
       previousUserId: slots[j]!.currentUserId ?? null,
-      hoursBefore: round(st.hours - m.hours),
+      hoursBefore: hoursBeforeSlot(i, j),
       weekHours: round(st.hours),
       overtimeHours: round(st.otHours),
       tentative: !!slots[j]!.tentative,
@@ -816,7 +819,7 @@ export function solve(input: SolverInput): SolverResult {
       alternatives: top.map((c) => {
         place(j, c);
         const cs = personStats(c);
-        const out = { userId: people[c]!.userId, hoursBefore: round(cs.hours - m.hours), overtimeHours: round(cs.otHours), reasons: reasonsFor(c, j, [i, ...top.filter((x) => x !== c)]) };
+        const out = { userId: people[c]!.userId, hoursBefore: hoursBeforeSlot(c, j), overtimeHours: round(cs.otHours), reasons: reasonsFor(c, j, [i, ...top.filter((x) => x !== c)]) };
         place(j, i);
         return out;
       }),
