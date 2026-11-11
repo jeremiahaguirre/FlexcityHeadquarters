@@ -297,7 +297,7 @@ function ChemistryReport({
           <div className="-mx-5 overflow-x-auto">
             <table className="w-full min-w-[44rem] text-small">
               <thead>
-                <tr className="text-left text-label uppercase text-muted">
+                <tr className="text-left text-caption font-semibold text-muted">
                   <th className="px-5 py-2 font-semibold">{t('ops.time')}</th>
                   <th className="py-2 font-semibold">{t('ops.pool')}</th>
                   <th className="py-2 text-right font-semibold">{t('ops.fclShort')}</th>

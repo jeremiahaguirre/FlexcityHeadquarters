@@ -7,6 +7,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { StatTile } from '@/components/ui/StatTile';
 import { api } from '@/lib/api';
 import { formatHours } from '@/lib/format';
 import { LEAVE_TYPES, type LeaveBalance, type LeaveType, type PersonBalances } from '@/lib/hr';
@@ -23,15 +24,15 @@ export function BalanceTiles({ types }: { types: LeaveBalance[] }) {
         const total = (b.entitled ?? 0) + b.carryover;
         const pct = total ? Math.min(100, Math.round(((b.used + b.pending) / total) * 100)) : 0;
         return (
-          <li key={b.type} className="rounded-2xl border border-line p-3">
-            <p className="text-caption font-semibold uppercase tracking-wide text-muted">{t(`timeOff.types.${b.type}`)}</p>
-            <p className="text-heading tabular-nums">{b.remaining != null ? t('leave.hoursLeft', { hours: formatHours(b.remaining, lng) }) : t('leave.hoursUsed', { hours: formatHours(b.used, lng) })}</p>
+          <li key={b.type}>
+            <StatTile surface="inset" label={t(`timeOff.types.${b.type}`)} value={b.remaining != null ? t('leave.hoursLeft', { hours: formatHours(b.remaining, lng) }) : t('leave.hoursUsed', { hours: formatHours(b.used, lng) })}>
             {b.entitled != null ? (
               <>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true"><div className="fh-bar h-full rounded-full bg-brand" style={{ width: `${pct}%` }} /></div>
                 <p className="mt-1 text-caption text-muted">{t('leave.breakdown', { entitled: formatHours(b.entitled, lng), carry: formatHours(b.carryover, lng), used: formatHours(b.used, lng), pending: formatHours(b.pending, lng) })}</p>
               </>
             ) : null}
+            </StatTile>
           </li>
         );
       })}

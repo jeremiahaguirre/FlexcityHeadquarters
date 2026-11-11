@@ -229,7 +229,7 @@ function Seniority({ local: l }: { local: Local }) {
         <p className="mb-4 text-small text-muted">{t('union.seniorityHelp')}</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[32rem] text-left text-small">
-            <thead className="text-label uppercase text-muted">
+            <thead className="text-caption font-semibold text-muted">
               <tr>
                 <th className="py-2 pr-3">#</th>
                 <th className="py-2 pr-3">{t('union.name')}</th>

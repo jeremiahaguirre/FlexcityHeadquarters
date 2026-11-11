@@ -1,5 +1,7 @@
 'use client';
 
+import { formatInstant } from '@/lib/format';
+import { StatTile } from '@/components/ui/StatTile';
 import { UpcomingHolidays } from '@/components/hr/UpcomingHolidays';
 import { FileSignature, Banknote, Bandage, Briefcase, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, DoorOpen, GraduationCap, HeartPulse, type LucideIcon, Scale, UserCheck, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -94,7 +96,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
     <div className="grid gap-8">
       <section aria-labelledby="hr-today" className="grid gap-4">
         <Hero
-          eyebrow={new Intl.DateTimeFormat(lng, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}
+          eyebrow={formatInstant(new Date(), lng, 'long')}
           title={<span id="hr-today">{greeting}{me?.firstName ? `, ${me.firstName}` : ''}</span>}
           aside={<span className={`rounded-full px-3 py-1.5 text-small font-semibold ${todo.length ? 'bg-warn-bg text-warn' : 'bg-ok-bg text-ok'}`}>{todo.length ? t('hr.attentionCount', { count: todo.length }) : t('hr.allClear')}</span>}
         />
@@ -129,20 +131,15 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
       </section>
 
       <section aria-label={t('hr.numbers')}>
-        <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
           {numbers.map((n) => (
-            // Only dt and dd inside each group, as a description list requires; the icon is placed by the grid.
-            <div key={n.label} className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 bg-panel px-4 py-4">
-              <dt className="col-start-2 row-start-1 text-caption leading-snug text-muted break-words hyphens-auto">{n.label}</dt>
-              <dd className="col-start-2 row-start-2 text-heading tabular-nums"><CountUp value={n.value} format={(x) => new Intl.NumberFormat(lng).format(x)} /></dd>
-              <dd aria-hidden="true" className={`col-start-1 row-span-2 row-start-1 grid h-10 w-10 place-items-center rounded-xl ${n.tint}`}><n.icon className="h-5 w-5" /></dd>
-            </div>
+            <StatTile key={n.label} label={n.label} icon={n.icon} iconClassName={n.tint} value={<CountUp value={n.value} format={(x) => new Intl.NumberFormat(lng).format(x)} />} />
           ))}
-        </dl>
+        </div>
       </section>
 
       <section aria-labelledby="hr-areas" className="grid gap-3">
-        <h2 id="hr-areas" className="text-label uppercase text-muted">{t('hr.allAreas')}</h2>
+        <h2 id="hr-areas" className="text-subheading">{t('hr.allAreas')}</h2>
         <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
           {areas.map((a) => (
             <li key={a.key}>

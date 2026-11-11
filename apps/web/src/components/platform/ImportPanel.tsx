@@ -116,7 +116,7 @@ export function ImportPanel({ id, city, reload }: PanelProps) {
             </div>
             <div className="max-h-[28rem] overflow-auto rounded-xl border border-line">
               <table className="w-full min-w-[40rem] text-left text-small">
-                <thead className="sticky top-0 bg-surface text-label uppercase text-muted">
+                <thead className="sticky top-0 bg-surface text-caption font-semibold text-muted">
                   <tr>
                     <th className="px-3 py-2">{t('platform.import.line')}</th>
                     <th className="px-3 py-2">{t('union.name')}</th>

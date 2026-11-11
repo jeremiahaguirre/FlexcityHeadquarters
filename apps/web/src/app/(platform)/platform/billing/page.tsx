@@ -10,16 +10,17 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
+import { StatTile } from '@/components/ui/StatTile';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { useToast } from '@/components/ui/Toast';
 import { type InvoiceRow, cad, recentMonths, thisMonth } from '@/lib/billing';
 import { papi, usePlatformQuery } from '@/lib/platform';
-import { dateFormat } from '@/lib/format';
+import { dateFormat, formatInstant } from '@/lib/format';
 
 interface Summary {
   month: string;
   cities: Array<{ tenantId: string; name: string; subdomain: string; hasAccount: boolean; monthlySubtotalCents: number; monthlyTotalCents: number }>;
-  totals: { mrrCents: number; outstandingCents: number; overdueCents: number; overdueCount: number; paidThisMonthCents: number };
+  totals: { mrrCents: number; outstandingCents: number; overdueCents: number; overdueCount: number; outstandingCount?: number; paidThisMonthCents: number; paidThisMonthCount?: number };
   issuer: { legalName: string; gstNumberSet: boolean };
   tax: { verified: boolean; asOf: string };
 }
@@ -53,9 +54,9 @@ export default function BillingPage() {
   const tiles = s
     ? [
         { label: t('billing.mrr'), value: cad(s.totals.mrrCents, lng), hint: t('billing.mrrHint') },
-        { label: t('billing.outstanding'), value: cad(s.totals.outstandingCents, lng) },
+        { label: t('billing.outstanding'), value: cad(s.totals.outstandingCents, lng), hint: s.totals.outstandingCount != null ? t('billing.invoiceCount', { count: s.totals.outstandingCount }) : undefined },
         { label: t('billing.overdue'), value: cad(s.totals.overdueCents, lng), hint: t('billing.invoiceCount', { count: s.totals.overdueCount }), danger: s.totals.overdueCount > 0 },
-        { label: t('billing.paidThisMonth'), value: cad(s.totals.paidThisMonthCents, lng) },
+        { label: t('billing.paidThisMonth'), value: cad(s.totals.paidThisMonthCents, lng), hint: s.totals.paidThisMonthCount != null ? t('billing.paymentCount', { count: s.totals.paidThisMonthCount }) : undefined },
       ]
     : [];
 
@@ -67,7 +68,7 @@ export default function BillingPage() {
           {!s.tax.verified ? (
             <p className="flex gap-2">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
-              {t('billing.taxUnverified', { date: s.tax.asOf })}
+              {t('billing.taxUnverified', { date: formatInstant(s.tax.asOf, lng) })}
             </p>
           ) : null}
           {!s.issuer.gstNumberSet ? (
@@ -82,15 +83,12 @@ export default function BillingPage() {
         {!s
           ? Array.from({ length: 4 }, (_, i) => <div key={i} className="h-24 animate-pulse rounded-xl2 bg-surface" />)
           : tiles.map((x) => (
-              <Card key={x.label} className="p-5">
-                <p className="text-label uppercase text-muted">{x.label}</p>
-                <p className={`mt-1 text-title tabular-nums ${x.danger ? 'text-danger' : ''}`}>{x.value}</p>
-                {x.hint ? <p className="text-caption text-muted">{x.hint}</p> : null}
-              </Card>
+              <StatTile key={x.label} label={x.label} value={x.value} hint={x.hint} tone={x.danger ? 'danger' : undefined} />
             ))}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      {/* The invoice table takes the full width: seven columns of money and dates need it. */}
+      <div className="grid items-start gap-6">
         <Card>
           <CardHeader title={t('billing.invoices')} />
           <CardBody className="grid gap-4 pt-3">
@@ -106,7 +104,7 @@ export default function BillingPage() {
           </CardBody>
         </Card>
 
-        <div className="grid content-start gap-6">
+        <div className="grid items-start gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader title={t('billing.monthly')} description={t('billing.monthlyHelp')} />
             <CardBody className="grid gap-3 pt-3">
@@ -132,7 +130,7 @@ export default function BillingPage() {
               <ul className="divide-y divide-line">
                 {s?.cities.map((c) => (
                   <li key={c.tenantId}>
-                    <Link href={`/platform/city?id=${c.tenantId}&tab=billing`} className="flex items-center justify-between gap-3 rounded-lg py-2.5 hover:bg-surface/60">
+                    <Link href={`/platform/city?id=${c.tenantId}&tab=billing`} className="flex min-h-11 items-center justify-between gap-3 rounded-lg py-2.5 hover:bg-surface/60">
                       <span className="min-w-0">
                         <span className="block truncate text-small font-semibold">{c.name}</span>
                         <span className="text-caption text-muted">{c.hasAccount ? t('billing.perMonth', { amount: cad(c.monthlySubtotalCents, lng) }) : t('billing.notSetUp')}</span>

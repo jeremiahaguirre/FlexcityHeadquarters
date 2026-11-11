@@ -274,7 +274,7 @@ function Requirements() {
             </thead>
             <tbody>
               {OWNERS.flatMap((o) => [
-                <tr key={o}><th colSpan={d.positions.length + 2} className="border-t border-line bg-surface/60 px-2 py-1.5 text-left text-label uppercase text-muted">{t(`onboarding.owner.${o}`)}</th></tr>,
+                <tr key={o}><th colSpan={d.positions.length + 2} className="border-t border-line bg-surface/60 px-2 py-1.5 text-left text-caption font-semibold text-muted">{t(`onboarding.owner.${o}`)}</th></tr>,
                 ...d.items.filter((i) => i.owner === o).map((i) => (
                   <tr key={i.id} className={i.archivedAt ? 'opacity-50' : ''}>
                     <th scope="row" className="sticky left-0 z-10 border-t border-line bg-panel py-2 pr-4 text-left font-normal">

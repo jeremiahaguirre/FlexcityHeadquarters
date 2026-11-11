@@ -125,7 +125,7 @@ export function CaseFilePanel({ userId, name, unionMember }: { userId: string; n
       <CardBody className="grid gap-6 pt-3 lg:grid-cols-[18rem_1fr]">
         <div className="grid content-start gap-4">
           <div className="rounded-2xl bg-surface p-4">
-            <p className="text-label uppercase text-muted">{t('profile.reliability')}</p>
+            <p className="text-small text-muted">{t('profile.reliability')}</p>
             <div className="mt-1 flex items-end gap-2">
               <p className="text-stat tabular-nums">{f.score}</p>
               <StatusPill tone={scoreTone(f.score)} className="mb-2">

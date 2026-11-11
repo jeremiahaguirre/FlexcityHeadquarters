@@ -41,7 +41,7 @@ export function MyFile() {
       />
       <CardBody className="grid gap-6 pt-3 lg:grid-cols-[14rem_1fr]">
         <div>
-          <p className="text-label uppercase text-muted">{t('profile.reliability')}</p>
+          <p className="text-small text-muted">{t('profile.reliability')}</p>
           <div className="mt-1 flex items-end gap-2">
             <p className="text-stat tabular-nums"><CountUp value={f.score} format={String} /></p>
             <StatusPill tone={scoreTone(f.score)} className="mb-2">

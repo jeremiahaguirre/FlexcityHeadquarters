@@ -81,7 +81,7 @@ export default function ReportsPage() {
                 {!result.rows.length ? <p className="text-small text-muted">{t('reports.empty')}</p> : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-small">
-                      <thead className="text-caption uppercase text-muted"><tr>{result.columns.map((c) => <th key={c} className={`py-2 pr-3 font-semibold ${typeof result.rows[0]?.[c] === 'number' ? 'text-right' : 'text-left'}`}>{label(c)}</th>)}</tr></thead>
+                      <thead className="text-caption text-muted"><tr>{result.columns.map((c) => <th key={c} className={`py-2 pr-3 font-semibold ${typeof result.rows[0]?.[c] === 'number' ? 'text-right' : 'text-left'}`}>{label(c)}</th>)}</tr></thead>
                       <tbody className="divide-y divide-line">{result.rows.map((r, i) => <tr key={i}>{result.columns.map((c) => <td key={c} className={`py-2 pr-3 ${typeof r[c] === 'number' ? 'text-right tabular-nums' : ''}`}>{cell(c, r[c] ?? null)}</td>)}</tr>)}</tbody>
                     </table>
                   </div>

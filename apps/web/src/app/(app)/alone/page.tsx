@@ -147,7 +147,7 @@ export default function AlonePage() {
             </div>
           ) : (
             <div aria-live="polite">
-              <p className="text-caption font-semibold uppercase tracking-wide text-muted">{late ? t('loneWork.late') : t('loneWork.nextCheck')}</p>
+              <p className="text-small font-semibold text-muted">{late ? t('loneWork.late') : t('loneWork.nextCheck')}</p>
               <p className={`mt-1 font-semibold tabular-nums ${late ? 'text-warn' : ''}`} style={{ fontSize: '3.5rem', lineHeight: 1 }}>
                 {late ? t('loneWork.now') : `${mm}:${String(ss).padStart(2, '0')}`}
               </p>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { Field, Input } from '@/components/ui/Field';
+import { StatTile } from '@/components/ui/StatTile';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
@@ -33,8 +34,8 @@ export function MyBankedTime() {
       <CardHeader title={t('lieu.title')} description={t('lieu.help', { cap: d.policy.capHours, months: d.policy.takeWithinMonths })} action={d.bankOvertime ? <StatusPill tone="ok">{t('lieu.banking')}</StatusPill> : undefined} />
       <CardBody className="grid gap-4 pt-2">
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-surface p-3"><p className="text-caption uppercase text-muted">{t('lieu.balance')}</p><p className="text-title text-ink">{t('lieu.hours', { n: hrs(d.balance, lng) })}</p></div>
-          <div className="rounded-xl bg-surface p-3"><p className="text-caption uppercase text-muted">{t('lieu.available')}</p><p className="text-title text-ink">{t('lieu.hours', { n: hrs(Math.max(0, d.available), lng) })}</p></div>
+          <StatTile surface="inset" label={t('lieu.balance')} value={t('lieu.hours', { n: hrs(d.balance, lng) })} />
+          <StatTile surface="inset" label={t('lieu.available')} value={t('lieu.hours', { n: hrs(Math.max(0, d.available), lng) })} />
         </div>
         {d.expiring > 0 ? <p className="rounded-xl border border-warn/40 bg-warn/10 p-3 text-small text-ink">{t('lieu.expiring', { n: hrs(d.expiring, lng), months: d.policy.takeWithinMonths })}</p> : null}
         {d.policy.enabled ? (
@@ -96,7 +97,7 @@ export function LieuBalances() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-small">
-              <thead className="text-caption uppercase text-muted"><tr><th className="py-2 pr-3 font-semibold">{t('lieu.person')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.balance')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.tooOld')}</th><th className="relative"><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
+              <thead className="text-small text-muted"><tr><th className="py-2 pr-3 font-semibold">{t('lieu.person')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.balance')}</th><th className="py-2 pr-3 font-semibold">{t('lieu.tooOld')}</th><th className="relative"><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
               <tbody>
                 {d.people.map((r) => (
                   <tr key={r.userId} className="border-t border-line">

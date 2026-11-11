@@ -112,7 +112,7 @@ export default function CompliancePage() {
                 <p className="text-small text-muted">{t('compliance.nobody')}</p>
               ) : (
                 <table className="w-full min-w-[40rem] text-left text-small">
-                  <thead className="text-label uppercase text-muted">
+                  <thead className="text-caption font-semibold text-muted">
                     <tr><th className="py-2">{t('compliance.person')}</th><th>{t('compliance.station')}</th><th>{t('compliance.clock')}</th><th>{t('compliance.certs')}</th></tr>
                   </thead>
                   <tbody className="divide-y divide-line">
