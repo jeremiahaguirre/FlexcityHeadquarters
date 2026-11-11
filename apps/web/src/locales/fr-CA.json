@@ -4865,6 +4865,7 @@
     "RULES_UNVERIFIED": "Les règles de {{province}} n’ont pas encore été vérifiées par un avocat en droit du travail.",
     "STAT_PAY_MANUAL": "L’indemnité de jour férié pour {{province}} n’est pas automatisée; calculez-la à la main.",
     "STAT_PAY_DATES": "L’indemnité de jour férié pour {{province}} ({{dates}}) n’est pas automatisée; ajoutez-la à la main.",
+    "STAT_SUBSTITUTE_DAY": "{{name}} : {{holidayFr}} ({{date}}) tombait sur son jour de congé. L’indemnité du jour férié est sur cette paie; accordez-lui un autre jour de congé à la place (règle de la province : {{province}}).",
     "NO_EMPLOYEE_NUMBER": "{{name}} : numéro d’employé de l’employeur manquant.",
     "NO_COST_CENTRE": "{{name}} : l’installation n’a pas de centre de coûts.",
     "NO_PAY_CODE": "{{name}} : aucun code de paie associé à {{code}}.",

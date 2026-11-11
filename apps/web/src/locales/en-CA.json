@@ -4865,6 +4865,7 @@
     "RULES_UNVERIFIED": "{{province}} rules have not been verified by employment counsel.",
     "STAT_PAY_MANUAL": "Statutory holiday pay for {{province}} is not automated; calculate it manually.",
     "STAT_PAY_DATES": "Statutory holiday pay for {{province}} ({{dates}}) is not automated; add it manually.",
+    "STAT_SUBSTITUTE_DAY": "{{name}}: {{holiday}} ({{date}}) fell on their day off. Their holiday pay is on this run; give them another day off for it ({{province}} rule).",
     "NO_EMPLOYEE_NUMBER": "{{name}}: missing employer employee number.",
     "NO_COST_CENTRE": "{{name}}: facility has no cost centre.",
     "NO_PAY_CODE": "{{name}}: no pay code mapped for {{code}}.",
