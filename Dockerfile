@@ -14,6 +14,10 @@ ARG NODE_IMAGE=node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6a
 FROM ${NODE_IMAGE} AS base
 # Prisma's query engine needs OpenSSL; ca-certificates for TLS to RDS, Twilio and the rest.
 RUN dpkg -s openssl ca-certificates >/dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*)
+# Amazon RDS certificate authorities (every region, so ca-central-1 and the ca-west-1 recovery copy).
+# Database URLs use sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem.
+ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/rds/global-bundle.pem
+RUN chmod 755 /etc/ssl/rds && chmod 644 /etc/ssl/rds/global-bundle.pem
 WORKDIR /app
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false NPM_CONFIG_FUND=false NPM_CONFIG_AUDIT=false
 
