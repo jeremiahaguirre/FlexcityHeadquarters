@@ -33,6 +33,17 @@ export function applyScheme(s: Scheme) {
   else document.documentElement.dataset.theme = s;
 }
 
+/** The app's shells call this: once the header logo has drawn in, later full page loads in the tab show it still. */
+export function useLogoSeen() {
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(LOGO_SEEN_KEY, '1');
+    } catch {
+      /* storage off: it simply draws in on every load */
+    }
+  }, []);
+}
+
 export function useScheme(): [Scheme, (s: Scheme) => void] {
   const [scheme, setScheme] = useState<Scheme>('system');
   useEffect(() => setScheme(readScheme()), []);

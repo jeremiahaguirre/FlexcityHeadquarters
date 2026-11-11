@@ -1,5 +1,6 @@
 'use client';
 
+import { useLogoSeen } from '@/lib/colorScheme';
 import { Lock, MoreHorizontal, ShieldCheck, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -37,6 +38,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   const { can, me } = useSession();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  useLogoSeen();
   // Offboarded: the one thing left is the data export.
   useEffect(() => {
     if (me?.closed) window.location.replace('/export');

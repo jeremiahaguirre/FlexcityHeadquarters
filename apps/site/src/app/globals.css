@@ -271,3 +271,7 @@ details > summary::-webkit-details-marker { display: none; }
   .fh-mark-done { animation: fhm-done 520ms cubic-bezier(0.3, 1.4, 0.5, 1) both; transform-origin: 50% 50%; }
 }
 /* @logo-motion end */
+
+/* Wordmark descenders (the y and q): truncate clips at the padding box, so give it room below
+   (same rule as the app; Logo.tsx stays identical to the app's copy). */
+span[role='img'][aria-label='FlexcityHeadquarters'] > span.truncate { padding-block: 0.14em; }

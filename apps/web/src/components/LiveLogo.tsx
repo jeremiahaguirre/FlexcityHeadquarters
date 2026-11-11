@@ -1,23 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { LOGO_SEEN_KEY } from '@/lib/colorScheme';
+import { useRef, useState } from 'react';
 import { Logo } from './Logo';
 
 /**
- * The FH logo in the app's header: it draws itself in the first time the app opens in a session,
- * and again under the pointer. min-w-0 lets the wordmark truncate inside narrow headers.
+ * The FH logo in the header: it draws itself in when the page opens, and again under the pointer
+ * (data-replay marks a replay the pointer asked for). min-w-0 lets the wordmark truncate in narrow headers.
  */
 export function LiveLogo(props: { variant?: 'horizontal' | 'mark'; size?: number }) {
   const [n, setN] = useState(0);
   const last = useRef(0);
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(LOGO_SEEN_KEY, '1');
-    } catch {
-      /* storage off: it simply draws in on every load */
-    }
-  }, []);
   return (
     <span
       className="fh-live inline-flex min-w-0"

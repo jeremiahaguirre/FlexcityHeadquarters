@@ -1,5 +1,6 @@
 'use client';
 
+import { useLogoSeen } from '@/lib/colorScheme';
 import { BookOpen, Building2, Inbox, KeyRound, Landmark, LogOut, MoreHorizontal, Receipt, Scale, ShieldCheck, Terminal } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 import { TRUST_SECTIONS } from '@/components/platform/trust/ui';
@@ -37,6 +38,7 @@ const NAV = [
 const PHONE_MAIN: string[] = ['/platform', '/platform/billing', '/platform/enquiries', '/platform/trust'];
 
 function SignedIn({ children }: { children: ReactNode }) {
+  useLogoSeen();
   const { t } = useTranslation();
   const router = useRouter();
   const pathname = usePathname() ?? '';
