@@ -17,7 +17,8 @@ import { TeamScopeSwitch, useTeamScope } from '@/components/people/Reporting';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { formatDate, formatHours, formatTime, formatTimeRange } from '@/lib/format';
+import { formatDate, formatDuration, formatHours, formatSpan, formatTime, formatTimeRange } from '@/lib/format';
+import { LONG_PUNCH_HOURS } from '@/lib/punch';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
@@ -224,7 +225,7 @@ export default function ApprovalsPage() {
                       {p.user.name} · <span className="font-normal text-muted">{formatDate(p.localClockIn, lng)}</span>
                     </p>
                     <p className="text-caption tabular-nums text-muted">
-                      {t('approvals.punched')}: {p.localClockOut ? formatTimeRange(p.localClockIn, p.localClockOut, lng) : `${formatTime(p.localClockIn, lng)} – …`}
+                      {t('approvals.punched')}: {p.localClockOut ? formatSpan(p.localClockIn, p.localClockOut, lng) : `${formatTime(p.localClockIn, lng)} – …`}
                       {p.localShiftStart && p.localShiftEnd ? ` · ${t('approvals.scheduled')}: ${formatTimeRange(p.localShiftStart, p.localShiftEnd, lng)}` : ''}
                     </p>
                     {p.recordedOffline ? <OfflineNote p={p} lng={lng} /> : null}
@@ -235,7 +236,8 @@ export default function ApprovalsPage() {
                         {t(`approvals.attention.${a}`)}
                       </StatusPill>
                     ))}
-                    {p.hours != null ? <span className="ml-1 text-small font-semibold tabular-nums">{formatHours(p.hours, lng, 'payroll')}</span> : null}
+                    {p.hours != null && p.hours > LONG_PUNCH_HOURS ? <StatusPill tone="warn">{t('timeclock.longPunch')}</StatusPill> : null}
+                    {p.hours != null ? <span className="ml-1 whitespace-nowrap text-small font-semibold tabular-nums" title={formatHours(p.hours, lng, 'payroll')}>{formatDuration(p.hours, lng)}</span> : null}
                   </div>
                 </li>
               ))}

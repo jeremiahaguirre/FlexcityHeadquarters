@@ -576,7 +576,8 @@
       "signOutBody_other": "{{count}} pointages enregistrés sur ce téléphone n’ont pas été envoyés. Si vous vous déconnectez, ils seront supprimés de ce téléphone. Restez connecté pour qu’ils soient envoyés à votre retour en ligne, ou notez les heures et prévenez votre superviseur.",
       "signOutDelete": "Me déconnecter et supprimer",
       "signOutStay": "Rester connecté"
-    }
+    },
+    "longPunch": "Pointage long : à vérifier"
   },
   "timeOff": {
     "title": "Congés",

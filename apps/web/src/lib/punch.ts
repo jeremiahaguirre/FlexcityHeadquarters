@@ -6,3 +6,6 @@ const EARLY_MS = 30 * 60_000; // clock in up to 30 minutes before a shift
 export function currentShift(shifts: MyShift[], now: number): MyShift | null {
   return shifts.find((s) => Date.parse(s.startsAt) - EARLY_MS <= now && now < Date.parse(s.endsAt)) ?? null;
 }
+
+/** A punch longer than this is probably a missed clock-out: the timeclock and approvals flag it to check. */
+export const LONG_PUNCH_HOURS = 16;

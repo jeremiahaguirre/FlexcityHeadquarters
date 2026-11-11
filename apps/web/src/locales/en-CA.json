@@ -576,7 +576,8 @@
       "signOutBody_other": "{{count}} punches saved on this phone haven’t been sent. If you sign out, they’re deleted from this phone. Stay signed in and they send when you’re back online, or note the times and tell your supervisor.",
       "signOutDelete": "Sign out and delete",
       "signOutStay": "Stay signed in"
-    }
+    },
+    "longPunch": "Long punch: check"
   },
   "timeOff": {
     "title": "Time off",

@@ -8,8 +8,9 @@ import { Card } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { formatDate, formatHours, formatTime, formatTimeRange, dateFormat } from '@/lib/format';
+import { formatDate, formatDuration, formatSpan, formatTime, formatTimeRange, dateFormat } from '@/lib/format';
 import { useQuery } from '@/lib/useQuery';
+import { LONG_PUNCH_HOURS } from '@/lib/punch';
 import { PunchControl } from '@/components/punch/PunchControl';
 import { usePunch } from '@/components/punch/PunchProvider';
 import { SavedPunches } from '@/components/punch/SavedPunches';
@@ -41,14 +42,14 @@ export default function TimeclockPage() {
     if (version) void recent.reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
-  const statusTone = { PENDING: 'neutral', APPROVED: 'ok', REJECTED: 'warn' } as const;
+  const statusTone = { PENDING: 'pending', APPROVED: 'ok', REJECTED: 'warn' } as const;
   // Other shifts today, if the person wants a specific one rather than the suggested one.
   const others = (punch?.shifts ?? []).filter((s) => s.id !== punch?.suggested?.id && Date.parse(s.endsAt) > now.getTime() && s.localStartsAt.slice(0, 10) === punch?.shifts[0]?.localStartsAt.slice(0, 10));
 
   return (
     <>
       <PageHeader title={t('timeclock.title')} description={t('timeclock.description')} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card className="flex flex-col gap-5 p-6 sm:p-8">
           <div className="text-center">
             <p className="text-stat tabular-nums" aria-live="off">
@@ -91,12 +92,13 @@ export default function TimeclockPage() {
                   <div className="min-w-0">
                     <p className="text-small font-semibold">{formatDate(p.localClockIn, lng)}</p>
                     <p className="text-caption tabular-nums text-muted">
-                      {p.localClockOut ? formatTimeRange(p.localClockIn, p.localClockOut, lng) : `${formatTime(p.localClockIn, lng)} – …`} · {p.facility.name}
+                      {p.localClockOut ? formatSpan(p.localClockIn, p.localClockOut, lng) : `${formatTime(p.localClockIn, lng)} – …`} · {p.facility.name}
                     </p>
                     {p.status === 'REJECTED' && p.varianceReason ? <p className="mt-1 text-caption text-warn">{p.varianceReason}</p> : null}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {p.hours != null ? <span className="text-small tabular-nums">{formatHours(p.hours, lng, 'payroll')}</span> : null}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {p.hours != null ? <span className="whitespace-nowrap text-small tabular-nums">{formatDuration(p.hours, lng)}</span> : null}
+                    {p.hours != null && p.hours > LONG_PUNCH_HOURS ? <StatusPill tone="warn">{t('timeclock.longPunch')}</StatusPill> : null}
                     <StatusPill tone={statusTone[p.status]}>{t(`timeclock.status.${p.status}`)}</StatusPill>
                   </div>
                 </li>

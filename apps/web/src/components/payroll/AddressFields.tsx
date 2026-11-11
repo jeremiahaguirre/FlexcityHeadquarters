@@ -10,11 +10,11 @@ export interface MailingAddress { line1: string; line2?: string | null; city: st
 export function AddressFields({ prefix = 'addr_', value, disabled }: { prefix?: string; value?: MailingAddress | null; disabled?: boolean }) {
   const { t } = useTranslation();
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid items-end gap-3 sm:grid-cols-2">
       <div className="sm:col-span-2"><Field label={t('address.line1')}>{(p) => <Input {...p} name={`${prefix}line1`} defaultValue={value?.line1 ?? ''} autoComplete="address-line1" maxLength={60} disabled={disabled} />}</Field></div>
       <div className="sm:col-span-2"><Field label={t('address.line2')}>{(p) => <Input {...p} name={`${prefix}line2`} defaultValue={value?.line2 ?? ''} autoComplete="address-line2" maxLength={60} disabled={disabled} />}</Field></div>
       <Field label={t('address.city')}>{(p) => <Input {...p} name={`${prefix}city`} defaultValue={value?.city ?? ''} autoComplete="address-level2" maxLength={40} disabled={disabled} />}</Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-end gap-3">
         <Field label={t('address.province')}>
           {(p) => (
             <Select {...p} name={`${prefix}province`} defaultValue={value?.province ?? ''} disabled={disabled}>

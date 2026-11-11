@@ -43,7 +43,8 @@ function MyPayInner() {
   return (
     <div className="grid gap-6">
       <PageHeader title={t('myPay.title')} description={t('myPay.description')} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      {/* The list is short; the forms need the room. Cards keep their own height. */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Card>
           <CardHeader title={t('myPay.statements')} />
           <CardBody className="pt-2">
@@ -54,7 +55,7 @@ function MyPayInner() {
                 {d.statements.map((s) => (
                   <li key={s.id}>
                     <button type="button" onClick={() => setOpen(s.id)} className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl px-2 py-3 text-left hover:bg-surface">
-                      <span>
+                      <span className="min-w-0">
                         <span className="block text-body-strong">{formatDate(s.payDate, lng, 'dated')}</span>
                         <span className="text-caption text-muted">{t('myPay.grossLine', { gross: formatMoney(s.gross, lng), deductions: formatMoney(s.totalDeductions, lng) })}</span>
                       </span>
