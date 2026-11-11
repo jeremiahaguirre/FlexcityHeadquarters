@@ -97,7 +97,7 @@ function SignedIn({ children }: { children: ReactNode }) {
       </div>
 
       {/* Phone: every console page one tap away. */}
-      <nav aria-label={t('platform.badge')} className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">
+      <nav aria-label={t('platform.badge')} className="fh-tabbar fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden print:hidden">
         <ul className="grid grid-cols-6">
           {NAV.map((n) => {
             const on = active(n);

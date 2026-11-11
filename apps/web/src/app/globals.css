@@ -168,6 +168,22 @@ body {
 /* A new count on a badge gives one small pop. */
 .fh-badge { animation: fh-badge 320ms cubic-bezier(0.3, 1.4, 0.5, 1) both; }
 
+/* Phone keyboard (see KeyboardInset). While someone types: the bottom tab bar steps aside,
+   sheets and the sticky save bar sit above the keyboard (iPhone doesn't resize the page),
+   and fields scrolled into view stop below the sticky header, not under it. */
+html { scroll-padding-top: 5.5rem; scroll-padding-bottom: 1.5rem; }
+@media (max-width: 767px) { html { scroll-padding-bottom: 6rem; } }
+/* iPhone zooms the page into any field with text under 16px; on touch screens no field is smaller. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']), textarea, select { font-size: max(16px, 1em) !important; }
+}
+html[data-kb='open'] { scroll-padding-bottom: calc(var(--kb, 0px) + 1.5rem); }
+html[data-kb='open'] .fh-tabbar { display: none; }
+html[data-kb='open'] .fh-savebar { bottom: calc(var(--kb, 0px) + 0.75rem); }
+@media (max-width: 639px) {
+  html[data-kb='open'] .fh-dialog { margin-bottom: var(--kb, 0px); max-height: calc(92dvh - var(--kb, 0px)); }
+}
+
 /* A grid with no column setting is one column that never grows past its container, so a long
    row (a toolbar, a wide label) wraps or scrolls inside it instead of widening the page on a
    phone. :where() keeps this weaker than any grid-cols-* utility. */

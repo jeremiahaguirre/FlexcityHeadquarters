@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { KeyboardInset } from '@/components/KeyboardInset';
 import localFont from 'next/font/local';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
@@ -23,7 +24,8 @@ export const metadata: Metadata = {
   description: 'Scheduling, timekeeping, safety and HR for municipal staff',
   applicationName: 'FlexcityHeadquarters',
 };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
+// resizes-content: on Android the page shrinks above the keyboard, so sheets and sticky bars stay reachable.
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, interactiveWidget: 'resizes-content' };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   // The static demo has no server: fixed tenant, and the client applies the saved language.
@@ -44,6 +46,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <Providers locale={locale}>
           <SkipLink />
+          <KeyboardInset />
           {DEMO ? <DemoBanner /> : null}
           <ToastProvider dismissLabel={t('common.dismiss')}>
             {children}

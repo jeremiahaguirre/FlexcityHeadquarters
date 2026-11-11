@@ -64,7 +64,7 @@ export function PaySettings() {
     if (r !== undefined) await data.reload();
   }
   const field = (name: keyof Settings, label: string, props: Record<string, unknown> = {}) => (
-    <Field label={label}>{(p) => <Input {...p} name={name} defaultValue={(s[name] as string | undefined) ?? ''} disabled={!editable} {...props} />}</Field>
+    <Field label={label}>{(p) => <Input {...p} name={name} defaultValue={(s[name] as string | undefined) ?? ''} disabled={!editable} autoCorrect="off" spellCheck={false} {...props} />}</Field>
   );
   return (
     <form onSubmit={(e) => void save(e)} className="grid max-w-3xl gap-6">
@@ -138,7 +138,7 @@ export function PaySettings() {
         </CardBody>
       </Card>
       {editable ? (
-        <div className="sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel/95 p-3 shadow-card backdrop-blur lg:bottom-4">
+        <div className="fh-savebar sticky bottom-20 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel/95 p-3 shadow-card backdrop-blur lg:bottom-4">
           <p className="text-small text-muted">{t('payroll.saveAllHint')}</p>
           <Button type="submit" loading={busy === 'save'}>{t('payroll.saveAll')}</Button>
         </div>
@@ -190,14 +190,14 @@ export function BankConnection() {
         <form onSubmit={(e) => void save(e)} className="grid gap-4">
           {b.configured ? <p className="rounded-xl bg-ok/10 px-3 py-2 text-small">{t('payroll.bank.connected', { host: b.host, dir: b.remoteDir })}{b.pgpFingerprint ? ` ${t('payroll.bank.encrypted')}` : ''}</p> : null}
           <div className="grid gap-4 sm:grid-cols-[1fr_7rem]">
-            <Field label={t('payroll.bank.host')}>{(p) => <Input {...p} name="host" required defaultValue={b.host ?? ''} placeholder="sftp.yourbank.com" disabled={!editable} />}</Field>
+            <Field label={t('payroll.bank.host')}>{(p) => <Input {...p} name="host" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={b.host ?? ''} placeholder="sftp.yourbank.com" disabled={!editable} />}</Field>
             <Field label={t('payroll.bank.port')}>{(p) => <Input {...p} name="port" type="number" min={1} max={65535} defaultValue={b.port ?? 22} disabled={!editable} />}</Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('payroll.bank.username')}>{(p) => <Input {...p} name="username" required defaultValue={b.username ?? ''} autoComplete="off" disabled={!editable} />}</Field>
-            <Field label={t('payroll.bank.folder')}>{(p) => <Input {...p} name="remoteDir" required defaultValue={b.remoteDir ?? '/inbound'} disabled={!editable} />}</Field>
+            <Field label={t('payroll.bank.username')}>{(p) => <Input {...p} name="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={b.username ?? ''} autoComplete="off" disabled={!editable} />}</Field>
+            <Field label={t('payroll.bank.folder')}>{(p) => <Input {...p} name="remoteDir" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={b.remoteDir ?? '/inbound'} disabled={!editable} />}</Field>
           </div>
-          <Field label={t('payroll.bank.fingerprint')} hint={t('payroll.bank.fingerprintHint')}>{(p) => <Input {...p} name="fingerprint" required defaultValue={b.hostKeySha256 ? `SHA256:${b.hostKeySha256}` : ''} placeholder="SHA256:…" className="font-mono" disabled={!editable} />}</Field>
+          <Field label={t('payroll.bank.fingerprint')} hint={t('payroll.bank.fingerprintHint')}>{(p) => <Input {...p} name="fingerprint" autoCapitalize="none" autoCorrect="off" spellCheck={false} required defaultValue={b.hostKeySha256 ? `SHA256:${b.hostKeySha256}` : ''} placeholder="SHA256:…" className="font-mono" disabled={!editable} />}</Field>
           <Field label={b.configured ? t('payroll.bank.secretReplace') : t('payroll.bank.secret')} hint={t('payroll.bank.secretHint')}>{(p) => <Textarea {...p} name="secret" rows={3} autoComplete="off" className="font-mono text-caption" disabled={!editable} />}</Field>
           <Field label={t('payroll.bank.pgp')} hint={b.pgpFingerprint ? t('payroll.bank.pgpOnFile', { fingerprint: b.pgpFingerprint.slice(-16) }) : t('payroll.bank.pgpHint')}>{(p) => <Textarea {...p} name="pgp" rows={3} className="font-mono text-caption" disabled={!editable} />}</Field>
           <label className="flex items-start gap-2 text-small"><input type="checkbox" name="autoSend" defaultChecked={b.autoSend ?? false} disabled={!editable} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" /><span><span className="font-semibold">{t('payroll.bank.autoSend')}</span><span className="block text-caption text-muted">{t('payroll.bank.autoSendHelp')}</span></span></label>
