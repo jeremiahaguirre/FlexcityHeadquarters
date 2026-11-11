@@ -1,54 +1,57 @@
 /**
- * Live notification fan-out across API instances: one LISTEN connection per
- * process relays pg_notify payloads to in-process subscribers (SSE streams).
+ * Live notification fan-out across API processes and instances: the process's one LISTEN
+ * connection (lib/listen.ts) relays pg_notify payloads ({ tenantId, userId, id }: ids only) to the
+ * SSE streams open on this process. The stream then tells the browser to refetch, under its tenant.
+ * If the LISTEN connection drops, every open stream is told to refetch once it is back, since
+ * signals sent in between are lost.
  */
-import { ident } from '../../lib/sqlIdent.js';
 import { EventEmitter } from 'node:events';
-import pg from 'pg';
+import { sharedListener, stopListener } from '../../lib/listen.js';
 import { NOTIFY_CHANNEL } from './notifier.js';
-import { logError } from '../../lib/log.js';
 
 export interface LiveSignal {
   tenantId: string;
   userId: string;
   id: string;
+  /** The LISTEN connection came back: refetch, something may have been missed. */
+  resync?: true;
 }
 
 const local = new EventEmitter();
 local.setMaxListeners(0);
-let client: pg.Client | null = null;
+let detach: (() => void) | null = null;
 
 export async function startLiveHub(connectionString: string): Promise<() => Promise<void>> {
-  if (client) return stopLiveHub;
-  const c = new pg.Client({ connectionString });
-  await c.connect();
-  c.on('notification', (msg) => {
-    if (msg.channel !== NOTIFY_CHANNEL || !msg.payload) return;
-    try {
-      const s = JSON.parse(msg.payload) as LiveSignal;
-      local.emit(`user:${s.userId}`, s);
-    } catch {
-      /* ignore malformed payloads */
-    }
-  });
-  c.on('error', (err) => {
-    logError('live hub connection error', err);
-    client = null;
-    setTimeout(() => void startLiveHub(connectionString).catch(() => undefined), 5000);
-  });
-  await c.query(`LISTEN ${ident(NOTIFY_CHANNEL)}`);
-  client = c;
+  const l = sharedListener(connectionString);
+  if (!detach) {
+    const off = l.on(NOTIFY_CHANNEL, (payload) => {
+      try {
+        const s = JSON.parse(payload) as LiveSignal;
+        if (typeof s.userId === 'string') local.emit(`user:${s.userId}`, s);
+      } catch {
+        /* ignore malformed payloads */
+      }
+    });
+    const offRe = l.onReconnect(() => local.emit('resync'));
+    detach = () => (off(), offRe());
+  }
+  await l.start();
   return stopLiveHub;
 }
 
 export async function stopLiveHub(): Promise<void> {
-  const c = client;
-  client = null;
-  if (c) await c.end().catch(() => undefined);
+  detach?.();
+  detach = null;
+  await stopListener();
 }
 
 export function onUserSignal(userId: string, fn: (s: LiveSignal) => void): () => void {
   const key = `user:${userId}`;
+  const resync = () => fn({ tenantId: '', userId, id: '', resync: true });
   local.on(key, fn);
-  return () => local.off(key, fn);
+  local.on('resync', resync);
+  return () => {
+    local.off(key, fn);
+    local.off('resync', resync);
+  };
 }

@@ -4,6 +4,7 @@
  * run. A city with no departments yet keeps the old behaviour.
  */
 import { withTenant } from '../../lib/db.js';
+import { sharedForget } from '../../lib/cacheBus.js';
 
 export interface ManagedScope {
   /** False until the city sets up its first department. */
@@ -34,7 +35,8 @@ export async function managedScope(tenantId: string, userId: string): Promise<Ma
   return v;
 }
 
-export function forgetDepartments(tenantId?: string): void {
+/** Drops cached scopes here and in every other API process (lib/cacheBus.ts). */
+export const forgetDepartments = sharedForget('departments', (tenantId) => {
   if (!tenantId) return cache.clear();
   for (const k of cache.keys()) if (k.startsWith(`${tenantId}:`)) cache.delete(k);
-}
+});

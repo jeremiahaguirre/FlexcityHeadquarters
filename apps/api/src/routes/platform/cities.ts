@@ -247,7 +247,7 @@ async function savePosition(tx: Tx, tenantId: string, positionId: string | null,
   if (body.requiredCertificationIds.length) {
     await tx.positionCertRequirement.createMany({ data: body.requiredCertificationIds.map((certificationId) => ({ tenantId, positionId: pos.id, certificationId })) });
   }
-  forgetDepartmentScope(tenantId);
+  await forgetDepartmentScope(tenantId, tx);
   return pos;
 }
 

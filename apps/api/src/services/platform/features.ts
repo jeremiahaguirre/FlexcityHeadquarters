@@ -11,6 +11,7 @@ import type { Permission } from '../../auth/permissions.js';
 import { type RoleOverrides, parseOverrides } from './roleOverrides.js';
 import { withTenant } from '../../lib/db.js';
 import { type BillingState, billingState } from '../billing/entitlements.js';
+import { sharedForget } from '../../lib/cacheBus.js';
 
 export const FEATURES = {
   shiftBoard: { default: true, permissions: ['shiftboard.claim', 'shiftboard.post', 'shiftboard.approve', 'shiftboard.assign_emergency'] },
@@ -75,7 +76,7 @@ export function withoutDisabled<P extends string>(permissions: Set<P>, features:
 const cache = new Map<string, TenantSettings & { at: number }>();
 const TTL_MS = 30_000;
 
-/** Cached per process; the Dev console clears it when switches change. */
+/** Cached per process for 30 s; changes clear it in every process (forgetFeatures). */
 export async function tenantFeatures(tenantId: string): Promise<FeatureSet> {
   return (await tenantSettings(tenantId)).features;
 }
@@ -96,7 +97,8 @@ export async function tenantSettings(tenantId: string): Promise<TenantSettings> 
   return entry;
 }
 
-export function forgetFeatures(tenantId?: string): void {
+/** Drops the cached settings here and in every other API process (lib/cacheBus.ts). */
+export const forgetFeatures = sharedForget('features', (tenantId) => {
   if (tenantId) cache.delete(tenantId);
   else cache.clear();
-}
+});

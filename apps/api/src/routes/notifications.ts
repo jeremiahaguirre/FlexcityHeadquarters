@@ -58,7 +58,9 @@ notificationsRouter.get('/notifications/stream', (req, res) => {
   res.flushHeaders();
   res.write(`event: ready\ndata: {}\n\n`);
   const off = onUserSignal(a.userId, (s) => {
-    if (s.tenantId === a.tenantId) res.write(`event: notification\ndata: ${JSON.stringify({ id: s.id })}\n\n`);
+    // Only ids travel between processes; the browser refetches /notifications under its own tenant.
+    if (s.resync) res.write(`event: notification\ndata: {}\n\n`);
+    else if (s.tenantId === a.tenantId) res.write(`event: notification\ndata: ${JSON.stringify({ id: s.id })}\n\n`);
   });
   const heartbeat = setInterval(() => res.write(`: keep-alive\n\n`), 25_000);
   req.on('close', () => {

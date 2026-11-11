@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { db } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import { LocalKeyProvider, AwsKmsKeyProvider, type KeyProvider } from '../services/crypto/envelope.js';
+import { sharedForget } from '../lib/cacheBus.js';
 
 export interface PublicTenant {
   disabledAt?: Date | null;
@@ -27,9 +28,7 @@ export async function lookupTenant(subdomain: string): Promise<PublicTenant | nu
 }
 
 /** Branding changed (e.g. from the Dev console): look it up again next time. */
-export function forgetTenantLookup(): void {
-  cache.clear();
-}
+export const forgetTenantLookup = sharedForget('tenantLookup', () => cache.clear());
 
 /** Resolves the tenant from the Host subdomain (kelowna.flexcity.ca → "kelowna"). */
 export function subdomainOf(req: Request): string | null {

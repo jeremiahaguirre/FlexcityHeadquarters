@@ -84,7 +84,7 @@ export async function saveDepartment(tx: Tx, tenantId: string, id: string | null
   await tx.position.updateMany({ where: { departmentId: d.id, id: { notIn: positionIds } }, data: { departmentId: null } });
   if (positionIds.length) await tx.position.updateMany({ where: { id: { in: positionIds } }, data: { departmentId: d.id } });
   if (body.managerIds) await setManagers(tx, tenantId, d.id, body.managerIds);
-  forget(tenantId);
+  await forget(tenantId, tx);
   return d;
 }
 
@@ -95,7 +95,7 @@ export async function deleteDepartment(tx: Tx, tenantId: string, id: string) {
     await tx.customRole.update({ where: { id: r.id }, data: { scopeDepartmentIds: r.scopeDepartmentIds.filter((d) => d !== id) } });
   }
   await tx.department.delete({ where: { id } });
-  forget(tenantId);
+  await forget(tenantId, tx);
 }
 
 /** Checks a department id belongs to this organization (row-level security hides others). */
@@ -118,7 +118,8 @@ export function departmentFilter(department: string | undefined): Prisma.UserWhe
   return { positions: { some: { position: { departmentId: department } } } };
 }
 
-export function forget(tenantId: string) {
-  forgetDepartments(tenantId);
-  forgetCustomPermissions(tenantId);
+/** Given the change's transaction, other API processes drop their copies when it commits. */
+export async function forget(tenantId: string, tx?: Tx) {
+  await forgetDepartments(tenantId, tx);
+  await forgetCustomPermissions(tenantId, tx);
 }

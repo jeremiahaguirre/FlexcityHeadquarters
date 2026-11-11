@@ -13,6 +13,7 @@ import type { Permission } from '../../auth/permissions.js';
 import { z } from 'zod';
 import { type Tx, withTenant } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { sharedForget } from '../../lib/cacheBus.js';
 
 export const CUSTOM_ROLE_PERMISSIONS = {
   everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'expenses.self', 'logbook.write'],
@@ -107,10 +108,11 @@ export function scopeOf(builtIn: ReadonlySet<Permission>, access: CustomAccess, 
   };
 }
 
-export function forgetCustomPermissions(tenantId?: string): void {
+/** Drops cached permissions here and in every other API process (lib/cacheBus.ts). */
+export const forgetCustomPermissions = sharedForget('customRoles', (tenantId) => {
   if (!tenantId) return cache.clear();
   for (const k of cache.keys()) if (k.startsWith(`${tenantId}:`)) cache.delete(k);
-}
+});
 
 /** Who is creating or assigning a role: HR or a manager (null = the Dev console). */
 export interface RoleActor { permissions: ReadonlySet<Permission>; scope: Scope }
@@ -180,7 +182,7 @@ export async function saveCustomRole(tx: Tx, tenantId: string, id: string | null
     await tx.customRole.update({ where: { id }, data });
   }
   const role = id ? await tx.customRole.findUniqueOrThrow({ where: { id } }) : await tx.customRole.create({ data: { ...data, tenantId } });
-  forgetCustomPermissions(tenantId);
+  await forgetCustomPermissions(tenantId, tx);
   return role;
 }
 
@@ -189,7 +191,7 @@ export async function deleteCustomRole(tx: Tx, tenantId: string, id: string, act
   if (existing && !covers(actor, effective(existing, await departmentPositions(tx)))) throw forbidden('This role has capabilities or a department beyond yours.');
   const gone = await tx.customRole.deleteMany({ where: { id } });
   if (!gone.count) throw notFound('Role');
-  forgetCustomPermissions(tenantId);
+  await forgetCustomPermissions(tenantId, tx);
 }
 
 export async function listCustomRoles(tx: Tx) {
@@ -214,7 +216,7 @@ export async function setUserCustomRoles(tx: Tx, tenantId: string, userId: strin
   const final = [...new Set([...unique, ...kept])];
   await tx.userCustomRole.deleteMany({ where: { userId } });
   if (final.length) await tx.userCustomRole.createMany({ data: final.map((customRoleId) => ({ tenantId, userId, customRoleId })) });
-  forgetCustomPermissions(tenantId);
+  await forgetCustomPermissions(tenantId, tx);
 }
 
 /** Whether a person may still use the app (active, not restricted). Cached 30 s; HR changes clear it. */
