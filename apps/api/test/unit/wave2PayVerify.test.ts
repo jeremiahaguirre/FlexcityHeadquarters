@@ -231,3 +231,30 @@ describe('provider exports of the new lines', () => {
     expect(rows[2]).toEqual(['K7X', '1', 'E1', 'CC', '25.00', '', '', 'REPORTING_PAY', '2.00', '', '']);
   });
 });
+
+describe('wave 1: BC/AB daily overtime from the shift start (worked examples)', () => {
+  const p = (a: string, b: string, zone = VAN) => ({ start: at(a, zone), end: at(b, zone), positionId: 'guard' });
+  it('BC 16:00–08:00: one 16-hour day → 8 regular, 4 at 1.5, 4 at 2.0 ($160 + $120 + $160 = $440)', () => {
+    const r = calculatePay(base({ intervals: [p('2026-07-06 16:00', '2026-07-07 08:00')] }));
+    expect([hrs(r, 'REGULAR'), hrs(r, 'OVERTIME_1_5'), hrs(r, 'OVERTIME_2_0')]).toEqual([8, 4, 4]);
+    expect(r.grossWages.toNumber()).toBe(440);
+  });
+  it('BC 06:00–14:00 then 22:00–06:00 the same day: the night is its own day (no overtime; calendar days would give 2 h)', () => {
+    const r = calculatePay(base({ intervals: [p('2026-07-06 06:00', '2026-07-06 14:00'), p('2026-07-06 22:00', '2026-07-07 06:00')] }));
+    expect([hrs(r, 'REGULAR'), hrs(r, 'OVERTIME_1_5')]).toEqual([16, 0]);
+  });
+  it('BC night 22:00–06:00 then 14:00–22:00 inside the same 24 hours: 16 h in that day (our reading, counsel item 9)', () => {
+    const r = calculatePay(base({ intervals: [p('2026-07-06 22:00', '2026-07-07 06:00'), p('2026-07-07 14:00', '2026-07-07 22:00')] }));
+    expect([hrs(r, 'REGULAR'), hrs(r, 'OVERTIME_1_5'), hrs(r, 'OVERTIME_2_0')]).toEqual([8, 4, 4]);
+  });
+  it('ON keeps calendar days: 16:00–08:00 is 8 + 8 on two dates, no daily overtime', () => {
+    const r = calculatePay(base({ timezone: TOR, rules: ON, intervals: [p('2026-07-06 16:00', '2026-07-07 08:00', TOR)] }));
+    expect([hrs(r, 'REGULAR'), hrs(r, 'OVERTIME_1_5')]).toEqual([16, 0]);
+  });
+  it('AB 20:00 Oct 31 – 08:00 Nov 1: one 12-hour day → 8 regular + 4 overtime (Alberta keeps UTC−6 all year in tzdata 2026e: no changeover that night)', () => {
+    const EDM = 'America/Edmonton';
+    const AB = resolveRules('AB', '2026-10-25');
+    const r = calculatePay(base({ timezone: EDM, rules: AB, periodStart: '2026-10-25', weeks: 2, intervals: [p('2026-10-31 20:00', '2026-11-01 08:00', EDM)] }));
+    expect([hrs(r, 'REGULAR'), hrs(r, 'OVERTIME_1_5')]).toEqual([8, 4]);
+  });
+});
