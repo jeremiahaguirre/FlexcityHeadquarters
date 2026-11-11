@@ -11,7 +11,7 @@ The pieces:
 | Alert rules | [`ops/monitoring/alerts.yml`](../ops/monitoring/alerts.yml), Prometheus format |
 | Dashboard | [`ops/monitoring/dashboard.json`](../ops/monitoring/dashboard.json), Grafana |
 | Error reports | Sentry-compatible service when `SENTRY_DSN` is set (to be chosen, Canadian-hosted; see [SUBPROCESSORS.md](SUBPROCESSORS.md)) |
-| Slow queries | Logged as `[slow-query] <ms> ms: <SQL with placeholders>` and counted in `fh_db_slow_queries_total` (`SLOW_QUERY_MS`, default 500; 0 turns it off). Parameter values are never logged. |
+| Slow queries | Logged as `[slow-query] <ms> ms: <SQL with placeholders>` (the column list shortened to `SELECT …`) and counted in `fh_db_slow_queries_total` (`SLOW_QUERY_MS`, default 500; 0 turns it off). Parameter values are never logged. |
 
 A unit test (`apps/api/test/unit/alertRules.test.ts`) fails if an alert names a metric the API doesn't export, or links to a section of this page that doesn't exist.
 

@@ -191,11 +191,21 @@ describe('slow queries', () => {
     onQuery(812.4, 'SELECT "User"."email"\n  FROM "User" WHERE "User"."id" = $1', false, 500);
     expect(warn).toHaveBeenCalledTimes(1);
     const line = String(warn.mock.calls[0]![0]);
-    expect(line).toBe('[slow-query] 812 ms: SELECT "User"."email" FROM "User" WHERE "User"."id" = $1');
+    expect(line).toBe('[slow-query] 812 ms: SELECT … FROM "User" WHERE "User"."id" = $1');
     expect(m.dbSlowQueries.get()).toBe(before + 1);
     expect(m.renderMetrics()).toContain(`fh_db_slow_queries_total ${before + 1}`);
     onQuery(9999, 'SELECT 2', false, 0); // 0 = off
     expect(warn).toHaveBeenCalledTimes(1);
     warn.mockRestore();
+  });
+
+  it('shortens the column list so the WHERE clause of a long Prisma query is kept', async () => {
+    const { shortSql } = await import('../../src/lib/db.js');
+    const cols = Array.from({ length: 30 }, (_, i) => `"public"."Shift"."column${i}"`).join(', ');
+    const out = shortSql(`SELECT ${cols} FROM "public"."Shift" WHERE ("public"."Shift"."userId" = $1 AND "public"."Shift"."startsAt" >= $2) OFFSET $3`);
+    expect(out).toBe('SELECT … FROM "public"."Shift" WHERE ("public"."Shift"."userId" = $1 AND "public"."Shift"."startsAt" >= $2) OFFSET $3');
+    expect(shortSql('INSERT INTO "T" ("a") VALUES ($1)')).toBe('INSERT INTO "T" ("a") VALUES ($1)');
+    expect(shortSql('COMMIT')).toBe('COMMIT');
+    expect(shortSql('x'.repeat(900))).toHaveLength(400);
   });
 });

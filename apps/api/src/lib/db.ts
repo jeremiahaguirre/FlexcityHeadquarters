@@ -21,11 +21,19 @@ export function db(): PrismaClient {
 }
 
 /** One query finished: time it, and log it if slow (text only, trimmed; never its parameters). */
+/**
+ * The query as logged: whitespace collapsed and Prisma's long column list shortened to "SELECT …",
+ * so the FROM and WHERE (what explains a slow query) fit in the 400 characters kept.
+ */
+export function shortSql(sql: string): string {
+  return sql.replace(/\s+/g, ' ').replace(/^SELECT (?:(?!\bFROM\b).)+? FROM /, 'SELECT … FROM ').slice(0, 400);
+}
+
 export function onQuery(durationMs: number, sql: string, timed: boolean, slowMs: number) {
   if (timed) dbQueryDuration.observe({}, durationMs / 1000);
   if (slowMs > 0 && durationMs >= slowMs) {
     dbSlowQueries.inc({});
-    console.warn(`[slow-query] ${Math.round(durationMs)} ms: ${sql.replace(/\s+/g, ' ').slice(0, 400)}`);
+    console.warn(`[slow-query] ${Math.round(durationMs)} ms: ${shortSql(sql)}`);
   }
 }
 
