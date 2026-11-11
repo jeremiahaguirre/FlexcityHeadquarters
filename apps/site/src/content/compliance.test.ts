@@ -206,3 +206,32 @@ describe('legal pages', () => {
     for (const k of keys) for (const p of page) expect(p, k).toContain(k);
   });
 });
+
+describe('legal text matches the code (verification, November 2026)', () => {
+  const text = (d: Parameters<typeof legalDoc>[0], lang: 'en' | 'fr') => { const x = legalDoc(d, lang); return [x.intro, ...x.sections.flatMap((s) => [s.heading, ...s.body])].join(' '); };
+  it.each(['en', 'fr'] as const)('%s: taxes name every provincial tax billing charges (PST in BC/SK, RST in MB, QST in QC)', (lang) => {
+    const api = readFileSync(join(REPO, 'apps/api/src/services/billing/tax.ts'), 'utf8');
+    for (const t of ['PST', 'RST', 'QST']) expect(api).toContain(`'${t}'`);
+    const words = lang === 'en' ? ['PST', 'RST', 'QST'] : ['TVP', 'TVD', 'TVQ'];
+    for (const s of [text('terms', lang), text('refunds', lang), copy(lang).plans.renewalShort, copy(lang).plans.taxes]) for (const w of words) expect(s, w).toContain(w);
+  });
+  it.each(['en', 'fr'] as const)('%s: no response-time promise without a documented commitment; AODA cited for WCAG 2.0', (lang) => {
+    const a = text('accessibility', lang);
+    expect(a).not.toMatch(/business days|jours ouvrables/);
+    expect(a).toContain('WCAG 2.0');
+  });
+  it.each(['en', 'fr'] as const)('%s: offline queues are not said to be wiped at sign-out (only rosters and cached pages are)', (lang) => {
+    const c = text('cookies', lang);
+    expect(c).not.toMatch(/cleared at sign-out\. Necessary|effacés à la déconnexion\. Nécessaire/);
+    const api = readFileSync(join(REPO, 'apps/web/src/lib/api.ts'), 'utf8');
+    expect(api).toContain("localStorage.removeItem('fh-lessons-cache')");
+  });
+  it.each(['en', 'fr'] as const)('%s: privacy policy cites s. 27 for portability and s. 28.1 for de-indexing, mentions booking requests and the unchosen email provider', (lang) => {
+    const p = text('privacy', lang);
+    expect(p).toMatch(lang === 'en' ? /portability, Law 25, s\. 27/ : /portabilité, Loi 25, art\. 27/);
+    expect(p).toMatch(/28\.1/);
+    expect(p).toMatch(lang === 'en' ? /booking requests/ : /demandes de réservation/i);
+    expect(p).toMatch(lang === 'en' ? /not yet chosen/ : /pas encore choisi/);
+    expect(p).toMatch(lang === 'en' ? /planned production hosting, at rest/ : /hébergement de production prévu, au repos/);
+  });
+});

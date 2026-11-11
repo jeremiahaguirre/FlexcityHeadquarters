@@ -263,7 +263,7 @@ const en = {
     chips: ['Prices in Canadian dollars', 'Staff included with every plan', 'Trials and pilots available'],
     cta: 'Get a quote',
     ctaNote: 'We reply within one business day.',
-    renewalShort: 'Prices are before tax (GST/HST, QST in Quebec). Your written quote confirms the price, billing frequency and term. Terms renew automatically month to month at the same rates, without the commitment discount, unless you cancel in writing before the term ends; we email a reminder 30 days before.',
+    renewalShort: 'Prices are before tax (GST/HST, and PST, RST or QST where it applies). Your written quote confirms the price, billing frequency and term. Terms renew automatically month to month at the same rates, without the commitment discount, unless you cancel in writing before the term ends; we email a reminder 30 days before.',
     renewalTermsLink: 'Subscription and renewal terms',
     jump: 'Compare the plans',
     shotAlt: 'The Billing page in the app: the plan, staff this month against the allowance, and each option included.',
@@ -371,7 +371,7 @@ const en = {
     billing: [
       { icon: 'receipt', title: 'Pay monthly, your way', body: 'By invoice (EFT or cheque, net 30 by default), by credit card, or automatically by pre-authorized debit, set up by your finance team in the app.' },
       { icon: 'calendar', title: 'Monthly, yearly or a set term', body: 'Pay monthly with no commitment, yearly in advance, or commit to a term of up to five years, invoiced monthly, yearly or all up front, with prices held for the term.' },
-      { icon: 'calculator', title: 'Canadian dollars, plus tax', body: 'Prices are in CAD and exclude GST/HST and PST.' },
+      { icon: 'calculator', title: 'Canadian dollars, plus tax', body: 'Prices are in CAD and exclude GST/HST and provincial sales tax (PST, RST or QST).' },
       { icon: 'flask', title: 'Trials and pilots', body: 'A trial, or a pilot at one facility, is available. Ask when you request your quote.' },
       { icon: 'clipboard', title: 'RFPs welcome', body: 'Multi-facility or multi-year contracts often go through a formal RFP. We’re happy to respond.' },
       { icon: 'building', title: 'In writing first', body: 'We confirm the plan, each facility’s size, the staff allowance and your setup fee in writing before you commit.' },
@@ -397,7 +397,7 @@ const en = {
     ],
     endTitle: 'Get a quote for your facilities',
     endBody: 'Tell us how many facilities you run and which departments would use it. We’ll come back with a plan, each facility’s size, the staff allowance and a setup fee.',
-    taxes: 'Prices are in Canadian dollars and exclude GST/HST and PST. Multi-facility or multi-year contracts often go through a formal RFP; we’re happy to respond.',
+    taxes: 'Prices are in Canadian dollars and exclude GST/HST and provincial sales tax (PST, RST or QST). Multi-facility or multi-year contracts often go through a formal RFP; we’re happy to respond.',
   },
   demo: {
     title: 'Try FlexcityHeadquarters',
@@ -833,7 +833,7 @@ const fr: DeepString<Copy> = {
     chips: ['Prix en dollars canadiens', 'Personnel inclus dans chaque forfait', 'Essais et projets pilotes offerts'],
     cta: 'Obtenir une soumission',
     ctaNote: 'Nous répondons en un jour ouvrable.',
-    renewalShort: 'Prix avant taxes (TPS/TVH, TVQ au Québec). Votre soumission écrite confirme le prix, la fréquence de facturation et la durée. L’abonnement se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement, sauf si vous résiliez par écrit avant la fin de la durée; nous envoyons un rappel 30 jours avant.',
+    renewalShort: 'Prix avant taxes (TPS/TVH et, s’il y a lieu, TVP, TVD ou TVQ). Votre soumission écrite confirme le prix, la fréquence de facturation et la durée. L’abonnement se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement, sauf si vous résiliez par écrit avant la fin de la durée; nous envoyons un rappel 30 jours avant.',
     renewalTermsLink: 'Conditions d’abonnement et de renouvellement',
     jump: 'Comparer les forfaits',
     shotAlt: 'La page Facturation de l’application : le forfait, le personnel du mois selon l’allocation, et chaque option incluse.',
@@ -941,7 +941,7 @@ const fr: DeepString<Copy> = {
     billing: [
       { icon: 'receipt', title: 'Payez au mois, à votre façon', body: 'Par facture (TEF ou chèque, net 30 jours par défaut), par carte de crédit ou automatiquement par débit préautorisé, configuré par votre équipe des finances dans l’application.' },
       { icon: 'calendar', title: 'Au mois, à l’année ou pour une durée fixe', body: 'Payez au mois sans engagement, à l’année d’avance, ou engagez-vous jusqu’à cinq ans, facturé au mois, chaque année ou en entier d’avance, prix garantis pendant la durée.' },
-      { icon: 'calculator', title: 'Dollars canadiens, taxes en sus', body: 'Les prix sont en dollars canadiens, TPS/TVH et TVP en sus.' },
+      { icon: 'calculator', title: 'Dollars canadiens, taxes en sus', body: 'Les prix sont en dollars canadiens, TPS/TVH et taxe de vente provinciale (TVP, TVD ou TVQ) en sus.' },
       { icon: 'flask', title: 'Essais et projets pilotes', body: 'Un essai, ou un projet pilote dans une installation, est possible. Demandez-le avec votre soumission.' },
       { icon: 'clipboard', title: 'Appels d’offres bienvenus', body: 'Les contrats pour plusieurs installations ou plusieurs années passent souvent par un appel d’offres. Nous y répondons volontiers.' },
       { icon: 'building', title: 'Par écrit d’abord', body: 'Nous confirmons le forfait, la taille de chaque installation, l’allocation de personnel et les frais de mise en service par écrit avant votre engagement.' },
@@ -967,7 +967,7 @@ const fr: DeepString<Copy> = {
     ],
     endTitle: 'Obtenez une soumission pour vos installations',
     endBody: 'Dites-nous combien d’installations vous gérez et quels services l’utiliseraient. Nous vous proposerons un forfait, la taille de chaque installation, l’allocation de personnel et les frais de mise en service.',
-    taxes: 'Les prix sont en dollars canadiens, TPS/TVH et TVP en sus. Les contrats pour plusieurs installations ou plusieurs années passent souvent par un appel d’offres; nous y répondons volontiers.',
+    taxes: 'Les prix sont en dollars canadiens, TPS/TVH et taxe de vente provinciale (TVP, TVD ou TVQ) en sus. Les contrats pour plusieurs installations ou plusieurs années passent souvent par un appel d’offres; nous y répondons volontiers.',
   },
   demo: {
     title: 'Essayez FlexcityHeadquarters',
