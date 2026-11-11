@@ -1059,6 +1059,9 @@ model Shift {
   callBack       Boolean     @default(false)
   /// Made by "Generate shifts" from a rotation template.
   rotationTemplateId String? @db.Uuid
+  /// Made by applying a weekly shift template: the slot, and the application (undo cancels its drafts).
+  templateSlotId        String? @db.Uuid
+  templateApplicationId String? @db.Uuid
   createdAt      DateTime    @default(now()) @db.Timestamptz(3)
   updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
 
@@ -1070,6 +1073,8 @@ model Shift {
 
   @@index([tenantId, facilityId, startsAt, endsAt])
   @@index([userId, startsAt])
+  @@index([templateSlotId, startsAt])
+  @@index([templateApplicationId])
 }
 
 /// A shift on the Shift Board: either an open shift or a swap offer.
@@ -4111,4 +4116,108 @@ model OnCallPeriod {
 
   @@index([tenantId, departmentId, startsAt])
   @@index([userId, startsAt])
+}
+
+/// A department's standard week ("Summer", "School year"): slots that "Apply" turns into DRAFT
+/// shifts for a week or a range (never published by itself). See services/scheduling/shiftTemplates.ts.
+model ShiftTemplate {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  name           String
+  departmentId   String?   @db.Uuid
+  /// The local dates it's meant for (inclusive); null = no limit. Weeks outside are skipped.
+  validFrom      DateTime? @db.Date
+  validTo        DateTime? @db.Date
+  active         Boolean   @default(true)
+  /// With the organization's automatic drafts on, the worker keeps this many weeks ahead drafted (0 = never).
+  autoWeeksAhead Int       @default(0)
+  createdById    String    @db.Uuid
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  slots        ShiftTemplateSlot[]
+  applications ShiftTemplateApplication[]
+
+  @@index([tenantId, departmentId])
+}
+
+/// One line of a standard week: these days, these times, this position at this facility, this many people.
+model ShiftTemplateSlot {
+  id                 String @id @default(uuid()) @db.Uuid
+  tenantId           String @db.Uuid
+  templateId         String @db.Uuid
+  /// 0 = Sunday … 6 = Saturday, in the facility's time zone.
+  daysOfWeek         Int[]
+  /// Minutes after local midnight; an end past 1440 runs past midnight.
+  startMinute        Int
+  endMinute          Int
+  facilityId         String @db.Uuid
+  positionId         String @db.Uuid
+  /// People needed: one draft shift each.
+  headcount          Int    @default(1)
+  unpaidBreakMinutes Int?
+  sortOrder          Int    @default(0)
+
+  template ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+}
+
+/// One "Apply" of a template to a range (or the worker's automatic drafts ahead): what it made, for undo.
+model ShiftTemplateApplication {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  templateId  String    @db.Uuid
+  /// Local dates, [fromDate, toDate).
+  fromDate    DateTime  @db.Date
+  toDate      DateTime  @db.Date
+  automatic   Boolean   @default(false)
+  createdById String?   @db.Uuid
+  created     Int       @default(0)
+  /// Occurrences skipped or flagged: [{ slotId, date, code }] (HOLIDAY_CLOSED, FACILITY_CLOSED, OUTSIDE_HOURS, STAT_HOLIDAY).
+  notes       Json      @default("[]")
+  undoneAt    DateTime? @db.Timestamptz(3)
+  undoneById  String?   @db.Uuid
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  template ShiftTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, templateId, createdAt])
+}
+
+enum ShiftPreferenceKind {
+  PREFER
+  AVOID
+}
+
+/// Shifts a person would like (or would rather not) work: a soft wish, unlike availability (can work).
+/// Seen only by the person and the schedulers of their department; Fill the schedule weighs it.
+model ShiftPreference {
+  id          String              @id @default(uuid()) @db.Uuid
+  tenantId    String              @db.Uuid
+  userId      String              @db.Uuid
+  kind        ShiftPreferenceKind
+  /// Empty = any day. 0 = Sunday.
+  daysOfWeek  Int[]
+  /// A time window (minutes after local midnight); null = any time. A shift matches when it starts inside it.
+  startMinute Int?
+  endMinute   Int?
+  positionId  String?             @db.Uuid
+  facilityId  String?             @db.Uuid
+  note        String?
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime            @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, userId])
+}
+
+/// The most a person would like to work in a week (a wish; their hard weekly cap is User.weeklyMaxHours).
+model ShiftPreferenceLimit {
+  userId         String   @id @db.Uuid
+  tenantId       String   @db.Uuid
+  maxWeeklyHours Decimal? @db.Decimal(5, 2)
+  maxDaysPerWeek Int?
+  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId])
 }
