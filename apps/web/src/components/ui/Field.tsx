@@ -48,8 +48,41 @@ export function Field({
   );
 }
 
+/**
+ * Phone keyboards: sensible defaults from the field's type, which any prop overrides.
+ * Email, web addresses, passwords and codes never get auto-capitals or autocorrect;
+ * numbers get the number pad (with a decimal point when the step allows one, and
+ * the full keyboard when negatives are allowed, since iPhone's pad has no minus key).
+ */
+function keyboardFor(p: InputHTMLAttributes<HTMLInputElement>): InputHTMLAttributes<HTMLInputElement> {
+  const plain = { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false } as const;
+  switch (p.type) {
+    case 'email':
+      return { ...plain, inputMode: 'email' };
+    case 'url':
+      return { ...plain, inputMode: 'url' };
+    case 'password':
+      return plain;
+    case 'tel':
+      return { inputMode: 'tel' };
+    case 'search':
+      return { enterKeyHint: 'search', autoCorrect: 'off' };
+    case 'number': {
+      const min = p.min === undefined || p.min === '' ? undefined : Number(p.min);
+      if (min === undefined || min < 0) return {};
+      const step = p.step === undefined ? 1 : Number(p.step);
+      return { inputMode: Number.isInteger(step) && step > 0 ? 'numeric' : 'decimal' };
+    }
+    default:
+      // A field that only takes digits (bank transit, institution, a verification code) gets the number pad.
+      if (typeof p.pattern === 'string' && /^(\\d|\[0-9\])(\{[\d,]+\}|[+*])?$/.test(p.pattern)) return { ...plainCode, inputMode: 'numeric' };
+      return {};
+  }
+}
+const plainCode = { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false } as const;
+
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...rest }, ref) {
-  return <input ref={ref} className={cn(control, 'h-11', className)} {...rest} />;
+  return <input ref={ref} className={cn(control, 'h-11', className)} {...keyboardFor(rest)} {...rest} />;
 });
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(function Select({ className, ...rest }, ref) {
