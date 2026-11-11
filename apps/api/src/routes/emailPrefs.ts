@@ -35,8 +35,16 @@ emailPrefsRouter.get(
 emailPrefsRouter.post(
   '/email/unsubscribe',
   h(async (req, res) => {
-    if (!(await allow(`unsub:${req.ip}`, 30, 60 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many requests. Try again later.');
-    const email = emailOf(req);
+    // A valid signed link always works (CASL s. 11: the mechanism must be readily usable). Mail apps'
+    // one-click POSTs come from their own servers, so many people share one address: only bad
+    // tokens are rate-limited.
+    let email: string;
+    try {
+      email = emailOf(req);
+    } catch (e) {
+      if (!(await allow(`unsub:${req.ip}`, 30, 60 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many requests. Try again later.');
+      throw e;
+    }
     const oneClick = (req.body as Record<string, string> | undefined)?.['List-Unsubscribe'] === 'One-Click';
     const locale = (req.body as { locale?: string } | undefined)?.locale === 'fr-CA' ? 'fr-CA' : 'en-CA';
     await recordUnsubscribe(email, oneClick ? 'one-click' : 'link', locale);

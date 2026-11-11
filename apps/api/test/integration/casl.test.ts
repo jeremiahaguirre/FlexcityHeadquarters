@@ -82,6 +82,20 @@ describe('CASL: commercial email', () => {
     expect((await owner.lead.findFirstOrThrow({ where: { email: b, kind: 'UNSUBSCRIBE' } })).message).toMatch(/one-click/);
   });
 
+  it('valid links always work from a shared address (mail apps’ one-click servers); only bad tokens are rate-limited', async () => {
+    resetLimits();
+    const ip = '203.0.113.77';
+    for (let i = 0; i < 35; i++) {
+      const r = await request(server).post(`/api/email/unsubscribe?token=${encodeURIComponent(unsubscribeToken(addr()))}`).set('x-forwarded-for', ip).type('form').send('List-Unsubscribe=One-Click');
+      expect(r.status).toBe(200);
+    }
+    const codes: number[] = [];
+    for (let i = 0; i < 32; i++) codes.push((await request(server).post('/api/email/unsubscribe?token=nope').set('x-forwarded-for', ip).send({})).status);
+    expect(codes.slice(0, 30).every((c) => c === 400)).toBe(true);
+    expect(codes.at(-1)).toBe(429);
+    resetLimits();
+  });
+
   it('refuses to send in production until the legal name and mailing address are configured', async () => {
     const c = config();
     const before = { env: c.NODE_ENV, name: c.COMPANY_LEGAL_NAME, address: c.COMPANY_MAILING_ADDRESS };
