@@ -30,7 +30,7 @@ an asset is added. Anything of unknown origin must be replaced before launch.
 
 | Asset | Source | Licence |
 | --- | --- | --- |
-| `apps/site/public/screens/*.png` (case file, phone shift board and head count, EN/FR; `og.png`) | Screenshots of FH's own app, taken from the demo organization "City of Lakeview (demo)" with invented people (e.g. "Jordan Singh", "Sam Okafor") | FH's own. Checked one (`desktop-casefile.png`): fictional city, demo crest. Re-check every new screenshot for real names or real municipal crests. |
+| `apps/site/public/screens/*.png` (case file, phone shift board and head count, EN/FR; `og.png`) | Screenshots of FH's own app, taken from the demo organization "City of Lakeview (demo)" with invented people (e.g. "Jordan Singh", "Sam Okafor") | FH's own. Checked one (`desktop-casefile.png`): only the invented "Jordan Singh", no organization name or crest in view. Re-check every new screenshot for real names or real municipal crests. |
 | `apps/site/public/clips/*.mp4` and poster `*.jpg` | Screen recordings of the demo app (board, clock-in, head count), EN/FR, light/dark | FH's own; silent, with a text description on the page. |
 
 ## Demo and seed data
