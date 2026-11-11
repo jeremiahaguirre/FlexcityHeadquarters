@@ -16,7 +16,7 @@ const TOKEN = 'metrics-token-for-tests-0123456789';
 let t: Awaited<ReturnType<typeof seedTenant>>;
 
 beforeAll(async () => {
-  t = await seedTenant('omicron', 1);
+  t = await seedTenant('obsvty', 1);
 });
 afterEach(() => {
   setProbe(null);
@@ -114,13 +114,13 @@ describe('health', () => {
   });
 
   it('flags an email that has waited too long', async () => {
-    const old = await owner.emailOutbox.create({ data: { tenantId: t.tenant.id, toEmail: 'late@omicron.test', template: 'x', createdAt: new Date(Date.now() - 2 * 3600_000) } });
+    const old = await owner.emailOutbox.create({ data: { tenantId: t.tenant.id, toEmail: 'late@obsvty.test', template: 'x', createdAt: new Date(Date.now() - 2 * 3600_000) } });
     try {
       const r = await request(server).get('/readyz');
       expect(r.status).toBe(200);
       expect(r.body.checks.outbox).toMatchObject({ status: 'warn', reason: expect.stringContaining('email waiting longer than') });
       expect(r.body.checks.outbox.oldestAgeS).toBeGreaterThanOrEqual(7200);
-      expect(JSON.stringify(r.body)).not.toContain('omicron');
+      expect(JSON.stringify(r.body)).not.toContain('obsvty');
     } finally {
       await owner.emailOutbox.delete({ where: { id: old.id } });
     }
@@ -188,7 +188,7 @@ describe('metrics', () => {
 });
 
 describe('browser error reports', () => {
-  const report = (body: object, ip = '203.0.113.7') => request(server).post('/api/client-errors').set('X-Forwarded-For', ip).set('x-tenant-subdomain', 'omicron').send(body);
+  const report = (body: object, ip = '203.0.113.7') => request(server).post('/api/client-errors').set('X-Forwarded-For', ip).set('x-tenant-subdomain', 'obsvty').send(body);
 
   it('passes a scrubbed report to the reporter, with the organization’s id', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});

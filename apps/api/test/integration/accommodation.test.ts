@@ -47,7 +47,8 @@ describe('accommodation and return to work', () => {
     expect(r.status).toBe(422);
     const block = r.body.details.blocks.find((b: { code: string }) => b.code === 'ACCOMMODATION');
     expect(block.message).toBe("Outside this person's work restrictions.");
-    expect(JSON.stringify(r.body)).not.toMatch(/Return to work|4/);
+    const { requestId: _id, ...body } = r.body; // the request id is random and may hold a 4
+    expect(JSON.stringify(body)).not.toMatch(/Return to work|4/);
   });
 
   it('the employee sees their own restrictions; supervisors cannot read the case', async () => {
