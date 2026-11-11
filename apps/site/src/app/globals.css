@@ -75,50 +75,28 @@ details > summary::-webkit-details-marker { display: none; }
 
 
 /*
- * Night surfaces: the hero, the working-alone band and the closing call to action are
- * always dark (in light and dark mode alike), like a city before the 6 a.m. opener.
- * Colours here are fixed, and every text colour on them is checked for AA contrast.
+ * Night surfaces: the home hero, the working-alone band and the closing calls to action are
+ * always dark (in light and dark mode alike), like a city before the 6 a.m. opener. One calm
+ * teal light, no grids, grain or glows. Colours here are fixed, and every text colour on them
+ * is checked for AA contrast.
  */
 .night {
   position: relative;
   isolation: isolate;
   color: #fff;
   background:
-    radial-gradient(70% 55% at 85% 108%, rgb(197 242 58 / 0.2), transparent 60%),
-    radial-gradient(60% 60% at 8% -8%, rgb(45 212 191 / 0.3), transparent 62%),
-    radial-gradient(45% 45% at 62% 18%, rgb(192 38 211 / 0.1), transparent 70%),
-    linear-gradient(180deg, #031113 0%, #062526 52%, #0a3536 100%);
+    radial-gradient(60% 60% at 8% -8%, rgb(45 212 191 / 0.18), transparent 62%),
+    linear-gradient(180deg, #031113 0%, #062526 60%, #0a3536 100%);
 }
-.night-flat { background: radial-gradient(60% 80% at 100% 0%, rgb(45 212 191 / 0.22), transparent 60%), radial-gradient(50% 70% at 0% 100%, rgb(197 242 58 / 0.12), transparent 60%), #041719; }
-/* Fine grid that fades out, and a film grain, both decorative. */
-.night::before {
-  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-  background-image: linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px);
-  background-size: 56px 56px;
-  -webkit-mask-image: radial-gradient(80% 70% at 60% 30%, #000 20%, transparent 75%);
-  mask-image: radial-gradient(80% 70% at 60% 30%, #000 20%, transparent 75%);
-}
-.grain::after {
-  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0.16; mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-.glass {
-  background: linear-gradient(160deg, rgb(255 255 255 / 0.13), rgb(255 255 255 / 0.05));
-  border: 1px solid rgb(255 255 255 / 0.16);
-  box-shadow: 0 24px 60px -20px rgb(0 0 0 / 0.6), inset 0 1px 0 rgb(255 255 255 / 0.14);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  backdrop-filter: blur(16px) saturate(140%);
-}
-.glass-solid { background: linear-gradient(160deg, #123f40, #0a2c2e); border: 1px solid rgb(255 255 255 / 0.16); box-shadow: 0 24px 60px -18px rgb(0 0 0 / 0.65), inset 0 1px 0 rgb(255 255 255 / 0.12); }
-.text-dawn { background: linear-gradient(95deg, #5eead4 0%, #c5f23a 85%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.night-flat { background: #041719; }
+/* Interior page headers: flat and brand-tinted, following the visitor's light or dark scheme. */
+.tint { background: rgb(var(--brand) / 0.07); }
+/* The product drawings (always on a night surface): solid panels, no glass. */
+.mock-panel { background: #0f3133; border: 1px solid rgb(255 255 255 / 0.14); box-shadow: 0 16px 40px -20px rgb(0 0 0 / 0.6); }
 .text-mega { font-size: clamp(2.375rem, 1.1rem + 5.6vw, 5.25rem); line-height: 1.02; letter-spacing: -0.04em; font-weight: 800; }
 .text-hero2 { font-size: clamp(2.25rem, 1.3rem + 3.8vw, 4rem); line-height: 1.05; letter-spacing: -0.035em; font-weight: 800; }
 .numeral { font-size: clamp(3.25rem, 2rem + 5vw, 6rem); line-height: 0.95; letter-spacing: -0.05em; font-weight: 800; font-variant-numeric: tabular-nums; }
 .kicker-num { font-variant-numeric: tabular-nums; }
-/* Light sections get a faint teal wash at the top so they are not flat. */
-.wash { background-image: radial-gradient(60% 40% at 50% 0%, rgb(var(--brand) / 0.09), transparent 70%); background-repeat: no-repeat; }
-.card-glow { position: relative; }
-.card-glow::before { content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; background: linear-gradient(140deg, rgb(var(--brand) / 0.9), rgb(var(--chartreuse) / 0.9)); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
 /* Lone-worker ring: a static three-quarter ring unless motion is allowed. */
 .ring-track { stroke: rgb(255 255 255 / 0.14); }
 .ring-bar { stroke: #c5f23a; stroke-dasharray: 100; stroke-dashoffset: 3; }
@@ -146,13 +124,10 @@ details > summary::-webkit-details-marker { display: none; }
   .mark-in { will-change: transform, opacity; }
   @keyframes fh-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   @keyframes fh-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-  @keyframes fh-drift { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(4%, 6%, 0) scale(1.12); } }
   @keyframes fh-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.6); opacity: 0.55; } }
   .rise { animation: fh-rise 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .rise-2 { animation-delay: 120ms; }
   .float { animation: fh-float 6s ease-in-out infinite; }
-  .drift { animation: fh-drift 16s ease-in-out infinite; will-change: transform; }
-  .drift-slow { animation-duration: 22s; animation-direction: reverse; }
   .pulse-dot { animation: fh-pulse 2.4s ease-in-out infinite; }
 
 

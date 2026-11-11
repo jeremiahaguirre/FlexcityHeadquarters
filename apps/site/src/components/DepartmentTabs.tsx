@@ -66,7 +66,7 @@ export function DepartmentTabs({ items, label }: { items: Dept[]; label: string 
             <span aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 text-brand/[0.07]">
               <Icon name={d.icon} className="h-64 w-64" />
             </span>
-            <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,rgb(var(--brand)),rgb(var(--chartreuse)))]" />
+            <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-brand" />
             <div className="relative max-w-2xl">
               <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand text-brand-contrast shadow-lift">
                 <Icon name={d.icon} className="h-7 w-7" />

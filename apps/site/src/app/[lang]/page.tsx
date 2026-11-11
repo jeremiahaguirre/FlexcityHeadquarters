@@ -3,12 +3,10 @@ import Link from 'next/link';
 import { Icon } from '@/components/Icon';
 import { AliveMark } from '@/components/AliveMark';
 import { LogoMark } from '@/components/Logo';
-import { CountUp } from '@/components/Motion';
 import { reveal } from '@/lib/reveal';
 import { AppClips } from '@/components/AppClips';
 import { HeroConsole } from '@/components/Mock';
 import { Kicker, Section, SectionHead } from '@/components/Section';
-import { cn } from '@/lib/cn';
 import { type Lang, copy } from '@/content/copy';
 import { SITE_URL, pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
@@ -24,7 +22,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
   const c = copy(params.lang);
   const h = c.home;
   const m = h.mock;
-  const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] shadow-[0_10px_30px_-8px_rgb(197_242_58/0.55)] hover:bg-[#D4F767]';
+  const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] hover:bg-[#D4F767]';
   const btnGhost = 'inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15';
   // Structured data: who we are and what we sell (no ratings or reviews we don't have).
   const ld = [
@@ -44,63 +42,37 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
-      {/* Hero: always dark, the statement across the full width, the product picture beside the pitch */}
-      <section className="night grain relative overflow-hidden">
+      {/* Hero: the one dark band on the site, calm: the statement, the pitch, and the product picture beside it */}
+      <section className="night relative overflow-hidden">
         {/* The FH mark, large and faded, drawing itself in behind the statement and then staying gently alive. */}
         <div aria-hidden="true" className="pointer-events-none absolute -right-28 -top-20 md:-right-12 md:-top-28">
-          <div className="opacity-[0.13]">
-            <AliveMark size={560} className="mark-breathe h-[22rem] w-[22rem] md:h-[38rem] md:w-[38rem]" />
+          <div className="opacity-[0.08]">
+            <AliveMark size={560} className="h-[22rem] w-[22rem] md:h-[38rem] md:w-[38rem]" />
           </div>
         </div>
-        <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-12 md:px-6 md:pb-20 md:pt-20">
+        <div className="relative mx-auto grid max-w-7xl items-start gap-12 px-4 pb-14 pt-12 md:px-6 md:pb-20 md:pt-20 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
           <div className="rise">
-            <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3.5 py-1.5 text-caption font-semibold text-white">
-              <span className="pulse-dot h-2 w-2 rounded-full bg-[#C5F23A]" aria-hidden="true" />
-              {h.eyebrow}
-            </p>
-            <h1 className="text-mega">
-              {h.titleLines.map((line, i) => (
-                <span key={line} className={cn('block [text-wrap:balance]', i === h.titleLines.length - 1 && 'text-dawn pb-2')}>
-                  {line}{' '}
-                </span>
-              ))}
-            </h1>
+            <h1 className="text-hero2 [text-wrap:balance]">{h.title}</h1>
+            <p className="mt-6 max-w-xl text-[1.125rem] leading-8 text-white/85">{h.lead}</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href={demoLink('STAFF', params.lang)} className={btnLight}>
+                {h.ctaDemo}
+                <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
+              </a>
+              <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
+                {h.ctaTalk}
+              </Link>
+            </div>
+            <p className="mt-4 text-caption text-white/70">{h.fine}</p>
           </div>
-          <div className="mt-10 grid items-start gap-14 lg:mt-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-            <div className="rise rise-2">
-              <p className="max-w-xl text-[1.125rem] leading-8 text-white/85">{h.lead}</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <a href={demoLink('STAFF', params.lang)} className={btnLight}>
-                  {h.ctaDemo}
-                  <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
-                </a>
-                <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
-                  {h.ctaTalk}
-                </Link>
-              </div>
-              <p className="mt-4 text-caption text-white/70">{h.fine}</p>
-              <h2 className="sr-only">{h.proofTitle}</h2>
-              <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-7 border-t border-white/15 pt-8">
-                {h.proof.map((p) => (
-                  <div key={p.v}>
-                    <dt className="sr-only">{p.v}</dt>
-                    <dd className="text-dawn font-display text-stat">
-                      <CountUp value={p.k} />
-                    </dd>
-                    <dd className="mt-1 text-small text-white/75">{p.v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-            <div className="rise rise-2 sm:pt-24 lg:pt-20">
-              <HeroConsole m={m} />
-            </div>
+          <div className="rise rise-2 sm:pt-28 lg:pt-24">
+            <HeroConsole m={m} />
           </div>
         </div>
       </section>
 
       {/* 01 See it work: real recordings of the app, light or dark */}
-      <Section id="see" className="wash">
+      <Section id="see">
         <SectionHead n="01" eyebrow={h.see.kicker} title={h.see.title} lead={h.see.lead} />
         <AppClips clips={h.see.clips} lang={params.lang} labels={h.see} />
       </Section>
@@ -120,7 +92,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
               <Link href={`/${params.lang}/product/#product`} className="lift group flex h-full flex-col rounded-3xl border border-line bg-page/60 p-6 hover:border-brand/40">
                 <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand/10 text-brand-text"><Icon name={d.icon} /></span>
                 <h3 className="mt-4 text-subheading">{d.title}</h3>
-                <p className="mt-1.5 line-clamp-3 text-small leading-6 text-muted">{d.body}</p>
+                <p className="mt-1.5 text-small leading-6 text-muted">{d.short}</p>
               </Link>
             </li>
           ))}
@@ -139,7 +111,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
         <ul className="grid gap-4 md:grid-cols-3">
           {h.why.slice(0, 3).map((w, i) => (
             <li key={w.title} {...reveal(i)} className="rounded-3xl border border-line bg-panel p-7 shadow-card">
-              <span aria-hidden="true" className="mb-5 block h-1 w-10 rounded-full bg-[linear-gradient(90deg,rgb(var(--brand)),rgb(var(--chartreuse)))]" />
+              <span aria-hidden="true" className="mb-5 block h-1 w-10 rounded-full bg-brand" />
               <h3 className="text-subheading">{w.title}</h3>
               <p className="mt-2 text-small leading-6 text-muted">{w.us}</p>
             </li>
@@ -171,7 +143,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
       <Section tone="brand">
         <div {...reveal()} className="grid items-center gap-10 md:grid-cols-[1.4fr_1fr]">
           <div>
-            <span className="float mb-6 inline-grid h-16 w-16 place-items-center rounded-2xl bg-white shadow-lift">
+            <span className="mb-6 inline-grid h-16 w-16 place-items-center rounded-2xl bg-white shadow-lift">
               <LogoMark size={44} />
             </span>
             <h2 className="text-hero2 [text-wrap:balance]">{h.ctaTitle}</h2>

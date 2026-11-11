@@ -4,7 +4,7 @@ import { cn } from '@/lib/cn';
 export function Section({ id, children, className, tone = 'page' }: { id?: string; children: ReactNode; className?: string; tone?: 'page' | 'panel' | 'brand' | 'night' }) {
   const dark = tone === 'brand' || tone === 'night';
   return (
-    <section id={id} className={cn('scroll-mt-20', tone === 'panel' && 'bg-panel', dark && 'night grain overflow-hidden', tone === 'night' && 'night-flat', className)}>
+    <section id={id} className={cn('scroll-mt-20', tone === 'panel' && 'bg-panel', dark && 'night overflow-hidden', tone === 'night' && 'night-flat', className)}>
       <div className="mx-auto max-w-7xl px-4 py-16 md:px-6 md:py-28">{children}</div>
     </section>
   );

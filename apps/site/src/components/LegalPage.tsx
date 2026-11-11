@@ -1,4 +1,3 @@
-import { Section } from '@/components/Section';
 import { PageHero } from './PageHero';
 import { type Lang, copy } from '@/content/copy';
 import { type LegalDocName, legalDoc } from '@/content/legal';
@@ -13,13 +12,13 @@ export function LegalPage({ doc, lang }: { doc: LegalDocName; lang: Lang }) {
   const date = new Intl.DateTimeFormat(lang === 'fr' ? 'fr-CA' : 'en-CA', { dateStyle: 'long', timeZone: 'UTC' }).format(new Date(`${d.updated}T00:00:00Z`));
   return (
     <>
-    <PageHero title={legalTitle(doc, lang)} size="md">
-      <p className="mt-4 text-small text-white/75">
+    <PageHero title={legalTitle(doc, lang)} size="md" narrow>
+      <p className="mt-4 text-small text-muted">
         {c.version.replace('{v}', d.version)} · {c.updated} <time dateTime={d.updated}>{date}</time>
       </p>
     </PageHero>
-    <Section>
-      <article className="mx-auto max-w-2xl">
+    <section className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
+      <article>
         <p className="mb-6 rounded-xl border border-warn/40 bg-warn/10 px-4 py-3 text-small">{c.draft}</p>
         <p className="text-body leading-7">{d.intro}</p>
         <p className="mt-3 text-small text-muted">{c.notAdvice}</p>
@@ -32,7 +31,7 @@ export function LegalPage({ doc, lang }: { doc: LegalDocName; lang: Lang }) {
           </section>
         ))}
       </article>
-    </Section>
+    </section>
     </>
   );
 }

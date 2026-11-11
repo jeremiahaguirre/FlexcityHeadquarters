@@ -7,10 +7,10 @@ import { reveal } from '@/lib/reveal';
 import { DepartmentTabs } from '@/components/DepartmentTabs';
 import { BoardMock, LoneMock, PayrollMock, SlideMock } from '@/components/Mock';
 import { Kicker, Section, SectionHead } from '@/components/Section';
-import { cn } from '@/lib/cn';
 import { type Lang, copy } from '@/content/copy';
 import { pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
+import { btnPrimary, btnSecondary } from '@/lib/buttons';
 
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
@@ -28,23 +28,23 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
   const k = h.kickers;
   const m = h.mock;
   const dayVisuals = [<SlideMock key="a" m={m} />, <LoneMock key="b" m={m} />, <BoardMock key="c" m={m} />, <PayrollMock key="d" m={m} />];
-  const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] shadow-[0_10px_30px_-8px_rgb(197_242_58/0.55)] hover:bg-[#D4F767]';
+  const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] hover:bg-[#D4F767]';
   const btnGhost = 'inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15';
   return (
     <>
       <PageHero eyebrow={c.nav.product} title={h.pages.productTitle} lead={h.pages.productLead} aside={<PhoneClip clip="count" lang={params.lang} label={h.see.clips[1]!.title} />}>
         <div className="mt-8 flex flex-wrap gap-3">
-          <a href={demoLink('STAFF', params.lang)} className={btnLight}>
+          <a href={demoLink('STAFF', params.lang)} className={btnPrimary}>
             {h.ctaDemo}
             <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
           </a>
-          <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
+          <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnSecondary}>
             {h.ctaTalk}
           </Link>
         </div>
       </PageHero>
       {/* 01 Departments */}
-      <Section id="product" className="wash">
+      <Section id="product">
         <SectionHead n="01" eyebrow={k.departments} title={h.departmentsTitle} lead={h.departmentsLead} />
         <DepartmentTabs items={h.departments} label={h.departmentsTitle} />
         <p className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2 text-body">
@@ -64,7 +64,7 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
         <SectionHead n="02" eyebrow={k.day} title={h.day.title} lead={h.day.lead} />
         <div className="relative">
           <div aria-hidden="true" className="absolute bottom-2 left-[0.6875rem] top-2 w-0.5 rounded-full bg-line md:left-[1.1875rem]">
-            <span className="rail-fill block h-full w-full rounded-full bg-[linear-gradient(180deg,rgb(var(--brand)),rgb(var(--chartreuse)))]" />
+            <span className="rail-fill block h-full w-full rounded-full bg-brand" />
           </div>
         <ol className="relative grid gap-14 md:gap-24">
           {h.day.steps.map((s, i) => (
@@ -75,13 +75,13 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
               <div {...reveal()}>
                 <p className="numeral text-brand-text">
                   {clock(s.time)[0]}
-                  {clock(s.time)[1] ? <span className="ml-2 text-[0.3em] font-bold uppercase tracking-normal text-muted">{clock(s.time)[1]}</span> : null}
+                  {clock(s.time)[1] ? <span className="ml-2 text-[0.3em] font-bold tracking-normal text-muted">{clock(s.time)[1]}</span> : null}
                 </p>
                 <p className="mt-4 text-label uppercase tracking-[0.14em] text-muted">{s.who}</p>
                 <h3 className="mt-2 text-[1.5rem] font-extrabold leading-8 tracking-[-0.02em] md:text-[1.875rem] md:leading-10 [text-wrap:balance]">{s.title}</h3>
                 <p className="mt-3 max-w-xl text-[1.0625rem] leading-7 text-muted">{s.body}</p>
               </div>
-              <div {...reveal(1)} aria-hidden="true" className="night night-flat grain overflow-hidden rounded-3xl p-4 shadow-lift sm:p-8">
+              <div {...reveal(1)} aria-hidden="true" className="night night-flat overflow-hidden rounded-3xl p-4 shadow-lift sm:p-8">
                 <div className="mx-auto max-w-sm">{dayVisuals[i]}</div>
               </div>
             </li>
@@ -116,11 +116,11 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
           </div>
           <div {...reveal(1)} className="relative">
             <div aria-hidden="true" className="mx-auto mb-6 max-w-sm lg:mb-8">
-              <LoneMock m={m} className="bob" />
+              <LoneMock m={m} />
             </div>
             <ol className="grid gap-3 sm:grid-cols-2">
               {h.alone.steps.map((st, i) => (
-                <li key={st.title} className="glass rounded-2xl p-5">
+                <li key={st.title} className="rounded-2xl border border-white/15 bg-white/[0.06] p-5">
                   <span aria-hidden="true" className="kicker-num text-caption font-bold text-[#5EEAD4]">0{i + 1}</span>
                   <h3 className="mt-1.5 text-subheading text-white">{st.title}</h3>
                   <p className="mt-1.5 text-small leading-6 text-white/80">{st.body}</p>
@@ -133,11 +133,11 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
       </Section>
 
       {/* 04 Features */}
-      <Section className="wash">
+      <Section>
         <SectionHead n="04" eyebrow={k.features} title={h.featuresTitle} lead={h.featuresLead} />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {h.features.map((f, i) => (
-            <article key={f.title} {...reveal(i)} className={cn('lift group relative overflow-hidden rounded-3xl border border-line bg-panel p-7 shadow-card', i === 0 && 'card-glow border-transparent')}>
+            <article key={f.title} {...reveal(i)} className="lift group relative overflow-hidden rounded-3xl border border-line bg-panel p-7 shadow-card">
               <span aria-hidden="true" className="kicker-num absolute right-6 top-6 text-caption font-bold text-muted">{String(i + 1).padStart(2, '0')}</span>
               <span className="lift-icon grid h-12 w-12 place-items-center rounded-2xl bg-brand/10 text-brand-text">
                 <Icon name={f.icon} />
@@ -174,7 +174,6 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
         </div>
         <div className="mt-16 grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div className="relative mx-auto grid max-w-md grid-cols-2 gap-4 lg:max-w-none" {...reveal()}>
-            <div aria-hidden="true" className="absolute inset-6 -z-10 rounded-full bg-[radial-gradient(closest-side,rgb(var(--brand)/0.25),transparent)] blur-2xl" />
             <img src={`/screens/phone-headcount${fr ? '-fr' : ''}.png`} alt={h.screensAlt[0]} className="rounded-[1.5rem] border-[5px] border-[#0B1F22] shadow-lift" width={390} height={844} loading="lazy" />
             <img src={`/screens/phone-board${fr ? '-fr' : ''}.png`} alt={h.screensAlt[1]} className="mt-10 rounded-[1.5rem] border-[5px] border-[#0B1F22] shadow-lift" width={390} height={844} loading="lazy" />
           </div>
@@ -222,7 +221,6 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
             <p className="mt-4 text-caption text-muted">{h.peopleNote}</p>
           </div>
           <div {...reveal(1)} className="relative">
-            <div aria-hidden="true" className="absolute -inset-6 -z-0 rounded-[2.5rem] bg-[linear-gradient(140deg,rgb(var(--brand)/0.22),rgb(var(--chartreuse)/0.22))] blur-xl" />
             <div className="tilt relative overflow-hidden rounded-2xl border border-line bg-panel shadow-lift">
               <img src={`/screens/desktop-casefile${fr ? '-fr' : ''}.png`} alt={fr ? 'Dossier d’un employé : score, signalements motivés et faits datés' : 'An employee’s case file: score, flags with reasons and dated facts'} className="block w-full" width={944} height={640} loading="lazy" />
             </div>

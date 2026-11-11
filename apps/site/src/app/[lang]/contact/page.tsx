@@ -3,7 +3,7 @@ import { ContactForm } from '@/components/ContactForm';
 import { BusinessDetails } from '@/components/BusinessDetails';
 import { AliveMark } from '@/components/AliveMark';
 import { LogoMark } from '@/components/Logo';
-import { Kicker } from '@/components/Section';
+import { PageHero } from '@/components/PageHero';
 import { type Lang, copy } from '@/content/copy';
 
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
@@ -17,24 +17,20 @@ export default async function Contact(props: { params: Promise<{ lang: Lang }> }
   const c = copy(params.lang).contact;
   return (
     <>
-      {/* A dark band with the FH mark, large and faded, easing in behind the page title. */}
-      <section className="night grain relative overflow-hidden">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-16 md:-right-10 md:-top-24">
-          <div className="opacity-[0.13]">
-            <div className="mark-in">
-              <AliveMark size={560} className="mark-breathe h-[22rem] w-[22rem] md:h-[36rem] md:w-[36rem]" />
+      {/* The interior header (flat, brand-tinted), with the FH mark faded behind the title, drawing itself in once and then gently alive. */}
+      <PageHero
+        eyebrow={c.eyebrow}
+        title={c.title}
+        lead={c.lead}
+        overlap
+        decoration={
+          <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-12 md:-right-8 md:-top-20">
+            <div className="opacity-[0.07] dark:opacity-[0.1]">
+              <AliveMark size={480} className="h-[18rem] w-[18rem] md:h-[30rem] md:w-[30rem]" />
             </div>
           </div>
-        </div>
-        <div aria-hidden="true" className="drift pointer-events-none absolute -left-32 bottom-[-12rem] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(closest-side,rgb(var(--chartreuse)/0.18),transparent)] blur-2xl" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-36 pt-14 md:px-6 md:pb-44 md:pt-20">
-          <div className="rise max-w-2xl">
-            <Kicker dark>{c.eyebrow}</Kicker>
-            <h1 className="text-hero2 [text-wrap:balance]">{c.title}</h1>
-            <p className="mt-5 text-[1.125rem] leading-8 text-white/85">{c.lead}</p>
-          </div>
-        </div>
-      </section>
+        }
+      />
 
       <section className="relative">
         <div className="mx-auto -mt-28 grid max-w-7xl gap-10 px-4 pb-20 md:-mt-36 md:px-6 lg:grid-cols-[1.25fr_1fr] lg:gap-14">

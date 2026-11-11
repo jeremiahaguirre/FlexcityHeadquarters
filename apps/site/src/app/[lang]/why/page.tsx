@@ -6,6 +6,7 @@ import { Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
 import { pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
+import { btnPrimary, btnSecondary } from '@/lib/buttons';
 
 export async function generateMetadata(props: { params: Promise<{ lang: Lang }> }) {
   const params = await props.params;
@@ -19,17 +20,17 @@ export default async function Why(props: { params: Promise<{ lang: Lang }> }) {
   const c = copy(params.lang);
   const h = c.home;
   const k = h.kickers;
-  const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] shadow-[0_10px_30px_-8px_rgb(197_242_58/0.55)] hover:bg-[#D4F767]';
+  const btnLight = 'inline-flex h-12 items-center gap-2 rounded-xl bg-[#C5F23A] px-6 text-body-strong text-[#14210A] hover:bg-[#D4F767]';
   const btnGhost = 'inline-flex h-12 items-center rounded-xl border border-white/30 bg-white/5 px-6 text-body-strong text-white hover:bg-white/15';
   return (
     <>
       <PageHero eyebrow={c.nav.why} title={h.pages.whyTitle} lead={h.pages.whyLead}>
         <div className="mt-8 flex flex-wrap gap-3">
-          <a href={demoLink('STAFF', params.lang)} className={btnLight}>
+          <a href={demoLink('STAFF', params.lang)} className={btnPrimary}>
             {h.ctaDemo}
             <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
           </a>
-          <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnGhost}>
+          <Link href={`/${params.lang}/contact/?kind=DEMO`} className={btnSecondary}>
             {h.ctaTalk}
           </Link>
         </div>
@@ -80,7 +81,7 @@ export default async function Why(props: { params: Promise<{ lang: Lang }> }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {h.trust.map((t, i) => (
             <div key={t.title} {...reveal(i)} className="rounded-3xl border border-line bg-surface/60 p-7">
-              <span aria-hidden="true" className="mb-5 block h-1 w-10 rounded-full bg-[linear-gradient(90deg,rgb(var(--brand)),rgb(var(--chartreuse)))]" />
+              <span aria-hidden="true" className="mb-5 block h-1 w-10 rounded-full bg-brand" />
               <h3 className="text-subheading">{t.title}</h3>
               <p className="mt-2 text-small leading-6 text-muted">{t.body}</p>
             </div>

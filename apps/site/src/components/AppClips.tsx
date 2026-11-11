@@ -3,18 +3,22 @@
 import { Moon, Pause, Play, Sun } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
+import { useScheme } from '@/lib/useScheme';
 
 type Scheme = 'light' | 'dark';
 interface Clip { key: string; title: string; body: string }
 interface Labels { themeLabel: string; light: string; dark: string; pause: string; play: string }
 
 /**
- * Short recordings of the real app on a phone, with a light/dark switch so visitors see both.
+ * Short recordings of the real app on a phone, in the site's colour scheme, with a light/dark switch so visitors see both.
  * Muted, looping, inline; paused for people who ask for reduced motion (they get the still frame
  * and a play button), and only playing while on screen.
  */
 export function AppClips({ clips, lang, labels }: { clips: Clip[]; lang: 'en' | 'fr'; labels: Labels }) {
-  const [scheme, setScheme] = useState<Scheme>('light');
+  // Starts in the site's own colour scheme (and follows it) until the visitor picks one.
+  const site = useScheme();
+  const [picked, setScheme] = useState<Scheme | null>(null);
+  const scheme = picked ?? site;
   const [playing, setPlaying] = useState(true);
   const wrap = useRef<HTMLDivElement>(null);
 

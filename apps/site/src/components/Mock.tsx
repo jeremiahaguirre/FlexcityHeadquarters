@@ -25,17 +25,13 @@ const ROWS: Array<{ n: string; s: Array<[string, string] | null | 'open'> }> = [
 export function ScheduleMock({ m, className }: { m: M; className?: string }) {
   let d = 0;
   return (
-    <div className={cn('glass rounded-2xl p-3 sm:p-4', className)}>
+    <div className={cn('mock-panel rounded-2xl p-3 sm:p-4', className)}>
+      {/* The sample label sits next to the title, clear of the rules card laid over the top right. */}
       <div className="mb-3 flex items-center gap-2">
-        <span className="flex gap-1.5">
-          <i className="h-2.5 w-2.5 rounded-full bg-white/25" />
-          <i className="h-2.5 w-2.5 rounded-full bg-white/25" />
-          <i className="h-2.5 w-2.5 rounded-full bg-white/25" />
-        </span>
-        <span className="ml-1 truncate text-[0.8125rem] font-semibold text-white">
+        <span className="truncate text-[0.8125rem] font-semibold text-white">
           {m.week} <span className="text-white/60">· {m.site}</span>
         </span>
-        <span className="ml-auto shrink-0 rounded-full border border-white/20 px-2 py-0.5 text-[0.6875rem] font-semibold text-white/75">{m.sample}</span>
+        <span className="shrink-0 rounded-full border border-white/25 px-2 py-0.5 text-[0.6875rem] font-semibold text-white/80">{m.sample}</span>
       </div>
       <div className="grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))] gap-1 text-[0.625rem] font-bold sm:grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] sm:gap-1.5 sm:text-[0.6875rem]">
         <span />
@@ -66,7 +62,7 @@ export function ScheduleMock({ m, className }: { m: M; className?: string }) {
 
 export function RulesBadge({ m, className }: { m: M; className?: string }) {
   return (
-    <div className={cn('glass-solid rounded-2xl p-3.5', className)}>
+    <div className={cn('mock-panel rounded-2xl p-3.5', className)}>
       <p className="flex items-center gap-2 text-[0.8125rem] font-bold text-white">
         <span className="grid h-7 w-7 place-items-center rounded-full bg-[#C5F23A] text-[#1A2A04]">
           <ShieldCheck className="h-4 w-4" />
@@ -87,7 +83,7 @@ export function RulesBadge({ m, className }: { m: M; className?: string }) {
 
 export function SlideMock({ m, className }: { m: M; className?: string }) {
   return (
-    <div className={cn('glass-solid rounded-2xl p-4', className)}>
+    <div className={cn('mock-panel rounded-2xl p-4', className)}>
       <div className="flex items-center gap-2.5">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#5EEAD4] text-[0.8125rem] font-bold text-[#04201F]">M</span>
         <span className="min-w-0">
@@ -99,7 +95,7 @@ export function SlideMock({ m, className }: { m: M; className?: string }) {
         </span>
       </div>
       <div className="relative mt-3.5 h-12 overflow-hidden rounded-full border border-white/15 bg-white/10">
-        <span className="slide-fill absolute inset-0 bg-[linear-gradient(90deg,#2DD4BF,#C5F23A)]" />
+        <span className="slide-fill absolute inset-0 bg-[#5EEAD4]" />
         <span className="slide-label-a absolute inset-0 grid place-items-center pl-8 text-[0.8125rem] font-bold text-white">{m.slide}</span>
         <span className="slide-label-b absolute inset-0 flex items-center justify-center gap-1.5 pr-10 text-[0.8125rem] font-bold text-[#04201F]">
           <Check className="h-4 w-4" />
@@ -117,7 +113,7 @@ export function SlideMock({ m, className }: { m: M; className?: string }) {
 
 export function LoneMock({ m, className }: { m: M; className?: string }) {
   return (
-    <div className={cn('glass-solid rounded-2xl p-4', className)}>
+    <div className={cn('mock-panel rounded-2xl p-4', className)}>
       <div className="flex items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-[0.8125rem] font-bold text-white">
           <span className="relative flex h-2.5 w-2.5">
@@ -139,8 +135,8 @@ export function LoneMock({ m, className }: { m: M; className?: string }) {
           <LoneTimer className="text-[1rem] font-extrabold tabular-nums text-white" />
         </span>
         <span className="min-w-0">
-          <span className="block text-[0.75rem] font-semibold text-white/75">{m.aloneNext}</span>
-          <span className="block text-[0.8125rem] font-bold text-white">{m.aloneEvery}</span>
+          <span className="block text-[0.8125rem] font-bold text-white">{m.aloneNext}</span>
+          <span className="block text-[0.75rem] font-semibold text-white/75">{m.aloneEvery}</span>
         </span>
       </div>
       <div className="mt-3.5 grid grid-cols-2 gap-2 text-center text-[0.8125rem] font-bold">
@@ -153,7 +149,7 @@ export function LoneMock({ m, className }: { m: M; className?: string }) {
 
 export function BoardMock({ m, className }: { m: M; className?: string }) {
   return (
-    <div className={cn('glass-solid rounded-2xl p-4', className)}>
+    <div className={cn('mock-panel rounded-2xl p-4', className)}>
       <div className="flex items-start justify-between gap-3">
         <span>
           <span className="open-pulse inline-flex rounded-full border border-dashed border-[#C5F23A] px-2.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-wide text-[#C5F23A]">{m.boardOpen}</span>
@@ -161,7 +157,7 @@ export function BoardMock({ m, className }: { m: M; className?: string }) {
         </span>
         <span className="shrink-0 text-right">
           <span className="block text-[0.6875rem] font-semibold text-white/75">{m.boardPay}</span>
-          <span className="text-dawn block text-[1.5rem] font-extrabold leading-tight tabular-nums">{m.boardPayValue}</span>
+          <span className="block text-[1.5rem] font-extrabold leading-tight tabular-nums text-[#C5F23A]">{m.boardPayValue}</span>
           <span className="block text-[0.625rem] font-semibold uppercase tracking-wide text-white/60">{m.sample}</span>
         </span>
       </div>
@@ -180,7 +176,7 @@ export function BoardMock({ m, className }: { m: M; className?: string }) {
 
 export function PayrollMock({ m, className }: { m: M; className?: string }) {
   return (
-    <div className={cn('glass-solid rounded-2xl p-4', className)}>
+    <div className={cn('mock-panel rounded-2xl p-4', className)}>
       <p className="text-[0.8125rem] font-bold text-white">{m.payTitle}</p>
       <ul className="mt-3 grid gap-2">
         {m.payRows.map((r, i) => (
@@ -211,12 +207,11 @@ export function PayrollMock({ m, className }: { m: M; className?: string }) {
 export function HeroConsole({ m }: { m: M }) {
   return (
     <div role="img" aria-label={m.label} className="relative mx-auto w-full max-w-xl select-none lg:max-w-none">
-      <div aria-hidden="true" className="absolute -inset-x-6 -inset-y-10 -z-10 rounded-[3rem] bg-[radial-gradient(closest-side,rgb(45_212_191/0.28),transparent)] blur-2xl" />
       <ScheduleMock m={m} />
-      <RulesBadge m={m} className="bob absolute -top-[6.75rem] right-4 z-10 hidden w-52 sm:block" />
+      <RulesBadge m={m} className="absolute -top-[6.75rem] right-4 z-10 hidden w-52 sm:block" />
       <div className="relative z-10 -mt-3 grid gap-3 px-2 sm:-mt-6 sm:grid-cols-2 sm:px-5">
-        <SlideMock m={m} className="bob bob-2" />
-        <LoneMock m={m} className="bob" />
+        <SlideMock m={m} />
+        <LoneMock m={m} />
       </div>
     </div>
   );

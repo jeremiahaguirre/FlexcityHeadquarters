@@ -2,7 +2,6 @@ import { SITE_URL, pageMeta } from '@/lib/seo';
 import { ArrowLeft, Lightbulb } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Section } from '@/components/Section';
 import { PageHero } from '@/components/PageHero';
 import { LANGS, type Lang, copy } from '@/content/copy';
 import { ARTICLES, articleIn } from '@/content/help';
@@ -37,15 +36,16 @@ export default async function Article(props: { params: Promise<{ lang: Lang; slu
   ];
   return (
     <>
-    <PageHero eyebrow={c.help.audience[a.audience]} title={b.title} lead={b.summary} size="md">
-      <Link href={`/${params.lang}/help/`} className="mt-6 inline-flex items-center gap-1.5 text-small font-semibold text-[#5EEAD4] hover:underline">
+    {/* Header and steps share one reading column (max-w-3xl, the same left edge). */}
+    <PageHero eyebrow={c.help.audience[a.audience]} title={b.title} lead={b.summary} size="md" narrow>
+      <Link href={`/${params.lang}/help/`} className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-small font-semibold text-brand-text hover:underline">
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {c.help.back}
       </Link>
     </PageHero>
-    <Section>
+    <section className="mx-auto max-w-3xl px-4 py-12 md:px-6 md:py-16">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
-      <div className="mx-auto max-w-2xl">
+      <div>
         <ol className="grid gap-4">
           {b.steps.map((s, i) => (
             <li key={s} className="flex gap-4">
@@ -68,7 +68,7 @@ export default async function Article(props: { params: Promise<{ lang: Lang; slu
           </Link>
         </div>
       </div>
-    </Section>
+    </section>
     </>
   );
 }
