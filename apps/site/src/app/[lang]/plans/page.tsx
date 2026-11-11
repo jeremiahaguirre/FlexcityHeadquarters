@@ -207,28 +207,39 @@ export default async function Plans(props: { params: Promise<{ lang: Lang }> }) 
       {/* Comparison: a real table, scrolling sideways on phones */}
       <Section id="included">
         <SectionHead n="04" eyebrow={c.compareKicker} title={c.compareTitle} lead={c.compareLead} />
-        <p className="-mt-6 mb-6 text-small text-muted">{c.addHint}</p>
         <div role="region" aria-label={c.compareTitle} tabIndex={0} className="relative overflow-x-auto rounded-3xl border border-line bg-panel shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
           <table className="w-full min-w-[46rem] border-collapse text-left text-small">
             <caption className="sr-only">{c.compareTitle}</caption>
             <thead>
               <tr className="bg-surface">
-                <th scope="col" className="px-6 py-5 text-label uppercase text-muted">{c.compareFeature}</th>
+                <th scope="col" className="px-6 py-5 text-small font-semibold text-muted">{c.compareFeature}</th>
                 {c.compareCols.map((col, i) => (
-                  <th key={col} scope="col" className={cn('w-[13%] px-3 py-5 text-center align-bottom text-body-strong', i === 1 && 'text-brand-text', i === 4 && 'border-l border-line')}>{col}</th>
+                  <th key={col} scope="col" className={cn('w-[13%] px-3 py-5 text-center align-bottom text-body-strong', i === 4 && 'border-l border-line')}>{col}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               <tr className="border-t border-line">
-                <th scope="row" className="px-6 py-3.5 font-medium">{c.priceRow}</th>
+                <th scope="row" className="px-6 py-3.5 font-medium">
+                  {c.priceRow}
+                  <span className="block text-caption font-normal text-muted">{c.perStandardFacility}</span>
+                </th>
                 {LEVELS.map((l) => <td key={l} className="px-3 py-3.5 text-center font-semibold tabular-nums">{PUBLIC[l].quoted ? `${c.from} ` : ''}{money(PUBLIC[l].price)}</td>)}
-                <td className="border-l border-line px-3 py-3.5 text-center font-semibold tabular-nums">{money(PRIVATE.core)}</td>
+                <td className="border-l border-line px-3 py-3.5 text-center font-semibold tabular-nums">
+                  {money(PRIVATE.core)}
+                  <span className="block text-caption font-normal text-muted">{c.perOrganization}</span>
+                </td>
               </tr>
               <tr className="border-t border-line">
-                <th scope="row" className="px-6 py-3.5 font-medium">{c.staffRow}</th>
+                <th scope="row" className="px-6 py-3.5 font-medium">
+                  {c.staffRow}
+                  <span className="block text-caption font-normal text-muted">{c.perStandardFacility}</span>
+                </th>
                 {LEVELS.map((l) => <td key={l} className="px-3 py-3.5 text-center tabular-nums">{PUBLIC[l].staff ?? c.unlimited}</td>)}
-                <td className="border-l border-line px-3 py-3.5 text-center tabular-nums">{PRIVATE.includedUsers}</td>
+                <td className="border-l border-line px-3 py-3.5 text-center tabular-nums">
+                  {PRIVATE.includedUsers}
+                  <span className="block text-caption text-muted">{c.perOrganization}</span>
+                </td>
               </tr>
               <tr className="border-t border-line">
                 <th scope="row" className="px-6 py-3.5 font-medium">{c.extraRow}</th>
