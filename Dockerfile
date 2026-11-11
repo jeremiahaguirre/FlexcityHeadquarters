@@ -15,8 +15,10 @@ FROM ${NODE_IMAGE} AS base
 # Prisma's query engine needs OpenSSL; ca-certificates for TLS to RDS, Twilio and the rest.
 RUN dpkg -s openssl ca-certificates >/dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*)
 # Amazon RDS certificate authorities (every region, so ca-central-1 and the ca-west-1 recovery copy).
-# Database URLs use sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem.
-ADD https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/rds/global-bundle.pem
+# Database URLs use sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem (apps/api/src/lib/dbUrl.ts).
+# Pinned by checksum: if AWS publishes a new bundle, the build stops until the new one is checked
+# and its checksum updated here.
+ADD --checksum=sha256:90a6f1a7978a1b1b096dca6c57511ca48d3b8cf052f8e704baf358f34ea2f21b https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem /etc/ssl/rds/global-bundle.pem
 RUN chmod 755 /etc/ssl/rds && chmod 644 /etc/ssl/rds/global-bundle.pem
 WORKDIR /app
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false NPM_CONFIG_FUND=false NPM_CONFIG_AUDIT=false
@@ -47,8 +49,6 @@ COPY --from=api-build /app/apps/api/dist apps/api/dist
 WORKDIR /app/apps/api
 USER node
 EXPOSE 4000
-# The load balancer checks /readyz; this only tells ECS the process answers at all.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/healthz').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
 CMD ["node", "dist/server.js"]
 
 # ---- Migrations (one-off task before each deployment) ----------------------------------------

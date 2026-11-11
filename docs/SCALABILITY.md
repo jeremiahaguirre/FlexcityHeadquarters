@@ -99,7 +99,7 @@ below Postgres's `max_connections` (100 by default) with room for administration
 
 **Row-level security** adds little: every query already filters by city, and every large table's indexes start with the city.
 
-**Pay runs** are the heaviest request. A 300-person city-wide run takes 7–15 s while 30 others run at the same time. Cities pay on different days in practice. Very large cities can run by department.
+**Pay runs** are the heaviest request. A 300-person city-wide run took 7–15 s in the first load runs and 8.5 s in the latest, with 30 others running at the same time. Cities pay on different days in practice. Very large cities can run by department.
 
 ## Database growth, replicas, caching and sharding
 

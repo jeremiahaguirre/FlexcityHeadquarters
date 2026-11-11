@@ -70,7 +70,12 @@ The decision to fail over is made by the on-call lead once AWS confirms a region
    ```bash
    aws secretsmanager stop-replication-to-replica --region ca-west-1 --secret-id fh-production/app
    ```
-3. **Terraform state.** Use the state bucket's Calgary copy, in a new workspace for the recovery stack.
+3. **Terraform state.** The normal backend lives in Montreal, so point Terraform at the state bucket's Calgary copy, with the recovery stack in its own state file:
+   ```bash
+   terraform init -reconfigure -backend-config=region=ca-west-1 -backend-config=bucket=<state bucket's Calgary copy> \
+     -backend-config=key=production-recovery/terraform.tfstate -backend-config=dynamodb_table=<a lock table in ca-west-1>
+   ```
+   Create the Calgary lock table ahead of time, so this step needs nothing from Montreal.
 4. **Rebuild in Calgary.** Run `terraform apply` with the production values plus:
    ```hcl
    region                    = "ca-west-1"
@@ -81,13 +86,13 @@ The decision to fail over is made by the on-call lead once AWS confirms a region
    certificate_arn           = "<an ACM certificate in ca-west-1>"
    ```
    `recovery_mode` creates nothing in Montreal and uses the copies of the images, the secret and the platform key. It also restores the database to its latest restorable time. Request the Calgary certificate ahead of time, so this step doesn't wait on validation.
-5. **Secret URLs.** Point `DATABASE_URL`, `APP_DATABASE_URL` and `LISTEN_DATABASE_URL` at the restored endpoint. The restored database keeps its roles and passwords. Then force a new deployment of the services.
+5. **Secret URLs.** Point `APP_DATABASE_URL` and `LISTEN_DATABASE_URL` at the restored endpoint; the restored database keeps the app role and its password. The owner password is new (RDS creates a managed secret for the restored instance), and the migration tasks read it from there by themselves. Then force a new deployment of the services.
 6. **DNS.** Point `<root_domain>` and `*.<root_domain>` at the Calgary load balancer.
 7. **Check.**
    - `/readyz` is answering through the load balancer.
    - A test organization can sign in and open a sealed record (an incident narrative), which proves the key replicas work.
    - The worker is reporting in, and texts are going out.
-8. **While running in Calgary,** avoid creating new organizations. Their keys would exist only in Calgary (the app makes new keys single-region in recovery mode), and their sealed records would need re-sealing after the return.
+8. **While running in Calgary,** any organization that seals its *first* record gets a key that exists only in Calgary (the app makes new keys single-region in recovery mode): a new organization, or an existing one that had never sealed anything. Avoid creating organizations during the recovery, and list the keys created there (tag `fh:tenant`, created after the failover) for the return.
 
 ### E. Returning to Montreal
 
@@ -97,7 +102,7 @@ When Montreal is healthy again:
 3. Restore it in Montreal with the normal (non-recovery) configuration.
 4. Point the secret and DNS back, and remove the recovery stack.
 
-Organizations created in Calgary need their sealed records re-sealed under new multi-region keys; that one-off tool will be written if it is ever needed.
+The organizations whose first key was created in Calgary (step 8) need care. Their alias in Calgary names a Calgary-only key, and the app stops with "names different keys in the two regions" rather than sealing with a key Montreal can't use. Their sealed records must be re-sealed under a new multi-region key, and the Calgary alias moved to its copy, before they are used in Montreal; that one-off tool will be written if it is ever needed.
 
 ## Drills
 
