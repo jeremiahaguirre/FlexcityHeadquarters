@@ -26,8 +26,9 @@ export interface ViewProps {
 
 /** "9–1 p.m." · "9 h–13 h": short enough for a month cell. */
 export function shortRange(startIso: string, endIso: string, lng: string): string {
-  const a = formatTime(startIso, lng).replace(/:00(?=\D|$)/, '');
-  const b = formatTime(endIso, lng).replace(/:00(?=\D|$)/, '');
+  const trim = (x: string) => x.replace(/:00(?=\D|$)/, '').replace(/(\d)([\s\u00a0]h)[\s\u00a0]00$/, '$1$2');
+  const a = trim(formatTime(startIso, lng));
+  const b = trim(formatTime(endIso, lng));
   const suffix = /[\s\u00a0]([ap]\.m\.)$/i;
   const sa = suffix.exec(a)?.[1];
   const sb = suffix.exec(b)?.[1];
