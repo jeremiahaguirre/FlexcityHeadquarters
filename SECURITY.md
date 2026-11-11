@@ -86,3 +86,15 @@ Layered, so no single slip opens the database:
 - **CSV downloads** from Reports prefix any cell that starts with `=`, `+`, `-`, `@`, a tab or a
   carriage return, so a spreadsheet won't run it as a formula
   (`apps/api/src/services/reports/catalog.ts`).
+- **Punches sent later** (no signal at the time) are checked by the server like any other: re-sent ids
+  are recognised (never a double punch), the phone's clock difference is measured and corrected, and
+  times in the future, more than 3 days old or out of order are refused; the rest are flagged
+  "Recorded offline" for review. Waiting punches are kept per person on the phone and deleted at sign-out
+  (`services/timeclock/punches.ts`).
+- **Reporting lines** only route approvals and default reviewers: a manager hears about or acts on a
+  request only when their own permissions and department scope already allow it
+  (`services/people/reporting.ts`).
+- **Operations endpoints:** `/metrics` answers only with `METRICS_TOKEN` (404 without the setting), and
+  `/readyz` shows counts and ages, never an organization's data. Error reports (server and browser) are
+  scrubbed of emails, tokens, SINs and similar before they leave, and only sent when `SENTRY_DSN` is set
+  (`lib/errorReporter.ts`, `lib/scrub.ts`).

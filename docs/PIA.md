@@ -20,8 +20,8 @@ describe the product; the city adds its own purposes, authorities and decisions.
 | Category | Examples | Feature | Sensitive? |
 | --- | --- | --- | --- |
 | Identity and contact | Name, work email, phone, employee number, language | Always | — |
-| Employment | Positions, hire and seniority dates, availability, schedule, certifications | Always | — |
-| Time and attendance | Punch times, on-site status and distance (no coordinates), attendance events; which kiosk a punch came from, and a hashed kiosk PIN | Timeclock | — |
+| Employment | Positions, hire and seniority dates, availability, schedule, certifications, who the person reports to (it routes approvals; it gives the manager no extra access) | Always | — |
+| Time and attendance | Punch times, on-site status and distance (no coordinates), attendance events; which kiosk a punch came from, and a hashed kiosk PIN; for punches made without signal, the phone's punch id, when it reached the server and the phone's clock difference (the punch waits on the phone until sent) | Timeclock | — |
 | Emergency contacts | Names, relationship and phone numbers of up to three people outside work (third parties, who aren't told by the app) | Always | **Yes** (seen by the person, HR, and a working-alone monitor only once a session escalates or help is asked for; every look by someone else audited) |
 | Mobile number for alerts | A confirmed mobile number, whether the person wants last-minute shift texts, and the outbox of texts and calls (contents only until sent) | Text alerts | No (sent to the text provider, see [SUBPROCESSORS.md](SUBPROCESSORS.md)) |
 | Calendar feed | A hash of the person's private link; the feed shows only their own shifts (times, position, facility), no other names | Always (the person chooses) | No |
