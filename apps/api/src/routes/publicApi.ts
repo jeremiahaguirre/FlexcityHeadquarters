@@ -1,5 +1,6 @@
 /**
- * The public, versioned read API for a city's own systems: /api/v1 (docs/PUBLIC-API.md).
+ * The public, versioned API for a city's own systems: /api/v1 (docs/PUBLIC-API.md). Reads here;
+ * writes (opt-in write scopes, Idempotency-Key, If-Match) in routes/publicApiWrite.ts.
  *
  * - Authentication: `Authorization: Bearer fh_live_…`, an organization's API key, never a person's
  *   session. The organization comes from the key (api_key_tenant(), by its hash); every read then
@@ -7,37 +8,27 @@
  * - Each endpoint needs a scope; a scope whose feature is switched off answers 404 FEATURE_OFF.
  * - Rate limited per key in Postgres (shared by every API instance), counted in metrics by route
  *   pattern only, and every request is in the organization's audit log.
+ * - Errors are problem details (application/problem+json) with a stable code, field errors and
+ *   the request id; validation is 422.
  * - Stable, documented shapes (snake_case). Never: SINs, bank details, pay rates, dates of birth,
  *   phone numbers, documents, health or accommodation details, notes, discipline, reliability, or
  *   locations of punches. People whose processing is restricted (an erasure request) or who were
  *   anonymized keep their id and status only.
  */
-import { Router, type NextFunction, type Request, type Response } from 'express';
+import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
-import type { Prisma } from '@prisma/client';
 import { databaseAllow } from '../auth/rateLimit.js';
-import { audit, db, type Tx, withTenant } from '../lib/db.js';
+import { captureError } from '../lib/errorReporter.js';
+import { audit, db, withTenant } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import { publicApiRequests, routePattern, statusClass } from '../lib/metrics.js';
 import { hasModule } from '../services/billing/entitlements.js';
-import { type ApiScope, SCOPE_FEATURES, hashKey, ipAllowed, looksLikeKey } from '../services/integrations/apiKeys.js';
+import { hashKey, ipAllowed, looksLikeKey } from '../services/integrations/apiKeys.js';
 import { openApiSpec } from '../services/integrations/openapi.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
-
-interface ApiKeyContext {
-  id: string;
-  tenantId: string;
-  scopes: string[];
-}
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace Express {
-    interface Request {
-      apiKey?: ApiKeyContext;
-    }
-  }
-}
+import { DEPARTMENT_SELECT, PERSON_SELECT, POSITION_SELECT, TIME_OFF_SELECT, day, department, etagOf, iso, money, need, person, position, read, sendProblem, timeOff, toProblem } from './publicApiShared.js';
+import { publicApiWriteRouter } from './publicApiWrite.js';
 
 export const publicApiRouter = Router();
 
@@ -82,7 +73,7 @@ async function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
       await tx.apiKey.update({ where: { id: k.id }, data: { lastUsedAt: new Date(), lastUsedIp: req.ip ?? null, requestCount: { increment: 1 } } });
       await audit(tx, { tenantId, actorId: null, action: 'api.request', entity: 'ApiKey', entityId: k.id, after: { method: req.method, path: req.originalUrl.split('?')[0], requestId: req.id } });
     });
-    req.apiKey = { id: k.id, tenantId, scopes: k.scopes };
+    req.apiKey = { id: k.id, name: k.name, tenantId, scopes: k.scopes, createdById: k.createdById, rateLimitPerMinute: k.rateLimitPerMinute };
     next();
   } catch (e) {
     next(e);
@@ -91,21 +82,9 @@ async function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
 
 publicApiRouter.use(apiKeyAuth);
 
-function need(scope: ApiScope) {
-  return async (req: Request, _res: Response, next: NextFunction) => {
-    try {
-      const k = req.apiKey!;
-      if (!k.scopes.includes(scope)) throw new HttpError(403, 'INSUFFICIENT_SCOPE', `This API key needs the ${scope} scope.`, { scope });
-      const feature = SCOPE_FEATURES[scope];
-      if (feature && !(await tenantSettings(k.tenantId)).features[feature]) throw new HttpError(404, 'FEATURE_OFF', 'This feature is switched off for the organization.');
-      next();
-    } catch (e) {
-      next(e);
-    }
-  };
-}
-
-const read = <T>(req: Request, fn: (tx: Tx) => Promise<T>) => withTenant(req.apiKey!.tenantId, fn);
+// Bodies for writes (after the key is checked, so nobody else's upload is parsed).
+publicApiRouter.use(express.json({ limit: '100kb' }));
+publicApiRouter.use(publicApiWriteRouter);
 
 /* ---------- Paging: oldest change first, by (updated_at, id) ---------- */
 
@@ -145,9 +124,6 @@ function pageOf<T extends { updatedAt: Date; id: string }, R>(rows: T[], limit: 
   return { data: items.map(shape), next_cursor: rows.length > limit ? encodeCursor(items[items.length - 1]!) : null };
 }
 
-const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
-const iso = (d: Date | null) => (d ? d.toISOString() : null);
-const money = (v: unknown) => (v === null || v === undefined ? null : Number(v).toFixed(2));
 
 /** A date range of at most 93 days, both required (shifts, timesheets). */
 const rangeQuery = listQuery.extend({ from: z.string().datetime({ offset: true }).or(z.string().date()), to: z.string().datetime({ offset: true }).or(z.string().date()) });
@@ -161,45 +137,6 @@ function range(q: { from: string; to: string }) {
 const uuid = z.string().uuid();
 
 /* ---------- People ---------- */
-
-const PERSON_SELECT = {
-  id: true,
-  employeeNumber: true,
-  firstName: true,
-  lastName: true,
-  email: true,
-  status: true,
-  employmentStatus: true,
-  hireDate: true,
-  reportsToId: true,
-  processingRestrictedAt: true,
-  anonymizedAt: true,
-  createdAt: true,
-  updatedAt: true,
-  positions: { select: { position: { select: { id: true, name: true, departmentId: true } } } },
-} satisfies Prisma.UserSelect;
-type PersonRow = Prisma.UserGetPayload<{ select: typeof PERSON_SELECT }>;
-
-function person(u: PersonRow) {
-  const hidden = !!u.processingRestrictedAt || !!u.anonymizedAt;
-  const positions = u.positions.map((p) => ({ id: p.position.id, name: p.position.name, department_id: p.position.departmentId }));
-  return {
-    id: u.id,
-    employee_number: hidden ? null : u.employeeNumber,
-    first_name: hidden ? null : u.firstName,
-    last_name: hidden ? null : u.lastName,
-    email: hidden ? null : u.email,
-    status: u.status.toLowerCase(),
-    employment_status: u.employmentStatus.toLowerCase(),
-    hire_date: hidden ? null : day(u.hireDate),
-    manager_id: hidden ? null : u.reportsToId,
-    department_ids: hidden ? [] : [...new Set(positions.map((p) => p.department_id).filter((d): d is string => !!d))],
-    positions: hidden ? [] : positions,
-    processing_restricted: hidden,
-    created_at: iso(u.createdAt),
-    updated_at: iso(u.updatedAt),
-  };
-}
 
 publicApiRouter.get(
   '/people',
@@ -219,6 +156,7 @@ publicApiRouter.get(
     const id = uuid.safeParse(req.params.id);
     const u = id.success ? await read(req, (tx) => tx.user.findUnique({ where: { id: id.data }, select: PERSON_SELECT })) : null;
     if (!u) throw notFound('Person');
+    res.setHeader('ETag', etagOf(u.updatedAt));
     res.json(person(u));
   }),
 );
@@ -230,8 +168,20 @@ publicApiRouter.get(
   need('departments:read'),
   h(async (req, res) => {
     const q = listQuery.parse(req.query);
-    const rows = await read(req, (tx) => tx.department.findMany({ ...paging(q), select: { id: true, name: true, nameFr: true, glCode: true, createdAt: true, updatedAt: true, managers: { select: { userId: true } } } }));
-    res.json(pageOf(rows, q.limit, (d) => ({ id: d.id, name: d.name, name_fr: d.nameFr, gl_code: d.glCode, manager_ids: d.managers.map((m) => m.userId), created_at: iso(d.createdAt), updated_at: iso(d.updatedAt) })));
+    const rows = await read(req, (tx) => tx.department.findMany({ ...paging(q), select: DEPARTMENT_SELECT }));
+    res.json(pageOf(rows, q.limit, department));
+  }),
+);
+
+publicApiRouter.get(
+  '/departments/:id',
+  need('departments:read'),
+  h(async (req, res) => {
+    const id = uuid.safeParse(req.params.id);
+    const d = id.success ? await read(req, (tx) => tx.department.findUnique({ where: { id: id.data }, select: DEPARTMENT_SELECT })) : null;
+    if (!d) throw notFound('Department');
+    res.setHeader('ETag', etagOf(d.updatedAt));
+    res.json(department(d));
   }),
 );
 
@@ -240,8 +190,20 @@ publicApiRouter.get(
   need('positions:read'),
   h(async (req, res) => {
     const q = listQuery.parse(req.query);
-    const rows = await read(req, (tx) => tx.position.findMany({ ...paging(q), select: { id: true, name: true, nameFr: true, departmentId: true, updatedAt: true } }));
-    res.json(pageOf(rows, q.limit, (p) => ({ id: p.id, name: p.name, name_fr: p.nameFr, department_id: p.departmentId, updated_at: iso(p.updatedAt) })));
+    const rows = await read(req, (tx) => tx.position.findMany({ ...paging(q), select: POSITION_SELECT }));
+    res.json(pageOf(rows, q.limit, position));
+  }),
+);
+
+publicApiRouter.get(
+  '/positions/:id',
+  need('positions:read'),
+  h(async (req, res) => {
+    const id = uuid.safeParse(req.params.id);
+    const p = id.success ? await read(req, (tx) => tx.position.findUnique({ where: { id: id.data }, select: POSITION_SELECT })) : null;
+    if (!p) throw notFound('Position');
+    res.setHeader('ETag', etagOf(p.updatedAt));
+    res.json(position(p));
   }),
 );
 
@@ -332,11 +294,23 @@ publicApiRouter.get(
         where: { ...p.where, status: 'APPROVED', ...(q.to ? { startsAt: { lt: new Date(q.to) } } : {}), ...(q.from ? { endsAt: { gt: new Date(q.from) } } : {}), ...(q.person_id ? { userId: q.person_id } : {}) },
         orderBy: p.orderBy,
         take: p.take,
-        // Never the person's note or the decision note: they can hold health details.
-        select: { id: true, userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true, decidedAt: true, updatedAt: true },
+        select: TIME_OFF_SELECT,
       }),
     );
-    res.json(pageOf(rows, q.limit, (r) => ({ id: r.id, person_id: r.userId, type: r.type.toLowerCase(), starts_at: iso(r.startsAt), ends_at: iso(r.endsAt), hours: money(r.chargedHours), approved_at: iso(r.decidedAt), updated_at: iso(r.updatedAt) })));
+    res.json(pageOf(rows, q.limit, timeOff));
+  }),
+);
+
+/** One request in any status: a system that sent it in follows it here (or with the timeoff.* webhooks). */
+publicApiRouter.get(
+  '/time-off/:id',
+  need('timeoff:read', 'timeoff:write'),
+  h(async (req, res) => {
+    const id = uuid.safeParse(req.params.id);
+    const r = id.success ? await read(req, (tx) => tx.timeOffRequest.findUnique({ where: { id: id.data }, select: TIME_OFF_SELECT })) : null;
+    if (!r) throw notFound('Time-off request');
+    res.setHeader('ETag', etagOf(r.updatedAt));
+    res.json(timeOff(r));
   }),
 );
 
@@ -394,3 +368,11 @@ publicApiRouter.get(
 );
 
 publicApiRouter.use((_req, _res, next) => next(new HttpError(404, 'NOT_FOUND', 'There’s no such API endpoint. See /api/v1/openapi.json.')));
+
+/** Every error under /api/v1 as problem details; anything unexpected is reported and answered without detail. */
+publicApiRouter.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const p = toProblem(err, req.id);
+  if (p && p.status < 500) return sendProblem(res, p);
+  captureError(err, { source: 'request', requestId: req.id, method: req.method, route: routePattern(req), tenantId: req.apiKey?.tenantId });
+  sendProblem(res, toProblem(new HttpError(500, 'INTERNAL', 'Something went wrong'), req.id)!);
+});

@@ -110,7 +110,7 @@ describe('API keys (Settings › Integrations)', () => {
   it('refuses bad allow lists, past expiry, and unknown scopes', async () => {
     expect((await as('hr').post('/api/integrations/api-keys', { name: 'Bad', scopes: ['people:read'], allowedIps: ['not-an-ip'] })).status).toBe(400);
     expect((await as('hr').post('/api/integrations/api-keys', { name: 'Bad', scopes: ['people:read'], expiresAt: '2020-01-01' })).status).toBe(400);
-    expect((await as('hr').post('/api/integrations/api-keys', { name: 'Bad', scopes: ['people:write'] })).status).toBe(400);
+    expect((await as('hr').post('/api/integrations/api-keys', { name: 'Bad', scopes: ['payroll:write'] })).status).toBe(400);
   });
 });
 
@@ -162,9 +162,11 @@ describe('the public API', () => {
     const p = (await v1(keyA, `/people/${a.users[0]!.id}`)).body;
     expect(p).toEqual({
       id: a.users[0]!.id,
+      external_id: null,
       employee_number: 'E1',
       first_name: 'Guard0',
       last_name: A,
+      preferred_name: null,
       email: `guard0@${A}.test`,
       status: 'active',
       employment_status: 'part_time',
@@ -231,13 +233,27 @@ describe('the public API', () => {
     expect((await v1(keyA, '/shifts?from=2026-01-01&to=2026-12-31')).body.code).toBe('BAD_RANGE');
   });
 
-  it('serves its OpenAPI description, and every documented path answers', async () => {
+  it('serves its OpenAPI description; every documented read answers and every documented write exists', async () => {
     const spec = (await request(server).get('/api/v1/openapi.json')).body;
     expect(spec.openapi).toBe('3.1.0');
     const run = (await v1(keyA, '/pay-runs')).body.data[0].id;
-    for (const path of Object.keys(spec.paths)) {
-      const url = path.replace('{id}', path.startsWith('/people') ? a.users[0]!.id : run) + (/shifts|timesheets/.test(path) ? `?from=${day(-5).toISOString()}&to=${day(20).toISOString()}` : '');
-      expect([path, (await v1(keyA, url)).status]).toEqual([path, 200]);
+    const ids: Record<string, string> = {
+      '/people': a.users[0]!.id,
+      '/pay-runs': run,
+      '/departments': (await owner.department.upsert({ where: { tenantId_name: { tenantId: a.tenant.id, name: 'Aquatics' } }, update: {}, create: { tenantId: a.tenant.id, name: 'Aquatics' } })).id,
+      '/positions': a.position.id,
+      '/time-off': (await owner.timeOffRequest.findFirstOrThrow({ where: { tenantId: a.tenant.id } })).id,
+    };
+    for (const [path, ops] of Object.entries(spec.paths as Record<string, Record<string, unknown>>)) {
+      const base = Object.keys(ids).find((p) => path.startsWith(p))!;
+      const url = path.replace('{id}', ids[base]!).replace('{externalId}', 'X-1') + (/shifts|timesheets/.test(path) ? `?from=${day(-5).toISOString()}&to=${day(20).toISOString()}` : '');
+      if (ops.get) expect([path, (await v1(keyA, url)).status]).toEqual([path, 200]);
+      // keyA reads only: a documented write answers 403 for its scope, never 404.
+      for (const method of ['post', 'patch', 'put'] as const) {
+        if (!ops[method]) continue;
+        const r = await request(server)[method](`/api/v1${url}`).auth(keyA, { type: 'bearer' }).send({});
+        expect([method, path, r.status, r.body.code]).toEqual([method, path, 403, 'INSUFFICIENT_SCOPE']);
+      }
     }
     expect((await v1(keyA, '/nothing-here')).status).toBe(404);
   });
