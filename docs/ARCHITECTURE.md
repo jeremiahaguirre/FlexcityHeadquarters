@@ -36,7 +36,21 @@ The original single `role` field conflated *what you may do in the app* with *wh
 
 ### Eligibility (`services/scheduling/eligibility.ts`)
 
-A pure function decides whether a person may work a shift and explains every refusal. The database loader does coarse filtering in SQL; the pure function makes the final decision. The Shift Board, the scheduling assistant and supervisor approvals all use the same function.
+A pure function decides whether a person may work a shift and explains every refusal. The database loader does coarse filtering in SQL; the pure function makes the final decision. The Shift Board, the scheduling assistant, Fill the schedule and supervisor approvals all use the same function.
+
+### Fill the schedule (`services/scheduling/solver.ts`, `fillRun.ts`, `solverSettings.ts`)
+
+A pure, seeded solver assigns people to a week's open draft shifts; the web runs a horizon (1, 2, 4 or 13 weeks) one week at a time, sending each week's proposals forward so hours, weekends and evenings balance across the horizon.
+
+1. **Static screen** per person and shift: position held, certifications verified and valid through the shift (with prerequisites), blocking onboarding, minimum age, time off, availability, work restrictions. It only removes people the full check would refuse.
+2. **Greedy**, hardest shift first (fewest qualified people, then earliest), each to whoever raises the weighted cost least; ties go to fewest hours so far, then a seeded order (never names or hire dates).
+3. **Local search** (simulated annealing): reassign, swap, and move-and-back-fill to open a slot. It stops at an iteration budget (so a seed reproduces the run) or the time budget (≤ 3 s a week).
+4. **Verification**: every proposal is re-checked with `evaluateCandidate()` against all of that person's other shifts (published and drafts, any department), plus travel time, max hours a day and max days in a row, and no overtime unless allowed. Anything refused is dropped and re-tried.
+5. **Explanations**: reasons per proposal and three alternatives; for open shifts, how many hold the position and what stops each.
+
+Cost, lowest first: an open shift (1000), short required coverage (per hour), then weighted (0–10) contracted hours, fair hours (squared hours above target across the horizon), overtime cost and the overtime ledger, weekends/evenings rotation, continuity, main position and confirmed availability, and seniority only when the organization's switch and the department allow it (otherwise it is never read). Weights, toggles, limits and the **Plan ahead** window live in `Tenant.overtimePolicy.solver`, with per-department overrides; the plan-ahead window is both how far ahead staff confirm availability (confirmations are `availability.confirm`/`availability.update` audit rows) and the default horizon, and later weeks are tentative.
+
+A run is read-only apart from its audit row. Accepting re-checks each proposal in order and writes draft assignments with a compare-and-set on `Shift.version` (the accept's audit row is the undo token); publishing is the usual step. A run covers one department's positions (or all the person schedules), proposes only people in the person's scope who hold one of those positions, and never touches published shifts.
 
 ### Shift Board (`services/shiftboard/offers.ts`)
 

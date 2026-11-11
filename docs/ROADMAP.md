@@ -21,13 +21,14 @@
 
 ## Later
 
-- [ ] Constraint-solver scheduling (OR-Tools CP-SAT) behind the existing `proposeSchedule` types, if large multi-facility terms outgrow the hardest-first planner with its repair pass.
+- [ ] Fill the schedule: recurring weekly shift templates to create future weeks' slots (today it fills existing drafts and the forecast's), and stated shift preferences if cities ask for more than availability.
 - [ ] FH books: verify the chart of accounts, sales tax treatment and the PAD transaction code with FH's accountant and bank before the first live debit.
 - [ ] Payroll: FH verifies each year's tax tables against CRA's T4127 (all 13 provinces and territories and the federal table ship as unverified starting values); the basic personal amount phase-outs in Manitoba and Yukon.
 
 ## Done
 
 - Shift board with eligibility reasons, overtime approval and optimistic locking; schedule builder with assistant; my schedule.
+- Fill the schedule: a department's 1 week to 3 months filled by a seeded, explainable solver (hardest first, local search, every proposal re-checked with the shared eligibility rules), reviewed by week and day with reasons and alternatives, accepted as drafts with undo; one Plan ahead window for availability and the fill horizon.
 - Availability, time off, timeclock with geofence, punch review; chemical readings and closure workflow; incidents with sealed narratives.
 - Staff directory, invitations, roles, pay rates, verified certifications, discipline records with signature capture.
 - Login lockout and rate limits, password reset by email.
