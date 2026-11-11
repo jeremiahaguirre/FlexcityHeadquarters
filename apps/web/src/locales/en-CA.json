@@ -3397,7 +3397,8 @@
     "keepAwakeHint": "Keeps the app in front so your location keeps updating. Uses more battery.",
     "backgroundNote": "Phones stop sharing a web app’s location when it’s in the background or the screen is locked. Your check-in timer and reminders keep working either way, and a missed check-in still alerts your monitors.",
     "mapAt": "Location at {{time}}",
-    "live": "live"
+    "live": "live",
+    "aid": "Check-ins are an aid: they depend on your phone, the network and your monitors answering, and don’t replace your employer’s working-alone procedure."
   },
   "billingPage": {
     "title": "Billing",
@@ -5269,7 +5270,7 @@
       "support": "Email and phone support",
       "prioritySupport": "Priority support",
       "successManager": "Customer success manager",
-      "sla": "99.9% uptime commitment",
+      "sla": "Service level agreement (terms in your order form)",
       "sandbox": "Test organization",
       "priceLock": "Multi-year price lock"
     },
@@ -7247,5 +7248,12 @@
     "doneHelp": "We won’t send promotional emails to {{email}} again unless you ask us to.",
     "invalid": "This unsubscribe link isn’t valid. Use the link from the email, or contact us and we’ll unsubscribe you.",
     "service": "Service messages your employer or organization sends through FlexcityHeadquarters (shifts, pay, safety alerts, account security) aren’t affected."
+  },
+  "legalLinks": {
+    "label": "Legal",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "cookies": "Cookies",
+    "accessibility": "Accessibility"
   }
 }

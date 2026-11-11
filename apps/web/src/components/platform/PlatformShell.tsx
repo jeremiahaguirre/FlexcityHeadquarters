@@ -11,6 +11,7 @@ import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LiveLogo } from '@/components/LiveLogo';
 import { LogoMark } from '@/components/Logo';
+import { Copyright } from '@/components/Copyright';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
 import { PasskeyPrompt } from '@/components/auth/PasskeyPrompt';
 import { platformAddPasskey } from '@/lib/passkeys';
@@ -120,6 +121,7 @@ function SignedIn({ children }: { children: ReactNode }) {
         </header>
         <main id="main" className="mx-auto max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 md:px-8 md:pb-16 md:pt-8 print:max-w-none print:p-0">
           {me.data ? children : null}
+          <Copyright className="mt-12 text-center print:hidden" />
         </main>
       </div>
 

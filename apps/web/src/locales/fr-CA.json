@@ -3397,7 +3397,8 @@
     "keepAwakeHint": "Garde l’application à l’avant-plan pour que votre position continue d’être mise à jour. Consomme plus de batterie.",
     "backgroundNote": "Les téléphones cessent de partager la position d’une application Web quand elle est en arrière-plan ou que l’écran est verrouillé. La minuterie et les rappels fonctionnent quand même, et une vérification manquée alerte toujours vos superviseurs.",
     "mapAt": "Position à {{time}}",
-    "live": "en direct"
+    "live": "en direct",
+    "aid": "Les vérifications sont un outil d’aide : elles dépendent de votre téléphone, du réseau et de la réponse de vos surveillants, et ne remplacent pas la procédure de travail en solitaire de votre employeur."
   },
   "billingPage": {
     "title": "Facturation",
@@ -5269,7 +5270,7 @@
       "support": "Soutien par courriel et téléphone",
       "prioritySupport": "Soutien prioritaire",
       "successManager": "Gestionnaire de la réussite client",
-      "sla": "Engagement de disponibilité de 99,9 %",
+      "sla": "Entente de niveau de service (conditions dans votre bon de commande)",
       "sandbox": "Organisation d’essai",
       "priceLock": "Prix garanti sur plusieurs années"
     },
@@ -7247,5 +7248,12 @@
     "doneHelp": "Nous n’enverrons plus de courriels promotionnels à {{email}}, sauf si vous nous le demandez.",
     "invalid": "Ce lien de désabonnement n’est pas valide. Utilisez le lien du courriel, ou écrivez-nous et nous vous désabonnerons.",
     "service": "Les messages de service que votre employeur ou votre organisation envoie par FlexcityHeadquarters (quarts, paie, alertes de sécurité, sécurité du compte) ne sont pas touchés."
+  },
+  "legalLinks": {
+    "label": "Juridique",
+    "privacy": "Confidentialité",
+    "terms": "Conditions",
+    "cookies": "Témoins",
+    "accessibility": "Accessibilité"
   }
 }

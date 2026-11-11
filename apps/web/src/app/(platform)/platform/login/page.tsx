@@ -13,6 +13,7 @@ import { DEMO, DEMO_PASSWORD } from "@/lib/demo";
 import { papi } from "@/lib/platform";
 import { OFFER_FLAG } from "@/components/auth/PasskeyPrompt";
 import { PasskeyIcon } from "@/components/auth/PasskeyIcon";
+import { Copyright } from "@/components/Copyright";
 import {
   cancelled,
   passkeysSupported,
@@ -273,6 +274,7 @@ export default function PlatformLogin() {
             </form>
           </>
         )}
+        <Copyright className="mt-10 text-center" />
       </main>
     </div>
   );

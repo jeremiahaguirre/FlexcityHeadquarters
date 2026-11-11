@@ -95,7 +95,7 @@ export default function AlonePage() {
       <div className="grid gap-6">
         <PageHeader title={t('loneWork.title')} description={t('loneWork.description')} />
         <Card className="max-w-xl">
-          <CardHeader title={t('loneWork.startTitle')} description={t('loneWork.startHelp')} />
+          <CardHeader title={t('loneWork.startTitle')} description={`${t('loneWork.startHelp')} ${t('loneWork.aid')}`} />
           <CardBody className="pt-2">
             <form className="grid gap-4" onSubmit={(e) => void start(e)}>
               <Field label={t('loneWork.location')} hint={t('loneWork.locationHint')}>{(p) => <Input {...p} name="location" required minLength={2} maxLength={120} />}</Field>
