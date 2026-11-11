@@ -8,22 +8,9 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../src/auth/tokens.js';
 import { seedCityWorkers } from './seedCityWorkers.js';
+import { seedStatHolidays } from '../src/services/payroll/statHolidays.js';
 
 const prisma = new PrismaClient(); // owner connection (DATABASE_URL)
-
-const BC_STAT_HOLIDAYS_2026: Array<[string, string, string]> = [
-  ['2026-01-01', "New Year's Day", 'Jour de l’An'],
-  ['2026-02-16', 'Family Day', 'Journée de la famille'],
-  ['2026-04-03', 'Good Friday', 'Vendredi saint'],
-  ['2026-05-18', 'Victoria Day', 'Fête de la Reine'],
-  ['2026-07-01', 'Canada Day', 'Fête du Canada'],
-  ['2026-08-03', 'British Columbia Day', 'Jour de la Colombie-Britannique'],
-  ['2026-09-07', 'Labour Day', 'Fête du Travail'],
-  ['2026-09-30', 'National Day for Truth and Reconciliation', 'Journée nationale de la vérité et de la réconciliation'],
-  ['2026-10-12', 'Thanksgiving', 'Action de grâce'],
-  ['2026-11-11', 'Remembrance Day', 'Jour du Souvenir'],
-  ['2026-12-25', 'Christmas Day', 'Noël'],
-];
 
 async function main() {
   // FH Dev console account (dev only). Production accounts: npm run platform:admin.
@@ -33,18 +20,15 @@ async function main() {
     create: { email: 'dev@flexcity.dev', name: 'FH Dev', passwordHash: await hashPassword('flexcity-dev') },
   });
 
+  // Statutory holidays for every province and territory (forecast and payroll). Safe to re-run.
+  const year = new Date().getFullYear();
+  const added = await seedStatHolidays(prisma, [...new Set([2026, 2027, year, year + 1])].sort());
+  console.log(`Statutory holidays ready (${added} province-days).`);
+
   const existing = await prisma.tenant.findUnique({ where: { subdomain: 'kelowna' } });
   if (existing) {
     console.log('Seed data already present (tenant "kelowna"). Skipping.');
     return;
-  }
-
-  for (const [date, name, nameFr] of BC_STAT_HOLIDAYS_2026) {
-    await prisma.statutoryHoliday.upsert({
-      where: { province_date: { province: 'BC', date: new Date(date) } },
-      update: {},
-      create: { province: 'BC', date: new Date(date), name, nameFr },
-    });
   }
 
   const sfa = await prisma.certification.create({ data: { name: 'Standard First Aid with CPR-C', nameFr: 'Secourisme général avec RCR-C', issuingBody: 'Lifesaving Society / Canadian Red Cross', validityMonths: 36 } });
