@@ -1,242 +1,334 @@
 /**
- * Website legal pages. These are drafts: they describe how the product and
- * this site actually work, and must be reviewed by counsel before launch.
+ * Website legal pages (EN/FR). These are drafts written to describe how the product and this site
+ * actually work; they do not replace review by a lawyer, and must be reviewed by counsel before
+ * launch (docs/COMPLIANCE.md lists every judgment call). Company details come from config
+ * (lib/site.ts COMPANY): until set, the pages show clearly marked placeholders, never invented facts.
+ *
+ * Each page has a version and a "last updated" date; bump both when the text changes.
  */
 import type { Lang } from './copy';
 import { COMPANY } from '../lib/site';
 
 export interface LegalSection { heading: string; body: string[] }
-export interface LegalDoc { updated: string; intro: string; sections: LegalSection[] }
-type Doc = 'privacy' | 'accessibility' | 'terms' | 'copyright';
+export interface LegalDoc { version: string; updated: string; intro: string; sections: LegalSection[] }
+type Doc = 'privacy' | 'accessibility' | 'terms' | 'copyright' | 'cookies' | 'refunds';
+
+const C = COMPANY;
+const officer = `${C.privacyOfficer.name}, ${C.mailingAddress}. Email: ${C.privacyOfficer.email}.`;
+const officerFr = `${C.privacyOfficer.name}, ${C.mailingAddress}. Courriel : ${C.privacyOfficer.email}.`;
 
 const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
   privacy: {
     en: {
+      version: '2.0',
       updated: '2026-11-11',
-      intro: 'This notice explains what personal information FlexcityHeadquarters collects through this website and through the FlexcityHeadquarters application, why, and the choices you have. It is written to meet the Personal Information Protection and Electronic Documents Act (PIPEDA), Quebec’s Act respecting the protection of personal information in the private sector (Law 25), and the privacy expectations of the public bodies we serve.',
+      intro: `This policy explains what personal information ${C.operatingName} (${C.legalName}) handles through this website and the ${C.operatingName} application, why, where it is kept, and your rights. It is written for Canada’s Personal Information Protection and Electronic Documents Act (PIPEDA), Quebec’s Act respecting the protection of personal information in the private sector (Law 25), and the provincial public-sector laws that apply to our municipal customers.`,
       sections: [
         {
-          heading: 'This website',
+          heading: 'Two roles: service provider and organization in charge',
           body: [
-            'The site does not use cookies, advertising pixels or session recording (nothing records your screen, clicks or typing). To count visits, it uses Vercel Web Analytics, run by our hosting provider: it records the pages viewed, the referring site, and the country, browser and type of device, without cookies and without identifying you; visitors are told apart only by a hash that changes every day.',
-            'You can turn this counting off with the “Analytics” switch at the bottom of every page (remembered in your browser). It is also off automatically if your browser sends a Global Privacy Control or Do Not Track signal.',
-            'When you send the contact form we collect your name, work email, organization, role, province, number of facilities and your message. We use them only to reply and, if you tick the box, to send product news. We keep a record of the wording you agreed to and when, as Canada’s Anti-Spam Legislation (CASL) requires. Because you wrote to us, we may also follow up on your enquiry by email for up to six months (implied consent under CASL); every such message identifies us, gives our mailing address and has a one-click unsubscribe link that takes effect immediately.',
-            'The contact form is for organizations. It is not meant for children, and we ask you not to include information about children in your message.',
-            'Our hosting provider keeps standard server logs (IP address, browser, pages requested) for security for a short period.',
+            'In the application, we act for our customers (cities, municipalities and private employers). The customer decides what information about its staff, applicants and program participants is collected and is responsible for it under the law that applies to it (for example PIPEDA, Law 25, Alberta’s or BC’s Personal Information Protection Act, or a public-sector law such as BC’s FIPPA or Ontario’s MFIPPA). We process that information only to provide the service, on the customer’s instructions and under a written agreement.',
+            'For this website, our marketing and our billing of customers, we decide why and how information is used, and this policy is our commitment to you.',
+            'If you work for one of our customers, send questions or access requests about your employment records to your employer’s privacy or FOI coordinator first; we help the employer answer.',
           ],
         },
         {
-          heading: 'The application: who is responsible',
+          heading: 'What we collect, by where you meet us',
           body: [
-            'When a municipality or club uses FlexcityHeadquarters, that organization decides what information about its staff is collected and is responsible for it under the privacy or access-to-information law that applies to it (for example MFIPPA in Ontario or FIPPA in British Columbia). FlexcityHeadquarters acts as its service provider and processes that information only on the organization’s instructions and under a written agreement.',
-            'Staff questions or access requests about their employment records should go first to their employer’s privacy or FOI coordinator. We will help the employer answer.',
+            'This website: no cookies, advertising pixels or session recording. Page counts through Vercel Web Analytics only if you allow them (see Cookies and similar technologies). The contact form: your name, work email, organization, role, province, number of facilities and message; marketing consent only if you tick the separate box.',
+            'Application accounts (staff): work contact details, positions, certifications, availability, schedules, time punches, time-off requests, pay rates and hours, onboarding checks, work restrictions for accommodation, operations logs and incident reports, as your employer sets up.',
+            'Clocking in: whether you were at the facility and how far away, when your employer turns location checks on. Your coordinates and internet address are not stored with the punch.',
+            'Working alone: if you start a working-alone session, its location label and check-ins; your live location only if you choose to share it during the session. Shared locations are deleted when you turn sharing off, or 30 days after the session.',
+            'Shared kiosks: a facility tablet set up by your employer; your kiosk PIN is stored only as a one-way hash.',
+            'Text alerts (SMS) and push notifications: only if your employer turns them on and you confirm a mobile number or allow notifications on a device. Message contents are removed from our systems once sent.',
+            'Payroll (when your employer runs payroll in the application): your Social Insurance Number and banking details, encrypted with your employer’s own key; only the last digits are ever shown.',
+            'Documents: files your employer or you upload (certificates, policies, receipts), encrypted at rest.',
+            'Public program sign-up: the parent’s or guardian’s contact details, an emergency contact, and the participant’s name, date of birth (to place them in the right level) and any safety note. The person filling the form must be an adult and, for a child, the child’s parent or guardian.',
+            'Careers page: the applicant’s contact details, message, certifications and optional résumé, and a confirmation of their age range (no date of birth). Applicants aged 14 or 15 give a parent’s or guardian’s name and consent.',
+            'Error reports: when something breaks, a scrubbed technical report (error type, page path without ids, build version). It never contains what you typed, your screen, names, emails or tokens. Error tracking is off unless we turn it on with a provider hosted in Canada.',
+            'Billing (customers): the billing contact, billing address, purchase order number and payment history. Card and bank-debit details entered online are held by our payment processor, not by us.',
           ],
         },
         {
-          heading: 'What the application holds',
+          heading: 'Why we use it, and on what basis',
           body: [
-            'Work contact details, positions, certifications, availability, schedules, time punches (with location only at the moment of punching, to confirm you are on site), time-off requests, pay rates and payroll hours, onboarding checks (only that a check was seen, when and by whom; never its result, a SIN or banking details), work restrictions for accommodation, pool operations logs and encrypted incident reports.',
-            'Union Hub records are kept in a separate database area with their own encryption key per union local, and the employer cannot read them.',
-            'Passkeys (Face ID, fingerprint, Windows Hello) never leave your device: we store only a public key.',
+            'To provide the service our customer signed up for (scheduling, time and attendance, payroll, safety, HR), to keep it secure, to support users, to bill customers, and to meet our legal obligations (for example tax records).',
+            'Consent: we rely on the consent you give at the time we collect (the notice next to each form and, for staff, the information agreement shown at first sign-in), or on consent implied by the context where the law allows it. Optional uses (marketing email, website analytics, notifications, location sharing) are off unless you choose them, and you can withdraw consent at any time; withdrawing may mean we cannot provide a feature.',
+            'Public bodies: when a municipality uses the application, it collects information under the authority of its own legislation, and its notice of collection applies.',
           ],
         },
         {
-          heading: 'Attendance and people review',
+          heading: 'Automated processing and decisions',
           body: [
-            'The application keeps an attendance score and lets supervisors write notes about conduct, performance and safety, including commendations. Employers use them to notice when a conversation may help and to document discipline.',
-            'Nothing is decided automatically: a person makes every decision, sick days and protected leave never count, and being named in an incident report never counts. Employees can see their own file, ask for corrections, and add a written response to any record. Every time a manager opens a file, it is logged.',
+            'The application calculates an attendance (reliability) score and offers a scheduling assistant that suggests who could take a shift. These are advisory tools: no decision about a person is made exclusively by automated processing. A supervisor or manager reviews and makes every decision; sick days and protected leave never count; people can see their own file, ask for corrections and add a response.',
+            'If that ever changes, we will tell the people concerned, as section 12.1 of Quebec’s private-sector law requires, including the information used and their right to have the decision reviewed by a person.',
           ],
         },
         {
-          heading: 'Your agreement at first sign-in',
+          heading: 'Children',
           body: [
-            'The first time you sign in, the application explains what it collects, why and who sees it, and asks for your two optional permissions: notifications, and location (checked once at clock-in, and shared only during a working-alone session you start). You choose each one, then sign with your name and a drawn or typed signature.',
-            'A copy is kept as a record that you were informed: the exact version and language you saw with its fingerprint, your signature, your choices, the time, and your device’s internet address and browser. It can’t be changed. When the text changes, you are asked to read and sign the new version.',
+            'The application is for organizations and their staff. Children’s information enters it only through a customer’s program sign-up, entered by the child’s parent or guardian with their consent, or through a job application by a 14 or 15 year old with a parent’s or guardian’s consent. This website and its contact form are not meant for children.',
           ],
         },
         {
-          heading: 'Safeguards',
+          heading: 'Where information is stored, and transfers outside Canada',
           body: [
-            'Each organization’s data is separated at the database level with row-level security. Passwords are hashed, sensitive changes require you to confirm your identity again, and administrative actions are written to an audit log.',
-            'Access within FlexcityHeadquarters is limited to staff who need it to provide support, and every such access is logged.',
+            'The application is designed to run in Canada on Amazon Web Services: the Canada Central region (Montréal) for production and Canada West (Calgary) for disaster recovery, with backups in Canada. This hosting is planned and not yet in production; we confirm the hosting location in writing before a customer goes live.',
+            'Some service providers are outside Canada or may process outside Canada: Vercel hosts this website (global network, US company); the content delivery network may cache public, non-personal files at edge locations outside Canada; text alerts use a US provider when a customer turns them on; card and debit payments go through a payment processor that may process in the US; browser push notifications travel through the browser maker’s service, encrypted so it cannot read them. Information processed outside Canada may be accessible to the authorities of that country under its laws.',
+            'Our current list of service providers, what each receives and where, is kept up to date and available on request. Before information about Quebec residents is communicated outside Quebec, we assess the privacy impact (Law 25, s. 17).',
           ],
         },
         {
-          heading: 'Where information is stored',
+          heading: 'How long we keep it',
           body: [
-            'The application is built to be hosted in Canada (AWS, Montréal region); it is not yet in production. Where a customer’s contract or provincial law requires Canadian residency, we confirm the hosting location in writing before go-live. This website and its contact form may be served from outside Canada.',
+            'Each kind of information has a retention period, many of them set by the customer to match its records by-law: for example, payroll records at least six years after the tax year (CRA), job applications one year after the last change, working-alone locations 30 days, email and text logs 90 days by default, and website enquiries two years after our last exchange unless you become a customer. When a period ends, information is deleted or anonymized; encrypted backups expire within 35 days.',
+            'We keep a record of an unsubscribe for as long as we send commercial email, so that we never email you again by mistake.',
           ],
         },
         {
-          heading: 'Retention',
+          heading: 'How we protect it',
           body: [
-            'Payroll and time records are kept for the period the employer sets (at least the minimum required by provincial employment-standards law, commonly three to six years). Website enquiries are kept for up to two years after our last exchange unless you become a customer.',
+            'Each customer’s data is separated at the database level (row-level security). Sensitive fields such as SINs, bank accounts, incident narratives and documents are encrypted with a key specific to each customer. Information is encrypted in transit and at rest. Passwords are hashed; sensitive actions ask you to confirm your identity again; administrative actions and every access by our support staff are logged.',
           ],
         },
         {
           heading: 'Your rights',
           body: [
-            'You can ask to see or correct the personal information we hold about you, withdraw consent to marketing email at any time (every message has an unsubscribe link), or make a complaint. If you are not satisfied with our answer you can contact the Office of the Privacy Commissioner of Canada or, in Quebec, the Commission d’accès à l’information.',
+            'You can ask to access the personal information we hold about you and to have it corrected; withdraw a consent; and, in Quebec, ask for computerized information you provided to be communicated to you or to another organization in a structured, commonly used technological format (portability), and ask that information about you stop being disseminated or that a hyperlink to it be de-indexed where the law allows (Law 25, s. 28.1).',
+            'For information a customer holds about you (your employer, or the city that runs a program), we pass your request to that customer and help it answer. We answer requests we are responsible for within 30 days.',
+            'You can complain to us first (below). You can also contact the Office of the Privacy Commissioner of Canada, Quebec’s Commission d’accès à l’information, or the privacy commissioner of your province or territory (for example BC’s Office of the Information and Privacy Commissioner or Ontario’s Information and Privacy Commissioner).',
           ],
         },
         {
-          heading: 'Privacy officer',
-          body: ['Our privacy officer can be reached through the contact page. We reply within 30 days.'],
+          heading: 'Privacy incidents',
+          body: [
+            'If a breach of security safeguards involving personal information happens, we contain it, assess the risk and keep a record of it. As a service provider, we notify the affected customer promptly so it can meet its own obligations. Where we are responsible, we report incidents that create a real risk of significant harm to the Privacy Commissioner of Canada and notify the people affected (PIPEDA), and in Quebec report incidents that present a risk of serious injury to the Commission d’accès à l’information and notify the people concerned (Law 25).',
+          ],
+        },
+        {
+          heading: 'Person in charge of the protection of personal information',
+          body: [officer, 'You can also write to us through the contact page.'],
+        },
+        {
+          heading: 'Changes to this policy',
+          body: ['When we change this policy, we update its version and date at the top. For significant changes we tell customers in advance and, where consent is needed, ask for it again (staff see the new information agreement at their next sign-in).'],
         },
       ],
     },
     fr: {
+      version: '2.0',
       updated: '2026-11-11',
-      intro: 'Le présent avis explique quels renseignements personnels FlexcityHeadquarters recueille par ce site et par l’application FlexcityHeadquarters, pourquoi, et quels choix vous avez. Il vise à respecter la Loi sur la protection des renseignements personnels et les documents électroniques (LPRPDE), la Loi sur la protection des renseignements personnels dans le secteur privé du Québec (Loi 25) et les attentes des organismes publics que nous servons.',
+      intro: `La présente politique explique quels renseignements personnels ${C.operatingName} (${C.legalName}) traite par ce site et par l’application ${C.operatingName}, pourquoi, où ils sont conservés et quels sont vos droits. Elle vise la Loi sur la protection des renseignements personnels et les documents électroniques (LPRPDE), la Loi sur la protection des renseignements personnels dans le secteur privé du Québec (Loi 25) et les lois provinciales du secteur public qui s’appliquent à nos clients municipaux.`,
       sections: [
         {
-          heading: 'Ce site',
+          heading: 'Deux rôles : fournisseur de services et organisation responsable',
           body: [
-            'Le site n’utilise ni témoins (cookies), ni pixels publicitaires, ni enregistrement de session (rien n’enregistre votre écran, vos clics ou votre saisie). Pour compter les visites, il utilise Vercel Web Analytics, fourni par notre hébergeur : l’outil consigne les pages consultées, le site d’où vous venez, ainsi que le pays, le navigateur et le type d’appareil, sans témoins et sans vous identifier; les visiteurs ne sont distingués que par une empreinte qui change chaque jour.',
-            'Vous pouvez désactiver ce décompte avec l’interrupteur « Statistiques » au bas de chaque page (le choix est mémorisé dans votre navigateur). Il est aussi désactivé automatiquement si votre navigateur envoie un signal Global Privacy Control ou « Ne pas me suivre ».',
-            'Lorsque vous envoyez le formulaire de contact, nous recueillons votre nom, votre courriel professionnel, votre organisation, votre rôle, votre province, le nombre d’installations et votre message. Nous les utilisons seulement pour vous répondre et, si vous cochez la case, pour vous envoyer des nouvelles. Nous conservons le libellé accepté et la date, comme l’exige la Loi canadienne anti-pourriel (LCAP). Comme vous nous avez écrit, nous pouvons aussi faire un suivi de votre demande par courriel pendant au plus six mois (consentement tacite au sens de la LCAP); chacun de ces messages nous identifie, donne notre adresse postale et comporte un lien de désabonnement en un clic qui prend effet immédiatement.',
-            'Le formulaire de contact s’adresse aux organisations. Il n’est pas destiné aux enfants, et nous vous demandons de ne pas inclure de renseignements sur des enfants dans votre message.',
-            'Notre hébergeur conserve brièvement des journaux de serveur standards (adresse IP, navigateur, pages consultées) à des fins de sécurité.',
+            'Dans l’application, nous agissons pour nos clients (villes, municipalités et employeurs privés). Le client décide quels renseignements sur son personnel, ses candidats et les participants à ses programmes sont recueillis, et il en est responsable selon la loi qui s’applique à lui (par exemple la LPRPDE, la Loi 25, la Personal Information Protection Act de l’Alberta ou de la Colombie-Britannique, ou une loi du secteur public comme la FIPPA de la C.-B. ou la MFIPPA de l’Ontario). Nous traitons ces renseignements uniquement pour fournir le service, selon les instructions du client et en vertu d’une entente écrite.',
+            'Pour ce site, notre marketing et la facturation de nos clients, c’est nous qui décidons pourquoi et comment les renseignements sont utilisés, et la présente politique est notre engagement envers vous.',
+            'Si vous travaillez pour l’un de nos clients, adressez d’abord vos questions ou demandes d’accès sur vos dossiers d’emploi au responsable de la protection des renseignements ou de l’accès à l’information de votre employeur; nous aidons l’employeur à répondre.',
           ],
         },
         {
-          heading: 'L’application : qui est responsable',
+          heading: 'Ce que nous recueillons, selon l’endroit où vous nous rencontrez',
           body: [
-            'Lorsqu’une municipalité ou un club utilise FlexcityHeadquarters, c’est cette organisation qui décide des renseignements recueillis sur son personnel et qui en est responsable en vertu de la loi sur l’accès à l’information ou la protection des renseignements personnels qui s’applique à elle. FlexcityHeadquarters agit comme son fournisseur de services et traite ces renseignements uniquement selon ses instructions et en vertu d’une entente écrite.',
-            'Les questions ou demandes d’accès du personnel concernant leur dossier d’emploi doivent d’abord être adressées au responsable de l’accès à l’information de l’employeur. Nous aiderons l’employeur à y répondre.',
+            'Ce site : aucun témoin (cookie), pixel publicitaire ni enregistrement de session. Le décompte des pages par Vercel Web Analytics seulement si vous l’autorisez (voir Témoins et technologies semblables). Le formulaire de contact : votre nom, votre courriel professionnel, votre organisation, votre rôle, votre province, le nombre d’installations et votre message; le consentement aux courriels promotionnels seulement si vous cochez la case distincte.',
+            'Comptes de l’application (personnel) : coordonnées professionnelles, postes, certifications, disponibilités, horaires, pointages, demandes de congé, taux de salaire et heures, vérifications d’accueil, restrictions de travail pour les mesures d’adaptation, registres d’exploitation et rapports d’incident, selon ce que votre employeur configure.',
+            'Pointage : si vous étiez à l’installation et à quelle distance, lorsque votre employeur active la vérification de l’emplacement. Vos coordonnées et votre adresse Internet ne sont pas conservées avec le pointage.',
+            'Travail en solitaire : si vous commencez une séance de travail en solitaire, l’étiquette de l’endroit et les vérifications; votre position en direct seulement si vous choisissez de la partager pendant la séance. Les positions partagées sont supprimées lorsque vous cessez le partage, ou 30 jours après la séance.',
+            'Bornes partagées : une tablette d’installation configurée par votre employeur; votre NIP de borne n’est conservé que sous forme d’empreinte irréversible.',
+            'Textos (SMS) et notifications : seulement si votre employeur les active et que vous confirmez un numéro de cellulaire ou autorisez les notifications sur un appareil. Le contenu des messages est retiré de nos systèmes une fois envoyé.',
+            'Paie (lorsque votre employeur fait la paie dans l’application) : votre numéro d’assurance sociale et vos renseignements bancaires, chiffrés avec la clé propre à votre employeur; seuls les derniers chiffres sont affichés.',
+            'Documents : fichiers téléversés par votre employeur ou par vous (certificats, politiques, reçus), chiffrés au repos.',
+            'Inscription publique aux programmes : les coordonnées du parent ou du tuteur, une personne à joindre en cas d’urgence, et le nom, la date de naissance (pour le bon niveau) et toute note de sécurité du participant. La personne qui remplit le formulaire doit être majeure et, pour un enfant, en être le parent ou le tuteur.',
+            'Page Carrières : les coordonnées du candidat, son message, ses certifications et, s’il le souhaite, son curriculum vitæ, ainsi qu’une confirmation de sa tranche d’âge (sans date de naissance). Les candidats de 14 ou 15 ans indiquent le nom et le consentement d’un parent ou d’un tuteur.',
+            'Rapports d’erreur : lorsqu’un problème survient, un rapport technique épuré (type d’erreur, chemin de la page sans identifiants, version). Il ne contient jamais ce que vous avez saisi, votre écran, des noms, des courriels ni des jetons. Le suivi des erreurs est désactivé, sauf si nous l’activons avec un fournisseur hébergé au Canada.',
+            'Facturation (clients) : la personne-ressource et l’adresse de facturation, le numéro de bon de commande et l’historique des paiements. Les renseignements de carte et de débit bancaire saisis en ligne sont détenus par notre processeur de paiement, et non par nous.',
           ],
         },
         {
-          heading: 'Ce que contient l’application',
+          heading: 'Pourquoi nous les utilisons, et sur quelle base',
           body: [
-            'Coordonnées professionnelles, postes, certifications, disponibilités, horaires, pointages (avec la position uniquement au moment du pointage, pour confirmer votre présence sur place), demandes de congé, taux de salaire et heures de paie, vérifications d’intégration (seulement le fait qu’elles ont été vues, quand et par qui; jamais le résultat, un NAS ou des coordonnées bancaires), restrictions de travail liées aux mesures d’adaptation, registres d’exploitation des bassins et rapports d’incident chiffrés.',
-            'Les dossiers du Carrefour syndical sont conservés dans une zone distincte de la base de données, chiffrés avec une clé propre à chaque section locale, et l’employeur ne peut pas les lire.',
-            'Les clés d’accès (Face ID, empreinte, Windows Hello) ne quittent jamais votre appareil : nous ne conservons qu’une clé publique.',
+            'Pour fournir le service auquel notre client s’est abonné (horaires, temps et présences, paie, sécurité, RH), le protéger, soutenir les utilisateurs, facturer nos clients et respecter nos obligations légales (par exemple les registres fiscaux).',
+            'Consentement : nous nous appuyons sur le consentement que vous donnez au moment de la collecte (l’avis à côté de chaque formulaire et, pour le personnel, l’entente d’information présentée à la première connexion), ou sur un consentement implicite selon le contexte lorsque la loi le permet. Les utilisations facultatives (courriels promotionnels, statistiques du site, notifications, partage de position) sont désactivées à moins que vous les choisissiez, et vous pouvez retirer votre consentement en tout temps; ce retrait peut nous empêcher d’offrir une fonction.',
+            'Organismes publics : lorsqu’une municipalité utilise l’application, elle recueille les renseignements en vertu de sa propre loi, et son avis de collecte s’applique.',
           ],
         },
         {
-          heading: 'Assiduité et suivi du personnel',
+          heading: 'Traitement et décisions automatisés',
           body: [
-            'L’application tient un score d’assiduité et permet aux superviseurs de rédiger des notes sur la conduite, le rendement et la sécurité, y compris des mentions d’éloge. Les employeurs s’en servent pour voir quand une discussion pourrait aider et pour documenter la discipline.',
-            'Rien n’est décidé automatiquement : une personne prend chaque décision, les congés de maladie et protégés ne comptent jamais, et être nommé dans un rapport d’incident ne compte jamais. Le personnel peut consulter son dossier, demander des corrections et ajouter une réponse écrite à tout dossier. Chaque consultation par un gestionnaire est consignée.',
+            'L’application calcule un indice d’assiduité (fiabilité) et offre un assistant d’horaire qui suggère qui pourrait prendre un quart. Ce sont des outils d’aide : aucune décision concernant une personne n’est fondée exclusivement sur un traitement automatisé. Un superviseur ou un gestionnaire examine et prend chaque décision; les jours de maladie et les congés protégés ne comptent jamais; chacun peut voir son dossier, demander des corrections et y ajouter une réponse.',
+            'Si cela devait changer, nous en informerions les personnes concernées comme l’exige l’article 12.1 de la loi québécoise sur le secteur privé, y compris les renseignements utilisés et leur droit de faire réviser la décision par une personne.',
           ],
         },
         {
-          heading: 'Votre entente à la première connexion',
+          heading: 'Enfants',
           body: [
-            'À votre première connexion, l’application explique ce qu’elle recueille, pourquoi et qui y a accès, et vous demande vos deux autorisations facultatives : les notifications, et la position (vérifiée une fois au pointage, et partagée seulement pendant une séance de travail seul que vous commencez). Vous choisissez chacune, puis signez de votre nom et d’une signature dessinée ou tapée.',
-            'Une copie est conservée comme preuve que vous avez été informé : la version et la langue exactes affichées avec leur empreinte, votre signature, vos choix, l’heure, ainsi que l’adresse Internet et le navigateur de votre appareil. Elle ne peut pas être modifiée. Quand le texte change, on vous demande de lire et de signer la nouvelle version.',
+            'L’application s’adresse aux organisations et à leur personnel. Les renseignements d’enfants n’y entrent que par l’inscription aux programmes d’un client, saisis par le parent ou le tuteur avec son consentement, ou par la candidature d’un jeune de 14 ou 15 ans avec le consentement d’un parent ou d’un tuteur. Ce site et son formulaire de contact ne sont pas destinés aux enfants.',
           ],
         },
         {
-          heading: 'Mesures de protection',
+          heading: 'Lieu de conservation et communication à l’extérieur du Canada',
           body: [
-            'Les données de chaque organisation sont séparées au niveau de la base de données par la sécurité au niveau des lignes. Les mots de passe sont hachés, les changements sensibles exigent de confirmer votre identité à nouveau et les actions administratives sont consignées dans un journal d’audit.',
-            'Chez FlexcityHeadquarters, l’accès est limité au personnel qui en a besoin pour le soutien, et chaque accès est consigné.',
+            'L’application est conçue pour être hébergée au Canada chez Amazon Web Services : la région Canada (Centre) à Montréal pour la production et la région Canada (Ouest) à Calgary pour la reprise après sinistre, avec des sauvegardes au Canada. Cet hébergement est prévu et n’est pas encore en production; nous confirmons par écrit le lieu d’hébergement avant la mise en service d’un client.',
+            'Certains fournisseurs sont à l’extérieur du Canada ou peuvent traiter des renseignements à l’extérieur du Canada : Vercel héberge ce site (réseau mondial, entreprise américaine); le réseau de diffusion de contenu peut mettre en cache des fichiers publics, non personnels, hors du Canada; les textos passent par un fournisseur américain lorsqu’un client les active; les paiements par carte et par débit passent par un processeur de paiement qui peut traiter aux États-Unis; les notifications du navigateur transitent par le service du fabricant du navigateur, chiffrées de sorte qu’il ne peut pas les lire. Les renseignements traités hors du Canada peuvent être accessibles aux autorités de ce pays selon ses lois.',
+            'Notre liste à jour des fournisseurs, de ce que chacun reçoit et d’où, est disponible sur demande. Avant que des renseignements sur des résidents du Québec soient communiqués à l’extérieur du Québec, nous évaluons les facteurs relatifs à la vie privée (Loi 25, art. 17).',
           ],
         },
         {
-          heading: 'Lieu de conservation',
+          heading: 'Durée de conservation',
           body: [
-            'L’application est conçue pour être hébergée au Canada (AWS, région de Montréal); elle n’est pas encore en production. Lorsque le contrat ou la loi provinciale exige une résidence canadienne, nous confirmons le lieu d’hébergement par écrit avant la mise en service. Ce site et son formulaire de contact peuvent être servis depuis l’extérieur du Canada.',
+            'Chaque type de renseignement a une durée de conservation, souvent fixée par le client selon son règlement sur la gestion des documents : par exemple, les dossiers de paie au moins six ans après l’année d’imposition (ARC), les candidatures un an après la dernière modification, les positions de travail en solitaire 30 jours, les journaux de courriels et de textos 90 jours par défaut, et les demandes reçues par le site deux ans après notre dernier échange, sauf si vous devenez client. À la fin de la période, les renseignements sont supprimés ou anonymisés; les sauvegardes chiffrées expirent dans un délai de 35 jours.',
+            'Nous conservons la trace d’un désabonnement tant que nous envoyons des courriels commerciaux, afin de ne jamais vous écrire de nouveau par erreur.',
           ],
         },
         {
-          heading: 'Conservation',
+          heading: 'Comment nous les protégeons',
           body: [
-            'Les dossiers de paie et de temps sont conservés pendant la période fixée par l’employeur (au moins le minimum exigé par les normes du travail provinciales, généralement de trois à six ans). Les demandes reçues par le site sont conservées jusqu’à deux ans après notre dernier échange, sauf si vous devenez client.',
+            'Les données de chaque client sont séparées au niveau de la base de données (sécurité au niveau des lignes). Les champs sensibles comme le NAS, les comptes bancaires, les récits d’incident et les documents sont chiffrés avec une clé propre à chaque client. Les renseignements sont chiffrés en transit et au repos. Les mots de passe sont hachés; les actions sensibles exigent de confirmer de nouveau votre identité; les actions administratives et chaque accès de notre personnel de soutien sont journalisés.',
           ],
         },
         {
           heading: 'Vos droits',
           body: [
-            'Vous pouvez demander à consulter ou à corriger les renseignements que nous détenons sur vous, retirer votre consentement aux courriels promotionnels en tout temps (chaque message comporte un lien de désabonnement) ou porter plainte. Si notre réponse ne vous satisfait pas, vous pouvez communiquer avec le Commissariat à la protection de la vie privée du Canada ou, au Québec, avec la Commission d’accès à l’information.',
+            'Vous pouvez demander à accéder aux renseignements personnels que nous détenons à votre sujet et à les faire rectifier; retirer un consentement; et, au Québec, demander que les renseignements informatisés que vous avez fournis vous soient communiqués, ou communiqués à une autre organisation, dans un format technologique structuré et couramment utilisé (portabilité), et demander que cesse la diffusion de renseignements vous concernant ou que soit désindexé un hyperlien qui y mène, lorsque la loi le permet (Loi 25, art. 28.1).',
+            'Pour les renseignements qu’un client détient à votre sujet (votre employeur, ou la ville qui offre un programme), nous transmettons votre demande à ce client et l’aidons à répondre. Nous répondons aux demandes qui relèvent de nous dans un délai de 30 jours.',
+            'Vous pouvez d’abord porter plainte auprès de nous (ci-dessous). Vous pouvez aussi vous adresser au Commissariat à la protection de la vie privée du Canada, à la Commission d’accès à l’information du Québec, ou au commissaire à la protection de la vie privée de votre province ou territoire (par exemple le commissaire à l’information et à la protection de la vie privée de la Colombie-Britannique ou de l’Ontario).',
+          ],
+        },
+        {
+          heading: 'Incidents de confidentialité',
+          body: [
+            'En cas d’atteinte aux mesures de sécurité visant des renseignements personnels, nous la contenons, évaluons le risque et la consignons dans un registre. À titre de fournisseur de services, nous avisons sans tarder le client touché afin qu’il puisse respecter ses propres obligations. Lorsque nous en sommes responsables, nous déclarons au Commissariat à la protection de la vie privée du Canada les atteintes présentant un risque réel de préjudice grave et avisons les personnes touchées (LPRPDE) et, au Québec, déclarons à la Commission d’accès à l’information les incidents présentant un risque de préjudice sérieux et avisons les personnes concernées (Loi 25).',
           ],
         },
         {
           heading: 'Responsable de la protection des renseignements personnels',
-          body: ['Notre responsable est joignable par la page de contact. Nous répondons dans un délai de 30 jours.'],
-        },
-      ],
-    },
-  },
-  accessibility: {
-    en: {
-      updated: '2026-11-09',
-      intro: 'We want everyone on a city team, and everyone evaluating us, to be able to use FlexcityHeadquarters and this website. Our target is WCAG 2.1 level AA, the standard referenced by Ontario’s AODA, the Accessible Canada Act and most municipal procurement.',
-      sections: [
-        {
-          heading: 'What we design for',
-          body: [
-            'Full keyboard use, visible focus, skip links and landmarks; labels on every form field; text and controls that meet contrast ratios in light and dark mode; layouts that work at 400% zoom and on phones; touch targets at least 44 pixels; animations that stop when your device asks for reduced motion.',
-            'Everything is available in English and Canadian French.',
-          ],
+          body: [officerFr, 'Vous pouvez aussi nous écrire par la page de contact.'],
         },
         {
-          heading: 'Known limitations',
-          body: [
-            'Some charts in reports are summarized in text but not yet as data tables. Uploaded documents such as certification scans are only as accessible as the file provided.',
-            'We have not yet completed an independent audit, so we do not claim conformance; one is planned before general availability.',
-          ],
-        },
-        {
-          heading: 'Feedback and alternate formats',
-          body: ['Tell us about a barrier or ask for information in another format through the contact page. We acknowledge within two business days.'],
-        },
-      ],
-    },
-    fr: {
-      updated: '2026-11-09',
-      intro: 'Nous voulons que toute l’équipe municipale, et toute personne qui nous évalue, puisse utiliser FlexcityHeadquarters et ce site. Notre cible est le niveau AA des WCAG 2.1, la norme citée par la LAPHO de l’Ontario, la Loi canadienne sur l’accessibilité et la plupart des appels d’offres municipaux.',
-      sections: [
-        {
-          heading: 'Ce que nous visons',
-          body: [
-            'Utilisation complète au clavier, focus visible, liens d’évitement et repères; étiquette pour chaque champ; contrastes conformes en mode clair et sombre; mises en page fonctionnelles à 400 % de zoom et sur téléphone; cibles tactiles d’au moins 44 pixels; animations qui s’arrêtent lorsque votre appareil demande moins de mouvement.',
-            'Tout est offert en anglais et en français canadien.',
-          ],
-        },
-        {
-          heading: 'Limites connues',
-          body: [
-            'Certains graphiques des rapports sont résumés en texte, mais pas encore sous forme de tableaux de données. Les documents téléversés, comme les certifications numérisées, ne sont accessibles que dans la mesure où le fichier fourni l’est.',
-            'Aucune vérification indépendante n’a encore été réalisée, et nous ne déclarons donc pas la conformité; elle est prévue avant la disponibilité générale.',
-          ],
-        },
-        {
-          heading: 'Commentaires et formats de rechange',
-          body: ['Signalez un obstacle ou demandez un autre format par la page de contact. Nous en accusons réception dans un délai de deux jours ouvrables.'],
+          heading: 'Modifications',
+          body: ['Lorsque nous modifions la présente politique, nous mettons à jour sa version et sa date en haut de page. Pour les changements importants, nous avisons les clients à l’avance et, lorsqu’un consentement est nécessaire, le demandons de nouveau (le personnel voit la nouvelle entente d’information à sa prochaine connexion).'],
         },
       ],
     },
   },
   terms: {
     en: {
+      version: '2.0',
       updated: '2026-11-11',
-      intro: 'These terms cover your use of this website and the public demo. Use of the FlexcityHeadquarters application by an organization is governed by the subscription agreement signed with that organization, which prevails over these terms.',
+      intro: `These terms have two parts: the terms of use of this website and the public demo, and a plain-language summary of the subscription terms for organizations that use the ${C.operatingName} application. The signed order form and subscription agreement with each organization govern its subscription and prevail over this summary if they differ. ${C.operatingName} is operated by ${C.legalName}.`,
       sections: [
-        { heading: 'The demo', body: ['The demo uses invented people and a fictional city. Do not enter real personal information. Nothing you do in the demo is saved.'] },
-        { heading: 'Information on this site', body: ['Prices and features are described in good faith and may change; a written quote or agreement is binding. Employment-standards and pool-safety information is general and is not legal advice. Each organization remains responsible for meeting the law that applies to it.'] },
-        { heading: 'Acceptable use', body: ['Do not try to break, overload or probe the site or demo for weaknesses except through a responsible disclosure arranged with us through the contact page.'] },
-        { heading: 'Liability', body: ['The site and demo are provided as is. To the extent permitted by law, we are not liable for indirect losses arising from their use.'] },
-        { heading: 'Subscriptions and renewal', body: ['Prices on this site are per month, before applicable taxes (GST/HST, and QST in Quebec). Your written quote and subscription agreement confirm the price, how often you are invoiced (monthly, yearly or the whole term up front) and the length of the term. When a term ends it renews automatically month to month at the same rates, without the commitment discount, until you sign a new term or cancel. We email your billing contact a reminder 30 days before a term ends. To cancel, write to us before the end of the term (or, month to month, before the next month starts); nothing further is invoiced after the period already billed.'] },
-        { heading: 'Content customers upload', body: ['Organizations using the application are responsible for the documents, logos, résumés and other files they upload. If you believe something stored on the service infringes your copyright, see our Copyright notices page for how to send a notice under the Copyright Act.'] },
-        { heading: 'Copyright and trademarks', body: ['© 2026 FlexcityHeadquarters. All rights reserved. The FlexcityHeadquarters name, logo, application, screenshots and the text and design of this site are protected by copyright and may not be copied or reused without written permission. Organization names and logos shown belong to their owners.'] },
-        { heading: 'Governing law', body: ['These terms are governed by the laws of the province of British Columbia and the federal laws of Canada that apply there, unless the law of your province requires otherwise.'] },
+        { heading: 'Part 1. This website and the demo', body: ['The demo uses invented people and a fictional city. Do not enter real personal information; nothing you do in the demo is saved.', 'Prices and features on this site are described in good faith and may change; a written quote or agreement is what binds. Employment-standards, payroll and pool-safety information on this site is general information, not legal advice.', 'Do not try to break, overload or probe the site or the demo for weaknesses, except through a responsible disclosure arranged with us through the contact page.', 'The site and demo are provided as is. To the extent permitted by law, we are not liable for indirect losses arising from their use.'] },
+        { heading: 'Part 2. Subscriptions: accounts and acceptable use', body: ['The organization creates its users’ accounts and is responsible for who has access, for keeping sign-in details secure, and for its users’ use of the service. Users must not misuse the service: no unlawful content, no attempts to access other organizations’ data, no interference with the service, and no uploading of content the organization does not have the right to use.'] },
+        { heading: 'Customer data and confidentiality', body: ['The organization owns its data. We use it only to provide, secure and support the service, as described in the privacy policy and the agreement, and we keep it confidential. Each party keeps the other’s confidential information confidential.'] },
+        { heading: 'Availability and support', body: ['We work to keep the service available and to fix problems quickly. Service levels, support hours and response times are as set out in your order form or service level agreement, if any; this summary does not promise any uptime figure.'] },
+        { heading: 'Fees, taxes, renewal and cancellation', body: ['Fees are as set out in your order form, before applicable taxes (GST/HST, and QST in Quebec), which are added to each invoice. You choose to be invoiced monthly, yearly in advance or for the whole term up front; staff beyond your allowance are billed monthly.', 'A committed term renews automatically month to month at the same rates, without the commitment discount, until you sign a new term or cancel. We email your billing contact a reminder 30 days before a term ends. To cancel, write to us before the end of the term (or, month to month, before the next month starts); nothing further is invoiced after the period already billed.', 'Invoices are due within the payment terms on the invoice. If an invoice remains unpaid after the grace period in your agreement (30 days after the due date by default), the account may become read-only until it is paid; we warn you first.', 'Refunds are covered by our refund policy.'] },
+        { heading: 'Trials', body: ['A trial or pilot gives access to the features agreed for its length, free of charge unless your order form says otherwise. Invoicing starts only once a subscription begins.'] },
+        { heading: 'Intellectual property', body: [`The application, its software, design, text, the ${C.operatingName} name and logo belong to us or our licensors; your subscription gives your organization a right to use the service, not ownership of it. Organization names and logos shown in the service belong to their owners. Customers are responsible for the files they upload; to report content that you believe infringes your copyright, see our Copyright notices page.`] },
+        { heading: 'Safety, scheduling and payroll features', body: ['Working-alone check-ins, call-outs and safety alerts are aids that help an organization run its own safety procedures; they do not replace them, and they depend on phones, networks and people responding. Scheduling rules, overtime, holiday and payroll calculations are built to help organizations meet employment-standards and tax rules, but the organization remains responsible for its schedules and pay, and should review the results (including against current CRA and Revenu Québec tables). Nothing in the service is legal advice.'] },
+        { heading: 'Warranties and liability', body: ['Except as stated in the agreement, the service is provided without other warranties, to the extent the law allows. Each party’s liability is limited as set out in the agreement; neither party is liable for indirect or consequential losses, except where the law does not allow this limit. Each party indemnifies the other as set out in the agreement (for example, the organization for content it uploads that it had no right to use).'] },
+        { heading: 'Suspension, termination and your data', body: ['We may suspend access for non-payment (after notice), for a security threat, or for serious misuse. Either party may end the subscription as the agreement allows. When it ends, administrators can still sign in to download a complete export of the organization’s data until the deletion date in the agreement (90 days by default); after that date the data is deleted, except records we must keep by law (such as our invoices).'] },
+        { heading: 'Governing law and disputes', body: [`These terms are governed by the laws of ${C.governingProvince.en} and the federal laws of Canada that apply there, unless the law of your province requires otherwise. We will first try to resolve any dispute by discussion; the agreement sets out any further process.`] },
+        { heading: 'Language', body: ['These terms are available in English and French. In Quebec, the French version is provided first and prevails; the parties may agree to be bound by the English version where the Charter of the French Language allows it.'] },
+        { heading: 'Changes and contact', body: [`We update the version and date above when these terms change, and give customers notice of material changes to the subscription terms. Questions: ${C.email}, or the contact page.`] },
       ],
     },
     fr: {
+      version: '2.0',
       updated: '2026-11-11',
-      intro: 'Les présentes conditions encadrent l’utilisation de ce site et de la démo publique. L’utilisation de l’application FlexcityHeadquarters par une organisation est régie par l’entente d’abonnement conclue avec elle, qui a préséance sur les présentes.',
+      intro: `Les présentes conditions comportent deux parties : les conditions d’utilisation de ce site et de la démo publique, et un résumé en langage clair des conditions d’abonnement pour les organisations qui utilisent l’application ${C.operatingName}. Le bon de commande et l’entente d’abonnement signés avec chaque organisation régissent son abonnement et ont préséance sur ce résumé en cas de divergence. ${C.operatingName} est exploitée par ${C.legalName}.`,
       sections: [
-        { heading: 'La démo', body: ['La démo utilise des personnes inventées et une ville fictive. N’y entrez aucun renseignement personnel réel. Rien n’y est enregistré.'] },
-        { heading: 'Information sur ce site', body: ['Les prix et fonctions sont décrits de bonne foi et peuvent changer; seule une soumission ou une entente écrite engage. L’information sur les normes du travail et la sécurité aquatique est générale et ne constitue pas un avis juridique. Chaque organisation demeure responsable de respecter la loi qui s’applique à elle.'] },
-        { heading: 'Utilisation acceptable', body: ['N’essayez pas de briser, de surcharger ou de sonder le site ou la démo, sauf dans le cadre d’une divulgation responsable convenue avec nous par la page de contact.'] },
-        { heading: 'Responsabilité', body: ['Le site et la démo sont fournis tels quels. Dans la mesure permise par la loi, nous ne sommes pas responsables des pertes indirectes découlant de leur utilisation.'] },
-        { heading: 'Abonnements et renouvellement', body: ['Les prix affichés sur ce site sont mensuels, avant les taxes applicables (TPS/TVH, et TVQ au Québec). Votre soumission écrite et votre entente d’abonnement confirment le prix, la fréquence de facturation (au mois, à l’année ou toute la durée d’avance) et la durée de l’engagement. À la fin de la durée, l’abonnement se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement, jusqu’à ce que vous signiez une nouvelle durée ou que vous résiliiez. Nous envoyons un rappel par courriel à votre contact de facturation 30 jours avant la fin d’une durée. Pour résilier, écrivez-nous avant la fin de la durée (ou, au mois, avant le début du mois suivant); rien n’est facturé au-delà de la période déjà facturée.'] },
-        { heading: 'Contenu téléversé par les clients', body: ['Les organisations qui utilisent l’application sont responsables des documents, logos, curriculum vitæ et autres fichiers qu’elles téléversent. Si vous croyez qu’un contenu hébergé sur le service viole votre droit d’auteur, consultez notre page Avis relatifs au droit d’auteur pour savoir comment envoyer un avis en vertu de la Loi sur le droit d’auteur.'] },
-        { heading: 'Droit d’auteur et marques', body: ['© 2026 FlexcityHeadquarters. Tous droits réservés. Le nom, le logo, l’application et les captures d’écran FlexcityHeadquarters ainsi que le texte et la conception de ce site sont protégés par le droit d’auteur et ne peuvent être copiés ni réutilisés sans autorisation écrite. Les noms et logos d’organisations affichés appartiennent à leurs propriétaires.'] },
-        { heading: 'Droit applicable', body: ['Les présentes conditions sont régies par les lois de la Colombie-Britannique et les lois fédérales du Canada qui s’y appliquent, sauf si la loi de votre province en exige autrement. Au Québec, la version française prévaut.'] },
+        { heading: 'Partie 1. Ce site et la démo', body: ['La démo utilise des personnes inventées et une ville fictive. N’y entrez aucun renseignement personnel réel; rien de ce que vous y faites n’est enregistré.', 'Les prix et fonctions décrits sur ce site le sont de bonne foi et peuvent changer; seule une soumission ou une entente écrite engage. L’information sur les normes du travail, la paie et la sécurité aquatique présentée sur ce site est générale et ne constitue pas un avis juridique.', 'N’essayez pas de briser, de surcharger ou de sonder le site ou la démo, sauf dans le cadre d’une divulgation responsable convenue avec nous par la page de contact.', 'Le site et la démo sont fournis tels quels. Dans la mesure permise par la loi, nous ne sommes pas responsables des pertes indirectes découlant de leur utilisation.'] },
+        { heading: 'Partie 2. Abonnements : comptes et utilisation acceptable', body: ['L’organisation crée les comptes de ses utilisateurs et est responsable de qui y a accès, de la sécurité des identifiants et de l’utilisation du service par ses utilisateurs. Les utilisateurs ne doivent pas faire un mauvais usage du service : aucun contenu illicite, aucune tentative d’accéder aux données d’autres organisations, aucune entrave au service et aucun téléversement de contenu que l’organisation n’a pas le droit d’utiliser.'] },
+        { heading: 'Données du client et confidentialité', body: ['L’organisation est propriétaire de ses données. Nous les utilisons uniquement pour fournir, protéger et soutenir le service, comme le décrivent la politique de confidentialité et l’entente, et nous en préservons la confidentialité. Chaque partie préserve la confidentialité des renseignements confidentiels de l’autre.'] },
+        { heading: 'Disponibilité et soutien', body: ['Nous nous efforçons de garder le service disponible et de corriger rapidement les problèmes. Les niveaux de service, les heures de soutien et les délais de réponse sont ceux prévus à votre bon de commande ou à votre entente de niveau de service, le cas échéant; ce résumé ne promet aucun taux de disponibilité.'] },
+        { heading: 'Frais, taxes, renouvellement et résiliation', body: ['Les frais sont ceux de votre bon de commande, avant les taxes applicables (TPS/TVH, et TVQ au Québec), qui s’ajoutent à chaque facture. Vous choisissez d’être facturé au mois, à l’année d’avance ou pour toute la durée d’avance; le personnel au-delà de votre allocation est facturé au mois.', 'Un engagement à durée fixe se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement, jusqu’à ce que vous signiez une nouvelle durée ou que vous résiliiez. Nous envoyons un rappel par courriel à votre contact de facturation 30 jours avant la fin d’une durée. Pour résilier, écrivez-nous avant la fin de la durée (ou, au mois, avant le début du mois suivant); rien n’est facturé au-delà de la période déjà facturée.', 'Les factures sont payables dans le délai indiqué sur la facture. Si une facture demeure impayée après le délai de grâce prévu à votre entente (30 jours après l’échéance par défaut), le compte peut passer en lecture seule jusqu’au paiement; nous vous avisons d’abord.', 'Les remboursements sont régis par notre politique de remboursement.'] },
+        { heading: 'Essais', body: ['Un essai ou un projet pilote donne accès aux fonctions convenues pour sa durée, sans frais sauf indication contraire de votre bon de commande. La facturation ne commence qu’au début d’un abonnement.'] },
+        { heading: 'Propriété intellectuelle', body: [`L’application, son logiciel, sa conception, ses textes ainsi que le nom et le logo ${C.operatingName} nous appartiennent ou appartiennent à nos concédants; votre abonnement donne à votre organisation le droit d’utiliser le service, non d’en devenir propriétaire. Les noms et logos d’organisations affichés dans le service appartiennent à leurs propriétaires. Les clients sont responsables des fichiers qu’ils téléversent; pour signaler un contenu qui violerait votre droit d’auteur, consultez notre page Avis relatifs au droit d’auteur.`] },
+        { heading: 'Fonctions de sécurité, d’horaire et de paie', body: ['Les vérifications de travail en solitaire, les rappels au travail et les alertes de sécurité sont des outils qui aident une organisation à appliquer ses propres procédures de sécurité; ils ne les remplacent pas et dépendent des téléphones, des réseaux et des personnes qui répondent. Les règles d’horaire et les calculs des heures supplémentaires, des jours fériés et de la paie sont conçus pour aider les organisations à respecter les normes du travail et les règles fiscales, mais l’organisation demeure responsable de ses horaires et de sa paie et devrait en vérifier les résultats (notamment selon les tables à jour de l’ARC et de Revenu Québec). Rien dans le service ne constitue un avis juridique.'] },
+        { heading: 'Garanties et responsabilité', body: ['Sauf disposition contraire de l’entente, le service est fourni sans autre garantie, dans la mesure permise par la loi. La responsabilité de chaque partie est limitée selon l’entente; aucune partie n’est responsable des pertes indirectes ou consécutives, sauf si la loi ne permet pas cette limite. Chaque partie indemnise l’autre selon l’entente (par exemple, l’organisation pour un contenu téléversé qu’elle n’avait pas le droit d’utiliser).'] },
+        { heading: 'Suspension, résiliation et vos données', body: ['Nous pouvons suspendre l’accès pour non-paiement (après avis), pour une menace à la sécurité ou pour un usage abusif grave. Chaque partie peut mettre fin à l’abonnement selon l’entente. À la fin, les administrateurs peuvent encore se connecter pour télécharger une exportation complète des données de l’organisation jusqu’à la date de suppression prévue à l’entente (90 jours par défaut); après cette date, les données sont supprimées, sauf les documents que la loi nous oblige à conserver (comme nos factures).'] },
+        { heading: 'Droit applicable et différends', body: [`Les présentes conditions sont régies par les lois de ${C.governingProvince.fr} et les lois fédérales du Canada qui s’y appliquent, sauf si la loi de votre province en exige autrement. Nous tenterons d’abord de régler tout différend par la discussion; l’entente prévoit toute autre démarche.`] },
+        { heading: 'Langue', body: ['Les présentes conditions sont offertes en français et en anglais. Au Québec, la version française est remise en premier et prévaut; les parties peuvent convenir d’être liées par la version anglaise lorsque la Charte de la langue française le permet.'] },
+        { heading: 'Modifications et contact', body: [`Nous mettons à jour la version et la date ci-dessus lorsque ces conditions changent, et nous avisons les clients de toute modification importante des conditions d’abonnement. Questions : ${C.email}, ou la page de contact.`] },
+      ],
+    },
+  },
+  cookies: {
+    en: {
+      version: '1.0',
+      updated: '2026-11-11',
+      intro: 'This page lists every cookie and every item of browser storage that this website and the application set, what each one is for, how long it lasts, and whether it is strictly necessary. None is used for advertising or to follow you across other sites.',
+      sections: [
+        { heading: 'This website', body: ['Cookies: none.', 'fh-analytics (localStorage, first party, until you change it): remembers whether you allowed or refused anonymous page counts. Necessary to respect your choice.', 'fh-demo-return (sessionStorage, first party, until the tab closes): remembers the page you were on when you opened the demo, so the demo’s “Back to the website” button returns you there. Functional.', 'Vercel Web Analytics (only if you allow it): sends the page address, referring site, country, browser and device type to our host’s analytics, without cookies or storage on your device; visitors are distinguished by a hash that changes every day. Not necessary: off until you allow it, and always off when your browser sends Global Privacy Control or Do Not Track.'] },
+        { heading: 'The application: cookies', body: ['fc_refresh (first party, HttpOnly, Secure in production, up to 14 days): keeps you signed in. Strictly necessary.', 'fh_platform (first party, HttpOnly, up to 8 hours): FH staff sign-in to the Dev console. Strictly necessary.', 'fc_sso (first party, HttpOnly, 10 minutes): protects a single sign-on with your organization’s identity provider. Strictly necessary.', 'fc_locale (first party, 1 year): your language. Functional.'] },
+        { heading: 'The application: browser storage', body: ['fh-color-scheme (localStorage): light or dark mode. Functional.', 'fh-nav-groups, fh-nav-open, fh-department-tab, fh.planner.view.<user> (local or session storage): which menus and views you left open. Functional.', 'fh-passkey-dismissed:<user> (localStorage) and fh-offer-passkey (sessionStorage): whether to offer a passkey. Functional.', 'fh-punch-queue:<user>, fh-attendance-queue, fh-lessons-cache (localStorage): clock-ins and class attendance taken without signal, and class rosters for offline use, until sent; cleared at sign-out. Necessary for offline use.', 'fh-headcount-v1 (sessionStorage): a head count in progress. Necessary for that feature.', 'fh-kiosk-token (localStorage, on a facility kiosk only): links a shared tablet to its facility. Strictly necessary for the kiosk.', 'fh-support-token (sessionStorage, until the tab closes): a read-only FH support visit your organization approved. Strictly necessary for that visit.', 'fh-v2 (service worker cache): the app’s own files for offline start-up; never your pay, documents or HR files. Necessary for offline use.'] },
+        { heading: 'The public demo', body: ['flexcity-demo-v2, flexcity-demo-platform and fh-demo-back (sessionStorage, until the tab closes): the demo’s invented sample data, a demo view setting, and the way back to this website. Nothing is sent to a server.'] },
+        { heading: 'Do we need your consent?', body: ['Strictly necessary and functional items are used to provide what you asked for, and are described here as PIPEDA and Quebec’s Law 25 require. The only optional item is website analytics, which stays off until you allow it (Law 25, s. 8.1 asks that technology that could identify, locate or profile a person be off by default). You can change your choice at any time with the “Analytics” switch at the bottom of every page.'] },
+        { heading: 'Managing storage', body: ['You can clear cookies and site data in your browser’s settings. Clearing the application’s data signs you out and removes any clock-ins waiting to be sent, so send them first.'] },
+      ],
+    },
+    fr: {
+      version: '1.0',
+      updated: '2026-11-11',
+      intro: 'Cette page énumère chaque témoin (cookie) et chaque élément de stockage du navigateur que ce site et l’application utilisent, à quoi chacun sert, combien de temps il dure et s’il est strictement nécessaire. Aucun ne sert à la publicité ni à vous suivre sur d’autres sites.',
+      sections: [
+        { heading: 'Ce site', body: ['Témoins : aucun.', 'fh-analytics (localStorage, interne, jusqu’à ce que vous le changiez) : mémorise si vous avez autorisé ou refusé le décompte anonyme des pages. Nécessaire pour respecter votre choix.', 'fh-demo-return (sessionStorage, interne, jusqu’à la fermeture de l’onglet) : mémorise la page où vous étiez en ouvrant la démo, pour que le bouton « Retour au site » vous y ramène. Fonctionnel.', 'Vercel Web Analytics (seulement si vous l’autorisez) : transmet l’adresse de la page, le site d’où vous venez, le pays, le navigateur et le type d’appareil aux statistiques de notre hébergeur, sans témoin ni stockage sur votre appareil; les visiteurs sont distingués par une empreinte qui change chaque jour. Non nécessaire : désactivé jusqu’à votre autorisation, et toujours désactivé lorsque votre navigateur envoie un signal Global Privacy Control ou « Ne pas me suivre ».'] },
+        { heading: 'L’application : témoins', body: ['fc_refresh (interne, HttpOnly, Secure en production, jusqu’à 14 jours) : vous garde connecté. Strictement nécessaire.', 'fh_platform (interne, HttpOnly, jusqu’à 8 heures) : connexion du personnel de FH à la console. Strictement nécessaire.', 'fc_sso (interne, HttpOnly, 10 minutes) : protège une authentification unique avec le fournisseur d’identité de votre organisation. Strictement nécessaire.', 'fc_locale (interne, 1 an) : votre langue. Fonctionnel.'] },
+        { heading: 'L’application : stockage du navigateur', body: ['fh-color-scheme (localStorage) : mode clair ou sombre. Fonctionnel.', 'fh-nav-groups, fh-nav-open, fh-department-tab, fh.planner.view.<utilisateur> (stockage local ou de session) : les menus et vues laissés ouverts. Fonctionnel.', 'fh-passkey-dismissed:<utilisateur> (localStorage) et fh-offer-passkey (sessionStorage) : s’il faut proposer une clé d’accès. Fonctionnel.', 'fh-punch-queue:<utilisateur>, fh-attendance-queue, fh-lessons-cache (localStorage) : pointages et présences prises sans réseau, et listes de classe pour l’usage hors ligne, jusqu’à leur envoi; effacés à la déconnexion. Nécessaire à l’usage hors ligne.', 'fh-headcount-v1 (sessionStorage) : un dénombrement en cours. Nécessaire à cette fonction.', 'fh-kiosk-token (localStorage, sur une borne d’installation seulement) : relie une tablette partagée à son installation. Strictement nécessaire à la borne.', 'fh-support-token (sessionStorage, jusqu’à la fermeture de l’onglet) : une visite de soutien de FH, en lecture seule, approuvée par votre organisation. Strictement nécessaire à cette visite.', 'fh-v2 (cache du service worker) : les fichiers de l’application pour démarrer hors ligne; jamais votre paie, vos documents ou vos dossiers RH. Nécessaire à l’usage hors ligne.'] },
+        { heading: 'La démo publique', body: ['flexcity-demo-v2, flexcity-demo-platform et fh-demo-back (sessionStorage, jusqu’à la fermeture de l’onglet) : les données fictives de la démo, un réglage d’affichage de la démo et le chemin de retour vers ce site. Rien n’est envoyé à un serveur.'] },
+        { heading: 'Votre consentement est-il nécessaire?', body: ['Les éléments strictement nécessaires et fonctionnels servent à fournir ce que vous avez demandé et sont décrits ici comme l’exigent la LPRPDE et la Loi 25 du Québec. Le seul élément facultatif est le décompte des visites du site, désactivé jusqu’à votre autorisation (l’article 8.1 de la Loi 25 demande que la technologie permettant d’identifier, de localiser ou de profiler une personne soit désactivée par défaut). Vous pouvez changer votre choix en tout temps avec l’interrupteur « Statistiques » au bas de chaque page.'] },
+        { heading: 'Gérer le stockage', body: ['Vous pouvez effacer les témoins et les données des sites dans les paramètres de votre navigateur. Effacer les données de l’application vous déconnecte et supprime les pointages en attente d’envoi : envoyez-les d’abord.'] },
+      ],
+    },
+  },
+  refunds: {
+    en: {
+      version: '1.0',
+      updated: '2026-11-11',
+      intro: 'How refunds work for subscriptions to the application. Your order form or agreement prevails if it says something different. This policy describes how our billing works today.',
+      sections: [
+        { heading: 'Monthly, yearly and multi-year terms', body: ['Amounts already invoiced are not refunded for part of a period: when you cancel, the service continues to the end of the period already billed, and nothing further is invoiced.', 'Yearly or whole-term invoices paid in advance are not refunded if you cancel before the end of a committed term, unless your agreement says otherwise or the law requires it.'] },
+        { heading: 'Plan changes', body: ['Adding options or facilities, or changing plan, applies from the next invoice; there is no automatic prorated charge or credit for the current period. If a change should apply sooner, ask us and we will issue a credit note or an adjusted invoice.'] },
+        { heading: 'Trials', body: ['Trials and pilots are free unless your order form says otherwise, so there is nothing to refund. Invoicing starts only once a subscription begins.'] },
+        { heading: 'Billing errors, disputes and chargebacks', body: ['If an invoice is wrong, tell us within 60 days of the invoice date and we will correct it with a credit note or a refund of the amount overcharged. Please contact us before disputing a card or bank-debit payment with your bank: a chargeback or debit reversal does not cancel the subscription. Pre-authorized debits can also be disputed under Payments Canada rules as set out in your debit agreement.'] },
+        { heading: 'Taxes', body: ['A refund or credit note includes the sales tax (GST/HST, QST) charged on the amount refunded.'] },
+        { heading: 'Contact', body: [`Billing questions: ${C.email}, or the contact page.`] },
+      ],
+    },
+    fr: {
+      version: '1.0',
+      updated: '2026-11-11',
+      intro: 'Le fonctionnement des remboursements pour les abonnements à l’application. Votre bon de commande ou votre entente a préséance s’il prévoit autre chose. La présente politique décrit le fonctionnement actuel de notre facturation.',
+      sections: [
+        { heading: 'Durées mensuelles, annuelles et pluriannuelles', body: ['Les montants déjà facturés ne sont pas remboursés pour une partie de période : en cas de résiliation, le service continue jusqu’à la fin de la période déjà facturée, et rien d’autre n’est facturé.', 'Les factures annuelles ou pour toute la durée payées d’avance ne sont pas remboursées en cas de résiliation avant la fin d’un engagement, sauf si votre entente le prévoit ou si la loi l’exige.'] },
+        { heading: 'Changements de forfait', body: ['L’ajout d’options ou d’installations, ou un changement de forfait, s’applique à partir de la facture suivante; il n’y a pas de frais ni de crédit calculés au prorata pour la période en cours. Si un changement doit s’appliquer plus tôt, demandez-le-nous et nous émettrons une note de crédit ou une facture rectifiée.'] },
+        { heading: 'Essais', body: ['Les essais et projets pilotes sont gratuits, sauf indication contraire de votre bon de commande : il n’y a donc rien à rembourser. La facturation ne commence qu’au début d’un abonnement.'] },
+        { heading: 'Erreurs de facturation, contestations et rétrofacturations', body: ['Si une facture est erronée, avisez-nous dans les 60 jours suivant sa date et nous la corrigerons par une note de crédit ou le remboursement du montant facturé en trop. Communiquez avec nous avant de contester un paiement par carte ou par débit auprès de votre banque : une rétrofacturation ou l’annulation d’un débit ne résilie pas l’abonnement. Les débits préautorisés peuvent aussi être contestés selon les règles de Paiements Canada, comme le prévoit votre entente de débit.'] },
+        { heading: 'Taxes', body: ['Un remboursement ou une note de crédit comprend la taxe de vente (TPS/TVH, TVQ) facturée sur le montant remboursé.'] },
+        { heading: 'Contact', body: [`Questions de facturation : ${C.email}, ou la page de contact.`] },
+      ],
+    },
+  },
+  accessibility: {
+    en: {
+      version: '2.0',
+      updated: '2026-11-11',
+      intro: `We want everyone on a team, and everyone evaluating us, to be able to use ${C.operatingName} and this website. Our target is the Web Content Accessibility Guidelines (WCAG) 2.1 level AA, the standard referenced by Ontario’s Accessibility for Ontarians with Disabilities Act (AODA) regulations, used in the Accessible Canada Act context and in most municipal procurement.`,
+      sections: [
+        { heading: 'What we design and test for', body: ['Full keyboard use with a visible focus, skip links and landmarks; a label on every form field, with errors announced and linked to their field; text and controls that meet AA contrast in light and dark mode; layouts that work at 400% zoom and on phones; touch targets at least 44 pixels; animations that stop when your device asks for reduced motion; descriptive text for informative images and screenshots.', 'Everything is available in English and Canadian French. We check pages with automated accessibility testing (axe) and by hand with a keyboard.'] },
+        { heading: 'Known limitations', body: ['Some charts in reports are summarized in text but not yet as data tables. Uploaded documents such as certification scans are only as accessible as the file provided. Short product clips on this site are silent demonstrations with a text description beside them.', 'We have not yet completed an independent audit, so we do not claim full conformance; one is planned before general availability.'] },
+        { heading: 'Feedback and alternate formats', body: [`Tell us about a barrier or ask for information in another format: ${C.email}, or the contact page. We acknowledge within two business days.`] },
+      ],
+    },
+    fr: {
+      version: '2.0',
+      updated: '2026-11-11',
+      intro: `Nous voulons que toute l’équipe, et toute personne qui nous évalue, puisse utiliser ${C.operatingName} et ce site. Notre cible est le niveau AA des Règles pour l’accessibilité des contenus Web (WCAG) 2.1, la norme citée par les règlements de la Loi de 2005 sur l’accessibilité pour les personnes handicapées de l’Ontario (LAPHO), utilisée dans le contexte de la Loi canadienne sur l’accessibilité et dans la plupart des appels d’offres municipaux.`,
+      sections: [
+        { heading: 'Ce que nous visons et vérifions', body: ['Utilisation complète au clavier avec un focus visible, liens d’évitement et repères; une étiquette pour chaque champ, avec des erreurs annoncées et liées à leur champ; textes et commandes au contraste AA en mode clair et sombre; mises en page fonctionnelles à 400 % de zoom et sur téléphone; cibles tactiles d’au moins 44 pixels; animations qui s’arrêtent lorsque votre appareil demande moins de mouvement; texte descriptif pour les images informatives et les captures d’écran.', 'Tout est offert en français canadien et en anglais. Nous vérifions les pages avec des tests d’accessibilité automatisés (axe) et à la main, au clavier.'] },
+        { heading: 'Limites connues', body: ['Certains graphiques des rapports sont résumés en texte, mais pas encore sous forme de tableaux de données. Les documents téléversés, comme les certifications numérisées, ne sont accessibles que dans la mesure où le fichier fourni l’est. Les courtes séquences du produit sur ce site sont des démonstrations muettes accompagnées d’une description textuelle.', 'Aucune vérification indépendante n’a encore été réalisée; nous ne déclarons donc pas une conformité complète. Elle est prévue avant la disponibilité générale.'] },
+        { heading: 'Commentaires et formats de rechange', body: [`Signalez un obstacle ou demandez un autre format : ${C.email}, ou la page de contact. Nous en accusons réception dans un délai de deux jours ouvrables.`] },
       ],
     },
   },
@@ -247,6 +339,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
    */
   copyright: {
     en: {
+      version: '1.0',
       updated: '2026-11-11',
       intro: 'Organizations that use FlexcityHeadquarters store files in it: documents, policies, logos, photos and job applicants’ résumés. If you believe content stored on the service infringes your copyright, Canada’s Copyright Act sets out a notice-and-notice system (sections 41.25 to 41.27). This page explains how to send us a notice and what we do with it.',
       sections: [
@@ -279,6 +372,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
       ],
     },
     fr: {
+      version: '1.0',
       updated: '2026-11-11',
       intro: 'Les organisations qui utilisent FlexcityHeadquarters y conservent des fichiers : documents, politiques, logos, photos et curriculum vitæ de candidats. Si vous croyez qu’un contenu hébergé sur le service viole votre droit d’auteur, la Loi sur le droit d’auteur du Canada prévoit un régime d’avis et avis (articles 41.25 à 41.27). Cette page explique comment nous envoyer un avis et ce que nous en faisons.',
       sections: [

@@ -71,7 +71,7 @@ describe('no session replay', () => {
   });
 });
 
-describe('website analytics opt-out', () => {
+describe('website analytics: opt-in consent', () => {
   const store = (v: string | null) => ({ localStorage: { getItem: () => v, setItem: () => {} } });
   it('Global Privacy Control or Do Not Track turns it off', () => {
     expect(privacySignal({ globalPrivacyControl: true })).toBe(true);
@@ -79,10 +79,11 @@ describe('website analytics opt-out', () => {
     expect(privacySignal({ doNotTrack: null })).toBe(false);
     expect(analyticsState({ globalPrivacyControl: true }, store('on'))).toBe('signal');
   });
-  it('the footer switch is remembered; blocked storage still counts as on', () => {
+  it('off until the visitor allows it (Law 25 s. 8.1); the choice is remembered; blocked storage counts nothing', () => {
+    expect(analyticsState({}, store(null))).toBe('unset');
     expect(analyticsState({}, store('off'))).toBe('off');
-    expect(analyticsState({}, store(null))).toBe('on');
-    expect(analyticsState({}, { localStorage: { getItem: () => { throw new Error('blocked'); }, setItem: () => {} } })).toBe('on');
+    expect(analyticsState({}, store('on'))).toBe('on');
+    expect(analyticsState({}, { localStorage: { getItem: () => { throw new Error('blocked'); }, setItem: () => {} } })).toBe('unset');
     expect(ANALYTICS_KEY).toBe('fh-analytics');
   });
   it('nothing is sent outside a browser', () => {
@@ -152,5 +153,56 @@ describe('copyright notices page (Copyright Act notice-and-notice)', () => {
   it('linked from the footer and listed in the sitemap', () => {
     expect(readFileSync(join(REPO, 'apps/site/src/components/SiteFooter.tsx'), 'utf8')).toContain('/copyright/');
     expect(readFileSync(join(REPO, 'apps/site/src/lib/seo.ts'), 'utf8')).toContain("'copyright/'");
+  });
+});
+
+describe('legal pages', () => {
+  const DOCS = ['privacy', 'terms', 'cookies', 'refunds', 'accessibility', 'copyright'] as const;
+  it.each(DOCS)('%s: a page that renders this document, in the footer and sitemap, with a version and date in both languages', (d) => {
+    expect(readFileSync(join(REPO, `apps/site/src/app/[lang]/${d}/page.tsx`), 'utf8')).toContain(`<LegalPage doc="${d}"`);
+    expect(readFileSync(join(REPO, 'apps/site/src/components/SiteFooter.tsx'), 'utf8')).toContain(`/${d}/`);
+    expect(readFileSync(join(REPO, 'apps/site/src/lib/seo.ts'), 'utf8')).toContain(`'${d}/'`);
+    for (const lang of ['en', 'fr'] as const) {
+      const doc = legalDoc(d, lang);
+      expect(doc.version).toMatch(/^\d+\.\d+$/);
+      expect(doc.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(doc.version).toBe(legalDoc(d, 'en').version);
+      expect(doc.sections.length).toBe(legalDoc(d, 'en').sections.length);
+    }
+  });
+
+  it.each(['en', 'fr'] as const)('%s privacy policy covers what the owner asked for', (lang) => {
+    const all = legalDoc('privacy', lang).sections.map((s) => [s.heading, ...s.body].join(' ')).join(' ');
+    const must = lang === 'en'
+      ? ['service provider', 'Social Insurance Number', 'Working alone', 'kiosk', 'Text alerts', 'push', 'Error reports', 'ca-central-1'.replace('ca-central-1', 'Canada Central'), 'planned', 'outside Canada', 'portability', 'de-indexed', 'Commission d’accès à l’information', 'Privacy Commissioner of Canada', 'real risk of significant harm', 'exclusively by automated processing', '12.1', 'Children', 'Changes']
+      : ['fournisseur de services', 'numéro d’assurance sociale', 'Travail en solitaire', 'borne', 'Textos', 'notifications', 'Rapports d’erreur', 'Canada (Centre)', 'prévu', 'extérieur du Canada', 'portabilité', 'désindexé', 'Commission d’accès à l’information', 'Commissariat à la protection de la vie privée du Canada', 'risque réel de préjudice grave', 'exclusivement sur un traitement automatisé', '12.1', 'Enfants', 'Modifications'];
+    for (const m of must) expect(all, m).toContain(m);
+  });
+
+  it('company facts come from config: placeholders until set, never invented', () => {
+    for (const v of [COMPANY.legalName, COMPANY.mailingAddress, COMPANY.email, COMPANY.privacyOfficer.name, COMPANY.privacyOfficer.email, COMPANY.governingProvince.en, COMPANY.copyrightContact.address]) {
+      if (isPlaceholder(v)) expect(v).toMatch(/set |to be|à choisir|to be chosen/);
+    }
+    const terms = legalDoc('terms', 'en').sections.map((s) => s.body.join(' ')).join(' ');
+    expect(terms).toContain(COMPANY.governingProvince.en);
+    expect(terms).not.toMatch(/\b\d{2}(\.\d+)?\s?% (uptime|availability)/i);
+  });
+
+  it('refund policy matches the renewal note: no partial-period refunds, changes from the next invoice', () => {
+    const r = legalDoc('refunds', 'en').sections.map((s) => s.body.join(' ')).join(' ');
+    expect(r).toContain('not refunded for part of a period');
+    expect(r).toContain('from the next invoice');
+    expect(copy('en').plans.renewalShort).toBeTruthy();
+  });
+
+  it('the cookie page lists every storage key the code sets', () => {
+    const code = files(join(REPO, 'apps'), /\.(tsx?)$/).filter((f) => /apps\/(web|site)\/src\//.test(f) && !/\.test\.tsx?$/.test(f) && !/demo(Api|Back)/.test(f)).map((f) => readFileSync(f, 'utf8')).join('\n');
+    const keys = new Set([...code.matchAll(/(?:const|export const) [A-Z_]+ = '((?:fh|fc)[-_.][a-z0-9-]+)'/g)].map((m) => m[1]!));
+    keys.delete('fh-demo-back');
+    // In-page event names, not storage.
+    for (const k of [...keys]) if (/(-choice|-motion)$/.test(k)) keys.delete(k);
+    const page = ['en', 'fr'].map((l) => legalDoc('cookies', l as 'en').sections.map((s) => s.body.join(' ')).join(' '));
+    expect(keys.size).toBeGreaterThan(8);
+    for (const k of keys) for (const p of page) expect(p, k).toContain(k);
   });
 });

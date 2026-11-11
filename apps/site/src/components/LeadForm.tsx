@@ -103,7 +103,7 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
           {c.consent}
           <span className="block text-caption text-muted">{c.consentHint}</span>
           {/* CASL s. 10(1): a consent request names who is asking, with a mailing address and a way to reach them. */}
-          <span className="block text-caption text-muted">{c.consentFrom.replace('{name}', COMPANY.legalName).replace('{address}', COMPANY.mailingAddress).replace('{email}', COMPANY.email)}</span>
+          <span className="block text-caption text-muted [overflow-wrap:anywhere]">{c.consentFrom.replace('{name}', COMPANY.legalName).replace('{address}', COMPANY.mailingAddress).replace('{email}', COMPANY.email)}</span>
         </span>
       </label>
       <div role="alert">

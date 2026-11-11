@@ -1,5 +1,6 @@
 import { pageMeta } from '@/lib/seo';
 import { ContactForm } from '@/components/ContactForm';
+import { BusinessDetails } from '@/components/BusinessDetails';
 import { AliveMark } from '@/components/AliveMark';
 import { LogoMark } from '@/components/Logo';
 import { Kicker } from '@/components/Section';
@@ -55,6 +56,7 @@ export default async function Contact(props: { params: Promise<{ lang: Lang }> }
               <LogoMark size={28} />
               {c.promise}
             </p>
+            <BusinessDetails lang={params.lang} className="rounded-2xl border border-line bg-panel p-5" />
           </aside>
         </div>
       </section>

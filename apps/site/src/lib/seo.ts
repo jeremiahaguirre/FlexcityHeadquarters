@@ -14,7 +14,7 @@ export const SITE_URL = (
 const LOCALE = { en: 'en_CA', fr: 'fr_CA' } as const;
 
 /** Every indexable page, by path after the language (with trailing slash). */
-export const PAGES = ['', 'product/', 'why/', 'private-sector/', 'plans/', 'demo/', 'faq/', 'help/', 'contact/', 'privacy/', 'accessibility/', 'terms/', 'copyright/'];
+export const PAGES = ['', 'product/', 'why/', 'private-sector/', 'plans/', 'demo/', 'faq/', 'help/', 'contact/', 'privacy/', 'accessibility/', 'terms/', 'copyright/', 'cookies/', 'refunds/'];
 
 /** Title, description, canonical, hreflang alternates and social cards for one page. */
 export function pageMeta(lang: Lang, path: string, title: string | undefined, text: string): Metadata {

@@ -1,11 +1,12 @@
 /**
- * Website analytics opt-out (PIPEDA / Quebec Law 25: the visitor can refuse; Vercel Web Analytics
- * is cookieless and keeps no identifier past a day, but people still get a simple off switch).
+ * Website analytics consent (PIPEDA; Quebec Law 25 s. 8.1: technology that could identify, locate or
+ * profile a person is off by default). Vercel Web Analytics is cookieless and keeps no identifier past
+ * a day, but we still keep it OFF until the visitor allows it.
  *
- * Page views are counted unless any of these says no:
- * - the browser sends Global Privacy Control (navigator.globalPrivacyControl) or Do Not Track ("1");
- * - the visitor turned the footer's "Analytics" switch off (remembered in localStorage).
- * Storage can be blocked (private windows): then only the signals decide, and nothing throws.
+ * Page views are counted only when all of these hold:
+ * - the browser sends neither Global Privacy Control (navigator.globalPrivacyControl) nor Do Not Track ("1");
+ * - the visitor chose "Allow" (the consent bar or the footer's "Analytics" switch), remembered in localStorage.
+ * Storage can be blocked (private windows): then nothing is counted, and nothing throws.
  */
 export const ANALYTICS_KEY = 'fh-analytics';
 
@@ -35,11 +36,15 @@ export function saveChoice(win: Win | undefined, v: 'on' | 'off'): void {
   }
 }
 
-/** The state shown in the footer, and whether page views are sent. */
-export function analyticsState(nav: Nav | undefined, win: Win | undefined): 'on' | 'off' | 'signal' {
+/** The state shown in the footer and the consent bar: 'unset' (not asked yet) counts nothing, like 'off'. */
+export function analyticsState(nav: Nav | undefined, win: Win | undefined): 'on' | 'off' | 'unset' | 'signal' {
   if (privacySignal(nav, win)) return 'signal';
-  return storedChoice(win) === 'off' ? 'off' : 'on';
+  const c = storedChoice(win);
+  return c === 'on' ? 'on' : c === 'off' ? 'off' : 'unset';
 }
+
+/** Tells the consent bar and the footer switch that the choice changed (same page). */
+export const CHOICE_EVENT = 'fh-analytics-choice';
 
 /** Vercel Analytics `beforeSend`: drop the event unless analytics is on. */
 export function beforeSend<T>(event: T): T | null {

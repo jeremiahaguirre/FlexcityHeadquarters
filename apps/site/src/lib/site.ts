@@ -14,6 +14,19 @@ export const SITE = {
  */
 export const COMPANY = {
   legalName: process.env.NEXT_PUBLIC_COMPANY_LEGAL_NAME || '[Company legal name — set NEXT_PUBLIC_COMPANY_LEGAL_NAME]',
+  /** The name the product and company trade under (the brand). */
+  operatingName: 'FlexcityHeadquarters',
+  /** Optional: shown only when set. */
+  phone: process.env.NEXT_PUBLIC_COMPANY_PHONE || '',
+  /** Optional: the CRA business number, shown only when set. */
+  businessNumber: process.env.NEXT_PUBLIC_COMPANY_BUSINESS_NUMBER || '',
+  /** Law 25 s. 3.1 "person in charge of the protection of personal information" (PIPEDA: privacy officer). */
+  privacyOfficer: {
+    name: process.env.NEXT_PUBLIC_PRIVACY_OFFICER_NAME || '[Person in charge of the protection of personal information — name or title to be completed]',
+    email: process.env.NEXT_PUBLIC_PRIVACY_OFFICER_EMAIL || '[Privacy officer email — to be completed]',
+  },
+  /** The province whose law governs the terms (owner to decide; counsel to confirm). */
+  governingProvince: { en: process.env.NEXT_PUBLIC_GOVERNING_PROVINCE_EN || '[province — to be chosen by the owner]', fr: process.env.NEXT_PUBLIC_GOVERNING_PROVINCE_FR || '[province — à choisir par le propriétaire]' },
   mailingAddress: process.env.NEXT_PUBLIC_COMPANY_MAILING_ADDRESS || '[Company mailing address — set NEXT_PUBLIC_COMPANY_MAILING_ADDRESS]',
   /** Where people write to us (the contact form also works). */
   email: process.env.NEXT_PUBLIC_COMPANY_EMAIL || '[Contact email — to be completed: set NEXT_PUBLIC_COMPANY_EMAIL]',
