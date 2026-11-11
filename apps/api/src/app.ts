@@ -123,7 +123,9 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
  * start in time; P1001/P1002/P1017 the database unreachable or the connection closed (a failover).
  */
 export function isOverload(err: unknown): boolean {
-  if (err instanceof Prisma.PrismaClientInitializationError) return true;
+  // Can't connect at all: busy only when the server isn't reachable. A wrong password or a TLS
+  // problem is a configuration error that retrying won't fix, so it stays a 500.
+  if (err instanceof Prisma.PrismaClientInitializationError) return ['P1001', 'P1002'].includes(err.errorCode ?? '') || /can't reach database server|timed out/i.test(err.message);
   if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
   if (['P2024', 'P1001', 'P1002', 'P1017'].includes(err.code)) return true;
   return err.code === 'P2028' && /unable to start a transaction in the given time/i.test(err.message);
