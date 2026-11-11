@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { api } from '@/lib/api';
 
+/** Ask for a password reset link. The answer is the same whether or not the address exists, so it can't be used to find accounts. */
 export default function ForgotPage() {
   const { t } = useTranslation();
   const [sent, setSent] = useState(false);

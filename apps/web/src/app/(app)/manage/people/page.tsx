@@ -20,6 +20,7 @@ import { DepartmentTabs } from '@/components/DepartmentTabs';
 import { departmentParam, useDepartmentTab } from '@/lib/departments';
 import { useSession } from '@/lib/session';
 
+/** People review: who may need a conversation and exactly why, from attendance, supervisors' notes and records already in the app. HR sees everyone; a supervisor sees their own people. */
 export default function PeopleReviewPage() {
   const { t, i18n } = useTranslation();
   const { me } = useSession();

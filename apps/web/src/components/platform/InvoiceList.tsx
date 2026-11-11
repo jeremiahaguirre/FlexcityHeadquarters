@@ -6,6 +6,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { type InvoiceRow, STATUS_TONE, cad } from '@/lib/billing';
 import { formatDate, dateFormat } from '@/lib/format';
 
+/** Invoices as rows on a phone and as a table on wider screens; each links to the invoice page. */
 export function InvoiceList({ invoices, showOrg = true }: { invoices: InvoiceRow[]; showOrg?: boolean }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

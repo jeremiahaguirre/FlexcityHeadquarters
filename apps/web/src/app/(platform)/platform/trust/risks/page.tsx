@@ -22,6 +22,7 @@ interface Risk { id: string; ref: string; title: string; titleFr: string | null;
 const CATS = ['tenant', 'access', 'continuity', 'vendor', 'logging', 'crypto', 'governance', 'privacy', 'people'] as const;
 const blank = { title: '', category: 'access', description: '', likelihood: 3, impact: 3, residualLikelihood: 2, residualImpact: 3, treatment: 'MITIGATE', treatmentPlan: '', ownerId: '', controlKeys: '', dueAt: '', reviewEveryDays: 90, status: 'OPEN' };
 
+/** Trust: the risk register as a heat map and a table: how likely, how bad, and what is being done. */
 export default function RisksPage() {
   const { t, i18n } = useTranslation();
   const date = useDate();

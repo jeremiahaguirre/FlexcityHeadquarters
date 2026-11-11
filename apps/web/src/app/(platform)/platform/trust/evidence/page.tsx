@@ -22,6 +22,7 @@ import type { ControlRow } from '../controls/page';
 interface Item { id: string; controlKey: string; kind: 'FILE' | 'LINK' | 'NOTE' | 'SNAPSHOT' | 'CI'; title: string; url: string | null; note: string | null; result: string | null; fileName: string | null; size: number | null; sha256: string | null; validUntil: string | null; addedBy: string | null; createdAt: string }
 interface Request { id: string; controlKey: string; title: string; detail: string | null; ownerId: string | null; owner: string | null; dueAt: string; status: 'OPEN' | 'DONE' | 'CANCELLED' }
 
+/** Trust: the evidence behind each control (encrypted files, links, notes, CI results) and the requests still open. */
 export default function EvidencePage() {
   const { t, i18n } = useTranslation();
   const toast = useToast();

@@ -33,6 +33,7 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/** The signed-in frame: side menu on wide screens, tab bar plus "More" on phones, header with search, notifications and the user menu. Only menu items the person may use are shown. */
 export function AppShell({ children, organization }: { children: ReactNode; organization: Organization }) {
   const { t } = useTranslation();
   const { can, me } = useSession();

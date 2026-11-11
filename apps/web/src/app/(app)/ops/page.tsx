@@ -21,6 +21,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Reading { id: string; pool: { id: string; name: string }; localRecordedAt: string; freeChlorinePpm: string | null; totalChlorinePpm: string | null; ph: string | null; waterTempC: string | null; outOfRange: boolean; reasons: string[]; recordedBy: string | null; signedOffBy: string | null }
 
+/** Water chemistry: record pool tests. An out-of-range reading recommends a closure that a head guard must confirm. */
 export default function OpsPage() {
   const { t, i18n } = useTranslation();
   const { can } = useSession();

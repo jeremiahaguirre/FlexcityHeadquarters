@@ -24,6 +24,7 @@ interface Offer {
   shift: ShiftLike & { id: string; version: number };
 }
 
+/** Shift board: open shifts and shifts coworkers are giving away. The server already filters to what this person is qualified and available for; a claim that would mean overtime goes to a supervisor instead. */
 export default function BoardPage() {
   const { t } = useTranslation();
   const toast = useToast();

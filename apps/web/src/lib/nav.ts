@@ -1,5 +1,6 @@
 import { BookOpenCheck, CalendarCog, PhoneCall, BellRing, NotebookPen, ReceiptText, Armchair, BadgeCheck, Banknote, BarChart3, Receipt, UserCog, Snowflake, Siren, IdCard, Layers, Tags, Globe, Truck, Bandage, Briefcase, Calculator, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, ClipboardCheck, ClipboardList, Clock, Droplets, FileSearch, Gauge, GraduationCap, HeartHandshake, Home, Megaphone, Repeat, Scale, Settings, ShieldAlert, ShieldCheck, TrendingUp, Radio, UserCheck, Users, Waves, type LucideIcon, Network, Wallet, HeartPulse, Building2 } from 'lucide-react';
 
+/** The app menu. It must match the API's menu (apps/api/src/auth/menu.ts); nav.test.ts checks. */
 export const MANAGE_SECTIONS = ['people', 'time', 'pay', 'safety', 'programs', 'organization'] as const;
 export type ManageSection = (typeof MANAGE_SECTIONS)[number];
 

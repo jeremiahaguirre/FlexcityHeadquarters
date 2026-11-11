@@ -20,6 +20,7 @@ const toTime = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0'
 const toMin = (s: string) => (s === '24:00' ? 1440 : Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5)));
 const ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first, as in Canada
 
+/** When each person can work, week by week. Scheduling only offers shifts inside these times, so the plan-ahead notice asks people to confirm theirs as far ahead as the organization plans. */
 export default function AvailabilityPage() {
   const { t, i18n } = useTranslation();
   const rows = useQuery<Row[]>('/api/me/availability');

@@ -6,6 +6,7 @@ import { DEMO } from '@/lib/demo';
 import { installErrorReporting } from '@/lib/errorReporting';
 import { LOCALE_COOKIE, type Locale, createI18n, normalizeLocale } from '@/lib/i18n';
 
+/** Client-side providers for every page: translations for the chosen language, error reporting, and (static demo only) the language picked from ?lang= or the cookie. */
 export function Providers({ locale, children }: { locale: Locale; children: ReactNode }) {
   const i18n = useMemo(() => createI18n(locale, [initReactI18next]), [locale]);
   // Uncaught errors and unhandled rejections go to the API's error reporter (lib/errorReporting.ts).

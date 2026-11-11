@@ -36,6 +36,7 @@ function groupByDay<T extends ShiftLike>(list: T[]): Array<[string, T[]]> {
   return [...m];
 }
 
+/** My schedule: this person's shifts (or everyone's, with permission) in each facility's local time, plus their on-call periods. */
 export default function SchedulePage() {
   const { t, i18n } = useTranslation();
   const { me, can } = useSession();

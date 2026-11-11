@@ -20,6 +20,7 @@ interface Version { id: string; version: number; status: 'DRAFT' | 'APPROVED' | 
 interface Policy { id: string; key: string; title: string; titleFr: string; ownerId: string | null; owner: string | null; reviewEveryMonths: number; nextReviewAt: string | null; status: Version['status']; publishedVersion: number | null; acknowledged: number; mine: boolean | null; pending: string[]; versions: Version[] }
 const TONE: Record<Version['status'], Tone> = { DRAFT: 'neutral', APPROVED: 'brand', PUBLISHED: 'ok', RETIRED: 'neutral' };
 
+/** Trust: policies from draft to approval and publication, and which console admins have accepted each one. */
 export default function PoliciesPage() {
   const { t, i18n } = useTranslation();
   const date = useDate();

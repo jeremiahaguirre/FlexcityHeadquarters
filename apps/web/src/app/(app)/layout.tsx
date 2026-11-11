@@ -7,6 +7,7 @@ import { SessionProvider } from '@/lib/session';
 import { currentTenant } from '@/lib/tenant';
 import { UnknownOrg } from '@/components/UnknownOrg';
 
+/** Signed-in app frame. An address that matches no organization shows the "unknown organization" page instead of a sign-in. */
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
   if (!tenant) return <UnknownOrg />;

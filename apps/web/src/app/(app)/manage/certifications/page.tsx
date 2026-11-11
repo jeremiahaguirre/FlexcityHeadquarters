@@ -15,6 +15,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Cert { id: string; certification: { name: string; nameFr: string | null; issuingBody: string }; issueDate: string; expiryDate: string | null; user: { id: string; name: string }; expired?: boolean }
 
+/** Certifications to verify and to renew. Expired or unverified cards never count toward shifts, so this is where supervisors clear the queue. */
 export default function CertificationsPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

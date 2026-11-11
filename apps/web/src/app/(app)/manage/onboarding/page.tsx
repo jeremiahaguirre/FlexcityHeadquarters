@@ -43,6 +43,7 @@ function Page() {
   );
 }
 
+/** Onboarding: each new person's checklist (split between HR, their supervisor and themselves) and the requirements set per position. */
 export default function OnboardingPage() {
   return (
     <Suspense>

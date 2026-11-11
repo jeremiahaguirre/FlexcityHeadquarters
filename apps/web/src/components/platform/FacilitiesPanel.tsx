@@ -13,6 +13,7 @@ import { PROVINCES, TIMEZONES } from '@/lib/regions';
 import { useAction } from '@/lib/useQuery';
 import type { PanelProps } from './types';
 
+/** Dev console, one organization: its facilities, with province, time zone and the geofence used for clock-in. */
 export function FacilitiesPanel({ id, city, reload }: PanelProps) {
   const { t } = useTranslation();
   const { run, busy } = useAction();

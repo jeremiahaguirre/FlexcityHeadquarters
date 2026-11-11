@@ -16,6 +16,7 @@ function timeAgo(iso: string, locale: string): string {
   return rtf.format(-Math.round(s / 86_400), 'day');
 }
 
+/** The bell in the header: unread count and a panel of recent notifications. Opening one follows its link. */
 export function NotificationBell() {
   const { t, i18n } = useTranslation();
   const router = useRouter();

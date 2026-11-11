@@ -22,6 +22,7 @@ import {
   platformSignInWithPasskey,
 } from "@/lib/passkeys";
 
+/** Dev console sign-in. A password is never enough: a passkey is required as the second step, and one is set up on first sign-in. */
 export default function PlatformLogin() {
   const { t } = useTranslation();
   const router = useRouter();

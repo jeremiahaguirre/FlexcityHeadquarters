@@ -35,6 +35,7 @@ import { ReportingCard } from '@/components/people/Reporting';
 
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
 
+/** The signed-in person's own profile: contact details and language, password and passkeys, certifications, and records waiting for their signature. */
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

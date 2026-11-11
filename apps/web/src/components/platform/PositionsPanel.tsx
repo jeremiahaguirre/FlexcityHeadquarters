@@ -12,6 +12,7 @@ import { type PositionRow, papi } from '@/lib/platform';
 import { useAction } from '@/lib/useQuery';
 import type { PanelProps } from './types';
 
+/** Dev console, one organization: its positions, with minimum age, required certifications and driving limits. */
 export function PositionsPanel({ id, city, reload }: PanelProps) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

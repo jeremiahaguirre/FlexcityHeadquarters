@@ -87,6 +87,7 @@ function Switch({ on, onChange, label }: { on: boolean; onChange: () => void; la
   );
 }
 
+/** Dev console, one organization: its plan, price, staff seats, billing details and invoices. */
 export function BillingPanel({ id, city }: PanelProps) {
   const data = usePlatformQuery<BillingData>(`/billing/accounts/${id}`);
   const invoices = usePlatformQuery<InvoiceRow[]>(`/billing/invoices?tenantId=${id}`);

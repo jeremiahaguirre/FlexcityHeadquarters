@@ -26,6 +26,7 @@ const localNow = () => {
   return d.toISOString().slice(0, 16);
 };
 
+/** File an incident report, and (with permission) the last 30 days of reports. Reports are stored encrypted; opening one asks for a purpose, which the server logs. */
 export default function IncidentsPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

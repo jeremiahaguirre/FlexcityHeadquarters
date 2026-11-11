@@ -77,6 +77,7 @@ function Section({ title, description, action, children }: { title: string; desc
   );
 }
 
+/** Organization settings: the organization itself, its facilities, pools and pay rules. Sections show only to people allowed to change them. */
 export default function SettingsPage() {
   const { t } = useTranslation();
   const { can } = useSession();

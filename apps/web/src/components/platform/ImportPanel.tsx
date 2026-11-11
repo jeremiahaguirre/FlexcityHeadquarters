@@ -20,6 +20,7 @@ const TEMPLATE = [
 ].join('\r\n');
 const TONE = { create: 'ok', exists: 'neutral', error: 'warn' } as const;
 
+/** Dev console: import staff from a spreadsheet (CSV). A preview shows what each row would do before anything is saved. */
 export function ImportPanel({ id, city, reload }: PanelProps) {
   const { t } = useTranslation();
   const toast = useToast();

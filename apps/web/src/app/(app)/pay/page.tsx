@@ -21,6 +21,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { AddressFields, readAddress } from '@/components/payroll/AddressFields';
 import { MyBankedTime } from '@/components/payroll/BankedTime';
 
+/** My pay: pay statements, direct deposit accounts, tax credits and benefits for the signed-in person. */
 export default function MyPayPage() {
   return (
     <Suspense fallback={<Skeleton className="h-64" />}>

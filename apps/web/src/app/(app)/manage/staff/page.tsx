@@ -38,6 +38,7 @@ interface Person {
   customRoles?: CustomRole[];
 }
 
+/** Staff list: search, add people, and set roles, positions and managers in bulk. */
 export default function StaffPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

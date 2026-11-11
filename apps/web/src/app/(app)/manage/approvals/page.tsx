@@ -43,6 +43,7 @@ interface Punch {
 type Tab = 'claims' | 'trades' | 'timeoff' | 'punches';
 const PROTECTED = new Set(['SICK', 'PROTECTED_LEAVE']);
 
+/** Everything waiting for a supervisor in one place: shift claims, time off, punches and trades, each tab shown only with the permission to decide it. */
 export default function ApprovalsPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

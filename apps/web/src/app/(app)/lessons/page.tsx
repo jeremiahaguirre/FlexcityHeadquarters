@@ -20,6 +20,7 @@ const CHOICES: Array<{ s: Status; Icon: typeof Check; tone: string }> = [
   { s: 'EXCUSED', Icon: UserX, tone: 'bg-surface text-ink border-muted/40' },
 ];
 
+/** Lesson attendance on the pool deck. Taps are saved on the phone first (lib/offlineAttendance.ts) and uploaded when there is signal, because decks often have none. */
 export default function LessonsPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

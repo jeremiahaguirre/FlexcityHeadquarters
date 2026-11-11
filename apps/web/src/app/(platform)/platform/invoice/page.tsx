@@ -322,6 +322,7 @@ function Invoice() {
   );
 }
 
+/** Dev console: one invoice (?id=), with its lines, payments and the actions its status allows. */
 export default function InvoicePage() {
   return (
     <Suspense fallback={<Skeleton className="h-[40rem]" />}>

@@ -29,6 +29,7 @@ interface RunDetail {
   statements: Array<{ id: string; name: string; employeeNumber: string | null; province: string; hours: number; gross: number; totalDeductions: number; net: number; deposit: string | null; deductions: { cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number } }>;
 }
 
+/** Pay runs: the list of runs by department and period, creating one, and opening one to review and approve it. */
 export function PayRuns() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

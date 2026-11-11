@@ -168,6 +168,7 @@ function LoginForm() {
   );
 }
 
+/** Sign in with a password (then a second factor if one is set), a passkey, or the organization's single sign-on. */
 export default function LoginPage() {
   return (
     <Suspense>

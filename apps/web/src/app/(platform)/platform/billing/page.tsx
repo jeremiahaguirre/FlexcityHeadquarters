@@ -26,6 +26,7 @@ interface Summary {
 }
 type Filter = 'OPEN' | 'OVERDUE' | 'DRAFT' | 'PAID' | 'ALL';
 
+/** Dev console billing: plans, invoices and payments for every organization. */
 export default function BillingPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

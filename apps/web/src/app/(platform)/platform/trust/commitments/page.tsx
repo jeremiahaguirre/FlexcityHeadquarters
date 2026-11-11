@@ -27,6 +27,7 @@ const stateOf = (c: Commitment): { key: string; tone: Tone } => {
   return left < 0 ? { key: 'OVERDUE', tone: 'danger' } : left <= 30 ? { key: 'SOON', tone: 'warn' } : { key: 'OPEN', tone: 'brand' };
 };
 
+/** Trust: every promise made to a customer, with an owner, a due date and reminders before it is due. */
 export default function CommitmentsPage() {
   const { t } = useTranslation();
   const date = useDate();

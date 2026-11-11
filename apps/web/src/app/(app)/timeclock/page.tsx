@@ -26,6 +26,7 @@ function useNow() {
   return now;
 }
 
+/** Timeclock: clock in and out (components/punch) and the last two weeks of punches. Supervisors review punches before payroll. */
 export default function TimeclockPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

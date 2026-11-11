@@ -21,6 +21,7 @@ interface Run { id: string; status: TestStatus; summary: string; details: Record
 
 const summaryOf = (r: { summary: string | null; details: Record<string, unknown> | null }, lang: string) => (lang.startsWith('fr') && typeof r.details?.summaryFr === 'string' ? r.details.summaryFr : r.summary) ?? '';
 
+/** Trust: automated checks of the platform's real state. The worker runs them on a schedule; a failure alerts the owner. */
 export default function TestsPage() {
   const { t, i18n } = useTranslation();
   const toast = useToast();

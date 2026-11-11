@@ -21,6 +21,7 @@ export interface ControlRow {
   testResults: Array<{ key: string; title: string; titleFr: string; status: TestStatus | null }>;
 }
 
+/** Trust: FH's controls, how each is proven (live tests, evidence) and who owns it. */
 export default function ControlsPage() {
   const { t, i18n } = useTranslation();
   const L = i18n.language;

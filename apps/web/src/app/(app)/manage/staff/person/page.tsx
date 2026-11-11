@@ -464,6 +464,7 @@ function Person() {
   );
 }
 
+/** One person's staff file (?id=): details, roles, positions, certifications and records. The id is in the query string so the page also works in the static demo export. */
 export default function PersonPage() {
   return (
     <Suspense fallback={<Skeleton className="h-96" />}>

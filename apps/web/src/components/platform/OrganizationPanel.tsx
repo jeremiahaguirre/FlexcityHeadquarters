@@ -15,6 +15,7 @@ import type { PanelProps } from './types';
 
 const MAX_BYTES = 512 * 1024;
 
+/** Dev console, one organization: name, language, time format, brand colour, logo and pay rules. */
 export function OrganizationPanel({ id, city, reload }: PanelProps) {
   const { t } = useTranslation();
   const { run, busy } = useAction();

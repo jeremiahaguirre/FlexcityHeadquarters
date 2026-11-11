@@ -28,6 +28,7 @@ const stateOf = (r: Req): ReqState => {
 };
 const TONE = { met: 'ok', partial: 'warn', gap: 'danger', na: 'neutral' } as const;
 
+/** Trust: each framework requirement, the controls that meet it, and how far along it is. */
 export default function FrameworksPage() {
   const { t, i18n } = useTranslation();
   const toast = useToast();

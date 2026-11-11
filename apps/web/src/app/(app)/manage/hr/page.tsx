@@ -27,6 +27,7 @@ import { CountUp } from '@/components/ui/CountUp';
 const TABS = ['overview', 'leave', 'reviews', 'policies', 'labour', 'offboarding'] as const;
 type Tab = (typeof TABS)[number];
 
+/** HR home: every HR area with what needs attention, plus tabs (leave, reviews, policies, labour, offboarding) kept in the address (?tab=). */
 export default function HrPage() {
   return (
     <Suspense fallback={<Skeleton className="h-64" />}>

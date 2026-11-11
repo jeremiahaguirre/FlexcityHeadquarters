@@ -1,3 +1,4 @@
+/** HR shapes as the API sends them (leave, reviews, training, grievances, offboarding), shared by the HR screens. */
 export const LEAVE_TYPES = ['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER'] as const;
 export type LeaveType = (typeof LEAVE_TYPES)[number];
 export interface LeaveBalance { type: LeaveType; entitled: number | null; carryover: number; used: number; pending: number; remaining: number | null; set: boolean; note: string | null }

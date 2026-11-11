@@ -18,6 +18,7 @@ import { ApplicationsDialog } from '@/components/jobs/Applications';
 import { EMPLOYMENT } from '@/lib/staff';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 
+/** Job postings for the organization's public careers page (/jobs), in English and French. */
 export default function JobsPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;

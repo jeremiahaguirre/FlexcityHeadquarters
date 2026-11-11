@@ -148,6 +148,7 @@ function City() {
   );
 }
 
+/** Dev console: one organization (?id=), with a tab per area (organization, features, access, facilities, billing, payroll, lifecycle and so on). */
 export default function CityPage() {
   return (
     <Suspense fallback={<Skeleton className="h-96" />}>

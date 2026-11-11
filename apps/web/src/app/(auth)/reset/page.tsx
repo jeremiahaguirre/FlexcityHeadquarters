@@ -67,6 +67,7 @@ function ResetForm() {
   );
 }
 
+/** Choose a new password from an emailed link (?token=). The same page finishes an invitation (?invite=1). */
 export default function ResetPage() {
   return (
     <Suspense>

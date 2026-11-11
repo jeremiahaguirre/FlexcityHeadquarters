@@ -9,6 +9,7 @@ import { UnknownOrg } from '@/components/UnknownOrg';
 import { ServiceWorker } from '@/components/ServiceWorker';
 import { Copyright } from '@/components/Copyright';
 
+/** Frame for sign-in, password reset and invitation screens, branded for the organization the address belongs to. */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   const tenant = DEMO ? DEMO_TENANT : await currentTenant();
   if (!tenant) return <UnknownOrg />;

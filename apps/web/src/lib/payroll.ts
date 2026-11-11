@@ -1,4 +1,5 @@
 import type { Issue } from './payrollIssues';
+/** Payroll shapes as the API sends them (pay statements, deductions, runs), shared by the pay screens. */
 export interface Earning { code: string; positionId: string | null; hours: number; rate: number; amount: number }
 export interface BenefitLine { planId: string; name: string; nameFr: string | null; kind: string; employee: number; employer: number; taxable: number }
 export interface Deductions { cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number; extraTax: number; total: number; employerCpp?: number; employerEi?: number; benefits?: BenefitLine[]; rpp?: number; unionDues?: number; afterTax?: number; taxableBenefit?: number; employerBenefits?: number; plan?: 'CPP' | 'QPP'; qpip?: number; employerQpip?: number; qpipInsurable?: number }

@@ -12,6 +12,7 @@ interface ToastItem {
 }
 const Ctx = createContext<(message: ReactNode, tone?: ToastTone) => void>(() => undefined);
 
+/** Short confirmations at the bottom of the screen (above the phone tab bar). At most three at once; warnings stay longer so there is time to read them. */
 export function ToastProvider({ children, dismissLabel = 'Dismiss' }: { children: ReactNode; dismissLabel?: string }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const remove = useCallback((id: number) => setItems((xs) => xs.filter((x) => x.id !== id)), []);

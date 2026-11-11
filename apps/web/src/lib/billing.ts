@@ -1,3 +1,4 @@
+/** Invoice shapes and money helpers for the billing screens. Amounts are in cents. */
 export interface TaxLine { name: string; rate: string; amountCents: number }
 export interface InvoiceRow {
   id: string;
