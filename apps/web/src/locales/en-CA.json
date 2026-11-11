@@ -4229,7 +4229,7 @@
   },
   "payTax": {
     "nav": "Payroll tables",
-    "navShort": "Tax tables",
+    "navShort": "Tables",
     "title": "Payroll tax tables",
     "description": "CPP, EI and income tax rates every city’s pay runs use. A pay run can’t be approved until each table it needs is checked against CRA’s T4127 for that year.",
     "federal": "Federal, CPP and EI",

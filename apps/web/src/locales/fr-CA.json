@@ -4229,7 +4229,7 @@
   },
   "payTax": {
     "nav": "Tables de paie",
-    "navShort": "Tables",
+    "navShort": "Barèmes",
     "title": "Tables fiscales de la paie",
     "description": "Les taux du RPC, de l’AE et de l’impôt utilisés par les paies de chaque ville. Une paie ne peut être approuvée tant que chaque table nécessaire n’a pas été vérifiée par rapport au T4127 de l’ARC pour l’année.",
     "federal": "Fédéral, RPC et AE",
