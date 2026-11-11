@@ -116,7 +116,7 @@ Status values:
 | --- | --- | --- |
 | Phishing simulation metrics | City + Ops | Outside the app. Passkeys (phishing-resistant) reduce the impact; requiring them (H1) is the best in-app control. |
 | Incident response playbook | Ops | Runbook includes a playbook and a ransomware tabletop scenario, plus breach-notification duties by law (section 5.6). |
-| Business continuity and disaster recovery | Ops | Targets in the runbook: RPO 15 minutes, RTO 4 hours; multi-AZ database; restore drills. The deck works briefly offline for attendance; paper fallback forms for headcounts and chemistry are in the runbook. |
+| Business continuity and disaster recovery | Ops | Targets in the runbook: RPO 15 minutes, RTO 4 hours; multi-AZ database; restore drills. The deck works briefly offline for attendance, and staff can punch in and out without signal (sent later, flagged for review); paper fallback forms for headcounts and chemistry are in the runbook. |
 
 ### 4.5 Strategic and board-level metrics
 

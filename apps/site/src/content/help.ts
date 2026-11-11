@@ -60,13 +60,13 @@ export const ARTICLES: Article[] = [
     en: {
       title: 'Clocking in and out',
       summary: 'Slide to clock in for your shift, and back out at the end.',
-      steps: ['Open Today, or tap Clock in at the top of any screen.', 'Slide the button to the right. If your shift starts within 30 minutes or has started, you’re clocked into it.', 'No shift right now? Choose the facility and position, then clock in.', 'At the end, slide to clock out. Your supervisor reviews punches before payroll.'],
+      steps: ['Open Today, or tap Clock in at the top of any screen.', 'Slide the button to the right. If your shift starts within 30 minutes or has started, you’re clocked into it.', 'No shift right now? Choose the facility and position, then clock in.', 'At the end, slide to clock out. Your supervisor reviews punches before payroll.', 'No signal? Punch anyway: it’s saved on your phone and sent by itself when you’re back online. Your supervisor sees it was recorded offline. Don’t sign out until it’s sent.'],
       tip: 'Your location is checked only at the moment you punch, to confirm you’re on site. You are never tracked.',
     },
     fr: {
       title: 'Pointer l’arrivée et la sortie',
       summary: 'Glissez pour pointer votre quart, puis pour pointer la sortie.',
-      steps: ['Ouvrez Aujourd’hui, ou touchez Pointer en haut de n’importe quel écran.', 'Glissez le bouton vers la droite. Si votre quart commence dans 30 minutes ou est en cours, vous y êtes pointé.', 'Pas de quart en ce moment? Choisissez l’installation et le poste, puis pointez.', 'À la fin, glissez pour pointer la sortie. Votre superviseur révise les pointages avant la paie.'],
+      steps: ['Ouvrez Aujourd’hui, ou touchez Pointer en haut de n’importe quel écran.', 'Glissez le bouton vers la droite. Si votre quart commence dans 30 minutes ou est en cours, vous y êtes pointé.', 'Pas de quart en ce moment? Choisissez l’installation et le poste, puis pointez.', 'À la fin, glissez pour pointer la sortie. Votre superviseur révise les pointages avant la paie.', 'Pas de réseau? Pointez quand même : le pointage est enregistré sur votre téléphone et envoyé de lui-même à votre retour en ligne. Votre superviseur voit qu’il a été enregistré hors ligne. Ne vous déconnectez pas avant l’envoi.'],
       tip: 'Votre position est vérifiée seulement au moment du pointage, pour confirmer que vous êtes sur place. Vous n’êtes jamais suivi.',
     },
   },

@@ -98,4 +98,4 @@ Walk through:
 - Multi-AZ database in `ca-central-1`; API across at least two availability zones behind the load balancer.
 - Cross-region backups in `ca-west-1` (Canadian residency kept).
 - Status page and a phone and email contact for cities during outages.
-- Swim-lesson attendance works offline and syncs later; other deck tasks fall back to paper forms (keep them in each facility's emergency binder).
+- Swim-lesson attendance and timeclock punches work offline and sync later (offline punches are flagged for supervisor review); other deck tasks fall back to paper forms (keep them in each facility's emergency binder).

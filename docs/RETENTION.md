@@ -44,7 +44,9 @@ with their records retention by-law.
   key for deletion (the purge script prints the command), which makes any remaining copy, backups
   included, unreadable (crypto-shredding).
 - **Backups:** encrypted, kept 35 days, then expire; a deletion reaches every backup within 35 days.
-- **Devices:** the app keeps only the class rosters on the device for offline use, and clears them
-  and the sign-in at sign-out. Downloaded files (exports, T4 and ROE files) are the city's to
+- **Devices:** the app keeps only the class rosters, and for the timeclock the person's own clocked-in
+  state, today's shifts and the facility list, on the device for offline use; punches made without
+  signal wait on the phone (per person) until sent. It clears them and the sign-in at sign-out
+  (after warning about any punch not sent yet). Downloaded files (exports, T4 and ROE files) are the city's to
   protect; the app reminds people that they contain SINs.
 - **Logs:** application logs never contain personal information (masked emails, error codes only).
