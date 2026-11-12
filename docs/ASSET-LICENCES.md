@@ -6,11 +6,13 @@ an asset is added. Anything of unknown origin must be replaced before launch.
 
 ## Fonts
 
+Every font is shipped in this repository and served from our own origin; no page, email or PDF asks Google Fonts, Typekit or any CDN for one. The Content-Security-Policy says so too (`font-src 'self'` in `apps/web` middleware and `next.config.mjs`, a `<meta>` in both apps for static hosts, and `apps/site/vercel.json`). Checked by `apps/web/src/lib/selfHostedFonts.test.ts`, `apps/site/src/lib/selfHostedFonts.test.ts` (sources and built output, run again after each build in CI), `apps/api/test/unit/fonts.test.ts` (emails and PDFs) and `apps/web/e2e/fonts.e2e.ts` (pages load with every other host blocked).
+
 | Asset | Source | Licence |
 | --- | --- | --- |
-| `apps/site/src/fonts/plus-jakarta-sans-latin-wght-normal.woff2`, `apps/web/src/fonts/…` (same file) | Plus Jakarta Sans, The Plus Jakarta Sans Project Authors (github.com/tokotype/PlusJakartaSans), Latin subset | SIL Open Font License 1.1; the licence text ships beside each file (`OFL.txt`). Self-hosted: no request to Google Fonts. |
-| PDFs (`apps/api/src/services/privacy/*.ts`, `trust/exports.ts`) | PDFKit's built-in Helvetica (standard PDF base-14 font, not embedded) | No font file shipped. |
-| Emails (`services/notifications/emailHtml.ts`) | Names "Plus Jakarta Sans" then system fonts in CSS; no font is linked or downloaded | — |
+| `apps/site/src/fonts/plus-jakarta-sans-latin-wght-normal.woff2`, `apps/web/src/fonts/…` (same file, SHA-256 `153fc85b70298beeb1d61a5f723331649e7f23bb77302a66e61cb3e2fbdb5e79`) | Plus Jakarta Sans 2.071, The Plus Jakarta Sans Project Authors (github.com/tokotype/PlusJakartaSans); variable weight 200–800, Latin subset (English and French), taken unchanged from `@fontsource-variable/plus-jakarta-sans` 5.3.0 | SIL Open Font License 1.1: use, bundling, embedding and redistribution with software are allowed as long as the copyright notice and licence go with it (the upstream `OFL.txt` ships beside each file, unchanged) and the font is not sold on its own. No Reserved Font Name is declared, so the subset keeps its name. Loaded with `next/font/local` and served from our own origin (`/_next/static/media/`): builds download nothing and pages request no font from any other host. |
+| PDFs (`apps/api/src/services/privacy/*.ts`, `trust/exports.ts`) | PDFKit's built-in Helvetica and Courier (PDF standard base-14 fonts): the metrics ship inside the `pdfkit` package and every PDF reader supplies the glyphs; nothing is fetched or embedded | No font file shipped. |
+| Emails (`services/notifications/emailHtml.ts`) | System font stack only (`-apple-system`, `Segoe UI`, Roboto, Helvetica, Arial, `sans-serif`): mail apps block web fonts, so none is named, linked or downloaded | — |
 
 ## Icons
 

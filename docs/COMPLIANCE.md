@@ -188,12 +188,17 @@ the end. Related: [LEGAL-REGISTER.md](LEGAL-REGISTER.md) (laws, open risks, owne
 
 ### Fonts
 
-Both apps already self-host Plus Jakarta Sans with `next/font/local` (OFL). No Google Fonts link in
-code, emails (font named in CSS only, nothing fetched), PDFs (PDFKit built-in Helvetica) or the Dev
-console. The app's CSP already had `font-src 'self'`; the website now sends a CSP header too
-(`font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`).
-A test greps the sources and any built output for Google Fonts URLs
-(`apps/site/src/content/compliance.test.ts`). Built site output checked: no match.
+Both apps self-host Plus Jakarta Sans with `next/font/local` (OFL), from the woff2 committed in
+`src/fonts`: builds download nothing and pages request no font from another host. Emails use the
+system font stack only (no web font named or linked); PDFs use PDFKit's built-in base-14 fonts
+(nothing fetched). `font-src 'self'` everywhere: the app's middleware CSP and `next.config.mjs`
+headers, the website's CSP header (`font-src 'self'; object-src 'none'; base-uri 'self'; form-action
+'self'; frame-ancestors 'none'`), and a `<meta>` CSP in both apps for static hosts (the demo).
+Tests: `apps/site/src/content/compliance.test.ts` (Google Fonts in sources), the two
+`selfHostedFonts.test.ts` files (every `@font-face` in the build is the committed file from our own
+origin, Tailwind stacks are the brand font then system fonts), `apps/api/test/unit/fonts.test.ts`
+and `apps/web/e2e/fonts.e2e.ts` (pages render the brand font with every other host blocked). See
+`docs/ASSET-LICENCES.md`.
 
 ### Session replay and error reports
 
