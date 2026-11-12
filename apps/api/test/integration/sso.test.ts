@@ -187,6 +187,24 @@ describe('OpenID Connect (Microsoft Entra ID)', () => {
     }
   });
 
+  it('refuses ID tokens from another issuer, and browser state that is unsigned, for another purpose or signed with another key', async () => {
+    const reason = (l: URL) => (l.pathname === '/login' ? l.searchParams.get('sso') : 'signed-in');
+    expect(reason((await oidcRound({ email: staffEmail, iss: 'https://login.example.com/other-directory' })).location)).toBe('SSO_TOKEN_INVALID');
+    const start = await anon.get('/api/auth/sso/start');
+    const state = new URL(start.headers.location!).searchParams.get('state');
+    const genuine = stateCookie(start).slice('fc_sso='.length);
+    const payload = JSON.parse(Buffer.from(genuine.split('.')[1]!, 'base64url').toString()) as Record<string, unknown>;
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
+    const b64 = (v: object) => Buffer.from(JSON.stringify(v)).toString('base64url');
+    const back = async (cookie: string) => reason(new URL((await anon.get(`/api/auth/sso/oidc/callback?code=bad-code&state=${state}`, `fc_sso=${cookie}`)).headers.location!));
+    // The control: the genuine state gets past the state check (and then the provider refuses the bad code).
+    expect(await back(genuine)).toBe('SSO_TOKEN_REFUSED');
+    expect(await back(`${b64({ alg: 'none' })}.${genuine.split('.')[1]}.`)).toBe('SSO_STATE_INVALID');
+    expect(await back(await new SignJWT({ ...payload, aud: 'something-else' }).setProtectedHeader({ alg: 'HS256' }).sign(secret))).toBe('SSO_STATE_INVALID');
+    expect(await back(await new SignJWT({ ...payload }).setProtectedHeader({ alg: 'HS256' }).sign(new TextEncoder().encode('another-secret-another-secret-000000')))).toBe('SSO_STATE_INVALID');
+    expect(await back(await new SignJWT({ ...payload, exp: Math.floor(Date.now() / 1000) - 1 }).setProtectedHeader({ alg: 'HS256' }).sign(secret))).toBe('SSO_STATE_INVALID');
+  });
+
   it('never creates accounts, keeps to the city’s domains, and stays bound to the first directory account', async () => {
     const reason = async (claims: Record<string, unknown>) => (await oidcRound(claims)).location.searchParams.get('sso');
     expect(await reason({ email: `nobody@${SUB}.test` })).toBe('SSO_NO_ACCOUNT');
