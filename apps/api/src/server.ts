@@ -12,6 +12,7 @@ import { enableInlineUrgent } from './services/notifications/urgent.js';
 import { logError } from './lib/log.js';
 import { assertLeastPrivilege } from './lib/dbRole.js';
 import { installProcessHandlers } from './lib/errorReporter.js';
+import { gracefulServer, setLiveServer } from './lib/shutdown.js';
 
 const cfg = config();
 // Unhandled rejections and uncaught exceptions are reported (lib/errorReporter.ts).
@@ -26,9 +27,19 @@ const workers = cfg.WEB_CONCURRENCY;
 if (workers > 1 && cluster.isPrimary) {
   await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
   for (let i = 0; i < workers; i++) cluster.fork();
+  let stopping = false;
   cluster.on('exit', (w, code) => {
+    if (stopping) {
+      if (!Object.keys(cluster.workers ?? {}).length) process.exit(0);
+      return;
+    }
     logError(`API worker ${w.process.pid} stopped (${code}); starting another`, new Error('worker exit'));
     cluster.fork();
+  });
+  // Pass ECS's SIGTERM on to the workers, which stop gracefully; exit once they all have.
+  process.once('SIGTERM', () => {
+    stopping = true;
+    for (const w of Object.values(cluster.workers ?? {})) w?.process.kill('SIGTERM');
   });
   console.log(`FlexcityHeadquarters API: ${workers} workers on :${cfg.PORT}`);
 } else {
@@ -55,7 +66,14 @@ if (workers > 1 && cluster.isPrimary) {
   attachCacheBus(sharedListener(listenUrl));
   await startLiveHub(listenUrl);
 
-  createApp().listen(cfg.PORT, () => {
+  const server = createApp().listen(cfg.PORT, () => {
     console.log(`FlexcityHeadquarters API listening on :${cfg.PORT}${cluster.isWorker ? ` (worker ${process.pid})` : ''}`);
+  });
+  // ECS sends SIGTERM when it replaces this task: finish what's in flight, then exit (lib/shutdown.ts).
+  const graceful = gracefulServer(server);
+  setLiveServer(graceful);
+  process.once('SIGTERM', () => {
+    console.log(`FlexcityHeadquarters API stopping (SIGTERM)${cluster.isWorker ? ` (worker ${process.pid})` : ''}`);
+    void graceful.stop().then(() => process.exit(0));
   });
 }

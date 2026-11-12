@@ -1,5 +1,6 @@
 /** In-app notifications, their live stream to open pages, and web push subscriptions. */
 import { Router } from 'express';
+import { liveServer } from '../lib/shutdown.js';
 import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
@@ -57,6 +58,8 @@ notificationsRouter.get('/notifications/stream', (req, res) => {
     'X-Accel-Buffering': 'no',
   });
   res.flushHeaders();
+  // Ended when this task stops, so the browser reconnects to another one (lib/shutdown.ts).
+  liveServer()?.track(res);
   res.write(`event: ready\ndata: {}\n\n`);
   const off = onUserSignal(a.userId, (s) => {
     // Only ids travel between processes; the browser refetches /notifications under its own tenant.

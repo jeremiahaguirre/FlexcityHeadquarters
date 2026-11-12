@@ -65,6 +65,28 @@ const mailer = new ConsoleMailer();
 const sms = smsSender();
 
 const running = new Set<string>();
+
+// The job lock connection holds this process's advisory locks: when it drops (a database restart or
+// failover), stop, and ECS starts a fresh worker that takes them again (the rehearsal's database restart).
+lockClient.on('error', (err) => {
+  captureError(err, { source: 'job', tags: { job: 'lock-connection' } });
+  setTimeout(() => process.exit(1), 500).unref();
+});
+
+// ECS sends SIGTERM when it replaces this task: start no new job, let the running ones finish (up to
+// 20 s, inside ECS's 30 s stop timeout), then exit. Without this, Node as the container's first
+// process ignored SIGTERM and was killed mid-job at the timeout (found by the production rehearsal).
+let stopping = false;
+process.once('SIGTERM', () => {
+  stopping = true;
+  console.log(`FlexcityHeadquarters worker stopping (SIGTERM); waiting for: ${[...running].join(', ') || 'nothing'}`);
+  const deadline = Date.now() + 20_000;
+  const wait = setInterval(() => {
+    if (running.size && Date.now() < deadline) return;
+    clearInterval(wait);
+    void lockClient.end().catch(() => undefined).finally(() => process.exit(0));
+  }, 200);
+});
 /** When the maintenance job last looked (its live signals cover what passed since). */
 let lastMaintenanceRun = new Date();
 
@@ -102,7 +124,7 @@ const listen = (): Promise<void> =>
 await listen();
 
 async function exclusive(name: string, fn: () => Promise<unknown>) {
-  if (running.has(name)) return;
+  if (stopping || running.has(name)) return;
   running.add(name);
   try {
     await locked(name, fn);
