@@ -176,6 +176,7 @@ function MessagingSettings() {
           {box('pushPreview')}
           <Field label={t('messageReports.settings.shiftArchiveHours')} hint={t('messageReports.settings.shiftArchiveHint', { min: s.shiftArchiveLimits[0], max: s.shiftArchiveLimits[1] })}>{(p) => <Input {...p} name="shiftArchiveHours" type="number" min={s.shiftArchiveLimits[0]} max={s.shiftArchiveLimits[1]} defaultValue={s.shiftArchiveHours} className="max-w-[8rem]" required />}</Field>
           <p className="text-caption text-muted">{t('messageReports.settings.ruleOfTwo')}</p>
+          <p className="text-caption text-muted">{t('messageReports.settings.noBirthDate')}</p>
           <Button type="submit" size="sm" className="justify-self-start" loading={busy === 'save'}>{t('common.save')}</Button>
         </form>
       </CardBody>
