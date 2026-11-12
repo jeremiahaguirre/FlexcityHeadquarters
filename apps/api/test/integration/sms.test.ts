@@ -92,7 +92,7 @@ describe('text and phone alerts', () => {
     const sender = new ConsoleSms(true);
     const r = await deliverSms(owner, sender);
     expect(r.failed).toBe(0);
-    expect(sender.sent.some((m) => m.kind === 'CALL' && m.to === '+12505550102' && m.body.startsWith('URGENT, FlexcityHeadquarters. worker X ne s'))).toBe(true);
+    expect(sender.sent.some((m) => m.kind === 'CALL' && m.to === '+12505550102' && m.body.startsWith('URGENT, FlexcityHeadquarters. worker X (travail seul à '))).toBe(true);
     expect(await owner.smsOutbox.count({ where: { sentAt: null } })).toBe(0);
     expect((await owner.smsOutbox.findMany({ where: { template: 'lonework_escalated' } })).every((m) => JSON.stringify(m.params) === '{}')).toBe(true);
   });
@@ -111,7 +111,7 @@ describe('text and phone alerts', () => {
     expect((await withTenant(t.tenant.id, (tx) => draftsFor(tx, ev(later.id)))).some((d) => d.sms)).toBe(false);
     await withTenant(t.tenant.id, (tx) => notify(tx, t.tenant.id, now));
     const text = await owner.smsOutbox.findFirstOrThrow({ where: { tenantId: t.tenant.id, template: 'shift_urgent' } });
-    expect(renderSms(text.template, text.locale, text.params as Record<string, unknown>)).toMatch(/quart libre de Lifeguard à Rec Centre commence/);
+    expect(renderSms(text.template, text.locale, text.params as Record<string, unknown>)).toMatch(/quart ouvert de Lifeguard à Rec Centre commence/);
   });
 
   it('nothing goes out while the city has text alerts off, and people can stop them', async () => {

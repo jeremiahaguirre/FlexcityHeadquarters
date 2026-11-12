@@ -29,7 +29,7 @@ describe('bidding helpers', () => {
   it('award reasons follow the round’s award order', () => {
     expect(awardReason({ choiceRank: 2, pass: 1 }, 'ROUND_ROBIN', tFor(en), 'en-CA')).toBe('Choice #2, pass 1');
     expect(awardReason({ choiceRank: 2, pass: 2 }, 'SENIOR_FIRST', tFor(en), 'en-CA')).toBe('Choice #2, their 2nd award');
-    expect(awardReason({ choiceRank: 1, pass: 1 }, 'SENIOR_FIRST', tFor(fr), 'fr-CA')).toBe('Choix no 1, attribution 1 de son tour');
+    expect(awardReason({ choiceRank: 1, pass: 1 }, 'SENIOR_FIRST', tFor(fr), 'fr-CA')).toBe('Choix no 1, son attribution no 1');
     expect(awardReason({ choiceRank: null, pass: 1 }, 'ROUND_ROBIN', tFor(en), 'en-CA')).toBe('Choice #—, pass 1');
   });
   it('a line reads as its days and times', () => {
