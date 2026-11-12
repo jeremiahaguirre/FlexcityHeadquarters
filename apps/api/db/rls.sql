@@ -382,7 +382,7 @@ CREATE TRIGGER fh_public_event AFTER INSERT OR UPDATE ON "PayRun" FOR EACH ROW E
 DO $$
 DECLARE
   t text;
-  fh_published text[] := ARRAY['ReleaseNote'];
+  fh_published text[] := ARRAY['ReleaseNote', 'MaintenanceWindow'];
 BEGIN
   FOREACH t IN ARRAY fh_published LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);

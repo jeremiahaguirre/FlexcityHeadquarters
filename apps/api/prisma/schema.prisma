@@ -4741,3 +4741,26 @@ model ReleaseChange {
   @@index([tenantId, status])
   @@index([status, scheduledAt])
 }
+
+/// Planned maintenance, announced from the Dev console: a banner for everyone during the window and a
+/// heads-up before it, and notices to HR admins (in-app and email) when scheduled and a day before.
+/// Informational only: nothing is switched off. FH's content, read like What's new notes (db/rls.sql fh_published).
+model MaintenanceWindow {
+  id               String    @id @default(uuid()) @db.Uuid
+  startsAt         DateTime  @db.Timestamptz(3)
+  endsAt           DateTime  @db.Timestamptz(3)
+  messageEn        String
+  messageFr        String
+  /// Which organizations (empty = all).
+  tenantIds        String[]  @db.Uuid
+  ringIds          String[]  @db.Uuid
+  /// HR admins were told when it was scheduled / a day before (worker; per organization it checks its own notices too).
+  noticeSentAt     DateTime? @db.Timestamptz(3)
+  reminderSentAt   DateTime? @db.Timestamptz(3)
+  cancelledAt      DateTime? @db.Timestamptz(3)
+  createdById      String    @db.Uuid
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([endsAt])
+}
