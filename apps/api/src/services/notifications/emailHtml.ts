@@ -1,8 +1,11 @@
 /**
  * The branded HTML version of every email (the plain-text part stays as written).
  * Table layout and inline styles, so it reads the same in Outlook, Gmail and phone mail apps;
- * no remote images, so nothing is blocked or tracks the reader.
+ * no remote images, so nothing is blocked or tracks the reader. Fonts: the system stack only
+ * (no @font-face, no font link): mail apps block or strip web fonts, so naming one would only
+ * make the email look different from reader to reader.
  */
+export const EMAIL_FONT_STACK = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const URL_RE = /(https?:\/\/[^\s<]+)/g;
 
@@ -32,7 +35,7 @@ export function emailHtml(subject: string, text: string, locale: string): string
     : 'Sent by FlexcityHeadquarters on behalf of your organization. Scheduling, timekeeping, payroll and HR for Canadian organizations.';
   return `<!doctype html>
 <html lang="${fr ? 'fr-CA' : 'en-CA'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>${esc(subject)}</title></head>
-<body style="margin:0;padding:0;background:${BRAND.page};font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif">
+<body style="margin:0;padding:0;background:${BRAND.page};font-family:${EMAIL_FONT_STACK}">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.page}"><tr><td align="center" style="padding:28px 14px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
 <tr><td style="padding:0 4px 16px;font-size:20px;letter-spacing:-0.5px"><span style="font-weight:800;color:${BRAND.ink}">Flexcity</span><span style="font-weight:500;color:${BRAND.tealText}">Headquarters</span></td></tr>
