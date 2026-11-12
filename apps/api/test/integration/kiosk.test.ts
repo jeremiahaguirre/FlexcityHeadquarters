@@ -2,7 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
-import { signAccessToken } from '../../src/auth/tokens.js';
+import { hashPassword, signAccessToken } from '../../src/auth/tokens.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 const server = createApp();
@@ -72,6 +72,48 @@ describe('facility kiosk', () => {
     for (let i = 0; i < 4; i++) expect((await tablet().punch('E100', '4826')).body.action).toBeDefined();
     for (let i = 0; i < 4; i++) await tablet().punch('E100', '9999');
     expect((await tablet().punch('E100', '4826')).body.code).toBe('KIOSK_LOCKED');
+  });
+
+  it('supervisors hear about a lock; a second lock of the same number the same day lasts twice as long', async () => {
+    const n = await owner.notification.findFirstOrThrow({ where: { tenantId: t.tenant.id, type: 'kiosk_pin_locked' } });
+    expect(n.params).toMatchObject({ kiosk: 'Front desk tablet', minutes: 15 });
+    // Only people who review punches are told, not the guards.
+    const sup = await owner.user.findFirstOrThrow({ where: { tenantId: t.tenant.id, email: `sup@${SUB}.test` } });
+    expect(n.userId).toBe(sup.id);
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'kiosk.pin_locked' } })).toBe(1);
+
+    // In the shared store, so the clock can be moved by ageing the rows.
+    process.env.RATE_LIMIT_STORE = 'database';
+    try {
+      await owner.user.update({ where: { id: t.users[1]!.id }, data: { employeeNumber: 'E200', kioskPinHash: await hashPassword('kiosk:5937') } });
+      const age = (minutes: number) => owner.$executeRaw`UPDATE "RateLimitHit" SET at = at - make_interval(mins => ${minutes}::int) WHERE key LIKE ${`kiosk-pin:${t.tenant.id}:E200%`}`;
+      for (let i = 0; i < 5; i++) expect((await tablet().punch('E200', '1111')).body.code).toBe('KIOSK_WRONG');
+      expect((await tablet().punch('E200', '5937')).body.code).toBe('KIOSK_LOCKED');
+      await age(16);
+      expect((await tablet().punch('E200', '5937')).body.action).toBe('IN');
+      for (let i = 0; i < 5; i++) await tablet().punch('E200', '1111');
+      const second = await owner.notification.findFirstOrThrow({ where: { tenantId: t.tenant.id, type: 'kiosk_pin_locked' }, orderBy: { createdAt: 'desc' } });
+      expect(second.params).toMatchObject({ minutes: 30 });
+      await age(16);
+      expect((await tablet().punch('E200', '5937')).body.code).toBe('KIOSK_LOCKED');
+      await age(15);
+      expect((await tablet().punch('E200', '5937')).body.action).toBe('OUT');
+    } finally {
+      delete process.env.RATE_LIMIT_STORE;
+      await owner.rateLimitHit.deleteMany({ where: { key: { startsWith: 'kiosk-' } } });
+    }
+  });
+
+  it('many wrong PINs on one tablet (trying many numbers) pause the whole tablet', async () => {
+    resetLimits();
+    for (let i = 0; i < 15; i++) expect((await tablet().punch(`X${i}`, '4826')).body.code).toBe('KIOSK_WRONG');
+    // Locked numbers aside, the tablet now pauses for everyone, even a right PIN.
+    const r = await tablet().punch('E100', '4826');
+    expect(r.status).toBe(429);
+    expect(r.body.code).toBe('KIOSK_SLOW_DOWN');
+    expect(await owner.notification.count({ where: { tenantId: t.tenant.id, type: 'kiosk_tablet_locked' } })).toBe(1);
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'kiosk.tablet_locked' } })).toBe(1);
+    resetLimits();
   });
 
   it('pairing keeps the secret in an HttpOnly cookie that only counts with the tablet’s own header', async () => {

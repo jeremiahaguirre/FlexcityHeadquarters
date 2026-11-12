@@ -11,12 +11,15 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { allow, reached, record } from '../auth/rateLimit.js';
+import { allow, count, record } from '../auth/rateLimit.js';
+import { permissionsFor } from '../auth/permissions.js';
+import { kioskPinLocks } from '../lib/metrics.js';
+import { notify } from '../services/notifications/notifier.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { config } from '../config.js';
 import type { Tx } from '../lib/db.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, forbidden, notFound } from '../lib/errors.js';
 import { resolveFeatures } from '../services/platform/features.js';
 import { clockIn, clockOut } from '../services/timeclock/punches.js';
 import { h } from './context.js';
@@ -85,7 +88,23 @@ kioskAdminRouter.get(
   }),
 );
 
-const WEAK = new Set(['0000', '1111', '1234', '4321', '2222', '9999', '000000', '123456', '111111', '654321', '121212']);
+const WEAK = new Set(['0000', '1111', '1234', '4321', '2222', '9999', '000000', '123456', '111111', '654321', '121212', '1212', '6969', '2580', '0852', '1004', '7777', '5683', '123123', '112233', '159753', '147258', '258369', '696969', '102030']);
+
+/**
+ * PIN rules: 4 to 6 digits, not one of the most common PINs, not one digit repeated, not a run up or
+ * down (2345, 98765), not a repeated pair or triple (1313, 125125), and not the end of the person's
+ * own employee number (which is typed right before it at the kiosk).
+ */
+export function weakPin(pin: string, employeeNumber?: string | null): boolean {
+  if (WEAK.has(pin) || /^(\d)\1+$/.test(pin)) return true;
+  const d = [...pin].map(Number);
+  const steps = d.slice(1).map((x, i) => (x - d[i]! + 10) % 10);
+  if (steps.every((s) => s === 1) || steps.every((s) => s === 9)) return true;
+  if (/^(\d\d)\1+$/.test(pin) || /^(\d\d\d)\1$/.test(pin)) return true;
+  const digits = (employeeNumber ?? '').replace(/\D/g, '');
+  return digits.length >= 4 && (digits.endsWith(pin) || digits.startsWith(pin));
+}
+
 kioskAdminRouter.put(
   '/me/kiosk-pin',
   requirePermission('timeclock.punch'),
@@ -93,10 +112,10 @@ kioskAdminRouter.put(
   h(async (req, res) => {
     const a = authOf(req);
     const { pin } = z.object({ pin: z.string().regex(/^\d{4,6}$/, 'Use 4 to 6 digits.') }).parse(req.body);
-    if (WEAK.has(pin) || /^(\d)\1+$/.test(pin)) throw badRequest('Choose a PIN that’s harder to guess.');
     await withTenant(a.tenantId, async (tx) => {
       const u = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { employeeNumber: true } });
       if (!u.employeeNumber) throw new HttpError(409, 'NO_EMPLOYEE_NUMBER', 'Ask HR to add your employee number first: you enter it at the kiosk.');
+      if (weakPin(pin, u.employeeNumber)) throw new HttpError(400, 'PIN_WEAK', 'Choose a PIN that’s harder to guess.');
       await tx.user.update({ where: { id: a.userId }, data: { kioskPinHash: await hashPassword(`kiosk:${pin}`) } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'kiosk.pin_set', entity: 'User', entityId: a.userId });
     });
@@ -175,6 +194,35 @@ kioskRouter.get(
   }),
 );
 
+/**
+ * Kiosk PIN guessing limits (wrong PINs only: someone punching in and out all day is never locked):
+ * - per employee number: 5 wrong PINs in 15 minutes lock that number for 15 minutes, doubling with
+ *   each further lock within 24 hours, up to 24 hours (unknown numbers count the same, so a lock
+ *   never says whether a number exists);
+ * - per tablet: 15 wrong PINs in 15 minutes (someone trying many numbers) pause the whole tablet
+ *   for 15 minutes;
+ * - per tablet, all punches: 240 in 15 minutes (a shift change at a big facility fits).
+ * Each lock tells the facility's supervisors (in-app; they can see who on the timesheet review).
+ */
+export const KIOSK_LIMITS = { pinFailures: 5, pinWindowMs: 15 * 60_000, pinBaseLockMs: 15 * 60_000, pinMaxLockMs: 24 * 3_600_000, tabletFailures: 15, tabletWindowMs: 15 * 60_000, tabletLockMs: 15 * 60_000, tabletRequests: 240 };
+const DAY_MS = 86_400_000;
+
+/** The current lock on an employee number, if any: the nth lock today lasts base × 2^(n−1). */
+async function pinLocked(key: string): Promise<boolean> {
+  const locks = await count(`${key}:locks`, DAY_MS);
+  if (!locks) return false;
+  const ms = Math.min(KIOSK_LIMITS.pinMaxLockMs, KIOSK_LIMITS.pinBaseLockMs * 2 ** (locks - 1));
+  return (await count(`${key}:locks`, ms)) > 0;
+}
+
+/** Tells the supervisors who review this facility's punches (at most 20), in-app. */
+async function tellSupervisors(tx: Tx, k: { tenantId: string; facilityId: string; name: string }, type: 'kiosk_pin_locked' | 'kiosk_tablet_locked', minutes: number) {
+  const people = await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true, roles: true } });
+  const sups = people.filter((p) => permissionsFor(p.roles).has('timeclock.review')).slice(0, 20);
+  if (!sups.length) return;
+  await notify(tx, k.tenantId, sups.map((p) => ({ userId: p.id, type, params: { kiosk: k.name, minutes }, link: '/manage/settings' })));
+}
+
 /** Punch in, or out if already in. */
 kioskRouter.post(
   '/kiosk/punch',
@@ -182,15 +230,31 @@ kioskRouter.post(
     const b = z.object({ employeeNumber: z.string().trim().min(1).max(30), pin: z.string().regex(/^\d{4,6}$/) }).parse(req.body);
     const header = kioskCredential(req);
     const tenantId = tenantOfHeader(header) ?? 'none';
-    // Wrong guesses: a few per person, more per tablet, then a pause.
-    if (!(await allow(`kiosk-tablet:${tenantId}:${sha(header ?? '').slice(0, 16)}`, 60, 15 * 60_000))) throw new HttpError(429, 'KIOSK_SLOW_DOWN', 'Too many tries on this tablet. Wait a few minutes.');
+    const tabletKey = `kiosk-tablet:${tenantId}:${sha(header ?? '').slice(0, 16)}`;
+    if (!(await allow(tabletKey, KIOSK_LIMITS.tabletRequests, 15 * 60_000))) throw new HttpError(429, 'KIOSK_SLOW_DOWN', 'Too many tries on this tablet. Wait a few minutes.');
+    if ((await count(`${tabletKey}:locked`, KIOSK_LIMITS.tabletLockMs)) > 0) throw new HttpError(429, 'KIOSK_SLOW_DOWN', 'Too many tries on this tablet. Wait a few minutes.');
     const out = await withKiosk(req, async (tx, k) => {
       const u = await tx.user.findFirst({ where: { employeeNumber: b.employeeNumber, status: 'ACTIVE', anonymizedAt: null }, select: { id: true, firstName: true, kioskPinHash: true, locale: true } });
       const key = `kiosk-pin:${k.tenantId}:${b.employeeNumber}`;
-      // Only wrong PINs count toward the lock: someone punching in and out all day is never locked out.
-      if (await reached(key, 5, 15 * 60_000)) return { error: new HttpError(429, 'KIOSK_LOCKED', 'Too many wrong PINs. Try again in 15 minutes, or punch on your phone.') };
-      if (!u || !u.kioskPinHash || !(await verifyPassword(`kiosk:${b.pin}`, u.kioskPinHash))) {
+      if (await pinLocked(key)) return { error: new HttpError(429, 'KIOSK_LOCKED', 'Too many wrong PINs. Try again later, or punch on your phone.') };
+      // A dummy check for an unknown number or one without a PIN: the same work, the same timing.
+      const right = u?.kioskPinHash ? await verifyPassword(`kiosk:${b.pin}`, u.kioskPinHash) : await verifyPassword(`kiosk:${b.pin}`, 'scrypt$AAAA$AAAA').then(() => false);
+      if (!u || !right) {
         await record(key);
+        await record(`${tabletKey}:wrong`);
+        if ((await count(key, KIOSK_LIMITS.pinWindowMs)) >= KIOSK_LIMITS.pinFailures && !(await pinLocked(key))) {
+          await record(`${key}:locks`);
+          const locks = await count(`${key}:locks`, DAY_MS);
+          kioskPinLocks.inc({ scope: 'employee' });
+          await audit(tx, { tenantId: k.tenantId, actorId: null, action: 'kiosk.pin_locked', entity: 'Kiosk', entityId: k.id, after: { employeeNumber: b.employeeNumber, locks } });
+          await tellSupervisors(tx, k, 'kiosk_pin_locked', Math.min(KIOSK_LIMITS.pinMaxLockMs, KIOSK_LIMITS.pinBaseLockMs * 2 ** (locks - 1)) / 60_000);
+        }
+        if ((await count(`${tabletKey}:wrong`, KIOSK_LIMITS.tabletWindowMs)) >= KIOSK_LIMITS.tabletFailures && !(await count(`${tabletKey}:locked`, KIOSK_LIMITS.tabletLockMs))) {
+          await record(`${tabletKey}:locked`);
+          kioskPinLocks.inc({ scope: 'tablet' });
+          await audit(tx, { tenantId: k.tenantId, actorId: null, action: 'kiosk.tablet_locked', entity: 'Kiosk', entityId: k.id, after: { minutes: KIOSK_LIMITS.tabletLockMs / 60_000 } });
+          await tellSupervisors(tx, k, 'kiosk_tablet_locked', KIOSK_LIMITS.tabletLockMs / 60_000);
+        }
         return { error: new HttpError(401, 'KIOSK_WRONG', 'That number and PIN don’t match.') };
       }
       const open = await tx.timePunch.findFirst({ where: { userId: u.id, clockOut: null } });
