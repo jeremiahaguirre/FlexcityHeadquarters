@@ -15,6 +15,7 @@ import { resolveTenant } from './routes/context.js';
 import { requireConsent } from './routes/consent.js';
 import { unionRouter } from './routes/union.js';
 import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
+import { jsonBody } from './lib/bodyParsers.js';
 
 export function createUnionApp() {
   const app = express();
@@ -24,7 +25,7 @@ export function createUnionApp() {
   app.use(requestIdMiddleware);
   app.use(securityHeaders);
   app.use(ipRateLimit());
-  app.use(express.json({ limit: '100kb' }));
+  app.use(jsonBody({ limit: '100kb' }));
   app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'union-hub' }));
   // Nothing but the hub: any other path is not here.
   app.use('/api/union', resolveTenant, requireAuth, (req, _res, next) => {

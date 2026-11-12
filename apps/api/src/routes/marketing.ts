@@ -4,13 +4,14 @@
  * and nothing returned but an acknowledgement.
  */
 import { addressKey } from '../lib/address.js';
-import express, { type NextFunction, type Request, type Response, Router } from 'express';
+import { type NextFunction, type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import { allow } from '../auth/rateLimit.js';
 import { config } from '../config.js';
 import { db } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { h } from './context.js';
+import { jsonBody } from '../lib/bodyParsers.js';
 
 export const marketingRouter = Router();
 
@@ -49,7 +50,7 @@ const leadBody = z.object({
   website: z.string().max(0).optional(),
 });
 
-marketingRouter.use('/marketing', cors, express.json({ limit: '20kb' }));
+marketingRouter.use('/marketing', cors, jsonBody({ limit: '20kb' }));
 marketingRouter.post(
   '/marketing/leads',
   h(async (req, res) => {

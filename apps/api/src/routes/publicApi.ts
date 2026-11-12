@@ -16,7 +16,7 @@
  *   anonymized keep their id and status only.
  */
 import { addressKey } from '../lib/address.js';
-import express, { Router, type NextFunction, type Request, type Response } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { type Quota, count, databaseConsume, record } from '../auth/rateLimit.js';
 import { captureError } from '../lib/errorReporter.js';
@@ -30,6 +30,7 @@ import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
 import { DEPARTMENT_SELECT, PERSON_SELECT, POSITION_SELECT, TIME_OFF_SELECT, day, department, etagOf, iso, money, need, person, position, read, sendProblem, timeOff, toProblem } from './publicApiShared.js';
 import { publicApiWriteRouter } from './publicApiWrite.js';
+import { jsonBody } from '../lib/bodyParsers.js';
 
 export const publicApiRouter = Router();
 
@@ -109,7 +110,7 @@ async function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
 publicApiRouter.use(apiKeyAuth);
 
 // Bodies for writes (after the key is checked, so nobody else's upload is parsed).
-publicApiRouter.use(express.json({ limit: '100kb' }));
+publicApiRouter.use(jsonBody({ limit: '100kb' }));
 publicApiRouter.use(publicApiWriteRouter);
 
 /* ---------- Paging: oldest change first, by (updated_at, id) ---------- */

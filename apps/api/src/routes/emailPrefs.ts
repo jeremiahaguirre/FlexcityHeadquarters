@@ -13,9 +13,10 @@ import { HttpError } from '../lib/errors.js';
 import { maskEmail } from '../lib/log.js';
 import { consentFor, recordUnsubscribe, verifyUnsubscribeToken } from '../services/marketing/casl.js';
 import { h } from './context.js';
+import { jsonBody, formBody } from '../lib/bodyParsers.js';
 
 export const emailPrefsRouter = Router();
-emailPrefsRouter.use('/email/unsubscribe', express.urlencoded({ extended: false, limit: '2kb' }), express.json({ limit: '2kb' }));
+emailPrefsRouter.use('/email/unsubscribe', formBody({ extended: false, limit: '2kb' }), jsonBody({ limit: '2kb' }));
 
 function emailOf(req: express.Request): string {
   const token = String(req.query.token ?? (req.body as { token?: string } | undefined)?.token ?? '');

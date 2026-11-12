@@ -228,14 +228,17 @@ programsRouter.patch(
   }),
 );
 
-/** Publish: sets appear for member services to register into, and on instructors' lesson lists. */
+/**
+ * Publish: sets appear for member services to register into, and on instructors' lesson lists.
+ * One route per action (Express 5 paths take no regular expressions, such as :action(a|b)).
+ */
+for (const action of ['publish', 'close', 'reopen'] as const)
 programsRouter.post(
-  '/campaigns/:id/:action(publish|close|reopen)',
+  `/campaigns/:id/${action}`,
   requirePermission('lessons.plan'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
-    const action = req.params.action as 'publish' | 'close' | 'reopen';
     await withTenant(a.tenantId, async (tx) => {
       const c = await tx.lessonCampaign.findUnique({ where: { id } });
       if (!c) throw notFound('Campaign');

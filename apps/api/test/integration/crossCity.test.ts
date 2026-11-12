@@ -22,22 +22,32 @@ const bIds: string[] = [];
 const kinds: Record<string, string[]> = {};
 const bMarkers: string[] = [];
 
-/** Every route as [method, path], prefixes included (Express 4 router stack). */
+/**
+ * Every route as [method, path], prefixes included. Express 5's router (router 2) keeps no mount
+ * path on a layer, only its matcher, so each mounted router's prefix is found by asking that matcher
+ * which of the app's mount paths it takes. A router mounted anywhere else fails the test, so a new
+ * mount path gets added here instead of its routes being skipped.
+ */
+const MOUNTS = ['/api/platform', '/api/v1', '/api'];
 function routes(appOrRouter: Express): Array<[string, string]> {
   const out: Array<[string, string]> = [];
-  const prefix = (re: RegExp & { fast_slash?: boolean }) => {
-    if (re.fast_slash) return '';
-    const m = /^\^\\\/(.*?)\\\/\?\(\?=\\\/\|\$\)$/.exec(re.source);
-    return m ? `/${m[1]!.replace(/\\\//g, '/')}` : '';
+  type Matcher = (path: string) => false | { path: string };
+  const prefix = (layer: { slash?: boolean; matchers: Matcher[] }) => {
+    if (layer.slash) return '';
+    for (const m of MOUNTS) {
+      const hit = layer.matchers[0]!(`${m}/__probe`);
+      if (hit && hit.path === m) return m;
+    }
+    throw new Error('A router is mounted on a path crossCity.test.ts doesn’t know: add it to MOUNTS.');
   };
-  const walk = (stack: Array<{ route?: { path: string | string[]; methods: Record<string, boolean> }; name?: string; handle?: { stack?: unknown[] }; regexp: RegExp }>, base: string) => {
+  const walk = (stack: Array<{ route?: { path: string | string[]; methods: Record<string, boolean> }; handle?: { stack?: unknown[] }; slash?: boolean; matchers: Matcher[] }>, base: string) => {
     for (const layer of stack) {
       if (layer.route) {
         for (const p of [layer.route.path].flat()) for (const m of Object.keys(layer.route.methods)) out.push([m.toUpperCase(), `${base}${p}`]);
-      } else if (layer.handle?.stack) walk(layer.handle.stack as never, base + prefix(layer.regexp));
+      } else if (layer.handle?.stack) walk(layer.handle.stack as never, base + prefix(layer));
     }
   };
-  walk((appOrRouter as unknown as { _router: { stack: never[] } })._router.stack, '');
+  walk((appOrRouter as unknown as { router: { stack: never[] } }).router.stack, '');
   return out;
 }
 

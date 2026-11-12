@@ -14,6 +14,7 @@ import { HttpError } from '../lib/errors.js';
 import { checkIssuerHost, checkIssuerUrl, connectionFor, finishSso, samlMetadata, sealClientSecret, spUrls, SsoError, startSso, STATE_COOKIE, stateCookieOpts } from '../services/auth/sso.js';
 import { COOKIE, cookieOpts } from './auth.js';
 import { h, subdomainOf } from './context.js';
+import { formBody } from '../lib/bodyParsers.js';
 
 export const ssoAuthRouter = Router();
 
@@ -48,7 +49,7 @@ async function finish(req: express.Request, res: express.Response, p: 'OIDC' | '
 }
 
 ssoAuthRouter.get('/auth/sso/oidc/callback', h((req, res) => finish(req, res, 'OIDC', req.query as Record<string, unknown>)));
-ssoAuthRouter.post('/auth/sso/saml/acs', express.urlencoded({ extended: false, limit: '512kb' }), h((req, res) => finish(req, res, 'SAML', { SAMLResponse: String(req.body?.SAMLResponse ?? ''), RelayState: String(req.body?.RelayState ?? '') })));
+ssoAuthRouter.post('/auth/sso/saml/acs', formBody({ extended: false, limit: '512kb' }), h((req, res) => finish(req, res, 'SAML', { SAMLResponse: String(req.body?.SAMLResponse ?? ''), RelayState: String(req.body?.RelayState ?? '') })));
 
 ssoAuthRouter.get(
   '/auth/sso/saml/metadata',

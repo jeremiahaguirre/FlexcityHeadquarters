@@ -459,13 +459,14 @@ trustRouter.post(
   }),
 );
 
+// One route per step (Express 5 paths take no regular expressions, such as :step(a|b)).
+for (const step of ['approve', 'publish'] as const)
 trustRouter.post(
-  '/trust/policies/:id/versions/:vid/:step(approve|publish)',
+  `/trust/policies/:id/versions/:vid/${step}`,
   manage,
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
     const vid = uuid.parse(req.params.vid);
-    const step = req.params.step as 'approve' | 'publish';
     const p = platformOf(req);
     const v = await db().trustPolicyVersion.findFirst({ where: { id: vid, policyId: id }, include: { policy: true } });
     if (!v) throw notFound('Policy version');
@@ -779,13 +780,14 @@ trustRouter.get(
 );
 
 /** The posture summary for a customer who asks: readiness bands and controls in place, nothing failing named. */
+// One route per format (Express 5 paths take no regular expressions, such as :format(a|b)).
+for (const format of ['pdf', 'csv', 'json'] as const)
 trustRouter.get(
-  '/trust/summary.:format(pdf|csv|json)',
+  `/trust/summary.${format}`,
   read,
   requirePlatformStepUp,
   h(async (req, res) => {
     const fr = String(req.query.lang ?? '').startsWith('fr');
-    const format = req.params.format as 'pdf' | 'csv' | 'json';
     await audit(platformOf(req).adminId, 'export.summary', { format, lang: fr ? 'fr' : 'en' });
     const name = `fh-security-posture-${new Date().toISOString().slice(0, 10)}`;
     if (format === 'json') return void res.json(await postureSummary(db()));

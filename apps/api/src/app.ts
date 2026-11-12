@@ -34,6 +34,7 @@ import { clientErrorsRouter, opsRouter } from './routes/observability.js';
 import { publicApiRouter } from './routes/publicApi.js';
 import { clientVersionGate, versionHeader, versionRouter } from './lib/version.js';
 import { publicMaintenanceRouter } from './routes/updates.js';
+import { jsonBody } from './lib/bodyParsers.js';
 
 export function createApp() {
   const app = express();
@@ -64,9 +65,9 @@ export function createApp() {
   // Stripe signs the raw body, so this comes before JSON parsing.
   app.use('/api', stripeWebhookRouter);
   // Small bodies everywhere, except document uploads (up to 10 MB, sent as base64) and signed agreements (a drawn signature).
-  const smallJson = express.json({ limit: '100kb' });
-  const uploadJson = express.json({ limit: '14mb' });
-  const signatureJson = express.json({ limit: '400kb' });
+  const smallJson = jsonBody({ limit: '100kb' });
+  const uploadJson = jsonBody({ limit: '14mb' });
+  const signatureJson = jsonBody({ limit: '400kb' });
   app.use((req, res, next) =>
     (req.method === 'POST' && (/^\/api\/(me|users\/[0-9a-f-]{36})\/documents$/.test(req.path) || /^\/api\/messages\/conversations\/[0-9a-f-]{36}\/messages$/.test(req.path)) ? uploadJson : req.method === 'POST' && req.path === '/api/me/consent' ? signatureJson : smallJson)(req, res, next),
   );
@@ -115,7 +116,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     res.status(400).json({ code: 'VALIDATION', message: 'Invalid request', details: err.issues, requestId });
     return;
   }
-  // express.json(): a body that isn't JSON or is too large is the client's mistake, not ours.
+  // jsonBody(): a body that isn't JSON or is too large is the client's mistake, not ours.
   const status = (err as { status?: unknown; type?: unknown }).status;
   if (typeof status === 'number' && status >= 400 && status < 500 && typeof (err as { type?: unknown }).type === 'string') {
     res.status(status).json({ code: status === 413 ? 'TOO_LARGE' : 'BAD_REQUEST', message: status === 413 ? 'Request too large' : 'Invalid request body', requestId });
