@@ -73,7 +73,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
           heading: 'Children',
           body: [
             'The application is for organizations and their staff. Children’s information enters it only through a customer’s program sign-up, entered by the child’s parent or guardian with their consent, or through a job application by a 14 or 15 year old with a parent’s or guardian’s consent. This website and its contact form are not meant for children.',
-            'Young workers: staff under the age of majority in their province (or whose birth date isn’t on file) never have one-to-one conversations with adults in the application; they message adults only in groups that include at least two adults.',
+            'Young workers: staff under the age of majority in their province (or whose birth date isn’t on file) never have one-to-one conversations with adults in the application; they message adults only in groups that include at least two adults. When no birth date is on file, HR may record that it confirmed the person is of the age of majority or older (who confirmed it, when, and a short note of how, for example “ID checked at hire”). It is used only for this messaging safeguarding rule, a birth date on file always takes precedence, it is visible only to HR, it is included in the person’s records export, and it is removed if the person’s information is anonymized.',
           ],
         },
         {
@@ -175,7 +175,7 @@ const DOCS: Record<Doc, Record<Lang, LegalDoc>> = {
           heading: 'Enfants',
           body: [
             'L’application s’adresse aux organisations et à leur personnel. Les renseignements d’enfants n’y entrent que par l’inscription aux programmes d’un client, saisis par le parent ou le tuteur avec son consentement, ou par la candidature d’un jeune de 14 ou 15 ans avec le consentement d’un parent ou d’un tuteur. Ce site et son formulaire de contact ne sont pas destinés aux enfants.',
-            'Jeunes travailleurs : les membres du personnel qui n’ont pas l’âge de la majorité dans leur province (ou dont la date de naissance n’est pas au dossier) n’ont jamais de conversation individuelle avec un adulte dans l’application; ils n’écrivent à des adultes que dans des groupes comptant au moins deux adultes.',
+            'Jeunes travailleurs : les membres du personnel qui n’ont pas l’âge de la majorité dans leur province (ou dont la date de naissance n’est pas au dossier) n’ont jamais de conversation individuelle avec un adulte dans l’application; ils n’écrivent à des adultes que dans des groupes comptant au moins deux adultes. Lorsqu’aucune date de naissance n’est au dossier, les RH peuvent consigner qu’elles ont confirmé que la personne a l’âge de la majorité ou plus (qui l’a confirmé, quand, et une courte note sur la façon, par exemple « pièce d’identité vérifiée à l’embauche »). Ce renseignement ne sert qu’à cette règle de protection de la messagerie, une date de naissance au dossier a toujours préséance, il n’est visible que par les RH, il figure dans l’exportation des dossiers de la personne et il est retiré si ses renseignements sont anonymisés.',
           ],
         },
         {
