@@ -409,8 +409,8 @@ DROP POLICY IF EXISTS city_or_fh ON "ReleaseChange";
 CREATE POLICY city_or_fh ON "ReleaseChange" TO flexcity_app
   USING (app_current_tenant() IS NULL OR "tenantId" = app_current_tenant())
   WITH CHECK (app_current_tenant() IS NULL OR "tenantId" = app_current_tenant());
--- Ring membership changes as organizations move between rings.
-GRANT DELETE ON "ReleaseRingMember" TO flexcity_app;
+-- Ring membership changes as organizations move between rings; a cancelled or undone stage makes way for a new one.
+GRANT DELETE ON "ReleaseRingMember", "ReleaseStage", "ReleaseChange" TO flexcity_app;
 
 -- The owner (the role that runs migrations and this file: fh_owner on RDS, a superuser in
 -- development) sees every row. On RDS it is not a superuser, so FORCE ROW LEVEL SECURITY binds it
