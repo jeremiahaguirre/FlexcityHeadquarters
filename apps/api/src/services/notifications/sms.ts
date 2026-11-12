@@ -33,31 +33,31 @@ const TEMPLATES: Record<string, { 'en-CA': Render; 'fr-CA': Render }> = {
   },
   lonework_check_in_now: {
     'en-CA': (p) => `FH: you missed your working-alone check-in at ${s(p.location)}. Open FH and check in now.`,
-    'fr-CA': (p) => `FH : vous avez manqué votre vérification de travail isolé à ${s(p.location)}. Ouvrez FH et confirmez maintenant.`,
+    'fr-CA': (p) => `FH : vous avez manqué votre vérification de travail seul à ${s(p.location)}. Ouvrez FH et faites-la maintenant.`,
   },
   lonework_overdue: {
     'en-CA': (p) => `FH: ${s(p.name)} missed a working-alone check-in at ${s(p.location)}. Call them now.`,
-    'fr-CA': (p) => `FH : ${s(p.name)} a manqué une vérification de travail isolé à ${s(p.location)}. Appelez cette personne maintenant.`,
+    'fr-CA': (p) => `FH : ${s(p.name)} a manqué une vérification de travail seul à ${s(p.location)}. Appelez cette personne maintenant.`,
   },
   lonework_escalated: {
     'en-CA': (p) => `URGENT, FlexcityHeadquarters. ${s(p.name)} has not checked in while working alone at ${s(p.location)}. Call them now, and send someone if you can't reach them.`,
-    'fr-CA': (p) => `URGENT, FlexcityHeadquarters. ${s(p.name)} ne s'est pas manifesté en travaillant seul à ${s(p.location)}. Appelez cette personne maintenant, et envoyez quelqu'un si vous ne la joignez pas.`,
+    'fr-CA': (p) => `URGENT, FlexcityHeadquarters. ${s(p.name)} (travail seul à ${s(p.location)}) n'a pas fait sa vérification. Appelez cette personne maintenant, et envoyez quelqu'un si vous ne la joignez pas.`,
   },
   lonework_help: {
     'en-CA': (p) => `URGENT, FlexcityHeadquarters. ${s(p.name)} asked for help while working alone at ${s(p.location)}. ${p.note ? `They said: ${s(p.note)}. ` : ''}Respond now.`,
-    'fr-CA': (p) => `URGENT, FlexcityHeadquarters. ${s(p.name)} demande de l'aide en travaillant seul à ${s(p.location)}. ${p.note ? `Message : ${s(p.note)}. ` : ''}Intervenez maintenant.`,
+    'fr-CA': (p) => `URGENT, FlexcityHeadquarters. ${s(p.name)} (travail seul à ${s(p.location)}) demande de l'aide. ${p.note ? `Message : ${s(p.note)}. ` : ''}Intervenez maintenant.`,
   },
   callout_offer: {
     'en-CA': (p) => `FH call-out: ${s(p.reason)} at ${s(p.facility)}. You're next in line. Answer in FH within ${s(p.minutes)} minutes.`,
-    'fr-CA': (p) => `FH, rappel au travail : ${s(p.reason)} à ${s(p.facility)}. Vous êtes le prochain sur la liste. Répondez dans FH d'ici ${s(p.minutes)} minutes.`,
+    'fr-CA': (p) => `FH, rappel au travail : ${s(p.reason)} à ${s(p.facility)}. Vous êtes la prochaine personne sur la liste. Répondez dans FH d'ici ${s(p.minutes)} minutes.`,
   },
   callback_requested: {
     'en-CA': (p) => `FH call-back: you're called back in (${s(p.reason)}). Open FH for the details.`,
-    'fr-CA': (p) => `FH, rappel : vous êtes rappelé au travail (${s(p.reason)}). Ouvrez FH pour les détails.`,
+    'fr-CA': (p) => `FH, rappel : on vous rappelle au travail (${s(p.reason)}). Ouvrez FH pour voir les détails.`,
   },
   shift_urgent: {
     'en-CA': (p) => `FH: an open ${s(p.position)} shift at ${s(p.facility)} starts ${when(p, 'en-CA')}. Open the shift board in FH to take it.`,
-    'fr-CA': (p) => `FH : un quart libre de ${s(p.position)} à ${s(p.facility)} commence ${when(p, 'fr-CA')}. Ouvrez le tableau des quarts dans FH pour le prendre.`,
+    'fr-CA': (p) => `FH : un quart ouvert de ${s(p.position)} à ${s(p.facility)} commence ${when(p, 'fr-CA')}. Ouvrez le tableau des quarts dans FH pour le prendre.`,
   },
 };
 

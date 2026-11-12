@@ -29,8 +29,8 @@ function setup() {
 type Lang = 'en' | 'fr';
 /** Title and body per kind of notification. Sensitive kinds say only that there's something new. */
 const TEXT: Record<string, Record<Lang, [string, string]>> = {
-  lonework_check_in_now: { en: ['Check in now', 'Your working-alone check-in is due. Tap to check in.'], fr: ['Vérification maintenant', 'Votre vérification de travail seul est due. Touchez pour la faire.'] },
-  lonework_due_soon: { en: ['Check-in due soon', 'Your working-alone check-in is due in 5 minutes.'], fr: ['Vérification bientôt', 'Votre vérification de travail seul est due dans 5 minutes.'] },
+  lonework_check_in_now: { en: ['Check in now', 'Your working-alone check-in is due. Tap to check in.'], fr: ['Faites votre vérification', 'Votre vérification de travail seul est due. Touchez pour la faire.'] },
+  lonework_due_soon: { en: ['Check-in due soon', 'Your working-alone check-in is due in 5 minutes.'], fr: ['Vérification à venir', 'Votre vérification de travail seul est due dans 5 minutes.'] },
   lonework_overdue: { en: ['Missed check-in', 'Someone working alone missed a check-in.'], fr: ['Vérification manquée', 'Une personne qui travaille seule a manqué une vérification.'] },
   lonework_escalated: { en: ['URGENT: no response', 'Someone working alone hasn’t answered. Act now.'], fr: ['URGENT : aucune réponse', 'Une personne qui travaille seule ne répond pas. Intervenez maintenant.'] },
   lonework_help: { en: ['URGENT: help requested', 'Someone working alone asked for help.'], fr: ['URGENT : demande d’aide', 'Une personne qui travaille seule demande de l’aide.'] },
@@ -38,13 +38,13 @@ const TEXT: Record<string, Record<Lang, [string, string]>> = {
   message_reported: { en: ['Message reported', 'A message was reported to HR.'], fr: ['Message signalé', 'Un message a été signalé aux RH.'] },
   survey_open: { en: ['Staff survey', 'A short survey is waiting for you.'], fr: ['Sondage du personnel', 'Un court sondage vous attend.'] },
   survey_reminder: { en: ['Survey reminder', 'A survey closes soon.'], fr: ['Rappel de sondage', 'Un sondage se termine bientôt.'] },
-  shift_available: { en: ['Shift available', 'A shift you can work is open on the board.'], fr: ['Quart offert', 'Un quart que vous pouvez faire est offert.'] },
+  shift_available: { en: ['Shift available', 'A shift you can work is open on the board.'], fr: ['Quart disponible', 'Un quart que vous pouvez faire est ouvert au tableau des quarts.'] },
   shift_assigned: { en: ['New shift', 'You’ve been scheduled for a shift.'], fr: ['Nouveau quart', 'Un quart vous a été attribué.'] },
   shift_changed: { en: ['Shift changed', 'One of your shifts changed.'], fr: ['Quart modifié', 'Un de vos quarts a changé.'] },
   schedule_late_change: { en: ['Late schedule change', 'Your schedule changed on short notice.'], fr: ['Changement d’horaire tardif', 'Votre horaire a changé à court préavis.'] },
-  oncall_assigned: { en: ['On call', 'You’ve been put on the on-call roster.'], fr: ['De garde', 'Vous avez été inscrit au tableau de garde.'] },
+  oncall_assigned: { en: ['On call', 'You’ve been put on the on-call roster.'], fr: ['De garde', 'Votre nom a été ajouté au tableau de garde.'] },
   oncall_changed: { en: ['On-call change', 'Your on-call period changed.'], fr: ['Garde modifiée', 'Votre période de garde a changé.'] },
-  callback_requested: { en: ['Call-back', 'You’re called back in. Open the app.'], fr: ['Rappel au travail', 'Vous êtes rappelé au travail. Ouvrez l’application.'] },
+  callback_requested: { en: ['Call-back', 'You’re called back in. Open the app.'], fr: ['Rappel au travail', 'On vous rappelle au travail. Ouvrez l’application.'] },
   callback_rest: { en: ['Rest after call-back', 'Someone called back may not get the rest required.'], fr: ['Repos après rappel', 'Une personne rappelée pourrait ne pas avoir le repos requis.'] },
   shift_cancelled: { en: ['Shift cancelled', 'One of your shifts was cancelled.'], fr: ['Quart annulé', 'Un de vos quarts a été annulé.'] },
   schedule_published: { en: ['Schedule published', 'Your new schedule is ready.'], fr: ['Horaire publié', 'Votre nouvel horaire est prêt.'] },
@@ -54,8 +54,8 @@ const TEXT: Record<string, Record<Lang, [string, string]>> = {
   forgot_clock_out: { en: ['Still clocked in?', 'You haven’t clocked out yet.'], fr: ['Toujours pointé?', 'Vous n’avez pas encore pointé votre départ.'] },
   pay_statement_ready: { en: ['Pay statement ready', 'Your pay statement is in the app.'], fr: ['Relevé de paie prêt', 'Votre relevé de paie est dans l’application.'] },
   callout_offer: { en: ['Call-out', 'You’re being called out. Tap to answer.'], fr: ['Rappel au travail', 'On vous rappelle au travail. Touchez pour répondre.'] },
-  coverage_gap: { en: ['Coverage gap', 'A required certificate isn’t on duty.'], fr: ['Manque de couverture', 'Un certificat requis n’est pas en service.'] },
-  closure_recommended: { en: ['Closure recommended', 'A water reading calls for a closure.'], fr: ['Fermeture recommandée', 'Une lecture d’eau exige une fermeture.'] },
+  coverage_gap: { en: ['Coverage gap', 'A required certificate isn’t on duty.'], fr: ['Couverture manquante', 'Personne en service ne détient un certificat requis.'] },
+  closure_recommended: { en: ['Closure recommended', 'A water reading calls for a closure.'], fr: ['Fermeture recommandée', 'Une mesure de l’eau exige une fermeture.'] },
   front_desk_page: { en: ['Front desk', 'The front desk is calling for you.'], fr: ['Accueil', 'L’accueil vous demande.'] },
   webhook_disabled: { en: ['Webhook turned off', 'A webhook kept failing and was turned off.'], fr: ['Webhook désactivé', 'Un webhook échouait sans cesse et a été désactivé.'] },
 };

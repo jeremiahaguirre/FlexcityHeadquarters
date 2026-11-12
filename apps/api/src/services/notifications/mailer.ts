@@ -58,15 +58,15 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   },
   injury_report_due: {
     'en-CA': (p) => ({ subject: `Injury report to ${p.board} due`, text: `An employee injury report to ${p.board} is due by ${p.due} and isn't recorded as filed yet.\n${APP_URL()}/manage/injuries` }),
-    'fr-CA': (p) => ({ subject: `Déclaration de lésion à ${p.board} à remettre`, text: `Une déclaration de lésion d'un employé à ${p.board} doit être faite d'ici ${p.due} et n'est pas encore inscrite comme envoyée.\n${APP_URL()}/manage/injuries` }),
+    'fr-CA': (p) => ({ subject: `Déclaration de lésion à ${p.board} à remettre`, text: `Une déclaration de lésion professionnelle à ${p.board} doit être faite d’ici le ${p.due} et n’est pas encore inscrite comme envoyée.\n${APP_URL()}/manage/injuries` }),
   },
   vehicle_out_of_service: {
     'en-CA': (p) => ({ subject: `Vehicle ${p.unit} out of service`, text: `A pre-trip inspection found a major defect on unit ${p.unit}: ${p.reason}.\nIt's out of service until a repair is recorded:\n${APP_URL()}/manage/fleet` }),
-    'fr-CA': (p) => ({ subject: `Véhicule ${p.unit} hors service`, text: `Une inspection avant départ a relevé une défectuosité majeure sur l'unité ${p.unit} : ${p.reason}.\nIl est hors service jusqu'à ce qu'une réparation soit consignée :\n${APP_URL()}/manage/fleet` }),
+    'fr-CA': (p) => ({ subject: `Véhicule ${p.unit} hors service`, text: `Une inspection avant départ a relevé une défectuosité majeure sur l’unité ${p.unit} : ${p.reason}.\nIl est hors service jusqu’à ce qu’une réparation soit consignée :\n${APP_URL()}/manage/fleet` }),
   },
   coverage_gap: {
     'en-CA': (p) => ({ subject: `Coverage gap: ${p.rule}`, text: `The schedule doesn't cover "${p.rule}" in the next two days (${p.count} gap${Number(p.count) === 1 ? '' : 's'}). Assign someone who holds the certificate:\n${APP_URL()}/manage/coverage` }),
-    'fr-CA': (p) => ({ subject: `Couverture manquante : ${p.rule}`, text: `L'horaire ne couvre pas « ${p.rule} » dans les deux prochains jours (${p.count} trou(s)). Affectez une personne qui détient le certificat :\n${APP_URL()}/manage/coverage` }),
+    'fr-CA': (p) => ({ subject: `Couverture manquante : ${p.rule}`, text: `L’horaire ne couvre pas « ${p.rule} » dans les deux prochains jours (${p.count} période(s) non couverte(s)). Affectez une personne qui détient le certificat :\n${APP_URL()}/manage/coverage` }),
   },
   signup_confirmation: {
     'en-CA': (p) => ({
@@ -84,8 +84,8 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Someone (probably you) just tried to sign ${p.participant} up for ${p.set} (${p.campaign}) with ${p.organization}, using this email address.\n\n${p.participant} is already registered for this program, so nothing new was added and nothing more is owed. Your original confirmation and its reference still apply.\n\nIf this wasn't you, or something looks wrong, contact the facility.`,
     }),
     'fr-CA': (p) => ({
-      subject: `Déjà inscrit : ${p.participant}, ${p.set}`,
-      text: `Quelqu’un (probablement vous) vient d’essayer d’inscrire ${p.participant} à ${p.set} (${p.campaign}) auprès de ${p.organization} avec cette adresse courriel.\n\n${p.participant} est déjà inscrit à ce programme : rien n’a été ajouté et rien de plus n’est dû. Votre confirmation d’origine et sa référence restent valables.\n\nSi ce n’était pas vous, ou si quelque chose semble incorrect, communiquez avec l’installation.`,
+      subject: `Inscription existante : ${p.participant}, ${p.set}`,
+      text: `Quelqu’un (probablement vous) vient d’essayer d’inscrire ${p.participant} à ${p.set} (${p.campaign}) auprès de ${p.organization} avec cette adresse courriel.\n\n${p.participant} a déjà une inscription à ce programme : rien n’a été ajouté et rien de plus n’est dû. Votre confirmation d’origine et sa référence restent valables.\n\nSi ce n’était pas vous, ou si quelque chose semble incorrect, communiquez avec l’installation.`,
     }),
   },
   booking_received: {
@@ -98,19 +98,19 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   },
   bank_changed: {
     'en-CA': (p) => ({ subject: 'Your direct deposit details were changed', text: `New banking details ending in ${p.last4} were added for your pay. They'll be used once payroll verifies them.\n\nIf you didn't make this change, tell your payroll or HR office right away.` }),
-    'fr-CA': (p) => ({ subject: 'Vos renseignements de dépôt direct ont été modifiés', text: `De nouveaux renseignements bancaires se terminant par ${p.last4} ont été ajoutés pour votre paie. Ils seront utilisés une fois vérifiés par la paie.\n\nSi vous n'avez pas fait ce changement, avisez immédiatement la paie ou les RH.` }),
+    'fr-CA': (p) => ({ subject: 'Vos renseignements de dépôt direct ont été modifiés', text: `De nouveaux renseignements bancaires se terminant par ${p.last4} ont été ajoutés pour votre paie. Ils seront utilisés une fois vérifiés par la paie.\n\nSi vous n’avez pas fait ce changement, avisez immédiatement la paie ou les RH.` }),
   },
   bank_active: {
     'en-CA': (p) => ({ subject: 'Direct deposit set up', text: `Your pay will now be deposited to the account ending in ${p.last4}.\n\nIf you didn't ask for this, tell your payroll or HR office right away.` }),
-    'fr-CA': (p) => ({ subject: 'Dépôt direct en place', text: `Votre paie sera maintenant déposée dans le compte se terminant par ${p.last4}.\n\nSi vous n'avez pas demandé ce changement, avisez immédiatement la paie ou les RH.` }),
+    'fr-CA': (p) => ({ subject: 'Dépôt direct en place', text: `Votre paie sera maintenant déposée dans le compte se terminant par ${p.last4}.\n\nSi vous n’avez pas demandé ce changement, avisez immédiatement la paie ou les RH.` }),
   },
   bank_rejected: {
     'en-CA': (p) => ({ subject: 'Direct deposit details not accepted', text: `Payroll couldn't verify the account ending in ${p.last4}. Your pay continues to go where it did before. Check the details in the app or contact payroll:\n${APP_URL()}/pay` }),
-    'fr-CA': (p) => ({ subject: 'Renseignements de dépôt direct refusés', text: `La paie n'a pas pu vérifier le compte se terminant par ${p.last4}. Votre paie continue d'être versée comme avant. Vérifiez les renseignements dans l'application ou communiquez avec la paie :\n${APP_URL()}/pay` }),
+    'fr-CA': (p) => ({ subject: 'Renseignements de dépôt direct refusés', text: `La paie n’a pas pu vérifier le compte se terminant par ${p.last4}. Votre paie continue d’être versée comme avant. Vérifiez les renseignements dans l’application ou communiquez avec la paie :\n${APP_URL()}/pay` }),
   },
   pay_statement_ready: {
     'en-CA': (p) => ({ subject: `Your pay statement for ${p.payDate}`, text: `Your pay statement for ${p.payDate} is ready in the app:\n${APP_URL()}/pay` }),
-    'fr-CA': (p) => ({ subject: `Votre relevé de paie du ${p.payDate}`, text: `Votre relevé de paie du ${p.payDate} est prêt dans l'application :\n${APP_URL()}/pay` }),
+    'fr-CA': (p) => ({ subject: `Votre relevé de paie du ${p.payDate}`, text: `Votre relevé de paie du ${p.payDate} est prêt dans l’application :\n${APP_URL()}/pay` }),
   },
   report_ready: {
     'en-CA': (p) => ({ subject: `Report: ${p.name} (${p.from} to ${p.to})`, text: `${p.name}, ${p.from} to ${p.to}: ${p.count} row(s).\n\n${p.preview}\n\nOpen the full report and download it as a spreadsheet:\n${APP_URL()}/manage/reports` }),
@@ -122,8 +122,8 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `${p.reason} at ${p.facility}. You're next in line for this overtime. Answer in the app within ${p.minutes} minutes, or it goes to the next person:\n${APP_URL()}/call-outs`,
     }),
     'fr-CA': (p) => ({
-      subject: `Rappel au travail : êtes-vous disponible? Répondez d'ici ${p.minutes} minutes`,
-      text: `${p.reason} à ${p.facility}. Vous êtes le prochain sur la liste pour ces heures supplémentaires. Répondez dans l'application d'ici ${p.minutes} minutes, sinon l'offre passe à la personne suivante :\n${APP_URL()}/call-outs`,
+      subject: `Rappel au travail : êtes-vous disponible? Répondez d’ici ${p.minutes} minutes`,
+      text: `${p.reason} à ${p.facility}. Vous êtes la prochaine personne sur la liste pour ces heures supplémentaires. Répondez dans l’application d’ici ${p.minutes} minutes, sinon l’offre passe à la personne suivante :\n${APP_URL()}/call-outs`,
     }),
   },
   lonework_escalated: {
@@ -132,8 +132,8 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `${p.name} missed a check-in at ${p.location} and still hasn't answered. Call them now, and send someone if you can't reach them.\n${APP_URL()}/manage/lone-work`,
     }),
     'fr-CA': (p) => ({
-      subject: `URGENT : ${p.name} ne s'est pas manifesté en travaillant seul`,
-      text: `${p.name} a manqué une vérification à ${p.location} et ne répond toujours pas. Appelez cette personne maintenant et envoyez quelqu'un si vous ne la joignez pas.\n${APP_URL()}/manage/lone-work`,
+      subject: `URGENT : aucune vérification de ${p.name} (travail seul)`,
+      text: `${p.name} a manqué une vérification à ${p.location} et ne répond toujours pas. Appelez cette personne maintenant et envoyez quelqu’un si vous ne la joignez pas.\n${APP_URL()}/manage/lone-work`,
     }),
   },
   lonework_help: {
@@ -142,8 +142,8 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `${p.name} pressed "I need help" at ${p.location}.${p.note ? ` Note: ${p.note}` : ''} Respond now; call 911 if anyone may be hurt.\n${APP_URL()}/manage/lone-work`,
     }),
     'fr-CA': (p) => ({
-      subject: `URGENT : ${p.name} demande de l'aide en travaillant seul`,
-      text: `${p.name} a appuyé sur « J'ai besoin d'aide » à ${p.location}.${p.note ? ` Note : ${p.note}` : ''} Intervenez maintenant; composez le 911 si quelqu'un pourrait être blessé.\n${APP_URL()}/manage/lone-work`,
+      subject: `URGENT : ${p.name} demande de l’aide (travail seul)`,
+      text: `${p.name} a appuyé sur « J’ai besoin d’aide » à ${p.location}.${p.note ? ` Note : ${p.note}` : ''} Intervenez maintenant; composez le 911 si quelqu’un pourrait être blessé.\n${APP_URL()}/manage/lone-work`,
     }),
   },
   data_export_ready: {
@@ -152,7 +152,7 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `${p.organization}'s FlexcityHeadquarters account is closed. Administrators can still sign in, only to download a complete export of your data (staff records, schedules, time, payroll, incidents, documents), until ${p.until}. After that date it is deleted.\n${p.url}`,
     }),
     'fr-CA': (p) => ({
-      subject: `Téléchargez les données de ${p.organization} de FlexcityHeadquarters`,
+      subject: `Téléchargez les données de ${p.organization} dans FlexcityHeadquarters`,
       text: `Le compte FlexcityHeadquarters de ${p.organization} est fermé. Les administrateurs peuvent encore se connecter, seulement pour télécharger une exportation complète de vos données (dossiers du personnel, horaires, temps, paie, incidents, documents), jusqu’au ${p.until}. Après cette date, elles sont supprimées.\n${p.url}`,
     }),
   },
@@ -183,7 +183,7 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     }),
     'fr-CA': (p) => ({
       subject: 'Votre courriel de connexion FlexcityHeadquarters a été modifié',
-      text: `Votre organisation a remplacé le courriel avec lequel vous vous connectez par ${p.newEmail}, et vous a déconnecté partout. Si vous ne vous y attendiez pas, communiquez sans tarder avec vos RH.`,
+      text: `Votre organisation a remplacé le courriel avec lequel vous vous connectez par ${p.newEmail} et a fermé toutes vos sessions. Si vous ne vous y attendiez pas, communiquez sans tarder avec vos RH.`,
     }),
   },
   password_reset: {
@@ -193,7 +193,7 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     }),
     'fr-CA': (p) => ({
       subject: 'Réinitialisez votre mot de passe FlexcityHeadquarters',
-      text: `Utilisez ce lien dans l'heure qui suit pour choisir un nouveau mot de passe :\n${p.url}\n\nSi vous n'avez rien demandé, ignorez ce courriel.`,
+      text: `Utilisez ce lien dans l’heure qui suit pour choisir un nouveau mot de passe :\n${p.url}\n\nSi vous n’avez rien demandé, ignorez ce courriel.`,
     }),
   },
   /**
@@ -245,7 +245,7 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     }),
     'fr-CA': (p) => ({
       subject: 'Une demande de quart attend votre approbation',
-      text: `Cette demande ajouterait ${p.overtimeHours} h d'heures supplémentaires. À examiner : ${APP_URL()}/manage/approvals`,
+      text: `Cette demande ajouterait ${p.overtimeHours} h supplémentaires. À examiner : ${APP_URL()}/manage/approvals`,
     }),
   },
   time_off_decided: {
@@ -275,7 +275,7 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     }),
     'fr-CA': (p) => ({
       subject: `Facture ${p.number} de ${p.from} : ${p.total}`,
-      text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période du ${p.period} s'élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.padAccount ? `Selon votre entente de débit préautorisé, ${p.total} sera prélevé du compte ${p.padAccount} à compter du ${p.dueDate}. Vous n'avez rien d'autre à faire.` : p.remittance}${p.contact ? `\n\nQuestions sur cette facture : ${p.contact}` : ''}`,
+      text: `Bonjour ${p.organization},\n\nLa facture ${p.number} pour la période ${p.period} s’élève à ${p.total}, payable au plus tard le ${p.dueDate}.\n\n${p.padAccount ? `Selon votre entente de débit préautorisé, ${p.total} sera prélevé sur le compte ${p.padAccount} à compter du ${p.dueDate}. Vous n’avez rien d’autre à faire.` : p.remittance}${p.contact ? `\n\nQuestions sur cette facture : ${p.contact}` : ''}`,
     }),
   },
   /**
@@ -289,8 +289,8 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Hello ${p.organization},\n\nYour ${p.termLength} term ends on ${p.termEnd}. Unless you tell us otherwise, it then renews automatically month to month at the same rates without the ${p.discount}% commitment discount: about ${p.monthly} a month before tax (plus staff beyond your allowance, billed monthly).\n\nTo sign a new term (and keep a commitment discount), or to cancel, ${p.contact ? `write to ${p.contact}` : 'reply to this email'} before ${p.termEnd}. Cancelling stops invoicing after the period already billed; you can download your data before the account closes.\n\nYour billing details:\n${p.url}`,
     }),
     'fr-CA': (p) => ({
-      subject: `Votre durée FlexcityHeadquarters se termine le ${p.termEnd}`,
-      text: `Bonjour ${p.organization},\n\nVotre engagement de ${p.termLength} se termine le ${p.termEnd}. Sauf avis contraire de votre part, il se renouvelle ensuite automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement de ${p.discount} % : environ ${p.monthly} par mois avant taxes (plus le personnel au-delà de votre allocation, facturé au mois).\n\nPour signer une nouvelle durée (et conserver un rabais d’engagement) ou pour résilier, ${p.contact ? `écrivez à ${p.contact}` : 'répondez à ce courriel'} avant le ${p.termEnd}. La résiliation met fin à la facturation après la période déjà facturée; vous pouvez télécharger vos données avant la fermeture du compte.\n\nVos renseignements de facturation :\n${p.url}`,
+      subject: `Votre engagement FlexcityHeadquarters se termine le ${p.termEnd}`,
+      text: `Bonjour ${p.organization},\n\nVotre engagement de ${p.termLength} se termine le ${p.termEnd}. Sauf avis contraire de votre part, il se renouvelle ensuite automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement de ${p.discount} % : environ ${p.monthly} par mois avant taxes (plus le personnel au-delà de votre allocation de personnel, facturé au mois).\n\nPour signer un nouvel engagement (et conserver un rabais d’engagement) ou pour résilier, ${p.contact ? `écrivez à ${p.contact}` : 'répondez à ce courriel'} avant le ${p.termEnd}. La résiliation met fin à la facturation après la période déjà facturée; vous pouvez télécharger vos données avant la fermeture du compte.\n\nVos renseignements de facturation :\n${p.url}`,
     }),
   },
   pad_confirmation: {
@@ -300,7 +300,7 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     }),
     'fr-CA': (p) => ({
       subject: `Entente de débit préautorisé confirmée : ${p.payee}`,
-      text: `Ceci confirme l'entente de débit préautorisé d'entreprise entre ${p.payor} et ${p.payee}, autorisée le ${p.date} par ${p.signer}.\n\nCompte : ${p.account}\n\n${p.terms}\n\nConservez ce courriel dans vos dossiers. Pour modifier ou annuler l'entente : ${p.contact || 'répondez à ce courriel'}.`,
+      text: `Ceci confirme l’entente de débit préautorisé d’entreprise entre ${p.payor} et ${p.payee}, autorisée le ${p.date} par ${p.signer}.\n\nCompte : ${p.account}\n\n${p.terms}\n\nConservez ce courriel dans vos dossiers. Pour modifier ou annuler l’entente : ${p.contact || 'répondez à ce courriel'}.`,
     }),
   },
 };
@@ -344,7 +344,7 @@ const RETRY_AT_KEY = '_retryAt';
 const emailRetryMs = (failures: number) => 60_000 * 2 ** Math.min(Math.max(failures - 1, 0), 3);
 
 /**
- * Sends one organization's due emails, safety alerts first, under row-level security. Each one is
+ * Sends one organization’s due emails, safety alerts first, under row-level security. Each one is
  * claimed with `FOR UPDATE SKIP LOCKED` and sent while the row lock is held, so the API process
  * that queued it (straight after its commit) and the worker never both send it. Retries up to 5
  * times with a growing wait; failures are recorded on the row.
@@ -374,7 +374,7 @@ export async function deliverEmailTenant(tenantId: string, mailer: Mailer, opts:
         }
         const attempts = m.attempts + 1;
         // Once sent (or given up on), the message's contents are dropped: sign-in links and names
-        // shouldn't sit in the database where anyone with database access could read them.
+        // shouldn’t sit in the database where anyone with database access could read them.
         await tx.emailOutbox.update({
           where: { id: m.id },
           data: error
