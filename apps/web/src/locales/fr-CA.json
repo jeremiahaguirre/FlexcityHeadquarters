@@ -3,7 +3,7 @@
     "skipToContent": "Passer au contenu principal",
     "language": "English",
     "languageLabel": "Switch to English",
-    "unknownOrg": "Nous n’avons pas trouvé cette organisation. Vérifiez l’adresse web qui vous a été fournie.",
+    "unknownOrg": "Nous n’avons pas trouvé cette organisation. Vérifiez l’adresse Web qui vous a été fournie.",
     "languageCode": "en-CA",
     "copyright": "© {{year}} FlexcityHeadquarters. Tous droits réservés."
   },
@@ -57,10 +57,10 @@
     "pendingApproval": "Ce quart ajouterait {{hours}} h d’heures supplémentaires; il a donc été envoyé à un superviseur pour approbation.",
     "alreadyClaimed": "Une autre personne a pris ce quart avant vous.",
     "notEligible": "Vous ne pouvez pas prendre ce quart :",
-    "description": "Quarts libres et quarts cédés par des collègues. Vous ne voyez que ceux pour lesquels vous êtes qualifié·e et disponible.",
+    "description": "Quarts ouverts et quarts cédés par des collègues. Vous ne voyez que ceux pour lesquels vous êtes qualifié·e et disponible.",
     "emptyBody": "Dès qu’un quart que vous pouvez faire se libère, il s’affiche ici et vous recevez une notification.",
     "swap": "D’un collègue",
-    "open": "Quart libre",
+    "open": "Quart ouvert",
     "notEligibleHelp": "Ces règles vous protègent, vous et les baigneurs.",
     "payAbout": "Environ {{amount}}",
     "payOvertime": "dont {{h}} h supplémentaires",
@@ -237,7 +237,7 @@
     "loneWorkShort": "Seul",
     "jobsShort": "Emplois",
     "peopleShort": "Suivi",
-    "onboardingShort": "Accueil RH",
+    "onboardingShort": "Intégration",
     "benchmarksShort": "Comparer",
     "loneWorkMonitorShort": "Isolés",
     "patrolShort": "Patrouille",
@@ -289,7 +289,7 @@
     "shift_available": "Un quart que vous pouvez prendre a été affiché au tableau.",
     "shift_assigned": "Un quart a été ajouté à votre horaire.",
     "shift_covered": "Votre quart a été repris par un collègue.",
-    "shift_unassigned": "Vous avez été retiré d’un quart.",
+    "shift_unassigned": "On vous a retiré d’un quart.",
     "shift_changed": "L’heure d’un de vos quarts a changé.",
     "shift_cancelled": "Un de vos quarts a été annulé.",
     "schedule_published": "Votre nouvel horaire est publié : {{count}} quarts.",
@@ -308,13 +308,13 @@
     "discipline_issued": "Un document a été ajouté à votre dossier. Veuillez le lire et le signer.",
     "cert_expiring": "Votre certification {{certification}} expire dans {{days}} jours. Renouvelez-la pour continuer à obtenir des quarts.",
     "staff_cert_expiring": "La certification {{certification}} de {{name}} expire dans {{days}} jours.",
-    "forgot_clock_out": "Vous êtes toujours pointé. Pointez votre départ ou demandez à un superviseur de corriger l’heure.",
+    "forgot_clock_out": "Votre départ n’est pas encore pointé. Pointez-le, ou demandez à un superviseur de corriger l’heure.",
     "over_capacity": "{{pool}} dépasse sa capacité : {{count}} baigneurs (max. {{max}}).",
     "attendance_recorded": "Un superviseur a consigné un événement d’assiduité à votre dossier. Vous pouvez le consulter, avec la note, dans votre profil.",
     "conduct_note_added": "Un superviseur a ajouté une note à votre dossier. Vous pouvez la lire dans votre profil.",
     "commendation_added": "Vous avez reçu une mention d’éloge. Bravo!",
     "review_needed": "Une discussion avec {{name}} pourrait être nécessaire. Voyez pourquoi dans son dossier.",
-    "discipline_response": "Un employé a ajouté sa réponse à un dossier que vous avez émis.",
+    "discipline_response": "Une personne a ajouté sa réponse à un dossier que vous avez émis.",
     "rotation_overdue": "Rotation en retard à {{station}}. Faites avancer les sauveteurs.",
     "onboarding_expiring": "{{item}} expire le {{date}}. Renouvelez-le pour continuer à recevoir des quarts.",
     "staff_onboarding_expiring": "{{item}} de {{name}} expire le {{date}}.",
@@ -323,13 +323,13 @@
     "care_break_requested": "{{name}} a demandé à quitter la chaise un moment.",
     "accommodation_set": "Les RH ont consigné des restrictions de travail pour vous. L’horaire les respectera; consultez-les dans votre profil.",
     "accommodation_review": "Les restrictions de travail de {{name}} doivent être revues le {{date}}.",
-    "lonework_check_in_now": "Faites votre vérification maintenant : vous avez manqué celle du travail seul à {{location}}.",
-    "lonework_overdue": "{{name}} a manqué une vérification en travaillant seul à {{location}}. Appelez cette personne.",
-    "lonework_escalated": "URGENT : {{name}} ne s’est toujours pas manifesté à {{location}}. Envoyez quelqu’un si vous ne le joignez pas.",
+    "lonework_check_in_now": "Faites votre vérification maintenant : vous avez manqué votre vérification de travail seul à {{location}}.",
+    "lonework_overdue": "{{name}} a manqué une vérification (travail seul à {{location}}). Appelez cette personne.",
+    "lonework_escalated": "URGENT : toujours aucune vérification de {{name}} à {{location}}. Envoyez quelqu’un si vous ne joignez pas cette personne.",
     "lonework_help": "URGENT : {{name}} demande de l’aide à {{location}}.",
-    "lonework_ok": "{{name}} s’est manifesté à {{location}}. Tout va bien.",
+    "lonework_ok": "{{name}} a fait sa vérification à {{location}}. Tout va bien.",
     "lonework_responding": "{{name}} vient vous aider.",
-    "callout_offer": "Rappel au travail : {{reason}} à {{facility}}. Vous êtes le prochain sur la liste. Répondez d’ici {{minutes}} minutes.",
+    "callout_offer": "Rappel au travail : {{reason}} à {{facility}}. Vous êtes la prochaine personne sur la liste. Répondez d’ici {{minutes}} minutes.",
     "callout_filled": "{{name}} a accepté le rappel au travail : {{reason}}.",
     "callout_exhausted": "Toutes les personnes admissibles ont été sollicitées pour le rappel : {{reason}}. Comblez-le autrement.",
     "callout_cancelled": "Le rappel au travail est annulé : {{reason}}. Rien à faire.",
@@ -364,8 +364,8 @@
     "application_received": "{{name}} a postulé : {{title}}.",
     "webhook_disabled": "Un webhook échouait sans cesse et a été désactivé. Vérifiez-le dans les paramètres.",
     "availability_reminder": "Veuillez confirmer ou mettre à jour vos disponibilités jusqu’au {{through}}.",
-    "callback_requested": "Vous êtes rappelé au travail : {{reason}}",
-    "callback_rest": "{{name}} a été rappelé et pourrait ne pas avoir le repos requis avant son prochain quart.",
+    "callback_requested": "On vous rappelle au travail : {{reason}}",
+    "callback_rest": "Après son rappel au travail, {{name}} pourrait ne pas avoir le repos requis avant son prochain quart.",
     "oncall_assigned": "Vous êtes de garde du {{from}} au {{to}}.",
     "oncall_changed": "Votre période de garde du {{from}} a changé.",
     "schedule_late_change": "Votre horaire a changé avec un préavis de seulement {{hours}} h. Une prime pour changement tardif pourrait s’appliquer.",
@@ -426,7 +426,7 @@
     "mine": "Les miens",
     "everyone": "Tout le monde",
     "you": "Vous",
-    "open": "Libre",
+    "open": "Ouvert",
     "onBoard": "Au tableau",
     "claimPending": "Demande en attente",
     "giveAway": "Céder",
@@ -873,7 +873,7 @@
       "PICKED_UP_SHIFT": "Quart repris"
     },
     "contact": "Coordonnées et langue",
-    "phone": "Téléphone mobile",
+    "phone": "Téléphone cellulaire",
     "language": "Langue",
     "languageHint": "Utilisée pour l’application, les courriels et les notifications.",
     "password": "Mot de passe",
@@ -905,7 +905,7 @@
     "overtimeAsk": "Cela ajoute {{hours}} h supplémentaires. Affecter quand même? C’est consigné au journal d’audit.",
     "assignWithOvertime": "Affecter avec heures supp.",
     "assigned": "Affecté.",
-    "unassigned": "Désaffecté. Le quart est libre.",
+    "unassigned": "Désaffecté. Le quart est ouvert.",
     "unassign": "Désaffecter",
     "cancelShift": "Annuler le quart",
     "cancelReason": "Motif",
@@ -1989,7 +1989,7 @@
     },
     "features": {
       "shiftBoard": {
-        "name": "Babillard des quarts",
+        "name": "Tableau des quarts",
         "help": "Le personnel affiche et prend des quarts; les heures supplémentaires vont à un superviseur."
       },
       "scheduleAssistant": {
@@ -2097,7 +2097,7 @@
         "help": "Déclarations d’accidents du travail avec l’échéance de chaque commission."
       },
       "loneWork": {
-        "name": "Travail isolé",
+        "name": "Travail seul",
         "help": "Vérifications avec escalade, et partage de la position seulement pendant une séance."
       },
       "callOuts": {
@@ -2110,7 +2110,7 @@
       },
       "textAlerts": {
         "name": "Alertes par texto et téléphone",
-        "help": "Textos et appels urgents : vérifications de travail isolé manquées, demandes d’aide, rappels d’hiver et quarts libres qui commencent dans la journée. Seulement aux personnes qui confirment leur numéro. Chaque message est facturé par le fournisseur."
+        "help": "Textos et appels urgents : vérifications de travail seul manquées, demandes d’aide, rappels d’hiver et quarts ouverts qui commencent dans la journée. Seulement aux personnes qui confirment leur numéro. Chaque message est facturé par le fournisseur."
       },
       "seniority": {
         "name": "Ancienneté",
@@ -2129,7 +2129,7 @@
         "help": "Avis à tout le personnel, à certains postes ou à certaines installations, avec qui les a lus."
       },
       "shiftTemplates": {
-        "name": "Modèles de semaine",
+        "name": "Modèles de quarts hebdomadaires",
         "help": "La semaine type d’un service (été, année scolaire…) appliquée aux semaines à venir en quarts provisoires, avec annulation. Provisoires créés d’avance automatiquement seulement si l’organisation l’active."
       },
       "shiftPreferences": {
@@ -2301,7 +2301,7 @@
     "cityRoles": "Rôles municipaux",
     "groups": {
       "everyday": "Son propre travail",
-      "shiftBoard": "Babillard des quarts",
+      "shiftBoard": "Tableau des quarts",
       "lead": "Diriger une équipe",
       "safety": "Sécurité",
       "aquatics": "Aquatique et bord de piscine",
@@ -2385,7 +2385,7 @@
       "fleet.inspect": "Inspections avant départ",
       "fleet.manage": "Gérer les véhicules et les réparations",
       "injury.manage": "Déclarations de lésion à l’organisme",
-      "schedule.templates": "Modèles de semaine",
+      "schedule.templates": "Modèles de quarts hebdomadaires",
       "preferences.self": "Indiquer ses préférences de quarts",
       "bidding.bid": "Soumissionner des quarts",
       "bidding.manage": "Gérer les rondes de soumissions",
@@ -2782,7 +2782,7 @@
     "startRecordHelp": "Documentez une discussion ou une décision concernant {{name}}. Les faits cochés sont copiés au dossier tels qu’ils sont aujourd’hui.",
     "source": {
       "TIMECLOCK": "Pointage",
-      "SHIFT_BOARD": "Babillard de quarts",
+      "SHIFT_BOARD": "Tableau des quarts",
       "SCHEDULE": "Horaire (aucun pointage)",
       "SUPERVISOR": "Consigné par un superviseur"
     },
@@ -3363,7 +3363,7 @@
       "noShowRate": "Quarts manqués",
       "lateRate": "Pointages en retard",
       "certLapseRate": "Personnel avec une certification échue",
-      "fillHours": "Délai pour combler un quart libre",
+      "fillHours": "Délai pour combler un quart ouvert",
       "overtimeShare": "Part des heures supplémentaires"
     },
     "help": {
@@ -3489,7 +3489,7 @@
     "backgroundNote": "Les téléphones cessent de partager la position d’une application Web quand elle est en arrière-plan ou que l’écran est verrouillé. La minuterie et les rappels fonctionnent quand même, et une vérification manquée alerte toujours vos superviseurs.",
     "mapAt": "Position à {{time}}",
     "live": "en direct",
-    "aid": "Les vérifications sont un outil d’aide : elles dépendent de votre téléphone, du réseau et de la réponse de vos surveillants, et ne remplacent pas la procédure de travail en solitaire de votre employeur."
+    "aid": "Les vérifications sont un outil d’aide : elles dépendent de votre téléphone, du réseau et de la réponse de vos surveillants, et ne remplacent pas la procédure de travail seul de votre employeur."
   },
   "billingPage": {
     "title": "Facturation",
@@ -4007,7 +4007,7 @@
     "atOnce_one": "{{count}} à la fois",
     "atOnce_other": "{{count}} à la fois",
     "portal": "Page publique d’inscription",
-    "portalHelp": "Les familles s’inscrivent aux programmes publiés et demandent des réservations ici, sans compte. Partagez ce lien sur votre site web.",
+    "portalHelp": "Les familles s’inscrivent aux programmes publiés et demandent des réservations ici, sans compte. Partagez ce lien sur votre site Web.",
     "copy": "Copier le lien",
     "copied": "Lien copié",
     "open": "Ouvrir la page d’inscription",
@@ -5228,7 +5228,7 @@
     "notifications": "Notifications dans l’application (jours)",
     "emailLog": "Journal des courriels (jours)",
     "range": "Entre {{min}} et {{max}} jours.",
-    "fixed": "Familles : noms, dates de naissance, coordonnées et notes de sécurité sont supprimés; les dossiers de paiement restent. Les positions du travail seul sont supprimées 30 jours après la session, les sessions terminées, les liens utilisés et les codes de connexion expirés après 30 jours. Les dossiers du personnel, la paie, les incidents et le journal d’audit suivent leur propre conservation légale.",
+    "fixed": "Familles : noms, dates de naissance, coordonnées et notes de sécurité sont supprimés; les dossiers de paiement restent. Les positions partagées en travail seul sont supprimées 30 jours après la séance; les sessions terminées, les liens utilisés et les codes de connexion expirés, après 30 jours. Les dossiers du personnel, la paie, les incidents et le journal d’audit suivent leur propre conservation légale.",
     "saved": "Durées de conservation enregistrées",
     "notificationsDays": "Notifications dans l’application (jours)",
     "emailLogDays": "Journal des courriels (jours)",
@@ -5351,7 +5351,7 @@
       "ENTERPRISE": "Entreprise"
     },
     "core": "Base",
-    "coreIncludes": "Horaires et assistant d’horaire, babillard de quarts, disponibilités et congés, pointage, paie avec dépôt direct et exportations, certifications et règles provinciales, cours, comptes de baigneurs, équité des heures supplémentaires, règles de couverture, travail seul, déclarations de lésion, soutien après un incident, page carrières et notifications. Les outils de sécurité et de confidentialité sont toujours inclus.",
+    "coreIncludes": "Horaires et assistant d’horaire, tableau des quarts, disponibilités et congés, pointage, paie avec dépôt direct et exportations, certifications et règles provinciales, cours, dénombrements de baigneurs, équité des heures supplémentaires, règles de couverture, travail seul, déclarations de lésion, soutien après un incident, page carrières et notifications. Les outils de sécurité et de confidentialité sont toujours inclus.",
     "size": {
       "1": "Saisonnière ou extérieure",
       "2": "Standard",
@@ -5493,8 +5493,8 @@
   },
   "emergency": {
     "title": "Personnes à joindre en cas d’urgence",
-    "helpOwn": "Qui appeler s’il vous arrive quelque chose au travail. Seuls les RH les voient, et la personne qui intervient si votre séance de travail isolé est escaladée.",
-    "helpHr": "Seuls les RH les voient, et la personne qui intervient si la séance de travail isolé de cette personne est escaladée. Chaque consultation est consignée.",
+    "helpOwn": "Qui appeler s’il vous arrive quelque chose au travail. Seules les RH les voient, ainsi que la personne qui intervient si votre séance de travail seul fait l’objet d’une escalade.",
+    "helpHr": "Seules les RH les voient, ainsi que la personne qui intervient si la séance de travail seul de cette personne fait l’objet d’une escalade. Chaque consultation est consignée.",
     "none": "Aucune personne à joindre pour l’instant.",
     "add": "Ajouter des personnes",
     "another": "Ajouter une autre personne",
@@ -5512,10 +5512,10 @@
   },
   "textAlerts": {
     "title": "Alertes par texto et téléphone",
-    "help": "Pour les alertes urgentes seulement : une vérification manquée en travail isolé, une demande d’aide, un rappel au travail. Les demandes d’aide font sonner votre téléphone.",
+    "help": "Pour les alertes urgentes seulement : une vérification manquée en travail seul, une demande d’aide, un rappel au travail. Les demandes d’aide font sonner votre téléphone.",
     "on": "Activées",
     "to": "Les textos et appels vont au {{phone}}.",
-    "urgentShifts": "M’écrire aussi pour les quarts libres qui commencent dans la journée",
+    "urgentShifts": "M’écrire aussi pour les quarts ouverts qui commencent dans la journée",
     "urgentShiftsHelp": "Seulement les quarts que vous pouvez prendre.",
     "change": "Changer de numéro",
     "stop": "Arrêter les textos et appels",
@@ -5925,7 +5925,7 @@
       "time_off": "Congés pris",
       "certs_expiring": "Certifications qui expirent",
       "incidents": "Incidents par installation",
-      "lone_work": "Travail isolé",
+      "lone_work": "Travail seul",
       "policies_unsigned": "Politiques pas encore signées",
       "expenses": "Demandes de remboursement payées",
       "reliability": "Fiabilité (à titre indicatif)"
@@ -5963,7 +5963,7 @@
       "count": "Nombre",
       "sessions": "Séances",
       "missedCheckIns": "Vérifications manquées",
-      "escalated": "Escaladées",
+      "escalated": "Escalades",
       "helpRequests": "Demandes d’aide",
       "policy": "Politique",
       "version": "Version",
@@ -6445,8 +6445,8 @@
       "HOS_WEEKLY_other": "{{count}} limites hebdomadaires de conduite",
       "WEEKLY_REST_one": "{{count}} ne respecterait pas le repos hebdomadaire",
       "WEEKLY_REST_other": "{{count}} ne respecteraient pas le repos hebdomadaire",
-      "TWO_PERSON_one": "jamais seul : personne de qualifié en même temps",
-      "TWO_PERSON_other": "jamais seul : personne de qualifié en même temps"
+      "TWO_PERSON_one": "jamais seul : aucune autre personne qualifiée en même temps",
+      "TWO_PERSON_other": "jamais seul : aucune autre personne qualifiée en même temps"
     },
     "weight": {
       "fairness": "Partager les heures équitablement",
@@ -6533,7 +6533,7 @@
     "redone": "Rétabli : {{what}}.",
     "unpublished_one": "{{count}} brouillon non publié",
     "unpublished_other": "{{count}} brouillons non publiés",
-    "allPublished": "Aucun brouillon : tout est publié.",
+    "allPublished": "Aucun brouillon : tout est publié.",
     "changes_one": "{{count}} changement pendant cette session",
     "changes_other": "{{count}} changements pendant cette session",
     "empty": "Aucun quart ici pour l’instant. Glissez une personne sur une journée, ou utilisez + pour ajouter un quart ouvert.",
@@ -6603,7 +6603,7 @@
     },
     "quick": {
       "titleFor": "Nouveau quart pour {{names}}",
-      "help": "Un brouillon jusqu’à la publication. Les heures sont celles du fuseau de l’installation ({{zone}}); une fin avant le début passe la nuit.",
+      "help": "Un brouillon jusqu’à la publication. Les heures sont celles du fuseau de l’installation ({{zone}}); une fin avant le début se termine le lendemain.",
       "onePerPerson_one": "Un quart pour {{count}} personne.",
       "onePerPerson_other": "Un quart chacune pour {{count}} personnes.",
       "create": "Créer le brouillon"
@@ -6696,7 +6696,7 @@
     "breakPill": "Pause non payée de {{minutes}} min",
     "late": {
       "ADDED": "{{name}} reçoit un préavis de {{hours}} h pour ce quart ({{required}} h requises).",
-      "REMOVED": "{{name}} est retiré avec un préavis de {{hours}} h ({{required}} h requises).",
+      "REMOVED": "{{name}} est retiré·e avec un préavis de {{hours}} h ({{required}} h requises).",
       "TIME": "{{name}} reçoit un préavis de {{hours}} h des nouvelles heures ({{required}} h requises).",
       "confirm": "Modifier quand même",
       "flat": "Une prime de {{amount}} $ est due.",
@@ -6716,7 +6716,7 @@
       "BREAK_MISSING": "Assez long pour exiger une pause-repas de {{a}} minutes, et aucune n’est prévue",
       "BREAK_SHORT": "Exige {{a}} minutes de pause-repas; {{b}} prévues",
       "SHORT_SHIFT": "{{a}} h, c’est moins que le minimum de rappel de {{b}} heures",
-      "TWO_PERSON": "Jamais seul : {{a}} h sans personne de qualifié en même temps"
+      "TWO_PERSON": "Jamais seul : {{a}} h sans autre personne qualifiée en même temps"
     }
   },
   "trust": {
@@ -7348,8 +7348,8 @@
     "posting_other": "{{count}} quarts sont publiés avec moins de {{days}} jours de préavis (règle d’affichage du service).",
     "shortShifts_one": "{{count}} quart est plus court que le minimum de rappel; il coûte le minimum de toute façon.",
     "shortShifts_other": "{{count}} quarts sont plus courts que le minimum de rappel; ils coûtent le minimum de toute façon.",
-    "twoPerson": "{{name}}, {{date}} : seul pendant {{hours}} h",
-    "twoPersonTitle": "Quarts « jamais seul » sans personne de qualifié en même temps"
+    "twoPerson": "{{name}}, {{date}} : seul·e pendant {{hours}} h",
+    "twoPersonTitle": "Quarts « jamais seul » sans autre personne qualifiée en même temps"
   },
   "renewal": {
     "title": "Prix et renouvellement",
@@ -7368,7 +7368,7 @@
     "monthToMonth": "Sans durée fixe : au mois.",
     "renewsTerm": "À la fin de la durée, l’abonnement se renouvelle automatiquement au mois, aux mêmes tarifs, sans le rabais d’engagement : {{amount}} par mois avant taxes.",
     "renewsMonthly": "Il se renouvelle automatiquement chaque mois aux mêmes tarifs.",
-    "cancelTerm": "Pour résilier, ou pour signer une nouvelle durée, écrivez à {{contact}} avant le {{end}}. La facturation s’arrête après la période déjà facturée.",
+    "cancelTerm": "Pour résilier, ou pour signer un nouvel engagement, écrivez à {{contact}} avant le {{end}}. La facturation s’arrête après la période déjà facturée.",
     "cancelMonthly": "Pour résilier, écrivez à {{contact}} avant le début du mois suivant. La facturation s’arrête après le mois déjà facturé.",
     "notice": "Nous envoyons un rappel par courriel à votre contact de facturation {{days}} jours avant la fin de la durée.",
     "refund": "Remboursements : les montants déjà facturés ne sont pas remboursés pour une partie de période, et les changements de forfait s’appliquent à partir de la facture suivante.",
@@ -7755,7 +7755,7 @@
       "HOLIDAY_CLOSED": "Fermé pour le jour férié",
       "FACILITY_CLOSED": "Installation fermée ce jour-là",
       "OUTSIDE_HOURS": "Hors des heures d’ouverture",
-      "STAT_HOLIDAY": "Jour férié (salaire majoré)"
+      "STAT_HOLIDAY": "Jour férié (indemnité de jour férié)"
     },
     "autoTitle": "Créer les semaines à venir automatiquement",
     "autoHelp": "Chaque modèle réglé pour créer d’avance garde ce nombre de semaines en quarts provisoires, vérifié toutes les heures. Rien n’est publié automatiquement. Désactivé par défaut.",
@@ -8212,7 +8212,7 @@
     "newRoundHelp": "Les personnes qui occupent ces postes classent les éléments pendant que la ronde est ouverte. Les éléments doivent commencer après la fermeture.",
     "roundName": "Nom",
     "roundNameHint": "Par exemple : Lignes d’été 2027.",
-    "linesHelp": "Les lignes viennent d’un modèle de semaine : chaque ligne est une place d’un quart du modèle, pour chaque semaine des dates. Les quarts provisoires manquants sont créés d’abord.",
+    "linesHelp": "Les lignes viennent d’un modèle de quarts hebdomadaire : chaque ligne est une place d’un quart du modèle, pour chaque semaine des dates. Les quarts provisoires manquants sont créés d’abord.",
     "shiftsHelp": "Tous les quarts provisoires ouverts de ces postes entre les dates.",
     "template": "Modèle",
     "pickTemplate": "Choisir un modèle",
@@ -8277,7 +8277,7 @@
     "seniorityLineHours": "{{hours}} h · ancienneté {{date}}",
     "tieNote": "Les égalités vont à la date d’embauche la plus ancienne, puis à un départage fixe enregistré pour la ronde.",
     "nobodyBid": "Personne n’a soumissionné dans cette ronde.",
-    "wonInTurn": "Choix no {{rank}}, attribution {{pass}} de son tour",
+    "wonInTurn": "Choix no {{rank}}, son attribution no {{pass}}",
     "awardOrder": "Ordre d’attribution",
     "awardOrderROUND_ROBIN": "Un à la fois, par ordre d’ancienneté",
     "awardOrderSENIOR_FIRST": "La personne la plus ancienne prend toutes ses attributions d’abord",
@@ -8410,7 +8410,7 @@
       "SCHEDULED": "Programmée",
       "APPLIED": "Appliquée",
       "ROLLED_BACK": "Annulée",
-      "CANCELLED": "Annulée avant"
+      "CANCELLED": "Abandonnée"
     },
     "comingTitle": "À venir pour votre organisation",
     "comingHelp": "Les changements de fonctions que FlexcityHeadquarters a programmés pour vous. Ce que votre organisation a choisi elle-même reste tel quel.",
