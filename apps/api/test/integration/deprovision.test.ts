@@ -37,6 +37,7 @@ describe('de-provisioning', () => {
     expect(r.headers['x-frame-options']).toBe('DENY');
     expect(r.headers['x-content-type-options']).toBe('nosniff');
     expect(r.headers['content-security-policy']).toMatch(/frame-ancestors 'none'/);
+    expect(r.headers['x-robots-tag']).toBe('noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai');
   });
 });
 
