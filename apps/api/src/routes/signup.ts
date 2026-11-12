@@ -165,7 +165,14 @@ publicSignupRouter.post(
       // The same person in the same program twice (a double click, a second parent).
       const swimmerName = `${b.participant.firstName} ${b.participant.lastName}`;
       const dup = await tx.lessonEnrollment.findFirst({ where: { classId: set.id, swimmerName: { equals: swimmerName, mode: 'insensitive' }, status: { not: 'CANCELLED' }, source: 'ONLINE' } });
-      if (dup) throw conflict('ALREADY_REGISTERED', 'This person is already signed up for this program.');
+      if (dup) {
+        // Answered like a new registration, so the form can't be used to find out who is enrolled;
+        // the address that was typed is told instead (only its owner reads that).
+        await tx.emailOutbox.create({ data: { tenantId: req.tenantId!, toEmail: b.guardian.email.toLowerCase(), template: 'signup_already_registered', locale: b.locale, params: { organization: s.name, participant: swimmerName, set: set.name, campaign: b.locale === 'fr-CA' && c.nameFr ? c.nameFr : c.name } } });
+        await audit(tx, { tenantId: req.tenantId!, actorId: null, action: 'registration.online_duplicate', entity: 'LessonEnrollment', entityId: dup.id, after: { setId: set.id } });
+        const enrolledNow = await tx.lessonEnrollment.count({ where: { classId: set.id, status: 'ENROLLED' } });
+        return { reference: reference('R'), status: enrolledNow >= set.maxSwimmers ? 'WAITLISTED' : 'ENROLLED', priceCents: set.priceCents ?? 0 };
+      }
       const household = await tx.household.create({
         data: { tenantId: req.tenantId!, name: b.guardian.lastName, address: b.address || null, emergencyName: b.emergency.name, emergencyPhone: b.emergency.phone, source: 'ONLINE', notes: `Signed up online ${now.toISOString().slice(0, 10)}; terms and privacy accepted; confirmed ${majorityAge} or older${b.participant.self ? '' : '; parent or guardian consent given for the child'}${b.consents.photo ? '; photo consent given' : ''}.` },
       });

@@ -81,7 +81,17 @@ describe('public sign-up portal', () => {
     const r = await pub.post('/api/public/registrations', form());
     expect(r.status).toBe(201);
     expect(r.body).toMatchObject({ status: 'ENROLLED', reference: expect.stringMatching(/^R-[A-Z2-9]{6}$/) });
-    expect((await pub.post('/api/public/registrations', form())).body.code).toBe('ALREADY_REGISTERED');
+    // Signing the same person up again answers like a new registration (it never says who is
+    // enrolled); the address typed in is told they're already registered, and nothing is added.
+    const enrolments = await owner.lessonEnrollment.count({ where: { tenantId: t.tenant.id } });
+    const again = await pub.post('/api/public/registrations', form());
+    expect(again.status).toBe(201);
+    expect(Object.keys(again.body).sort()).toEqual(Object.keys(r.body).sort());
+    // The program is now full, so a new sign-up would be waitlisted: the answer says the same.
+    expect(again.body).toMatchObject({ status: 'WAITLISTED', reference: expect.stringMatching(/^R-[A-Z2-9]{6}$/) });
+    expect(again.body.reference).not.toBe(r.body.reference);
+    expect(await owner.lessonEnrollment.count({ where: { tenantId: t.tenant.id } })).toBe(enrolments);
+    expect(await owner.emailOutbox.findFirst({ where: { tenantId: t.tenant.id, template: 'signup_already_registered' } })).toMatchObject({ toEmail: 'marie@example.ca' });
     const w = await pub.post('/api/public/registrations', form({ participant: { firstName: 'Zoé', lastName: 'Tremblay', dateOfBirth: yearsAgo(5) } }));
     expect(w.body.status).toBe('WAITLISTED');
     const mail = await owner.emailOutbox.findFirst({ where: { tenantId: t.tenant.id, template: 'signup_confirmation' }, orderBy: { createdAt: 'asc' } });

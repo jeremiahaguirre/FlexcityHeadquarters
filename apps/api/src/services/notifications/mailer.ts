@@ -78,6 +78,16 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Merci de votre inscription auprès de ${p.organization}.\n\nRéférence : ${p.reference}\nParticipant : ${p.participant}\nProgramme : ${p.set} (${p.campaign})\nQuand : ${p.when}\nPrix : ${p.price}\n\n${p.status === 'WAITLISTED' ? 'Le programme est complet : vous êtes sur la liste d’attente. Nous vous contacterons si une place se libère; rien n’est dû d’ici là.' : p.payment || 'Nous communiquerons avec vous pour le paiement.'}\n\nDes questions? Communiquez avec l’installation en indiquant votre référence.`,
     }),
   },
+  signup_already_registered: {
+    'en-CA': (p) => ({
+      subject: `Already registered: ${p.participant} in ${p.set}`,
+      text: `Someone (probably you) just tried to sign ${p.participant} up for ${p.set} (${p.campaign}) with ${p.organization}, using this email address.\n\n${p.participant} is already registered for this program, so nothing new was added and nothing more is owed. Your original confirmation and its reference still apply.\n\nIf this wasn't you, or something looks wrong, contact the facility.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: `Déjà inscrit : ${p.participant}, ${p.set}`,
+      text: `Quelqu’un (probablement vous) vient d’essayer d’inscrire ${p.participant} à ${p.set} (${p.campaign}) auprès de ${p.organization} avec cette adresse courriel.\n\n${p.participant} est déjà inscrit à ce programme : rien n’a été ajouté et rien de plus n’est dû. Votre confirmation d’origine et sa référence restent valables.\n\nSi ce n’était pas vous, ou si quelque chose semble incorrect, communiquez avec l’installation.`,
+    }),
+  },
   booking_received: {
     'en-CA': (p) => ({ subject: `Booking request received: ${p.service}`, text: `We received your request for ${p.service} on ${p.when}.\nReference: ${p.reference}\n\nThis is a request, not a confirmation. Staff will confirm or contact you shortly.` }),
     'fr-CA': (p) => ({ subject: `Demande de réservation reçue : ${p.service}`, text: `Nous avons reçu votre demande pour ${p.service} le ${p.when}.\nRéférence : ${p.reference}\n\nIl s’agit d’une demande, pas d’une confirmation. Le personnel la confirmera ou communiquera avec vous sous peu.` }),
