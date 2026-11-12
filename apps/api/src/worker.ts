@@ -43,7 +43,6 @@ import { sharedListener } from './lib/listen.js';
 import { runMonitors, pruneTrustHistory } from './services/trust/monitors.js';
 import { snapshot } from './services/trust/posture.js';
 import { deliverTrustAlerts, runReminders } from './services/trust/reminders.js';
-import { sendLeadAlerts } from './services/marketing/leadAlerts.js';
 import { sendRenewalReminders } from './services/billing/renewal.js';
 import { purgeOldEnquiries } from './services/marketing/casl.js';
 import { ensureTrustSeeded } from './services/trust/seed.js';
@@ -142,8 +141,6 @@ const minutely = async () => {
   // Shift bidding: tell staff when a round opens; close rounds whose time is up (awards proposed for review).
   await exclusive('bid-rounds', () => perTenant((tx) => bidRoundTick(tx)));
   await exclusive('email', () => deliverOutbox(db(), mailer));
-  // A website enquiry: FH's inbox hears about it within a minute (LEADS_ALERT_EMAIL; no enquirer details in the email).
-  await exclusive('lead-alerts', () => sendLeadAlerts(db(), mailer));
   await exclusive('sms', () => deliverSms(db(), sms));
   await exclusive('push', () => perTenant((tx) => deliverPush(tx)));
 };

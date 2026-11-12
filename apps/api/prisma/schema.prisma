@@ -1986,8 +1986,6 @@ model Lead {
   /// NEW | CONTACTED | WON | CLOSED
   status           String   @default("NEW")
   notes            String?
-  /// When FH was emailed that this enquiry arrived (LEADS_ALERT_EMAIL); null = not yet.
-  alertedAt        DateTime? @db.Timestamptz(3)
   createdAt        DateTime @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime @updatedAt @db.Timestamptz(3)
 

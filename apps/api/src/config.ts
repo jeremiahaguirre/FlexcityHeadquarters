@@ -78,12 +78,6 @@ const schema = z.object({
    * mode). Empty = no contact line is shown, rather than a placeholder address.
    */
   SECURITY_EMAIL: z.string().default(''),
-  /**
-   * FH's own inbox for website enquiry alerts (services/marketing/leadAlerts.ts). Never shown on the
-   * site or sent to visitors; kept out of the repository (set it in the deployment's settings).
-   * Empty = no alerts; enquiries are still in the Dev console.
-   */
-  LEADS_ALERT_EMAIL: z.union([z.literal(''), z.string().trim().email()]).default(''),
   /** Shown on FH's invoices to organizations. */
   BILLING_LEGAL_NAME: z.string().default('FlexcityHeadquarters'),
   BILLING_ADDRESS: z.string().default(''),
