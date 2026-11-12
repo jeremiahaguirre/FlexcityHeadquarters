@@ -65,6 +65,14 @@ run "production_defaults" {
     error_message = "At least two API tasks and two workers."
   }
   assert {
+    condition     = local.web_env["API_URL"] == "http://api.${aws_service_discovery_private_dns_namespace.internal.name}:4000" && length(aws_ecs_service.svc["api"].service_registries) == 1 && length(aws_ecs_service.svc["web"].service_registries) == 0
+    error_message = "The web app's server-side calls reach the API at its private name (found by the production rehearsal)."
+  }
+  assert {
+    condition     = aws_kms_alias.trust[0].name == "alias/flexcity-trust" && aws_kms_alias.trust_dr[0].name == "alias/flexcity-trust"
+    error_message = "Trust evidence is sealed under alias/flexcity-trust, which the API never creates."
+  }
+  assert {
     condition     = aws_lb_target_group.api.health_check[0].path == "/healthz"
     error_message = "The load balancer checks /healthz, never the database-dependent /readyz."
   }

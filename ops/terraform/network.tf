@@ -145,6 +145,16 @@ resource "aws_vpc_security_group_ingress_rule" "app_api" {
   ip_protocol                  = "tcp"
 }
 
+# The web tasks' server-side calls to the API (api.<name>.internal:4000, compute.tf).
+resource "aws_vpc_security_group_ingress_rule" "app_internal_api" {
+  description                  = "Web app server to API"
+  security_group_id            = aws_security_group.app.id
+  referenced_security_group_id = aws_security_group.app.id
+  from_port                    = 4000
+  to_port                      = 4000
+  ip_protocol                  = "tcp"
+}
+
 resource "aws_vpc_security_group_ingress_rule" "app_metrics" {
   count                        = var.metrics_collector_security_group == "" ? 0 : 1
   description                  = "Prometheus scrape of /metrics"

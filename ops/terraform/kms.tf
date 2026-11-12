@@ -33,6 +33,22 @@ resource "aws_kms_alias" "platform_dr" {
   target_key_id = aws_kms_replica_key.platform_dr[0].key_id
 }
 
+# The Dev console's Trust evidence files are sealed under alias/flexcity-trust
+# (apps/api/src/routes/platform/trust.ts): FH's own records, so the platform key, under a second
+# name that could later point at a key of its own. The API never creates these aliases itself.
+resource "aws_kms_alias" "trust" {
+  count         = var.recovery_mode ? 0 : 1
+  name          = "alias/flexcity-trust"
+  target_key_id = aws_kms_key.platform[0].key_id
+}
+
+resource "aws_kms_alias" "trust_dr" {
+  count         = var.recovery_mode ? 0 : 1
+  provider      = aws.dr
+  name          = "alias/flexcity-trust"
+  target_key_id = aws_kms_replica_key.platform_dr[0].key_id
+}
+
 # Infrastructure keys: database, backups bucket, secrets, container images.
 resource "aws_kms_key" "data" {
   description         = "FlexcityHeadquarters database, backups and secrets (${var.environment})"

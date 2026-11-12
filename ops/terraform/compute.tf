@@ -168,12 +168,35 @@ resource "aws_ecs_task_definition" "web" {
     image            = local.image["web"]
     essential        = true
     portMappings     = [{ containerPort = 3000, protocol = "tcp" }]
-    environment      = [{ name = "NODE_ENV", value = "production" }, { name = "ROOT_DOMAIN", value = var.root_domain }]
+    environment      = [for k, v in local.web_env : { name = k, value = v }]
     logConfiguration = local.log["web"]
   }])
 }
 
+# A private DNS name for the API tasks (api.<name>.internal), kept current by ECS, for the web
+# app's server-side calls.
+resource "aws_service_discovery_private_dns_namespace" "internal" {
+  name = "${local.name}.internal" # API_URL in local.web_env
+  vpc  = aws_vpc.main.id
+}
+
+resource "aws_service_discovery_service" "api" {
+  name = "api"
+  dns_config {
+    namespace_id   = aws_service_discovery_private_dns_namespace.internal.id
+    routing_policy = "MULTIVALUE"
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
+  }
+  health_check_custom_config {}
+}
+
 locals {
+  # API_URL: server-rendered pages (an organization's branding, its job postings) call the API
+  # directly at its private name, not through the public load balancer (apps/web/src/lib/tenant.ts).
+  web_env = { NODE_ENV = "production", ROOT_DOMAIN = var.root_domain, API_URL = "http://api.${local.name}.internal:4000" }
   services = {
     api    = { task = aws_ecs_task_definition.api.arn, count = var.api_min, port = 4000, tg = aws_lb_target_group.api.arn }
     web    = { task = aws_ecs_task_definition.web.arn, count = var.web_min, port = 3000, tg = aws_lb_target_group.web.arn }
@@ -204,6 +227,13 @@ resource "aws_ecs_service" "svc" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
+  }
+
+  dynamic "service_registries" {
+    for_each = each.key == "api" ? [aws_service_discovery_service.api.arn] : []
+    content {
+      registry_arn = service_registries.value
+    }
   }
 
   dynamic "load_balancer" {
