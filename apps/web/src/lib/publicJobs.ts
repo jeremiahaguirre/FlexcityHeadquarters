@@ -1,8 +1,6 @@
 import { headers } from 'next/headers';
 import type { Job } from './jobs';
-import { subdomainFromHost } from './tenant';
-
-const API_URL = process.env.API_URL ?? 'http://localhost:4000';
+import { API_URL, subdomainFromHost, tenantApiHeaders } from './tenant';
 
 export interface PublicJob extends Job {
   postedOn: string;
@@ -27,7 +25,7 @@ export async function publicJobs(): Promise<PublicJob[] | null> {
   const s = await sub();
   if (!s) return null;
   try {
-    const res = await fetch(`${API_URL}/api/public/jobs`, { headers: { 'x-tenant-subdomain': s }, next: { revalidate: 300 } });
+    const res = await fetch(`${API_URL}/api/public/jobs`, { headers: tenantApiHeaders(s), next: { revalidate: 300 } });
     return res.ok ? ((await res.json()) as PublicJob[]) : null;
   } catch {
     return null;
@@ -38,7 +36,7 @@ export async function publicJob(id: string): Promise<PublicJob | null> {
   const s = await sub();
   if (!s || !/^[0-9a-f-]{36}$/i.test(id)) return null;
   try {
-    const res = await fetch(`${API_URL}/api/public/jobs/${id}`, { headers: { 'x-tenant-subdomain': s }, next: { revalidate: 300 } });
+    const res = await fetch(`${API_URL}/api/public/jobs/${id}`, { headers: tenantApiHeaders(s), next: { revalidate: 300 } });
     return res.ok ? ((await res.json()) as PublicJob) : null;
   } catch {
     return null;
