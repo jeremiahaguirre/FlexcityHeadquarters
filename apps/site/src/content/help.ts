@@ -19,7 +19,7 @@ export const ARTICLES: Article[] = [
       title: 'Votre première connexion',
       summary: 'Choisissez votre mot de passe depuis l’invitation et ajoutez une clé d’accès.',
       steps: ['Ouvrez le courriel d’invitation de votre organisation et choisissez un mot de passe (le lien est valide 7 jours).', 'Connectez-vous à l’adresse Web de votre organisation (elle figure dans le courriel d’invitation).', 'Si on vous le propose, configurez une clé d’accès pour vous connecter avec Face ID, votre empreinte ou Windows Hello.', 'Si votre organisation demande une deuxième étape et que vous n’avez pas votre clé d’accès sous la main, choisissez M’envoyer un code : un code à 6 chiffres arrive par courriel (ou par texto, si vous avez confirmé votre numéro de cellulaire dans votre profil) et ne sert qu’une fois, pendant 10 minutes. Votre organisation peut n’accepter que les clés d’accès.', 'Sur votre téléphone, touchez Installer l’application sur votre téléphone à la page de connexion pour l’ajouter à votre écran d’accueil (sans boutique d’applications).'],
-      tip: 'Invitation expirée? Demandez à votre superviseur de la renvoyer depuis Personnel.',
+      tip: 'Invitation expirée? Demandez à votre superviseur de la renvoyer depuis Employés.',
     },
   },
   {
@@ -50,8 +50,8 @@ export const ARTICLES: Article[] = [
     fr: {
       title: 'Travail seul : vérifications, aide et position',
       summary: 'Commencez une séance de travail seul, faites vos vérifications, demandez de l’aide et choisissez de partager ou non votre position.',
-      steps: ['Ouvrez Travail seul dans le menu, indiquez où vous êtes et à quelle fréquence vous ferez vos vérifications.', 'Laissez Partager ma position activé si vous voulez que vos superviseurs voient où vous êtes pendant cette séance, ou désactivez-le.', 'Votre téléphone vous rappelle chaque vérification 5 minutes avant. Touchez Tout va bien pour relancer la minuterie.', 'En difficulté? Touchez J’ai besoin d’aide : vos superviseurs et les RH sont alertés aussitôt. En cas d’urgence, composez d’abord le 911.', 'À la fin, touchez J’ai fini de travailler seul. Le partage s’arrête avec la séance.'],
-      tip: 'Les téléphones cessent de partager la position d’une application Web en arrière-plan ou écran verrouillé. Activez Garder l’écran allumé si vos superviseurs ont besoin de votre position en direct; une vérification manquée les alerte de toute façon.',
+      steps: ['Ouvrez Travail seul dans le menu, indiquez où vous êtes et à quelle fréquence vous ferez vos vérifications.', 'Laissez Partager ma position activé si vous voulez que les personnes qui vous surveillent voient où vous êtes pendant cette séance, ou désactivez-le.', 'Votre téléphone vous rappelle chaque vérification 5 minutes avant. Touchez Tout va bien pour relancer la minuterie.', 'En difficulté? Touchez J’ai besoin d’aide : les personnes qui vous surveillent et les RH sont alertées aussitôt. En cas d’urgence, composez d’abord le 911.', 'À la fin, touchez J’ai fini de travailler seul. Le partage s’arrête avec la séance.'],
+      tip: 'Les téléphones cessent de partager la position d’une application Web en arrière-plan ou écran verrouillé. Activez Garder l’écran allumé si les personnes qui vous surveillent ont besoin de votre position en direct; une vérification manquée les alerte de toute façon.',
     },
   },
   {
@@ -126,8 +126,8 @@ export const ARTICLES: Article[] = [
     },
     fr: {
       title: 'Prendre et céder des quarts',
-      summary: 'Utilisez le babillard pour prendre des quarts ouverts et céder les vôtres.',
-      steps: ['Ouvrez Babillard des quarts pour voir les quarts ouverts auxquels vous êtes admissible, avec une estimation de la paie.', 'Touchez Prendre ce quart. S’il vous ferait faire des heures supplémentaires, un superviseur l’approuve d’abord.', 'Pour céder un quart, ouvrez-le depuis Mon horaire et choisissez Céder.', 'Le quart reste le vôtre jusqu’à ce que quelqu’un le prenne.'],
+      summary: 'Utilisez le tableau des quarts pour prendre des quarts ouverts et céder les vôtres.',
+      steps: ['Ouvrez Tableau des quarts pour voir les quarts ouverts auxquels vous êtes admissible, avec une estimation de la paie.', 'Touchez Prendre ce quart. S’il vous ferait faire des heures supplémentaires, un superviseur l’approuve d’abord.', 'Pour céder un quart, ouvrez-le depuis Mon horaire et choisissez Céder.', 'Le quart reste le vôtre jusqu’à ce que quelqu’un le prenne.'],
     },
   },
   {
@@ -231,7 +231,7 @@ export const ARTICLES: Article[] = [
     fr: {
       title: 'Préparer et publier l’horaire',
       summary: 'Ébauchez la semaine, remplissez-la avec l’assistant, puis publiez.',
-      steps: ['Ouvrez Préparation d’horaire et choisissez l’installation et la semaine.', 'Ajoutez des quarts chaque jour, ou copiez une semaine passée.', 'Touchez Remplir l’horaire : l’assistant propose des personnes pour les quarts ouverts et justifie chaque choix selon les règles.', 'Publiez. Le personnel est avisé et les quarts ouverts vont au babillard.'],
+      steps: ['Ouvrez Création d’horaires et choisissez l’installation et la semaine.', 'Ajoutez des quarts chaque jour, ou copiez une semaine passée.', 'Touchez Remplir l’horaire : l’assistant propose des personnes pour les quarts ouverts et justifie chaque choix selon les règles.', 'Publiez. Le personnel est avisé et les quarts ouverts vont au tableau des quarts.'],
     },
   },
   {
@@ -256,7 +256,7 @@ export const ARTICLES: Article[] = [
       title: 'Remplir l’horaire avec l’assistant',
       summary: 'Remplissez les quarts ouverts d’un service pour une semaine, deux semaines, un mois ou trois mois d’un coup, équitablement et selon toutes les règles, puis revoyez avant que rien ne change.',
       steps: [
-        'Ouvrez Préparation d’horaire et touchez Remplir l’horaire.',
+        'Ouvrez Création d’horaires et touchez Remplir l’horaire.',
         'Choisissez le service (le vôtre est déjà choisi) et, si vous voulez, une installation. Choisissez jusqu’où : on part de votre période de planification. Si des personnes n’ont pas confirmé leurs disponibilités, vous pouvez leur envoyer un rappel ici.',
         'Facultatif : incluez les quarts suggérés par la prévision, pour les semaines où elle prévoit plus de personnes que prévu à l’horaire. Ils sont proposés avec les autres (marqués Nouveau (prévision), d’au moins votre durée minimale de quart, aucun les jours fériés aux installations que vous fermez) et créés seulement quand vous les acceptez.',
         'Vérifiez les choix habituels : garder les quarts déjà attribués, éviter les heures supplémentaires, répartir équitablement les fins de semaine et les soirs, garder les gens à la même installation. Ajuster les priorités vous permet de dire ce qui compte le plus (et de l’enregistrer pour votre service).',
@@ -325,7 +325,7 @@ export const ARTICLES: Article[] = [
         'Ajoutez les équipes : chacune suit le même cycle, avec un décalage de quelques jours. Choisissez les personnes de chaque équipe et, au besoin, des quarts ouverts en plus.',
         'Touchez Générer les quarts et choisissez les dates (jusqu’à 13 semaines). L’aperçu montre ce qui sera créé. Les quarts sont des brouillons.',
         'Chaque membre d’équipe est placé seulement si toutes les règles le permettent (congé, repos, autres quarts, pas d’heures supplémentaires) et dans la période de planification. Le reste demeure ouvert, avec la raison.',
-        'Comblez le reste avec Remplir l’horaire (cochez Partir des modèles de rotation) ou à la main. Dans le planificateur, Modèles génère les quarts des dates affichées.',
+        'Comblez le reste avec Remplir l’horaire (cochez Partir des modèles de rotation) ou à la main. Dans la Création d’horaires, Modèles génère les quarts des dates affichées.',
       ],
       tip: 'Relancer la génération n’ajoute rien en double, et les installations fermées les jours fériés n’ont pas de quarts ces jours-là. Les quarts de nuit gardent leurs heures lors des changements d’heure.',
     },
@@ -654,7 +654,7 @@ export const ARTICLES: Article[] = [
     fr: {
       title: 'Personnes à joindre en cas d’urgence et alertes par texto',
       summary: 'Indiquez qui appeler s’il vous arrive quelque chose au travail, et recevez les alertes urgentes par texto et par appel.',
-      steps: ['Allez à votre profil et, sous Personnes à joindre en cas d’urgence, touchez Ajouter des personnes. Indiquez le nom, le lien et le téléphone de chacune, et qui appeler en premier.', 'Seuls les RH les voient, et la personne qui intervient si votre séance de travail seul est escaladée. Chaque consultation est consignée.', 'Si votre organisation a activé les alertes par texto, ouvrez Alertes par texto et téléphone à votre profil, entrez votre numéro de cellulaire et touchez M’envoyer un code.', 'Entrez le code à 6 chiffres pour confirmer votre numéro. Vous pouvez aussi choisir de recevoir un texto pour les quarts libres qui commencent dans la journée.', 'Pour arrêter, touchez Arrêter les textos et appels.'],
+      steps: ['Allez à votre profil et, sous Personnes à joindre en cas d’urgence, touchez Ajouter des personnes. Indiquez le nom, le lien et le téléphone de chacune, et qui appeler en premier.', 'Seules les RH les voient, ainsi que la personne qui intervient si votre séance de travail seul fait l’objet d’une escalade. Chaque consultation est consignée.', 'Si votre organisation a activé les alertes par texto, ouvrez Alertes par texto et téléphone à votre profil, entrez votre numéro de cellulaire et touchez M’envoyer un code.', 'Entrez le code à 6 chiffres pour confirmer votre numéro. Vous pouvez aussi choisir de recevoir un texto pour les quarts ouverts qui commencent dans la journée.', 'Pour arrêter, touchez Arrêter les textos et appels.'],
       tip: 'Les textos servent seulement aux alertes urgentes, comme une vérification de travail seul manquée ou un rappel au travail, et ne contiennent jamais de lien. Ne touchez pas un lien dans un texto qui prétend venir de FlexcityHeadquarters.',
     },
   },
@@ -669,7 +669,7 @@ export const ARTICLES: Article[] = [
     fr: {
       title: 'Importer le personnel d’un chiffrier',
       summary: 'Téléversez un CSV, vérifiez chaque ligne, puis importez.',
-      steps: ['Ajoutez d’abord vos postes pour qu’ils soient reconnus.', 'Téléchargez le modèle, ou exportez votre liste RH en CSV. La colonne manager (le courriel du gestionnaire) est facultative.', 'Téléversez-le : chaque ligne est vérifiée et les problèmes expliqués.', 'Importez les lignes prêtes, avec ou sans courriel d’invitation. Corrigez les autres et téléversez de nouveau; personne n’est ajouté deux fois.'],
+      steps: ['Ajoutez d’abord vos postes pour qu’ils soient reconnus.', 'Téléchargez le modèle, ou exportez votre liste RH en CSV. La colonne manager (le courriel du gestionnaire) est facultative.', 'Téléversez-le : chaque ligne est vérifiée et les problèmes sont expliqués ligne par ligne.', 'Importez les lignes prêtes, avec ou sans courriel d’invitation. Corrigez les autres et téléversez de nouveau; personne n’est ajouté deux fois.'],
     },
   },
   {
@@ -684,7 +684,7 @@ export const ARTICLES: Article[] = [
     fr: {
       title: 'Désigner le gestionnaire d’une personne et l’organigramme',
       summary: 'Choisissez de qui relève chaque personne, pour que ses demandes aillent d’abord au bon gestionnaire.',
-      steps: ['Ouvrez Personnel et choisissez une personne. À côté de Relève de, touchez Modifier.', 'Choisissez son gestionnaire, ou laissez le gestionnaire de son service (par défaut) pour qu’elle suive le service.', 'Pour plusieurs personnes à la fois, touchez Désigner un gestionnaire dans Personnel, puis choisissez les personnes et de qui elles relèvent. Vous importez du personnel? Remplissez la colonne manager.', 'Ouvrez Organigramme pour voir qui relève de qui. Cherchez par nom, poste ou service, et dépliez ou repliez chaque équipe.', 'Quand une personne part, le départ demande de qui relèvent maintenant les membres de son équipe.'],
+      steps: ['Ouvrez Employés et choisissez une personne. À côté de Relève de, touchez Modifier.', 'Choisissez son gestionnaire, ou laissez le gestionnaire de son service (par défaut) pour qu’elle suive le service.', 'Pour plusieurs personnes à la fois, touchez Désigner un gestionnaire dans Employés, puis choisissez les personnes et de qui elles relèvent. Vous importez du personnel? Remplissez la colonne manager.', 'Ouvrez Organigramme pour voir qui relève de qui. Cherchez par nom, poste ou service, et dépliez ou repliez chaque équipe.', 'Quand une personne part, le départ demande de qui relèvent maintenant les membres de son équipe.'],
       tip: 'Les congés, les dépenses, les échanges et les heures supplémentaires vont d’abord au gestionnaire, et Mon équipe dans Approbations n’affiche que son équipe. Désigner un gestionnaire ne lui donne jamais d’accès qu’il n’avait pas déjà. Personne ne peut relever d’une personne de sa propre équipe.',
     },
   },
@@ -798,8 +798,8 @@ export const ARTICLES: Article[] = [
       title: 'Les jours fériés la fin de semaine',
       summary: 'Choisissez le jour de fermeture pour un jour férié la fin de semaine, et voyez ce que chaque province accorde à une personne dont c’est le jour de congé.',
       steps: [
-        'Les jours fériés gardent leur propre date. Quand la loi en déplace un, FH utilise le jour où il est déplacé pour tout le monde : la fête du Canada un dimanche est le lundi 2 juillet (sauf en Nouvelle-Écosse et à Terre-Neuve-et-Labrador). Au Québec, la Fête nationale un dimanche est le 25 juin pour les personnes qui ne travaillent pas habituellement le dimanche; les autres gardent le 24 juin.',
-        'Dans Paramètres › Codes de paie, sous Quand un jour férié tombe la fin de semaine, choisissez le jour de fermeture : le jour prévu par la loi, ou le jour de semaine suivant comme la plupart des conventions collectives municipales (Noël un samedi le lundi, le lendemain de Noël le dimanche, le mardi). Les heures travaillées le jour observé sont payées au taux du jour férié, tout comme celles du jour férié lui-même.',
+        'Les jours fériés gardent leur propre date. Quand la loi en déplace un, FH applique le jour de report à tout le monde : la fête du Canada un dimanche est le lundi 2 juillet (sauf en Nouvelle-Écosse et à Terre-Neuve-et-Labrador). Au Québec, la Fête nationale un dimanche est le 25 juin pour les personnes qui ne travaillent pas habituellement le dimanche; les autres gardent le 24 juin.',
+        'Dans Paramètres › Codes de paie, sous Quand un jour férié tombe la fin de semaine, choisissez le jour de fermeture : le jour prévu par la loi, ou le jour de semaine suivant comme la plupart des conventions collectives municipales (Noël tombant un samedi est reporté au lundi, et le lendemain de Noël tombant le dimanche, au mardi). Les heures travaillées le jour observé sont payées au taux du jour férié, tout comme celles du jour férié lui-même.',
         'Sous Un jour férié pendant un jour de congé, suivez la règle de chaque province ou choisissez un autre jour de congé avec l’indemnité, ou l’indemnité seule. Votre choix s’applique seulement là où la province laisse le choix à l’employeur; la carte explique la règle de chacune de vos provinces.',
         'Le jour de congé dépend de l’horaire habituel de la personne (le jour de semaine travaillé au moins 5 des 9 semaines précédentes), et non de la fin de semaine du calendrier. Quand un jour de remplacement est dû, la paie l’indique : accordez-lui ce congé.',
       ],
@@ -817,7 +817,7 @@ export const ARTICLES: Article[] = [
     fr: {
       title: 'Rôles pour l’aqueduc, l’entretien et les parcs',
       summary: 'Donnez au personnel hors aquatique ses propres rôles, sans écrans de piscine.',
-      steps: ['Ouvrez Paramètres → Rôles et ajoutez un rôle, p. ex. Opérateur d’aqueduc.', 'Choisissez ses permissions : son propre travail, babillard, ou diriger une équipe.', 'Attribuez-le depuis Personnel ou dans la colonne roles du fichier d’importation.', 'Les personnes n’ayant qu’un rôle municipal ne voient jamais les écrans de piscine, de chimie, de dénombrement ou d’incident.'],
+      steps: ['Ouvrez Paramètres → Rôles et ajoutez un rôle, p. ex. Opérateur d’aqueduc.', 'Choisissez ses permissions : son propre travail, le tableau des quarts ou diriger une équipe.', 'Attribuez-le depuis Employés ou dans la colonne roles du fichier d’importation.', 'Les personnes n’ayant qu’un rôle municipal ne voient jamais les écrans de piscine, de chimie, de dénombrement ou d’incident.'],
     },
   },
 ];
