@@ -3,7 +3,7 @@
  * Variance against the scheduled shift is computed so the queue can sort the
  * punches that need a look (late, early, off-site, unscheduled) to the top.
  */
-import type { PunchLocationStatus } from '@prisma/client';
+import type { PunchLocationStatus } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { badRequest } from '../../lib/errors.js';
 import { OFFLINE_RULES } from './punches.js';

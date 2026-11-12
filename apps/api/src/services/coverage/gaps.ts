@@ -3,8 +3,8 @@
  * fewer people holding the certificate (verified, valid that day) are
  * scheduled at the facility than the rule needs.
  */
-import type { CoverageRule } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
+import type { CoverageRule } from '../../generated/prisma/client.js';
+import type { Prisma } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { wallClock } from '../scheduling/eligibility.js';
 import { addDays, dayOfWeek, localIso } from '../../lib/time.js';

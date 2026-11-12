@@ -2,7 +2,7 @@
  * Loads approved punches for a period, runs calculatePay per employee per
  * facility (province + timezone come from the facility), and builds the CSV.
  */
-import type { PayCodeKey } from '@prisma/client';
+import type { PayCodeKey } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { badRequest } from '../../lib/errors.js';
 import { Decimal, ZERO, cents, dec } from '../../lib/money.js';

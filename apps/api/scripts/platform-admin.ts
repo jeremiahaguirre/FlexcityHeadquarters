@@ -5,8 +5,7 @@
  *
  * The password comes from the environment so it never lands in shell history.
  */
-import { PrismaClient } from '@prisma/client';
-import { prismaUrl } from '../src/lib/dbUrl.js';
+import { createPrismaClient } from '../src/lib/prismaClient.js';
 import { hashPassword } from '../src/auth/tokens.js';
 // @ts-expect-error a plain JavaScript module without types, shared with the migration scripts
 import { ownerUrl } from './owner-url.mjs';
@@ -26,7 +25,7 @@ try {
   console.error((e as Error).message);
   process.exit(1);
 }
-const prisma = new PrismaClient({ datasources: { db: { url: prismaUrl(url) } } });
+const prisma = createPrismaClient(url); // libpq URL: pg verifies sslmode=verify-full itself
 const passwordHash = await hashPassword(password);
 const a = await prisma.platformAdmin.upsert({
   where: { email: email.toLowerCase() },

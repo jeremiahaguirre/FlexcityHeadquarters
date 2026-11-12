@@ -35,7 +35,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/lib/prismaClient.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { messageAad, sealWith, withConversationKey } from '../../src/services/messaging/crypto.js';
 
@@ -255,7 +255,7 @@ async function openStream(who: Who, react?: (ev: 'change' | 'notification', topi
 }
 
 // ------------------------------------------------------------------ set-up
-const owner = new PrismaClient();
+const owner = createPrismaClient(process.env.DATABASE_URL!);
 const PNG = (() => {
   const b = randomBytes(40 * 1024);
   Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);

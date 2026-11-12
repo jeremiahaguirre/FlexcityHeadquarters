@@ -11,13 +11,19 @@
 // - Union Hub data is NOT in this schema. It lives in the `union_hub` Postgres
 //   schema (db/union_hub.sql), reachable only through a separate DB role.
 
+// Prisma 7's TypeScript client, generated into src/generated/prisma (not committed: `npx prisma
+// generate`). Import it as ../generated/prisma/client.js (relative). The connection itself is made
+// through the pg driver adapter in src/lib/prismaClient.ts; the CLI's URL is in prisma.config.ts.
 generator client {
-  provider = "prisma-client-js"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  runtime             = "nodejs"
+  importFileExtension = "js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ------------------------------------------------------------------

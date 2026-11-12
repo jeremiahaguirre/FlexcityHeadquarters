@@ -16,7 +16,7 @@
  * mapping or cost centre is refused with a list of every problem, rather than
  * producing a file that silently mis-pays someone.
  */
-import type { PayCodeKey } from '@prisma/client';
+import type { PayCodeKey } from '../../generated/prisma/client.js';
 import type { PayLine } from './payCalc.js';
 import { type Issue, issue } from './issues.js';
 

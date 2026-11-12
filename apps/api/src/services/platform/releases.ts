@@ -14,7 +14,7 @@
  * - Undoing a stage puts back each switch it changed, unless someone changed that switch since.
  * Every step is in the Dev console's log and in each organization's own audit trail.
  */
-import type { Prisma, PrismaClient, ReleaseChange } from '@prisma/client';
+import type { Prisma, PrismaClient, ReleaseChange } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { type Tx, db, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';

@@ -4,7 +4,7 @@
  * quartiles are kept, and only when at least MIN_CITIES contribute, so no
  * single city can be picked out. Cities see peers only if they share too.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { type Tx, tenantIds, withTenant } from '../../lib/db.js';
 import { protectedAt } from '../reliability/score.js';
 

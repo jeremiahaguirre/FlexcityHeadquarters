@@ -10,7 +10,7 @@
  *   period, except safety work (incidents, chemistry, headcounts, working
  *   alone), clocking in and out, and paying.
  */
-import type { BillingAccount } from '@prisma/client';
+import type { BillingAccount } from '../../generated/prisma/client.js';
 import { db } from '../../lib/db.js';
 import type { FeatureKey } from '../platform/features.js';
 import { type ItemKey, lockedFeatures, ownedItems } from './catalog.js';

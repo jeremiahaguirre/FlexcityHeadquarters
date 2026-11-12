@@ -12,7 +12,8 @@
 ARG NODE_IMAGE=node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6ac731d30470e7ea7f98f9bfc3a6e1034fe
 
 FROM ${NODE_IMAGE} AS base
-# Prisma's query engine needs OpenSSL; ca-certificates for TLS to RDS, Twilio and the rest.
+# Prisma's schema engine (migrations, the migrate image) needs OpenSSL; ca-certificates for TLS to RDS,
+# Twilio and the rest. The API itself has no Prisma engine binary since Prisma 7 (queries go through pg).
 RUN dpkg -s openssl ca-certificates >/dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*)
 # Amazon RDS certificate authorities (every region, so ca-central-1 and the ca-west-1 recovery copy).
 # Database URLs use sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem (apps/api/src/lib/dbUrl.ts).
@@ -29,15 +30,15 @@ COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 RUN npm ci --workspace apps/api --include-workspace-root
 COPY apps/api apps/api
+# prisma generate writes the client into src/generated/prisma (Prisma 7); tsc compiles it into dist.
 RUN cd apps/api && npx prisma generate && npm run build
 
 FROM base AS api-deps
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
-COPY apps/api/prisma apps/api/prisma
 RUN npm ci --workspace apps/api --include-workspace-root --omit=dev
-# The generated Prisma client (with its engine) from the build stage.
-COPY --from=api-build /app/node_modules/.prisma node_modules/.prisma
+# The generated Prisma client is part of dist (dist/generated/prisma); at run time it needs only
+# @prisma/client's runtime, @prisma/adapter-pg and pg, all production dependencies.
 
 FROM base AS api
 ENV NODE_ENV=production PORT=4000

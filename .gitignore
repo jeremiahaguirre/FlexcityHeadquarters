@@ -14,3 +14,4 @@ apps/api/test/load/plan.json
 apps/api/test/load/comms-plan.json
 test-results/
 playwright-report/
+apps/api/src/generated/

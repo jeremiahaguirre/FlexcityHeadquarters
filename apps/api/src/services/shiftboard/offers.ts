@@ -12,7 +12,7 @@
  *  - The original holder remains assigned (and responsible) until COMPLETED.
  */
 import { chargeOvertime, reverseOvertime } from '../scheduling/overtime.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';

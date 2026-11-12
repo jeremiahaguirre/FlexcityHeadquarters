@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -121,11 +120,12 @@ describe('weather cache shared across organizations', () => {
     expect(again[`cityPage:${SITE}`]).toBeUndefined();
   });
 
-  it('the shared tables hold no organization’s data', () => {
+  it('the shared tables hold no organization’s data', async () => {
     for (const name of ['WeatherSite', 'WeatherForecastDay', 'WeatherObservation']) {
-      const model = Prisma.dmmf.datamodel.models.find((m) => m.name === name)!;
-      expect(model.fields.map((f) => f.name)).not.toContain('tenantId');
-      expect(model.fields.map((f) => f.name).filter((f) => /facility|user|tenant/i.test(f))).toEqual([]);
+      const fields = (await owner.$queryRaw<Array<{ column_name: string }>>`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${name}`).map((r) => r.column_name);
+      expect(fields.length).toBeGreaterThan(2);
+      expect(fields).not.toContain('tenantId');
+      expect(fields.filter((f) => /facility|user|tenant/i.test(f))).toEqual([]);
     }
   });
 });

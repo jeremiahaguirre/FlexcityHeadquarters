@@ -15,7 +15,7 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { SAML, ValidateInResponseTo, type CacheProvider, type Profile } from '@node-saml/node-saml';
-import type { SsoConnection } from '@prisma/client';
+import type { SsoConnection } from '../../generated/prisma/client.js';
 import { createLocalJWKSet, jwtVerify, SignJWT, type JSONWebKeySet } from 'jose';
 import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import { config } from '../../config.js';

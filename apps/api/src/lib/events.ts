@@ -8,7 +8,7 @@
  * least once, and handlers are idempotent (notifications carry a dedupe key).
  */
 import { EVENTS_CHANNEL } from './changes.js';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import type { NotificationDraft } from '../services/notifications/notifier.js';
 import type { Tx } from './db.js';
 

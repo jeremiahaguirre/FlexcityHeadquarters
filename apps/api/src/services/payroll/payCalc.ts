@@ -13,7 +13,7 @@
  *    partial week (punches that cross the period boundary are split, not dropped).
  *  - Statutory-holiday hours, shift premiums and vacation pay are separate lines.
  */
-import type { PayCodeKey } from '@prisma/client';
+import type { PayCodeKey } from '../../generated/prisma/client.js';
 import { Decimal, ZERO, cents, hoursDec } from '../../lib/money.js';
 import { addDays, dayOfWeek, payWeekStart, splitByLocalDay, startOfLocalDay } from '../../lib/time.js';
 import { type ProvinceRules, vacationPercent } from '../compliance/provincialRules.js';

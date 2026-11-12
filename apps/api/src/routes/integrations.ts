@@ -9,7 +9,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import type { ApiKey, WebhookDelivery, WebhookEndpoint } from '@prisma/client';
+import type { ApiKey, WebhookDelivery, WebhookEndpoint } from '../generated/prisma/client.js';
 import { authOf, requireModule, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';

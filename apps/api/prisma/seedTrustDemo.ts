@@ -6,11 +6,11 @@
  *
  *   node --env-file-if-exists=.env --import tsx prisma/seedTrustDemo.ts
  */
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/lib/prismaClient.js';
 import { ensureTrustSeeded } from '../src/services/trust/seed.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('Demo data is for development only.');
-const prisma = new PrismaClient(); // owner connection (DATABASE_URL)
+const prisma = createPrismaClient(process.env.DATABASE_URL!); // owner connection (DATABASE_URL)
 const DAY = 86_400_000;
 const now = new Date();
 const at = (d: number) => new Date(now.getTime() + d * DAY);

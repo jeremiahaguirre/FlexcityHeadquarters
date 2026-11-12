@@ -1,6 +1,6 @@
 /** Creating departments, putting positions in them and choosing who manages them (HR settings and the Dev console). */
 import { z } from 'zod';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { HttpError, conflict, notFound } from '../../lib/errors.js';
 import { type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';

@@ -9,7 +9,7 @@
  * else. Kept while the person works here (seasonal staff away keep theirs); deleted when they're
  * anonymized, and by the retention job PREFERENCES_INACTIVE_DAYS after someone who left last changed them.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import type { Tx } from '../../lib/db.js';
 import { badRequest } from '../../lib/errors.js';

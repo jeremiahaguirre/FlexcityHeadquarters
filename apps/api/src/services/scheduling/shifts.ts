@@ -3,7 +3,7 @@
  * Every assignment runs through evaluateCandidate(); hard rules block, overtime
  * needs an explicit acknowledgement from the person assigning.
  */
-import type { Prisma, ShiftType } from '@prisma/client';
+import type { Prisma, ShiftType } from '../../generated/prisma/client.js';
 import { chargeOvertime, fairnessCheck, reverseOvertime } from './overtime.js';
 import { lockForAssignment } from './locks.js';
 import { type Tx, audit } from '../../lib/db.js';

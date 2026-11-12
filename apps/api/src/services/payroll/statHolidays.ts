@@ -28,7 +28,7 @@
  * - Manitoba: September 30 is a general holiday from 2024; Remembrance Day is not.
  * - Newfoundland and Labrador: July 1 is Memorial Day.
  */
-import type { Province } from '@prisma/client';
+import type { Province } from '../../generated/prisma/client.js';
 
 export type Jurisdiction = Province | 'FED';
 export type HolidayKey =

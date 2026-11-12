@@ -4,7 +4,7 @@
  * request (requireAuth), so a switch changes what the API allows, not just
  * what the menu shows.
  */
-import type { AccessRole } from '@prisma/client';
+import type { AccessRole } from '../../generated/prisma/client.js';
 import { MENU, MENU_HREFS } from '../../auth/menu.js';
 import { PERMISSIONS, type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
 

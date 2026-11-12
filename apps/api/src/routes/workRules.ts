@@ -7,7 +7,7 @@
  * its meal-break placement and warnings and its positions' breaks and never-alone flags; pay
  * rules (call-in, notice premiums, shift premiums, standby) stay organization policy.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';

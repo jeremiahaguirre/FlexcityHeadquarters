@@ -15,7 +15,7 @@
  *
  * Amounts are whole cents. VERIFY the chart and tax treatment with FH's accountant.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { db, tenantIds, withTenant } from '../../lib/db.js';
 import { HttpError, badRequest, notFound } from '../../lib/errors.js';

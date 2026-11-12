@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AccessRole as PrismaAccessRole, EmploymentStatus as PrismaEmploymentStatus } from '@prisma/client';
+import { AccessRole as PrismaAccessRole, EmploymentStatus as PrismaEmploymentStatus } from '../../src/generated/prisma/client.js';
 import { type AccessRole, type EmploymentStatus, parseCsv, previewImport } from '../../src/services/platform/staffImport.js';
 import { parseLogo } from '../../src/services/platform/logo.js';
 

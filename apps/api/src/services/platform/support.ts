@@ -10,7 +10,7 @@
  *   open is in the organization's audit log, attributed to FH support.
  */
 import { createHash, randomBytes } from 'node:crypto';
-import type { SupportLevel } from '@prisma/client';
+import type { SupportLevel } from '../../generated/prisma/client.js';
 import type { Permission } from '../../auth/permissions.js';
 import { db, withTenant } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';

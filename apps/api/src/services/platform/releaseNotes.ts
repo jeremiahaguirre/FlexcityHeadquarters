@@ -8,7 +8,7 @@
  * chosen, and inside an organization's session Postgres shows only the notes for that
  * organization or for all (db/rls.sql, fh_published). Read marks are the organization's data (RLS).
  */
-import type { AccessRole, PrismaClient, ReleaseNote } from '@prisma/client';
+import type { AccessRole, PrismaClient, ReleaseNote } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { type Tx, db, tenantIds as allTenantIds } from '../../lib/db.js';
 import { announceChange } from '../../lib/changes.js';

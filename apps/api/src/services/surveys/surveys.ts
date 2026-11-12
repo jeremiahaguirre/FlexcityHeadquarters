@@ -21,7 +21,7 @@
  * own transaction ids; the application, its screens and its exports never expose those.
  */
 import { randomUUID } from 'node:crypto';
-import type { Prisma, Survey } from '@prisma/client';
+import type { Prisma, Survey } from '../../generated/prisma/client.js';
 import type { AuthContext } from '../../auth/middleware.js';
 import { announceChange, announceChangeTo } from '../../lib/changes.js';
 import { type Tx, audit } from '../../lib/db.js';

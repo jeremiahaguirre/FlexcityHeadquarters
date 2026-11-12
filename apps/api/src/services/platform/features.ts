@@ -6,7 +6,7 @@
  * Scheduling, staff, certifications and settings are the core and can't be
  * switched off.
  */
-import type { AccessRole } from '@prisma/client';
+import type { AccessRole } from '../../generated/prisma/client.js';
 import type { Permission } from '../../auth/permissions.js';
 import { type RoleOverrides, parseOverrides } from './roleOverrides.js';
 import { withTenant } from '../../lib/db.js';

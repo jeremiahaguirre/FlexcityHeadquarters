@@ -25,7 +25,7 @@
  * protected leave are neutral: they never cost points and never break a streak
  * or a clean stretch. Earlier events are never deleted; they stay on the record.
  */
-import type { ConductCategory, ReliabilityEventType, TimeOffType } from '@prisma/client';
+import type { ConductCategory, ReliabilityEventType, TimeOffType } from '../../generated/prisma/client.js';
 import { DateTime } from 'luxon';
 
 /** The rolling window for gradual recovery. */

@@ -1,5 +1,5 @@
 /** Shifts: facilities and positions to pick from, creating, assigning, cancelling and publishing shifts. */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { assertShiftInScope, assertUserInScope, peopleWhere, shiftsWhere } from '../services/people/scope.js';
 import { Router } from 'express';
 import { z } from 'zod';

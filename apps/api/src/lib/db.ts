@@ -2,10 +2,10 @@
  * Database access. The app connects as a non-owner role so row-level security applies, and every
  * tenant query runs inside withTenant(), which tells Postgres whose rows it may see.
  */
-import { Prisma, PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { config } from '../config.js';
-import { prismaUrl } from './dbUrl.js';
 import { dbQueryDuration, dbSlowQueries } from './metrics.js';
+import { createPrismaClient } from './prismaClient.js';
 
 let client: PrismaClient | undefined;
 let replicaClient: PrismaClient | undefined;
@@ -35,8 +35,8 @@ function connect(url: string): PrismaClient {
   const timed = !!config().METRICS_TOKEN;
   const slowMs = config().SLOW_QUERY_MS;
   const listen = timed || slowMs > 0;
-  const c = new PrismaClient({ datasources: { db: { url: pooled(prismaUrl(url)) } }, ...(listen ? { log: [{ emit: 'event' as const, level: 'query' as const }] } : {}) });
-  if (listen) (c as unknown as PrismaClient<Prisma.PrismaClientOptions, 'query'>).$on('query', (e) => onQuery(e.duration, e.query, timed, slowMs));
+  const c = createPrismaClient(url, { poolSize: config().DB_POOL_SIZE, poolTimeoutS: config().DB_POOL_TIMEOUT_S }, { logQueries: listen });
+  if (listen) (c as unknown as PrismaClient<'query'>).$on('query', (e) => onQuery(e.duration, e.query, timed, slowMs));
   return c;
 }
 
@@ -55,15 +55,6 @@ export function onQuery(durationMs: number, sql: string, timed: boolean, slowMs:
     dbSlowQueries.inc({});
     console.warn(`[slow-query] ${Math.round(durationMs)} ms: ${shortSql(sql)}`);
   }
-}
-
-/** Adds the configured pool size and wait to a connection URL (unless it already says). */
-export function pooled(url: string): string {
-  const u = new URL(url);
-  const c = config();
-  if (!u.searchParams.has('connection_limit')) u.searchParams.set('connection_limit', String(c.DB_POOL_SIZE));
-  if (!u.searchParams.has('pool_timeout')) u.searchParams.set('pool_timeout', String(c.DB_POOL_TIMEOUT_S));
-  return u.toString();
 }
 
 export type Tx = Prisma.TransactionClient;

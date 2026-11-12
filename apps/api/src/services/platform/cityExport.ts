@@ -50,7 +50,7 @@ type Row = Record<string, unknown>;
 /** A sealed value inside a settings object ({ c, iv, t, k, kek }) is shown as "[sealed]", never its parts. */
 function scrub(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(scrub);
-  if (v && typeof v === 'object' && !(v instanceof Date) && !Buffer.isBuffer(v)) {
+  if (v && typeof v === 'object' && !(v instanceof Date) && !(v instanceof Uint8Array)) {
     const o = v as Record<string, unknown>;
     if ('c' in o && 'iv' in o && 'kek' in o) return '[sealed]';
     return Object.fromEntries(Object.entries(o).map(([k, x]) => [k, scrub(x)]));

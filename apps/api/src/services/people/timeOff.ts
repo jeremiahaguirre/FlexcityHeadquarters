@@ -8,7 +8,7 @@
  * - Statutory sick days and protected leave usually cannot lawfully be refused;
  *   declining one requires a written reason, which is audited.
  */
-import type { TimeOffType } from '@prisma/client';
+import type { TimeOffType } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { lieuAvailable, lieuPolicy } from '../payroll/lieu.js';

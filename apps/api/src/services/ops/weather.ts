@@ -14,7 +14,7 @@
  * carries on without weather. Parsing is tolerant: values may come as plain numbers/strings or as
  * { en, fr } pairs, single objects or arrays.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { db, tenantIds, withTenant } from '../../lib/db.js';
 import { publicGet } from '../../lib/egress.js';

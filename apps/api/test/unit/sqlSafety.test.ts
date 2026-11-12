@@ -13,7 +13,8 @@ function files(dir: string): string[] {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     if (statSync(p).isDirectory()) {
-      if (name !== 'node_modules' && name !== 'migrations') out = out.concat(files(p));
+      // generated: Prisma's own client (src/generated/prisma), not our code.
+      if (name !== 'node_modules' && name !== 'migrations' && name !== 'generated') out = out.concat(files(p));
     } else if (/\.(ts|mjs|js)$/.test(name)) out.push(p);
   }
   return out;

@@ -1,5 +1,5 @@
 /** Winter operations: settings, storm call-outs, patrol routes and patrol records. */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';

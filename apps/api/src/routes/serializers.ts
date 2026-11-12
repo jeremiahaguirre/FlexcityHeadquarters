@@ -1,4 +1,4 @@
-import type { Facility, Position, Shift, User } from '@prisma/client';
+import type { Facility, Position, Shift, User } from '../generated/prisma/client.js';
 import { localIso } from '../lib/time.js';
 import { breakMinutesOf } from '../services/scheduling/workRules.js';
 

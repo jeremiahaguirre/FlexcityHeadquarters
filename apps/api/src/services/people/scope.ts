@@ -3,7 +3,7 @@
  * A scoped lead sees and acts on people who hold one of the role's positions,
  * and shifts for those positions at the role's facilities. null = everywhere.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import type { AuthContext } from '../../auth/middleware.js';
 import type { Tx } from '../../lib/db.js';
 import { forbidden, notFound } from '../../lib/errors.js';

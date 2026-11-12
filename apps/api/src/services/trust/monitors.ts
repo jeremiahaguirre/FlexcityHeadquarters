@@ -13,7 +13,7 @@
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { platformMfaRequired } from '../../auth/platform.js';
 import { config } from '../../config.js';
 import { db, tenantIds, withTenant } from '../../lib/db.js';

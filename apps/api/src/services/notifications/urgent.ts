@@ -20,7 +20,7 @@
  * There are no quiet hours for texts: every template here is either a safety alert or something
  * the person asked for just now (a code) or opted into (urgent open shifts).
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { afterCommit, db, type Tx, withTenant } from '../../lib/db.js';
 import { captureError } from '../../lib/errorReporter.js';

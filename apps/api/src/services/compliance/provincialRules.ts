@@ -13,7 +13,7 @@
  * Rules we are unsure of are left `null` (= not enforced) and surface a warning
  * rather than silently enforcing a guess.
  */
-import type { Province } from '@prisma/client';
+import type { Province } from '../../generated/prisma/client.js';
 import type { DayDefinition } from './workDay.js';
 
 /** A province, or the federal jurisdiction (Canada Labour Code) for federally regulated work. */

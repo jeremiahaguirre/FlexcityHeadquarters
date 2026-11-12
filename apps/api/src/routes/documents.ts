@@ -9,7 +9,7 @@
  * - Every download is logged; deleting keeps a tombstone with who and why.
  */
 import { randomUUID } from 'node:crypto';
-import type { DocumentKind, DocumentVisibility } from '@prisma/client';
+import type { DocumentKind, DocumentVisibility } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { type AuthContext, authOf, requirePermission } from '../auth/middleware.js';

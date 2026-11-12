@@ -6,7 +6,7 @@
  * API instance see a notification exactly when it becomes durable.
  */
 import { createHash, randomUUID } from 'node:crypto';
-import type { AccessRole, Prisma, PrismaClient } from '@prisma/client';
+import type { AccessRole, Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { type Tx, withTenant } from '../../lib/db.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';

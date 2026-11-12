@@ -8,7 +8,7 @@
  * Runs hourly from the worker; sends once per term end (an earlier reminder in the outbox for the
  * same organization within the window means it was sent).
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { appUrl } from '../../auth/authTokens.js';
 import { billingContact } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';

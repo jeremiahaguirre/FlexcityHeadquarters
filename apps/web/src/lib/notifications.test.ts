@@ -7,6 +7,7 @@ import en from '../locales/en-CA.json';
 function apiSources(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
     const p = join(dir, f);
+    if (f === 'generated') return []; // the API's generated Prisma client
     return statSync(p).isDirectory() ? apiSources(p) : p.endsWith('.ts') ? [p] : [];
   });
 }

@@ -13,7 +13,7 @@
  *  - standby pay (STANDBY_PAY) for on-call periods inside the pay period.
  * Shifts and people with none of these rules are paid exactly as before.
  */
-import type { PayCodeKey, Prisma, Province } from '@prisma/client';
+import type { PayCodeKey, Prisma, Province } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { Decimal, ZERO, cents, dec } from '../../lib/money.js';
 import { localDate, startOfLocalDay, wholeYearsBetween } from '../../lib/time.js';

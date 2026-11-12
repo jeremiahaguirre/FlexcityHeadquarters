@@ -4,7 +4,7 @@
  * the full text they agreed to.
  */
 import PDFDocument from 'pdfkit';
-import type { ConsentRecord } from '@prisma/client';
+import type { ConsentRecord } from '../../generated/prisma/client.js';
 import { type AgreementText, agreementFor, canonicalText, sha256 } from './consent.js';
 
 export function consentCertificate(r: ConsentRecord, who: { name: string; email: string | null; organization: string }): Promise<Buffer> {

@@ -39,7 +39,7 @@
  * the order, outcomes and override reasons once a round has closed; nothing else.
  */
 import { createHash } from 'node:crypto';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import type { AuthContext } from '../../auth/middleware.js';
 import { announceChange } from '../../lib/changes.js';

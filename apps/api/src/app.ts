@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import { stripeWebhookRouter } from './routes/billing.js';
 import { publicSignupRouter } from './routes/signup.js';
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { Prisma } from '@prisma/client';
+import { Prisma } from './generated/prisma/client.js';
 import { ZodError } from 'zod';
 import { HttpError } from './lib/errors.js';
 import { authRouter } from './routes/auth.js';
@@ -136,15 +136,23 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
  * Errors that mean "too much at once" or "database briefly away", not a bug:
  * P2024 no free connection in the pool within DB_POOL_TIMEOUT_S; P2028 when a transaction couldn't
  * start in time; P1001/P1002/P1017 the database unreachable or the connection closed (a failover).
+ * Since Prisma 7 the pool is pg's (lib/prismaClient.ts): a query that waits longer than
+ * DB_POOL_TIMEOUT_S for a connection fails with pg-pool's own plain error, and a raw query against
+ * an unreachable server comes back as P2010 with the "can't reach" message.
  */
 export function isOverload(err: unknown): boolean {
+  if (err instanceof Error && err.message === PG_POOL_TIMEOUT) return true;
   // Can't connect at all: busy only when the server isn't reachable. A wrong password or a TLS
   // problem is a configuration error that retrying won't fix, so it stays a 500.
   if (err instanceof Prisma.PrismaClientInitializationError) return ['P1001', 'P1002'].includes(err.errorCode ?? '') || /can't reach database server|timed out/i.test(err.message);
   if (!(err instanceof Prisma.PrismaClientKnownRequestError)) return false;
   if (['P2024', 'P1001', 'P1002', 'P1017'].includes(err.code)) return true;
+  if (err.code === 'P2010') return /can't reach database server/i.test(err.message);
   return err.code === 'P2028' && /unable to start a transaction in the given time/i.test(err.message);
 }
+
+/** pg-pool's error when no connection came free (or could be opened) within connectionTimeoutMillis. */
+const PG_POOL_TIMEOUT = 'timeout exceeded when trying to connect';
 
 function report(err: unknown, req: Request) {
   captureError(err, { source: 'request', requestId: req.id, method: req.method, route: routePattern(req), tenantId: req.auth?.tenantId ?? req.tenantId, userId: req.auth?.userId });

@@ -7,7 +7,7 @@
  * Only changes a scheduler makes count (shift edits, assign/unassign, cancel, planner moves).
  * Shift trades and Shift Board claims are the person's own choice and earn nothing.
  */
-import type { Shift } from '@prisma/client';
+import type { Shift } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import { localDate } from '../../lib/time.js';

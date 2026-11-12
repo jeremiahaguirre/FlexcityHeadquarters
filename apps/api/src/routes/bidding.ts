@@ -3,7 +3,7 @@
  * has bidding on. Staff rank (bidding.bid), managers run rounds in their departments
  * (bidding.manage), union stewards read closed rounds' order and reasons (bidding.observe).
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';

@@ -41,7 +41,7 @@ describe('disciplinary records', () => {
     expect((await call(staff).post(`/api/me/discipline/${r.body.id}/acknowledge`, { signature: PNG })).status).toBe(200);
     expect((await call(staff).post(`/api/me/discipline/${r.body.id}/acknowledge`, { signature: PNG })).status).toBe(409);
     const stored = await owner.disciplinaryRecord.findUniqueOrThrow({ where: { id: r.body.id } });
-    expect(stored.acknowledgementSignature?.subarray(1, 4).toString()).toBe('PNG');
+    expect(Buffer.from(stored.acknowledgementSignature!).subarray(1, 4).toString()).toBe('PNG');
     // A fingerprint of exactly what was signed, and of the signature image.
     expect(stored.signedSha256).toMatch(/^[0-9a-f]{64}$/);
     expect(stored.signatureSha256).toMatch(/^[0-9a-f]{64}$/);

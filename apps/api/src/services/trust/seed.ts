@@ -4,7 +4,7 @@
  * docs/SUBPROCESSORS.md, and a security questionnaire answer library. Customer commitments are
  * never invented: they're entered from real contracts.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { MONITORS } from './monitors.js';
 
 const DAY = 86_400_000;

@@ -1,9 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/lib/prismaClient.js';
 
 /** Owner connection — bypasses RLS; used only to arrange test data. */
-export const owner = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
+export const owner = createPrismaClient(process.env.DATABASE_URL!);
 /** Runtime connection — the non-owner app role, RLS enforced. */
-export const app = new PrismaClient({ datasources: { db: { url: process.env.APP_DATABASE_URL } } });
+export const app = createPrismaClient(process.env.APP_DATABASE_URL!);
 
 const day = (n: number) => new Date(Date.now() + n * 86_400_000);
 

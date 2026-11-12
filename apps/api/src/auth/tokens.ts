@@ -4,7 +4,7 @@
  */
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import type { AccessRole } from '@prisma/client';
+import type { AccessRole } from '../generated/prisma/client.js';
 import { SignJWT, jwtVerify } from 'jose';
 import { config } from '../config.js';
 import type { Tx } from '../lib/db.js';

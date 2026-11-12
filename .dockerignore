@@ -16,3 +16,4 @@ brand
 apps/site
 apps/api/test
 apps/web/e2e
+apps/api/src/generated

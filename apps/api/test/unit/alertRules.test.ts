@@ -14,6 +14,7 @@ const runbook = readFileSync(join(root, 'docs/MONITORING.md'), 'utf8');
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
     const p = join(dir, f);
+    if (f === 'generated') return []; // Prisma's generated client
     return statSync(p).isDirectory() ? sources(p) : p.endsWith('.ts') ? [readFileSync(p, 'utf8')] : [];
   });
 }

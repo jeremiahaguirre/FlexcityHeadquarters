@@ -12,12 +12,12 @@
  */
 import { randomUUID } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/lib/prismaClient.js';
 import { CONSENT_VERSION } from '../../src/services/privacy/consent.js';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce<string[][]>((a, v, i, all) => (v.startsWith('--') ? [...a, [v.slice(2), all[i + 1] ?? '']] : a), []));
 const PULSE = Number(args.pulse ?? 3000);
-const owner = new PrismaClient();
+const owner = createPrismaClient(process.env.DATABASE_URL!);
 const PLAN = new URL('./plan.json', import.meta.url);
 const DEPTS = 6;
 const ADULT = new Date('1990-06-15');

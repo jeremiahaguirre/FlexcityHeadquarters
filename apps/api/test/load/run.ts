@@ -13,7 +13,7 @@
  *     9,000 people over five minutes) for --seconds (default 60), to see latency when not saturated.
  */
 import { readFileSync } from 'node:fs';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/lib/prismaClient.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { STARTING_VALUES, ensureTaxTables } from '../../src/services/payroll/taxTables.js';
 
@@ -64,7 +64,7 @@ function report(title: string, from: number, seconds: number) {
   }
 }
 
-const owner = new PrismaClient();
+const owner = createPrismaClient(process.env.DATABASE_URL!);
 await ensureTaxTables(owner, 2026);
 await owner.payrollTaxTable.updateMany({ where: { year: 2026 }, data: { verifiedAt: new Date(), verifiedBy: 'load test' } });
 // Fresh state for repeat runs: no open punches, offers back on the board, no pay runs.

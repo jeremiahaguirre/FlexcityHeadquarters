@@ -15,7 +15,7 @@
 import { createHash } from 'node:crypto';
 import { DateTime } from 'luxon';
 import PDFDocument from 'pdfkit';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../src/generated/prisma/client.js';
 import { type Tx, withTenant } from '../src/lib/db.js';
 import { keys, tenantKekId } from '../src/routes/context.js';
 import { seal } from '../src/services/crypto/envelope.js';
@@ -307,8 +307,8 @@ export async function seedNewScreens(tenantId: string) {
 
 // Run directly against an existing dev database.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { PrismaClient } = await import('@prisma/client');
-  const owner = new PrismaClient(); // DATABASE_URL: finds the city; the rest runs as the app role, under row-level security
+  const { createPrismaClient } = await import('../src/lib/prismaClient.js');
+  const owner = createPrismaClient(process.env.DATABASE_URL!); // DATABASE_URL: finds the city; the rest runs as the app role, under row-level security
   const t = await owner.tenant.findUnique({ where: { subdomain: 'kelowna' }, select: { id: true } });
   await owner.$disconnect();
   if (!t) {

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/lib/prismaClient.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { withTenant } from '../../src/lib/db.js';
 import { recordEvents, withEvents } from '../../src/lib/events.js';
@@ -10,7 +10,7 @@ import { app, owner, seedTenant } from './fixtures.js';
 
 let t: Awaited<ReturnType<typeof seedTenant>>;
 /** A second runtime connection pool: a second dispatcher, as if in another process. */
-const app2 = new PrismaClient({ datasources: { db: { url: process.env.APP_DATABASE_URL } } });
+const app2 = createPrismaClient(process.env.APP_DATABASE_URL!);
 
 const page = (message: string) => ({ type: 'frontdesk.page' as const, tenantId: t.tenant.id, facilityId: t.facility.id, fromUserId: t.users[0]!.id, message });
 const events = (where: object = {}) => owner.eventOutbox.findMany({ where: { tenantId: t.tenant.id, ...where }, orderBy: { createdAt: 'asc' } });

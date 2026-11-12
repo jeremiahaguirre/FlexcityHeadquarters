@@ -20,7 +20,7 @@
  * - Across organizations: the worker asks tenants_with_due_events() (SECURITY DEFINER, ids only)
  *   which organizations have events due, then dispatches each under its own context.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import { config } from '../config.js';
 import { db, type Tx, withTenant } from './db.js';
 import { type DomainEvent, setDispatchKick } from './events.js';

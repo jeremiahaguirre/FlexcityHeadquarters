@@ -3,7 +3,7 @@
  * two city-defined roles and two people. Idempotent.
  *   npx tsx prisma/seedCityWorkers.ts   (adds them to an already-seeded dev database)
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../src/generated/prisma/client.js';
 
 export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, passwordHash: string) {
   if (await prisma.user.findFirst({ where: { tenantId, email: 'waterworks@kelowna.test' } })) return;
@@ -47,9 +47,9 @@ export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, pa
 
 // Run directly against an existing dev database.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const { PrismaClient } = await import('@prisma/client');
+  const { createPrismaClient } = await import('../src/lib/prismaClient.js');
   const { hashPassword } = await import('../src/auth/tokens.js');
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient(process.env.DATABASE_URL!);
   const t = await prisma.tenant.findUniqueOrThrow({ where: { subdomain: 'kelowna' } });
   await seedCityWorkers(prisma, t.id, await hashPassword('flexcity-dev'));
   console.log('City workers ready: waterworks@kelowna.test, maintenance@kelowna.test');

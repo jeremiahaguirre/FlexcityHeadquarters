@@ -10,7 +10,7 @@
  *   (removed by services/privacy/retention.ts).
  */
 import { createHash } from 'node:crypto';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { withTenant } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';
 

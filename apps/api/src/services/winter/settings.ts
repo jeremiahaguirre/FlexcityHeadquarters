@@ -3,7 +3,7 @@
  * and patrol records are used, the winter season, how long people have to
  * answer a call-out, and the rest they need between shifts.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import type { Tx } from '../../lib/db.js';
 

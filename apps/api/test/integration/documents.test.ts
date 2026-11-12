@@ -51,7 +51,7 @@ describe('employee documents', () => {
     expect(r.body.visibility).toBe('HR'); // medical stays with HR whatever was asked
     note = r.body.id;
     const stored = await owner.employeeDocument.findUniqueOrThrow({ where: { id: note } });
-    expect(stored.ciphertext.includes(Buffer.from('%PDF'))).toBe(false);
+    expect(Buffer.from(stored.ciphertext).includes(Buffer.from('%PDF'))).toBe(false);
     expect(stored.contentType).toBe('application/pdf');
   });
 

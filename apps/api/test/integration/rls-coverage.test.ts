@@ -1,4 +1,3 @@
-import { Prisma } from '@prisma/client';
 import { afterAll, describe, expect, it } from 'vitest';
 import { owner } from './fixtures.js';
 
@@ -8,7 +7,11 @@ afterAll(async () => {
 
 describe('row-level security coverage', () => {
   it('every table holding a city’s data has row-level security on and forced', async () => {
-    const tenantTables = Prisma.dmmf.datamodel.models.filter((m) => m.fields.some((f) => f.name === 'tenantId')).map((m) => m.dbName ?? m.name);
+    // Every table with a tenantId column, as the database has them (Prisma 7's client no longer ships its data model).
+    const tenantTables = (
+      await owner.$queryRaw<Array<{ table_name: string }>>`SELECT table_name FROM information_schema.columns WHERE table_schema = 'public' AND column_name = 'tenantId'`
+    ).map((r) => r.table_name);
+    expect(tenantTables.length).toBeGreaterThan(100);
     // Platform-level tables that hold a tenantId for the Dev console only (never read under a city session).
     // WebAuthnChallenge is used before anyone is signed in (no city session yet); it holds
     // only single-use random challenges that expire within minutes.

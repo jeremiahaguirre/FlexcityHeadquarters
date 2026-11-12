@@ -4,7 +4,7 @@
  * scopes it to that one organization.
  */
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
@@ -19,7 +19,7 @@ import { setManagers } from '../../services/people/reporting.js';
 import { createPool, poolDetailsBody, poolDetailsView, updatePool } from '../../services/ops/pools.js';
 import { CUSTOM_ROLE_PERMISSIONS, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../../services/people/customRoles.js';
 import { forgetTenantLookup, h } from '../context.js';
-import type { AccessRole } from '@prisma/client';
+import type { AccessRole } from '../../generated/prisma/client.js';
 import { MENU } from '../../auth/menu.js';
 import { PERMISSIONS, type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
 import { parseOverrides, rolePermissions, setMenu, setPermission, type RoleOverrides } from '../../services/platform/roleOverrides.js';

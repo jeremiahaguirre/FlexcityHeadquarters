@@ -7,7 +7,7 @@
  * manager only their departments (and, for reviews, only the ones they
  * conduct); everyone sees their own.
  */
-import type { Prisma, TimeOffType } from '@prisma/client';
+import type { Prisma, TimeOffType } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { type AuthContext, authOf, requireFeature, requirePermission } from '../auth/middleware.js';

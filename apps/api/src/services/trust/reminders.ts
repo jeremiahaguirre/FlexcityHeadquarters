@@ -4,7 +4,7 @@
  * Each (item, due date, offset) is sent once (TrustReminder), so a recurring commitment reminds
  * again for its next due date, and several workers never send twice.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { maskEmail } from '../../lib/log.js';
 import type { Mailer } from '../notifications/mailer.js';

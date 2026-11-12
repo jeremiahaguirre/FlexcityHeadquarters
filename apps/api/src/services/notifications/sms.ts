@@ -8,7 +8,7 @@
  * little personal information as the alert needs. Calls read the same words
  * twice. Bodies are rendered when sent; the params are dropped afterwards.
  */
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { tenantIds, withTenant } from '../../lib/db.js';
 import { captureError } from '../../lib/errorReporter.js';

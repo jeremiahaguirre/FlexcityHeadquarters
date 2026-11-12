@@ -19,7 +19,7 @@
  *    (overtime they carried comes off the ledger); anything published since is kept and counted.
  *  - optionally (organization setting, default off) the worker keeps each template's next N weeks drafted.
  */
-import type { Prisma, Province } from '@prisma/client';
+import type { Prisma, Province } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit } from '../../lib/db.js';

@@ -5,7 +5,7 @@
  * Out-of-radius or low-accuracy punches are flagged for review, never rejected,
  * and location is captured only at the moment of the punch (no tracking).
  */
-import type { PunchLocationStatus } from '@prisma/client';
+import type { PunchLocationStatus } from '../../generated/prisma/client.js';
 
 const EARTH_RADIUS_M = 6_371_008.8;
 

@@ -1,5 +1,5 @@
 /** Job postings: managed by HR, shown on the organization's public careers page. */
-import type { JobPosting } from '@prisma/client';
+import type { JobPosting } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { workAge } from '../services/legal/ages.js';

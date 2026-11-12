@@ -1,13 +1,17 @@
 /**
  * Database URLs are written once, in the standard libpq form that `pg` understands and verifies:
  *   ...?sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem
- * Prisma's engine doesn't understand verify-full (it would quietly fall back to "prefer" with no
- * certificate check) and ignores sslrootcert, so Prisma gets the same URL translated to its own
- * spelling: sslmode=require, sslcert=<the CA file> (in Prisma, sslcert is the server's CA) and
- * sslaccept=strict (check the chain and the host name).
+ * The app (Prisma 7 through the pg driver adapter, lib/prismaClient.ts), LISTEN and the Union Hub
+ * all connect with pg, which reads that URL as it is.
  *
- * scripts/prisma-url.mjs is the same function for the plain-JavaScript scripts; a test keeps the
- * two identical.
+ * Only the Prisma CLI's schema engine (`prisma migrate`, via prisma.config.ts) still needs Prisma's
+ * own spelling: it doesn't understand verify-full (it would quietly fall back to "prefer" with no
+ * certificate check) and ignores sslrootcert, so it gets the same URL translated: sslmode=require,
+ * sslcert=<the CA file> (in Prisma, sslcert is the server's CA) and sslaccept=strict (check the
+ * chain and the host name).
+ *
+ * scripts/prisma-url.mjs is the same function for prisma.config.ts and the plain-JavaScript
+ * scripts; a test keeps the two identical.
  */
 export function prismaUrl(url: string): string {
   const u = new URL(url);

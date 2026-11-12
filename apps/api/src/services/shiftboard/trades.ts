@@ -7,7 +7,7 @@
  * checked again and swapped together with a compare-and-set on each shift's
  * version, so a trade never half-happens and never undoes someone else's change.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { evaluateCandidate } from '../scheduling/eligibility.js';

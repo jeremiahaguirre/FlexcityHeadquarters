@@ -7,7 +7,7 @@
  *   Each record has a client id: a retried upload is a no-op, and when the same
  *   swimmer/session was recorded twice, the latest tap wins.
  */
-import type { AttendanceStatus, LessonClass } from '@prisma/client';
+import type { AttendanceStatus, LessonClass } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { addDays, dayOfWeek, localIso, startOfLocalDay } from '../../lib/time.js';
 import type { Scope } from '../people/customRoles.js';

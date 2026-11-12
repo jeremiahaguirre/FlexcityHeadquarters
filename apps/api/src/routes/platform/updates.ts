@@ -7,7 +7,7 @@
  * withdrawing one also need a passkey confirmation from the last 10 minutes. Every change is in the
  * Dev console's audit log.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { type NextFunction, type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';

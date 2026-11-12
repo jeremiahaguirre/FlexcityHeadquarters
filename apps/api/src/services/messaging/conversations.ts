@@ -24,7 +24,7 @@
  *   a read receipt tells the other members only "receipts" (an open conversation's "seen by").
  */
 import { randomUUID } from 'node:crypto';
-import type { Conversation, ConversationKind } from '@prisma/client';
+import type { Conversation, ConversationKind } from '../../generated/prisma/client.js';
 import type { AuthContext } from '../../auth/middleware.js';
 import { announceChangeTo } from '../../lib/changes.js';
 import { allow } from '../../auth/rateLimit.js';

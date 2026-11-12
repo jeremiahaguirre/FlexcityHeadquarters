@@ -17,7 +17,7 @@
  */
 import { type NextFunction, type Request, type Response, Router } from 'express';
 import { z } from 'zod';
-import type { EmploymentStatus, TimeOffType } from '@prisma/client';
+import type { EmploymentStatus, TimeOffType } from '../generated/prisma/client.js';
 import type { AuthContext } from '../auth/middleware.js';
 import { databaseConsume } from '../auth/rateLimit.js';
 import { rateLimited } from '../lib/metrics.js';

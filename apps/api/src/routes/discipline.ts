@@ -2,7 +2,7 @@
  * Discipline records: a supervisor issues one with its evidence; the person reads it, signs to
  * acknowledge it and can add their own response.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { RECENT_AUTH_MS, authOf, requirePermission } from '../auth/middleware.js';

@@ -7,7 +7,7 @@
  * NOT YET REVIEWED by counsel (verified: false), like the other rule tables:
  * confirm each against the board's current requirements before relying on it.
  */
-import type { Province } from '@prisma/client';
+import type { Province } from '../../generated/prisma/client.js';
 
 export interface BoardRule { board: string; form: string; days: number; businessDays: boolean; verified: boolean }
 

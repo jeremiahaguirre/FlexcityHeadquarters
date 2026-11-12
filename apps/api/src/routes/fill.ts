@@ -1,5 +1,5 @@
 /** "Fill the schedule" (whole-horizon solver), its settings, and the availability planning window. */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';

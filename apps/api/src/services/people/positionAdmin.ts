@@ -3,7 +3,7 @@
  * one set of rules (a unique name, known certifications and department, each organization's own
  * external id) wherever the change comes from.
  */
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import type { Tx } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';

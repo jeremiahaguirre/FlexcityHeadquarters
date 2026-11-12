@@ -26,7 +26,8 @@ export default async function setup() {
   await admin.query('DROP SCHEMA IF EXISTS union_hub CASCADE');
   await admin.end();
 
-  execSync('npx prisma migrate reset --force --skip-seed --skip-generate', { stdio: 'pipe', env: process.env });
+  // Prisma 7's reset neither seeds nor generates (the --skip-* flags are gone); the URL comes from prisma.config.ts.
+  execSync('npx prisma migrate reset --force', { stdio: 'pipe', env: process.env });
 
   const c = new pg.Client({ connectionString: url });
   await c.connect();

@@ -15,7 +15,7 @@
  * The full account number is sealed with the organization's key; FH opens it
  * only to write the bank file.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { billingContact, config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';

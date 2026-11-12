@@ -22,7 +22,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import http from 'node:http';
 import https from 'node:https';
 import { isIP } from 'node:net';
-import type { Prisma, PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { audit, db, type Tx, withTenant } from '../../lib/db.js';
 import { assertPublicUrl } from '../../lib/egress.js';

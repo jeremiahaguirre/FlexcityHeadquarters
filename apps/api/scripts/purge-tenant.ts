@@ -4,8 +4,7 @@
  *
  * Uses the database owner (DATABASE_URL, or the migration task's DB_* settings). Logged in the platform audit log.
  */
-import { PrismaClient } from '@prisma/client';
-import { prismaUrl } from '../src/lib/dbUrl.js';
+import { createPrismaClient } from '../src/lib/prismaClient.js';
 import { purgePlan, purgeTenant } from '../src/services/platform/purge.js';
 // @ts-expect-error a plain JavaScript module without types, shared with the migration scripts
 import { ownerUrl } from './owner-url.mjs';
@@ -20,7 +19,7 @@ try {
   console.error((e as Error).message);
   process.exit(1);
 }
-const owner = new PrismaClient({ datasources: { db: { url: prismaUrl(url) } } });
+const owner = createPrismaClient(url); // libpq URL: pg verifies sslmode=verify-full itself
 (async () => {
   if (!sub) throw new Error('Give the organization’s address (subdomain).');
   const t = await owner.tenant.findUnique({ where: { subdomain: sub } });

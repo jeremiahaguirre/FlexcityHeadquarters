@@ -3,7 +3,7 @@
  * takes the vehicle out of service until a supervisor records the repair; a
  * vehicle needs a passing inspection in the last 24 hours to be "ready".
  */
-import type { Vehicle, VehicleInspection } from '@prisma/client';
+import type { Vehicle, VehicleInspection } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';

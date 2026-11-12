@@ -4,7 +4,7 @@
  * Children's records hold only what's needed: name, birth date, a short safety
  * note for the instructor, and the guardians' contacts.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';

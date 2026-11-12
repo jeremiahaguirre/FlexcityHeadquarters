@@ -7,7 +7,7 @@
  * then PAID once the deposit file has gone to the bank.
  */
 import { createHash } from 'node:crypto';
-import type { Prisma, Province } from '@prisma/client';
+import type { Prisma, Province } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { addDays } from '../../lib/time.js';

@@ -6,7 +6,7 @@
  *  - TWO_PERSON: a never-alone shift with stretches where no second qualified person overlaps.
  *    n = [hours alone].
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { localDate } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';

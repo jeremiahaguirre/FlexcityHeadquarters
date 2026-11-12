@@ -9,7 +9,7 @@
  * HR too, by email. "I need help" alerts everyone at once.
  */
 import { announceChange } from '../../lib/changes.js';
-import type { LoneWorkSession, Prisma } from '@prisma/client';
+import type { LoneWorkSession, Prisma } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { notify, usersWithPermission } from '../notifications/notifier.js';
 import { onCallForWorker } from '../scheduling/onCall.js';

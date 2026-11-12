@@ -2,7 +2,7 @@
  * Email delivery from the outbox. Templates are bilingual; the recipient's
  * locale picks the language.
  */
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { tenantIds, withTenant } from '../../lib/db.js';
 import { maskEmail } from '../../lib/log.js';
 import { emailHtml } from './emailHtml.js';

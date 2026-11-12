@@ -1,5 +1,5 @@
 /** Organization settings (HR administrators): facilities, pay codes, rule overrides, retention, sign-in rules and more. */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';

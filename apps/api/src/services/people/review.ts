@@ -14,7 +14,7 @@
  *  - Commendations are shown alongside concerns, so the file is balanced.
  *  - Each flag says exactly which facts raised it.
  */
-import type { ConductCategory, DisciplineLevel, ReliabilityEventType } from '@prisma/client';
+import type { ConductCategory, DisciplineLevel, ReliabilityEventType } from '../../generated/prisma/client.js';
 
 export const LEVELS: DisciplineLevel[] = ['COACHING', 'VERBAL_WARNING', 'WRITTEN_WARNING', 'FINAL_WARNING', 'SUSPENSION', 'TERMINATION'];
 /** Records older than this no longer count toward the next step (common "sunset" in agreements). */

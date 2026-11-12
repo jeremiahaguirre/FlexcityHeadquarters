@@ -6,7 +6,7 @@
  * approved time off); the pure evaluator then makes the final decision and
  * explains every rejection.
  */
-import type { Prisma, Province } from '@prisma/client';
+import type { Prisma, Province } from '../../generated/prisma/client.js';
 import { dec } from '../../lib/money.js';
 import type { Tx } from '../../lib/db.js';
 import { localDate } from '../../lib/time.js';

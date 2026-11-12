@@ -1,5 +1,5 @@
 /** Overtime equalization: standings, call-out records, the pre-assignment check and the city's policy. */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';

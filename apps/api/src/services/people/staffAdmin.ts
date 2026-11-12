@@ -8,7 +8,7 @@
  * - Ending someone's employment never deletes them: offboarding records the last day and HR
  *   finishes its checklist; the record and its history stay.
  */
-import type { AccessRole, EmploymentStatus, Prisma, UserStatus } from '@prisma/client';
+import type { AccessRole, EmploymentStatus, Prisma, UserStatus } from '../../generated/prisma/client.js';
 import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import type { AuthContext } from '../../auth/middleware.js';
 import { permissionsFor } from '../../auth/permissions.js';

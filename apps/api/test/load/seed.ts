@@ -8,13 +8,13 @@
  */
 import { randomUUID } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/lib/prismaClient.js';
 import { CONSENT_VERSION } from '../../src/services/privacy/consent.js';
 
 const args = Object.fromEntries(process.argv.slice(2).reduce<string[][]>((a, v, i, all) => (v.startsWith('--') ? [...a, [v.slice(2), all[i + 1] ?? '']] : a), []));
 const BIG = Number(args.cities ?? 30);
 const WORKERS = Number(args.workers ?? 300);
-const owner = new PrismaClient();
+const owner = createPrismaClient(process.env.DATABASE_URL!);
 const PERIOD = '2026-03-02'; // two weeks of history to pay
 const day = (n: number) => new Date(Date.UTC(2026, 2, 2 + n));
 

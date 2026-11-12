@@ -2,7 +2,7 @@
  * Posture: every control's status (from the latest test results, evidence and manual states),
  * framework readiness, the overall score, the dashboard's counts, and snapshots over time.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { CONTROLS, FRAMEWORKS, type FrameworkKey } from './library.js';
 import { controlStatus, frameworkReadiness, postureScore, riskLevel, riskScore, vendorRisk, type ControlStatus, type TestStatus } from './scoring.js';
 

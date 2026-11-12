@@ -1,4 +1,4 @@
-import type { AccessRole } from '@prisma/client';
+import type { AccessRole } from '../generated/prisma/client.js';
 
 /**
  * Permission matrix. Routes check permissions, never role names, so the matrix

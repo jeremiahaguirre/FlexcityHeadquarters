@@ -4,7 +4,7 @@
  */
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError, type ZodIssue } from 'zod';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../generated/prisma/client.js';
 import { type Tx, withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { type ApiScope, SCOPE_FEATURES } from '../services/integrations/apiKeys.js';

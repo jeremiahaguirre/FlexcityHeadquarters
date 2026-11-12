@@ -1,5 +1,5 @@
 /** Care after critical incidents: check-ins for leads, and the employee's own options. */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';

@@ -25,7 +25,7 @@
  * (docs/COMPLIANCE.md). Section numbers marked "verify" are our reading of the
  * consolidation and should be checked against the current text.
  */
-import type { Province } from '@prisma/client';
+import type { Province } from '../../generated/prisma/client.js';
 import type { HolidayKey, Jurisdiction } from './statHolidays.js';
 
 /** SUBSTITUTE: another day off with holiday pay. PAY: holiday pay for the day, no extra day off. NONE: nothing owed. */

@@ -4,7 +4,7 @@
  * season of lessons, a club session, a camp) out of sets on any pattern, and
  * publish it for member services.
  */
-import type { LessonClass } from '@prisma/client';
+import type { LessonClass } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';

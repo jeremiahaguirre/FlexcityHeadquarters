@@ -2,7 +2,7 @@
  * Who is asking and what they may do: requireAuth builds the AuthContext (roles, permissions after
  * feature switches and overrides, department scope), and the require* guards check it per route.
  */
-import type { AccessRole } from '@prisma/client';
+import type { AccessRole } from '../generated/prisma/client.js';
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';

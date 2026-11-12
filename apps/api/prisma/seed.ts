@@ -5,13 +5,13 @@
  * Pool thresholds below are PLACEHOLDERS for local development only — real
  * values must come from the facility's operating permit / provincial regulation.
  */
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/lib/prismaClient.js';
 import { hashPassword } from '../src/auth/tokens.js';
 import { seedCityWorkers } from './seedCityWorkers.js';
 import { seedNewScreens } from './seedNewScreens.js';
 import { seedStatHolidays, seedYears } from '../src/services/payroll/statHolidays.js';
 
-const prisma = new PrismaClient(); // owner connection (DATABASE_URL)
+const prisma = createPrismaClient(process.env.DATABASE_URL!); // owner connection (DATABASE_URL)
 
 async function main() {
   // FH Dev console account (dev only). Production accounts: npm run platform:admin.

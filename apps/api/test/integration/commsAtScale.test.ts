@@ -149,12 +149,19 @@ describe('send limits with the shared (database) limiter', () => {
 
 describe('the shared limiter waits for a connection like a request', () => {
   it('its transaction asks for DB_POOL_TIMEOUT_S, not Prisma’s 2 s', async () => {
-    const spy = vi.spyOn(db(), '$transaction');
+    // Prisma 7's client defines $transaction in a way vi.spyOn can't wrap (the spy returns
+    // undefined), so the call is observed by hand and the original put back.
+    const client = db();
+    const own = Object.getOwnPropertyDescriptor(client, '$transaction');
+    const original = client.$transaction.bind(client) as (...args: unknown[]) => unknown;
+    const calls: unknown[][] = [];
+    Object.defineProperty(client, '$transaction', { configurable: true, writable: true, value: (...args: unknown[]) => (calls.push(args), original(...args)) });
     try {
       expect(await databaseAllow(`scale-wait:${Date.now()}`, 5, 60_000)).toBe(true);
-      expect(spy.mock.calls[0]?.[1]).toMatchObject({ maxWait: config().DB_POOL_TIMEOUT_S * 1000 });
+      expect(calls[0]?.[1]).toMatchObject({ maxWait: config().DB_POOL_TIMEOUT_S * 1000 });
     } finally {
-      spy.mockRestore();
+      if (own) Object.defineProperty(client, '$transaction', own);
+      else delete (client as unknown as Record<string, unknown>).$transaction;
     }
   });
 });

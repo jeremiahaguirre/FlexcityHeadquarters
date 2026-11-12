@@ -46,8 +46,10 @@ jobs:
       - name: Check migrations match the schema
         run: |
           psql postgresql://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE flexcity_shadow'
-          npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma \
-            --shadow-database-url postgresql://postgres:postgres@localhost:5432/flexcity_shadow --exit-code
+          npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code
+        env:
+          # Prisma 7: the shadow database comes from prisma.config.ts (no --shadow-database-url flag).
+          SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/flexcity_shadow
       - run: npm run test:integration
 
   site:

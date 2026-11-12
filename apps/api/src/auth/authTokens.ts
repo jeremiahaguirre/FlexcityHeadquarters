@@ -3,7 +3,7 @@
  * text-message check). Only a hash is stored; each purpose has its own lifetime.
  */
 import { createHash, randomBytes } from 'node:crypto';
-import type { AuthTokenPurpose } from '@prisma/client';
+import type { AuthTokenPurpose } from '../generated/prisma/client.js';
 import { config } from '../config.js';
 import type { Tx } from '../lib/db.js';
 

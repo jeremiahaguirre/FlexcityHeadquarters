@@ -6,7 +6,7 @@
  * a lock screen is deliberately short: for sensitive kinds (discipline, care, accommodation,
  * banking, documents) only "You have a new message", never details.
  */
-import { Prisma, type Notification, type PushSubscription } from '@prisma/client';
+import { Prisma, type Notification, type PushSubscription } from '../../generated/prisma/client.js';
 import webpush from 'web-push';
 import { config } from '../../config.js';
 import type { Tx } from '../../lib/db.js';

@@ -9,7 +9,7 @@
  *   redirecting pay).
  * - The employee is told about every change to where their pay goes.
  */
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { HttpError, badRequest, forbidden, notFound } from '../../lib/errors.js';
 import { keys, tenantKekId } from '../../routes/context.js';

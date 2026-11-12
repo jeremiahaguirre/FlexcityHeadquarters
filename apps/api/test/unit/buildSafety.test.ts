@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => {
     const p = join(dir, f);
+    if (f === 'generated') return []; // Prisma's generated client, not our code
     return statSync(p).isDirectory() ? files(p) : p.endsWith('.ts') ? [p] : [];
   });
 }

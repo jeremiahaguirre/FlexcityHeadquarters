@@ -2,7 +2,7 @@
  * FH's invoices to organizations: drafts from the subscription, sent with a
  * sequential number, paid by recorded payments. Amounts are whole cents (CAD).
  */
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { appUrl } from '../../auth/authTokens.js';
 import { billingContact, config } from '../../config.js';

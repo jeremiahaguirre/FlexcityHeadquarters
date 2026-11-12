@@ -8,7 +8,7 @@
  *
  * Run by FH operations with the database owner's connection (npm run tenant:purge).
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { ident, qualified } from '../../lib/sqlIdent.js';
 
 /** FH's records about the customer, kept after offboarding (CRA: six years from the end of the tax year). */

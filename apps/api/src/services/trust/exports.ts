@@ -6,7 +6,7 @@
  * - the posture summary for a customer: a one-page PDF or a CSV with readiness bands and the
  *   controls in place, never failing-test details, risks or other customers' commitments.
  */
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import { strToU8, zipSync } from 'fflate';
 import PDFDocument from 'pdfkit';
 import { config } from '../../config.js';

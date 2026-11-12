@@ -8,7 +8,7 @@
  * only that they were seen, when, by whom and when they expire — never the
  * result, the document or a SIN.
  */
-import type { OnboardingKind, OnboardingOwner } from '@prisma/client';
+import type { OnboardingKind, OnboardingOwner } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { badRequest, forbidden, notFound } from '../../lib/errors.js';
 

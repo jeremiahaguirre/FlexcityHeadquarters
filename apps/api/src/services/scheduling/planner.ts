@@ -13,7 +13,7 @@
  * anyone outside the person's scope, and every other shift those people have in any department,
  * so no one is double-booked across departments.
  */
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { DateTime } from 'luxon';
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit } from '../../lib/db.js';

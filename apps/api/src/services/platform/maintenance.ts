@@ -8,7 +8,7 @@
  *   a retry never repeats them.
  * Live: scheduling, changing or cancelling one updates open screens at once ('updates' topic).
  */
-import type { MaintenanceWindow, PrismaClient } from '@prisma/client';
+import type { MaintenanceWindow, PrismaClient } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { type Tx, db, tenantIds as allTenantIds, withTenant } from '../../lib/db.js';
 import { announceChange } from '../../lib/changes.js';

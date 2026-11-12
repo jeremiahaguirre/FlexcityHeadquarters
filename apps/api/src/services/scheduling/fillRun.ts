@@ -10,7 +10,7 @@
  * every other shift those people have — drafts and published, in any department — so a person
  * shared by two departments is never double-booked.
  */
-import type { Prisma, Province } from '@prisma/client';
+import type { Prisma, Province } from '../../generated/prisma/client.js';
 import { DateTime } from 'luxon';
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../../lib/db.js';

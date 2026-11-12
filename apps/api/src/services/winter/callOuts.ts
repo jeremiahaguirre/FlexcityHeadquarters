@@ -7,7 +7,7 @@
  *   phone (a supervisor records it); no answer moves to the next person;
  * - every acceptance, refusal and non-answer goes on the overtime ledger.
  */
-import type { CallOut, CallOutContact } from '@prisma/client';
+import type { CallOut, CallOutContact } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { conflict, notFound } from '../../lib/errors.js';
 import { notify } from '../notifications/notifier.js';
