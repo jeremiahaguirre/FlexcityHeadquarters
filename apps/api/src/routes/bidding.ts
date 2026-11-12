@@ -50,7 +50,7 @@ async function itemsView(tx: Tx, items: RoundRow['items']) {
   });
 }
 
-const roundHead = (r: Pick<RoundRow, 'id' | 'name' | 'kind' | 'status' | 'opensAt' | 'closesAt' | 'maxAwardsPerPerson' | 'seniorityBasis' | 'rangeFrom' | 'rangeTo'>) => ({
+const roundHead = (r: Pick<RoundRow, 'id' | 'name' | 'kind' | 'status' | 'opensAt' | 'closesAt' | 'maxAwardsPerPerson' | 'seniorityBasis' | 'awardOrder' | 'rangeFrom' | 'rangeTo'>) => ({
   id: r.id,
   name: r.name,
   kind: r.kind,
@@ -59,6 +59,7 @@ const roundHead = (r: Pick<RoundRow, 'id' | 'name' | 'kind' | 'status' | 'opensA
   closesAt: r.closesAt.toISOString(),
   maxAwardsPerPerson: r.maxAwardsPerPerson,
   seniorityBasis: r.seniorityBasis,
+  awardOrder: r.awardOrder,
   rangeFrom: iso(r.rangeFrom),
   rangeTo: iso(r.rangeTo),
 });
@@ -136,6 +137,7 @@ biddingRouter.get(
           canManage: a.permissions.has('bidding.manage'),
           canConfigure: a.permissions.has('bidding.manage') && a.permissions.has('tenant.configure'),
           seniorityBasis: parseSolverSettings(t.overtimePolicy).bidSeniorityBasis,
+          awardOrder: parseSolverSettings(t.overtimePolicy).bidAwardOrder,
         };
       }),
     );
@@ -154,7 +156,7 @@ biddingRouter.get(
         const positions = await tx.position.findMany({ where: { id: { in: departments.flatMap((d) => d.positionIds) } }, select: { id: true, name: true, nameFr: true, departmentId: true }, orderBy: { name: 'asc' } });
         const templates = (await visibleTemplates(tx, a)).filter((t) => t.active).map((t) => ({ id: t.id, name: t.name, validFrom: iso(t.validFrom), validTo: iso(t.validTo), positionIds: [...new Set(t.slots.map((s) => s.positionId))] }));
         const t = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } });
-        return { departments: departments.map((d) => ({ id: d.id, name: d.name, nameFr: d.nameFr, useSeniority: d.useSeniority })), positions, templates, seniorityBasis: parseSolverSettings(t.overtimePolicy).bidSeniorityBasis };
+        return { departments: departments.map((d) => ({ id: d.id, name: d.name, nameFr: d.nameFr, useSeniority: d.useSeniority })), positions, templates, seniorityBasis: parseSolverSettings(t.overtimePolicy).bidSeniorityBasis, awardOrder: parseSolverSettings(t.overtimePolicy).bidAwardOrder };
       }),
     );
   }),
@@ -243,20 +245,22 @@ biddingRouter.post(
   }),
 );
 
-/** The organization's default seniority basis for bidding (each round can set its own). */
+/** The organization's defaults for bidding: seniority basis and award order (each round can set its own). Either or both. */
 biddingRouter.put(
   '/bids/settings',
   requirePermission('bidding.manage', 'tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
-    const { seniorityBasis } = z.object({ seniorityBasis: z.enum(['DATE', 'HOURS']) }).parse(req.body);
-    await withTenant(a.tenantId, async (tx) => {
+    const b = z.object({ seniorityBasis: z.enum(['DATE', 'HOURS']), awardOrder: z.enum(['ROUND_ROBIN', 'SENIOR_FIRST']) }).partial().parse(req.body);
+    const out = await withTenant(a.tenantId, async (tx) => {
       const t = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } });
       const s = parseSolverSettings(t.overtimePolicy);
-      await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: withSolverSettings(t.overtimePolicy, { ...s, bidSeniorityBasis: seniorityBasis }) as Prisma.InputJsonValue } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'bid.settings', entity: 'Tenant', entityId: a.tenantId, before: { seniorityBasis: s.bidSeniorityBasis }, after: { seniorityBasis } });
+      const next = { ...s, bidSeniorityBasis: b.seniorityBasis ?? s.bidSeniorityBasis, bidAwardOrder: b.awardOrder ?? s.bidAwardOrder };
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: withSolverSettings(t.overtimePolicy, next) as Prisma.InputJsonValue } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'bid.settings', entity: 'Tenant', entityId: a.tenantId, before: { seniorityBasis: s.bidSeniorityBasis, awardOrder: s.bidAwardOrder }, after: { seniorityBasis: next.bidSeniorityBasis, awardOrder: next.bidAwardOrder } });
       await announceChange(tx, a.tenantId, 'bids');
+      return { seniorityBasis: next.bidSeniorityBasis, awardOrder: next.bidAwardOrder };
     });
-    res.json({ seniorityBasis });
+    res.json(out);
   }),
 );

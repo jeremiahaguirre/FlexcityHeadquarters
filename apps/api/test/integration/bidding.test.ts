@@ -194,3 +194,62 @@ describe('a round, start to finish', () => {
     expect((await call(tok.sup).post(`/api/bids/rounds/${r.body.id}/cancel`)).status).toBe(200);
   });
 });
+
+describe('award order: one at a time, or most senior first takes all', () => {
+  const more: string[] = [];
+  const g0 = () => t.users[0]!.id;
+  const g2 = () => t.users[2]!.id;
+  async function runRound(extra: object) {
+    const r = await call(tok.sup).post('/api/bids/rounds', { ...roundBody(), name: 'Week three, part two', shiftIds: more, maxAwardsPerPerson: 2, ...extra });
+    expect(r.status).toBe(201);
+    const its = (await call(tok.g2).get('/api/me/bids')).body.find((x: { id: string }) => x.id === r.body.id).items as Array<{ id: string; localStartsAt: string }>;
+    const [D, E, F] = [...its].sort((a, b) => a.localStartsAt.localeCompare(b.localStartsAt)).map((i) => i.id);
+    await call(tok.g0).put(`/api/me/bids/${r.body.id}/choices`, { itemIds: [D, E] });
+    await call(tok.g2).put(`/api/me/bids/${r.body.id}/choices`, { itemIds: [D, E, F] });
+    await owner.bidRound.update({ where: { id: r.body.id }, data: { closesAt: new Date(Date.now() - 1000) } });
+    await withTenant(t.tenant.id, (tx) => bidRoundTick(tx));
+    const d = (await call(tok.sup).get(`/api/bids/rounds/${r.body.id}`)).body;
+    const byItem = (x: string) => d.awards.find((a: { itemId: string }) => a.itemId === x)?.userId ?? null;
+    return { id: r.body.id as string, d, got: [byItem(D!), byItem(E!), byItem(F!)] };
+  }
+  beforeAll(async () => {
+    for (const day of [3, 4, 5]) more.push((await owner.shift.create({ data: { tenantId: t.tenant.id, facilityId: t.facility.id, positionId: t.position.id, startsAt: at(day, 9), endsAt: at(day, 15), status: 'DRAFT' } })).id);
+  });
+
+  it('the organization default is one at a time; only someone who configures the organization changes it', async () => {
+    const list = (await call(tok.sup).get('/api/bids/rounds')).body;
+    expect(list.awardOrder).toBe('ROUND_ROBIN');
+    expect((await call(tok.sup).put('/api/bids/settings', { awardOrder: 'SENIOR_FIRST' })).status).toBe(403);
+  });
+
+  it('one at a time: the junior gets the second shift before the senior’s second pick', async () => {
+    const r = await runRound({});
+    expect(r.d.awardOrder).toBe('ROUND_ROBIN');
+    expect(r.got).toEqual([g0(), g2(), g2()]);
+    const senior = r.d.order.find((e: { userId: string }) => e.userId === g0());
+    expect(senior.outcomes[1]).toMatchObject({ result: 'TAKEN_EARLIER_PASS', pass: 1 });
+    expect((await call(tok.sup).post(`/api/bids/rounds/${r.id}/cancel`)).status).toBe(200);
+  });
+
+  it('most senior first (the organization’s default here): the senior takes both, the junior what’s left; stewards see the order', async () => {
+    const tenant = await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id } });
+    const policy = (tenant.overtimePolicy ?? {}) as { solver?: object };
+    await owner.tenant.update({ where: { id: t.tenant.id }, data: { overtimePolicy: { ...policy, solver: { ...(policy.solver ?? {}), bidAwardOrder: 'SENIOR_FIRST' } } } });
+    expect((await call(tok.sup).get('/api/bids/options')).body.awardOrder).toBe('SENIOR_FIRST');
+    const r = await runRound({});
+    expect(r.d.awardOrder).toBe('SENIOR_FIRST');
+    expect(r.got).toEqual([g0(), g0(), g2()]);
+    const junior = r.d.order.find((e: { userId: string }) => e.userId === g2());
+    expect(junior.outcomes.map((o: { result: string }) => o.result)).toEqual(['TAKEN_BY_SENIOR', 'TAKEN_BY_SENIOR', 'AWARDED']);
+    const audit = await owner.auditLog.findFirst({ where: { tenantId: t.tenant.id, action: 'bid.round.create', entityId: r.id } });
+    expect(audit?.after).toMatchObject({ awardOrder: 'SENIOR_FIRST' });
+    const st = (await call(tok.steward).get(`/api/bids/rounds/${r.id}`)).body;
+    expect(st.awardOrder).toBe('SENIOR_FIRST');
+    expect((await call(tok.sup).post(`/api/bids/rounds/${r.id}/cancel`)).status).toBe(200);
+    // A round can still choose its own.
+    const own = await runRound({ awardOrder: 'ROUND_ROBIN' });
+    expect(own.got).toEqual([g0(), g2(), g2()]);
+    await call(tok.sup).post(`/api/bids/rounds/${own.id}/cancel`);
+    await owner.tenant.update({ where: { id: t.tenant.id }, data: { overtimePolicy: tenant.overtimePolicy ?? {} } });
+  });
+});

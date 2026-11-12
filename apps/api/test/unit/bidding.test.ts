@@ -59,6 +59,41 @@ describe('awards', () => {
     for (const [, list] of r.outcomes) for (const o of list) expect(o.result).toBeTruthy();
   });
 
+  describe('award order: round robin or most senior first takes all', () => {
+    // Both want x then y; the senior also wants z, the junior w. Two awards each.
+    const entrants = [{ userId: 's', choices: ['x', 'y', 'z'] }, { userId: 'j', choices: ['x', 'y', 'w'] }];
+    it('round robin (the default): one at a time, so the junior gets y before the senior’s second pick', () => {
+      const r = awardBids({ entrants, maxAwards: 2, check: ok });
+      expect(r.awards.map((a) => `${a.pass}:${a.userId}:${a.itemId}`)).toEqual(['1:s:x', '1:j:y', '2:s:z', '2:j:w']);
+      expect(r.outcomes.get('s')![1]).toEqual({ itemId: 'y', rank: 2, result: 'TAKEN_EARLIER_PASS', pass: 1 });
+      expect(awardBids({ entrants, maxAwards: 2, order: 'ROUND_ROBIN', check: ok }).awards).toEqual(r.awards);
+    });
+    it('most senior first: the senior takes x and y, then the junior gets what’s left', () => {
+      const r = awardBids({ entrants, maxAwards: 2, order: 'SENIOR_FIRST', check: ok });
+      expect(r.awards.map((a) => `${a.pass}:${a.userId}:${a.itemId}`)).toEqual(['1:s:x', '2:s:y', '1:j:w']);
+      expect(r.outcomes.get('s')).toEqual([
+        { itemId: 'x', rank: 1, result: 'AWARDED', pass: 1 },
+        { itemId: 'y', rank: 2, result: 'AWARDED', pass: 2 },
+        { itemId: 'z', rank: 3, result: 'LIMIT_REACHED' },
+      ]);
+      expect(r.outcomes.get('j')).toEqual([
+        { itemId: 'x', rank: 1, result: 'TAKEN_BY_SENIOR', pass: 1 },
+        { itemId: 'y', rank: 2, result: 'TAKEN_BY_SENIOR', pass: 2 },
+        { itemId: 'w', rank: 3, result: 'AWARDED', pass: 1 },
+      ]);
+    });
+    it('most senior first still checks each choice against what they already won', () => {
+      const check = (_u: string, item: string, won: readonly string[]) => (item === 'y' && won.includes('x') ? 'OVERLAPPING_SHIFT' : null);
+      const r = awardBids({ entrants, maxAwards: 2, order: 'SENIOR_FIRST', check });
+      expect(r.awards.map((a) => `${a.pass}:${a.userId}:${a.itemId}`)).toEqual(['1:s:x', '2:s:z', '1:j:y', '2:j:w']);
+      expect(r.outcomes.get('s')![1]).toEqual({ itemId: 'y', rank: 2, result: 'NOT_ELIGIBLE', code: 'OVERLAPPING_SHIFT' });
+    });
+    it('with one award each, both orders give the same result', () => {
+      const many = Array.from({ length: 6 }, (_, i) => ({ userId: `u${i}`, choices: ['a', 'b', 'c', 'd'].sort(() => (i % 2 ? 1 : -1)) }));
+      expect(awardBids({ entrants: many, maxAwards: 1, order: 'SENIOR_FIRST', check: ok })).toEqual(awardBids({ entrants: many, maxAwards: 1, check: ok }));
+    });
+  });
+
   it('someone who ranked nothing gets nothing; an empty round awards nothing', () => {
     expect(awardBids({ entrants: [{ userId: 'a', choices: [] }], maxAwards: 1, check: ok }).awards).toEqual([]);
     expect(awardBids({ entrants: [], maxAwards: 3, check: ok }).awards).toEqual([]);

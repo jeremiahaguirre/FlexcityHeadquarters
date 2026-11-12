@@ -14,9 +14,14 @@
  *    first); HOURS: hours, then date — then hire date (earliest first), then a recorded deterministic
  *    tie-break (SHA-256 of the round and the person, lowest first). The basis defaults to the
  *    organization's setting and can be set per round (collective agreements differ).
- *  - round robin: in pass 1 each person, most senior first, gets their highest-ranked choice still
- *    open that they can work; pass 2 gives a second award the same way, up to the round's maximum
- *    per person (configurable, default 1).
+ *  - award order (the organization's default, settable per round; collective agreements differ):
+ *    ROUND_ROBIN ("one at a time in seniority order", the default): in pass 1 each person, most
+ *    senior first, gets their highest-ranked choice still open that they can work; pass 2 gives a
+ *    second award the same way, up to the round's maximum per person (configurable, default 1).
+ *    SENIOR_FIRST ("most senior first takes all their awards"): the most senior person gets up to
+ *    the maximum of their ranked choices (highest first, each one they can work), then the next
+ *    person, and so on. An award's `pass` is then its number within that person's turn.
+ *    With a maximum of 1 the two orders give the same result.
  *  - "can work" is the Shift Board's check: evaluateCandidate() (position, certifications through
  *    the shift, onboarding, age and young-worker limits, time off, overlap, rest, daily/weekly rest,
  *    days in a row, hours a day, weekly caps, restrictions) against the person's other shifts plus
@@ -54,6 +59,7 @@ import { applyTemplate } from './shiftTemplates.js';
 import { effectiveSettings, parseSolverSettings } from './solverSettings.js';
 
 export type Basis = 'DATE' | 'HOURS';
+export type AwardOrder = 'ROUND_ROBIN' | 'SENIOR_FIRST';
 export type Outcome = 'AWARDED' | 'TAKEN_BY_SENIOR' | 'TAKEN_EARLIER_PASS' | 'NOT_ELIGIBLE' | 'LIMIT_REACHED' | 'OVERRIDDEN' | 'CHANGED';
 export interface ChoiceOutcome { itemId: string; rank: number | null; result: Outcome; code?: string; pass?: number }
 
@@ -79,6 +85,8 @@ export interface AwardInput {
   /** In seniority order, each with their ranked item ids (best first). */
   entrants: Array<{ userId: string; choices: string[] }>;
   maxAwards: number;
+  /** Round robin (default) or most senior first takes all their awards. */
+  order?: AwardOrder;
   /** null = can work it, given what they've won already in this round; else the rule's code. */
   check: (userId: string, itemId: string, won: readonly string[]) => string | null;
 }
@@ -87,14 +95,39 @@ export interface AwardResult {
   outcomes: Map<string, ChoiceOutcome[]>;
 }
 
-/** Round-robin seniority awarding (see the header). Pure and deterministic. */
+/** Seniority awarding, round robin or most senior first (see the header). Pure and deterministic. */
 export function awardBids(input: AwardInput): AwardResult {
   const takenBy = new Map<string, { userId: string; pass: number; order: number }>();
   const won = new Map<string, string[]>(input.entrants.map((e) => [e.userId, []]));
   const outcome = new Map<string, Map<string, ChoiceOutcome>>(input.entrants.map((e) => [e.userId, new Map()]));
   const awards: AwardResult['awards'] = [];
   const order = new Map(input.entrants.map((e, i) => [e.userId, i]));
-  for (let pass = 1; pass <= input.maxAwards; pass++) {
+  if (input.order === 'SENIOR_FIRST') {
+    // Each person's whole turn, most senior first: everything taken before them was taken by someone more senior.
+    for (const e of input.entrants) {
+      const mine = won.get(e.userId)!;
+      const out = outcome.get(e.userId)!;
+      for (const [i, itemId] of e.choices.entries()) {
+        if (mine.length >= input.maxAwards) break;
+        const t = takenBy.get(itemId);
+        if (t) {
+          out.set(itemId, { itemId, rank: i + 1, result: 'TAKEN_BY_SENIOR', pass: t.pass });
+          continue;
+        }
+        const code = input.check(e.userId, itemId, mine);
+        if (code) {
+          out.set(itemId, { itemId, rank: i + 1, result: 'NOT_ELIGIBLE', code });
+          continue;
+        }
+        const pass = mine.length + 1;
+        takenBy.set(itemId, { userId: e.userId, pass, order: order.get(e.userId)! });
+        mine.push(itemId);
+        out.set(itemId, { itemId, rank: i + 1, result: 'AWARDED', pass });
+        awards.push({ itemId, userId: e.userId, pass, choiceRank: i + 1 });
+      }
+    }
+  }
+  for (let pass = 1; input.order !== 'SENIOR_FIRST' && pass <= input.maxAwards; pass++) {
     let any = false;
     for (const e of input.entrants) {
       const mine = won.get(e.userId)!;
@@ -175,6 +208,11 @@ export async function defaultBasis(tx: Tx): Promise<Basis> {
   return parseSolverSettings(t.overtimePolicy).bidSeniorityBasis;
 }
 
+export async function defaultAwardOrder(tx: Tx): Promise<AwardOrder> {
+  const t = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } });
+  return parseSolverSettings(t.overtimePolicy).bidAwardOrder;
+}
+
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const roundBody = z
   .object({
@@ -186,6 +224,8 @@ export const roundBody = z
     closesAt: z.coerce.date(),
     maxAwardsPerPerson: z.number().int().min(1).max(20).default(1),
     seniorityBasis: z.enum(['DATE', 'HOURS']).optional(),
+    /** Left out: the organization's default. */
+    awardOrder: z.enum(['ROUND_ROBIN', 'SENIOR_FIRST']).optional(),
     /** SHIFTS: these drafts, or every open draft of the positions in [from, to). */
     shiftIds: z.array(z.string().uuid()).max(500).optional(),
     /** LINES: the template, applied over [from, to) first (idempotent). */
@@ -226,6 +266,7 @@ export async function createRound(tx: Tx, a: AuthContext, b: RoundInput) {
   const departmentId = await assertPositions(tx, a, b.positionIds, b.departmentId);
   const busy = await shiftsInActiveRounds(tx);
   const basis = b.seniorityBasis ?? (await defaultBasis(tx));
+  const awardOrder = b.awardOrder ?? (await defaultAwardOrder(tx));
   type NewItem = { shiftIds: string[]; positionId: string; facilityId: string; first: Date; last: Date; meta: Prisma.InputJsonValue };
   let items: NewItem[] = [];
   if (b.kind === 'SHIFTS') {
@@ -256,6 +297,7 @@ export async function createRound(tx: Tx, a: AuthContext, b: RoundInput) {
       closesAt: b.closesAt,
       maxAwardsPerPerson: b.maxAwardsPerPerson,
       seniorityBasis: basis,
+      awardOrder,
       templateId: b.templateId ?? null,
       rangeFrom: b.from ? new Date(`${b.from}T00:00:00Z`) : null,
       rangeTo: b.to ? new Date(`${b.to}T00:00:00Z`) : null,
@@ -263,7 +305,7 @@ export async function createRound(tx: Tx, a: AuthContext, b: RoundInput) {
     },
   });
   await tx.bidItem.createMany({ data: items.map((i, k) => ({ tenantId: a.tenantId, roundId: round.id, shiftIds: i.shiftIds, positionId: i.positionId, facilityId: i.facilityId, firstStartsAt: i.first, lastEndsAt: i.last, meta: i.meta, sortOrder: k })) });
-  await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'bid.round.create', entity: 'BidRound', entityId: round.id, after: { name: b.name, kind: b.kind, items: items.length, opensAt: b.opensAt, closesAt: b.closesAt, maxAwardsPerPerson: b.maxAwardsPerPerson, seniorityBasis: basis } });
+  await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'bid.round.create', entity: 'BidRound', entityId: round.id, after: { name: b.name, kind: b.kind, items: items.length, opensAt: b.opensAt, closesAt: b.closesAt, maxAwardsPerPerson: b.maxAwardsPerPerson, seniorityBasis: basis, awardOrder } });
   await announceChange(tx, a.tenantId, 'bids');
   return round;
 }
@@ -362,7 +404,7 @@ export async function closeRound(tx: Tx, roundId: string, now = new Date()) {
     round.seniorityBasis,
   );
   const c = await checker(tx, round.items, standing.map((s) => s.userId));
-  const result = awardBids({ entrants: standing.map((s) => ({ userId: s.userId, choices: round.choices.filter((x) => x.userId === s.userId).map((x) => x.itemId) })), maxAwards: round.maxAwardsPerPerson, check: c.check });
+  const result = awardBids({ entrants: standing.map((s) => ({ userId: s.userId, choices: round.choices.filter((x) => x.userId === s.userId).map((x) => x.itemId) })), maxAwards: round.maxAwardsPerPerson, order: round.awardOrder, check: c.check });
   await tx.bidEntrant.deleteMany({ where: { roundId } });
   await tx.bidAward.deleteMany({ where: { roundId } });
   for (const [i, s] of standing.entries()) {
@@ -370,7 +412,7 @@ export async function closeRound(tx: Tx, roundId: string, now = new Date()) {
   }
   if (result.awards.length) await tx.bidAward.createMany({ data: result.awards.map((x) => ({ tenantId: round.tenantId, roundId, itemId: x.itemId, userId: x.userId, pass: x.pass, choiceRank: x.choiceRank })) });
   await tx.bidRound.update({ where: { id: roundId }, data: { status: 'REVIEW', closedAt: now } });
-  await audit(tx, { tenantId: round.tenantId, actorId: null, action: 'bid.round.close', entity: 'BidRound', entityId: roundId, after: { entrants: standing.length, awards: result.awards.length, items: round.items.length, basis: round.seniorityBasis } });
+  await audit(tx, { tenantId: round.tenantId, actorId: null, action: 'bid.round.close', entity: 'BidRound', entityId: roundId, after: { entrants: standing.length, awards: result.awards.length, items: round.items.length, basis: round.seniorityBasis, awardOrder: round.awardOrder } });
   // The round's creator (and whoever else can manage bids) is told the awards are ready to review.
   const managers = new Set([round.createdById, ...(await usersWithPermission(tx, round.tenantId, 'bidding.manage'))].filter((id) => id));
   await notify(tx, round.tenantId, [...managers].slice(0, 50).map((userId) => ({ userId, type: 'bid_round_review', params: { round: round.name }, link: `/manage/bids?round=${roundId}` })));

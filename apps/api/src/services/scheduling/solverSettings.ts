@@ -15,6 +15,7 @@
  *     holidayClosedFacilityIds,          // facilities closed on statutory holidays (forecast proposes nothing)
  *     templateAutoCreate,                // the worker keeps weekly shift templates' next weeks drafted (default off)
  *     bidSeniorityBasis,                 // shift bidding: 'DATE' (seniority date, then hours) or 'HOURS' (default DATE)
+ *     bidAwardOrder,                     // shift bidding: 'ROUND_ROBIN' (one at a time in seniority order, default) or 'SENIOR_FIRST'
  *     lastHorizonWeeks,                  // the last horizon someone ran (shown as a hint)
  *     departments: { [departmentId]: { planAheadWeeks?, weights?, toggles?, useSeniority?, targetHours?, limits?, federallyRegulated? } }
  *   }
@@ -78,6 +79,8 @@ export interface SolverSettings {
   templateAutoCreate: boolean;
   /** Shift bidding's default seniority basis (a round can set its own): date then hours, or hours then date. */
   bidSeniorityBasis: 'DATE' | 'HOURS';
+  /** One award at a time in seniority order (round robin), or the most senior takes all their awards first. */
+  bidAwardOrder: 'ROUND_ROBIN' | 'SENIOR_FIRST';
   departments: Record<string, DepartmentSolverSettings>;
 }
 
@@ -102,6 +105,7 @@ export const orgExtrasBody = z.object({
   holidayClosedFacilityIds: z.array(z.string().uuid()).max(500),
   templateAutoCreate: z.boolean(),
   bidSeniorityBasis: z.enum(['DATE', 'HOURS']),
+  bidAwardOrder: z.enum(['ROUND_ROBIN', 'SENIOR_FIRST']),
 }).partial();
 export const departmentBody = z.object({
   planAheadWeeks: horizonBody.optional(),
@@ -152,6 +156,7 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
     ...(s.holidayClosedFacilityIds !== undefined ? { holidayClosedFacilityIds: s.holidayClosedFacilityIds } : {}),
     ...(s.templateAutoCreate !== undefined ? { templateAutoCreate: s.templateAutoCreate } : {}),
     ...(s.bidSeniorityBasis !== undefined ? { bidSeniorityBasis: s.bidSeniorityBasis } : {}),
+    ...(s.bidAwardOrder !== undefined ? { bidAwardOrder: s.bidAwardOrder } : {}),
   });
   const x = extras.success ? extras.data : {};
   // An older stored 13 (before the weekly-rest cap) reads as 12.
@@ -171,6 +176,7 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
     holidayClosedFacilityIds: x.holidayClosedFacilityIds ?? [],
     templateAutoCreate: x.templateAutoCreate ?? false,
     bidSeniorityBasis: x.bidSeniorityBasis ?? 'DATE',
+    bidAwardOrder: x.bidAwardOrder ?? 'ROUND_ROBIN',
     departments,
   };
 }
