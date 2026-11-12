@@ -20,7 +20,7 @@ These are internal targets, to be confirmed by the drills below. They are not cu
 | --- | --- | --- |
 | Database | RDS Multi-AZ: a synchronous standby in a second zone; 35 days of point-in-time recovery | Automated backups and transaction logs, copied continuously, kept 14 days, encrypted with a Calgary key |
 | Organizations' encryption keys | KMS multi-region key per organization (created on first use) | A replica of each key with the same alias, so restored records can still be opened |
-| Platform key | KMS multi-region key | Replica, `alias/flexcity-platform` |
+| Platform key | KMS multi-region key | Replica, `alias/flexcity-platform` and `alias/flexcity-trust` (Trust evidence) |
 | App secret (database URLs, JWT secret, provider keys) | Secrets Manager | Replica (read-only until promoted) |
 | Container images | ECR | Copied on every push |
 | Backups bucket (dumps, archives) | S3, versioned, object-locked 35 days | Replicated, versioned, object-locked |

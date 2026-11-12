@@ -52,9 +52,10 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    ```bash
    docker build --target api -t <ecr api>:<tag> .
    docker build --target migrate -t <ecr migrate>:<tag> .
-   docker build --target web --build-arg API_URL=http://localhost:4000 --build-arg NEXT_PUBLIC_SITE_URL=https://www.<root_domain> -t <ecr web>:<tag> .
+   docker build --target web --build-arg NEXT_PUBLIC_RELEASE=<tag> --build-arg NEXT_PUBLIC_SITE_URL=https://www.<root_domain> -t <ecr web>:<tag> .
    ```
-   The load balancer sends `/api/*` straight to the API, so the web app's own `/api` rewrite (`API_URL`) is a fallback that production doesn't use.
+   `NEXT_PUBLIC_RELEASE` must be the same tag as `image_tag` (the API's `RELEASE`), or open pages keep seeing a "new version" (docs/RELEASES.md). Build from the committed tree (`git archive <tag> | docker build … -`) so nothing uncommitted gets in.
+   The load balancer sends `/api/*` straight to the API, so the web app's build-time `/api` rewrite is a fallback that production doesn't use. Its server-rendered pages (an organization's branding, its job postings) do call the API, at `API_URL` set in the web task (`http://api.<name>.internal:4000`, Cloud Map).
 5. **The app secret** (`<env>/app` in Secrets Manager, JSON). Write it from a secure workstation, never into Terraform or the repository:
 
    | Key | Value |
@@ -79,12 +80,12 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    ```
 7. **DNS.** Point `<root_domain>` and `*.<root_domain>` at the load balancer, and the site's host name at the CloudFront distribution (Route 53 alias records).
 8. **Marketing site.** Run `npm run build -w apps/site` with `NEXT_PUBLIC_SITE_URL` set, then `aws s3 sync apps/site/out s3://<site_bucket> --delete` and invalidate the distribution.
-9. **First Dev console administrator.** Run `npm run platform:admin` as a one-off task from the migration image with a command override; it uses the same owner connection.
+9. **First Dev console administrator.** Run `npm run platform:admin -- <email> "<name>"` (with `PLATFORM_ADMIN_PASSWORD`) as a one-off task from the migration image with a command override; it uses the same owner connection (`DB_*`), as does `npm run tenant:purge`.
 10. **Metrics.** Give the collector's security group as `metrics_collector_security_group`, so it can scrape `/metrics` on port 4000 (docs/MONITORING.md).
 
 ## Every deployment
 
-Push images tagged with the new commit, run the migration task, then apply with the new `image_tag`. ECS replaces tasks a few at a time, and the circuit breaker rolls back a deployment whose tasks don't become healthy.
+Push images tagged with the new commit (the web built with the same `NEXT_PUBLIC_RELEASE`), run the migration task, then apply with the new `image_tag`. Tasks stop gracefully on SIGTERM. A full rehearsal of all this on one machine: docs/INFRASTRUCTURE.md, "Production rehearsal". ECS replaces tasks a few at a time, and the circuit breaker rolls back a deployment whose tasks don't become healthy.
 
 ## What it does not create
 
