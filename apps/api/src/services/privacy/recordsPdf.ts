@@ -90,7 +90,7 @@ const HIDDEN = new Set(['tenantId', 'userId', 'id', 'positionId', 'facilityId', 
 const FR_FIELDS: Record<string, string> = {
   firstName: 'Prénom', lastName: 'Nom', email: 'Courriel', phone: 'Téléphone', locale: 'Langue', roles: 'Rôles', status: 'Statut',
   employmentStatus: 'Statut d’emploi', employeeNumber: 'Numéro d’employé', hireDate: 'Date d’embauche', seniorityDate: 'Date d’ancienneté',
-  seniorityHours: 'Heures d’ancienneté', dateOfBirth: 'Date de naissance', unionMember: 'Membre du syndicat', createdAt: 'Créé le', name: 'Nom',
+  seniorityHours: 'Heures d’ancienneté', dateOfBirth: 'Date de naissance', adultConfirmedAt: 'Majorité confirmée par les RH le', adultConfirmedNote: 'Comment la majorité a été confirmée', unionMember: 'Membre du syndicat', createdAt: 'Créé le', name: 'Nom',
   issueDate: 'Date de délivrance', expiryDate: 'Date d’expiration', verifiedAt: 'Vérifié le', hourlyRate: 'Taux horaire', effectiveFrom: 'En vigueur du',
   effectiveTo: 'En vigueur au', dayOfWeek: 'Jour de la semaine', startMinute: 'Minute de début', endMinute: 'Minute de fin', type: 'Type',
   startsAt: 'Début', endsAt: 'Fin', note: 'Note', decisionNote: 'Note de décision', decidedAt: 'Décidé le', clockIn: 'Arrivée', clockOut: 'Départ',

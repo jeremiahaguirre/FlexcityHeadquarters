@@ -20,6 +20,7 @@ import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { allOf, departmentFilter, departmentQuery, forget as forgetDepartmentScope } from '../services/people/departmentAdmin.js';
 import { positionBody, savePosition } from '../services/people/positionAdmin.js';
 import { createPerson, updatePerson } from '../services/people/staffAdmin.js';
+import { adultConfirmationView, confirmAdult, removeAdultConfirmation } from '../services/people/adultConfirmation.js';
 
 export const staffRouter = Router();
 const uuid = z.string().uuid();
@@ -354,6 +355,8 @@ staffRouter.get(
       // Police-check date and union membership: HR only (the steward rule is applied server-side).
       vscClearedDate: canSeePay ? iso(u.vscClearedDate) : null,
       dateOfBirth: canSeePay ? iso(u.dateOfBirth) : undefined,
+      // HR's confirmation that they are of the age of majority (for rules that need it without a birth date). HR only.
+      adultConfirmation: canSeePay ? await withTenant(a.tenantId, (tx) => adultConfirmationView(tx, u)) : undefined,
       // Union membership: HR, and those who write discipline records (a steward must be offered).
       unionMember: canSeePay || a.permissions.has('discipline.write') ? u.unionMember : null,
       customRoles: customRoles.map((r) => r.customRole),
@@ -441,6 +444,35 @@ staffRouter.patch(
     const id = uuid.parse(req.params.id);
     const body = hrPatch.parse(req.body);
     await withTenant(a.tenantId, (tx) => updatePerson(tx, a, id, body));
+    res.json({ ok: true });
+  }),
+);
+
+/** HR confirms (or stops confirming) that someone with no birth date on file is of the age of majority or older. */
+staffRouter.put(
+  '/users/:id/adult-confirmation',
+  requirePermission('users.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const { note } = z.object({ note: z.string().trim().min(3).max(200) }).parse(req.body);
+    res.json(await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
+      return confirmAdult(tx, a, id, note);
+    }));
+  }),
+);
+
+staffRouter.delete(
+  '/users/:id/adult-confirmation',
+  requirePermission('users.write'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
+      await removeAdultConfirmation(tx, a, id);
+    });
     res.json({ ok: true });
   }),
 );

@@ -16,7 +16,9 @@
  *  - Minor = younger than the age of majority (services/legal/ages.ts: 19 in BC, NB, NL, NS, NT,
  *    NU and YT, 18 elsewhere). An organization with facilities in several provinces uses the
  *    highest of them, so nobody is treated as an adult too early. No birth date on file = treated
- *    as possibly a minor: the app has no other proof of age to rely on.
+ *    as possibly a minor, unless HR has confirmed on their record that they are of the age of
+ *    majority or older (services/people/adultConfirmation.ts: who, when, how; audited). A birth
+ *    date on file always wins over that confirmation.
  *  - A group that includes a minor (or someone whose age isn't known) needs at least two adults in
  *    it, or it is read-only until it has them again.
  * The reason given to other people is only "safeguarding": never an age or a birth date.
@@ -59,9 +61,12 @@ export function readMessagingSettings(raw: unknown): MessagingSettings {
 
 export type AgeClass = 'adult' | 'minor' | 'unknown';
 
-/** Adult, minor or unknown on a day (YYYY-MM-DD), from a birth date. */
-export function ageClass(dateOfBirth: Date | null | undefined, majority: number, today: string): AgeClass {
-  if (!dateOfBirth) return 'unknown';
+/**
+ * Adult, minor or unknown on a day (YYYY-MM-DD). A birth date decides; without one, HR's
+ * confirmation that the person is of the age of majority makes them an adult; else unknown.
+ */
+export function ageClass(dateOfBirth: Date | null | undefined, majority: number, today: string, adultConfirmed = false): AgeClass {
+  if (!dateOfBirth) return adultConfirmed ? 'adult' : 'unknown';
   return yearsOld(dateOfBirth.toISOString().slice(0, 10), today) >= majority ? 'adult' : 'minor';
 }
 
@@ -147,6 +152,7 @@ export async function loadPeople(tx: Tx, ctx: Context, ids?: string[]): Promise<
       anonymizedAt: true,
       processingRestrictedAt: true,
       dateOfBirth: true,
+      adultConfirmedAt: true,
       reportsToId: true,
       positions: { select: { position: { select: { departmentId: true } } } },
       managesDepartments: { select: { departmentId: true } },
@@ -162,7 +168,7 @@ export async function loadPeople(tx: Tx, ctx: Context, ids?: string[]): Promise<
         departmentIds: [...new Set(u.positions.map((p) => p.position.departmentId).filter((d): d is string => !!d))],
         managesDepartmentIds: u.managesDepartments.map((m) => m.departmentId),
         reportsToId: u.reportsToId,
-        age: ageClass(u.dateOfBirth, ctx.majority, ctx.today),
+        age: ageClass(u.dateOfBirth, ctx.majority, ctx.today, !!u.adultConfirmedAt),
         active: u.status === 'ACTIVE' && !u.anonymizedAt && !u.processingRestrictedAt,
       },
     ]),

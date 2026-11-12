@@ -18,7 +18,7 @@ export async function exportPersonRecords(tx: Tx, userId: string) {
     where: { id: userId },
     select: {
       id: true, firstName: true, lastName: true, email: true, phone: true, locale: true, roles: true, status: true, employmentStatus: true,
-      employeeNumber: true, hireDate: true, seniorityDate: true, seniorityHours: true, dateOfBirth: true, unionMember: true, createdAt: true,
+      employeeNumber: true, hireDate: true, seniorityDate: true, seniorityHours: true, dateOfBirth: true, adultConfirmedAt: true, adultConfirmedNote: true, unionMember: true, createdAt: true,
     },
   });
   const w = { where: { userId } };

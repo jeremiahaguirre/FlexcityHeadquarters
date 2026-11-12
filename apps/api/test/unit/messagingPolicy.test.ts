@@ -31,6 +31,14 @@ describe('rule of two', () => {
     expect(ageClass(new Date('2008-11-11'), 19, today)).toBe('minor');
     expect(ageClass(null, 18, today)).toBe('unknown');
     expect(majorityFor(['ON', 'BC'])).toBe(19);
+  });
+  it('HR’s adult confirmation: unknown birth date becomes adult; a birth date always wins', () => {
+    const today = '2026-11-11';
+    expect(ageClass(null, 19, today, true)).toBe('adult');
+    expect(ageClass(undefined, 19, today, false)).toBe('unknown');
+    // The birth date says minor: still a minor, whatever HR confirmed.
+    expect(ageClass(new Date('2010-01-01'), 19, today, true)).toBe('minor');
+    expect(ageClass(new Date('1990-01-01'), 19, today, false)).toBe('adult');
     expect(majorityFor(['ON', 'QC'])).toBe(18);
     expect(majorityFor([])).toBe(19);
   });
