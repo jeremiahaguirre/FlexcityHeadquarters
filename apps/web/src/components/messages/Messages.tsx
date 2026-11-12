@@ -362,8 +362,7 @@ function NewConversation({ open, onClose, onOpened }: { open: boolean; onClose: 
   const [mode, setMode] = useState<Mode>('person');
   const [query, setQuery] = useState('');
   const [members, setMembers] = useState<string[]>([]);
-  const [blocked, setBlocked] = useState<string | null>(null);
-  useEffect(() => { if (!open) { setQuery(''); setMembers([]); setBlocked(null); setMode('person'); } }, [open]);
+  useEffect(() => { if (!open) { setQuery(''); setMembers([]); setMode('person'); } }, [open]);
   const people = (dir.data?.people ?? []).filter((p) => !query || p.name.toLowerCase().includes(query.toLowerCase()));
   const start = async (key: string, path: string, body: object) => {
     const r = await run(key, () => api<{ id: string }>(path, { method: 'POST', body }));
@@ -382,24 +381,18 @@ function NewConversation({ open, onClose, onOpened }: { open: boolean; onClose: 
         {mode === 'person' ? (
           <div className="grid gap-3">
             <Input aria-label={t('messages.findPerson')} placeholder={t('messages.findPerson')} value={query} onChange={(e) => setQuery(e.target.value)} type="search" autoComplete="off" />
-            {dir.loading ? <ListSkeleton /> : !people.some((p) => p.direct || p.directBlocked) ? <p className="text-small text-muted">{t('messages.nobody')}</p> : (
+            {dir.loading ? <ListSkeleton /> : !people.some((p) => p.direct) ? <p className="text-small text-muted">{t('messages.nobody')}</p> : (
               <ul className="grid max-h-[50dvh] gap-1 overflow-y-auto">
-                {people.filter((p) => p.direct || p.directBlocked).map((p) => (
+                {people.filter((p) => p.direct).map((p) => (
                   <li key={p.id}>
-                    {p.direct ? (
-                      <button type="button" disabled={busy === p.id} onClick={() => void start(p.id, '/api/messages/direct', { userId: p.id })} className="flex min-h-[3rem] w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-surface">
-                        <Avatar name={p.name} size="sm" /><span className="flex-1 truncate text-small font-semibold">{p.name}</span>{p.hr ? <StatusPill tone="neutral">{t('messages.hrBadge')}</StatusPill> : null}
-                      </button>
-                    ) : (
-                      <button type="button" onClick={() => setBlocked(blocked === p.id ? null : p.id)} aria-expanded={blocked === p.id} className="flex min-h-[3rem] w-full items-center gap-3 rounded-xl px-2 text-left text-muted hover:bg-surface">
-                        <Avatar name={p.name} size="sm" /><span className="flex-1 truncate text-small">{p.name}</span><Lock className="h-4 w-4" aria-label={t('messages.directUnavailable')} />
-                      </button>
-                    )}
-                    {blocked === p.id ? <p className="mx-2 mb-2 rounded-lg bg-surface p-3 text-small text-ink">{t('messages.safeguardingExplain')}</p> : null}
+                    <button type="button" disabled={busy === p.id} onClick={() => void start(p.id, '/api/messages/direct', { userId: p.id })} className="flex min-h-[3rem] w-full items-center gap-3 rounded-xl px-2 text-left hover:bg-surface">
+                      <Avatar name={p.name} size="sm" /><span className="flex-1 truncate text-small font-semibold">{p.name}</span>{p.hr ? <StatusPill tone="neutral">{t('messages.hrBadge')}</StatusPill> : null}
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
+            {dir.loading ? null : <p className="text-caption text-muted">{t('messages.someUnavailable')}</p>}
           </div>
         ) : mode === 'group' ? (
           <form onSubmit={(e) => void group(e)} className="grid gap-4">

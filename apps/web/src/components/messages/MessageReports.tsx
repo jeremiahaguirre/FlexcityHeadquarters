@@ -116,18 +116,30 @@ function Lookup({ onInvestigate }: { onInvestigate: (conversationId: string) => 
   const lng = i18n.language as Lng;
   const dir = useQuery<Directory>('/api/messages/people');
   const [person, setPerson] = useState('');
-  const convs = useQuery<Array<{ id: string; kind: string; title: string | null; titleFr?: string | null; members: Array<string | null>; messages: number; lastMessageAt: string | null }>>(person ? `/api/messages-admin/people/${person}/conversations` : null);
+  const { run, busy } = useAction();
+  const [convs, setConvs] = useState<{ data: Array<{ id: string; kind: string; title: string | null; titleFr?: string | null; members: Array<string | null>; messages: number; lastMessageAt: string | null }> } | null>(null);
+  // The lookup itself needs a reason, recorded with it in the audit log.
+  async function lookup(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const reason = String(new FormData(e.currentTarget).get('reason'));
+    const r = await run('lookup', () => api<NonNullable<typeof convs>['data']>(`/api/messages-admin/people/${person}/conversations`, { method: 'POST', body: { reason } }));
+    if (r) setConvs({ data: r });
+  }
   return (
     <Card>
       <CardHeader title={t('messageReports.lookup')} description={t('messageReports.lookupHelp')} />
       <CardBody className="grid gap-3 pt-2">
-        <Field label={t('messageReports.person')}>{(p) => (
-          <Select {...p} value={person} onChange={(e) => setPerson(e.target.value)} className="max-w-sm">
-            <option value="">{t('messageReports.choose')}</option>
-            {(dir.data?.people ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
-          </Select>
-        )}</Field>
-        {person && convs.data ? (
+        <form onSubmit={(e) => void lookup(e)} className="grid gap-3">
+          <Field label={t('messageReports.person')}>{(p) => (
+            <Select {...p} value={person} onChange={(e) => { setPerson(e.target.value); setConvs(null); }} className="max-w-sm" required>
+              <option value="">{t('messageReports.choose')}</option>
+              {(dir.data?.people ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+            </Select>
+          )}</Field>
+          <Field label={t('messageReports.reason')} hint={t('messageReports.reasonHint')}>{(p) => <Textarea {...p} name="reason" required minLength={10} maxLength={1000} rows={2} />}</Field>
+          <Button type="submit" variant="secondary" className="justify-self-start" disabled={!person} loading={busy === 'lookup'} icon={<FolderSearch className="h-4 w-4" aria-hidden="true" />}>{t('messageReports.lookupGo')}</Button>
+        </form>
+        {person && convs?.data ? (
           !convs.data.length ? <p className="text-small text-muted">{t('messageReports.noConversations')}</p> : (
             <ul className="divide-y divide-line">
               {convs.data.map((c) => (

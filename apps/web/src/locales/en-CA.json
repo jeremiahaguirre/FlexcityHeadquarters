@@ -7859,7 +7859,8 @@
       "safeguarding": "This conversation is read-only to keep everyone safe: young workers message adults in groups with at least two adults. Ask a supervisor to start a group.",
       "inactive": "This person is no longer with the organization. You can still read the conversation.",
       "alone": "Everyone else has left this conversation.",
-      "notAllowed": "Your organization’s settings no longer allow this conversation. You can still read it."
+      "notAllowed": "Your organization’s settings no longer allow this conversation. You can still read it.",
+      "readOnly": "This conversation is read-only."
     },
     "lastSeen": "Last read {{when}}",
     "notSeen": "Hasn’t opened it yet",
@@ -7880,15 +7881,14 @@
     "findPerson": "Find someone",
     "nobody": "There’s nobody you can message one to one yet. Your organization decides who can message whom.",
     "hrBadge": "HR",
-    "directUnavailable": "One-to-one messages unavailable",
-    "safeguardingExplain": "One-to-one messages aren’t available with this person. To keep everyone safe, ask a supervisor to start a group that includes you both.",
     "groupName": "Group name",
     "groupPeople": "People",
     "createGroup": "Start the group",
     "departments": "Departments",
     "myShifts": "My shifts this week",
     "shiftHelp": "Everyone working with you on the shift. It closes some hours after the shift ends.",
-    "noShifts": "No shifts in the next week."
+    "noShifts": "No shifts in the next week.",
+    "someUnavailable": "Don’t see someone? Some one-to-one conversations aren’t available — ask a supervisor to start a group."
   },
   "messageReports": {
     "title": "Reported messages",
@@ -7923,7 +7923,7 @@
     "noteHint": "Kept with the report. Don’t include health details.",
     "closed": "Report closed.",
     "lookup": "Find a person’s conversations",
-    "lookupHelp": "Names and members only, never what was written. The search is recorded.",
+    "lookupHelp": "Names and members only, never what was written. It needs a reason, recorded with the search.",
     "person": "Person",
     "choose": "Choose someone",
     "noConversations": "No conversations.",
@@ -7943,7 +7943,8 @@
       "shiftArchiveHint": "Between {{min}} and {{max}} hours.",
       "ruleOfTwo": "Rule of two: anyone under the age of majority in your province (or with no birth date on file) only talks with adults in groups with at least two adults. This can’t be turned off.",
       "noBirthDate": "No birth date on file? Then they’re treated as possibly a minor until HR adds their birth date or confirms on their record that they’re of the age of majority (Staff, then the person, then HR record). A birth date always wins."
-    }
+    },
+    "lookupGo": "Look up conversations"
   },
   "surveys": {
     "title": "Surveys",
@@ -8099,7 +8100,14 @@
     "minGroupHint": "Between {{min}} and {{max}}. 5 is common; it can never go below 3.",
     "managersCreate": "Managers can survey their departments",
     "managersCreateHelp": "Off: only HR runs surveys. Managers never see exit surveys.",
-    "settingsSaved": "Survey settings saved."
+    "settingsSaved": "Survey settings saved.",
+    "breakdownLabel": "Results broken down by",
+    "breakdownHint": "One breakdown only, fixed once the survey is sent: two could be compared to single someone out. Groups under {{count}} answers stay hidden.",
+    "breakdowns": {
+      "NONE": "No breakdown (everyone together)",
+      "DEPARTMENT": "Department",
+      "POSITION": "Position"
+    }
   },
   "bids": {
     "title": "Shift bidding",

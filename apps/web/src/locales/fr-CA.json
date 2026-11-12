@@ -7859,7 +7859,8 @@
       "safeguarding": "Cette conversation est en lecture seule pour la sécurité de tous : les jeunes travailleurs écrivent aux adultes dans des groupes comptant au moins deux adultes. Demandez à un superviseur de créer un groupe.",
       "inactive": "Cette personne ne fait plus partie de l’organisation. Vous pouvez encore lire la conversation.",
       "alone": "Tout le monde a quitté cette conversation.",
-      "notAllowed": "Les paramètres de votre organisation ne permettent plus cette conversation. Vous pouvez encore la lire."
+      "notAllowed": "Les paramètres de votre organisation ne permettent plus cette conversation. Vous pouvez encore la lire.",
+      "readOnly": "Cette conversation est en lecture seule."
     },
     "lastSeen": "Lu pour la dernière fois le {{when}}",
     "notSeen": "Pas encore ouverte",
@@ -7880,15 +7881,14 @@
     "findPerson": "Trouver quelqu’un",
     "nobody": "Personne à qui écrire en privé pour l’instant. Votre organisation décide qui peut écrire à qui.",
     "hrBadge": "RH",
-    "directUnavailable": "Messages individuels non offerts",
-    "safeguardingExplain": "Les messages individuels ne sont pas offerts avec cette personne. Pour la sécurité de tous, demandez à un superviseur de créer un groupe qui vous inclut tous les deux.",
     "groupName": "Nom du groupe",
     "groupPeople": "Personnes",
     "createGroup": "Créer le groupe",
     "departments": "Services",
     "myShifts": "Mes quarts cette semaine",
     "shiftHelp": "Toutes les personnes qui travaillent avec vous pendant le quart. Elle se ferme quelques heures après la fin du quart.",
-    "noShifts": "Aucun quart dans la prochaine semaine."
+    "noShifts": "Aucun quart dans la prochaine semaine.",
+    "someUnavailable": "Vous ne trouvez pas quelqu’un? Certaines conversations individuelles ne sont pas offertes — demandez à un superviseur de créer un groupe."
   },
   "messageReports": {
     "title": "Messages signalés",
@@ -7923,7 +7923,7 @@
     "noteHint": "Conservé avec le signalement. N’y mettez pas de renseignements de santé.",
     "closed": "Signalement fermé.",
     "lookup": "Trouver les conversations d’une personne",
-    "lookupHelp": "Les noms et les membres seulement, jamais le contenu. La recherche est consignée.",
+    "lookupHelp": "Les noms et les membres seulement, jamais le contenu. Une raison est requise et consignée avec la recherche.",
     "person": "Personne",
     "choose": "Choisir quelqu’un",
     "noConversations": "Aucune conversation.",
@@ -7943,7 +7943,8 @@
       "shiftArchiveHint": "Entre {{min}} et {{max}} heures.",
       "ruleOfTwo": "Règle de deux : toute personne qui n’a pas l’âge de la majorité dans votre province (ou sans date de naissance au dossier) n’échange avec des adultes que dans des groupes comptant au moins deux adultes. Ce réglage ne peut pas être désactivé.",
       "noBirthDate": "Aucune date de naissance au dossier? La personne est alors traitée comme peut-être mineure jusqu’à ce que les RH ajoutent sa date de naissance ou confirment à son dossier qu’elle a l’âge de la majorité (Employés, puis la personne, puis Dossier RH). Une date de naissance l’emporte toujours."
-    }
+    },
+    "lookupGo": "Chercher les conversations"
   },
   "surveys": {
     "title": "Sondages",
@@ -8099,7 +8100,14 @@
     "minGroupHint": "Entre {{min}} et {{max}}. 5 est courant; jamais moins de 3.",
     "managersCreate": "Les gestionnaires peuvent sonder leurs services",
     "managersCreateHelp": "Désactivé : seules les RH mènent des sondages. Les gestionnaires ne voient jamais les sondages de départ.",
-    "settingsSaved": "Paramètres des sondages enregistrés."
+    "settingsSaved": "Paramètres des sondages enregistrés.",
+    "breakdownLabel": "Résultats ventilés par",
+    "breakdownHint": "Une seule ventilation, fixée à l’envoi du sondage : deux pourraient être comparées pour isoler une personne. Les groupes de moins de {{count}} réponses restent masqués.",
+    "breakdowns": {
+      "NONE": "Aucune ventilation (tout le monde ensemble)",
+      "DEPARTMENT": "Service",
+      "POSITION": "Poste"
+    }
   },
   "bids": {
     "title": "Soumissions de quarts",

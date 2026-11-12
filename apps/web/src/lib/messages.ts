@@ -6,7 +6,8 @@ import { useLiveChange } from './useLiveChange';
 
 /** Team messaging (API: routes/messages.ts). Shapes the screens use. */
 export type ConversationKind = 'DIRECT' | 'SHIFT' | 'DEPARTMENT' | 'GROUP';
-export type ReadOnly = null | 'archived' | 'safeguarding' | 'inactive' | 'alone' | 'notAllowed';
+/** HR is told the cause; everyone else gets 'readOnly' (or 'archived' for a closed shift conversation). */
+export type ReadOnly = null | 'archived' | 'safeguarding' | 'inactive' | 'alone' | 'notAllowed' | 'readOnly';
 
 export interface ConversationSummary {
   id: string;
@@ -47,7 +48,7 @@ export interface ConversationDetail extends Omit<ConversationSummary, 'unread' |
   more: boolean;
 }
 
-export interface DirectoryPerson { id: string; name: string; direct: boolean; directBlocked: 'safeguarding' | null; group: boolean; hr: boolean }
+export interface DirectoryPerson { id: string; name: string; direct: boolean; group: boolean; hr: boolean }
 export interface Directory { people: DirectoryPerson[]; canGroup: boolean; departments: Array<{ id: string; name: string; nameFr: string | null }> }
 
 export const MAX_TEXT = 2000;

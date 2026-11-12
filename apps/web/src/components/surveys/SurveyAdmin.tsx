@@ -16,7 +16,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatInstant } from '@/lib/format';
 import { useSession } from '@/lib/session';
-import { MAX_REMINDERS, type Question, type QuestionSummary, type QuestionType, type SurveyResults, type SurveyRow, type TrendRow, exitStarterQuestions, share, starterQuestions } from '@/lib/surveys';
+import { BREAKDOWNS, type Breakdown, MAX_REMINDERS, type Question, type QuestionSummary, type QuestionType, type SurveyResults, type SurveyRow, type TrendRow, exitStarterQuestions, share, starterQuestions } from '@/lib/surveys';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 type Lng = 'en-CA' | 'fr-CA';
@@ -115,6 +115,7 @@ function Editor({ start, choices, onClose, onSaved }: { start: EditStart; choice
   const [offboardingId, setOffboardingId] = useState(start.row?.offboardingId ?? start.exitFor ?? '');
   const [deps, setDeps] = useState<string[]>(base?.audience.departmentIds ?? []);
   const [pos, setPos] = useState<string[]>(base?.audience.positionIds ?? []);
+  const [breakdown, setBreakdown] = useState<Breakdown>(base?.breakdown ?? 'DEPARTMENT');
   const offs = useQuery<Array<{ id: string; name: string; lastDay: string; hasSurvey: boolean }>>(choices.hr ? '/api/surveys-admin/offboardings' : null);
   const defaultClose = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
   const upd = (key: string, patch: Partial<DraftQ>) => setQs((l) => l.map((q) => (q.key === key ? { ...q, ...patch } : q)));
@@ -130,6 +131,7 @@ function Editor({ start, choices, onClose, onSaved }: { start: EditStart; choice
       audience: { departmentIds: deps, positionIds: pos },
       closesAt: new Date(`${String(f.get('closes'))}T23:59:00`).toISOString(),
       offboardingId: kind === 'EXIT' ? offboardingId || null : null,
+      breakdown: kind === 'EXIT' ? 'NONE' : breakdown,
       repeatOf: start.repeatOf?.id ?? null,
     };
     const r = await run('save', () => api(start.row ? `/api/surveys/${start.row.id}` : '/api/surveys', { method: start.row ? 'PUT' : 'POST', body }), t('surveyAdmin.saved'));
@@ -165,6 +167,11 @@ function Editor({ start, choices, onClose, onSaved }: { start: EditStart; choice
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t('surveyAdmin.departments')}>{(p) => <MultiSelect id={p.id} name="deps" defaultValue={deps} options={choices.departments.map((d) => ({ value: d.id, label: nm(d, lng) }))} onChange={setDeps} placeholder={choices.hr ? t('surveyAdmin.everyone') : t('surveyAdmin.allMine')} />}</Field>
             <Field label={t('surveyAdmin.positions')}>{(p) => <MultiSelect id={p.id} name="pos" defaultValue={pos} options={choices.positions.map((x) => ({ value: x.id, label: nm(x, lng) }))} onChange={setPos} placeholder={t('surveyAdmin.allPositions')} />}</Field>
+            <Field label={t('surveyAdmin.breakdownLabel')} hint={t('surveyAdmin.breakdownHint', { count: choices.minGroup })} className="sm:col-span-2">{(p) => (
+              <Select {...p} name="breakdown" value={breakdown} onChange={(e) => setBreakdown(e.target.value as Breakdown)} className="max-w-xs">
+                {BREAKDOWNS.map((b) => <option key={b} value={b}>{t(`surveyAdmin.breakdowns.${b}`)}</option>)}
+              </Select>
+            )}</Field>
           </div>
         ) : (
           <Field label={t('surveyAdmin.leaving')} hint={t('surveyAdmin.leavingHint')}>{(p) => (
@@ -223,14 +230,14 @@ function ResultsDialog({ survey, choices, onClose }: { survey: SurveyRow | null;
   const lng = i18n.language as Lng;
   const r = useQuery<SurveyResults>(survey ? `/api/surveys/${survey.id}/results` : null);
   const tr = useQuery<TrendRow[]>(survey?.kind === 'PULSE' ? `/api/surveys/series/${survey.seriesId}/trend` : null);
-  const [by, setBy] = useState<'all' | 'department' | 'position'>('all');
+  const [by, setBy] = useState<'all' | 'group'>('all');
   useEffect(() => setBy('all'), [survey?.id]);
   async function csv() {
     const d = await apiDownload(`/api/surveys/${survey!.id}/results.csv`);
     if (d.ok) saveBlob(d.blob, `${survey!.title.replace(/[^\w-]+/g, '-').slice(0, 60) || 'survey'}.csv`);
   }
-  const groupName = (kind: 'department' | 'position', id: string) => {
-    const x = kind === 'department' ? choices?.departments.find((d) => d.id === id) : choices?.positions.find((p) => p.id === id);
+  const groupName = (kind: 'DEPARTMENT' | 'POSITION', id: string) => {
+    const x = kind === 'DEPARTMENT' ? choices?.departments.find((d) => d.id === id) : choices?.positions.find((p) => p.id === id);
     return x ? nm(x, lng) : t('surveyAdmin.otherGroup');
   };
   const d = r.data;
@@ -255,13 +262,13 @@ function ResultsDialog({ survey, choices, onClose }: { survey: SurveyRow | null;
         </div>
       ) : (
         <div className="grid gap-5">
-          <Segmented label={t('surveyAdmin.view')} value={by} onChange={setBy} options={[{ value: 'all', label: t('surveyAdmin.everyoneView') }, { value: 'department', label: t('surveyAdmin.byDepartment') }, { value: 'position', label: t('surveyAdmin.byPosition') }]} />
-          {by === 'all' ? d.questions!.map((q) => <QuestionResult key={q.id} q={q} />) : (
+          {d.breakdown ? <Segmented label={t('surveyAdmin.view')} value={by} onChange={setBy} options={[{ value: 'all', label: t('surveyAdmin.everyoneView') }, { value: 'group', label: d.breakdown.by === 'DEPARTMENT' ? t('surveyAdmin.byDepartment') : t('surveyAdmin.byPosition') }]} /> : null}
+          {by === 'all' || !d.breakdown ? d.questions!.map((q) => <QuestionResult key={q.id} q={q} />) : (
             <div className="grid gap-4">
-              <p className="text-caption text-muted">{t('surveyAdmin.breakdownNote', { count: d.minGroup, hidden: d.breakdowns!.hiddenResponses[by] })}</p>
-              {!d.breakdowns![by].length ? <p className="text-small text-muted">{t('surveyAdmin.noGroups')}</p> : d.breakdowns![by].map((g) => (
+              <p className="text-caption text-muted">{t('surveyAdmin.breakdownNote', { count: d.minGroup, hidden: d.breakdown.hidden })}</p>
+              {!d.breakdown.groups.length ? <p className="text-small text-muted">{t('surveyAdmin.noGroups')}</p> : d.breakdown.groups.map((g) => (
                 <Card key={g.id}>
-                  <CardHeader title={groupName(by, g.id)} description={t('surveyAdmin.answeredN', { count: g.responses })} />
+                  <CardHeader title={groupName(d.breakdown!.by, g.id)} description={t('surveyAdmin.answeredN', { count: g.responses })} />
                   <CardBody className="grid gap-4 pt-2">{g.questions.filter((q) => q.type !== 'TEXT').map((q) => <QuestionResult key={q.id} q={q} />)}</CardBody>
                 </Card>
               ))}

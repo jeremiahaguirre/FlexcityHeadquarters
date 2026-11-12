@@ -5,6 +5,10 @@ export type Answer = number | string | string[];
 
 export interface MySurvey { id: string; kind: 'PULSE' | 'EXIT'; from?: 'hr' | 'manager'; title: string; intro: string | null; anonymous: boolean; minGroup: number; closesAt: string; responded: boolean; questions: Question[] }
 
+/** One breakdown per survey: two, each hidden on its own, could be subtracted from each other. */
+export type Breakdown = 'NONE' | 'DEPARTMENT' | 'POSITION';
+export const BREAKDOWNS: Breakdown[] = ['NONE', 'DEPARTMENT', 'POSITION'];
+
 export interface SurveyRow {
   id: string;
   kind: 'PULSE' | 'EXIT';
@@ -15,6 +19,8 @@ export interface SurveyRow {
   questions: Question[];
   audience: { departmentIds: string[]; positionIds: string[] };
   closesAt: string;
+  /** The one way its results can be broken down (fixed once sent). */
+  breakdown: Breakdown;
   publishedAt: string | null;
   status: 'DRAFT' | 'OPEN' | 'CLOSED';
   invited: number;
@@ -38,7 +44,7 @@ export interface SurveyResults {
   reason?: 'open' | 'tooFew';
   questions?: QuestionSummary[];
   questionsAsked: Question[];
-  breakdowns?: { department: Array<{ id: string; responses: number; questions: QuestionSummary[] }>; position: Array<{ id: string; responses: number; questions: QuestionSummary[] }>; hiddenResponses: { department: number; position: number } };
+  breakdown?: { by: 'DEPARTMENT' | 'POSITION'; groups: Array<{ id: string; responses: number; questions: QuestionSummary[] }>; hidden: number };
   named?: Array<{ name: string; answers: Record<string, Answer> }>;
 }
 export interface TrendRow { id: string; title: string; opensAt: string; responses: number | null; points: Array<{ text: string; average: number | null }> }
