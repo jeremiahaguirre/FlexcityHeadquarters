@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
 import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
+import { allow } from '../auth/rateLimit.js';
+import { refuseBreached } from '../auth/breachedPasswords.js';
 import { audit, withTenant } from '../lib/db.js';
 import { db as rootDb } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
@@ -123,6 +125,9 @@ staffRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ currentPassword: z.string().min(1), newPassword: passwordRule }).parse(req.body);
+    // A stolen session must not become a way to guess the current password.
+    if (!(await allow(`pw-change:${a.userId}`, 10, 15 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    await refuseBreached(body.newPassword);
     const hash = await hashPassword(body.newPassword);
     const ok = await withTenant(a.tenantId, async (tx) => {
       const u = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, include: { tenant: { select: { name: true, subdomain: true } } } });

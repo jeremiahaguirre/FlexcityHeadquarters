@@ -70,8 +70,11 @@ describe('invitations and passwords', () => {
 
   it('locks the account after five wrong passwords, and a reset unlocks it', async () => {
     for (let i = 0; i < 5; i++) expect((await call().post('/api/auth/login', { email: 'nia@iota.test', password: 'wrong-wrong-1' })).status).toBe(401);
+    // Locked: the same answer as a wrong password (nothing tells an attacker); the person is emailed once.
     const locked = await call().post('/api/auth/login', { email: 'nia@iota.test', password: 'pool-deck-2026' });
-    expect(locked.status).toBe(423);
+    expect(locked.status).toBe(401);
+    expect(locked.body.code).toBe('INVALID_CREDENTIALS');
+    expect(await owner.emailOutbox.count({ where: { toEmail: 'nia@iota.test', template: 'account_locked' } })).toBe(1);
 
     expect((await call().post('/api/auth/forgot', { email: 'nia@iota.test' })).status).toBe(202);
     expect((await call().post('/api/auth/forgot', { email: 'nobody@iota.test' })).status).toBe(202);

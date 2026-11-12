@@ -45,12 +45,18 @@ describe('Dev console sign-in', () => {
     expect((await request(server).get('/api/me').set('x-tenant-subdomain', 'sigma').set('Cookie', cookie)).status).toBe(401);
   });
 
-  it('locks the account after five wrong passwords', async () => {
+  it('locks the account after three wrong passwords, answering like a wrong password', async () => {
     const email = `lock-${randomBytes(3).toString('hex')}@flexcity.dev`;
-    await owner.platformAdmin.create({ data: { email, name: 'L', passwordHash: await hashPassword('right password!') } });
-    const attempt = (password: string) => request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').send({ email, password });
-    for (let i = 0; i < 5; i++) expect((await attempt('wrong')).status).toBe(401);
-    expect((await attempt('right password!')).status).toBe(423);
+    const admin = await owner.platformAdmin.create({ data: { email, name: 'L', passwordHash: await hashPassword('right password!') } });
+    const attempt = (password: string) => request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').set('X-Forwarded-For', '198.51.100.90').send({ email, password });
+    for (let i = 0; i < 3; i++) expect((await attempt('wrong')).status).toBe(401);
+    const locked = await attempt('right password!');
+    expect(locked.status).toBe(401);
+    expect(locked.body.code).toBe('INVALID_CREDENTIALS');
+    const row = await owner.platformAdmin.findUniqueOrThrow({ where: { id: admin.id } });
+    expect(row.lockoutLevel).toBe(1);
+    expect(row.lockedUntil!.getTime() - Date.now()).toBeGreaterThan(29 * 60_000);
+    expect(await owner.platformAudit.count({ where: { adminId: admin.id, action: 'auth.account_locked' } })).toBe(1);
   });
 
   it('offers Dev console passkeys on the console’s own address, only soon after signing in', async () => {

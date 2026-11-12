@@ -3,35 +3,58 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { PLATFORM_COOKIE, endPlatformSession, platformCookieOpts, platformMfaRequired, platformOf, requirePlatformSession, startPlatformSession } from '../../auth/platform.js';
 import { allow } from '../../auth/rateLimit.js';
+import { POLICIES, afterFailure, ipBlocked, noteFailure } from '../../auth/bruteForce.js';
+import { authFailures, authIpBlocks, authLockouts } from '../../lib/metrics.js';
 import { verifyPassword } from '../../auth/tokens.js';
 import { db } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';
 import { h } from '../context.js';
 
-const LOCKOUT_AFTER = 5;
-const LOCKOUT_MS = 15 * 60_000;
-
 export const platformAuthRouter = Router();
 
+const invalid = () => new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+const tooMany = () => new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
+
+/**
+ * Dev console sign-in, stricter than an organization's (auth/bruteForce.ts POLICIES.platform):
+ * 3 wrong passwords lock for 30 minutes, doubling to 24 hours; an address failing on 3 different
+ * emails is blocked for an hour. Locked, unknown and wrong all answer 401 INVALID_CREDENTIALS.
+ * Locks and blocks go to the console's own audit (an admin's) and to metrics, which alert on them.
+ */
 platformAuthRouter.post(
   '/auth/login',
   h(async (req, res) => {
     const { email, password } = z.object({ email: z.string().email(), password: z.string().min(1) }).parse(req.body);
-    if (!await allow(`platform-login:${req.ip}`, 10, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
+    const policy = POLICIES.platform;
+    if (await ipBlocked('platform', req.ip)) {
+      authFailures.inc({ surface: 'platform', reason: 'blocked_ip' });
+      throw tooMany();
+    }
+    if (!await allow(`platform-login:${req.ip}`, 10, 10 * 60_000)) {
+      authFailures.inc({ surface: 'platform', reason: 'rate_limited' });
+      throw tooMany();
+    }
     const admin = await db().platformAdmin.findUnique({ where: { email: email.toLowerCase() } });
     const ok = admin ? await verifyPassword(password, admin.passwordHash) : await verifyPassword(password, 'scrypt$AAAA$AAAA').then(() => false);
-    if (admin?.lockedUntil && admin.lockedUntil > new Date()) throw new HttpError(423, 'ACCOUNT_LOCKED', 'This account is locked for 15 minutes after too many attempts.');
-    if (!admin || !ok || admin.disabledAt) {
-      if (admin && !ok) {
-        const failed = admin.failedLogins + 1;
-        await db().platformAdmin.update({
-          where: { id: admin.id },
-          data: failed >= LOCKOUT_AFTER ? { failedLogins: 0, lockedUntil: new Date(Date.now() + LOCKOUT_MS) } : { failedLogins: failed },
-        });
+    const now = new Date();
+    const locked = !!admin?.lockedUntil && admin.lockedUntil > now;
+    if (!admin || !ok || admin.disabledAt || locked) {
+      if (admin && !ok && !locked) {
+        const next = afterFailure({ failedCount: admin.failedLogins, lastFailedAt: admin.lastFailedLoginAt, lockLevel: admin.lockoutLevel, lastLockedAt: admin.lastLockedAt }, policy, now);
+        await db().platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: next.failedCount, lastFailedLoginAt: next.lastFailedAt, lockoutLevel: next.lockLevel, lastLockedAt: next.lastLockedAt, ...(next.lockedUntil ? { lockedUntil: next.lockedUntil } : {}) } });
+        if (next.lockedUntil) {
+          authLockouts.inc({ surface: 'platform' });
+          await db().platformAudit.create({ data: { adminId: admin.id, action: 'auth.account_locked', detail: { until: next.lockedUntil.toISOString(), level: next.lockLevel, ip: req.ip ?? null } } });
+        }
       }
-      throw new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect.');
+      authFailures.inc({ surface: 'platform', reason: locked ? 'locked' : 'invalid' });
+      if (await noteFailure('platform', req.ip, email)) {
+        authIpBlocks.inc({ surface: 'platform' });
+        if (admin) await db().platformAudit.create({ data: { adminId: admin.id, action: 'auth.ip_blocked', detail: { ip: req.ip ?? null, forMinutes: policy.ipBlockMs / 60_000 } } });
+      }
+      throw invalid();
     }
-    await db().platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
+    await db().platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: 0, lockedUntil: null, lockoutLevel: 0, lastLoginAt: new Date() } });
     res.cookie(PLATFORM_COOKIE, await startPlatformSession(admin.id), platformCookieOpts());
     const hasPasskey = (await db().platformPasskey.count({ where: { adminId: admin.id } })) > 0;
     // A password alone isn't enough: the console asks for a passkey next (or to set one up).

@@ -45,6 +45,8 @@ passkeyAuthRouter.post(
 passkeyAuthRouter.post(
   '/auth/passkey',
   h(async (req, res) => {
+    // The options call is limited, but a challenge can be answered many times over: limit the answers too.
+    if (!await allow(`passkey-signin:${req.ip}:${req.tenantId}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const body = z.object({ challengeId: uuid, response: credential }).parse(req.body);
     const response = body.response as unknown as AuthenticationResponseJSON;
     const tenantId = req.tenantId!;
@@ -61,7 +63,7 @@ passkeyAuthRouter.post(
       const sso = await connectionFor(tx);
       if (ready(sso) && sso.enforced && !canConfigure) throw new HttpError(403, 'SSO_REQUIRED', 'Your organization signs in with single sign-on.');
       await tx.passkey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
-      if (user.failedLoginCount || user.lockedUntil) await tx.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null } });
+      if (user.failedLoginCount || user.lockedUntil || user.lockoutLevel) await tx.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null, lockoutLevel: 0 } });
       // A passkey is something you have, unlocked by something you are or know: both factors.
       return { user, refresh: await issueRefreshToken(tx, tenantId, user.id, undefined, new Date(), new Date()) };
     });

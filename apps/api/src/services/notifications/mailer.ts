@@ -175,6 +175,20 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     }),
   },
   /**
+   * Sent once when an account locks after repeated wrong passwords (auth/bruteForce.ts). The sign-in
+   * page itself never says an account is locked, so this is how the person finds out.
+   */
+  account_locked: {
+    'en-CA': (p) => ({
+      subject: 'Sign-in to your FlexcityHeadquarters account was paused',
+      text: `Hello ${p.name},\n\nAfter several wrong passwords, signing in to ${p.organization} with your email was paused at ${p.at} until ${p.until}.\n\nIf this was you, wait until then, or reset your password now to sign in right away:\n${p.url}\n\nIf this wasn't you, someone may be trying to guess your password. Reset your password now, and tell your HR team. Your account is safe: nobody signed in.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'La connexion à votre compte FlexcityHeadquarters a été suspendue',
+      text: `Bonjour ${p.name},\n\nAprès plusieurs mots de passe erronés, la connexion à ${p.organization} avec votre courriel a été suspendue le ${p.at} jusqu’au ${p.until}.\n\nSi c’était vous, attendez jusque-là, ou réinitialisez votre mot de passe maintenant pour vous connecter tout de suite :\n${p.url}\n\nSi ce n’était pas vous, quelqu’un essaie peut-être de deviner votre mot de passe. Réinitialisez-le maintenant et avisez votre équipe RH. Votre compte est en sécurité : personne ne s’y est connecté.`,
+    }),
+  },
+  /**
    * A sign-in code (second factor, routes/mfaCodes.ts): transactional, sent at once. The code is in
    * the params only until the email is sent; then they're cleared, like every outbox message.
    */
