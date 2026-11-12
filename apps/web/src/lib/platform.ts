@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from './apiError';
 import { DEMO } from './demo';
 import { demoPlatformApi } from './demoApi';
+import { CLIENT_HEADERS, markOutdated, noteServerVersion } from './appUpdate';
 
 /**
  * FH Dev console client. The session is an HTTP-only cookie the browser sends
@@ -15,11 +16,13 @@ export async function papi<T>(path: string, init: { method?: string; body?: unkn
   const res = await fetch(`/api/platform${path}`, {
     method: init.method ?? 'GET',
     credentials: 'include',
-    headers: { 'x-fh-platform': '1', ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}) },
+    headers: { ...CLIENT_HEADERS, 'x-fh-platform': '1', ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}) },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
+  noteServerVersion(res.headers.get('x-fh-version'));
   if (!res.ok) {
     const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string; details?: unknown };
+    if (b.code === 'CLIENT_OUTDATED') markOutdated();
     // Sensitive actions: confirm with the passkey, then try once more.
     if (b.code === 'PASSKEY_STEP_UP' && !init.steppedUp) {
       const { platformConfirmWithPasskey } = await import('./passkeys');
@@ -93,7 +96,7 @@ export interface ImportPreview {
 
 /** Downloads a file from the Dev console API (bank files, CSV exports) and saves it. */
 export async function pdownload(path: string, fallbackName: string): Promise<void> {
-  const res = await fetch(`/api/platform${path}`, { credentials: 'include', headers: { 'x-fh-platform': '1' } });
+  const res = await fetch(`/api/platform${path}`, { credentials: 'include', headers: { ...CLIENT_HEADERS, 'x-fh-platform': '1' } });
   if (!res.ok) {
     const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string };
     throw new ApiError(res.status, b.code ?? 'ERROR', b.message ?? res.statusText);

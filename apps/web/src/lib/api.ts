@@ -4,6 +4,7 @@ import { ApiError } from './apiError';
 import { DEMO } from './demo';
 import { demoApi } from './demoApi';
 import { fetchRead } from './retry';
+import { CLIENT_HEADERS, checkForUpdate, markOutdated, noteServerVersion } from './appUpdate';
 
 export { ApiError };
 
@@ -38,7 +39,7 @@ function tenantHeader(): Record<string, string> {
 async function refresh(): Promise<boolean> {
   // A support visit isn't renewed (when it ends, it ends): a reload only gets its token back.
   const support = isSupportVisit();
-  refreshing ??= fetch(support ? '/api/auth/support/resume' : '/api/auth/refresh', { method: 'POST', credentials: 'include', headers: { ...tenantHeader(), ...(support ? { 'x-fh-support': '1' } : {}) } })
+  refreshing ??= fetch(support ? '/api/auth/support/resume' : '/api/auth/refresh', { method: 'POST', credentials: 'include', headers: { ...CLIENT_HEADERS, ...tenantHeader(), ...(support ? { 'x-fh-support': '1' } : {}) } })
     .then(async (r) => {
       if (!r.ok) return false;
       accessToken = ((await r.json()) as { accessToken: string }).accessToken;
@@ -60,6 +61,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
       method,
       credentials: 'include',
       headers: {
+        ...CLIENT_HEADERS,
         ...tenantHeader(),
         ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}),
         ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
@@ -68,6 +70,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     });
   // Reads ride out a brief overload, deployment or failover (lib/retry.ts); changes never repeat.
   const res = method === 'GET' ? await fetchRead(send) : await send();
+  // A different build answering: maybe a newer web build is out (lib/appUpdate.ts).
+  noteServerVersion(res.headers.get('x-fh-version'));
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { code?: string; message?: string; details?: unknown };
     // Sensitive action, sign-in not recent: confirm with a passkey or password, then try once more.
@@ -79,6 +83,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
     }
     // A new version of the agreement to sign: the app reloads the session and shows it.
     if (body.code === 'CONSENT_REQUIRED' && typeof window !== 'undefined') window.dispatchEvent(new Event(CONSENT_EVENT));
+    // This build is older than the API supports: refresh once nothing is in progress (offline punches stay queued).
+    if (body.code === 'CLIENT_OUTDATED') markOutdated();
     throw new ApiError(res.status, body.code ?? 'ERROR', body.message ?? res.statusText, body.details);
   }
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -122,7 +128,7 @@ export async function apiDownload(path: string, retry = true, body?: unknown): P
   const res = await fetch(path, {
     credentials: 'include',
     ...(body !== undefined ? { method: 'POST', body: JSON.stringify(body) } : {}),
-    headers: { ...tenantHeader(), ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
+    headers: { ...CLIENT_HEADERS, ...tenantHeader(), ...(body !== undefined ? { 'content-type': 'application/json' } : {}), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
   });
   if (!res.ok) {
     const error = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -225,7 +231,7 @@ export function streamNotifications(onSignal: () => void): () => void {
         if (!accessToken) await refresh();
         controller = new AbortController();
         const res = await fetch('/api/notifications/stream', {
-          headers: { ...tenantHeader(), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
+          headers: { ...CLIENT_HEADERS, ...tenantHeader(), ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}) },
           signal: controller.signal,
         });
         if (res.status === 401) await refresh();
@@ -235,6 +241,8 @@ export function streamNotifications(onSignal: () => void): () => void {
         if (connected) {
           onSignal();
           emitChange('*');
+          // A dropped stream is often a deployment: is a newer build out?
+          void checkForUpdate();
         }
         connected = true;
         const reader = res.body.getReader();

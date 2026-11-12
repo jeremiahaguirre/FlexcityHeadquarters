@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/Button';
 import { dateFormat } from '@/lib/format';
+import { CLIENT_HEADERS, markOutdated, noteServerVersion, setBusy as setUpdateBusy } from '@/lib/appUpdate';
 
 /**
  * The shared tablet at a facility. Set up once from the link a supervisor makes:
@@ -21,7 +22,11 @@ type Result = { action: 'IN' | 'OUT'; name: string; at: string; scheduled?: bool
 
 async function call<T>(path: string, body?: object): Promise<{ ok: boolean; status: number; data: T & { code?: string; message?: string } }> {
   // The cookie identifies the tablet; the header proves the request comes from this page.
-  const r = await fetch(`/api${path}`, { method: body ? 'POST' : 'GET', credentials: 'same-origin', headers: { 'x-fh-kiosk': '1', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  const r = await fetch(`/api${path}`, { method: body ? 'POST' : 'GET', credentials: 'same-origin', headers: { ...CLIENT_HEADERS, 'x-fh-kiosk': '1', ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
+  // A newer build out? The tablet refreshes itself between punches (components/AppUpdates.tsx).
+  noteServerVersion(r.headers.get('x-fh-version'));
+  // Too old for the API: say so on screen, then refresh as soon as the keypad is free.
+  if (r.status === 426) markOutdated();
   return { ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) };
 }
 
@@ -38,6 +43,8 @@ export default function KioskPage() {
   const [result, setResult] = useState<Result | null>(null);
   const [now, setNow] = useState(new Date());
   const reset = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Mid-entry (a number or PIN typed, a punch on its way, its result on screen): never refresh for a new version.
+  useEffect(() => setUpdateBusy('kiosk', !!number || !!pin || step === 'pin' || busy || !!result), [number, pin, step, busy, result]);
 
   useEffect(() => {
     // A secret from the setup link, or one an older version kept in this tablet's storage.

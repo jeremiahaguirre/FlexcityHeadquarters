@@ -563,7 +563,8 @@
     "PASSWORD_BREACHED": "Ce mot de passe figure dans une fuite de données ailleurs. Choisissez-en un autre.",
     "PIN_WEAK": "Choisissez un NIP plus difficile à deviner : pas de suite comme 2345, pas de répétitions, et pas votre numéro d’employé.",
     "TOO_MANY_ATTEMPTS": "Trop de tentatives. Patientez quelques minutes, puis réessayez.",
-    "RATE_LIMITED": "Trop de requêtes. Patientez un moment, puis réessayez."
+    "RATE_LIMITED": "Trop de requêtes. Patientez un moment, puis réessayez.",
+    "CLIENT_OUTDATED": "Cette version de l’application n’est plus à jour. Actualisez pour continuer."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -5653,7 +5654,8 @@
       "KIOSK_NO_POSITION": "Vous n’avez pas encore de poste. Adressez-vous à la supervision.",
       "KIOSK_UNKNOWN": "Cette tablette n’est plus configurée. Adressez-vous à la supervision.",
       "KIOSK_OFF": "Le pointage est désactivé pour cette organisation.",
-      "ERROR": "Un problème est survenu. Réessayez, ou pointez sur votre téléphone."
+      "ERROR": "Un problème est survenu. Réessayez, ou pointez sur votre téléphone.",
+      "CLIENT_OUTDATED": "Cette tablette se met à jour. Réessayez dans un instant."
     },
     "adminTitle": "Bornes de pointage",
     "adminHelp": "Une tablette partagée dans une installation où le personnel pointe avec son numéro d’employé et un NIP, sans l’application sur un téléphone. Ces pointages comptent comme faits sur place.",
@@ -8272,5 +8274,11 @@
     "orgAwardOrderHint": "Un à la fois : chaque personne obtient une attribution avant que quiconque en obtienne une deuxième. La plus ancienne d’abord : chaque personne obtient toutes ses attributions avant la suivante. Chaque ronde peut avoir le sien.",
     "howAwardSenior_one": "Dans cet ordre, chaque personne obtient son choix le mieux classé encore libre qu’elle peut travailler.",
     "howAwardSenior_other": "La personne la plus ancienne obtient ses choix les mieux classés encore libres qu’elle peut travailler, jusqu’à {{count}}; puis la personne suivante fait de même, et ainsi de suite."
+  },
+  "appUpdate": {
+    "ready": "Une nouvelle version est prête",
+    "refresh": "Actualiser",
+    "later": "Plus tard",
+    "outdated": "Cette version n’est plus à jour"
   }
 }

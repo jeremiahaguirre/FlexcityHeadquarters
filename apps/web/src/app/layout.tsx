@@ -4,6 +4,7 @@ import localFont from 'next/font/local';
 import { cookies, headers } from 'next/headers';
 import type { CSSProperties, ReactNode } from 'react';
 import { DemoBanner } from '@/components/DemoBanner';
+import { AppUpdates } from '@/components/AppUpdates';
 import { Providers } from '@/components/Providers';
 import { SkipLink } from '@/components/SkipLink';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -60,5 +61,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </Providers>
       </body>
     </html>
+            <AppUpdates />
   );
 }

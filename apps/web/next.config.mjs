@@ -14,7 +14,8 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
   // Never framed (clickjacking); HTTPS only once deployed.
   { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Content-Security-Policy', value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" },
+  // Fonts only from this origin (the self-hosted files in src/fonts); pages get the full policy from middleware.live.ts.
+  { key: 'Content-Security-Policy', value: "font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" },
   ...(process.env.NODE_ENV === 'production' ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }] : []),
 ];
 
@@ -27,8 +28,16 @@ const robotsHeaders = [
   ...['/jobs', '/jobs/:path*', '/signup', '/signup/:path*'].map((source) => ({ source, headers: [{ key: 'X-Robots-Tag', value: PUBLIC_ROBOTS }] })),
 ];
 
+// This build's version id: "<UTC build time YYYYMMDDHHmm>.<release>" (release = NEXT_PUBLIC_RELEASE, the image
+// tag; "dev" locally). Baked into the bundle and served at /version.json, so open tabs can tell a newer build
+// is deployed (src/lib/appUpdate.ts) and the API can refuse builds older than MIN_WEB_VERSION (docs/RELEASES.md).
+const RELEASE = (process.env.NEXT_PUBLIC_RELEASE || '').replace(/[^\w.-]/g, '').slice(0, 60);
+const FH_VERSION = process.env.NEXT_PUBLIC_FH_VERSION || (RELEASE ? `${new Date().toISOString().replace(/\D/g, '').slice(0, 12)}.${RELEASE}` : 'dev');
+const env = { NEXT_PUBLIC_FH_VERSION: FH_VERSION };
+
 const nextConfig = DEMO
   ? {
+      env,
       output: 'export',
       basePath: BASE_PATH,
       trailingSlash: true, // board/index.html, which static hosts serve at /board/
@@ -40,6 +49,7 @@ const nextConfig = DEMO
       images: { unoptimized: true },
     }
   : {
+      env,
       reactStrictMode: true,
       poweredByHeader: false,
       // "*.live.tsx" pages and middleware.live.ts need a server: only live builds include them.
@@ -56,6 +66,7 @@ const nextConfig = DEMO
           ...robotsHeaders,
           // The service worker is always checked for a new version, so fixes reach installed phones on the next visit.
           { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
+          { source: '/version.json', headers: [{ key: 'Cache-Control', value: 'no-store' }] },
           // App icons change only with a rebrand: a day in the browser, then revalidated.
           { source: '/:icon(icon-192.png|icon-512.png|icon-maskable-512.png)', headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, must-revalidate' }] },
         ];

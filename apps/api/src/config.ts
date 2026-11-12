@@ -118,6 +118,12 @@ const schema = z.object({
   /** Shown on error reports: which deployment ("production", "staging") and which build. */
   SENTRY_ENVIRONMENT: z.string().optional(),
   RELEASE: z.string().optional(),
+  /**
+   * The oldest web app build the API still answers (lib/version.ts): a version id like
+   * "202611121530.abc1234" or just its build time "202611121530" (UTC, YYYYMMDDHHmm, any prefix).
+   * Older open tabs get 426 CLIENT_OUTDATED and reload themselves. Unset = every build is accepted.
+   */
+  MIN_WEB_VERSION: z.string().regex(/^\d{4,12}(\.[\w.-]+)?$/).optional(),
   /** Readiness (GET /readyz): how long the database check may take, in milliseconds. */
   READY_DB_TIMEOUT_MS: z.coerce.number().int().min(100).max(10_000).default(1500),
   /** Readiness fails when the oldest unsent email or text has waited longer than this (seconds). */

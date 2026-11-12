@@ -32,6 +32,7 @@ import { installLogContext, requestIdMiddleware } from './lib/requestContext.js'
 import { ipRateLimit } from './lib/ipRateLimit.js';
 import { clientErrorsRouter, opsRouter } from './routes/observability.js';
 import { publicApiRouter } from './routes/publicApi.js';
+import { clientVersionGate, versionHeader, versionRouter } from './lib/version.js';
 
 export function createApp() {
   const app = express();
@@ -41,7 +42,7 @@ export function createApp() {
   startProcessMetrics();
   // First: every request gets an id (X-Request-Id, in every log line and error body) and is counted.
   app.use(requestIdMiddleware, metricsMiddleware);
-  app.use(securityHeaders);
+  app.use(securityHeaders, versionHeader);
   // Per-address token bucket (lib/ipRateLimit.ts); AWS WAF does the fleet-wide limit in front.
   app.use(ipRateLimit());
   // gzip/brotli for answers over 1 KB. The live notification stream (text/event-stream) is left
@@ -49,6 +50,8 @@ export function createApp() {
   app.use(compression({ filter: (req, res) => !String(res.getHeader('Content-Type') ?? '').includes('text/event-stream') && compression.filter(req, res) }));
   // /healthz, /readyz, /metrics (routes/observability.ts).
   app.use(opsRouter);
+  // Which build this is (GET /api/version), then: web builds older than MIN_WEB_VERSION reload (lib/version.ts).
+  app.use('/api', versionRouter, clientVersionGate);
   // The public API for a city's own systems: its own API keys, not a person's session or subdomain.
   app.use('/api/v1', publicApiRouter);
   // The marketing site's enquiry form (no organization, its own CORS).

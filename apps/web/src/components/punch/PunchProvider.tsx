@@ -1,5 +1,6 @@
 'use client';
 
+import { setBusy as setUpdateBusy } from '@/lib/appUpdate';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -184,7 +185,10 @@ export function PunchProvider({ children }: { children: ReactNode }) {
   );
   /** Send live unless there's no connection or earlier punches are still waiting (they go first). */
   const mustQueue = () => navigator.onLine === false || (!!userId && waitingCount(userId) > 0);
-  const unreachable = (e: unknown) => !(e instanceof ApiError) || e.status >= 500;
+  // CLIENT_OUTDATED: kept on the phone; the app refreshes and the new build sends it.
+  const unreachable = (e: unknown) => !(e instanceof ApiError) || e.status >= 500 || e.code === 'CLIENT_OUTDATED';
+  // A punch on its way: no refresh for a new version until it's done (lib/appUpdate.ts).
+  useEffect(() => setUpdateBusy('punch', busy !== null || sending), [busy, sending]);
 
   const clockInFor = useCallback(
     async (body: { facilityId: string; shiftId?: string; positionId?: string }) => {

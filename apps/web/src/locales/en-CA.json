@@ -563,7 +563,8 @@
     "PASSWORD_BREACHED": "This password has appeared in a data breach elsewhere. Choose a different one.",
     "PIN_WEAK": "Choose a PIN that’s harder to guess: no runs like 2345, no repeats, and not your employee number.",
     "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes and try again.",
-    "RATE_LIMITED": "Too many requests. Wait a moment and try again."
+    "RATE_LIMITED": "Too many requests. Wait a moment and try again.",
+    "CLIENT_OUTDATED": "This version of the app is out of date. Refresh to keep going."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -5653,7 +5654,8 @@
       "KIOSK_NO_POSITION": "You have no position yet. Ask a supervisor.",
       "KIOSK_UNKNOWN": "This tablet isn’t set up any more. Ask a supervisor.",
       "KIOSK_OFF": "Punching is turned off for this organization.",
-      "ERROR": "Something went wrong. Try again, or punch on your phone."
+      "ERROR": "Something went wrong. Try again, or punch on your phone.",
+      "CLIENT_OUTDATED": "This tablet is updating. Try again in a moment."
     },
     "adminTitle": "Facility kiosks",
     "adminHelp": "A shared tablet at a facility where staff punch in and out with their employee number and a PIN, without the app on a phone. Punches there count as on site.",
@@ -8272,5 +8274,11 @@
     "orgAwardOrderHint": "One at a time: everyone gets one award before anyone gets a second. Most senior first: each person gets all their awards before the next. Each round can use its own.",
     "howAwardSenior_one": "In that order, each person gets their highest-ranked choice that’s still open and that they can work.",
     "howAwardSenior_other": "The most senior person gets their highest-ranked choices that are still open and that they can work, up to {{count}}; then the next person does the same, and so on."
+  },
+  "appUpdate": {
+    "ready": "A new version is ready",
+    "refresh": "Refresh",
+    "later": "Later",
+    "outdated": "This version is out of date"
   }
 }

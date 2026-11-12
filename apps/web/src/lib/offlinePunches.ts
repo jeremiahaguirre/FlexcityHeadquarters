@@ -83,7 +83,8 @@ export function clearPunches(userId: string) {
 /** No connection, or the server couldn't answer: worth trying again later. */
 export function isTransient(e: unknown): boolean {
   if (!(e instanceof ApiError)) return true;
-  return e.status >= 500 || e.status === 401 || e.status === 408 || e.status === 429;
+  // CLIENT_OUTDATED: this build is too old; the punch waits here and the refreshed app sends it.
+  return e.status >= 500 || e.status === 401 || e.status === 408 || e.status === 429 || e.code === 'CLIENT_OUTDATED';
 }
 
 /** 5 s, 10 s, 20 s … up to 5 minutes. */
