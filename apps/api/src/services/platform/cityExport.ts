@@ -7,6 +7,12 @@
  * - What's sealed with the organization's key is opened, because FH deletes those keys
  *   afterwards: SINs, bank account numbers, incident narratives, employee documents
  *   (as the original files). Each incident opened is logged like any other reading.
+ * - Team messages: while the organization is active, the export has each conversation's
+ *   metadata only (kind, member ids, message count, dates), never message text, first versions of
+ *   edited messages, files or file names: the employer reads a conversation it isn't in only through
+ *   an investigation, with a reason, every reading logged. When the organization leaves FH
+ *   (offboarded), the records pass to it: the export it receives then includes every message,
+ *   first version and file, and an audit row says messages were included.
  * - Signatures, logos and other stored files are written as files, linked from their rows.
  * - Left out: sign-in secrets (password hashes, sessions, one-time links, passkeys, the SSO
  *   client secret, bank-connection credentials), FH's own billing and support records, and
@@ -20,6 +26,7 @@ import { keys } from '../../routes/context.js';
 import { open } from '../crypto/envelope.js';
 import { csvCell } from '../payroll/export.js';
 import { accountNumber, revealSin } from '../payroll/bank.js';
+import { attachmentName } from '../messaging/conversations.js';
 import { messageAad, openWith } from '../messaging/crypto.js';
 import { anonymousResults, type Answers, type Question } from '../surveys/results.js';
 import { isClosed } from '../surveys/surveys.js';
@@ -27,7 +34,7 @@ import { isClosed } from '../surveys/surveys.js';
 /** Sign-in secrets and FH's own records: never in the export. */
 const SKIP_TABLES = new Set(['AuthToken', 'RefreshToken', 'MfaCode', 'Passkey', 'WebAuthnChallenge', 'PlatformAudit', 'SupportSession', 'BillingAccount', 'PadAgreement', 'PadDebit', 'TenantLogo', 'RateLimitHit']);
 /** Columns that are secrets or only the machinery of encryption. */
-const SKIP_COLUMNS = new Set(['passwordHash', 'tokenHash', 'ssoSubject', 'failedLoginCount', 'lockedUntil', 'oidcSecret', 'ciphertext', 'iv', 'authTag', 'wrappedDataKey', 'wrappedKey', 'kekId', 'sinCiphertext', 'sinIv', 'sinAuthTag', 'sinWrappedKey', 'sinKekId', 'accountCiphertext', 'accountIv', 'accountAuthTag', 'accountWrappedKey', 'accountKekId', 'publicKey', 'originalCiphertext', 'originalIv', 'originalAuthTag']);
+const SKIP_COLUMNS = new Set(['nameCiphertext', 'nameIv', 'nameAuthTag', 'passwordHash', 'tokenHash', 'ssoSubject', 'failedLoginCount', 'lockedUntil', 'oidcSecret', 'ciphertext', 'iv', 'authTag', 'wrappedDataKey', 'wrappedKey', 'kekId', 'sinCiphertext', 'sinIv', 'sinAuthTag', 'sinWrappedKey', 'sinKekId', 'accountCiphertext', 'accountIv', 'accountAuthTag', 'accountWrappedKey', 'accountKekId', 'publicKey', 'originalCiphertext', 'originalIv', 'originalAuthTag']);
 
 type Row = Record<string, unknown>;
 
@@ -53,21 +60,30 @@ const json = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === 'bigint'
 const safeName = (s: string) => s.replace(/[^\w.\- ]+/g, '_').slice(0, 80) || 'file';
 const enc = new TextEncoder();
 
-export interface ExportSummary { tables: Array<{ table: string; rows: number }>; files: number }
+export interface ExportSummary { tables: Array<{ table: string; rows: number }>; files: number; messagesIncluded: boolean }
 
-async function tenantTables(tenantId: string) {
+/** Message contents: only in the export the organization receives when it leaves FH. */
+const MESSAGE_CONTENT = new Set(['Message', 'MessageAttachment']);
+
+/** Has the organization left FH (offboarded)? Then the export includes message contents. */
+async function leaving(tenantId: string): Promise<boolean> {
+  return !!(await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { offboardedAt: true } })))?.offboardedAt;
+}
+
+async function tenantTables(tenantId: string, withMessages: boolean) {
   return withTenant(tenantId, async (tx) => {
     const cols = await tx.$queryRaw<Array<{ table: string }>>`
       SELECT table_name AS table FROM information_schema.columns
       WHERE column_name = 'tenantId' AND table_schema = 'public' ORDER BY table_name`;
-    return cols.map((c) => c.table).filter((t) => !SKIP_TABLES.has(t));
+    return cols.map((c) => c.table).filter((t) => !SKIP_TABLES.has(t) && (withMessages || !MESSAGE_CONTENT.has(t)));
   });
 }
 
 /** How much there is, for the screen before the download. */
 export async function exportSummary(tenantId: string): Promise<ExportSummary> {
-  const tables = await tenantTables(tenantId);
-  const out: ExportSummary = { tables: [], files: 0 };
+  const messagesIncluded = await leaving(tenantId);
+  const tables = await tenantTables(tenantId, messagesIncluded);
+  const out: ExportSummary = { tables: [], files: 0, messagesIncluded };
   await withTenant(tenantId, async (tx) => {
     for (const t of tables) {
       const [r] = await tx.$queryRawUnsafe<Array<{ n: bigint }>>(`SELECT count(*)::bigint AS n FROM ${qualified('public', t)} WHERE "tenantId" = $1::uuid`, tenantId);
@@ -93,7 +109,13 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
     zip.add(f);
     f.push(data, true);
   };
-  const tables = await tenantTables(tenantId);
+  const withMessages = await leaving(tenantId);
+  const tables = await tenantTables(tenantId, withMessages);
+  if (withMessages) {
+    // The organization is leaving and receives its messages: recorded before any leave.
+    const [messages, attachments] = await withTenant(tenantId, (tx) => Promise.all([tx.message.count(), tx.messageAttachment.count()]));
+    await withTenant(tenantId, (tx) => audit(tx, { tenantId, actorId: by.userId, action: 'data.export_messages', entity: 'Tenant', entityId: tenantId, after: { messagesIncluded: true, messages, files: attachments, reason: 'Offboarding: the organization receives its records' } }));
+  }
   const counts: Array<{ table: string; rows: number; file: string }> = [];
   const problems: string[] = [];
   let files = 0;
@@ -120,6 +142,18 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
   for (const table of tables) {
     const rows = await withTenant(tenantId, (tx) => tx.$queryRawUnsafe<Row[]>(`SELECT * FROM ${qualified('public', table)} WHERE "tenantId" = $1::uuid`, tenantId), { timeoutMs: 120_000 });
     if (!rows.length) continue;
+    if (table === 'Conversation') {
+      // Metadata: who is in it and how many messages, never what they say.
+      const [members, msgCounts] = await withTenant(tenantId, (tx) => Promise.all([tx.conversationMember.findMany({ select: { conversationId: true, userId: true } }), tx.message.groupBy({ by: ['conversationId'], _count: { _all: true } })]));
+      for (const r of rows) {
+        r.memberIds = members.filter((m) => m.conversationId === r.id).map((m) => m.userId).sort();
+        r.messages = msgCounts.find((c) => c.conversationId === r.id)?._count._all ?? 0;
+      }
+    }
+    if (table === 'Notification' && !withMessages) {
+      // Older "new message" notifications could hold a preview: never in this export.
+      for (const r of rows) if (r.type === 'message_new' && r.params && typeof r.params === 'object') delete (r.params as Record<string, unknown>).preview;
+    }
     if (table === 'SurveyResponse') {
       // Anonymous answers leave only as results that respect the minimum group (never row by row, which
       // could be matched to people); named exit-survey answers are exported as they are.
@@ -150,7 +184,9 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
         }
         if (table === 'MessageAttachment') {
           const m = await withTenant(tenantId, (tx) => tx.message.findUniqueOrThrow({ where: { id: r.messageId as string }, select: { conversationId: true } }));
-          const bytes = openWith(await convKey(m.conversationId), { ciphertext: r.ciphertext as Buffer, iv: r.iv as Buffer, authTag: r.authTag as Buffer }, messageAad(tenantId, m.conversationId, r.messageId as string, 'file'));
+          const key = await convKey(m.conversationId);
+          const bytes = openWith(key, { ciphertext: r.ciphertext as Buffer, iv: r.iv as Buffer, authTag: r.authTag as Buffer }, messageAad(tenantId, m.conversationId, r.messageId as string, 'file'));
+          r.fileName = attachmentName(key, tenantId, m.conversationId, r.messageId as string, r as never);
           const path = `files/messages/${String(r.messageId)}-${safeName(String(r.fileName))}`;
           add(path, new Uint8Array(bytes));
           files++;
@@ -202,6 +238,9 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
       'FlexcityHeadquarters billing and support records (your invoices are in the Billing screen).',
     ],
     problems,
+    messages: withMessages
+      ? 'Team messages are included (csv/Message.csv, with first versions of edited messages and removed messages; files in files/messages/): the organization has left FlexcityHeadquarters and its records pass to it.'
+      : 'Team messages are not included: csv/Conversation.csv lists each conversation (kind, member ids, message count, dates) without what was said. Message text and files are included only in the export the organization receives when it leaves FlexcityHeadquarters. To read a conversation for a workplace investigation, open it in Messages with a reason.',
     readme:
       'csv/ has one spreadsheet per kind of record (dates in UTC, ISO 8601; nested values as JSON). json/ has the same records as JSON Lines. files/ holds documents, signatures and the logo; rows link to them by path. Contains personal information, Social Insurance Numbers and bank account numbers: store it as securely as your HR records.',
   };
