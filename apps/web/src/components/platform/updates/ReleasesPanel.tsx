@@ -68,7 +68,7 @@ export function ReleasesPanel({ rings, reloadRings, features }: { rings: Ring[] 
           description={t('releases.ringsHelp')}
           action={<Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setRingEdit({ ring: null, name: '', tenantIds: [] })}>{t('releases.newRing')}</Button>}
         />
-        <CardBody className="pt-0">
+        <CardBody className="pt-2">
           {!rings ? (
             <Skeleton className="h-16" />
           ) : !rings.length ? (
@@ -137,7 +137,7 @@ export function ReleasesPanel({ rings, reloadRings, features }: { rings: Ring[] 
                             {s.status === 'SCHEDULED' ? ` · ${t('releases.noticesSent', { sent: s.noticesSent, count: s.organizations })}` : ''}
                             {s.keptOwnChoice ? ` · ${t('releases.keptOwn', { count: s.keptOwnChoice })}` : ''}
                           </span>
-                          <span className="ml-auto flex gap-1.5">
+                          <span className="flex gap-1.5 sm:ml-auto">
                             {s.status === 'SCHEDULED' ? <Button size="sm" variant="secondary" loading={busy === `apply:${s.id}`} icon={<Rocket className="h-4 w-4" aria-hidden="true" />} onClick={() => void run(`apply:${s.id}`, () => papi(`/stages/${s.id}/apply`, { method: 'POST' }), t('releases.applied')).then(() => releases.reload())}>{t('releases.applyNow')}</Button> : null}
                             {LIVE.includes(s.status) ? <Button size="sm" variant="ghost" loading={busy === `back:${s.id}`} onClick={() => void run(`back:${s.id}`, () => papi(`/stages/${s.id}/rollback`, { method: 'POST' }), s.status === 'APPLIED' ? t('releases.undone') : t('releases.cancelled')).then(() => releases.reload())}>{s.status === 'APPLIED' ? t('releases.undo') : t('releases.cancel')}</Button> : null}
                           </span>

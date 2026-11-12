@@ -27,6 +27,8 @@ export function AppUpdates() {
   const activity = useRef({ last: Date.now(), hiddenSince: null as number | null });
 
   useEffect(() => (DEMO ? undefined : installDirtyTracking()), []);
+  // Something started or finished (a punch, typing, the kiosk keypad): look again at once.
+  useEffect(() => subscribeUpdate(() => tick((n) => n + 1)), []);
   // Another screen: whatever was typed on the last one is gone or saved.
   useEffect(() => markClean(), [pathname]);
 

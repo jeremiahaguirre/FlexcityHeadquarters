@@ -1,6 +1,7 @@
 /**
- * The static demo's What's new (no API there): one sample note, shown once per browser tab
- * session and then in the list, and the same note in the demo Dev console. Nothing is saved.
+ * The static demo's What's new (no API there): one sample note in the What's new list (marked new
+ * until the list is opened), and the same note in the demo Dev console. The sheet doesn't pop up by
+ * itself in the demo, so tours and recorded walkthroughs aren't interrupted. Nothing is saved.
  */
 const READ_KEY = 'flexcity-demo-whats-new-read';
 const publishAt = () => new Date(Date.now() - 2 * 86_400_000).toISOString();
@@ -27,7 +28,7 @@ export function demoWhatsNew(path: string, method: string): unknown {
   if (path === '/api/updates/changes' && method === 'GET') return [];
   if (path === '/api/me/whats-new' && method === 'GET') {
     const r = read();
-    return { notes: [{ ...NOTE, publishAt: publishAt(), readAt: r ? new Date().toISOString() : null }], unseen: r ? [] : [NOTE.id] };
+    return { notes: [{ ...NOTE, publishAt: publishAt(), readAt: r ? new Date().toISOString() : null }], unseen: [] };
   }
   if (path === '/api/me/whats-new/read' && method === 'POST') {
     try {

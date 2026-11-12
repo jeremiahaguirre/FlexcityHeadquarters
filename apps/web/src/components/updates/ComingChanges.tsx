@@ -22,7 +22,7 @@ export function ComingChanges() {
   return (
     <Card className="mb-6">
       <CardHeader title={t('releases.comingTitle')} description={t('releases.comingHelp')} />
-      <CardBody className="grid gap-4 pt-0">
+      <CardBody className="grid gap-4 pt-2">
         {q.data.map((c) => (
           <article key={c.id} className="grid gap-1.5 border-t border-line pt-4 first:border-0 first:pt-0">
             <div className="flex flex-wrap items-center gap-2">

@@ -50,6 +50,8 @@ const nextConfig = DEMO
     }
   : {
       env,
+      // A separate build folder for a second local build beside the shared one (e.g. NEXT_DIST_DIR=.next-mine).
+      ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
       reactStrictMode: true,
       poweredByHeader: false,
       // "*.live.tsx" pages and middleware.live.ts need a server: only live builds include them.

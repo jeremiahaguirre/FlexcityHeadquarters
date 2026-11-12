@@ -20,7 +20,7 @@ export function PlannedMaintenance() {
   return (
     <Card className="mb-6">
       <CardHeader title={t('maintenance.plannedTitle')} description={t('maintenance.plannedHelp')} />
-      <CardBody className="grid gap-3 pt-0">
+      <CardBody className="grid gap-3 pt-2">
         {q.data.upcoming.map((w) => (
           <div key={w.id} className="flex items-start gap-3">
             <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
