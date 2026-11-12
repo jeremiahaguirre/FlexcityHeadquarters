@@ -16,7 +16,7 @@
   "allowScripts": {
     "@prisma/engines@7.10.1": true,
     "prisma@7.10.1": true,
-    "esbuild@0.23.1": true,
+    "esbuild@0.28.2": true,
     "esbuild@0.21.5": true
   },
   "overrides": {

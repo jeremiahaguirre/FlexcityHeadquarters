@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { EMAIL_FONT_STACK, emailHtml } from '../../src/services/notifications/emailHtml.js';
 import { EMAIL_KIND, renderEmail } from '../../src/services/notifications/mailer.js';
@@ -53,9 +53,9 @@ describe('PDF fonts', () => {
   });
 
   it('PDFKit’s base-14 font metrics ship inside the installed package (nothing to download)', () => {
+    // PDFKit 0.20+ loads generated metric modules (pdfkit/standard-fonts/*) instead of parsing the AFM files.
     const req = createRequire(__filename);
-    const data = join(dirname(req.resolve('pdfkit')), 'data');
-    for (const f of ['Helvetica.afm', 'Helvetica-Bold.afm', 'Courier.afm']) expect(existsSync(join(data, f)), f).toBe(true);
+    for (const f of ['Helvetica', 'HelveticaBold', 'Courier']) expect(existsSync(req.resolve(`pdfkit/standard-fonts/${f}`)), f).toBe(true);
   });
 });
 
