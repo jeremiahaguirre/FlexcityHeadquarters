@@ -128,6 +128,58 @@ Every alert links to a section here. **Page** means someone is woken up; **ticke
 2. Usually the customer's endpoint is down or rejecting the signature; endpoints that keep failing are turned off automatically and the organization's admins are told.
 3. Contact the customer's IT if it's one organization; investigate our side if it's many.
 
+### Sign-in failures spike
+
+*Ticket.* Organization sign-ins are failing at more than 30 a minute for 10 minutes (`fh_auth_failures_total`), usually password guessing or credential stuffing.
+
+1. Break it down by `reason`: `invalid` rising alone is guessing; `blocked_ip` and `rate_limited` mean the defences are already refusing it.
+2. Look in the load-balancer and WAF logs for the addresses and user agents; if a few addresses or one network carry most of it, add them to a WAF block rule (ops/terraform, by the infrastructure owner).
+3. Check `auth.account_locked` and `auth.ip_blocked` in the affected organizations' audit logs; if real people are locked out (an office behind one address), tell their HR that a password reset gets them in at once.
+
+### Account lockouts
+
+*Ticket.* More than 10 accounts locked in 15 minutes (`fh_auth_lockouts_total`): a distributed attack on known emails.
+
+1. Find the organizations (`auth.account_locked` in their audit logs) and whether the same accounts lock again (doubling locks).
+2. Each person was emailed; tell the organizations' HR what is happening and that a reset or a passkey gets people in.
+3. If one organization is targeted, consider asking it to require a second factor for everyone (Settings → Second sign-in factor).
+
+### Credential stuffing
+
+*Ticket.* An address was blocked after failing on 10 different accounts in 15 minutes (`fh_auth_ip_blocks_total{surface="org"}`).
+
+1. The block lasts an hour and is recorded as `auth.ip_blocked` (with the address) in the organization's audit log.
+2. Several blocks from one network or hosting provider: block it at the WAF.
+3. A block of a customer's office address (many people mistyping at once is rare): confirm with the organization; it lifts by itself after an hour.
+
+### Dev console sign-in attack
+
+*Page.* An FH Dev console account locked, or an address failed on 3 Dev console emails (`surface="platform"`).
+
+1. Check `PlatformAudit` (`auth.account_locked`, `auth.ip_blocked`) and ask the admin whether it was them.
+2. If not: treat it as an attack on FH staff. Rotate that admin's password, confirm their passkeys, review recent `PlatformSession`s, and block the address at the WAF.
+
+### Kiosk PIN locks
+
+*Ticket.* Kiosk tablets paused more than 3 times in an hour after many wrong PINs (`fh_kiosk_pin_locks_total{scope="tablet"}`).
+
+1. The organization's supervisors were told in-app; find the tablet in the audit log (`kiosk.tablet_locked`).
+2. Someone may be walking through employee numbers: ask the organization to check the tablet's location and, if needed, revoke and re-pair it.
+
+### API key guessing
+
+*Ticket.* More than 200 public API requests with missing, unknown, revoked or expired keys in 15 minutes (`fh_api_key_auth_failures_total`).
+
+1. Usually one customer's integration kept a revoked or expired key: find it by the `api.request` audit gaps and the load-balancer logs, and contact the organization.
+2. Many addresses: guessing. Each address is already limited to 20 failures per 10 minutes; block the networks at the WAF.
+
+### Rate limited
+
+*Ticket.* The per-address limit is refusing more than 300 requests a minute for 10 minutes (`fh_rate_limited_total{layer=~"global_.*"}`).
+
+1. `global_anon` is usually scraping or a flood on public pages; `global_failures` a client sending bad tokens in a loop (a broken integration or an attack).
+2. If a legitimate customer is refused (a large office behind one address), raise `GLOBAL_RATE_LIMIT_AUTH` or `GLOBAL_RATE_LIMIT_ANON` for the API service and tell the owner.
+
 ### Memory high
 
 *Ticket.* An API process has used more than 1.5 GB for 15 minutes.

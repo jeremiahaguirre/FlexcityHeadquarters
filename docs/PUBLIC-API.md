@@ -24,7 +24,7 @@ under **Settings › Integrations** by an administrator (the `tenant.configure` 
 | Expiry | Optional date; after it the key answers `401 API_KEY_EXPIRED`. |
 | Rotate | Makes a new key with the same settings. The old key keeps working for **24 hours**, so your systems can switch over. |
 | Revoke | Immediate: `401 API_KEY_REVOKED`. |
-| Rate limit | 120 requests a minute per key by default, counted in the database (shared by every API server). Writes also count against their own limit of 60 a minute per key (or the key's limit, if lower). Over a limit: `429 RATE_LIMITED` with `Retry-After: 60`. Every answer carries `X-RateLimit-Limit`. |
+| Rate limit | 120 requests a minute per key by default, counted in the database (shared by every API server). Writes also count against their own limit of 60 a minute per key (or the key's limit, if lower). Every answer carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds until the oldest request in the minute ages out). Over a limit: `429 RATE_LIMITED` with `Retry-After` (the same number of seconds). An address that sends 20 missing, unknown, revoked or expired keys in 10 minutes gets `429 RATE_LIMITED` (`Retry-After: 600`) for the rest of that window, whatever key it sends. |
 | Audit | Making, rotating and revoking keys, and **every API request** (method, path, request id), are in the organization's audit log. Every change a key makes is audited like the same change in the app, with the key as the actor (`apiKeyId`, “API key Payroll sync”) instead of a person. Settings › Integrations shows each key's last use and request count. |
 
 Authenticate with a bearer header. API keys are not sessions: they don't work on the app's own `/api/…` routes, and a

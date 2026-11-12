@@ -109,3 +109,50 @@ groups:
         annotations:
           summary: "An API process is using more than 1.5 GB of memory"
           runbook: "docs/MONITORING.md#memory-high"
+
+  - name: fh-security
+    rules:
+      - alert: SignInFailuresSpike
+        expr: sum(rate(fh_auth_failures_total{surface="org"}[5m])) * 60 > 30
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "Organization sign-ins are failing at more than 30 a minute"
+          runbook: "docs/MONITORING.md#sign-in-failures-spike"
+      - alert: AccountLockouts
+        expr: sum(increase(fh_auth_lockouts_total{surface="org"}[15m])) > 10
+        labels: { severity: ticket }
+        annotations:
+          summary: "More than 10 accounts locked after wrong passwords in 15 minutes"
+          runbook: "docs/MONITORING.md#account-lockouts"
+      - alert: CredentialStuffing
+        expr: sum(increase(fh_auth_ip_blocks_total{surface="org"}[15m])) > 0
+        labels: { severity: ticket }
+        annotations:
+          summary: "An address was blocked after failing to sign in to many different accounts"
+          runbook: "docs/MONITORING.md#credential-stuffing"
+      - alert: DevConsoleSignInAttack
+        expr: sum(increase(fh_auth_ip_blocks_total{surface="platform"}[15m])) > 0 or sum(increase(fh_auth_lockouts_total{surface="platform"}[15m])) > 0
+        labels: { severity: page }
+        annotations:
+          summary: "A Dev console account locked, or an address tried several Dev console emails"
+          runbook: "docs/MONITORING.md#dev-console-sign-in-attack"
+      - alert: KioskPinLocks
+        expr: sum(increase(fh_kiosk_pin_locks_total{scope="tablet"}[1h])) > 3
+        labels: { severity: ticket }
+        annotations:
+          summary: "Kiosk tablets paused several times in an hour after many wrong PINs"
+          runbook: "docs/MONITORING.md#kiosk-pin-locks"
+      - alert: ApiKeyGuessing
+        expr: sum(increase(fh_api_key_auth_failures_total[15m])) > 200
+        labels: { severity: ticket }
+        annotations:
+          summary: "Many public API requests with missing, unknown, revoked or expired keys"
+          runbook: "docs/MONITORING.md#api-key-guessing"
+      - alert: RateLimited
+        expr: sum(rate(fh_rate_limited_total{layer=~"global_.*"}[5m])) * 60 > 300
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "The per-address limit is refusing more than 300 requests a minute"
+          runbook: "docs/MONITORING.md#rate-limited"

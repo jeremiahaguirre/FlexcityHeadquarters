@@ -13,7 +13,7 @@
     "password": "Password",
     "submit": "Sign in",
     "submitting": "Signing in…",
-    "invalid": "Email or password is incorrect.",
+    "invalid": "Email or password is incorrect. After several tries, signing in pauses for a while: reset your password to get in now.",
     "subtitle": "Use the email your organization has on file.",
     "locked": "Too many attempts. This account is locked for 15 minutes; reset your password to unlock it now.",
     "tooMany": "Too many sign-in attempts from this device. Wait a few minutes.",
@@ -373,7 +373,9 @@
     "bid_awarded_one": "Bid round “{{round}}”: you got {{count}} of your choices. See why for the rest.",
     "bid_awarded_other": "Bid round “{{round}}”: you got {{count}} of your choices. See why for the rest.",
     "bid_awarded": "Bid round “{{round}}”: you got one of your choices.",
-    "bid_not_awarded": "Bid round “{{round}}”: none of your choices this time. See why."
+    "bid_not_awarded": "Bid round “{{round}}”: none of your choices this time. See why.",
+    "kiosk_pin_locked": "A kiosk locked an employee number for {{minutes}} minutes after too many wrong PINs ({{kiosk}}).",
+    "kiosk_tablet_locked": "The kiosk “{{kiosk}}” paused for {{minutes}} minutes after many wrong PINs."
   },
   "today": {
     "morning": "Good morning",
@@ -553,7 +555,11 @@
     "SURVEY_CLOSED": "This survey has closed.",
     "SURVEY_SENT": "A survey can’t be changed once it’s sent.",
     "REMINDERS_USED": "This survey has had its two reminders.",
-    "BIRTH_DATE_MINOR": "The birth date on file says they’re under the age of majority. Correct the birth date first."
+    "BIRTH_DATE_MINOR": "The birth date on file says they’re under the age of majority. Correct the birth date first.",
+    "PASSWORD_BREACHED": "This password has appeared in a data breach elsewhere. Choose a different one.",
+    "PIN_WEAK": "Choose a PIN that’s harder to guess: no runs like 2345, no repeats, and not your employee number.",
+    "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes and try again.",
+    "RATE_LIMITED": "Too many requests. Wait a moment and try again."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -2228,7 +2234,8 @@
     "sectorHint": "Private companies start without seniority; either can change it later.",
     "sectorPublic": "Municipality or public body",
     "sectorPrivate": "Private-sector company",
-    "needsFeature": "Needs {{name}}"
+    "needsFeature": "Needs {{name}}",
+    "invalid": "Email or password is incorrect. After a few tries, signing in pauses for a while."
   },
   "passkeys": {
     "title": "Passkeys",
@@ -5635,7 +5642,7 @@
     "foot": "Set your PIN in the app, on your profile. Never share it.",
     "errors": {
       "KIOSK_WRONG": "That number and PIN don’t match.",
-      "KIOSK_LOCKED": "Too many wrong PINs. Try again in 15 minutes, or punch on your phone.",
+      "KIOSK_LOCKED": "Too many wrong PINs for this number. Try again later, or punch on your phone.",
       "KIOSK_SLOW_DOWN": "Too many tries on this tablet. Wait a few minutes.",
       "KIOSK_NO_POSITION": "You have no position yet. Ask a supervisor.",
       "KIOSK_UNKNOWN": "This tablet isn’t set up any more. Ask a supervisor.",

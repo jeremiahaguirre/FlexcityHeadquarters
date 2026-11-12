@@ -13,7 +13,7 @@
     "password": "Mot de passe",
     "submit": "Se connecter",
     "submitting": "Connexion…",
-    "invalid": "Le courriel ou le mot de passe est incorrect.",
+    "invalid": "Le courriel ou le mot de passe est incorrect. Après plusieurs essais, la connexion est suspendue un moment : réinitialisez votre mot de passe pour entrer tout de suite.",
     "subtitle": "Utilisez le courriel que votre organisation a à son dossier.",
     "locked": "Trop de tentatives. Ce compte est verrouillé pendant 15 minutes; réinitialisez votre mot de passe pour le débloquer tout de suite.",
     "tooMany": "Trop de tentatives de connexion depuis cet appareil. Patientez quelques minutes.",
@@ -373,7 +373,9 @@
     "bid_awarded_one": "Ronde « {{round}} » : vous avez obtenu {{count}} de vos choix. Voyez pourquoi pour les autres.",
     "bid_awarded_other": "Ronde « {{round}} » : vous avez obtenu {{count}} de vos choix. Voyez pourquoi pour les autres.",
     "bid_awarded": "Ronde « {{round}} » : vous avez obtenu un de vos choix.",
-    "bid_not_awarded": "Ronde « {{round}} » : aucun de vos choix cette fois. Voyez pourquoi."
+    "bid_not_awarded": "Ronde « {{round}} » : aucun de vos choix cette fois. Voyez pourquoi.",
+    "kiosk_pin_locked": "Une tablette a verrouillé un numéro d’employé pendant {{minutes}} minutes après trop de NIP erronés ({{kiosk}}).",
+    "kiosk_tablet_locked": "La tablette « {{kiosk}} » est en pause {{minutes}} minutes après de nombreux NIP erronés."
   },
   "today": {
     "morning": "Bonjour",
@@ -553,7 +555,11 @@
     "SURVEY_CLOSED": "Ce sondage est terminé.",
     "SURVEY_SENT": "Un sondage ne peut plus être modifié une fois envoyé.",
     "REMINDERS_USED": "Ce sondage a déjà eu ses deux rappels.",
-    "BIRTH_DATE_MINOR": "La date de naissance au dossier indique que cette personne n’a pas l’âge de la majorité. Corrigez d’abord la date de naissance."
+    "BIRTH_DATE_MINOR": "La date de naissance au dossier indique que cette personne n’a pas l’âge de la majorité. Corrigez d’abord la date de naissance.",
+    "PASSWORD_BREACHED": "Ce mot de passe figure dans une fuite de données ailleurs. Choisissez-en un autre.",
+    "PIN_WEAK": "Choisissez un NIP plus difficile à deviner : pas de suite comme 2345, pas de répétitions, et pas votre numéro d’employé.",
+    "TOO_MANY_ATTEMPTS": "Trop de tentatives. Patientez quelques minutes, puis réessayez.",
+    "RATE_LIMITED": "Trop de requêtes. Patientez un moment, puis réessayez."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -2228,7 +2234,8 @@
     "sectorHint": "Les entreprises privées commencent sans ancienneté; on peut changer ce choix plus tard.",
     "sectorPublic": "Municipalité ou organisme public",
     "sectorPrivate": "Entreprise privée",
-    "needsFeature": "Nécessite {{name}}"
+    "needsFeature": "Nécessite {{name}}",
+    "invalid": "Le courriel ou le mot de passe est incorrect. Après quelques essais, la connexion est suspendue un moment."
   },
   "passkeys": {
     "title": "Clés d’accès",
@@ -5635,7 +5642,7 @@
     "foot": "Créez votre NIP dans l’application, à votre profil. Ne le partagez jamais.",
     "errors": {
       "KIOSK_WRONG": "Ce numéro et ce NIP ne correspondent pas.",
-      "KIOSK_LOCKED": "Trop de NIP erronés. Réessayez dans 15 minutes, ou pointez sur votre téléphone.",
+      "KIOSK_LOCKED": "Trop de NIP erronés pour ce numéro. Réessayez plus tard, ou pointez sur votre téléphone.",
       "KIOSK_SLOW_DOWN": "Trop d’essais sur cette tablette. Attendez quelques minutes.",
       "KIOSK_NO_POSITION": "Vous n’avez pas encore de poste. Adressez-vous à la supervision.",
       "KIOSK_UNKNOWN": "Cette tablette n’est plus configurée. Adressez-vous à la supervision.",

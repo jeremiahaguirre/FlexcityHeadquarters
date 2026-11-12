@@ -72,7 +72,7 @@ export default function PlatformLogin() {
     } catch (e) {
       setError(
         e instanceof ApiError && e.status === 401
-          ? t("login.invalid")
+          ? t("platform.invalid")
           : e instanceof ApiError && e.status === 423
             ? t("platform.locked")
             : e instanceof ApiError && e.status === 429

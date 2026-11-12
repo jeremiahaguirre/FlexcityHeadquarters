@@ -30,6 +30,8 @@ function ResetForm() {
     } catch (err) {
       if (err instanceof ApiError && err.code === 'LINK_EXPIRED') setError(t('reset.expired'));
       else if (err instanceof ApiError && err.code === 'PASSWORD_PERSONAL') setError(t('errors.PASSWORD_PERSONAL'));
+      else if (err instanceof ApiError && err.code === 'PASSWORD_BREACHED') setError(t('errors.PASSWORD_BREACHED'));
+      else if (err instanceof ApiError && err.status === 429) setError(t('errors.TOO_MANY_ATTEMPTS'));
       else if (err instanceof ApiError && err.status === 400) setError(t('reset.weak'));
       else setError(t('common.error'));
     } finally {
