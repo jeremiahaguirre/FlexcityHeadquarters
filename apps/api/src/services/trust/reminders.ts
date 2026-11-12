@@ -5,6 +5,7 @@
  * again for its next due date, and several workers never send twice.
  */
 import type { PrismaClient } from '@prisma/client';
+import { config } from '../../config.js';
 import { maskEmail } from '../../lib/log.js';
 import type { Mailer } from '../notifications/mailer.js';
 import { daysUntil, reminderDue } from './scoring.js';
@@ -70,7 +71,9 @@ export async function runReminders(p: PrismaClient, now = new Date()): Promise<n
   return n;
 }
 
-const APP = () => (process.env.PLATFORM_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+/** The Dev console's address: PLATFORM_APP_URL when set, else the app address without an organization (as platformRp() does). */
+export const platformAppUrl = () => (process.env.PLATFORM_APP_URL ?? config().PUBLIC_APP_URL.replace('{subdomain}.', '')).replace(/\/$/, '');
+const APP = platformAppUrl;
 
 /** Emails each new alert to its owner, or to every admin who manages Trust when it has none. */
 export async function deliverTrustAlerts(p: PrismaClient, mailer: Mailer): Promise<number> {
