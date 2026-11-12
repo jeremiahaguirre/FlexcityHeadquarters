@@ -8,6 +8,9 @@
 import { ApiError } from './apiError';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD, type DemoAccount } from './demo';
 import { type DemoRole, type Fixtures, loadFixtures } from './demoFixtures';
+import * as plan from './demoPlanner';
+import type { Board } from './planner';
+import type { FillWeek } from './fill';
 
 const FACILITY = { name: 'Lakeview Aquatic Centre', timezone: 'America/Vancouver' };
 const OFFSET = '-07:00';
@@ -128,10 +131,12 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
     }
     const me = (await fixtures(roleOf(account))).get('/api/me') as { id: string; firstName: string; roles: string[] };
     save({ signedIn: true, account, claimed: [], pending: [] });
+    plan.savePlan(null);
     return { accessToken: 'demo', user: { id: me.id, firstName: me.firstName, roles: me.roles, locale: 'en-CA' } } as T;
   }
   if (path === '/api/auth/logout') {
     save({ signedIn: false, claimed: [], pending: [] });
+    plan.savePlan(null);
     return undefined as T;
   }
   if (path.startsWith('/api/auth/')) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
@@ -184,6 +189,8 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
 
   // The schedule builder's batch check is a POST that only reads: replay the recorded answer.
   if (path === '/api/schedule/planner/eligibility' && method === 'POST') return (data.get(path) ?? { users: [], reasons: [], shifts: {}, days: {}, evaluations: 0, ms: 0 }) as T;
+  const planned = plannerApi(data, path, method, (init.body ?? {}) as Record<string, unknown>);
+  if (planned !== undefined) return planned as T;
 
   if (method === 'GET') {
     const body = data.get(path);
@@ -193,6 +200,80 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
 
   // Changes look like they worked, but nothing is kept (the banner says so).
   return { id: 'demo', ok: true, outcome: 'ASSIGNED', outOfRange: false, reasons: [], locationStatus: 'ON_SITE' } as T;
+}
+
+/** The board the planner last showed (writes don't say which department they're for). */
+let planBase: Board | null = null;
+function baseBoard(data: Fixtures): Board | null {
+  if (planBase) return planBase;
+  const options = data.get('/api/schedule/fill/options') as { defaultDepartmentId?: string | null; departments?: Array<{ id: string }> } | undefined;
+  const dep = options?.defaultDepartmentId ?? options?.departments?.[0]?.id;
+  return dep ? ((data.get(`/api/schedule/planner?departmentId=${dep}`) as Board | undefined) ?? null) : null;
+}
+
+/**
+ * The schedule builder (and Fill the schedule) on the recorded board, with this tab's changes
+ * kept in session storage. Returns undefined for anything it doesn't handle.
+ */
+function plannerApi(data: Fixtures, path: string, method: string, body: Record<string, unknown>): unknown {
+  const url = new URL(path, 'http://demo');
+  const p = url.pathname;
+  if (method === 'GET' && p === '/api/schedule/planner') {
+    const q = url.searchParams;
+    // One board recorded per department, a few weeks long; the facility filter is applied here.
+    const base = data.get(`/api/schedule/planner?departmentId=${q.get('departmentId')}`) as Board | undefined;
+    if (!base?.shifts) return undefined;
+    planBase = base;
+    return plan.boardFor(base, plan.loadPlan(), q.get('from') ?? base.range.from, q.get('to') ?? base.range.to, q.get('facilityIds')?.split(',').filter(Boolean));
+  }
+  if (method === 'GET') return undefined;
+  if (p === '/api/schedule/fill/run') {
+    const recorded = data.get(`/api/schedule/fill/run?week=${Number(body.weekIndex ?? 0)}`) as FillWeek | undefined;
+    const base = baseBoard(data);
+    if (recorded && base) return plan.fillWeek(base, plan.loadPlan(), recorded);
+    const start = String(body.weekStart ?? '');
+    return { week: { start, index: Number(body.weekIndex ?? 0), tentative: false, beyondWindowFrom: start }, settings: { useSeniority: false, toggles: body.toggles, planAheadWeeks: 2 }, summary: { slots: 0, filled: 0, overtimeHours: 0, overtimeCost: 0, hours: { stdev: 0 }, ms: 0 }, proposals: [], unfilled: [], coverageGaps: [], slots: [], people: {}, carry: [] };
+  }
+  if (p === '/api/forecast/preview-shifts') return data.get(`/api/forecast/preview-shifts?facilityId=${String(body.facilityId)}&positionId=${String(body.positionId)}`) ?? { shifts: [] };
+  if (p === '/api/schedule/rotations/generate') return { created: 0, assigned: 0, open: 0, items: [] };
+  if (p === '/api/shifts/publish/check') return plan.publishCheck();
+
+  const base = baseBoard(data);
+  if (!base) return undefined;
+  const state = plan.loadPlan();
+  const keep = <R extends { plan: plan.PlanState }>(r: R) => {
+    plan.savePlan(r.plan);
+    const { plan: _p, ...rest } = r;
+    return rest;
+  };
+  try {
+    let m: RegExpExecArray | null;
+    if ((m = /^\/api\/shifts\/([^/]+)\/assign$/.exec(p))) {
+      plan.savePlan(plan.assign(base, state, m[1]!, (body.userId as string | null) ?? null));
+      return { ok: true, flags: [] };
+    }
+    if ((m = /^\/api\/schedule\/planner\/shifts\/([^/]+)\/move$/.exec(p))) return keep(plan.move(base, state, m[1]!, body as plan.MoveBody));
+    if ((m = /^\/api\/schedule\/planner\/shifts\/([^/]+)\/assign-many$/.exec(p))) return keep(plan.assignMany(base, state, m[1]!, (body.userIds as string[]) ?? []));
+    if (p === '/api/schedule/planner/shifts') return keep(plan.create(base, state, body as unknown as plan.CreateBody));
+    if (p === '/api/schedule/planner/cancel') {
+      const ids = (body.shiftIds as string[]) ?? [];
+      plan.savePlan(plan.cancel(base, state, ids));
+      return { cancelled: ids.length, kept: [] };
+    }
+    if ((m = /^\/api\/shifts\/([^/]+)\/cancel$/.exec(p)) && plan.shiftsOf(base, state).some((s) => s.id === m![1])) {
+      plan.savePlan(plan.cancel(base, state, [m[1]!]));
+      return { ok: true };
+    }
+    if (p === '/api/schedule/planner/copy') return keep(plan.copyRange(base, state, body as { from: string; to: string; days: number }));
+    if (p === '/api/shifts/publish') return keep(plan.publish(base, state, body as { facilityId: string; from: string; to: string; shiftIds?: string[] }));
+    if (p === '/api/schedule/fill/accept') return keep(plan.fillAccept(base, state, (body.items as Parameters<typeof plan.fillAccept>[2]) ?? []));
+    if (p === '/api/schedule/fill/undo') return keep(plan.fillUndo(base, state, (body.undoIds as string[]) ?? []));
+  } catch (e) {
+    // A shift the planner never showed (another screen's): the plain "looks saved" answer.
+    if (e instanceof ApiError && e.code === 'NOT_FOUND') return undefined;
+    throw e;
+  }
+  return undefined;
 }
 
 /** Dev console in the static demo: recorded responses; changes look saved but aren't kept. */
