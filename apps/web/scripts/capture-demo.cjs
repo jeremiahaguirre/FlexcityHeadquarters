@@ -401,6 +401,31 @@ async function prepareMessagesSurveys() {
   }
 }
 
+/**
+ * Two new hires with no birth date on file (fictional people). Without one, the rule of two treats a
+ * person as possibly a minor: Ellis is left that way (HR's record offers to confirm, and adults can
+ * reach Ellis only in groups), Quinn has HR's adult confirmation (one-to-one conversations open).
+ */
+async function prepareAdults() {
+  const hr = await apiAs('hr');
+  const users = (await hr.call('GET', '/api/users')) ?? [];
+  // Swim instructors in aquatics, so the supervisor and the guard meet them in messaging too.
+  const instructor = ((await hr.call('GET', '/api/positions')) ?? []).find((x) => x.name === 'Swim Instructor');
+  const positionIds = instructor ? [instructor.id] : [];
+  const add = async (person) => {
+    const found = users.find((u) => u.email === person.email);
+    if (found) return found.id;
+    return (await hr.call('POST', '/api/users', { ...person, locale: 'en-CA', positionIds }))?.id;
+  };
+  const daysAgo = (n) => iso(new Date(Date.now() - n * 86_400_000));
+  await add({ firstName: 'Ellis', lastName: 'Barrett', email: 'newhire1@kelowna.test', roles: ['STAFF'], employmentStatus: 'CASUAL', hireDate: daysAgo(6) });
+  const quinn = await add({ firstName: 'Quinn', lastName: 'Delisle', email: 'newhire2@kelowna.test', roles: ['STAFF'], employmentStatus: 'PART_TIME', hireDate: daysAgo(40) });
+  if (quinn) {
+    const detail = await hr.call('GET', `/api/users/${quinn}`);
+    if (detail && !detail.adultConfirmation) await hr.call('PUT', `/api/users/${quinn}/adult-confirmation`, { note: 'Driver’s licence seen at hiring; birth date not kept on file.' });
+  }
+}
+
 /** Shift bidding (needs seniority, on in the demo city): a summer lines round open now, and a guard's ranking. */
 async function prepareBids() {
   const sup = await apiAs('supervisor');
@@ -540,6 +565,7 @@ async function prepare() {
   await prepareCityWorks();
   await prepareNewFeatures();
   await prepareTemplates();
+  await prepareAdults();
   await prepareMessagesSurveys();
   // The demo city's (placeholder) logo, uploaded through the Dev console API.
   const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });
@@ -715,6 +741,29 @@ async function capture(browser, role) {
       for (let i = 0; i < n; i++) {
         await page.locator('main section[aria-label] li button').nth(i).click().catch(() => {});
         await page.waitForTimeout(1200);
+      }
+      // The New conversation picker (the people and departments you can write to).
+      await page.getByRole('button', { name: 'New', exact: true }).first().click().catch(() => {});
+      await page.waitForTimeout(1500);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+    }
+    if (href === '/manage/bids' || href === '/union/bids') {
+      // Each round's detail (tapping a round), and the new-round form's choices.
+      const rounds = page.locator('main ul li > button');
+      await rounds.first().waitFor({ timeout: 5000 }).catch(() => {});
+      const n = Math.min(await rounds.count(), 6);
+      for (let i = 0; i < n; i++) {
+        await rounds.nth(i).click().catch(() => {});
+        await page.waitForTimeout(1200);
+        await page.getByRole('button', { name: 'All rounds', exact: true }).click().catch(() => {});
+        await page.waitForTimeout(800);
+      }
+      if (await page.getByRole('button', { name: 'New bid round', exact: true }).count()) {
+        await page.getByRole('button', { name: 'New bid round', exact: true }).click().catch(() => {});
+        await page.waitForTimeout(1500);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(300);
       }
     }
     if (href === '/manage/surveys') {
