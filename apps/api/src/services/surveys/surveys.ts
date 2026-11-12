@@ -79,13 +79,25 @@ export async function ownSurvey(tx: Tx, a: AuthContext, id: string) {
   throw notFound('Survey');
 }
 
-/** The people an audience reaches today: active, in the departments or positions chosen (empty = everyone in reach). */
-async function audiencePeople(tx: Tx, aud: Audience, limitDepartments: string[]): Promise<Array<{ id: string; departmentId: string | null; positionId: string | null }>> {
+/**
+ * The people an audience reaches today: active, in the departments or positions chosen (empty = everyone in reach).
+ * `narrow` keeps only some of them (given people, or those holding a position matching it), with each
+ * person's group worked out exactly as for the whole audience.
+ */
+async function audiencePeople(tx: Tx, aud: Audience, limitDepartments: string[], narrow: { ids?: string[]; holding?: Prisma.UserPositionWhereInput } = {}): Promise<Array<{ id: string; departmentId: string | null; positionId: string | null }>> {
   const deps = limitDepartments.length ? (aud.departmentIds.length ? aud.departmentIds.filter((d) => limitDepartments.includes(d)) : limitDepartments) : aud.departmentIds;
   const posWhere: Prisma.UserPositionWhereInput = { ...(aud.positionIds.length ? { positionId: { in: aud.positionIds } } : {}), ...(deps.length ? { position: { departmentId: { in: deps } } } : {}) };
   const filtered = aud.positionIds.length || deps.length;
   const users = await tx.user.findMany({
-    where: { status: 'ACTIVE', anonymizedAt: null, processingRestrictedAt: null, roles: { hasSome: ['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'EMPLOYEE'] }, ...(filtered ? { positions: { some: posWhere } } : {}) },
+    where: {
+      status: 'ACTIVE',
+      anonymizedAt: null,
+      processingRestrictedAt: null,
+      roles: { hasSome: ['HR_ADMIN', 'AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF', 'FRONT_DESK', 'EMPLOYEE'] },
+      ...(filtered ? { positions: { some: posWhere } } : {}),
+      ...(narrow.ids ? { id: { in: narrow.ids } } : {}),
+      ...(narrow.holding ? { AND: [{ positions: { some: narrow.holding } }] } : {}),
+    },
     select: { id: true, positions: { where: filtered ? posWhere : {}, orderBy: { approvedAt: 'asc' }, select: { positionId: true, position: { select: { departmentId: true } } } } },
   });
   return users.map((u) => ({ id: u.id, positionId: u.positions[0]?.positionId ?? null, departmentId: u.positions[0]?.position.departmentId ?? null }));
@@ -205,15 +217,22 @@ export async function respond(tx: Tx, a: AuthContext, id: string, raw: Record<st
   if (!claimed.count) throw conflict('ALREADY_ANSWERED', 'You’ve already answered this survey.');
   let departmentId: string | null = null;
   let positionId: string | null = null;
-  if (s.anonymous) {
-    // The respondent's group, kept only where enough people were asked from it.
-    const invited = new Set((await tx.surveyInvite.findMany({ where: { surveyId: id }, select: { userId: true } })).map((i) => i.userId));
-    const all = (await audiencePeople(tx, audienceOf(s), s.departmentIds)).filter((p) => invited.has(p.id));
-    const me = all.find((p) => p.id === a.userId);
-    // Only the survey's one breakdown is kept on the answers.
-    if (me) {
-      if (s.breakdown === 'DEPARTMENT' && me.departmentId && all.filter((p) => p.departmentId === me.departmentId).length >= s.minGroup) departmentId = me.departmentId;
-      if (s.breakdown === 'POSITION' && me.positionId && all.filter((p) => p.positionId === me.positionId).length >= s.minGroup) positionId = me.positionId;
+  if (s.anonymous && s.breakdown !== 'NONE') {
+    // The respondent's group (only the survey's one breakdown), kept only where enough people were
+    // asked from it. Only the people who could share that group are loaded, not the whole audience:
+    // a 3,000-person pulse would otherwise load everyone on every answer.
+    const aud = audienceOf(s);
+    const [me] = await audiencePeople(tx, aud, s.departmentIds, { ids: [a.userId] });
+    const group = s.breakdown === 'DEPARTMENT' ? me?.departmentId : me?.positionId;
+    if (me && group) {
+      const same = (p: { departmentId: string | null; positionId: string | null }) => (s.breakdown === 'DEPARTMENT' ? p.departmentId : p.positionId) === group;
+      const holding: Prisma.UserPositionWhereInput = s.breakdown === 'DEPARTMENT' ? { position: { departmentId: group } } : { positionId: group };
+      const peers = (await audiencePeople(tx, aud, s.departmentIds, { holding })).filter(same).map((p) => p.id);
+      const asked = await tx.surveyInvite.count({ where: { surveyId: id, userId: { in: peers } } });
+      if (asked >= s.minGroup) {
+        if (s.breakdown === 'DEPARTMENT') departmentId = group;
+        else positionId = group;
+      }
     }
   }
   await tx.surveyResponse.create({ data: { tenantId: a.tenantId, surveyId: id, userId: s.anonymous ? null : a.userId, departmentId, positionId, answers: v.answers as Prisma.InputJsonValue } });
