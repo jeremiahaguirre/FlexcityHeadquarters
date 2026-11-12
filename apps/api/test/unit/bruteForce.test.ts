@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { POLICIES, afterFailure, ipBlocked, lockDuration, noteFailure } from '../../src/auth/bruteForce.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { POLICIES, accountRule, afterFailure, beginAttempt, failedAttempt, ipBlocked, isKnownNetwork, lockDuration, networkId, networkLockedUntil, noteFailure, rememberNetwork, succeededAttempt } from '../../src/auth/bruteForce.js';
+import { addressKey, networkKey } from '../../src/lib/address.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
 import { weakPin } from '../../src/routes/kiosk.js';
 import { renderEmail } from '../../src/services/notifications/mailer.js';
@@ -64,6 +65,88 @@ describe('one address, many accounts', () => {
   it('an email in different case is the same account', async () => {
     for (const e of ['A@x.test', 'a@x.test', 'a@X.TEST']) await noteFailure('platform', '192.0.2.2', e);
     expect(await ipBlocked('platform', '192.0.2.2')).toBe(false);
+  });
+});
+
+describe('per-network lockout', () => {
+  beforeEach(() => {
+    resetLimits();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-12T12:00:00Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+  const none = { lockedUntil: null, knownNetworks: [] as string[] };
+  const fail = async (ip: string, account = 't:a@x.test') => {
+    const a = await beginAttempt('org', account, ip, none);
+    if (!a.refused) await failedAttempt(a);
+    return a;
+  };
+
+  it('5 failures from a /24 lock only that network, 15 min doubling within 24 h; a success there starts over', async () => {
+    for (let i = 0; i < 5; i++) expect((await fail(`192.0.2.${i + 1}`)).refused).toBeNull();
+    expect((await fail('192.0.2.200')).refused).toBe('network');
+    expect((await beginAttempt('org', 't:a@x.test', '192.0.3.1', none)).refused).toBeNull();
+    expect((await beginAttempt('org', 't:b@x.test', '192.0.2.1', none)).refused).toBeNull();
+    const net = { surface: 'org' as const, account: 't:a@x.test', network: networkId('org', 't:a@x.test', '192.0.2.9') };
+    expect((await networkLockedUntil(net))!.getTime() - Date.now()).toBe(15 * MIN);
+    vi.setSystemTime(Date.now() + 16 * MIN);
+    expect(await networkLockedUntil(net)).toBeNull();
+    for (let i = 0; i < 5; i++) await fail('192.0.2.7');
+    expect((await networkLockedUntil(net))!.getTime() - Date.now()).toBe(30 * MIN);
+    vi.setSystemTime(Date.now() + 31 * MIN);
+    const ok = await beginAttempt('org', 't:a@x.test', '192.0.2.7', none);
+    await succeededAttempt(ok);
+    for (let i = 0; i < 5; i++) await fail('192.0.2.7');
+    expect((await networkLockedUntil(net))!.getTime() - Date.now()).toBe(15 * MIN);
+  });
+
+  it('a reservation counts before the password check, so parallel attempts stop at the limit', async () => {
+    const all = await Promise.all(Array.from({ length: 12 }, () => beginAttempt('org', 't:c@x.test', '198.51.100.1', none)));
+    expect(all.filter((a) => !a.refused)).toHaveLength(5);
+    // The right password gives its place back.
+    await succeededAttempt(all[0]!);
+    expect((await beginAttempt('org', 't:c@x.test', '198.51.100.1', none)).refused).toBeNull();
+  });
+
+  it('a whole-account lock refuses unknown networks, not known ones; known networks expire after 30 days and only 5 are kept', async () => {
+    const id = (ip: string) => networkId('org', 't:d@x.test', ip);
+    let known: string[] = [];
+    for (let i = 1; i <= 7; i++) known = rememberNetwork(known, id(`10.0.${i}.1`), POLICIES.org);
+    expect(known).toHaveLength(5);
+    expect(isKnownNetwork(known, id('10.0.7.9'), POLICIES.org)).toBe(true);
+    expect(isKnownNetwork(known, id('10.0.1.1'), POLICIES.org)).toBe(false);
+    const locked = { lockedUntil: new Date(Date.now() + 10 * MIN), knownNetworks: known };
+    expect((await beginAttempt('org', 't:d@x.test', '10.0.7.200', locked)).refused).toBeNull();
+    expect((await beginAttempt('org', 't:d@x.test', '10.0.1.1', locked)).refused).toBe('account');
+    expect(isKnownNetwork(known, id('10.0.7.9'), POLICIES.org, Date.now() + 31 * 24 * 60 * MIN)).toBe(false);
+  });
+
+  it('network ids are keyed hashes, different per account', () => {
+    expect(networkId('org', 't:a@x.test', '192.0.2.1')).toBe(networkId('org', 'T:A@x.test', '192.0.2.250'));
+    expect(networkId('org', 't:a@x.test', '192.0.2.1')).not.toBe(networkId('org', 't:b@x.test', '192.0.2.1'));
+    expect(networkId('org', 't:a@x.test', '192.0.2.1')).not.toContain('192');
+  });
+
+  it('the whole account: 50 failures, 15 min doubling, capped at 1 h; the Dev console 20, 30 min to 2 h', () => {
+    expect([1, 2, 3, 4].map((l) => lockDuration(l, accountRule(POLICIES.org)) / MIN)).toEqual([15, 30, 60, 60]);
+    expect([1, 2, 3, 4].map((l) => lockDuration(l, accountRule(POLICIES.platform)) / MIN)).toEqual([30, 60, 120, 120]);
+    const now = new Date();
+    expect(afterFailure({ failedCount: 48, lastFailedAt: now, lockLevel: 0, lastLockedAt: null }, accountRule(POLICIES.org), now).lockedUntil).toBeNull();
+    expect(afterFailure({ failedCount: 49, lastFailedAt: now, lockLevel: 0, lastLockedAt: null }, accountRule(POLICIES.org), now).lockedUntil).not.toBeNull();
+  });
+});
+
+describe('address keys', () => {
+  it('IPv4 as is (/24 for networks); IPv6 by /64; IPv4-mapped IPv6 as IPv4', () => {
+    expect(addressKey('192.0.2.7')).toBe('192.0.2.7');
+    expect(networkKey('192.0.2.7')).toBe('192.0.2.0/24');
+    expect(addressKey('::ffff:192.0.2.7')).toBe('192.0.2.7');
+    expect(addressKey('2001:db8:0:1::5')).toBe('2001:db8:0:1::/64');
+    expect(addressKey('2001:0db8:0000:0001:ffff:1:2:3')).toBe('2001:db8:0:1::/64');
+    expect(networkKey('2001:db8:0:1:abcd::1')).toBe('2001:db8:0:1::/64');
+    expect(addressKey('2001:db8:0:2::5')).not.toBe(addressKey('2001:db8:0:1::5'));
+    expect(addressKey('::1')).toBe('0:0:0:0::/64');
+    expect(addressKey(undefined)).toBe('unknown');
   });
 });
 

@@ -8,7 +8,9 @@ import { z } from 'zod';
 import { authOf, requireAuth, requireRecentAuth } from '../auth/middleware.js';
 import { epochSeconds, issueRefreshToken, markReauthenticated, signAccessToken, verifyPassword } from '../auth/tokens.js';
 import type { AuthContext } from '../auth/middleware.js';
-import { allow } from '../auth/rateLimit.js';
+import { allow, reserve } from '../auth/rateLimit.js';
+import { signedInFrom } from '../auth/bruteForce.js';
+import { addressKey } from '../lib/address.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import { authenticationOptions, deviceName, registrationOptions, tenantRp, verifyAuthentication, verifyRegistration } from '../services/auth/passkeys.js';
@@ -36,7 +38,7 @@ export const passkeyAuthRouter = Router();
 passkeyAuthRouter.post(
   '/auth/passkey/options',
   h(async (req, res) => {
-    if (!await allow(`passkey:${req.ip}:${req.tenantId}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!await allow(`passkey:${addressKey(req.ip)}:${req.tenantId}`, 60, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     // Discoverable credentials: the device offers this organization's passkeys itself.
     res.json(await authenticationOptions(await rpFor(req), 'login', [], { tenantId: req.tenantId }));
   }),
@@ -46,7 +48,9 @@ passkeyAuthRouter.post(
   '/auth/passkey',
   h(async (req, res) => {
     // The options call is limited, but a challenge can be answered many times over: limit the answers too.
-    if (!await allow(`passkey-signin:${req.ip}:${req.tenantId}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    // Only answers that fail stay counted (the slot is given back on success): an office behind one address can all sign in.
+    const slot = await reserve(`passkey-signin:${addressKey(req.ip)}:${req.tenantId}`, 30, 10 * 60_000);
+    if (!slot) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const body = z.object({ challengeId: uuid, response: credential }).parse(req.body);
     const response = body.response as unknown as AuthenticationResponseJSON;
     const tenantId = req.tenantId!;
@@ -63,10 +67,14 @@ passkeyAuthRouter.post(
       const sso = await connectionFor(tx);
       if (ready(sso) && sso.enforced && !canConfigure) throw new HttpError(403, 'SSO_REQUIRED', 'Your organization signs in with single sign-on.');
       await tx.passkey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
-      if (user.failedLoginCount || user.lockedUntil || user.lockoutLevel) await tx.user.update({ where: { id: user.id }, data: { failedLoginCount: 0, lockedUntil: null, lockoutLevel: 0 } });
+      // A passkey proves it's them: this network's failures are forgotten and it becomes a known network.
+      const knownNetworks = await signedInFrom('org', `${tenantId}:${user.email.toLowerCase()}`, req.ip, user.knownNetworks);
+      const stillLocked = !!user.lockedUntil && user.lockedUntil > new Date();
+      await tx.user.update({ where: { id: user.id }, data: { knownNetworks, ...(stillLocked ? {} : { failedLoginCount: 0, lockedUntil: null, lockoutLevel: 0 }) } });
       // A passkey is something you have, unlocked by something you are or know: both factors.
       return { user, refresh: await issueRefreshToken(tx, tenantId, user.id, undefined, new Date(), new Date()) };
     });
+    await slot();
     res.cookie(COOKIE, out.refresh, cookieOpts());
     res.json({
       accessToken: await signAccessToken({ sub: out.user.id, tid: tenantId, roles: out.user.roles, aat: epochSeconds(), mfa: true }),

@@ -76,52 +76,89 @@ describe('sign-in answers never tell accounts apart', () => {
   });
 });
 
-describe('progressive account lockout', () => {
-  it('5 wrong → 15 min, then doubling within 24 h; one email per lock; success resets', async () => {
-    const u = t.users[1]!; // French
+describe('progressive lockout', () => {
+  it('5 wrong from one network lock that network out of the account; other networks still sign in; no email for a network lock', async () => {
+    const u = t.users[1]!;
     const email = 'guard1@brute.test';
-    const lockedBefore = authLockouts.get({ surface: 'org' });
+    const before = authLockouts.get({ surface: 'org', scope: 'network' });
     for (let i = 0; i < 5; i++) expect((await login(email, 'wrong-password-1', freshIp())).status).toBe(401);
-    let row = await owner.user.findUniqueOrThrow({ where: { id: u.id } });
+    expect(authLockouts.get({ surface: 'org', scope: 'network' })).toBe(before + 1);
+    // The right password from that network: refused, like a wrong one.
+    expect(shape(await login(email, PASSWORD, freshIp()))).toEqual(shape(await login('nobody@brute.test', 'x-y-z-123', '192.0.2.77')));
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.network_locked', entityId: u.id } })).toBe(1);
+    expect(await owner.emailOutbox.count({ where: { toEmail: email, template: 'account_locked' } })).toBe(0);
+    // The account itself isn't locked: the person signs in from their own network.
+    expect((await owner.user.findUniqueOrThrow({ where: { id: u.id } })).lockedUntil).toBeNull();
+    expect((await login(email, PASSWORD, '198.18.40.1')).status).toBe(200);
+  });
+
+  it('very many failures across networks lock the whole account (15 min doubling, capped at 1 h), one email per lock; a known network still gets in', async () => {
+    const target = t.users[2]!;
+    const email = 'guard2@brute.test';
+    await owner.user.update({ where: { id: target.id }, data: { locale: 'fr-CA' } });
+    expect((await login(email, PASSWORD, '172.20.5.1')).status).toBe(200); // home network: known from now on
+    const fail50 = async (round: number) => {
+      for (let i = 0; i < 50; i++) await login(email, 'wrong-password-1', `10.${round}.${i}.1`);
+    };
+    const lockedBefore = authLockouts.get({ surface: 'org', scope: 'account' });
+    await fail50(1);
+    let row = await owner.user.findUniqueOrThrow({ where: { id: target.id } });
     expect(row.lockoutLevel).toBe(1);
     const first = row.lockedUntil!.getTime() - Date.now();
     expect(first).toBeGreaterThan(14 * 60_000);
     expect(first).toBeLessThanOrEqual(15 * 60_000);
-    expect(authLockouts.get({ surface: 'org' })).toBe(lockedBefore + 1);
-
-    // Attempts while locked change nothing and send nothing more.
-    for (let i = 0; i < 3; i++) await login(email, 'wrong-password-1', freshIp());
+    expect(authLockouts.get({ surface: 'org', scope: 'account' })).toBe(lockedBefore + 1);
     expect(await owner.emailOutbox.count({ where: { toEmail: email, template: 'account_locked' } })).toBe(1);
     const mail = await owner.emailOutbox.findFirstOrThrow({ where: { toEmail: email, template: 'account_locked' } });
     expect(mail.locale).toBe('fr-CA');
     expect((mail.params as { url: string }).url).toBe('http://brute.localhost:3000/forgot');
-    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.account_locked', entityId: u.id } })).toBe(1);
+    // A new network can't get in; the known one can, and the lock stays for everyone else.
+    expect((await login(email, PASSWORD, '198.18.41.1')).status).toBe(401);
+    expect((await login(email, PASSWORD, '172.20.5.9')).status).toBe(200);
+    row = await owner.user.findUniqueOrThrow({ where: { id: target.id } });
+    expect(row.lockedUntil!.getTime()).toBeGreaterThan(Date.now());
+    // Attempts while locked change nothing and send nothing more.
+    for (let i = 0; i < 3; i++) await login(email, 'wrong-password-1', `10.9.${i}.1`);
+    expect(await owner.emailOutbox.count({ where: { toEmail: email, template: 'account_locked' } })).toBe(1);
 
-    // The lock passes; five more wrong passwords lock for twice as long.
-    await owner.user.update({ where: { id: u.id }, data: { lockedUntil: new Date(Date.now() - 1000) } });
-    for (let i = 0; i < 5; i++) await login(email, 'wrong-password-1', freshIp());
-    row = await owner.user.findUniqueOrThrow({ where: { id: u.id } });
+    // The lock passes; 50 more lock for twice as long; capped at an hour.
+    await owner.user.update({ where: { id: target.id }, data: { lockedUntil: new Date(Date.now() - 1000) } });
+    await fail50(2);
+    row = await owner.user.findUniqueOrThrow({ where: { id: target.id } });
     expect(row.lockoutLevel).toBe(2);
     expect(row.lockedUntil!.getTime() - Date.now()).toBeGreaterThan(29 * 60_000);
-    expect(await owner.emailOutbox.count({ where: { toEmail: email, template: 'account_locked' } })).toBe(2);
+    await owner.user.update({ where: { id: target.id }, data: { lockedUntil: new Date(Date.now() - 1000), lockoutLevel: 9 } });
+    await fail50(3);
+    row = await owner.user.findUniqueOrThrow({ where: { id: target.id } });
+    expect(row.lockedUntil!.getTime() - Date.now()).toBeLessThanOrEqual(3_600_000);
+    expect(row.lockedUntil!.getTime() - Date.now()).toBeGreaterThan(59 * 60_000);
+    expect(await owner.emailOutbox.count({ where: { toEmail: email, template: 'account_locked' } })).toBe(3);
 
-    // Capped at 24 hours.
-    await owner.user.update({ where: { id: u.id }, data: { lockedUntil: new Date(Date.now() - 1000), lockoutLevel: 9 } });
-    for (let i = 0; i < 5; i++) await login(email, 'wrong-password-1', freshIp());
-    row = await owner.user.findUniqueOrThrow({ where: { id: u.id } });
-    expect(row.lockedUntil!.getTime() - Date.now()).toBeLessThanOrEqual(24 * 3_600_000);
-    expect(row.lockedUntil!.getTime() - Date.now()).toBeGreaterThan(23 * 3_600_000);
-
-    // Once it passes, the right password signs in and starts over.
-    await owner.user.update({ where: { id: u.id }, data: { lockedUntil: new Date(Date.now() - 1000) } });
-    expect((await login(email, PASSWORD, freshIp())).status).toBe(200);
-    row = await owner.user.findUniqueOrThrow({ where: { id: u.id } });
+    // Once it passes, the right password from anywhere signs in and starts over.
+    await owner.user.update({ where: { id: target.id }, data: { lockedUntil: new Date(Date.now() - 1000) } });
+    expect((await login(email, PASSWORD, '198.18.42.1')).status).toBe(200);
+    row = await owner.user.findUniqueOrThrow({ where: { id: target.id } });
     expect([row.failedLoginCount, row.lockoutLevel, row.lockedUntil]).toEqual([0, 0, null]);
+    // Only keyed hashes of networks are stored, never addresses.
+    expect(row.knownNetworks.length).toBeGreaterThan(0);
+    expect(row.knownNetworks.join(' ')).not.toMatch(/\d+\.\d+\.\d+/);
+  });
+
+  it('a password reset forgets every network’s locks', async () => {
+    const email = 'guard1@brute.test';
+    const ip = '198.18.43.1';
+    for (let i = 0; i < 5; i++) await login(email, 'wrong-password-1', ip);
+    expect((await login(email, PASSWORD, ip)).status).toBe(401);
+    await request(server).post('/api/auth/forgot').set('x-tenant-subdomain', SUB).set('X-Forwarded-For', ip).send({ email });
+    const mail = await owner.emailOutbox.findFirstOrThrow({ where: { toEmail: email, template: 'password_reset' }, orderBy: { createdAt: 'desc' } });
+    const token = new URL((mail.params as { url: string }).url).searchParams.get('token')!;
+    expect((await request(server).post('/api/auth/reset').set('x-tenant-subdomain', SUB).set('X-Forwarded-For', ip).send({ token, password: 'quiet-harbour-trail-77' })).status).toBe(200);
+    expect((await login(email, 'quiet-harbour-trail-77', ip)).status).toBe(200);
   });
 
   it('failures older than the window are forgotten', async () => {
     const u = t.users[2]!;
-    await owner.user.update({ where: { id: u.id }, data: { failedLoginCount: 4, lastFailedLoginAt: new Date(Date.now() - 25 * 3_600_000) } });
+    await owner.user.update({ where: { id: u.id }, data: { failedLoginCount: 49, lastFailedLoginAt: new Date(Date.now() - 25 * 3_600_000) } });
     await login('guard2@brute.test', 'wrong-password-1', freshIp());
     const row = await owner.user.findUniqueOrThrow({ where: { id: u.id } });
     expect(row.failedLoginCount).toBe(1);

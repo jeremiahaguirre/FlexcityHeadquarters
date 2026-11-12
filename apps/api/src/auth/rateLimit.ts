@@ -70,6 +70,70 @@ export async function count(key: string, windowMs: number): Promise<number> {
   return (hits.get(key) ?? []).filter((t) => now - t < windowMs).length;
 }
 
+/** Gives back a reserved slot (see reserve()). Safe to call more than once. */
+export type Release = () => Promise<void>;
+
+/**
+ * Atomically takes a slot under `limit` for the key (like allow()), and returns a function that
+ * gives it back, or null when the window is full. For "count the attempt first, verify after":
+ * concurrent attempts can't all slip under the limit while a slow check (a password hash) runs,
+ * and an attempt that turns out right gives its slot back (only failures stay counted).
+ */
+export async function reserve(key: string, limit: number, windowMs: number): Promise<Release | null> {
+  const now = Date.now();
+  if (shared()) {
+    const id = await db().$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+      const used = await tx.rateLimitHit.count({ where: { key, at: { gt: new Date(now - windowMs) } } });
+      if (used >= limit) return null;
+      return (await tx.rateLimitHit.create({ data: { key, at: new Date(now) }, select: { id: true } })).id;
+    });
+    if (id === null) return null;
+    let done = false;
+    return async () => {
+      if (done) return;
+      done = true;
+      await db().rateLimitHit.deleteMany({ where: { id } });
+    };
+  }
+  // In memory nothing awaits between the count and the push, so this is atomic in the process.
+  const list = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (list.length >= limit) {
+    hits.set(key, list);
+    return null;
+  }
+  list.push(now);
+  hits.set(key, list);
+  let done = false;
+  return async () => {
+    if (done) return;
+    done = true;
+    const l = hits.get(key);
+    const i = l ? l.lastIndexOf(now) : -1;
+    if (l && i >= 0) l.splice(i, 1);
+  };
+}
+
+/** Forgets every hit of every key starting with `prefix` (e.g. an account's failures once it signs in). */
+export async function clearPrefix(prefix: string): Promise<void> {
+  if (shared()) {
+    await db().$executeRaw`DELETE FROM "RateLimitHit" WHERE key LIKE ${likePrefix(prefix)}`;
+    return;
+  }
+  for (const k of [...hits.keys()]) if (k.startsWith(prefix)) hits.delete(k);
+}
+
+/** When the key was last hit within the window (ms since the epoch), or null. */
+export async function latest(key: string, windowMs: number): Promise<number | null> {
+  const now = Date.now();
+  if (shared()) {
+    const r = await db().rateLimitHit.findFirst({ where: { key, at: { gt: new Date(now - windowMs) } }, orderBy: { at: 'desc' }, select: { at: true } });
+    return r ? r.at.getTime() : null;
+  }
+  const l = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+  return l.length ? Math.max(...l) : null;
+}
+
 const likePrefix = (p: string) => `${p.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 
 /**

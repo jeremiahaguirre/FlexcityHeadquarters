@@ -3,7 +3,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { PLATFORM_COOKIE, endPlatformSession, platformCookieOpts, platformMfaRequired, platformOf, requirePlatformSession, startPlatformSession } from '../../auth/platform.js';
 import { allow } from '../../auth/rateLimit.js';
-import { POLICIES, afterFailure, ipBlocked, noteFailure } from '../../auth/bruteForce.js';
+import { POLICIES, abandonAttempt, accountRule, afterFailure, beginAttempt, failedAttempt, ipBlocked, noteFailure, rememberNetwork, succeededAttempt } from '../../auth/bruteForce.js';
+import { addressKey } from '../../lib/address.js';
 import { authFailures, authIpBlocks, authLockouts } from '../../lib/metrics.js';
 import { verifyPassword } from '../../auth/tokens.js';
 import { db } from '../../lib/db.js';
@@ -17,44 +18,67 @@ const tooMany = () => new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in 
 
 /**
  * Dev console sign-in, stricter than an organization's (auth/bruteForce.ts POLICIES.platform):
- * 3 wrong passwords lock for 30 minutes, doubling to 24 hours; an address failing on 3 different
- * emails is blocked for an hour. Locked, unknown and wrong all answer 401 INVALID_CREDENTIALS.
- * Locks and blocks go to the console's own audit (an admin's) and to metrics, which alert on them.
+ * 3 wrong passwords from one network lock that network out for 30 minutes, doubling to 24 hours;
+ * 20 across networks lock the whole account (30 minutes doubling to 2 hours) except for the
+ * networks it recently signed in from; an address failing on 3 different emails is blocked for an
+ * hour. Attempts are reserved before the password check and decided under a row lock (no
+ * parallel-guess bypass). Locked, unknown and wrong all answer 401 INVALID_CREDENTIALS. Locks and
+ * blocks go to the console's own audit (an admin's) and to metrics, which alert on them.
  */
 platformAuthRouter.post(
   '/auth/login',
   h(async (req, res) => {
     const { email, password } = z.object({ email: z.string().email(), password: z.string().min(1) }).parse(req.body);
     const policy = POLICIES.platform;
+    const lower = email.toLowerCase();
     if (await ipBlocked('platform', req.ip)) {
       authFailures.inc({ surface: 'platform', reason: 'blocked_ip' });
       throw tooMany();
     }
-    if (!await allow(`platform-login:${req.ip}`, 10, 10 * 60_000)) {
+    if (!await allow(`platform-login:${addressKey(req.ip)}`, 10, 10 * 60_000)) {
       authFailures.inc({ surface: 'platform', reason: 'rate_limited' });
       throw tooMany();
     }
-    const admin = await db().platformAdmin.findUnique({ where: { email: email.toLowerCase() } });
-    const ok = admin ? await verifyPassword(password, admin.passwordHash) : await verifyPassword(password, 'scrypt$AAAA$AAAA').then(() => false);
-    const now = new Date();
-    const locked = !!admin?.lockedUntil && admin.lockedUntil > now;
-    if (!admin || !ok || admin.disabledAt || locked) {
-      if (admin && !ok && !locked) {
-        const next = afterFailure({ failedCount: admin.failedLogins, lastFailedAt: admin.lastFailedLoginAt, lockLevel: admin.lockoutLevel, lastLockedAt: admin.lastLockedAt }, policy, now);
-        await db().platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: next.failedCount, lastFailedLoginAt: next.lastFailedAt, lockoutLevel: next.lockLevel, lastLockedAt: next.lastLockedAt, ...(next.lockedUntil ? { lockedUntil: next.lockedUntil } : {}) } });
-        if (next.lockedUntil) {
-          authLockouts.inc({ surface: 'platform' });
-          await db().platformAudit.create({ data: { adminId: admin.id, action: 'auth.account_locked', detail: { until: next.lockedUntil.toISOString(), level: next.lockLevel, ip: req.ip ?? null } } });
+    const pre = await db().platformAdmin.findUnique({ where: { email: lower }, select: { id: true, passwordHash: true, lockedUntil: true, knownNetworks: true } });
+    const attempt = pre ? await beginAttempt('platform', lower, req.ip, pre) : null;
+    const ok = pre ? await verifyPassword(password, pre.passwordHash) : await verifyPassword(password, 'scrypt$AAAA$AAAA').then(() => false);
+    const outcome = await db().$transaction(async (tx) => {
+      if (!pre || !attempt) return { signedIn: null, locked: false };
+      await tx.$queryRaw`SELECT id FROM "PlatformAdmin" WHERE id = ${pre.id}::uuid FOR UPDATE`;
+      const admin = await tx.platformAdmin.findUniqueOrThrow({ where: { id: pre.id } });
+      const now = new Date();
+      const locked = !!attempt.refused || (!!admin.lockedUntil && admin.lockedUntil > now && !attempt.known);
+      if (!ok && !attempt.refused) {
+        const networkLock = await failedAttempt(attempt, now);
+        if (networkLock) {
+          authLockouts.inc({ surface: 'platform', scope: 'network' });
+          await tx.platformAudit.create({ data: { adminId: admin.id, action: 'auth.network_locked', detail: { until: networkLock.until.toISOString(), level: networkLock.level, ip: req.ip ?? null } } });
+        }
+        if (!(admin.lockedUntil && admin.lockedUntil > now)) {
+          const next = afterFailure({ failedCount: admin.failedLogins, lastFailedAt: admin.lastFailedLoginAt, lockLevel: admin.lockoutLevel, lastLockedAt: admin.lastLockedAt }, accountRule(policy), now);
+          await tx.platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: next.failedCount, lastFailedLoginAt: next.lastFailedAt, lockoutLevel: next.lockLevel, lastLockedAt: next.lastLockedAt, ...(next.lockedUntil ? { lockedUntil: next.lockedUntil } : {}) } });
+          if (next.lockedUntil) {
+            authLockouts.inc({ surface: 'platform', scope: 'account' });
+            await tx.platformAudit.create({ data: { adminId: admin.id, action: 'auth.account_locked', detail: { until: next.lockedUntil.toISOString(), level: next.lockLevel, ip: req.ip ?? null } } });
+          }
         }
       }
-      authFailures.inc({ surface: 'platform', reason: locked ? 'locked' : 'invalid' });
-      if (await noteFailure('platform', req.ip, email)) {
+      if (!ok || locked || admin.disabledAt) return { signedIn: null, locked };
+      await succeededAttempt(attempt);
+      const stillLocked = !!admin.lockedUntil && admin.lockedUntil > now;
+      await tx.platformAdmin.update({ where: { id: admin.id }, data: { knownNetworks: rememberNetwork(admin.knownNetworks, attempt.network, policy, now.getTime()), lastLoginAt: now, ...(stillLocked ? {} : { failedLogins: 0, lockedUntil: null, lockoutLevel: 0 }) } });
+      return { signedIn: admin, locked: false };
+    });
+    if (!outcome.signedIn) {
+      if (ok) await abandonAttempt(attempt);
+      authFailures.inc({ surface: 'platform', reason: outcome.locked ? 'locked' : 'invalid' });
+      if (!ok && (await noteFailure('platform', req.ip, email))) {
         authIpBlocks.inc({ surface: 'platform' });
-        if (admin) await db().platformAudit.create({ data: { adminId: admin.id, action: 'auth.ip_blocked', detail: { ip: req.ip ?? null, forMinutes: policy.ipBlockMs / 60_000 } } });
+        if (pre) await db().platformAudit.create({ data: { adminId: pre.id, action: 'auth.ip_blocked', detail: { ip: req.ip ?? null, forMinutes: policy.ipBlockMs / 60_000 } } });
       }
       throw invalid();
     }
-    await db().platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: 0, lockedUntil: null, lockoutLevel: 0, lastLoginAt: new Date() } });
+    const admin = outcome.signedIn;
     res.cookie(PLATFORM_COOKIE, await startPlatformSession(admin.id), platformCookieOpts());
     const hasPasskey = (await db().platformPasskey.count({ where: { adminId: admin.id } })) > 0;
     // A password alone isn't enough: the console asks for a passkey next (or to set one up).

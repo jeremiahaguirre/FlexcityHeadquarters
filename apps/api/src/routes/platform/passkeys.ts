@@ -4,6 +4,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { PLATFORM_COOKIE, markPlatformMfa, platformCookieOpts, platformMfaRequired, platformOf, requirePlatform, requirePlatformSession, startPlatformSession } from '../../auth/platform.js';
 import { allow } from '../../auth/rateLimit.js';
+import { signedInFrom } from '../../auth/bruteForce.js';
+import { addressKey } from '../../lib/address.js';
 import { db } from '../../lib/db.js';
 import { HttpError, notFound } from '../../lib/errors.js';
 import { authenticationOptions, deviceName, platformRp, registrationOptions, verifyAuthentication, verifyRegistration } from '../../services/auth/passkeys.js';
@@ -18,7 +20,7 @@ export const platformPasskeyRouter = Router();
 platformPasskeyRouter.post(
   '/auth/passkey/options',
   h(async (req, res) => {
-    if (!await allow(`platform-passkey:${req.ip}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!await allow(`platform-passkey:${addressKey(req.ip)}`, 30, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     res.json(await authenticationOptions(platformRp(), 'platform-login', [], {}));
   }),
 );
@@ -33,7 +35,9 @@ platformPasskeyRouter.post(
     const admin = await db().platformAdmin.findUniqueOrThrow({ where: { id: passkey!.adminId } });
     if (admin.disabledAt) throw new HttpError(401, 'INVALID_CREDENTIALS', 'This account can’t sign in.');
     await db().platformPasskey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
-    await db().platformAdmin.update({ where: { id: admin.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
+    const knownNetworks = await signedInFrom('platform', admin.email.toLowerCase(), req.ip, admin.knownNetworks);
+    const stillLocked = !!admin.lockedUntil && admin.lockedUntil > new Date();
+    await db().platformAdmin.update({ where: { id: admin.id }, data: { knownNetworks, lastLoginAt: new Date(), ...(stillLocked ? {} : { failedLogins: 0, lockedUntil: null, lockoutLevel: 0 }) } });
     res.cookie(PLATFORM_COOKIE, await startPlatformSession(admin.id, true), platformCookieOpts());
     res.json({ admin: { id: admin.id, email: admin.email, name: admin.name } });
   }),

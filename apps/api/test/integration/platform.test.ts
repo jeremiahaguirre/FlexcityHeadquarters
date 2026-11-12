@@ -45,18 +45,25 @@ describe('Dev console sign-in', () => {
     expect((await request(server).get('/api/me').set('x-tenant-subdomain', 'sigma').set('Cookie', cookie)).status).toBe(401);
   });
 
-  it('locks the account after three wrong passwords, answering like a wrong password', async () => {
+  it('three wrong passwords lock that network out, answering like a wrong password; 20 across networks lock the account except a known network', async () => {
     const email = `lock-${randomBytes(3).toString('hex')}@flexcity.dev`;
     const admin = await owner.platformAdmin.create({ data: { email, name: 'L', passwordHash: await hashPassword('right password!') } });
-    const attempt = (password: string) => request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').set('X-Forwarded-For', '198.51.100.90').send({ email, password });
+    const attempt = (password: string, ip = '198.51.100.90') => request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').set('X-Forwarded-For', ip).send({ email, password });
+    expect((await attempt('right password!', '172.22.0.1')).status).toBe(200); // a known network
     for (let i = 0; i < 3; i++) expect((await attempt('wrong')).status).toBe(401);
     const locked = await attempt('right password!');
     expect(locked.status).toBe(401);
     expect(locked.body.code).toBe('INVALID_CREDENTIALS');
+    expect(await owner.platformAudit.count({ where: { adminId: admin.id, action: 'auth.network_locked' } })).toBe(1);
+    expect((await attempt('right password!', '198.18.50.1')).status).toBe(200);
+    // 20 failures across networks: the whole account, 30 minutes, once.
+    for (let i = 0; i < 20; i++) await attempt('wrong', `10.77.${i}.1`);
     const row = await owner.platformAdmin.findUniqueOrThrow({ where: { id: admin.id } });
     expect(row.lockoutLevel).toBe(1);
     expect(row.lockedUntil!.getTime() - Date.now()).toBeGreaterThan(29 * 60_000);
     expect(await owner.platformAudit.count({ where: { adminId: admin.id, action: 'auth.account_locked' } })).toBe(1);
+    expect((await attempt('right password!', '198.18.51.1')).status).toBe(401);
+    expect((await attempt('right password!', '172.22.0.7')).status).toBe(200);
   });
 
   it('offers Dev console passkeys on the console’s own address, only soon after signing in', async () => {
