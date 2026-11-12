@@ -27,6 +27,15 @@ const RENAME = [
   ['City of Kelowna (demo)', 'City of Lakeview (demo)'],
   ['Parkinson Recreation Centre', 'Lakeview Aquatic Centre'],
   ['CUPE Local 338 (demo)', 'Aquatic Workers Local 101 (demo)'],
+  // Real places and addresses in the local sample data (a beach, city hall, a street, nearby towns).
+  ['Rotary Beach', 'Willow Cove Beach'],
+  ['1435 Water St', '100 Harbour Way'],
+  ['200 Bernard Ave', '200 Orchard Ave'],
+  ['V1Y 1J4', 'V9Z 9Z9'],
+  ['V1Y 6N2', 'V9Z 9Z8'],
+  ['Lakeshore Rd', 'Shoreline Rd'],
+  ['Vernon', 'Ridgeview'],
+  ['Penticton', 'Ridgeview'],
   ['@kelowna.test', '@demo.flexcity'],
   ['Kelowna', 'Lakeview'],
   ['kelowna', 'lakeview'],
@@ -61,6 +70,19 @@ async function signIn(who) {
 const DEMO_SIGNATURE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHgAAAAoCAIAAAC6iKlyAAAAu0lEQVR42u3YSwrDMAwFwLfvIQq9/x3bE5SAI9vCmUeWwZEmyjdfWZIgAA1aQIMGLaBBC2jQoAU0aAH9bOjX+/Nv29j8yqqyppPLfbYQr6wqU5sp7HwZ8aSqsr2Z4XOzbP2SqtKkmdnWN2fz/mintpMSptonUpOl0mGK510cMwobWzZ95uXs230aDnKfV4XCA6XnIDd5+S2kyNi300M+5wovbv86zvrXIaBBgxbQoEEjAA1aQIMGLaBPyg8+d/3H6v32KAAAAABJRU5ErkJggg==';
 
 const iso = (d) => d.toISOString().slice(0, 10);
+/** The demo city's own date (the sample data's days are its local days, whatever the clock's zone). */
+const cityToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const addDays = (date, n) => iso(new Date(Date.parse(`${date}T12:00:00Z`) + n * 86_400_000));
+const mondayOf = (date) => addDays(date, -((new Date(`${date}T12:00:00Z`).getUTCDay() + 6) % 7));
+/** A wall-clock minute of a city day as an instant (DST-safe). */
+function cityInstant(date, minute, tz = 'America/Vancouver') {
+  const offset = (t) => {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+    return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - t;
+  };
+  const guess = Date.parse(`${date}T00:00:00Z`) + minute * 60_000;
+  return new Date(guess - offset(guess - offset(guess))).toISOString();
+}
 const plusDays = (n) => new Date(Date.now() + n * 86_400_000);
 const nextDow = (dow, from = 7) => {
   const d = plusDays(from);
@@ -386,6 +408,135 @@ async function prepareBids() {
   if (mine?.items?.length) await guard.call('PUT', `/api/me/bids/${mine.id}/choices`, { itemIds: mine.items.slice(0, 3).map((i) => i.id) });
 }
 
+/**
+ * Onboarding as a city that has used the app for a while: long-standing staff are done, the
+ * junior instructor is part-way (the child-safety items still block instructor shifts) and one
+ * newer guard still owes two forms. Without this every instructor shift stays open.
+ */
+async function prepareOnboarding() {
+  const hr = await apiAs('hr');
+  const people = await hr.call('GET', '/api/onboarding/people');
+  if (!Array.isArray(people) || people.some((p) => p.outstanding === 0)) return;
+  for (const p of people) {
+    const detail = await hr.call('GET', `/api/onboarding/people/${p.id}`);
+    const items = (detail?.items ?? []).filter((i) => i.state === 'PENDING' && i.canComplete);
+    const junior = /Morgan Lee/.test(p.name);
+    const newer = /Zoe Laurent/.test(p.name);
+    const since = String(p.since ?? '').slice(0, 10);
+    const completedOn = since && since > iso(plusDays(-300)) ? since : iso(plusDays(-120));
+    for (const [n, i] of items.entries()) {
+      if (junior && (i.blocksScheduling || n % 2)) continue;
+      if (newer && (i.key === 'td1' || i.key === 'direct_deposit')) continue;
+      await hr.call('POST', `/api/onboarding/people/${p.id}/items/${i.id}`, { action: 'complete', completedOn });
+    }
+  }
+}
+
+/**
+ * A real working week in the schedule builder: this week and next, lifeguards in two blocks a day
+ * (two on deck, as the coverage rule asks) and swim instructors for lessons. Fill the schedule
+ * staffs them with the API's own rules; this week's first days are published, the rest stay
+ * drafts, a few shifts stay open, and next week is only partly staffed so Fill has work to show.
+ */
+async function prepareWeek() {
+  const sup = await apiAs('supervisor');
+  const options = await sup.call('GET', '/api/schedule/fill/options');
+  const departmentId = options?.defaultDepartmentId;
+  const [facility] = await sup.call('GET', '/api/facilities');
+  const positions = await sup.call('GET', '/api/positions');
+  const guardPos = positions.find((p) => p.name === 'Lifeguard');
+  const instructor = positions.find((p) => /instructor/i.test(p.name));
+  if (!departmentId || !facility || !guardPos) return;
+  const today = cityToday();
+  const w0 = mondayOf(today);
+  const w1 = addDays(w0, 7);
+  const board = await sup.call('GET', `/api/schedule/planner?departmentId=${departmentId}&from=${w0}&to=${addDays(w0, 14)}`);
+  if ((board?.shifts?.length ?? 0) >= 40) return;
+  // Open drafts left by earlier runs (the "on now" shift of other days) make way for the plan.
+  const stray = board.shifts.filter((s) => s.status === 'DRAFT' && !s.userId).map((s) => s.id);
+  if (stray.length) await sup.call('POST', '/api/schedule/planner/cancel', { shiftIds: stray });
+  const H = 60;
+  const blocks = (dow) =>
+    dow === 0 || dow === 6
+      ? [[guardPos, 8 * H, 14 * H, 2], [guardPos, 14 * H, 20 * H, 2], ...(instructor && dow === 6 ? [[instructor, 9 * H, 12 * H, 1]] : [])]
+      : [[guardPos, 6 * H, 13 * H + 30, 2], [guardPos, 13 * H + 30, 21 * H, 2], ...(instructor && (dow === 2 || dow === 4) ? [[instructor, 16 * H, 19 * H, 1]] : [])];
+  const have = new Map();
+  for (const s of board.shifts.filter((x) => !stray.includes(x.id))) {
+    const k = `${s.positionId}|${Date.parse(s.localStartsAt)}`;
+    have.set(k, (have.get(k) ?? 0) + 1);
+  }
+  for (let d = 0; d < 14; d++) {
+    const date = addDays(w0, d);
+    for (const [pos, start, end, count] of blocks(new Date(`${date}T12:00:00Z`).getUTCDay())) {
+      const startsAt = cityInstant(date, start);
+      const k = `${pos.id}|${Date.parse(startsAt)}`;
+      for (let i = have.get(k) ?? 0; i < count; i++) await sup.call('POST', '/api/schedule/planner/shifts', { facilityId: facility.id, positionId: pos.id, startsAt, endsAt: cityInstant(date, end), userIds: [] });
+    }
+  }
+  const run = (weekStart, weekIndex, carry) => sup.call('POST', '/api/schedule/fill/run', { departmentId, weekStart, horizonStart: w0, weekIndex, horizonWeeks: 2, carry, toggles: options.settings.toggles, weights: options.settings.weights, newShifts: [] });
+  const accept = (week, keep) => {
+    const items = week.proposals.filter(keep).map((p) => {
+      const slot = week.slots.find((x) => x.id === p.slotId);
+      return { shiftId: slot.id, userId: p.userId, expectedVersion: slot.version, previousUserId: slot.currentUserId };
+    });
+    return items.length ? sup.call('POST', '/api/schedule/fill/accept', { items, allowOvertime: false }) : null;
+  };
+  const dayOf = (week, slotId) => week.slots.find((x) => x.id === slotId)?.localStartsAt.slice(0, 10) ?? '';
+  // This week: everything Fill proposes but every fifth late-week shift (left open on purpose).
+  const first = await run(w0, 0, []);
+  if (first?.proposals) {
+    let n = 0;
+    await accept(first, (p) => dayOf(first, p.slotId) < addDays(w0, 4) || ++n % 5 !== 0);
+    // Published up to today; the rest of the week is still being worked on.
+    await sup.call('POST', '/api/shifts/publish', { facilityId: facility.id, from: cityInstant(w0, 0), to: cityInstant(addDays(today, 1), 0), acknowledgeWarnings: true });
+  }
+  // Next week: Monday to Wednesday staffed (drafts), the rest open for Fill to propose.
+  const second = await run(w1, 1, first?.carry ?? []);
+  if (second?.proposals) await accept(second, (p) => dayOf(second, p.slotId) < addDays(w1, 3));
+}
+
+/**
+ * Water works: the operator's own week (day shifts at the treatment plant, this week published,
+ * next week's too) and a word from the lead hand; HR's inbox gets a note from the supervisor.
+ */
+async function prepareWaterWorks() {
+  const hr = await apiAs('hr');
+  const water = await apiAs('waterworks');
+  const sup = await apiAs('supervisor');
+  const today = cityToday();
+  const w0 = mondayOf(today);
+  const mine = await water.call('GET', `/api/me/shifts?from=${encodeURIComponent(cityInstant(w0, 0))}&to=${encodeURIComponent(cityInstant(addDays(w0, 14), 0))}`);
+  const facilities = await hr.call('GET', '/api/facilities');
+  const plant = facilities.find((f) => /treatment/i.test(f.name)) ?? facilities[0];
+  const operator = (await hr.call('GET', '/api/positions')).find((p) => /water works/i.test(p.name));
+  if (Array.isArray(mine) && !mine.length && plant && operator) {
+    for (let d = 0; d < 14; d++) {
+      const date = addDays(w0, d);
+      const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      await hr.call('POST', '/api/schedule/planner/shifts', { facilityId: plant.id, positionId: operator.id, startsAt: cityInstant(date, 7 * 60), endsAt: cityInstant(date, 15 * 60 + 30), userIds: [water.user.id] });
+    }
+    await hr.call('POST', '/api/shifts/publish', { facilityId: plant.id, from: cityInstant(w0, 0), to: cityInstant(addDays(w0, 14), 0), acknowledgeWarnings: true });
+  }
+  if (!(await water.call('GET', '/api/messages/conversations')).length) {
+    const lead = await apiAs('maintenance').catch(() => null);
+    if (lead) {
+      const dm = await lead.call('POST', '/api/messages/direct', { userId: water.user.id });
+      if (dm?.id) {
+        await lead.call('POST', `/api/messages/conversations/${dm.id}/messages`, { text: 'Pump station 4 readings look good. Can you check the chlorine analyzer at the reservoir first thing tomorrow?' });
+        await water.call('POST', `/api/messages/conversations/${dm.id}/messages`, { text: 'Will do, I’ll be there at 7 and send you the numbers.' });
+      }
+    }
+  }
+  if (!(await hr.call('GET', '/api/messages/conversations')).length) {
+    const dm = await sup.call('POST', '/api/messages/direct', { userId: hr.user.id });
+    if (dm?.id) {
+      await sup.call('POST', `/api/messages/conversations/${dm.id}/messages`, { text: 'Nine guards came to Thursday’s in-service. Can their two hours go on this pay run?' });
+      await hr.call('POST', `/api/messages/conversations/${dm.id}/messages`, { text: 'Yes. Send me the sign-in sheet and I’ll add them today.' });
+    }
+  }
+}
+
 /** Sample activity so screens aren't empty: a union discussion, a record to sign, a time-off request. */
 async function prepare() {
   for (const who of Object.values(ROLES)) await apiAs(who);
@@ -462,6 +613,9 @@ async function prepare() {
     const d = new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10);
     await guard.call('POST', '/api/me/time-off', { type: 'VACATION', startsAt: `${d}T07:00:00Z`, endsAt: `${d}T23:59:00Z`, note: 'Family wedding' });
   }
+  await prepareOnboarding();
+  await prepareWeek();
+  await prepareWaterWorks();
 }
 
 async function capture(browser, role) {
@@ -543,6 +697,11 @@ async function capture(browser, role) {
         await page.waitForTimeout(500);
       }
     }
+    if (href === '/manage/compliance') {
+      // The report for right now (the guard on deck, a reading and an incident).
+      await page.getByRole('button', { name: 'Build report', exact: true }).click().catch(() => {});
+      await page.waitForTimeout(2000);
+    }
     if (href === '/manage/jobs') {
       // Each in-app posting's applications.
       const n = Math.min(await page.getByRole('button', { name: 'Applications', exact: true }).count(), 3);
@@ -612,11 +771,45 @@ async function capture(browser, role) {
     for (const href of people) await visit(href);
   }
   await page.close();
+  await recordPlanner(role, responses);
 
-  const capturedOn = new Date().toISOString().slice(0, 10);
+  const capturedOn = cityToday();
   const json = JSON.parse(rename(JSON.stringify({ capturedOn, responses })));
   writeFileSync(join(OUT, `${role}.json`), JSON.stringify(json));
   console.log(role, Object.keys(responses).length, 'responses');
+}
+
+/**
+ * The schedule builder replays one board per department covering several weeks (the demo cuts out
+ * the days asked for), the batch eligibility check for it, and a Fill the schedule run for each
+ * week of the longest usual horizon — the demo's Fill proposes what the API proposed.
+ */
+async function recordPlanner(role, responses) {
+  const keys = Object.keys(responses).filter((k) => k.startsWith('/api/schedule/planner?'));
+  if (!keys.length) return;
+  const s = await apiAs(ROLES[role]);
+  const w0 = mondayOf(cityToday());
+  // The API's longest planner range (six weeks): two weeks back, four ahead.
+  const from = addDays(w0, -14);
+  const to = addDays(w0, 28);
+  const departments = [...new Set(keys.map((k) => new URL(k, 'http://x').searchParams.get('departmentId')))];
+  for (const k of keys) delete responses[k];
+  for (const dep of departments) {
+    const board = await s.call('GET', `/api/schedule/planner?departmentId=${dep}&from=${from}&to=${to}`);
+    if (board?.shifts) responses[`/api/schedule/planner?departmentId=${dep}&from=${from}&to=${to}`] = board;
+  }
+  const options = await s.call('GET', '/api/schedule/fill/options');
+  const dep = options?.defaultDepartmentId ?? options?.departments?.[0]?.id;
+  if (!dep) return;
+  const elig = await s.call('POST', '/api/schedule/planner/eligibility', { departmentId: dep, from, to, days: true });
+  if (elig?.users) responses['/api/schedule/planner/eligibility'] = elig;
+  let carry = [];
+  for (let i = 0; i < 4; i++) {
+    const w = await s.call('POST', '/api/schedule/fill/run', { departmentId: dep, weekStart: addDays(w0, i * 7), horizonStart: w0, weekIndex: i, horizonWeeks: 4, carry, toggles: options.settings.toggles, weights: options.settings.weights, newShifts: [] });
+    if (!w?.slots) break;
+    responses[`/api/schedule/fill/run?week=${i}`] = w;
+    carry = [...carry, ...w.carry];
+  }
 }
 
 /** The FH Dev console: city list, every city's tabs, and the account page. */
@@ -664,7 +857,7 @@ async function capturePlatform(browser) {
   await page.goto(`${CONSOLE}/platform/account`);
   await page.waitForTimeout(1200);
   await page.close();
-  writeFileSync(join(OUT, 'platform.json'), rename(JSON.stringify({ capturedOn: new Date().toISOString().slice(0, 10), responses })));
+  writeFileSync(join(OUT, 'platform.json'), rename(JSON.stringify({ capturedOn: cityToday(), responses })));
   console.log('platform', Object.keys(responses).length, 'responses');
 }
 
@@ -692,7 +885,7 @@ async function capturePlatform(browser) {
       }
     }
   }
-  writeFileSync(join(OUT, 'public.json'), rename(JSON.stringify({ capturedOn: new Date().toISOString().slice(0, 10), responses: { '/api/public/jobs': jobs, '/api/public/signup': signup, slots } })));
+  writeFileSync(join(OUT, 'public.json'), rename(JSON.stringify({ capturedOn: cityToday(), responses: { '/api/public/jobs': jobs, '/api/public/signup': signup, slots } })));
   await capturePlatform(browser);
   await browser.close();
 })();

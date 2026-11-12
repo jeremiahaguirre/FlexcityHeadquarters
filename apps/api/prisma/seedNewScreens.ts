@@ -226,6 +226,48 @@ async function noticesAndPolicy(tx: Tx, tenantId: string) {
   }
 }
 
+/**
+ * More of the pool crew, so the schedule builder's week looks like a real one: five more guards
+ * and instructors (fictional names, no sign-in), with certifications and availability that differ
+ * (early birds, evenings, weekends only). Adds only those missing, by e-mail.
+ */
+const CREW = [
+  { email: 'crew1@kelowna.test', firstName: 'Noah', lastName: 'Gagnon', status: 'PART_TIME', positions: ['Lifeguard', 'Swim Instructor'], days: [1, 2, 3, 4, 5], from: 6 * 60, to: 15 * 60 },
+  { email: 'crew2@kelowna.test', firstName: 'Maya', lastName: 'Fischer', status: 'FULL_TIME', positions: ['Lifeguard'], days: [0, 1, 2, 3, 4, 5, 6], from: 6 * 60, to: 22 * 60 },
+  { email: 'crew3@kelowna.test', firstName: 'Liam', lastName: 'Arsenault', status: 'PART_TIME', positions: ['Lifeguard'], days: [1, 2, 3, 4, 5], from: 13 * 60, to: 22 * 60 },
+  { email: 'crew4@kelowna.test', firstName: 'Zoe', lastName: 'Laurent', status: 'CASUAL', positions: ['Lifeguard', 'Swim Instructor'], days: [0, 6], from: 7 * 60, to: 21 * 60 },
+  { email: 'crew5@kelowna.test', firstName: 'Kai', lastName: 'Mendes', status: 'CASUAL', positions: ['Lifeguard'], days: [2, 4, 5, 6], from: 12 * 60, to: 22 * 60 },
+] as const;
+
+async function poolCrew(tx: Tx, tenantId: string) {
+  const have = new Set((await tx.user.findMany({ where: { email: { in: CREW.map((c) => c.email) } }, select: { email: true } })).map((u) => u.email));
+  if (have.size === CREW.length) return;
+  const positions = await tx.position.findMany({ where: { name: { in: ['Lifeguard', 'Swim Instructor'] } }, select: { id: true, name: true } });
+  const certs = await tx.certification.findMany({ where: { name: { in: ['Standard First Aid with CPR-C', 'National Lifeguard – Pool', 'Swim Instructor'] } }, select: { id: true, name: true } });
+  const cert = (name: string) => certs.find((c) => c.name === name);
+  const numbers = (await tx.user.findMany({ where: { employeeNumber: { not: null } }, select: { employeeNumber: true } })).map((u) => Number(String(u.employeeNumber).replace(/\D/g, '')) || 0);
+  let n = Math.max(200, ...numbers) + 1;
+  for (const [i, c] of CREW.entries()) {
+    if (have.has(c.email)) continue;
+    const hired = new Date(Date.UTC(2023 + (i % 3), 4 + i, 1));
+    const u = await tx.user.create({
+      data: { tenantId, email: c.email, firstName: c.firstName, lastName: c.lastName, roles: ['STAFF'], employmentStatus: c.status, employeeNumber: `E${n++}`, hireDate: hired, seniorityDate: hired, dateOfBirth: new Date(Date.UTC(1996 + i, i * 2, 10 + i)), unionMember: true, weeklyMinHours: c.status === 'FULL_TIME' ? 32 : null, weeklyMaxHours: c.status === 'PART_TIME' ? 28 : null },
+    });
+    for (const name of c.positions) {
+      const pos = positions.find((p) => p.name === name);
+      if (!pos) continue;
+      await tx.userPosition.create({ data: { tenantId, userId: u.id, positionId: pos.id } });
+      await tx.payRate.create({ data: { tenantId, userId: u.id, positionId: pos.id, hourlyRate: name === 'Lifeguard' ? 22.5 : 24.75, effectiveFrom: new Date('2026-01-01') } });
+    }
+    const held = ['Standard First Aid with CPR-C', 'National Lifeguard – Pool', ...(c.positions.includes('Swim Instructor' as never) ? ['Swim Instructor'] : [])];
+    for (const name of held) {
+      const x = cert(name);
+      if (x) await tx.userCertification.create({ data: { tenantId, userId: u.id, certificationId: x.id, issueDate: new Date('2025-05-01'), expiryDate: new Date('2027-05-01'), verifiedAt: new Date() } });
+    }
+    await tx.availability.createMany({ data: c.days.map((dayOfWeek) => ({ tenantId, userId: u.id, dayOfWeek, startMinute: c.from, endMinute: c.to, effectiveFrom: new Date('2026-01-01') })) });
+  }
+}
+
 /** Adds whatever is missing for the demo city. */
 export async function seedNewScreens(tenantId: string) {
   await withTenant(tenantId, async (tx) => {
@@ -236,6 +278,7 @@ export async function seedNewScreens(tenantId: string) {
     await integrations(tx, tenantId);
   });
   await withTenant(tenantId, (tx) => jobsAndApplications(tx, tenantId));
+  await withTenant(tenantId, (tx) => poolCrew(tx, tenantId));
   await withTenant(tenantId, (tx) => trades(tx, tenantId), { timeoutMs: 60_000 });
 }
 
