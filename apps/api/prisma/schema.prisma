@@ -264,102 +264,102 @@ enum HolidayKind {
 
 model Tenant {
   /// Set by FH: nobody can sign in or use the organization's pages until it's cleared.
-  disabledAt            DateTime?       @db.Timestamptz(3)
+  disabledAt            DateTime?          @db.Timestamptz(3)
   disabledReason        String?
   /// Offboarded (contract ended): disabled, and its data is deleted after this date.
-  offboardedAt          DateTime?       @db.Timestamptz(3)
-  deleteAfter           DateTime?       @db.Date
+  offboardedAt          DateTime?          @db.Timestamptz(3)
+  deleteAfter           DateTime?          @db.Date
   /// After offboarding, the organization's administrators can still sign in, only to download
   /// their full data export, until this moment (normally the deletion date).
-  exportUntil           DateTime?       @db.Timestamptz(3)
-  id                    String          @id @default(uuid()) @db.Uuid
+  exportUntil           DateTime?          @db.Timestamptz(3)
+  id                    String             @id @default(uuid()) @db.Uuid
   name                  String
-  subdomain             String          @unique
+  subdomain             String             @unique
   logoUrl               String?
   /// { primary, primaryHover, primaryContrast, accent } — injected as CSS variables
-  themeColors           Json            @default("{}")
-  defaultLocale         String          @default("en-CA")
+  themeColors           Json               @default("{}")
+  defaultLocale         String             @default("en-CA")
   /// How clock times are shown: "auto" (the language's usual style), "12h" or "24h".
-  timeFormat            String          @default("auto")
+  timeFormat            String             @default("auto")
   /// 0 = Sunday ... 6 = Saturday, in each facility's local time
-  payWeekStartDay       Int             @default(0)
-  vacationPayMode       VacationPayMode @default(PAY_EACH_PERIOD)
+  payWeekStartDay       Int                @default(0)
+  vacationPayMode       VacationPayMode    @default(PAY_EACH_PERIOD)
   /// Years to keep payroll records after the end of the tax year they relate to.
   /// CRA requires 6; default adds a year of margin.
-  payrollRetentionYears Int             @default(7)
+  payrollRetentionYears Int                @default(7)
   /// Statutory holidays on a weekend: close on the day the law fixes, or on the next weekday.
-  holidayObservance     HolidayObservance @default(STATUTORY)
+  holidayObservance     HolidayObservance  @default(STATUTORY)
   /// A holiday on someone's day off: substitute day or pay. Null = each province's default.
   holidayOffDayRule     HolidayOffDayRule?
   /// Direct deposit and remittance details: { businessNumber, originatorId, originatorShortName,
   /// originatorLongName, destinationDataCentre, returnsInstitution, returnsTransit, returnsAccount (sealed),
   /// employerAddress, twoPersonApproval, requirePasskey }.
-  payrollSettings       Json            @default("{}")
+  payrollSettings       Json               @default("{}")
   /// General-ledger accounts payroll posts to: { wages, employerCpp, employerEi, employerBenefits,
   /// cppPayable, eiPayable, taxPayable, pensionPayable, unionDuesPayable, benefitsPayable, netPayClearing }.
-  accountingSettings    Json            @default("{}")
+  accountingSettings    Json               @default("{}")
   /// How long routine records are kept: { notificationsDays, emailLogDays }. Missing = the defaults.
-  retentionSettings     Json            @default("{}")
+  retentionSettings     Json               @default("{}")
   /// Feature switches set from the FH Dev console: { featureKey: boolean }.
   /// Missing keys use the defaults in src/services/platform/features.ts.
-  features              Json            @default("{}")
-  createdAt             DateTime        @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime        @updatedAt @db.Timestamptz(3)
+  features              Json               @default("{}")
+  createdAt             DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime           @updatedAt @db.Timestamptz(3)
 
-  facilities      Facility[]
-  users           User[]
-  positions       Position[]
-  departments     Department[]
-  ssoConnection   SsoConnection?
-  ruleOverrides   RuleOverride[]
-  payCodeMappings PayCodeMapping[]
+  facilities        Facility[]
+  users             User[]
+  positions         Position[]
+  departments       Department[]
+  ssoConnection     SsoConnection?
+  ruleOverrides     RuleOverride[]
+  payCodeMappings   PayCodeMapping[]
   /// Dev console per-role customization: { ROLE: { grant: [], revoke: [], hideMenu: [] } }.
-  roleOverrides   Json             @default("{}")
+  roleOverrides     Json             @default("{}")
   /// Overtime equalization: { countRefusals, clause, periodStartMonth }.
-  overtimePolicy  Json             @default("{}")
+  overtimePolicy    Json             @default("{}")
   /// Care after critical incidents: { eap: "Employee assistance: 1-800-…" }.
-  careSettings    Json             @default("{}")
+  careSettings      Json             @default("{}")
   /// Shares anonymous measures with other cities (and sees theirs).
-  benchmarkOptIn  Boolean          @default(false)
+  benchmarkOptIn    Boolean          @default(false)
   /// Access levels that must sign in with a passkey as a second factor.
-  mfaRoles        AccessRole[]     @default([])
+  mfaRoles          AccessRole[]     @default([])
   /// Whether a one-time code by email or text counts as the second factor (passkeys always do).
-  mfaCodes        Boolean          @default(true)
+  mfaCodes          Boolean          @default(true)
   /// Winter operations, set by the city's managers: { season: { start: "11-01", end: "04-15" },
   /// callOuts: { responseMinutes, minRestHours }, patrols: { maxShiftHours } }.
-  winterSettings  Json             @default("{}")
+  winterSettings    Json             @default("{}")
   /// Public sign-up portal: { enabled, terms, termsFr, payment, paymentFr, privacyContact }.
-  signupSettings  Json             @default("{}")
+  signupSettings    Json             @default("{}")
   /// Work rules for scheduling and pay (services/scheduling/workRules.ts): unpaid meal breaks,
   /// minimum call-in pay, schedule-change notice and premiums, shift premium rules, standby and
   /// call-back, with per-department overrides where collective agreements differ.
-  workRules       Json             @default("{}")
+  workRules         Json             @default("{}")
   /// Team messaging (services/messaging/policy.ts): { staffDirect, minorDirect, pushPreview, shiftArchiveHours }.
-  messagingSettings Json           @default("{}")
+  messagingSettings Json             @default("{}")
   /// Staff surveys (services/surveys): { minGroup, managersCreate }.
-  surveySettings  Json             @default("{}")
+  surveySettings    Json             @default("{}")
 }
 
 /// Employment-standards province follows the WORK LOCATION, so it lives here,
 /// not on Tenant (a YMCA association can span provinces).
 model Facility {
-  id                  String   @id @default(uuid()) @db.Uuid
-  tenantId            String   @db.Uuid
+  id                  String           @id @default(uuid()) @db.Uuid
+  tenantId            String           @db.Uuid
   name                String
   province            Province
   timezone            String // IANA, e.g. "America/Vancouver"
-  latitude            Decimal? @db.Decimal(9, 6)
-  longitude           Decimal? @db.Decimal(9, 6)
-  geoRadiusM          Int      @default(150)
+  latitude            Decimal?         @db.Decimal(9, 6)
+  longitude           Decimal?         @db.Decimal(9, 6)
+  geoRadiusM          Int              @default(150)
   costCenter          String? // e.g. "CC-405-AQUATICS" for payroll export
   /// Facility size for public-sector pricing: 1 seasonal/outdoor (×0.4), 2 standard, 3 major complex (×2); null = not billed.
   billingTier         Int?
   /// Overrides this facility's price (cents per month) when set.
   billingMonthlyCents Int?
   /// Deck rotation: minutes on one station before moving on.
-  rotationMinutes     Int      @default(30)
+  rotationMinutes     Int              @default(30)
   /// Fatigue limit: continuous minutes on stations (across rotations) before a break.
-  maxOnChairMinutes   Int      @default(120)
+  maxOnChairMinutes   Int              @default(120)
   /// Demand forecast: indoor, outdoor or both, and what kind of place it is. They set how the
   /// weather is expected to move attendance until enough history has been learned.
   exposure            FacilityExposure @default(INDOOR)
@@ -368,8 +368,8 @@ model Facility {
   weatherSite         String?
   /// The nearest forecast site to the coordinates, found by the weather job when none is set by hand.
   weatherSiteAuto     String?
-  createdAt           DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime         @updatedAt @db.Timestamptz(3)
 
   tenant       Tenant           @relation(fields: [tenantId], references: [id])
   shifts       Shift[]
@@ -522,15 +522,15 @@ model User {
   employmentStatus EmploymentStatus
   shadowTier       ShadowTier       @default(UNASSIGNED) // set by a manager, never automatically
 
-  firstName        String
-  lastName         String
+  firstName          String
+  lastName           String
   /// The name they go by, when it differs from their legal first name.
-  preferredName    String?
-  email            String
-  phone            String?
-  locale           String    @default("en-CA")
+  preferredName      String?
+  email              String
+  phone              String?
+  locale             String    @default("en-CA")
   /// Needed only to apply young-worker rules. Not exported anywhere.
-  dateOfBirth      DateTime? @db.Date
+  dateOfBirth        DateTime? @db.Date
   /// HR confirmed this person is of the age of majority or older (no birth date needed for adult-only
   /// rules such as messaging's rule of two). A birth date on file always wins. HR only; never shown to staff.
   adultConfirmedAt   DateTime? @db.Timestamptz(3)
@@ -538,31 +538,35 @@ model User {
   /// How it was confirmed (e.g. "ID checked at hire").
   adultConfirmedNote String?
   /// Identity-provider subject this account is bound to after its first single sign-on ("issuer|subject").
-  ssoSubject       String?
+  ssoSubject         String?
   /// Mobile number confirmed with a texted code (E.164), for urgent texts and calls when the city turns them on.
-  smsPhone         String?
-  smsVerifiedAt    DateTime? @db.Timestamptz(3)
+  smsPhone           String?
+  smsVerifiedAt      DateTime? @db.Timestamptz(3)
   /// Also text me about open shifts starting within the next 24 hours.
-  smsUrgentShifts  Boolean   @default(false)
+  smsUrgentShifts    Boolean   @default(false)
   /// The person agreed to bank overtime as time in lieu instead of being paid for it (where the city allows it).
-  bankOvertime     Boolean   @default(false)
-  bankOvertimeAt   DateTime? @db.Timestamptz(3)
+  bankOvertime       Boolean   @default(false)
+  bankOvertimeAt     DateTime? @db.Timestamptz(3)
   /// Private calendar feed: SHA-256 of the link's secret (the link itself is shown once).
-  calendarTokenHash String?   @unique
-  calendarTokenAt   DateTime? @db.Timestamptz(3)
+  calendarTokenHash  String?   @unique
+  calendarTokenAt    DateTime? @db.Timestamptz(3)
   /// PIN for punching at a facility's shared kiosk (hashed like a password).
-  kioskPinHash      String?
+  kioskPinHash       String?
   /// The employer's HR/payroll system ID — used in payroll exports.
-  employeeNumber   String?
+  employeeNumber     String?
   /// The organization's own system's id for this person (HRIS/ERP), for the public API's upsert. Unique per organization.
-  externalId       String?
+  externalId         String?
   /// Who this person reports to, in the same organization (services/people/reporting.ts keeps it
   /// free of cycles). Null = their department's manager, where the department has one.
-  reportsToId      String?   @db.Uuid
-  passwordHash     String?
-  /// Account lockout after repeated failed sign-ins.
-  failedLoginCount Int       @default(0)
-  lockedUntil      DateTime? @db.Timestamptz(3)
+  reportsToId        String?   @db.Uuid
+  passwordHash       String?
+  /// Account lockout after repeated failed sign-ins (auth/bruteForce.ts): wrong passwords since
+  /// the last success (forgotten after 24 h), and progressive locks (15 min doubling to 24 h).
+  failedLoginCount   Int       @default(0)
+  lockedUntil        DateTime? @db.Timestamptz(3)
+  lastFailedLoginAt  DateTime? @db.Timestamptz(3)
+  lockoutLevel       Int       @default(0)
+  lastLockedAt       DateTime? @db.Timestamptz(3)
 
   hireDate       DateTime? @db.Date
   /// Collective-agreement seniority can differ from hire date; hours-based
@@ -704,24 +708,24 @@ enum MfaChannel {
 /// What can be worked: "Lifeguard", "Swim Instructor", "Head Lifeguard"...
 /// Shifts require a Position; Positions require certifications.
 model Position {
-  id             String  @id @default(uuid()) @db.Uuid
-  tenantId       String  @db.Uuid
-  name           String
-  nameFr         String?
-  minimumAge     Int?
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @db.Uuid
+  name               String
+  nameFr             String?
+  minimumAge         Int?
   /// Driving limits for this position: { maxDailyHours, minRestHours, maxHoursIn7Days }.
   /// Empty = no limits beyond the province's rules.
-  hoursOfService Json?
+  hoursOfService     Json?
   /// The department this position belongs to (Aquatics, Water Works…). Null = none yet.
-  departmentId   String? @db.Uuid
+  departmentId       String?  @db.Uuid
   /// Unpaid meal break minutes on this position's shifts (a shift's own value wins). Null = none.
   unpaidBreakMinutes Int?
   /// Never alone (working-alone rule): at least two qualified people must overlap on its shifts.
-  neverAlone     Boolean @default(false)
+  neverAlone         Boolean  @default(false)
   /// The organization's own system's id (public API upsert). Unique per organization.
-  externalId     String?
+  externalId         String?
   /// For the public API's updated_since filter.
-  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  updatedAt          DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 
   tenant          Tenant                    @relation(fields: [tenantId], references: [id])
   department      Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
@@ -1031,13 +1035,13 @@ model TimeOffRequest {
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime      @default(now()) @updatedAt @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
-
-  @@index([userId, startsAt, endsAt])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   /// Leave hours this request used, measured at approval from the person's scheduled shifts in it
   /// (their shifts are released when it's approved); weekdays × 8 h when nothing was scheduled.
-  chargedHours     Decimal?  @db.Decimal(8, 2)
-  chargedBasis     String?
+  chargedHours Decimal? @db.Decimal(8, 2)
+  chargedBasis String?
+
+  @@index([userId, startsAt, endsAt])
 }
 
 // ------------------------------------------------------------------
@@ -1045,35 +1049,35 @@ model TimeOffRequest {
 // ------------------------------------------------------------------
 
 model Shift {
-  id             String      @id @default(uuid()) @db.Uuid
-  tenantId       String      @db.Uuid
-  facilityId     String      @db.Uuid
-  positionId     String      @db.Uuid
-  userId         String?     @db.Uuid // null = open shift
-  startsAt       DateTime    @db.Timestamptz(3)
-  endsAt         DateTime    @db.Timestamptz(3)
-  shiftType      ShiftType   @default(STANDARD)
-  status         ShiftStatus @default(DRAFT)
-  customTitle    String?
+  id                    String      @id @default(uuid()) @db.Uuid
+  tenantId              String      @db.Uuid
+  facilityId            String      @db.Uuid
+  positionId            String      @db.Uuid
+  userId                String?     @db.Uuid // null = open shift
+  startsAt              DateTime    @db.Timestamptz(3)
+  endsAt                DateTime    @db.Timestamptz(3)
+  shiftType             ShiftType   @default(STANDARD)
+  status                ShiftStatus @default(DRAFT)
+  customTitle           String?
   /// Extra $/h on top of the base rate (e.g. specialised class).
-  premiumPerHour Decimal?    @db.Decimal(10, 2)
+  premiumPerHour        Decimal?    @db.Decimal(10, 2)
   /// Why the scheduling assistant could not fill it (null when filled or not attempted).
-  conflictReason String?
+  conflictReason        String?
   /// Optimistic-lock counter. Every assignment change must match + increment it.
-  version        Int         @default(0)
+  version               Int         @default(0)
   /// Unpaid meal break minutes for this shift; null = the position's. Paid hours = length − break.
-  unpaidBreakMinutes Int?
+  unpaidBreakMinutes    Int?
   /// Never alone for this shift; null = the position's flag.
-  neverAlone     Boolean?
+  neverAlone            Boolean?
   /// A call-back (someone on call called in): the call-back minimum applies instead of reporting pay.
-  callBack       Boolean     @default(false)
+  callBack              Boolean     @default(false)
   /// Made by "Generate shifts" from a rotation template.
-  rotationTemplateId String? @db.Uuid
+  rotationTemplateId    String?     @db.Uuid
   /// Made by applying a weekly shift template: the slot, and the application (undo cancels its drafts).
-  templateSlotId        String? @db.Uuid
-  templateApplicationId String? @db.Uuid
-  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
+  templateSlotId        String?     @db.Uuid
+  templateApplicationId String?     @db.Uuid
+  createdAt             DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime    @updatedAt @db.Timestamptz(3)
 
   facility    Facility     @relation(fields: [facilityId], references: [id], onDelete: Restrict)
   position    Position     @relation(fields: [positionId], references: [id], onDelete: Restrict)
@@ -1154,41 +1158,41 @@ model StatutoryHoliday {
 // ------------------------------------------------------------------
 
 model TimePunch {
-  id             String              @id @default(uuid()) @db.Uuid
-  tenantId       String              @db.Uuid
-  userId         String              @db.Uuid
-  facilityId     String              @db.Uuid
+  id                 String              @id @default(uuid()) @db.Uuid
+  tenantId           String              @db.Uuid
+  userId             String              @db.Uuid
+  facilityId         String              @db.Uuid
   /// Nullable: unscheduled call-ins still need a punch.
-  shiftId        String?             @db.Uuid
+  shiftId            String?             @db.Uuid
   /// Position worked — determines pay rate. Defaults from the shift.
-  positionId     String              @db.Uuid
-  clockIn        DateTime            @db.Timestamptz(3)
-  clockOut       DateTime?           @db.Timestamptz(3)
-  ipAddress      String?
-  latitude       Decimal?            @db.Decimal(9, 6)
-  longitude      Decimal?            @db.Decimal(9, 6)
-  accuracyM      Int?
-  distanceM      Int?
-  locationStatus PunchLocationStatus @default(NO_LOCATION)
-  status         PunchStatus         @default(PENDING)
-  varianceReason String?
+  positionId         String              @db.Uuid
+  clockIn            DateTime            @db.Timestamptz(3)
+  clockOut           DateTime?           @db.Timestamptz(3)
+  ipAddress          String?
+  latitude           Decimal?            @db.Decimal(9, 6)
+  longitude          Decimal?            @db.Decimal(9, 6)
+  accuracyM          Int?
+  distanceM          Int?
+  locationStatus     PunchLocationStatus @default(NO_LOCATION)
+  status             PunchStatus         @default(PENDING)
+  varianceReason     String?
   /// Punched at this facility kiosk (a shared tablet), not on the person's own device.
-  kioskId        String?             @db.Uuid
-  reviewedById   String?             @db.Uuid
-  reviewedAt     DateTime?           @db.Timestamptz(3)
+  kioskId            String?             @db.Uuid
+  reviewedById       String?             @db.Uuid
+  reviewedAt         DateTime?           @db.Timestamptz(3)
   /// Ids the phone gave each tap, so a re-sent punch is recognised instead of saved twice.
-  clientInId     String?             @db.Uuid
-  clientOutId    String?             @db.Uuid
+  clientInId         String?             @db.Uuid
+  clientOutId        String?             @db.Uuid
   /// Saved on the phone without a connection and sent later: flagged for review.
-  recordedOffline Boolean            @default(false)
+  recordedOffline    Boolean             @default(false)
   /// When an offline clock-in / clock-out reached the server (null when sent live).
-  clockInReceivedAt  DateTime?       @db.Timestamptz(3)
-  clockOutReceivedAt DateTime?       @db.Timestamptz(3)
+  clockInReceivedAt  DateTime?           @db.Timestamptz(3)
+  clockOutReceivedAt DateTime?           @db.Timestamptz(3)
   /// How far the phone's clock was off the server's, in seconds (+ = phone behind), when measured.
   /// Offline times are corrected by it; large differences are flagged for review.
-  clockSkewS     Int?
-  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime            @updatedAt @db.Timestamptz(3)
+  clockSkewS         Int?
+  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Restrict)
   facility Facility        @relation(fields: [facilityId], references: [id], onDelete: Restrict)
@@ -1679,19 +1683,23 @@ model TenantLogo {
 /// FlexcityHeadquarters staff who set up and support organizations (the Dev console).
 /// Not tied to any tenant; never accepted by tenant routes.
 model PlatformAdmin {
-  id           String            @id @default(uuid()) @db.Uuid
-  email        String            @unique
-  name         String
-  passwordHash String
-  failedLogins Int               @default(0)
-  lockedUntil  DateTime?         @db.Timestamptz(3)
-  lastLoginAt  DateTime?         @db.Timestamptz(3)
-  disabledAt   DateTime?         @db.Timestamptz(3)
-  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  id                String            @id @default(uuid()) @db.Uuid
+  email             String            @unique
+  name              String
+  passwordHash      String
+  failedLogins      Int               @default(0)
+  lockedUntil       DateTime?         @db.Timestamptz(3)
+  /// Progressive lockout, stricter than organizations' (auth/bruteForce.ts POLICIES.platform).
+  lastFailedLoginAt DateTime?         @db.Timestamptz(3)
+  lockoutLevel      Int               @default(0)
+  lastLockedAt      DateTime?         @db.Timestamptz(3)
+  lastLoginAt       DateTime?         @db.Timestamptz(3)
+  disabledAt        DateTime?         @db.Timestamptz(3)
+  createdAt         DateTime          @default(now()) @db.Timestamptz(3)
   /// Dev console permissions beyond the console itself: "trust.read" (see the Trust area),
   /// "trust.manage" (change it). Every console admin had both when Trust was added.
-  permissions  String[]          @default(["trust.read", "trust.manage"])
-  sessions     PlatformSession[]
+  permissions       String[]          @default(["trust.read", "trust.manage"])
+  sessions          PlatformSession[]
 }
 
 /// Opaque, revocable Dev console sessions (HTTP-only cookie). Only the hash is stored.
@@ -1851,8 +1859,8 @@ enum InvoiceStatus {
 }
 
 model BillingAccount {
-  tenantId            String      @id @db.Uuid
-  plan                BillingPlan @default(MUNICIPAL)
+  tenantId            String       @id @db.Uuid
+  plan                BillingPlan  @default(MUNICIPAL)
   legalName           String
   contactName         String?
   email               String
@@ -1863,11 +1871,11 @@ model BillingAccount {
   province            String
   postalCode          String?
   poNumber            String?
-  paymentTermsDays    Int         @default(30)
-  taxExempt           Boolean     @default(false)
+  paymentTermsDays    Int          @default(30)
+  taxExempt           Boolean      @default(false)
   taxExemptNote       String?
   /// Public sector: which plan.
-  level               PlanLevel   @default(BUSINESS)
+  level               PlanLevel    @default(BUSINESS)
   /// Public sector: the quoted rate per standard facility per month, in cents (Multi-complex and
   /// Enterprise; replaces the list price). Facility sizes still scale it.
   quotedRateCents     Int?
@@ -1878,27 +1886,27 @@ model BillingAccount {
   /// Committed term in months (12, 36, 60...); null = month to month. Prices are held for the term.
   termMonths          Int?
   /// First day of the term, and of yearly invoices.
-  termStart           DateTime?   @db.Date
+  termStart           DateTime?    @db.Date
   /// Commitment discount on fixed charges, in percent; null = the standard for the term.
-  discountPercent     Decimal?    @db.Decimal(5, 2)
+  discountPercent     Decimal?     @db.Decimal(5, 2)
   /// Extra staff places added to the plan, billed every month at the plan's per-person rate (private: the per-user rate).
-  extraStaffSeats     Int         @default(0)
+  extraStaffSeats     Int          @default(0)
   /// Options switched away from the plan's standard, and custom prices: { "<option>": { "on": bool, "cents": int } }
   /// (services/billing/catalog.ts). Private sector: every option is off unless switched on here.
-  items               Json        @default("{}")
+  items               Json         @default("{}")
   /// Until then, every feature is on (a trial or pilot).
-  trialEndsAt         DateTime?   @db.Timestamptz(3)
+  trialEndsAt         DateTime?    @db.Timestamptz(3)
   /// Days after an invoice's due date before the app turns read-only.
-  graceDays           Int         @default(30)
+  graceDays           Int          @default(30)
   /// The Dev console can hold off suspension (e.g. a cheque is in the mail).
-  suspensionHoldUntil DateTime?   @db.Timestamptz(3)
+  suspensionHoldUntil DateTime?    @db.Timestamptz(3)
   /// How they usually pay: INVOICE (EFT or cheque), CARD or PAD (pre-authorized debit).
-  preferredPayment    String      @default("INVOICE")
+  preferredPayment    String       @default("INVOICE")
   /// Private sector: price per active user beyond the 20 included, in cents.
-  clubUserRateCents   Int         @default(500)
+  clubUserRateCents   Int          @default(500)
   notes               String?
-  createdAt           DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime    @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime     @updatedAt @db.Timestamptz(3)
 }
 
 model Invoice {
@@ -3058,29 +3066,29 @@ enum SsoProtocol {
 /// The organization's single sign-on: Microsoft Entra ID (or any OpenID Connect provider), or SAML 2.0.
 /// Only signs in people who already have an account; it never creates one.
 model SsoConnection {
-  id          String      @id @default(uuid()) @db.Uuid
-  tenantId    String      @unique @db.Uuid
-  protocol    SsoProtocol
-  enabled     Boolean     @default(false)
+  id             String      @id @default(uuid()) @db.Uuid
+  tenantId       String      @unique @db.Uuid
+  protocol       SsoProtocol
+  enabled        Boolean     @default(false)
   /// Password sign-in is off, except for people who can change this setting (so nobody is locked out).
-  enforced    Boolean     @default(false)
+  enforced       Boolean     @default(false)
   /// The identity provider always requires a second factor (e.g. Entra conditional access), so SSO counts as MFA.
-  idpMfa      Boolean     @default(false)
+  idpMfa         Boolean     @default(false)
   /// Button text, e.g. "Microsoft".
-  label       String?
+  label          String?
   /// Only emails at these domains may sign in this way; empty means any.
-  domains     String[]    @default([])
-  oidcIssuer  String?
-  oidcClientId String?
+  domains        String[]    @default([])
+  oidcIssuer     String?
+  oidcClientId   String?
   /// Sealed client secret.
-  oidcSecret  Json?
+  oidcSecret     Json?
   samlEntryPoint String?
   samlIdpIssuer  String?
   /// The identity provider's signing certificate (PEM or base64).
-  samlCert    String?
-  lastUsedAt  DateTime?   @db.Timestamptz(3)
-  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
+  samlCert       String?
+  lastUsedAt     DateTime?   @db.Timestamptz(3)
+  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime    @updatedAt @db.Timestamptz(3)
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
 }
@@ -3132,17 +3140,17 @@ model ConsentRecord {
 /// Quebec workforce skills law (Loi sur les compétences, the 1% law): what an employer with a payroll
 /// over the threshold spent on eligible training in a year. It reduces the WSDRF contribution owed.
 model TrainingSpend {
-  id          String              @id @default(uuid()) @db.Uuid
-  tenantId    String              @db.Uuid
-  year        Int
-  spentOn     DateTime            @db.Date
-  category    TrainingSpendKind
-  description String
-  amountCents Int
+  id               String            @id @default(uuid()) @db.Uuid
+  tenantId         String            @db.Uuid
+  year             Int
+  spentOn          DateTime          @db.Date
+  category         TrainingSpendKind
+  description      String
+  amountCents      Int
   /// Link to the training it paid for, when there is one.
-  trainingRecordId String?        @db.Uuid
-  createdById String              @db.Uuid
-  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  trainingRecordId String?           @db.Uuid
+  createdById      String            @db.Uuid
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, year])
 }
@@ -3158,41 +3166,41 @@ enum TrainingSpendKind {
 
 /// Each pay period sent to a payroll provider (ADP, Dayforce, Wagepoint) over its API.
 model PayrollSync {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @db.Uuid
-  provider     String
-  periodStart  DateTime @db.Date
-  periodEnd    DateTime @db.Date
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  provider    String
+  periodStart DateTime @db.Date
+  periodEnd   DateTime @db.Date
   /// SENT or FAILED.
-  status       String
-  rows         Int
+  status      String
+  rows        Int
   /// SHA-256 of the file sent, to match it with the provider's copy.
-  fileSha256   String
-  httpStatus   Int?
-  reference    String?
-  message      String?
-  sentById     String   @db.Uuid
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  fileSha256  String
+  httpStatus  Int?
+  reference   String?
+  message     String?
+  sentById    String   @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, createdAt])
 }
 
 /// A salaried person's annual salary, paid evenly each pay period instead of by hours.
 model Salary {
-  id            String    @id @default(uuid()) @db.Uuid
-  tenantId      String    @db.Uuid
-  userId        String    @db.Uuid
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  userId           String    @db.Uuid
   /// Where the cost goes (the position's department).
-  positionId    String    @db.Uuid
-  annualAmount  Decimal   @db.Decimal(12, 2)
+  positionId       String    @db.Uuid
+  annualAmount     Decimal   @db.Decimal(12, 2)
   /// Normal hours a week, for insurable hours on the ROE.
-  weeklyHours   Decimal   @default(37.5) @db.Decimal(5, 2)
+  weeklyHours      Decimal   @default(37.5) @db.Decimal(5, 2)
   /// Overtime hours are still paid on top (for overtime-eligible salaried staff).
-  overtimeEligible Boolean @default(false)
-  effectiveFrom DateTime  @db.Date
-  effectiveTo   DateTime? @db.Date
-  createdById   String    @db.Uuid
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  overtimeEligible Boolean   @default(false)
+  effectiveFrom    DateTime  @db.Date
+  effectiveTo      DateTime? @db.Date
+  createdById      String    @db.Uuid
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, userId, effectiveFrom])
 }
@@ -3220,28 +3228,27 @@ model PayAdjustment {
 /// A deduction a court, the Family Responsibility Office or CRA orders the employer to take each pay
 /// and send on, until the total is paid.
 model PayDeductionOrder {
-  id           String    @id @default(uuid()) @db.Uuid
-  tenantId     String    @db.Uuid
-  userId       String    @db.Uuid
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  userId          String    @db.Uuid
   /// GARNISHMENT, SUPPORT_ORDER, CRA_REQUIREMENT, OTHER.
-  kind         String
-  payee        String
-  reference    String?
+  kind            String
+  payee           String
+  reference       String?
   /// A fixed amount each pay, or a percent of net pay (one of the two).
-  amountPerPay Decimal?  @db.Decimal(12, 2)
-  percentOfNet Decimal?  @db.Decimal(5, 2)
+  amountPerPay    Decimal?  @db.Decimal(12, 2)
+  percentOfNet    Decimal?  @db.Decimal(5, 2)
   /// Never more than this share of net pay (provincial exemptions; 50% unless the order says otherwise).
-  maxPercentOfNet Decimal @default(50) @db.Decimal(5, 2)
+  maxPercentOfNet Decimal   @default(50) @db.Decimal(5, 2)
   /// Stops once this much has been taken (null = until ended).
-  totalOwed    Decimal?  @db.Decimal(12, 2)
-  startsOn     DateTime  @db.Date
-  endsOn       DateTime? @db.Date
-  createdById  String    @db.Uuid
-  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  totalOwed       Decimal?  @db.Decimal(12, 2)
+  startsOn        DateTime  @db.Date
+  endsOn          DateTime? @db.Date
+  createdById     String    @db.Uuid
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, userId])
 }
-
 
 /// Who to call for a person in an emergency. Seen by the person, HR, and whoever responds when their working-alone session escalates.
 model EmergencyContact {
@@ -3315,21 +3322,21 @@ enum TradeStatus {
 
 /// Two people swap shifts: each takes the other's. Both must be eligible for the shift they take; a supervisor approves.
 model ShiftTrade {
-  id               String      @id @default(uuid()) @db.Uuid
-  tenantId         String      @db.Uuid
-  fromUserId       String      @db.Uuid
-  fromShiftId      String      @db.Uuid
-  toUserId         String      @db.Uuid
-  toShiftId        String      @db.Uuid
-  status           TradeStatus @default(PROPOSED)
-  note             String?
+  id           String      @id @default(uuid()) @db.Uuid
+  tenantId     String      @db.Uuid
+  fromUserId   String      @db.Uuid
+  fromShiftId  String      @db.Uuid
+  toUserId     String      @db.Uuid
+  toShiftId    String      @db.Uuid
+  status       TradeStatus @default(PROPOSED)
+  note         String?
   /// Each side's eligibility and overtime when last checked.
-  check            Json?
-  respondedAt      DateTime?   @db.Timestamptz(3)
-  decidedById      String?     @db.Uuid
-  decidedAt        DateTime?   @db.Timestamptz(3)
-  decisionNote     String?
-  createdAt        DateTime    @default(now()) @db.Timestamptz(3)
+  check        Json?
+  respondedAt  DateTime?   @db.Timestamptz(3)
+  decidedById  String?     @db.Uuid
+  decidedAt    DateTime?   @db.Timestamptz(3)
+  decisionNote String?
+  createdAt    DateTime    @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, status])
   @@index([fromShiftId])
@@ -3373,17 +3380,17 @@ enum ExpenseCategory {
 
 /// Money a person spent for work, or kilometres they drove, to be paid back (not taxed) on a pay run.
 model ExpenseClaim {
-  id           String      @id @default(uuid()) @db.Uuid
-  tenantId     String      @db.Uuid
-  userId       String      @db.Uuid
+  id           String        @id @default(uuid()) @db.Uuid
+  tenantId     String        @db.Uuid
+  userId       String        @db.Uuid
   title        String
-  status       ClaimStatus @default(SUBMITTED)
-  total        Decimal     @db.Decimal(12, 2)
-  submittedAt  DateTime    @default(now()) @db.Timestamptz(3)
-  decidedById  String?     @db.Uuid
-  decidedAt    DateTime?   @db.Timestamptz(3)
+  status       ClaimStatus   @default(SUBMITTED)
+  total        Decimal       @db.Decimal(12, 2)
+  submittedAt  DateTime      @default(now()) @db.Timestamptz(3)
+  decidedById  String?       @db.Uuid
+  decidedAt    DateTime?     @db.Timestamptz(3)
   decisionNote String?
-  payRunId     String?     @db.Uuid
+  payRunId     String?       @db.Uuid
   items        ExpenseItem[]
 
   @@index([tenantId, status])
@@ -3411,22 +3418,22 @@ model ExpenseItem {
 
 /// A policy staff read and sign (safety plan, code of conduct, respectful workplace…). A revision is a new row; the old one is retired.
 model Policy {
-  id           String      @id @default(uuid()) @db.Uuid
-  tenantId     String      @db.Uuid
-  title        String
-  body         String
+  id          String      @id @default(uuid()) @db.Uuid
+  tenantId    String      @db.Uuid
+  title       String
+  body        String
   /// SHA-256 of title and body exactly as published.
-  textSha256   String
-  version      Int         @default(1)
-  replacesId   String?     @db.Uuid
+  textSha256  String
+  version     Int         @default(1)
+  replacesId  String?     @db.Uuid
   /// Empty = everyone; otherwise people who hold one of these positions.
-  positionIds  String[]    @db.Uuid
+  positionIds String[]    @db.Uuid
   /// Days after publishing (or after starting) to sign it.
-  dueDays      Int?
-  createdById  String      @db.Uuid
-  publishedAt  DateTime    @default(now()) @db.Timestamptz(3)
-  retiredAt    DateTime?   @db.Timestamptz(3)
-  acks         PolicyAck[]
+  dueDays     Int?
+  createdById String      @db.Uuid
+  publishedAt DateTime    @default(now()) @db.Timestamptz(3)
+  retiredAt   DateTime?   @db.Timestamptz(3)
+  acks        PolicyAck[]
 
   @@index([tenantId, retiredAt])
 }
@@ -3507,32 +3514,32 @@ enum ApplicationStatus {
 
 /// Someone applying to a job posting from the careers page. The résumé is encrypted like employee documents.
 model JobApplication {
-  id            String            @id @default(uuid()) @db.Uuid
-  tenantId      String            @db.Uuid
-  postingId     String            @db.Uuid
-  firstName     String
-  lastName      String
-  email         String
-  phone         String?
-  message       String?
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @db.Uuid
+  postingId      String            @db.Uuid
+  firstName      String
+  lastName       String
+  email          String
+  phone          String?
+  message        String?
   /// Certifications they hold, as they wrote them.
   certifications String?
-  status        ApplicationStatus @default(NEW)
-  notes         String?
+  status         ApplicationStatus @default(NEW)
+  notes          String?
   /// When they agreed to the privacy notice for applicants.
-  consentAt     DateTime          @db.Timestamptz(3)
-  resumeName    String?
-  resumeType    String?
-  resumeSize    Int?
-  resumeSha256  String?
-  ciphertext    Bytes?
-  iv            Bytes?
-  authTag       Bytes?
-  wrappedKey    Bytes?
-  kekId         String?
-  hiredUserId   String?           @db.Uuid
-  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+  consentAt      DateTime          @db.Timestamptz(3)
+  resumeName     String?
+  resumeType     String?
+  resumeSize     Int?
+  resumeSha256   String?
+  ciphertext     Bytes?
+  iv             Bytes?
+  authTag        Bytes?
+  wrappedKey     Bytes?
+  kekId          String?
+  hiredUserId    String?           @db.Uuid
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime          @updatedAt @db.Timestamptz(3)
 
   @@index([tenantId, postingId, status])
 }
@@ -4052,34 +4059,34 @@ model WorkerJobRun {
 /// A change to a published shift (times or person) and the notice it gave. When the notice is
 /// shorter than the department's rule, a premium is due and flows into payroll on `payOn`.
 model ShiftChange {
-  id             String    @id @default(uuid()) @db.Uuid
-  tenantId       String    @db.Uuid
-  shiftId        String    @db.Uuid
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  shiftId       String    @db.Uuid
   /// The person the change affects.
-  userId         String    @db.Uuid
-  positionId     String    @db.Uuid
+  userId        String    @db.Uuid
+  positionId    String    @db.Uuid
   /// TIME (times moved), ADDED (newly assigned), REMOVED (unassigned or cancelled).
-  kind           String
-  oldStartsAt    DateTime? @db.Timestamptz(3)
-  oldEndsAt      DateTime? @db.Timestamptz(3)
-  newStartsAt    DateTime? @db.Timestamptz(3)
-  newEndsAt      DateTime? @db.Timestamptz(3)
+  kind          String
+  oldStartsAt   DateTime? @db.Timestamptz(3)
+  oldEndsAt     DateTime? @db.Timestamptz(3)
+  newStartsAt   DateTime? @db.Timestamptz(3)
+  newEndsAt     DateTime? @db.Timestamptz(3)
   /// Hours between the change and the (earlier of the old and new) start.
-  noticeHours    Decimal   @db.Decimal(8, 2)
+  noticeHours   Decimal   @db.Decimal(8, 2)
   /// The rule's threshold at the time (hours of notice required).
-  requiredHours  Decimal?  @db.Decimal(8, 2)
-  late           Boolean   @default(false)
+  requiredHours Decimal?  @db.Decimal(8, 2)
+  late          Boolean   @default(false)
   /// Premium: changed hours at (multiplier − 1) × rate, or a flat amount.
-  premiumHours   Decimal?  @db.Decimal(8, 2)
-  multiplier     Decimal?  @db.Decimal(6, 3)
-  flatAmount     Decimal?  @db.Decimal(10, 2)
+  premiumHours  Decimal?  @db.Decimal(8, 2)
+  multiplier    Decimal?  @db.Decimal(6, 3)
+  flatAmount    Decimal?  @db.Decimal(10, 2)
   /// The local date the premium is paid on (the period that contains it pays it).
-  payOn          DateTime? @db.Date
-  waivedAt       DateTime? @db.Timestamptz(3)
-  waivedById     String?   @db.Uuid
-  waiveReason    String?
-  changedById    String    @db.Uuid
-  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  payOn         DateTime? @db.Date
+  waivedAt      DateTime? @db.Timestamptz(3)
+  waivedById    String?   @db.Uuid
+  waiveReason   String?
+  changedById   String    @db.Uuid
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, payOn])
   @@index([shiftId])
@@ -4243,8 +4250,8 @@ enum ConversationKind {
 
 /// A conversation. Its messages are sealed with one data key, wrapped by the organization's key (KMS).
 model Conversation {
-  id            String           @id @default(uuid()) @db.Uuid
-  tenantId      String           @db.Uuid
+  id            String               @id @default(uuid()) @db.Uuid
+  tenantId      String               @db.Uuid
   kind          ConversationKind
   /// Groups: the name people gave it. Shift and department conversations are named from their shift or department.
   title         String?
@@ -4253,16 +4260,16 @@ model Conversation {
   /// SHIFT: "<facilityId>|<startsAt ISO>|<endsAt ISO>" of the shift it was made from (one per shift).
   shiftKey      String?
   /// DEPARTMENT: the department (one conversation per department).
-  departmentId  String?          @db.Uuid
-  createdById   String?          @db.Uuid
+  departmentId  String?              @db.Uuid
+  createdById   String?              @db.Uuid
   /// SHIFT: archived (read-only) from this moment, some hours after the shift ends.
-  closesAt      DateTime?        @db.Timestamptz(3)
-  archivedAt    DateTime?        @db.Timestamptz(3)
-  lastMessageAt DateTime?        @db.Timestamptz(3)
+  closesAt      DateTime?            @db.Timestamptz(3)
+  archivedAt    DateTime?            @db.Timestamptz(3)
+  lastMessageAt DateTime?            @db.Timestamptz(3)
   /// The conversation's data key, wrapped by the organization's key (never stored unwrapped).
   wrappedKey    Bytes
   kekId         String
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  createdAt     DateTime             @default(now()) @db.Timestamptz(3)
   members       ConversationMember[]
   messages      Message[]
 
@@ -4293,24 +4300,24 @@ model ConversationMember {
 
 /// One message. The text is sealed (AES-256-GCM) with the conversation's data key; the AAD ties it to this row.
 model Message {
-  id             String       @id @default(uuid()) @db.Uuid
-  tenantId       String       @db.Uuid
-  conversationId String       @db.Uuid
-  authorId       String       @db.Uuid
-  ciphertext     Bytes?
-  iv             Bytes?
-  authTag        Bytes?
+  id                 String             @id @default(uuid()) @db.Uuid
+  tenantId           String             @db.Uuid
+  conversationId     String             @db.Uuid
+  authorId           String             @db.Uuid
+  ciphertext         Bytes?
+  iv                 Bytes?
+  authTag            Bytes?
   /// The first version, kept when the author edits (for an investigation), sealed the same way.
   originalCiphertext Bytes?
-  originalIv     Bytes?
-  originalAuthTag Bytes?
-  createdAt      DateTime     @default(now()) @db.Timestamptz(3)
-  editedAt       DateTime?    @db.Timestamptz(3)
+  originalIv         Bytes?
+  originalAuthTag    Bytes?
+  createdAt          DateTime           @default(now()) @db.Timestamptz(3)
+  editedAt           DateTime?          @db.Timestamptz(3)
   /// Removed by its author (or HR): shown as "message removed"; the sealed text stays until the retention period ends.
-  deletedAt      DateTime?    @db.Timestamptz(3)
-  deletedById    String?      @db.Uuid
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  attachment     MessageAttachment?
+  deletedAt          DateTime?          @db.Timestamptz(3)
+  deletedById        String?            @db.Uuid
+  conversation       Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  attachment         MessageAttachment?
 
   @@index([conversationId, createdAt])
   @@index([tenantId, authorId])
@@ -4318,21 +4325,21 @@ model Message {
 
 /// A file sent with a message (PDF, PNG, JPEG or WebP, checked by content), sealed with the conversation's key.
 model MessageAttachment {
-  id          String  @id @default(uuid()) @db.Uuid
-  tenantId    String  @db.Uuid
-  messageId   String  @unique @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  tenantId       String  @db.Uuid
+  messageId      String  @unique @db.Uuid
   /// Older rows only: the file name before it was sealed. The retention run seals it and clears this.
-  fileName    String?
+  fileName       String?
   /// The file name, sealed with the conversation's key (AAD part "name").
   nameCiphertext Bytes?
   nameIv         Bytes?
   nameAuthTag    Bytes?
-  contentType String
-  size        Int
-  ciphertext  Bytes
-  iv          Bytes
-  authTag     Bytes
-  message     Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  contentType    String
+  size           Int
+  ciphertext     Bytes
+  iv             Bytes
+  authTag        Bytes
+  message        Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
 enum MessageReportStatus {
@@ -4387,37 +4394,37 @@ enum SurveyBreakdown {
 }
 
 model Survey {
-  id            String     @id @default(uuid()) @db.Uuid
-  tenantId      String     @db.Uuid
+  id            String          @id @default(uuid()) @db.Uuid
+  tenantId      String          @db.Uuid
   kind          SurveyKind
   title         String
   intro         String?
   /// Anonymous: who answered is kept apart from the answers, which carry no person, time or order.
-  anonymous     Boolean    @default(true)
+  anonymous     Boolean         @default(true)
   /// [{ id, type: RATING | CHOICE | MULTI | TEXT, text, options?: string[], required }]
   questions     Json
   /// { departmentIds: [], positionIds: [] } (both empty = everyone) or, for EXIT, the person.
-  audience      Json       @default("{}")
+  audience      Json            @default("{}")
   /// A manager's survey: the departments it is limited to (empty = HR's, whole organization).
-  departmentIds String[]   @db.Uuid
+  departmentIds String[]        @db.Uuid
   /// EXIT: the offboarding it belongs to and the person.
-  offboardingId String?    @db.Uuid
-  subjectUserId String?    @db.Uuid
+  offboardingId String?         @db.Uuid
+  subjectUserId String?         @db.Uuid
   /// Repeated pulses share a series, for the trend.
-  seriesId      String     @db.Uuid
-  opensAt       DateTime   @db.Timestamptz(3)
-  closesAt      DateTime   @db.Timestamptz(3)
+  seriesId      String          @db.Uuid
+  opensAt       DateTime        @db.Timestamptz(3)
+  closesAt      DateTime        @db.Timestamptz(3)
   /// Null = draft. Invitations are made when it's published.
-  publishedAt   DateTime?  @db.Timestamptz(3)
-  closedAt      DateTime?  @db.Timestamptz(3)
+  publishedAt   DateTime?       @db.Timestamptz(3)
+  closedAt      DateTime?       @db.Timestamptz(3)
   /// The smallest group whose results are shown, fixed when it was published.
-  minGroup      Int        @default(5)
+  minGroup      Int             @default(5)
   /// The only breakdown its results offer (one dimension, so groups can't be subtracted across two).
   breakdown     SurveyBreakdown @default(DEPARTMENT)
-  remindersSent Int        @default(0)
-  createdById   String     @db.Uuid
-  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime   @default(now()) @updatedAt @db.Timestamptz(3)
+  remindersSent Int             @default(0)
+  createdById   String          @db.Uuid
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime        @default(now()) @updatedAt @db.Timestamptz(3)
 
   @@index([tenantId, seriesId])
   @@index([tenantId, closesAt])
@@ -4521,18 +4528,18 @@ model BidRound {
 
 /// One thing to bid on: a single shift, or a line (the same shift on the same days over a season).
 model BidItem {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String   @db.Uuid
-  roundId    String   @db.Uuid
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @db.Uuid
+  roundId       String   @db.Uuid
   /// Draft shifts it is made of (unassigned until the round is confirmed).
-  shiftIds   String[] @db.Uuid
-  positionId String   @db.Uuid
-  facilityId String   @db.Uuid
+  shiftIds      String[] @db.Uuid
+  positionId    String   @db.Uuid
+  facilityId    String   @db.Uuid
   firstStartsAt DateTime @db.Timestamptz(3)
-  lastEndsAt DateTime @db.Timestamptz(3)
+  lastEndsAt    DateTime @db.Timestamptz(3)
   /// Lines: { daysOfWeek, startMinute, endMinute }.
-  meta       Json     @default("{}")
-  sortOrder  Int      @default(0)
+  meta          Json     @default("{}")
+  sortOrder     Int      @default(0)
 
   round BidRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
