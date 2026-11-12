@@ -114,6 +114,30 @@ export async function reserve(key: string, limit: number, windowMs: number): Pro
   };
 }
 
+const chains = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs `fn` with no other once() for the same key running anywhere (in the shared store, under a
+ * Postgres advisory lock; in memory, one after another in this process): e.g. "has this reached
+ * the limit, and if so record the lock", so concurrent failures lock (and notify) once.
+ */
+export async function once<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  if (shared()) {
+    return db().$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`once:${key}`}))`;
+      return fn();
+    }, { timeout: 15_000 });
+  }
+  const prev = chains.get(key) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  const tail = run.catch(() => undefined);
+  chains.set(key, tail);
+  void tail.then(() => {
+    if (chains.get(key) === tail) chains.delete(key);
+  });
+  return run;
+}
+
 /** Forgets every hit of every key starting with `prefix` (e.g. an account's failures once it signs in). */
 export async function clearPrefix(prefix: string): Promise<void> {
   if (shared()) {

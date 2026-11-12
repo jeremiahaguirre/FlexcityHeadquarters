@@ -116,6 +116,27 @@ describe('facility kiosk', () => {
     resetLimits();
   });
 
+  for (const store of ['memory', 'database'] as const) {
+    it(`parallel PIN guesses can't exceed the five wrong tries, and the lock happens once (${store} store)`, async () => {
+      resetLimits();
+      await owner.rateLimitHit.deleteMany({ where: { key: { startsWith: 'kiosk-' } } });
+      process.env.RATE_LIMIT_STORE = store;
+      try {
+        const locksBefore = await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'kiosk.pin_locked' } });
+        const pins = Array.from({ length: 14 }, (_, i) => String(4000 + i * 7)).concat(['5937']);
+        const res = await Promise.all(pins.map((pin) => tablet().punch('E200', pin)));
+        expect(res.filter((r) => r.body.code === 'KIOSK_WRONG')).toHaveLength(5);
+        expect(res[14]!.status).toBe(429);
+        expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'kiosk.pin_locked' } })).toBe(locksBefore + 1);
+        expect((await tablet().punch('E200', '5937')).body.code).toBe('KIOSK_LOCKED');
+      } finally {
+        delete process.env.RATE_LIMIT_STORE;
+        await owner.rateLimitHit.deleteMany({ where: { key: { startsWith: 'kiosk-' } } });
+        resetLimits();
+      }
+    });
+  }
+
   it('pairing keeps the secret in an HttpOnly cookie that only counts with the tablet’s own header', async () => {
     const pair = await request(server).post('/api/kiosk/pair').send({ token: device });
     expect(pair.status).toBe(200);
