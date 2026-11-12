@@ -1,8 +1,9 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
-import { resetLimits } from '../../src/auth/rateLimit.js';
+import { count, resetLimits } from '../../src/auth/rateLimit.js';
 import { hashPassword } from '../../src/auth/tokens.js';
+import { POLICIES, failKey, networkId, networkLockedUntil } from '../../src/auth/bruteForce.js';
 import { LOGIN_FAILURES_PER_ADDRESS } from '../../src/routes/auth.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
@@ -38,12 +39,21 @@ afterAll(async () => {
 describe('parallel guesses', () => {
   it('29 wrong and the right password in one burst from one network: the right one is refused, the network locks once', async () => {
     const email = 'guard0@srace.test';
-    const reqs = [];
-    for (let i = 0; i < 29; i++) reqs.push(login(email, `wrong-pass-${i}`, `198.51.100.${i + 1}`));
-    reqs.push(login(email, PASSWORD, '198.51.100.200'));
-    const res = await Promise.all(reqs);
-    expect(res[29]!.status).toBe(401);
-    expect(res[29]!.body.code).toBe('INVALID_CREDENTIALS');
+    // Requests arrive in no set order, so the right password is sent once the wrong guesses hold the
+    // network's 5 places, or have already locked it (they may still be in flight): it must be refused.
+    const account = `${t.tenant.id}:${email}`;
+    const a = { surface: 'org' as const, account, network: networkId('org', account, '198.51.100.200') };
+    const taken = async () => (await count(failKey(a), POLICIES.org.windowMs)) >= POLICIES.org.failures || !!(await networkLockedUntil(a));
+    const wrong = [];
+    for (let i = 0; i < 29; i++) wrong.push(login(email, `wrong-pass-${i}`, `198.51.100.${i + 1}`).then((r) => r));
+    for (let waited = 0; !(await taken()); waited += 10) {
+      expect(waited, 'the wrong guesses never took the 5 places').toBeLessThan(15_000);
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    const right = await login(email, PASSWORD, '198.51.100.200');
+    await Promise.all(wrong);
+    expect(right.status).toBe(401);
+    expect(right.body.code).toBe('INVALID_CREDENTIALS');
     // Still locked out from that network afterwards; one lock recorded.
     expect((await login(email, PASSWORD, '198.51.100.201')).status).toBe(401);
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.network_locked', entityId: (await row(email)).id } })).toBe(1);

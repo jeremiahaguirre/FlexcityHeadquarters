@@ -136,7 +136,8 @@ export interface Attempt {
   slot: Release | null;
 }
 
-const failKey = (a: Pick<Attempt, 'surface' | 'account' | 'network'>) => `${accountKey(a.surface, a.account)}fail:${a.network}`;
+/** This network's failure counter on the account (exported for tests). */
+export const failKey = (a: Pick<Attempt, 'surface' | 'account' | 'network'>) => `${accountKey(a.surface, a.account)}fail:${a.network}`;
 const netLockKey = (a: Pick<Attempt, 'surface' | 'account' | 'network'>) => `${accountKey(a.surface, a.account)}lock:${a.network}`;
 
 /** Until when this network is locked out of the account (the nth lock within the window lasts base × 2^(n−1)), or null. */
