@@ -6,9 +6,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { forbidden } from '../lib/errors.js';
+import { HttpError, forbidden } from '../lib/errors.js';
+import { allow } from '../auth/rateLimit.js';
 import { csvCell } from '../services/payroll/export.js';
-import { MIN_GROUP_CEILING, MIN_GROUP_FLOOR, normalizeQuestions, questionInput, resultsCsv } from '../services/surveys/results.js';
+import { BREAKDOWNS, MIN_GROUP_CEILING, MIN_GROUP_FLOOR, normalizeQuestions, questionInput, resultsCsv } from '../services/surveys/results.js';
 import { SURVEY_DEFAULTS, authorScope, closeSurvey, surveySettings, deleteDraft, listSurveys, mySurveys, offboardingsForExit, ownSurvey, publish, readSurveySettings, remind, respond, saveDraft, surveyResults, trend } from '../services/surveys/surveys.js';
 import { h } from './context.js';
 
@@ -35,6 +36,8 @@ surveysRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const b = z.object({ answers: z.record(z.string(), z.unknown()) }).parse(req.body);
+    // One answer per invitation already; this stops hammering (30 submissions an hour per person).
+    if (!(await allow(`survey-answer:${a.userId}`, 30, 3_600_000))) throw new HttpError(429, 'TOO_MANY', 'Too many answers sent. Try again in a while.');
     await withTenant(a.tenantId, (tx) => respond(tx, a, uuid.parse(req.params.id), b.answers));
     res.status(201).json({ ok: true });
   }),
@@ -47,6 +50,8 @@ const draftBody = z.object({
   questions: z.array(questionInput).min(1).max(20),
   audience: z.object({ departmentIds: z.array(uuid).max(100).default([]), positionIds: z.array(uuid).max(200).default([]) }).default({ departmentIds: [], positionIds: [] }),
   closesAt: z.coerce.date(),
+  /** The one breakdown its results may offer (fixed once sent). */
+  breakdown: z.enum(BREAKDOWNS).default('DEPARTMENT'),
   offboardingId: uuid.nullable().optional(),
   repeatOf: uuid.nullable().optional(),
 });
@@ -143,7 +148,9 @@ surveysRouter.get(
         const q = r.questionsAsked;
         return [['name', ...q.map((x) => x.text)], ...r.named.map((n) => [n.name, ...q.map((x) => [n.answers[x.id] ?? ''].flat().join('; '))])].map((row) => row.map((c) => csvCell(String(c))).join(',')).join('\r\n') + '\r\n';
       }
-      return resultsCsv(r.title, r, csvCell);
+      const ids = r.breakdown?.groups.map((g) => g.id) ?? [];
+      const names = r.breakdown?.by === 'POSITION' ? await tx.position.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }) : await tx.department.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } });
+      return resultsCsv(r.title, r, csvCell, (gid) => names.find((n) => n.id === gid)?.name ?? gid);
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="survey-results.csv"');

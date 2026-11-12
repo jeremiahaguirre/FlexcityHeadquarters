@@ -2,6 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
+import { forgetDepartments } from '../../src/services/people/departments.js';
 import { anonymizeUser } from '../../src/services/privacy/erasure.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
@@ -145,10 +146,11 @@ describe('anonymity', () => {
     // reveal Parks by subtraction, so it's hidden too.
     const stored = await owner.surveyResponse.findMany({ where: { surveyId: id.s2 } });
     expect(stored.filter((s) => s.departmentId === id.parks)).toHaveLength(0);
-    expect(res.breakdowns.department).toEqual([]);
-    expect(res.breakdowns.hiddenResponses.department).toBe(7);
+    expect(res.breakdown).toMatchObject({ by: 'DEPARTMENT', groups: [], hidden: 7 });
     // Breakdowns never carry written answers.
-    expect(JSON.stringify(res.breakdowns)).not.toContain('Parks feel forgotten');
+    expect(JSON.stringify(res.breakdown)).not.toContain('Parks feel forgotten');
+    // Only the survey's one dimension is kept on the answers.
+    expect(stored.every((x) => x.positionId === null)).toBe(true);
     const csv = await as('hr').get(`/api/surveys/${id.s2}/results.csv`);
     expect(csv.text).toContain('writing style can identify people');
     expect(csv.text).not.toMatch(new RegExp(Object.values(id).filter((v) => v.length === 36).join('|')));
@@ -161,11 +163,58 @@ describe('anonymity', () => {
     for (const g of lifeguards) await answer(g, id.s3!, 4);
     await as('hr').post(`/api/surveys/${id.s3}/close`);
     const res = (await as('hr').get(`/api/surveys/${id.s3}/results`)).body;
-    expect(res.breakdowns.department).toEqual([expect.objectContaining({ id: id.aq, responses: 6 })]);
+    expect(res.breakdown.groups).toEqual([expect.objectContaining({ id: id.aq, responses: 6 })]);
     const series = (await as('hr').get('/api/surveys')).body.find((s: { id: string }) => s.id === id.s3).seriesId;
     const trend = (await as('hr').get(`/api/surveys/series/${series}/trend`)).body;
     expect(trend.map((x: { id: string }) => x.id)).toEqual([id.s2, id.s3]);
     expect(trend[1].points[0]).toMatchObject({ text: 'How was your week?', average: 4 });
+  });
+});
+
+describe('one breakdown per survey (security review H2)', () => {
+  it('a position breakdown keeps only the position on the answers, and shows only positions', async () => {
+    const r = await create('hr', { breakdown: 'POSITION' });
+    expect(r.status).toBe(201);
+    await as('hr').post(`/api/surveys/${r.body.id}/publish`);
+    for (const g of lifeguards) await answer(g, r.body.id, 3);
+    await as('hr').post(`/api/surveys/${r.body.id}/close`);
+    const stored = await owner.surveyResponse.findMany({ where: { surveyId: r.body.id } });
+    expect(stored.every((x) => x.departmentId === null)).toBe(true);
+    expect(stored.filter((x) => x.positionId === t.position.id)).toHaveLength(6);
+    const res = (await as('hr').get(`/api/surveys/${r.body.id}/results`)).body;
+    expect(res.breakdown).toMatchObject({ by: 'POSITION', groups: [expect.objectContaining({ id: t.position.id, responses: 6 })], hidden: 0 });
+    expect(res.breakdowns).toBeUndefined();
+    const csv = (await as('hr').get(`/api/surveys/${r.body.id}/results.csv`)).text;
+    expect(csv).toContain('by position');
+    expect(csv).toContain('Lifeguard');
+    expect((await as('hr').get('/api/surveys')).body.find((x: { id: string }) => x.id === r.body.id).breakdown).toBe('POSITION');
+  });
+
+  it('no breakdown: no group is kept at all', async () => {
+    const r = await create('hr', { breakdown: 'NONE' });
+    await as('hr').post(`/api/surveys/${r.body.id}/publish`);
+    for (const g of lifeguards.slice(0, 5)) await answer(g, r.body.id, 2);
+    await as('hr').post(`/api/surveys/${r.body.id}/close`);
+    const stored = await owner.surveyResponse.findMany({ where: { surveyId: r.body.id } });
+    expect(stored.every((x) => x.departmentId === null && x.positionId === null)).toBe(true);
+    expect((await as('hr').get(`/api/surveys/${r.body.id}/results`)).body.breakdown).toBeUndefined();
+  });
+});
+
+describe('a manager’s access to their surveys (security review L6)', () => {
+  it('only while managers may run surveys and they still manage its departments', async () => {
+    expect((await as('sup').get(`/api/surveys/${id.supSurvey}/results`)).status).toBe(200);
+    await as('hr').put('/api/surveys-admin/settings', { minGroup: 5, managersCreate: false });
+    expect((await as('sup').get(`/api/surveys/${id.supSurvey}/results`)).status).toBe(404);
+    expect((await as('hr').get(`/api/surveys/${id.supSurvey}/results`)).status).toBe(200);
+    await as('hr').put('/api/surveys-admin/settings', { minGroup: 5, managersCreate: true });
+    expect((await as('sup').get(`/api/surveys/${id.supSurvey}/results`)).status).toBe(200);
+    await owner.departmentManager.deleteMany({ where: { userId: id.sup } });
+    forgetDepartments(t.tenant.id);
+    expect((await as('sup').get(`/api/surveys/${id.supSurvey}/results`)).status).toBe(404);
+    expect((await as('sup').put(`/api/surveys/${id.supSurvey}`, { kind: 'PULSE', title: 'Changed', questions: QUESTIONS, closesAt: week() })).status).not.toBe(200);
+    await owner.departmentManager.create({ data: { tenantId: t.tenant.id, departmentId: id.aq!, userId: id.sup! } });
+    forgetDepartments(t.tenant.id);
   });
 });
 

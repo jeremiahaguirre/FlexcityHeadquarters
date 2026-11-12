@@ -4,9 +4,14 @@
  * Anonymity (surveys.ts keeps who answered apart from the answers; this file decides what can be shown):
  *  - Nothing is shown for fewer than `minGroup` responses (default 5; an organization can raise it,
  *    never below 3).
- *  - Breakdowns by department or position hide every group under minGroup, and then enough of the
- *    next smallest groups that the hidden ones add up to minGroup too: otherwise the whole minus the
- *    groups shown would reveal the small one ("complementary suppression").
+ *  - A survey has at most ONE breakdown, chosen when it's made (none, department or position) and
+ *    fixed once sent; only that group is kept on its answers. Two breakdowns, each suppressed on its
+ *    own, could be subtracted from each other (a department minus a position in it can leave one
+ *    person), so results, the CSV, the trend and the organization's export use only that one.
+ *  - The breakdown hides every group under minGroup, and then enough of the next smallest groups that
+ *    the hidden ones add up to minGroup too: otherwise the whole minus the groups shown would reveal
+ *    the small one ("complementary suppression"). The total shown is the same total, so the total
+ *    minus every group shown is always 0 or at least minGroup.
  *  - Written answers are shown only when the whole survey reaches minGroup, never in breakdowns,
  *    sorted alphabetically (no order that follows when people answered), with a warning that
  *    writing style can identify people.
@@ -19,6 +24,9 @@ export type QuestionType = (typeof QUESTION_TYPES)[number];
 export interface Question { id: string; type: QuestionType; text: string; options?: string[]; required: boolean }
 export type Answer = number | string | string[];
 export type Answers = Record<string, Answer>;
+
+export const BREAKDOWNS = ['NONE', 'DEPARTMENT', 'POSITION'] as const;
+export type Breakdown = (typeof BREAKDOWNS)[number];
 
 export const MIN_GROUP_FLOOR = 3;
 export const MIN_GROUP_DEFAULT = 5;
@@ -138,37 +146,45 @@ export interface Results {
   shown: boolean;
   reason?: 'open' | 'tooFew';
   questions?: QuestionSummary[];
-  breakdowns?: { department: Array<{ id: string; responses: number; questions: QuestionSummary[] }>; position: Array<{ id: string; responses: number; questions: QuestionSummary[] }>; hiddenResponses: { department: number; position: number } };
+  /** The survey's one breakdown (absent when it has none): the groups shown, and how many responses are in no group shown. */
+  breakdown?: { by: Exclude<Breakdown, 'NONE'>; groups: Array<{ id: string; responses: number; questions: QuestionSummary[] }>; hidden: number };
 }
 
 /** Everything a results screen may show for an anonymous survey. */
-export function anonymousResults(questions: Question[], responses: Array<{ answers: Answers; departmentId: string | null; positionId: string | null }>, minGroup: number, closed: boolean): Results {
+export function anonymousResults(questions: Question[], responses: Array<{ answers: Answers; departmentId: string | null; positionId: string | null }>, minGroup: number, closed: boolean, breakdown: Breakdown): Results {
   const total = responses.length;
   if (!closed) return { total, minGroup, shown: false, reason: 'open' };
   if (total < minGroup) return { total, minGroup, shown: false, reason: 'tooFew' };
-  const by = (key: 'departmentId' | 'positionId') => {
-    const sizes = new Map<string | null, number>();
-    for (const r of responses) sizes.set(r[key], (sizes.get(r[key]) ?? 0) + 1);
-    const ok = showableGroups(sizes, minGroup);
-    const groups = [...ok].sort().map((id) => {
-      const rs = responses.filter((r) => r[key] === id);
-      return { id, responses: rs.length, questions: summarize(questions, rs, { withText: false }) };
-    });
-    return { groups, hidden: total - groups.reduce((a, g) => a + g.responses, 0) };
-  };
-  const d = by('departmentId');
-  const p = by('positionId');
-  return { total, minGroup, shown: true, questions: summarize(questions, responses, { withText: true }), breakdowns: { department: d.groups, position: p.groups, hiddenResponses: { department: d.hidden, position: p.hidden } } };
+  const out: Results = { total, minGroup, shown: true, questions: summarize(questions, responses, { withText: true }) };
+  if (breakdown === 'NONE') return out;
+  // Only the survey's own dimension, whatever else a response row may carry.
+  const key = breakdown === 'DEPARTMENT' ? 'departmentId' : 'positionId';
+  const sizes = new Map<string | null, number>();
+  for (const r of responses) sizes.set(r[key], (sizes.get(r[key]) ?? 0) + 1);
+  const ok = showableGroups(sizes, minGroup);
+  const groups = [...ok].sort().map((id) => {
+    const rs = responses.filter((r) => r[key] === id);
+    return { id, responses: rs.length, questions: summarize(questions, rs, { withText: false }) };
+  });
+  return { ...out, breakdown: { by: breakdown, groups, hidden: total - groups.reduce((a, g) => a + g.responses, 0) } };
 }
 
 /** The CSV a results screen offers: summaries only for anonymous surveys (never one row per person). */
-export function resultsCsv(title: string, r: Results, cell: (s: string) => string): string {
+export function resultsCsv(title: string, r: Results, cell: (s: string) => string, groupName: (id: string) => string = (id) => id): string {
   const rows: string[][] = [['survey', title], ['responses', String(r.total)], ['minimum group', String(r.minGroup)], []];
   if (!r.shown || !r.questions) return [...rows, ['results', r.reason === 'open' ? 'shown once the survey closes' : `hidden: fewer than ${r.minGroup} responses`]].map((x) => x.map(cell).join(',')).join('\r\n') + '\r\n';
   rows.push(['question', 'type', 'answered', 'average', 'answer', 'count']);
   for (const q of r.questions) {
     if (q.counts) for (const [k, n] of Object.entries(q.counts)) rows.push([q.text, q.type, String(q.answered), q.average !== undefined ? String(q.average) : '', k, String(n)]);
     else rows.push([q.text, q.type, String(q.answered), '', '', '']);
+  }
+  if (r.breakdown) {
+    // The one breakdown, with the same suppression as the screen; `name` turns a group id into its name.
+    rows.push([], [`by ${r.breakdown.by.toLowerCase()}`, 'responses', 'question', 'average', 'answer', 'count']);
+    for (const g of r.breakdown.groups)
+      for (const q of g.questions)
+        if (q.counts) for (const [k, n] of Object.entries(q.counts)) rows.push([groupName(g.id), String(g.responses), q.text, q.average !== undefined ? String(q.average) : '', k, String(n)]);
+    if (r.breakdown.hidden) rows.push([`in no group shown (fewer than ${r.minGroup} together)`, String(r.breakdown.hidden)]);
   }
   const texts = r.questions.filter((q) => q.texts?.length);
   if (texts.length) {

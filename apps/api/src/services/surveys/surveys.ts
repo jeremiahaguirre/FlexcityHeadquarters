@@ -6,14 +6,17 @@
  *  - Who was asked and whether they answered (SurveyInvite: person, survey, a yes/no) is kept apart
  *    from the answers (SurveyResponse), which carry no person, no time and no sequence: their id is
  *    random, and every list and export orders them by that id or alphabetically, never by when.
- *  - A response keeps the department and position only when that group, among the people asked, is
- *    at least the survey's minimum group; otherwise it keeps neither.
+ *  - A survey has one breakdown (none, department or position), chosen when it's made. A response
+ *    keeps only that group, and only when the group, among the people asked, is at least the
+ *    survey's minimum group; otherwise it keeps none.
  *  - An anonymous survey can't be sent to fewer people than the minimum group (it could never show
  *    results, and it would single people out).
  *  - Results open when the survey closes (watching numbers change while it's open would reveal each
  *    answer as it arrives) and only for at least the minimum group (./results.ts).
  *  - HR and managers see how many answered, never who.
- *  - Questions and the minimum group are fixed once a survey is sent.
+ *  - Questions, the breakdown and the minimum group are fixed once a survey is sent.
+ *  - A manager reaches their own surveys only while the organization lets managers run surveys and
+ *    they still manage every department the survey covers; otherwise only HR does.
  * What remains: someone with direct database access could match the two tables by the database's
  * own transaction ids; the application, its screens and its exports never expose those.
  */
@@ -24,7 +27,7 @@ import { announceChange, announceChangeTo } from '../../lib/changes.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { notify } from '../notifications/notifier.js';
-import { type Answers, MIN_GROUP_CEILING, MIN_GROUP_DEFAULT, MIN_GROUP_FLOOR, type Question, type Results, anonymousResults, validateAnswers } from './results.js';
+import { type Answers, type Breakdown, MIN_GROUP_CEILING, MIN_GROUP_DEFAULT, MIN_GROUP_FLOOR, type Question, type Results, anonymousResults, validateAnswers } from './results.js';
 
 export interface SurveySettings { minGroup: number; managersCreate: boolean }
 export const SURVEY_DEFAULTS: SurveySettings = { minGroup: MIN_GROUP_DEFAULT, managersCreate: false };
@@ -68,7 +71,11 @@ export async function ownSurvey(tx: Tx, a: AuthContext, id: string) {
   const s = await tx.survey.findUnique({ where: { id } });
   if (!s) throw notFound('Survey');
   if (a.permissions.has('surveys.manage')) return s;
-  if (s.createdById === a.userId && a.permissions.has('surveys.department')) return s;
+  if (s.createdById === a.userId && a.permissions.has('surveys.department') && (await surveySettings(tx)).managersCreate) {
+    // Still managing every department it covers (a manager who moved on loses it; HR keeps it).
+    const mine = await managedDepartments(tx, a);
+    if (s.departmentIds.length && s.departmentIds.every((d) => mine.includes(d))) return s;
+  }
   throw notFound('Survey');
 }
 
@@ -91,6 +98,8 @@ export interface Draft {
   questions: Question[];
   audience: Audience;
   closesAt: Date;
+  /** The one breakdown its results may offer. Exit surveys have none. */
+  breakdown?: Breakdown;
   offboardingId?: string | null;
   /** Repeat of an earlier survey: same series, for the trend. */
   repeatOf?: string | null;
@@ -125,6 +134,7 @@ export async function saveDraft(tx: Tx, a: AuthContext, d: Draft, id?: string) {
     offboardingId: d.kind === 'EXIT' ? d.offboardingId! : null,
     subjectUserId,
     closesAt: d.closesAt,
+    breakdown: d.kind === 'EXIT' ? ('NONE' as const) : (d.breakdown ?? 'DEPARTMENT'),
   };
   if (id) {
     const s = await ownSurvey(tx, a, id);
@@ -200,9 +210,10 @@ export async function respond(tx: Tx, a: AuthContext, id: string, raw: Record<st
     const invited = new Set((await tx.surveyInvite.findMany({ where: { surveyId: id }, select: { userId: true } })).map((i) => i.userId));
     const all = (await audiencePeople(tx, audienceOf(s), s.departmentIds)).filter((p) => invited.has(p.id));
     const me = all.find((p) => p.id === a.userId);
+    // Only the survey's one breakdown is kept on the answers.
     if (me) {
-      if (me.departmentId && all.filter((p) => p.departmentId === me.departmentId).length >= s.minGroup) departmentId = me.departmentId;
-      if (me.positionId && all.filter((p) => p.positionId === me.positionId).length >= s.minGroup) positionId = me.positionId;
+      if (s.breakdown === 'DEPARTMENT' && me.departmentId && all.filter((p) => p.departmentId === me.departmentId).length >= s.minGroup) departmentId = me.departmentId;
+      if (s.breakdown === 'POSITION' && me.positionId && all.filter((p) => p.positionId === me.positionId).length >= s.minGroup) positionId = me.positionId;
     }
   }
   await tx.surveyResponse.create({ data: { tenantId: a.tenantId, surveyId: id, userId: s.anonymous ? null : a.userId, departmentId, positionId, answers: v.answers as Prisma.InputJsonValue } });
@@ -232,6 +243,7 @@ export async function listSurveys(tx: Tx, a: AuthContext) {
     questions: questionsOf(s),
     audience: audienceOf(s),
     closesAt: s.closesAt,
+    breakdown: s.breakdown,
     publishedAt: s.publishedAt,
     status: !s.publishedAt ? 'DRAFT' : isClosed(s, now) ? 'CLOSED' : 'OPEN',
     invited: invited.find((x) => x.surveyId === s.id)?._count._all ?? 0,
@@ -291,13 +303,16 @@ export async function surveyResults(tx: Tx, a: AuthContext, id: string, now = ne
     await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'survey.read_named', entity: 'Survey', entityId: id });
     return { ...base, total: responses.length, minGroup: s.minGroup, shown: true, named: responses.map((r) => ({ name: (() => { const p = people.find((x) => x.id === r.userId); return p ? `${p.firstName} ${p.lastName}` : ''; })(), answers: r.answers as Answers })) };
   }
-  return { ...base, ...anonymousResults(questions, responses.map((r) => ({ answers: r.answers as Answers, departmentId: r.departmentId, positionId: r.positionId })), s.minGroup, isClosed(s, now)) };
+  return { ...base, ...anonymousResults(questions, responses.map((r) => ({ answers: r.answers as Answers, departmentId: r.departmentId, positionId: r.positionId })), s.minGroup, isClosed(s, now), s.breakdown) };
 }
 
 /** A repeated pulse's trend: each closed survey's average per rating question, where it reached the minimum group. */
 export async function trend(tx: Tx, a: AuthContext, seriesId: string) {
   const where: Prisma.SurveyWhereInput = { seriesId, publishedAt: { not: null }, ...(a.permissions.has('surveys.manage') ? {} : { createdById: a.userId }) };
-  const surveys = (await tx.survey.findMany({ where, orderBy: { opensAt: 'asc' } })).filter((s) => isClosed(s));
+  const all = (await tx.survey.findMany({ where, orderBy: { opensAt: 'asc' } })).filter((s) => isClosed(s));
+  // A manager: only the surveys they may still open (ownSurvey's rules). The trend is the whole only, never a breakdown.
+  const surveys = [];
+  for (const s of all) if (await ownSurvey(tx, a, s.id).then(() => true, () => false)) surveys.push(s);
   const out = [];
   for (const s of surveys) {
     const responses = await tx.surveyResponse.findMany({ where: { surveyId: s.id }, select: { answers: true } });
