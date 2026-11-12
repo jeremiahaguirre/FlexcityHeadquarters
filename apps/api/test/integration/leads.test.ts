@@ -48,3 +48,48 @@ describe('marketing enquiries', () => {
     expect((await request(server).get('/api/platform/leads').set('x-fh-platform', '1')).status).toBe(401);
   });
 });
+
+describe('enquiry alerts to FH', () => {
+  type Sent = { to: string; subject: string; text: string };
+  const mailer = (box: Sent[], fail = false) => ({ send: async (m: Sent) => { if (fail) throw new Error('smtp down'); box.push(m); } });
+  const alerts = async () => (await import('../../src/services/marketing/leadAlerts.js')).sendLeadAlerts;
+  const make = (createdAt = new Date()) => owner.lead.create({ data: { kind: 'SALES', name: 'Avery Quill', email: `avery-${randomBytes(3).toString('hex')}@example.ca`, organization: 'Town of Riverbend', message: 'Private details about our budget.', createdAt } });
+
+  it('sends nothing and marks nothing while no inbox is set', async () => {
+    const l = await make();
+    const box: Sent[] = [];
+    expect(await (await alerts())(owner, mailer(box) as never, { to: '' })).toBe(0);
+    expect(box).toHaveLength(0);
+    expect((await owner.lead.findUniqueOrThrow({ where: { id: l.id } })).alertedAt).toBeNull();
+  });
+
+  it('emails the inbox once per enquiry, with no enquirer details, and never twice', async () => {
+    const l = await make();
+    const box: Sent[] = [];
+    const send = await alerts();
+    expect(await send(owner, mailer(box) as never, { to: 'inbox@fh.example' })).toBeGreaterThanOrEqual(1);
+    const mine = box.filter((m) => m.to === 'inbox@fh.example');
+    expect(mine.length).toBeGreaterThanOrEqual(1);
+    for (const m of mine) {
+      expect(m.subject).toMatch(/New website enquiry/);
+      expect(m.text).toMatch(/\/platform\/enquiries/);
+      for (const secret of ['Avery', 'Quill', 'example.ca', 'Riverbend', 'budget']) expect(`${m.subject}${m.text}`).not.toContain(secret);
+    }
+    expect((await owner.lead.findUniqueOrThrow({ where: { id: l.id } })).alertedAt).not.toBeNull();
+    const again: Sent[] = [];
+    expect(await send(owner, mailer(again) as never, { to: 'inbox@fh.example' })).toBe(0);
+  });
+
+  it('keeps an enquiry for the next round when the email fails, and skips week-old ones', async () => {
+    const send = await alerts();
+    await send(owner, mailer([]) as never, { to: 'inbox@fh.example' }); // clear anything waiting
+    const fresh = await make();
+    expect(await send(owner, mailer([], true) as never, { to: 'inbox@fh.example' })).toBe(0);
+    expect((await owner.lead.findUniqueOrThrow({ where: { id: fresh.id } })).alertedAt).toBeNull();
+    const old = await make(new Date(Date.now() - 8 * 86_400_000));
+    const box: Sent[] = [];
+    await send(owner, mailer(box) as never, { to: 'inbox@fh.example' });
+    expect((await owner.lead.findUniqueOrThrow({ where: { id: old.id } })).alertedAt).not.toBeNull();
+    expect(box).toHaveLength(1); // only the fresh one
+  });
+});

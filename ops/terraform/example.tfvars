@@ -11,5 +11,6 @@ app_environment = {
   COMPANY_MAILING_ADDRESS = ""
   COMPANY_CONTACT_EMAIL   = ""
   SECURITY_EMAIL          = ""
+  LEADS_ALERT_EMAIL       = ""        # FH's inbox for website enquiry alerts; never shown on the site
   SMS_PROVIDER            = "console" # "twilio" once TWILIO_* are in the app secret
 }
