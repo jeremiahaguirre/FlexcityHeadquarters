@@ -145,6 +145,8 @@ function Thread({ id, onBack, onChanged }: { id: string; onBack: () => void; onC
   const lastId = c?.messages.at(-1)?.id;
 
   useLiveChange('messages', () => void q.reload());
+  // Someone read it: the "seen by" line (the API sends this topic, not 'messages', for read receipts).
+  useLiveChange('receipts', () => void q.reload());
   // Opening a conversation (and every new message while it's open) is a read receipt.
   useEffect(() => {
     if (!c || c.investigation || !lastId) return;

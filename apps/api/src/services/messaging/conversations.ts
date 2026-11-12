@@ -20,7 +20,8 @@
  *   "read-only", so a read-only group never hints that someone in it is a minor.
  * - Rate limits (per person): 30 messages a minute and 600 a day, 20 files an hour, 20 new
  *   conversations an hour, 10 reports an hour and one report per message.
- * - Live: members' screens are told "messages changed" (lib/changes.ts announceChangeTo) and refetch.
+ * - Live: members' screens are told "messages changed" (lib/changes.ts announceChangeTo) and refetch;
+ *   a read receipt tells the other members only "receipts" (an open conversation's "seen by").
  */
 import { randomUUID } from 'node:crypto';
 import type { Conversation, ConversationKind } from '@prisma/client';
@@ -515,7 +516,12 @@ export async function markRead(tx: Tx, a: AuthContext, conversationId: string) {
   const r = await tx.conversationMember.updateMany({ where: { conversationId, userId: a.userId }, data: { lastReadAt: new Date() } });
   if (!r.count) throw notFound('Conversation');
   await tx.notification.updateMany({ where: { userId: a.userId, type: 'message_new', readAt: null, params: { path: ['conversationId'], equals: conversationId } }, data: { readAt: new Date() } });
-  await signal(tx, a.tenantId, conversationId);
+  // The reader's own screens (badge, list) refresh; the other members only need the "seen by"
+  // line of an open conversation ('receipts'), not their badge and list. Telling every member
+  // 'messages' on every read made each message in a busy conversation cost members × readers refetches.
+  const ids = (await tx.conversationMember.findMany({ where: { conversationId }, select: { userId: true } })).map((m) => m.userId);
+  await announceChangeTo(tx, a.tenantId, 'messages', [a.userId]);
+  await announceChangeTo(tx, a.tenantId, 'receipts', ids.filter((id) => id !== a.userId));
 }
 
 export async function setMuted(tx: Tx, a: AuthContext, conversationId: string, muted: boolean) {

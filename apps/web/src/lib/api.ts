@@ -4,6 +4,7 @@ import { ApiError } from './apiError';
 import { DEMO } from './demo';
 import { demoApi } from './demoApi';
 import { fetchRead } from './retry';
+import { coalescer } from './coalesce';
 import { CLIENT_HEADERS, checkForUpdate, markOutdated, noteServerVersion } from './appUpdate';
 
 export { ApiError };
@@ -214,10 +215,12 @@ export function onLiveChange(topic: string, fn: () => void): () => void {
   return () => void set!.delete(fn);
 }
 
-function emitChange(topic: string) {
+/** Signals for a topic within this window refetch once (lib/coalesce.ts). */
+export const CHANGE_COALESCE_MS = 250;
+const emitChange = coalescer(CHANGE_COALESCE_MS, (topic) => {
   const sets = topic === '*' ? [...changeListeners.values()] : [changeListeners.get(topic)];
   for (const set of sets) for (const fn of set ?? []) fn();
-}
+});
 
 export function streamNotifications(onSignal: () => void): () => void {
   if (DEMO) return () => undefined;
