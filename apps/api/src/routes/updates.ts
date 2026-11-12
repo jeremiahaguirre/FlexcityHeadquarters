@@ -10,6 +10,7 @@ import { withTenant } from '../lib/db.js';
 import { notFound } from '../lib/errors.js';
 import { markRead, notesFor } from '../services/platform/releaseNotes.js';
 import { changesFor } from '../services/platform/releases.js';
+import { bannersFor, upcomingFor } from '../services/platform/maintenance.js';
 import { h } from './context.js';
 
 export const updatesRouter = Router();
@@ -46,5 +47,25 @@ updatesRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     res.json(await withTenant(a.tenantId, (tx) => changesFor(tx)));
+  }),
+);
+
+/** Maintenance: banners (on now, or starting within a day) and what's planned for the next two weeks. */
+updatesRouter.get(
+  '/maintenance',
+  h(async (req, res) => {
+    const a = authOf(req);
+    res.json(await withTenant(a.tenantId, async (tx) => ({ banners: await bannersFor(tx, a.tenantId), upcoming: await upcomingFor(tx, a.tenantId) })));
+  }),
+);
+
+/** The sign-in page's banner: no one is signed in yet, so only the times and the message. */
+export const publicMaintenanceRouter = Router();
+publicMaintenanceRouter.get(
+  '/public/maintenance',
+  h(async (req, res) => {
+    if (!req.tenantId) return void res.json({ banners: [] });
+    const tenantId = req.tenantId;
+    res.json({ banners: await withTenant(tenantId, (tx) => bannersFor(tx, tenantId)) });
   }),
 );

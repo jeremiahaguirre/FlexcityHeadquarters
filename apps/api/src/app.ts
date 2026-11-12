@@ -33,6 +33,7 @@ import { ipRateLimit } from './lib/ipRateLimit.js';
 import { clientErrorsRouter, opsRouter } from './routes/observability.js';
 import { publicApiRouter } from './routes/publicApi.js';
 import { clientVersionGate, versionHeader, versionRouter } from './lib/version.js';
+import { publicMaintenanceRouter } from './routes/updates.js';
 
 export function createApp() {
   const app = express();
@@ -78,7 +79,7 @@ export function createApp() {
   app.use('/api', publicCalendarRouter);
   // Facility kiosks (shared tablets) sign requests with their own secret, not a person's session.
   app.use('/api', kioskRouter);
-  app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, mfaCodeRouter, publicJobsRouter, publicApplicationsRouter, publicSignupRouter);
+  app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, mfaCodeRouter, publicJobsRouter, publicApplicationsRouter, publicSignupRouter, publicMaintenanceRouter);
   app.use('/api', api);
 
   app.use(errorHandler);

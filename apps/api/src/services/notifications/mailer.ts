@@ -44,6 +44,14 @@ type Template = (p: Params) => { subject: string; text: string };
 const APP_URL = () => process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
+  maintenance_scheduled: {
+    'en-CA': (p) => ({ subject: `Planned maintenance: ${p.whenEn}`, text: `FlexcityHeadquarters has planned maintenance for ${p.whenEn}.\n\n${p.messageEn}\n\nEveryone in your organization will see a notice in the app the day before and while it lasts.\n${APP_URL()}/whats-new` }),
+    'fr-CA': (p) => ({ subject: `Maintenance prévue : ${p.whenFr}`, text: `FlexcityHeadquarters a prévu une maintenance le ${p.whenFr}.\n\n${p.messageFr}\n\nToutes les personnes de votre organisation verront un avis dans l’application la veille et pendant la maintenance.\n${APP_URL()}/whats-new` }),
+  },
+  maintenance_soon: {
+    'en-CA': (p) => ({ subject: `Maintenance tomorrow: ${p.whenEn}`, text: `A reminder: FlexcityHeadquarters maintenance is planned for ${p.whenEn}.\n\n${p.messageEn}\n${APP_URL()}/whats-new` }),
+    'fr-CA': (p) => ({ subject: `Maintenance demain : ${p.whenFr}`, text: `Un rappel : une maintenance de FlexcityHeadquarters est prévue le ${p.whenFr}.\n\n${p.messageFr}\n${APP_URL()}/whats-new` }),
+  },
   release_scheduled: {
     'en-CA': (p) => ({ subject: `Coming ${p.whenEn}: ${p.titleEn}`, text: `FlexcityHeadquarters will change some features for your organization on ${p.whenEn}.\n\n${p.summaryEn}\n\nWhat changes, and anything your organization chose itself that stays as it is:\n${APP_URL()}/whats-new` }),
     'fr-CA': (p) => ({ subject: `À venir le ${p.whenFr} : ${p.titleFr}`, text: `FlexcityHeadquarters modifiera certaines fonctions pour votre organisation le ${p.whenFr}.\n\n${p.summaryFr}\n\nCe qui change, et ce que votre organisation a choisi elle-même et qui reste tel quel :\n${APP_URL()}/whats-new` }),

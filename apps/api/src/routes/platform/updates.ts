@@ -2,6 +2,7 @@
  * Dev console: telling organizations about FH's updates (docs/RELEASES.md).
  * - What's new notes (services/platform/releaseNotes.ts).
  * - Release rings and staged feature releases (services/platform/releases.ts).
+ * - Maintenance notices (services/platform/maintenance.ts).
  * Needs the "releases.manage" console permission; publishing, changing a published note and
  * withdrawing one also need a passkey confirmation from the last 10 minutes. Every change is in the
  * Dev console's audit log.
@@ -15,6 +16,7 @@ import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { announceNote, consoleView, noteBody, resolveAudience } from '../../services/platform/releaseNotes.js';
 import { applyStage, listRings, previewStage, releaseBody, releaseTick, rollbackRelease, rollbackStage, scheduleStage, setRingMembers, stageBody } from '../../services/platform/releases.js';
 import { FEATURE_KEYS } from '../../services/platform/features.js';
+import { announceMaintenance, maintenanceBody, maintenanceNotices, maintenanceStatus } from '../../services/platform/maintenance.js';
 import { h } from '../context.js';
 
 export const updatesRouter = Router();
@@ -246,5 +248,78 @@ updatesRouter.post(
   requirePlatformStepUp,
   h(async (req, res) => {
     res.json(await rollbackRelease(db(), uuid.parse(req.params.id), platformOf(req).adminId));
+  }),
+);
+
+// ---- Maintenance notices -----------------------------------------------------------------------
+
+updatesRouter.get(
+  '/maintenance',
+  h(async (_req, res) => {
+    const now = new Date();
+    const rows = await db().maintenanceWindow.findMany({ orderBy: { startsAt: 'desc' }, take: 100 });
+    res.json(rows.map((w) => ({ ...w, status: maintenanceStatus(w, now) })));
+  }),
+);
+
+updatesRouter.post(
+  '/maintenance',
+  requirePlatformStepUp,
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const b = maintenanceBody.parse(req.body);
+    if (b.endsAt <= new Date()) throw conflict('MAINTENANCE_PAST', 'That window is already over.');
+    const tenantIds = await resolveAudience(db(), b);
+    const w = await db().maintenanceWindow.create({ data: { ...b, tenantIds, createdById: p.adminId } });
+    await log(p.adminId, 'maintenance.schedule', { id: w.id, startsAt: w.startsAt, endsAt: w.endsAt, organizations: tenantIds.length || 'all' });
+    await announceMaintenance(db(), w);
+    // HR admins hear about it now rather than at the worker's next minute.
+    await maintenanceNotices(db());
+    res.status(201).json({ ...w, status: maintenanceStatus(w) });
+  }),
+);
+
+/** New times or words: HR admins are told again (as for a new window). */
+updatesRouter.put(
+  '/maintenance/:id',
+  requirePlatformStepUp,
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const b = maintenanceBody.parse(req.body);
+    const before = await db().maintenanceWindow.findUnique({ where: { id } });
+    if (!before) throw notFound('Maintenance window');
+    if (before.cancelledAt || before.endsAt <= new Date()) throw conflict('MAINTENANCE_CLOSED', 'That window is over or cancelled.');
+    const tenantIds = await resolveAudience(db(), b);
+    const moved = before.startsAt.getTime() !== b.startsAt.getTime() || before.endsAt.getTime() !== b.endsAt.getTime();
+    // A change of time is a new notice (and a fresh reminder); new words alone just show.
+    const w = moved
+      ? await db().$transaction(async (tx) => {
+          await tx.maintenanceWindow.update({ where: { id }, data: { cancelledAt: new Date() } });
+          return tx.maintenanceWindow.create({ data: { ...b, tenantIds, createdById: p.adminId } });
+        })
+      : await db().maintenanceWindow.update({ where: { id }, data: { ...b, tenantIds } });
+    await log(p.adminId, 'maintenance.update', { id, newId: w.id, startsAt: w.startsAt, endsAt: w.endsAt, moved });
+    // Everyone it was or now is for (empty = every organization).
+    await announceMaintenance(db(), { tenantIds: before.tenantIds.length && tenantIds.length ? [...new Set([...before.tenantIds, ...tenantIds])] : [] });
+    if (moved) await maintenanceNotices(db());
+    res.json({ ...w, status: maintenanceStatus(w) });
+  }),
+);
+
+updatesRouter.post(
+  '/maintenance/:id/cancel',
+  requirePlatformStepUp,
+  h(async (req, res) => {
+    const p = platformOf(req);
+    const id = uuid.parse(req.params.id);
+    const before = await db().maintenanceWindow.findUnique({ where: { id } });
+    if (!before) throw notFound('Maintenance window');
+    const w = before.cancelledAt ? before : await db().maintenanceWindow.update({ where: { id }, data: { cancelledAt: new Date() } });
+    if (!before.cancelledAt) {
+      await log(p.adminId, 'maintenance.cancel', { id });
+      await announceMaintenance(db(), w);
+    }
+    res.json({ ...w, status: maintenanceStatus(w) });
   }),
 );

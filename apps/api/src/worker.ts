@@ -48,6 +48,7 @@ import { purgeOldEnquiries } from './services/marketing/casl.js';
 import { ensureTrustSeeded } from './services/trust/seed.js';
 import { announceDueNotes } from './services/platform/releaseNotes.js';
 import { releaseTick } from './services/platform/releases.js';
+import { maintenanceEdges, maintenanceNotices } from './services/platform/maintenance.js';
 import { checkOverdueSafety, enableInlineUrgent, kickUrgent, tenantsWithDueSms, URGENT_CHANNEL } from './services/notifications/urgent.js';
 
 const cfg = config();
@@ -64,6 +65,8 @@ const mailer = new ConsoleMailer();
 const sms = smsSender();
 
 const running = new Set<string>();
+/** When the maintenance job last looked (its live signals cover what passed since). */
+let lastMaintenanceRun = new Date();
 
 // Urgent delivery: after this process's own commits (the lone-work and call-out jobs), and on
 // every fh_urgent NOTIFY from any API process. Claimed with SKIP LOCKED, so racing the API is safe.
@@ -149,6 +152,14 @@ const minutely = async () => {
   await exclusive('release-notes', () => announceDueNotes(db()));
   // Staged releases: advance notices to HR admins, then ring stages whose time has come (each step claimed once).
   await exclusive('releases', () => releaseTick(db()));
+  // Maintenance: HR admins told when scheduled and a day before; open screens refetch as a heads-up or window starts and ends.
+  await exclusive('maintenance', async () => {
+    const now = new Date();
+    const n = await maintenanceNotices(db(), now);
+    await maintenanceEdges(db(), now, lastMaintenanceRun);
+    lastMaintenanceRun = now;
+    return n;
+  });
 };
 const hourly = async () => {
   await exclusive('patrols', () => perTenant((tx) => patrolReminders(tx)));

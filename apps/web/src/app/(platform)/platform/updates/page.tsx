@@ -6,10 +6,11 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { NotesPanel } from '@/components/platform/updates/NotesPanel';
 import { ReleasesPanel } from '@/components/platform/updates/ReleasesPanel';
+import { MaintenancePanel } from '@/components/platform/updates/MaintenancePanel';
 import type { Ring } from '@/components/platform/updates/shared';
 import { usePlatformQuery } from '@/lib/platform';
 
-type Tab = 'notes' | 'releases';
+type Tab = 'notes' | 'releases' | 'maintenance';
 
 /** Dev console: telling organizations about FH's updates, and rolling features out ring by ring (docs/RELEASES.md). */
 export default function UpdatesPage() {
@@ -21,9 +22,9 @@ export default function UpdatesPage() {
     <div className="grid gap-6">
       <PageHeader title={t('updatesConsole.title')} description={t('updatesConsole.description')} />
       <div className="overflow-x-auto">
-        <Segmented<Tab> label={t('updatesConsole.title')} value={tab} onChange={setTab} options={[{ value: 'notes', label: t('updatesConsole.tabNotes') }, { value: 'releases', label: t('updatesConsole.tabReleases') }]} />
+        <Segmented<Tab> label={t('updatesConsole.title')} value={tab} onChange={setTab} options={[{ value: 'notes', label: t('updatesConsole.tabNotes') }, { value: 'releases', label: t('updatesConsole.tabReleases') }, { value: 'maintenance', label: t('updatesConsole.tabMaintenance') }]} />
       </div>
-      {tab === 'notes' ? <NotesPanel rings={rings.data ?? []} /> : <ReleasesPanel rings={rings.data} reloadRings={rings.reload} features={features.data ?? []} />}
+      {tab === 'notes' ? <NotesPanel rings={rings.data ?? []} /> : tab === 'releases' ? <ReleasesPanel rings={rings.data} reloadRings={rings.reload} features={features.data ?? []} /> : <MaintenancePanel rings={rings.data ?? []} />}
     </div>
   );
 }

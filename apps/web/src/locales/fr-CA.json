@@ -380,7 +380,9 @@
     "bid_not_awarded": "Ronde « {{round}} » : aucun de vos choix cette fois. Voyez pourquoi.",
     "kiosk_pin_locked": "Une tablette a verrouillé un numéro d’employé pendant {{minutes}} minutes après trop de NIP erronés ({{kiosk}}).",
     "kiosk_tablet_locked": "La tablette « {{kiosk}} » est en pause {{minutes}} minutes après de nombreux NIP erronés.",
-    "release_scheduled": "À venir le {{whenFr}} : {{titleFr}}. Voyez ce qui change pour votre organisation."
+    "release_scheduled": "À venir le {{whenFr}} : {{titleFr}}. Voyez ce qui change pour votre organisation.",
+    "maintenance_scheduled": "Maintenance prévue le {{whenFr}} : {{messageFr}}",
+    "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}"
   },
   "today": {
     "morning": "Bonjour",
@@ -572,7 +574,9 @@
     "RING_EXISTS": "Un anneau porte déjà ce nom.",
     "RELEASE_LIVE": "Annulez d’abord ses anneaux programmés, puis modifiez-la.",
     "STAGE_CLOSED": "Cette étape est déjà faite, annulée ou retirée.",
-    "NOTHING_TO_UNDO": "Rien de cette version n’est programmé ni appliqué."
+    "NOTHING_TO_UNDO": "Rien de cette version n’est programmé ni appliqué.",
+    "MAINTENANCE_PAST": "Cette période est déjà terminée.",
+    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -8306,7 +8310,7 @@
     "nav": "Mises à jour",
     "navShort": "Mises à jour",
     "title": "Mises à jour",
-    "description": "Informez les organisations de ce qui change, et activez des fonctions un anneau à la fois.",
+    "description": "Informez les organisations de ce qui change, activez des fonctions un anneau à la fois et annoncez les maintenances.",
     "notesTitle": "Notes « Quoi de neuf »",
     "notesHelp": "De courtes notes en anglais et en français. Chaque personne voit une note une seule fois, dans une fenêtre après une mise à jour ou à sa prochaine connexion, et elle reste dans « Quoi de neuf » dans le menu de son compte.",
     "newNote": "Nouvelle note",
@@ -8346,7 +8350,8 @@
     },
     "tabNotes": "Quoi de neuf",
     "tabReleases": "Versions",
-    "chosenHere": "Choisi ici"
+    "chosenHere": "Choisi ici",
+    "tabMaintenance": "Maintenance"
   },
   "releases": {
     "ringsTitle": "Anneaux de déploiement",
@@ -8414,5 +8419,35 @@
       "ROLLED_BACK": "Annulé"
     },
     "keptYours": "Reste comme votre organisation l’a choisi : {{names}}"
+  },
+  "maintenance": {
+    "now": "Maintenance en cours jusqu’à {{until}}",
+    "soon": "Maintenance prévue : {{when}}",
+    "plannedTitle": "Maintenances prévues",
+    "plannedHelp": "FlexcityHeadquarters pourrait être lent ou brièvement indisponible à ces moments.",
+    "happeningNow": "En cours",
+    "consoleTitle": "Avis de maintenance",
+    "consoleHelp": "Tout le monde voit un avis la veille et un bandeau pendant la maintenance. Les administrateurs RH sont avisés dans l’application et par courriel à la programmation, puis la veille. Rien n’est désactivé.",
+    "schedule": "Programmer une maintenance",
+    "editTitle": "Modifier la maintenance",
+    "formHelp": "Les heures sont les vôtres; chaque organisation les voit à son heure. L’enregistrement demande votre clé d’accès. Une nouvelle heure avise de nouveau les administrateurs RH.",
+    "starts": "Début",
+    "ends": "Fin",
+    "endsHint": "Au plus 72 heures après le début.",
+    "messageEn": "Message (anglais)",
+    "messageFr": "Message (français)",
+    "messageHint": "Ce que les gens remarqueront, en une phrase ou deux.",
+    "saved": "Maintenance enregistrée. Les administrateurs RH seront avisés.",
+    "cancel": "Annuler",
+    "cancelled": "Maintenance annulée. Le bandeau a disparu.",
+    "told": "Administrateurs RH avisés",
+    "none": "Aucune maintenance prévue",
+    "noneHelp": "Programmez une période avant des travaux que les gens pourraient remarquer.",
+    "status": {
+      "upcoming": "À venir",
+      "active": "En cours",
+      "ended": "Terminée",
+      "cancelled": "Annulée"
+    }
   }
 }

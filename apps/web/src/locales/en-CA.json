@@ -380,7 +380,9 @@
     "bid_not_awarded": "Bid round “{{round}}”: none of your choices this time. See why.",
     "kiosk_pin_locked": "A kiosk locked an employee number for {{minutes}} minutes after too many wrong PINs ({{kiosk}}).",
     "kiosk_tablet_locked": "The kiosk “{{kiosk}}” paused for {{minutes}} minutes after many wrong PINs.",
-    "release_scheduled": "Coming {{whenEn}}: {{titleEn}}. See what changes for your organization."
+    "release_scheduled": "Coming {{whenEn}}: {{titleEn}}. See what changes for your organization.",
+    "maintenance_scheduled": "Planned maintenance {{whenEn}}: {{messageEn}}",
+    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}"
   },
   "today": {
     "morning": "Good morning",
@@ -572,7 +574,9 @@
     "RING_EXISTS": "There is already a ring with that name.",
     "RELEASE_LIVE": "Undo its scheduled rings first, then change it.",
     "STAGE_CLOSED": "This stage is already done, undone or cancelled.",
-    "NOTHING_TO_UNDO": "Nothing of this release is scheduled or applied."
+    "NOTHING_TO_UNDO": "Nothing of this release is scheduled or applied.",
+    "MAINTENANCE_PAST": "That window is already over.",
+    "MAINTENANCE_CLOSED": "That window is over or cancelled."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -8306,7 +8310,7 @@
     "nav": "Updates",
     "navShort": "Updates",
     "title": "Updates",
-    "description": "Tell organizations what’s changing, and turn features on ring by ring.",
+    "description": "Tell organizations what’s changing, turn features on ring by ring, and announce maintenance.",
     "notesTitle": "What’s new notes",
     "notesHelp": "Short notes in English and French. Each person sees a note once, in a sheet after an update or at their next sign-in, and it stays in What’s new in their account menu.",
     "newNote": "New note",
@@ -8346,7 +8350,8 @@
     },
     "tabNotes": "What’s new",
     "tabReleases": "Releases",
-    "chosenHere": "Chosen here"
+    "chosenHere": "Chosen here",
+    "tabMaintenance": "Maintenance"
   },
   "releases": {
     "ringsTitle": "Release rings",
@@ -8414,5 +8419,35 @@
       "ROLLED_BACK": "Undone"
     },
     "keptYours": "Stays as your organization chose: {{names}}"
+  },
+  "maintenance": {
+    "now": "Maintenance under way until {{until}}",
+    "soon": "Planned maintenance: {{when}}",
+    "plannedTitle": "Planned maintenance",
+    "plannedHelp": "FlexcityHeadquarters may be slow or briefly unavailable at these times.",
+    "happeningNow": "Now",
+    "consoleTitle": "Maintenance notices",
+    "consoleHelp": "Everyone sees a heads-up the day before and a banner while it lasts. HR admins are told in-app and by email when it’s scheduled and again a day before. Nothing is switched off.",
+    "schedule": "Schedule maintenance",
+    "editTitle": "Change maintenance",
+    "formHelp": "Times are yours; each organization sees them in its own time. Saving asks for your passkey. A new time tells HR admins again.",
+    "starts": "Starts",
+    "ends": "Ends",
+    "endsHint": "At most 72 hours after it starts.",
+    "messageEn": "Message (English)",
+    "messageFr": "Message (French)",
+    "messageHint": "What people will notice, in a sentence or two.",
+    "saved": "Maintenance saved. HR admins will be told.",
+    "cancel": "Cancel",
+    "cancelled": "Maintenance cancelled. The banner is gone.",
+    "told": "HR admins told",
+    "none": "No maintenance planned",
+    "noneHelp": "Schedule a window before work that people might notice.",
+    "status": {
+      "upcoming": "Upcoming",
+      "active": "Under way",
+      "ended": "Ended",
+      "cancelled": "Cancelled"
+    }
   }
 }

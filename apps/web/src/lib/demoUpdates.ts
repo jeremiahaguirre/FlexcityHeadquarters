@@ -22,6 +22,9 @@ const read = () => {
 
 /** Organization side: undefined when the path isn't What's new. */
 export function demoWhatsNew(path: string, method: string): unknown {
+  // No maintenance planned and no releases scheduled in the demo.
+  if (path === '/api/maintenance' && method === 'GET') return { banners: [], upcoming: [] };
+  if (path === '/api/updates/changes' && method === 'GET') return [];
   if (path === '/api/me/whats-new' && method === 'GET') {
     const r = read();
     return { notes: [{ ...NOTE, publishAt: publishAt(), readAt: r ? new Date().toISOString() : null }], unseen: r ? [] : [NOTE.id] };
@@ -39,6 +42,7 @@ export function demoWhatsNew(path: string, method: string): unknown {
 
 /** Dev console side: the same note as written there. */
 export function demoConsoleNotes(path: string, method: string): unknown {
+  if (method === 'GET' && (path === '/rings' || path === '/releases' || path === '/maintenance')) return [];
   if (path !== '/notes' || method !== 'GET') return undefined;
   const at = publishAt();
   return [{ id: NOTE.id, titleEn: NOTE.title.en, titleFr: NOTE.title.fr, bodyEn: NOTE.body.en, bodyFr: NOTE.body.fr, roles: [], tenantIds: [], ringIds: [], publishAt: at, publishedAt: at, withdrawnAt: null, status: 'published' }];

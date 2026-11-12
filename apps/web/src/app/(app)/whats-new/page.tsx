@@ -10,6 +10,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { NoteBody } from '@/components/updates/NoteBody';
 import { ComingChanges } from '@/components/updates/ComingChanges';
+import { PlannedMaintenance } from '@/components/updates/PlannedMaintenance';
 import { useSession } from '@/lib/session';
 import { noteDate, pick, useWhatsNew } from '@/lib/whatsNew';
 
@@ -31,6 +32,7 @@ export default function WhatsNewPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title={t('whatsNew.title')} description={t('whatsNew.description')} />
+      <PlannedMaintenance />
       {can('tenant.configure') ? <ComingChanges /> : null}
       {loading && !data ? (
         <ListSkeleton rows={3} />

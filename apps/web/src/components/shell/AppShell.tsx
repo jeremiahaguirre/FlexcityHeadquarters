@@ -29,6 +29,7 @@ import { NoAccess } from './NoAccess';
 import { ConsentGate } from '@/components/privacy/ConsentGate';
 import { Copyright } from '@/components/Copyright';
 import { WhatsNewSheet } from '@/components/updates/WhatsNewSheet';
+import { MaintenanceBanner } from '@/components/updates/MaintenanceBanner';
 
 
 function isActive(pathname: string, href: string) {
@@ -162,6 +163,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
             </div>
           ) : null}
           <BillingBanner />
+          <MaintenanceBanner />
           {noAccess ? <NoAccess /> : children}
         </main>
       </div>

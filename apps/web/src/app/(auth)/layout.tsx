@@ -8,6 +8,7 @@ import { currentTenant } from '@/lib/tenant';
 import { UnknownOrg } from '@/components/UnknownOrg';
 import { ServiceWorker } from '@/components/ServiceWorker';
 import { Copyright } from '@/components/Copyright';
+import { MaintenanceBanner } from '@/components/updates/MaintenanceBanner';
 
 /** Frame for sign-in, password reset and invitation screens, branded for the organization the address belongs to. */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
@@ -32,6 +33,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
               </div>
             ) : null}
           </div>
+          <MaintenanceBanner signedOut />
           {children}
           <Copyright className="mt-12 text-center" />
         </div>
