@@ -21,7 +21,7 @@
     "tenant:purge": "tsx scripts/purge-tenant.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-kms": "3.1156.0",
+    "@aws-sdk/client-kms": "3.1164.0",
     "@node-saml/node-saml": "5.2.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
@@ -54,7 +54,7 @@
     "@types/web-push": "3.6.4",
     "prisma": "7.10.1",
     "sax": "1.6.1",
-    "supertest": "7.0.0",
+    "supertest": "7.3.2",
     "tsx": "4.23.15",
     "typescript": "5.7.2",
     "vitest": "2.1.8"
