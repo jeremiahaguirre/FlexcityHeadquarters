@@ -560,13 +560,17 @@ model User {
   /// free of cycles). Null = their department's manager, where the department has one.
   reportsToId        String?   @db.Uuid
   passwordHash       String?
-  /// Account lockout after repeated failed sign-ins (auth/bruteForce.ts): wrong passwords since
-  /// the last success (forgotten after 24 h), and progressive locks (15 min doubling to 24 h).
+  /// Whole-account lockout after many failed sign-ins across networks (auth/bruteForce.ts): wrong
+  /// passwords in the last 24 h, and progressive locks (15 min doubling to 1 h). Per-network
+  /// failures and locks live in the rate-limit store.
   failedLoginCount   Int       @default(0)
   lockedUntil        DateTime? @db.Timestamptz(3)
   lastFailedLoginAt  DateTime? @db.Timestamptz(3)
   lockoutLevel       Int       @default(0)
   lastLockedAt       DateTime? @db.Timestamptz(3)
+  /// Networks this account signed in from recently ("<keyed hash>~<ms>", at most 5, 30 days):
+  /// not blocked by a whole-account lock caused by other networks. Never the addresses themselves.
+  knownNetworks      String[]  @default([])
 
   hireDate       DateTime? @db.Date
   /// Collective-agreement seniority can differ from hire date; hours-based
@@ -1693,6 +1697,8 @@ model PlatformAdmin {
   lastFailedLoginAt DateTime?         @db.Timestamptz(3)
   lockoutLevel      Int               @default(0)
   lastLockedAt      DateTime?         @db.Timestamptz(3)
+  /// Networks this admin signed in from recently (keyed hashes, at most 3, 14 days; auth/bruteForce.ts).
+  knownNetworks     String[]          @default([])
   lastLoginAt       DateTime?         @db.Timestamptz(3)
   disabledAt        DateTime?         @db.Timestamptz(3)
   createdAt         DateTime          @default(now()) @db.Timestamptz(3)
