@@ -4,7 +4,7 @@
 
 Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and private employers, in English and French.
 
-- **apps/api** — Node.js, Express, TypeScript, Prisma, PostgreSQL (row-level security)
+- **apps/api** — Node.js, Express 5, TypeScript, Prisma 7 (through the `pg` driver), PostgreSQL (row-level security)
 - **apps/web** — Next.js, Tailwind, i18next (English / Canadian French)
 - **apps/site** — the marketing website (static Next.js export, English and French), deployed on Vercel
 
@@ -50,6 +50,12 @@ Requirements: Node 26 (current LTS; see `.nvmrc`), PostgreSQL 16.
 
 ```bash
 npm install
+```
+
+Generate the Prisma client (into `apps/api/src/generated/prisma`, not committed). Run it again after every change to `apps/api/prisma/schema.prisma`; `npm install` no longer does it:
+
+```bash
+npm run prisma:generate --workspace apps/api
 ```
 
 ```bash

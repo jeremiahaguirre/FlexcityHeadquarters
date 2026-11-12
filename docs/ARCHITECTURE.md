@@ -5,8 +5,8 @@
 | Layer | Choice | Notes |
 | --- | --- | --- |
 | Web | Next.js 15 (App Router), Tailwind, i18next | Tenant brand colours injected as CSS variables at request time |
-| API | Node 26, Express, TypeScript (strict), Zod | Permission-based route guards |
-| Data | PostgreSQL 16 via Prisma | Row-level security on every tenant table |
+| API | Node 26, Express 5, TypeScript (strict), Zod | Permission-based route guards |
+| Data | PostgreSQL 16 via Prisma 7 and its `pg` driver adapter (`lib/prismaClient.ts`) | Row-level security on every tenant table |
 | Hosting | AWS `ca-central-1` | Config refuses non-Canadian regions in production |
 | Keys | AWS KMS | One KEK per tenant (`alias/flexcity-tenant-<id>`, created on first use with yearly rotation, copied to `ca-west-1` when `KMS_REPLICA_REGION` is set; `services/crypto`), one platform key (`alias/flexcity-platform`), one per union local (created by operations) |
 

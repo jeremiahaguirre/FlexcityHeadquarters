@@ -123,7 +123,7 @@ To run it: seed as above, then `npx tsx test/load/seed-comms.ts`, start the API 
 The first run, before the fixes below, failed many requests in scenarios 1 and 4.
 
 - **Connection pool:**
-  - each process opens `DB_POOL_SIZE` connections (default 25, up from Prisma's default of 9);
+  - each process opens `DB_POOL_SIZE` connections (default 25, up from Prisma 5's default of 9; since Prisma 7 this is the `pg` pool's `max`, `lib/prismaClient.ts`);
   - a request waits up to `DB_POOL_TIMEOUT_S` (20 s) for one, instead of 2 s.
 - **Pay runs, provider sends and exports** run in a transaction with a 120 s limit (`payrollTx`), not the 15 s limit other requests get.
 - **Worker processes:** `WEB_CONCURRENCY` starts that many API processes on one port. Processes share nothing in memory (see [ARCHITECTURE.md](ARCHITECTURE.md#process-model)):
@@ -166,7 +166,7 @@ below Postgres's `max_connections` (100 by default) with room for administration
 
 Changes clear these caches in every process through `pg_notify` (`lib/cacheBus.ts`). Requests that miss the cache at the same moment share one load (`lib/singleFlight.ts`); without this, a phone opening Today would repeat the same lookups once per request. A shared cache server (ElastiCache/Redis) isn't needed at this size. It would add a network hop, a second copy of personal information to secure, and one more thing to fail over. Reconsider it if the database's CPU is mostly spent on these lookups.
 
-**Connection pooling.** See *Connections* above. With PgBouncer in transaction mode, add `pgbouncer=true` to the Prisma connection URL (it turns off prepared statements, which transaction pooling can't carry). The tenant setting is transaction-local (`set_config(…, true)`) and locks are transaction-level (`pg_advisory_xact_lock`), so both work through transaction pooling. `LISTEN` and the worker's session lock don't, which is why they connect directly.
+**Connection pooling.** See *Connections* above. PgBouncer in transaction mode needs no URL flag since Prisma 7: queries go through `pg` as unnamed prepared statements, which transaction pooling carries (`pgbouncer=true` was a Prisma 5 setting). The tenant setting is transaction-local (`set_config(…, true)`) and locks are transaction-level (`pg_advisory_xact_lock`), so both work through transaction pooling. `LISTEN` and the worker's session lock don't, which is why they connect directly.
 
 **Partitioning (later).** The audit log is kept for the life of an account, and shifts and punches grow forever. When one of them passes roughly 50–100 million rows, or its index maintenance shows in the slow-query log, convert it to monthly range partitions with a SQL migration. Old months can then be detached and archived to S3 in Canada once an organization's retention allows. Postgres needs the partition column in every unique index, so `TimePunch`'s `(tenantId, clientInId)` and `(tenantId, clientOutId)` keys would have to include `clockIn` first. Plan that change before partitioning punches.
 

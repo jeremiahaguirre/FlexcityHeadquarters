@@ -79,6 +79,7 @@ docker stop -t 30 api1    # SIGTERM; the task finishes its requests and ends its
 
 - **Images.** All three built from the committed tree with `NODE_IMAGE` pinned.
 - **Database certificate checks.** `verify-full` against the rehearsal CA was accepted. A different CA was refused, both by Prisma (P1011) and by `pg`. A host name not in the certificate was refused too.
+  Since the Prisma 7 upgrade (November 2026) the API's queries go through `pg` (the driver adapter in `apps/api/src/lib/prismaClient.ts`), which reads the same `sslmode=verify-full&sslrootcert=…` URL; only the migration task's Prisma CLI still gets the translated spelling (`prisma.config.ts`). Re-checked locally against a Postgres with its own test CA: the right CA connects, a different CA and a host name not in the certificate are refused, by the app and by the Prisma CLI (`prisma migrate status`) alike. The API image no longer carries a Prisma engine binary; the migrate image still runs Prisma's schema engine (it needs OpenSSL, still in the base image).
 - **One-off tasks.** `db-roles`, then `migrate` (every migration, then RLS and the union schema), ran as a non-superuser owner. Both are safe to run again.
 - **Health endpoints.** `/healthz` and `/readyz` (also with `?strict=1`) answer 200 on the tasks. Through the load balancer they answer 404. `/metrics` answers 401 without the token, and with it returns `fh_database_up 1` and `fh_worker_connected 1`.
 - **Organization set-up.**
