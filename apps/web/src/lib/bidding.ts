@@ -3,6 +3,8 @@ import { formatDate, formatTimeRange } from './format';
 import { daysLabel, minutesRange } from './shiftTemplates';
 
 export type RoundStatus = 'OPEN' | 'REVIEW' | 'AWARDED' | 'CANCELLED';
+/** One at a time in seniority order (round robin, the default), or most senior first takes all their awards. */
+export type AwardOrder = 'ROUND_ROBIN' | 'SENIOR_FIRST';
 export type Outcome = 'AWARDED' | 'TAKEN_BY_SENIOR' | 'TAKEN_EARLIER_PASS' | 'NOT_ELIGIBLE' | 'LIMIT_REACHED' | 'OVERRIDDEN' | 'CHANGED';
 export interface ChoiceOutcome { itemId: string; rank: number | null; result: Outcome; code?: string; pass?: number }
 export interface BidItem {
@@ -15,7 +17,7 @@ export interface BidItem {
   meta: { daysOfWeek?: number[]; startMinute?: number; endMinute?: number };
   choices?: number;
 }
-export interface RoundHead { id: string; name: string; kind: 'SHIFTS' | 'LINES'; status: RoundStatus; opensAt: string; closesAt: string; maxAwardsPerPerson: number; seniorityBasis: 'DATE' | 'HOURS'; rangeFrom: string | null; rangeTo: string | null }
+export interface RoundHead { id: string; name: string; kind: 'SHIFTS' | 'LINES'; status: RoundStatus; opensAt: string; closesAt: string; maxAwardsPerPerson: number; seniorityBasis: 'DATE' | 'HOURS'; awardOrder: AwardOrder; rangeFrom: string | null; rangeTo: string | null }
 export interface MyRound extends RoundHead {
   items: BidItem[];
   myChoices: string[];
@@ -54,6 +56,15 @@ export function outcomeText(o: ChoiceOutcome, t: T): string {
     return t(`bids.notEligible`, { why: t(`blocks.${code}`, { defaultValue: t(`bids.code.${code}`, { defaultValue: t('bids.code.OTHER') }) }) });
   }
   return t(`bids.outcome.${o.result}`);
+}
+
+/**
+ * Why an award went to its winner: their choice number and, round robin, the pass ("Choice #2,
+ * pass 1"); most senior first, which of their awards it was in their turn ("Choice #2, their 2nd award").
+ */
+export function awardReason(a: { choiceRank: number | null; pass: number }, order: AwardOrder, t: T, lng: string): string {
+  const rank = a.choiceRank ?? '—';
+  return order === 'SENIOR_FIRST' ? t('bids.wonInTurn', { rank, nth: ordinal(a.pass, lng), pass: a.pass }) : t('bids.wonAs', { rank, pass: a.pass });
 }
 
 /** Moves one choice up or down a ranking (no-op at the ends). */

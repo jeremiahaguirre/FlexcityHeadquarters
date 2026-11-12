@@ -13,15 +13,16 @@ import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { type RoundDetail, type RoundHead, type RoundStatus, itemWhen, outcomeText } from '@/lib/bidding';
+import { type AwardOrder, type RoundDetail, type RoundHead, type RoundStatus, awardReason, itemWhen, outcomeText } from '@/lib/bidding';
 import { formatDate, formatMoment } from '@/lib/format';
 import { useLiveChange } from '@/lib/useLiveChange';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 import { HowItWorks, ItemLine } from './MyBids';
 
 interface Named { id: string; name: string; nameFr: string | null }
-interface Options { departments: Array<Named & { useSeniority: boolean }>; positions: Array<Named & { departmentId: string | null }>; templates: Array<{ id: string; name: string; validFrom: string | null; validTo: string | null; positionIds: string[] }>; seniorityBasis: 'DATE' | 'HOURS' }
-interface List { rounds: Array<RoundHead & { items: number; bidders: number }>; canManage: boolean; canConfigure: boolean; seniorityBasis: 'DATE' | 'HOURS' }
+interface Options { departments: Array<Named & { useSeniority: boolean }>; positions: Array<Named & { departmentId: string | null }>; templates: Array<{ id: string; name: string; validFrom: string | null; validTo: string | null; positionIds: string[] }>; seniorityBasis: 'DATE' | 'HOURS'; awardOrder: AwardOrder }
+interface List { rounds: Array<RoundHead & { items: number; bidders: number }>; canManage: boolean; canConfigure: boolean; seniorityBasis: 'DATE' | 'HOURS'; awardOrder: AwardOrder }
+const ORDERS: AwardOrder[] = ['ROUND_ROBIN', 'SENIOR_FIRST'];
 
 const TONE: Record<RoundStatus, 'ok' | 'pending' | 'brand' | 'neutral'> = { OPEN: 'ok', REVIEW: 'pending', AWARDED: 'brand', CANCELLED: 'neutral' };
 const local = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -40,6 +41,7 @@ function NewRound({ open, onClose, onCreated }: { open: boolean; onClose: () => 
   const [closesAt, setClosesAt] = useState(local(new Date(Date.now() + 7 * 86_400_000)));
   const [max, setMax] = useState(1);
   const [basis, setBasis] = useState<'DATE' | 'HOURS' | ''>('');
+  const [awardOrder, setAwardOrder] = useState<AwardOrder | ''>('');
   const label = (x: Named) => (i18n.language === 'fr-CA' && x.nameFr ? x.nameFr : x.name);
   useEffect(() => {
     const tpl = o.data?.templates.find((x) => x.id === templateId);
@@ -51,7 +53,7 @@ function NewRound({ open, onClose, onCreated }: { open: boolean; onClose: () => 
   }, [templateId, o.data]);
   const valid = name.trim().length >= 2 && positionIds.length > 0 && (kind === 'SHIFTS' || templateId) && to > from && closesAt > opensAt;
   const create = () =>
-    void run('create', () => api<{ id: string }>('/api/bids/rounds', { method: 'POST', body: { name, kind, positionIds, templateId: kind === 'LINES' ? templateId : undefined, from, to, opensAt: new Date(opensAt).toISOString(), closesAt: new Date(closesAt).toISOString(), maxAwardsPerPerson: max, ...(basis ? { seniorityBasis: basis } : {}) } }), t('bids.created')).then((r) => {
+    void run('create', () => api<{ id: string }>('/api/bids/rounds', { method: 'POST', body: { name, kind, positionIds, templateId: kind === 'LINES' ? templateId : undefined, from, to, opensAt: new Date(opensAt).toISOString(), closesAt: new Date(closesAt).toISOString(), maxAwardsPerPerson: max, ...(basis ? { seniorityBasis: basis } : {}), ...(awardOrder ? { awardOrder } : {}) } }), t('bids.created')).then((r) => {
       if (r) {
         onCreated(r.id);
         onClose();
@@ -118,6 +120,14 @@ function NewRound({ open, onClose, onCreated }: { open: boolean; onClose: () => 
               )}
             </Field>
           </div>
+          <Field label={t('bids.awardOrder')} hint={t('bids.awardOrderHint')}>
+            {(p) => (
+              <Select {...p} value={awardOrder} onChange={(e) => setAwardOrder(e.target.value as AwardOrder | '')}>
+                <option value="">{t('bids.awardOrderDefault', { order: t(`bids.awardOrder${o.data!.awardOrder ?? 'ROUND_ROBIN'}`) })}</option>
+                {ORDERS.map((x) => <option key={x} value={x}>{t(`bids.awardOrder${x}`)}</option>)}
+              </Select>
+            )}
+          </Field>
         </div>
       )}
     </Dialog>
@@ -183,7 +193,7 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
     <div className="grid gap-4">
       <Button variant="ghost" size="sm" className="justify-self-start" icon={<ArrowLeft className="h-4 w-4" aria-hidden="true" />} onClick={onBack}>{t('bids.allRounds')}</Button>
       <Card className="max-w-4xl">
-        <CardHeader title={r.name} description={`${t(`bids.status.${r.status}`)} · ${t('bids.closesOn', { when: formatMoment(r.closesAt, lng) })} · ${t(r.seniorityBasis === 'DATE' ? 'bids.basisDATE' : 'bids.basisHOURS')}`} action={<StatusPill tone={TONE[r.status]}>{t(`bids.status.${r.status}`)}</StatusPill>} />
+        <CardHeader title={r.name} description={`${t(`bids.status.${r.status}`)} · ${t('bids.closesOn', { when: formatMoment(r.closesAt, lng) })} · ${t(r.seniorityBasis === 'DATE' ? 'bids.basisDATE' : 'bids.basisHOURS')} · ${t(`bids.awardOrder${r.awardOrder ?? 'ROUND_ROBIN'}`)}`} action={<StatusPill tone={TONE[r.status]}>{t(`bids.status.${r.status}`)}</StatusPill>} />
         <CardBody className="grid gap-3 pt-1">
           <p className="text-small">{t('bids.counts', { items: r.items.length, bidders: r.bidders, eligible: r.eligibleCount })}</p>
           {!manage ? <p className="rounded-xl bg-surface p-3 text-small">{t('bids.observerNote')}</p> : null}
@@ -212,7 +222,7 @@ function Detail({ id, onBack }: { id: string; onBack: () => void }) {
                       a ? (
                         <span className="text-small">
                           <span className="font-semibold">{a.name}</span>
-                          {a.overridden ? <span className="block text-caption text-warn">{t('bids.overriddenBy', { by: a.by ?? '', reason: a.reason ?? '' })}</span> : <span className="block text-caption text-muted">{t('bids.wonAs', { rank: a.choiceRank ?? '—', pass: a.pass })}</span>}
+                          {a.overridden ? <span className="block text-caption text-warn">{t('bids.overriddenBy', { by: a.by ?? '', reason: a.reason ?? '' })}</span> : <span className="block text-caption text-muted">{awardReason(a, r.awardOrder ?? 'ROUND_ROBIN', t, lng)}</span>}
                         </span>
                       ) : (
                         <span className="text-small text-muted">{t('bids.toBoard')}</span>
@@ -298,12 +308,19 @@ export function BidRounds() {
       ) : null}
       {q.data.canConfigure ? (
         <Card className="max-w-3xl">
-          <CardBody className="grid gap-2">
+          <CardBody className="grid gap-4">
             <Field label={t('bids.orgBasis')} hint={t('bids.orgBasisHint')}>
               {(p) => (
                 <Select {...p} value={q.data!.seniorityBasis} disabled={busy === 'basis'} onChange={(e) => void run('basis', () => api('/api/bids/settings', { method: 'PUT', body: { seniorityBasis: e.target.value } }), t('bids.basisSaved')).then(() => q.reload())}>
                   <option value="DATE">{t('bids.basisDATE')}</option>
                   <option value="HOURS">{t('bids.basisHOURS')}</option>
+                </Select>
+              )}
+            </Field>
+            <Field label={t('bids.orgAwardOrder')} hint={t('bids.orgAwardOrderHint')}>
+              {(p) => (
+                <Select {...p} value={q.data!.awardOrder ?? 'ROUND_ROBIN'} disabled={busy === 'order'} onChange={(e) => void run('order', () => api('/api/bids/settings', { method: 'PUT', body: { awardOrder: e.target.value } }), t('bids.basisSaved')).then(() => q.reload())}>
+                  {ORDERS.map((x) => <option key={x} value={x}>{t(`bids.awardOrder${x}`)}</option>)}
                 </Select>
               )}
             </Field>

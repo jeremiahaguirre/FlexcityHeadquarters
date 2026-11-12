@@ -31,14 +31,14 @@ export function ItemLine({ item }: { item: BidItem }) {
 }
 
 /** How the order and awarding work, in plain words (always one tap away). */
-export function HowItWorks({ round }: { round: Pick<MyRound, 'seniorityBasis' | 'maxAwardsPerPerson'> }) {
+export function HowItWorks({ round }: { round: Pick<MyRound, 'seniorityBasis' | 'maxAwardsPerPerson' | 'awardOrder'> }) {
   const { t } = useTranslation();
   return (
     <details className="rounded-2xl bg-surface p-3 text-small">
       <summary className="min-h-11 cursor-pointer content-center font-semibold">{t('bids.howTitle')}</summary>
       <ol className="mt-2 grid list-decimal gap-1 pl-5">
         <li>{t(round.seniorityBasis === 'DATE' ? 'bids.howOrderDate' : 'bids.howOrderHours')}</li>
-        <li>{t('bids.howAward', { count: round.maxAwardsPerPerson })}</li>
+        <li>{t(round.awardOrder === 'SENIOR_FIRST' ? 'bids.howAwardSenior' : 'bids.howAward', { count: round.maxAwardsPerPerson })}</li>
         <li>{t('bids.howEligible')}</li>
         <li>{t('bids.howReview')}</li>
         <li>{t('bids.howRest')}</li>

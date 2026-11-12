@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import en from '../locales/en-CA.json';
 import fr from '../locales/fr-CA.json';
-import { itemWhen, move, ordinal, outcomeText } from './bidding';
+import { awardReason, itemWhen, move, ordinal, outcomeText } from './bidding';
 
 const tFor = (dict: unknown) => (key: string, o: Record<string, unknown> = {}): string => {
   const get = (k: string) => k.split('.').reduce<unknown>((a, p) => (a as Record<string, unknown> | undefined)?.[p], dict);
@@ -25,6 +25,12 @@ describe('bidding helpers', () => {
     expect(outcomeText({ itemId: 'x', rank: 1, result: 'NOT_ELIGIBLE', code: 'MISSING_CERTIFICATION' }, t)).toBe('Couldn’t be awarded: A required certification is missing.');
     expect(outcomeText({ itemId: 'x', rank: 1, result: 'NOT_ELIGIBLE', code: 'OVERTIME' }, t)).toContain('overtime');
     expect(outcomeText({ itemId: 'x', rank: 1, result: 'NOT_ELIGIBLE', code: 'SOMETHING_NEW' }, tFor(fr))).toContain('règle');
+  });
+  it('award reasons follow the round’s award order', () => {
+    expect(awardReason({ choiceRank: 2, pass: 1 }, 'ROUND_ROBIN', tFor(en), 'en-CA')).toBe('Choice #2, pass 1');
+    expect(awardReason({ choiceRank: 2, pass: 2 }, 'SENIOR_FIRST', tFor(en), 'en-CA')).toBe('Choice #2, their 2nd award');
+    expect(awardReason({ choiceRank: 1, pass: 1 }, 'SENIOR_FIRST', tFor(fr), 'fr-CA')).toBe('Choix no 1, attribution 1 de son tour');
+    expect(awardReason({ choiceRank: null, pass: 1 }, 'ROUND_ROBIN', tFor(en), 'en-CA')).toBe('Choice #—, pass 1');
   });
   it('a line reads as its days and times', () => {
     expect(itemWhen({ id: 'i', facility: 'F', position: { id: 'p', name: 'Lifeguard', nameFr: null }, shifts: 20, localStartsAt: '2027-07-05T07:00:00-07:00', localEndsAt: '2027-08-31T15:00:00-07:00', meta: { daysOfWeek: [1, 2, 3, 4, 5], startMinute: 420, endMinute: 900 } }, 'en-CA', 'Every day')).toMatch(/^Mon–Fri 7:00/);
