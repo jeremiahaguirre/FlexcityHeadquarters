@@ -60,6 +60,8 @@ beforeAll(async () => {
   await listener.query(`LISTEN ${CHANGE_CHANNEL}`);
 });
 afterAll(async () => {
+  // The emails queued above aren't for another test's outbox delivery to pick up.
+  await owner.emailOutbox.deleteMany({ where: { tenantId: t.tenant.id } });
   await listener.end();
   await appDb.$disconnect();
   await owner.$disconnect();
@@ -71,7 +73,7 @@ describe('notifications in batches', () => {
     await owner.user.createMany({ data: people });
     const ids = (await owner.user.findMany({ where: { tenantId: t.tenant.id, lastName: 'Batch' }, select: { id: true } })).map((u) => u.id);
     heard.length = 0;
-    const n = await withTenant(t.tenant.id, (tx) => notify(tx, t.tenant.id, ids.map((userId, i) => ({ userId, type: 'survey_open', params: { title: 'Pulse', surveyId: 'x' }, link: '/surveys', ...(i < 3 ? { email: 'survey_open' } : {}) }))));
+    const n = await withTenant(t.tenant.id, (tx) => notify(tx, t.tenant.id, ids.map((userId, i) => ({ userId, type: 'survey_open', params: { title: 'Pulse', surveyId: 'x' }, link: '/surveys', ...(i < 3 ? { email: 'pay_statement_ready' } : {}) }))));
     expect(n).toBe(1205);
     await settle();
     const stored = await owner.notification.findMany({ where: { userId: { in: ids } }, select: { id: true, userId: true } });
@@ -80,7 +82,7 @@ describe('notifications in batches', () => {
     expect(signals).toHaveLength(1205);
     const byId = new Map(stored.map((s) => [s.id, s.userId]));
     expect(signals.every((s) => s.tenantId === t.tenant.id && byId.get(s.id) === s.userId)).toBe(true);
-    expect(await owner.emailOutbox.count({ where: { tenantId: t.tenant.id, template: 'survey_open' } })).toBe(3);
+    expect(await owner.emailOutbox.count({ where: { tenantId: t.tenant.id, template: 'pay_statement_ready' } })).toBe(3);
   });
 
   it('nothing is signalled when the transaction rolls back', async () => {
