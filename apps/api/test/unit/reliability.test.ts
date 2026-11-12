@@ -152,3 +152,24 @@ describe('reliability: yearly restart', () => {
     expect(g.score).toBe(100 - 15 - 2 + 5); // the no-show still counts, with a clean 30 days after it
   });
 });
+
+describe('reliability: monthly caps count points actually earned', () => {
+  it('on-time shifts while the score is at 100 don’t use up the month: a late clock-in later that month can be earned back', () => {
+    // now = Nov 11; four on-time shifts earlier in November while at 100, then a late clock-in, then one on time.
+    const early = [shift('s1', ago(9)), shift('s2', ago(8)), shift('s3', ago(7)), shift('s4', ago(6))];
+    const late = shift('lateShift', ago(3));
+    const after = shift('s5', ago(1));
+    const r = computeReliability([ev('lp', 'LATE_PUNCH', ago(3), { sourceId: 'lateShift' })], [], now, { shifts: [...early, late, after], policy: { timeZone: TZ } });
+    const latePoints = r.counted.find((c) => c.id === 'lp')!.points;
+    expect(r.score).toBe(100 + latePoints + RULES.onTimeShift);
+    const nov = r.changes.find((c) => c.kind === 'ON_TIME' && c.month === '2026-11');
+    expect(nov).toMatchObject({ applied: RULES.onTimeShift });
+  });
+
+  it('still caps what is earned in a month', () => {
+    const shifts = Array.from({ length: 8 }, (_, i) => shift(`s${i}`, ago(9 - i)));
+    const r = computeReliability([ev('ns', 'NO_SHOW', ago(10))], [], now, { shifts, policy: { timeZone: TZ } });
+    const nov = r.changes.find((c) => c.kind === 'ON_TIME' && c.month === '2026-11');
+    expect(nov && 'applied' in nov ? nov.applied : 0).toBeLessThanOrEqual(RULES.onTimeShiftMonthlyCap);
+  });
+});

@@ -275,7 +275,9 @@ export function computeReliability(events: ScoreEvent[], leave: ScoreLeave[], no
       const entry = onTime.get(month) ?? { kind: 'ON_TIME' as const, at: new Date(it.at), points: 0, applied: 0, month, count: 0 };
       entry.count += 1;
       entry.at = new Date(it.at);
-      const room = RULES.onTimeShiftMonthlyCap - entry.points;
+      // The monthly cap counts points actually earned: shifts while the score sits at 100 don't use it up,
+      // so a late clock-in later that month can still be earned back.
+      const room = RULES.onTimeShiftMonthlyCap - entry.applied;
       if (room > 0) {
         const pts = Math.min(RULES.onTimeShift, room);
         entry.points += pts;
@@ -291,11 +293,12 @@ export function computeReliability(events: ScoreEvent[], leave: ScoreLeave[], no
       }
     } else {
       const month = monthOf(it.at);
+      // Like on-time shifts, the cap counts points actually earned (none while the score is at 100).
       const used = commended.get(month) ?? 0;
       const pts = Math.min(RULES.commendation, RULES.commendationMonthlyCap - used);
       if (pts > 0) {
-        commended.set(month, used + pts);
         const applied = apply(pts);
+        commended.set(month, used + applied);
         if (applied) changes.push({ kind: 'COMMENDATION', at: it.n.occurredAt, points: pts, applied, noteId: it.n.id });
       }
     }
