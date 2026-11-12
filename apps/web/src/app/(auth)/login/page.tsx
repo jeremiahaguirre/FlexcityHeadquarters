@@ -1,5 +1,6 @@
 'use client';
 
+import { safeNext } from '@/lib/safeNext';
 import { doneBeat, setAuthMotion } from '@/lib/authMotion';
 import { Building2, LogIn, Terminal } from 'lucide-react';
 import Link from 'next/link';
@@ -41,7 +42,8 @@ function LoginForm() {
   }, [ssoError, t]);
   const ssoHref = () => {
     const next = params.get('next');
-    return `/api/auth/sso/start${next && next.startsWith('/') && !next.startsWith('//') ? `?next=${encodeURIComponent(next)}` : ''}`;
+    const safe = safeNext(next, '');
+    return `/api/auth/sso/start${safe ? `?next=${encodeURIComponent(safe)}` : ''}`;
   };
   const passwordHidden = !!sso?.enforced && !showPassword;
   // The marketing site links straight into a role: /login?as=AQUATIC_SUPERVISOR.
@@ -67,7 +69,7 @@ function LoginForm() {
       setAuthMotion('done');
       await doneBeat();
       const next = params.get('next');
-      router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
+      router.replace(safeNext(next));
     } catch (err) {
       setAuthMotion('idle');
       if (!cancelled(err)) setError(err instanceof ApiError && err.code === 'PASSKEY_UNKNOWN' ? t('passkeys.unknown') : t('passkeys.failed'));
@@ -90,7 +92,7 @@ function LoginForm() {
       }
       await doneBeat();
       const next = closed ? '/export' : params.get('next');
-      router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/');
+      router.replace(safeNext(next));
     } catch (err) {
       setAuthMotion('idle');
       if (err instanceof ApiError && err.code === 'ORG_DISABLED') setError(t('login.closedNoAccess'));

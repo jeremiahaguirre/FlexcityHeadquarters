@@ -5,6 +5,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { ssoExchange } from '@/lib/api';
+import { safeNext } from '@/lib/safeNext';
 
 /** Back from Microsoft / the identity provider: trade the one-time code for a session. */
 function Sso() {
@@ -20,7 +21,7 @@ function Sso() {
     const next = params.get('next');
     if (!code) return setFailed(true);
     ssoExchange(code)
-      .then(() => router.replace(next && next.startsWith('/') && !next.startsWith('//') ? next : '/'))
+      .then(() => router.replace(safeNext(next)))
       .catch(() => setFailed(true));
   }, [params, router]);
   return (

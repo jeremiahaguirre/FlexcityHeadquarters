@@ -22,6 +22,7 @@ import { config } from '../../config.js';
 import { audit, withTenant, type Tx } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';
 import { assertPublicUrl } from '../../lib/egress.js';
+import { safeNext } from '../../lib/safeNext.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
 
@@ -266,7 +267,7 @@ export function ready(c: SsoConnection | null): c is SsoConnection {
   return c.protocol === 'OIDC' ? !!(c.oidcIssuer && c.oidcClientId) : !!(c.samlEntryPoint && c.samlCert);
 }
 
-export const safeNext = (n: unknown) => (typeof n === 'string' && n.startsWith('/') && !n.startsWith('//') && !n.includes('\\') && n.length < 300 ? n : undefined);
+export { safeNext };
 
 export async function startSso(tenantId: string, sub: string, loginHint?: string, next?: string) {
   const c = await withTenant(tenantId, connectionFor);
