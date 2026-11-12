@@ -33,7 +33,7 @@ beforeAll(async () => {
   const now = Math.floor(Date.now() / 1000);
   const hr = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'Hana', lastName: 'Admin', email: `hr@${SUB}.test`, passwordHash: await hashPassword('hr password 12') } });
   hrId = hr.id;
-  await owner.user.update({ where: { id: t.users[0]!.id }, data: { passwordHash: await hashPassword('staff password 1') } });
+  await owner.user.update({ where: { id: t.users[0]!.id }, data: { passwordHash: await hashPassword('staff password 1'), kioskPinHash: await hashPassword('kiosk:4826'), calendarTokenHash: 'a'.repeat(64) } });
   tok.hr = await signAccessToken({ sub: hr.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: now, mfa: true });
   tok.staff = await signAccessToken({ sub: t.users[0]!.id, tid: t.tenant.id, roles: ['STAFF'], aat: now });
   // Sealed things the export has to open: a SIN, a bank account, a document.
@@ -83,6 +83,18 @@ describe('the organization’s full data export', () => {
     // Never included.
     for (const secret of ['RefreshToken', 'AuthToken', 'Passkey', 'PlatformAudit', 'SupportSession']) expect(names.some((n) => n.includes(`/${secret}.`))).toBe(false);
     expect(names.some((n) => /union/i.test(n))).toBe(false);
+    // No column named like a secret or its hash, in any table (a PIN hash can be cracked offline).
+    expect(users).not.toContain('kioskPinHash');
+    expect(users).not.toContain('calendarTokenHash');
+    for (const n of names.filter((x) => x.endsWith('.jsonl'))) {
+      for (const line of text(n.replace('flexcity-export/', '')).trim().split('\n').filter(Boolean)) {
+        for (const k of Object.keys(JSON.parse(line))) expect(k, `${n}: ${k}`).not.toMatch(/(Hash|Token|Secret)$/i);
+      }
+    }
+    for (const n of names.filter((x) => x.endsWith('.csv'))) {
+      const header = text(n.replace('flexcity-export/', '')).split(/\r?\n/)[0]!;
+      for (const k of header.split(',')) expect(k, `${n}: ${k}`).not.toMatch(/(Hash|Token|Secret)"?$/i);
+    }
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'data.export', actorId: hrId } })).toBe(1);
   });
 

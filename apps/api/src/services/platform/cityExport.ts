@@ -32,9 +32,18 @@ import { anonymousResults, type Answers, type Question } from '../surveys/result
 import { isClosed } from '../surveys/surveys.js';
 
 /** Sign-in secrets and FH's own records: never in the export. */
-const SKIP_TABLES = new Set(['AuthToken', 'RefreshToken', 'MfaCode', 'Passkey', 'WebAuthnChallenge', 'PlatformAudit', 'SupportSession', 'BillingAccount', 'PadAgreement', 'PadDebit', 'TenantLogo', 'RateLimitHit']);
-/** Columns that are secrets or only the machinery of encryption. */
-const SKIP_COLUMNS = new Set(['nameCiphertext', 'nameIv', 'nameAuthTag', 'passwordHash', 'tokenHash', 'ssoSubject', 'failedLoginCount', 'lockedUntil', 'oidcSecret', 'ciphertext', 'iv', 'authTag', 'wrappedDataKey', 'wrappedKey', 'kekId', 'sinCiphertext', 'sinIv', 'sinAuthTag', 'sinWrappedKey', 'sinKekId', 'accountCiphertext', 'accountIv', 'accountAuthTag', 'accountWrappedKey', 'accountKekId', 'publicKey', 'originalCiphertext', 'originalIv', 'originalAuthTag']);
+const SKIP_TABLES = new Set(['AuthToken', 'RefreshToken', 'MfaCode', 'Passkey', 'WebAuthnChallenge', 'PlatformAudit', 'SupportSession', 'BillingAccount', 'PadAgreement', 'PadDebit', 'TenantLogo', 'RateLimitHit', 'PushSubscription']);
+/** Columns that are secrets or only the machinery of encryption, by name (secretColumn() catches the rest by shape). */
+const SKIP_COLUMNS = new Set(['nameCiphertext', 'nameIv', 'nameAuthTag', 'passwordHash', 'tokenHash', 'ssoSubject', 'failedLoginCount', 'lockedUntil', 'lastFailedLoginAt', 'lockoutLevel', 'lastLockedAt', 'knownNetworks', 'oidcSecret', 'ciphertext', 'iv', 'authTag', 'wrappedDataKey', 'wrappedKey', 'kekId', 'sinCiphertext', 'sinIv', 'sinAuthTag', 'sinWrappedKey', 'sinKekId', 'accountCiphertext', 'accountIv', 'accountAuthTag', 'accountWrappedKey', 'accountKekId', 'publicKey', 'originalCiphertext', 'originalIv', 'originalAuthTag', 'p256dh', 'auth']);
+/**
+ * Any column named like a secret or a hash of one (kioskPinHash, calendarTokenHash, keyHash,
+ * codeHash, a webhook's secret…), or like encryption machinery, is left out whatever its table, so
+ * a new column of that kind is never exported by accident: hashes of short secrets (a 4-digit PIN)
+ * can be cracked offline.
+ */
+export function secretColumn(name: string): boolean {
+  return SKIP_COLUMNS.has(name) || /(hash|token|secret|ciphertext|authtag|wrappedkey|wrappeddatakey|kekid)$/i.test(name) || /(?:^iv|[a-z]Iv)$/.test(name);
+}
 
 type Row = Record<string, unknown>;
 
@@ -205,7 +214,7 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
         problems.push(`${table} ${String(r.id ?? '')}: a sealed value couldn't be opened.`);
       }
       for (const [k, v] of Object.entries(r)) {
-        if (SKIP_COLUMNS.has(k)) continue;
+        if (secretColumn(k)) continue;
         if (Buffer.isBuffer(v) || v instanceof Uint8Array) {
           // A stored file (e.g. a signature image): written out, linked from the row.
           const path = `files/${table}/${String(r.id ?? files)}-${k}.${k.toLowerCase().includes('signature') ? 'png' : 'bin'}`;
