@@ -189,6 +189,13 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
 
   // The schedule builder's batch check is a POST that only reads: replay the recorded answer.
   if (path === '/api/schedule/planner/eligibility' && method === 'POST') return (data.get(path) ?? { users: [], reasons: [], shifts: {}, days: {}, evaluations: 0, ms: 0 }) as T;
+  // HR's conversation lookup (a POST with a reason): the recorded person's list, only for that person.
+  const lookup = /^\/api\/messages-admin\/people\/([^/]+)\/conversations$/.exec(path);
+  if (lookup && method === 'POST') {
+    const name = ((data.get('/api/messages/people') as { people?: Array<{ id: string; name: string }> } | undefined)?.people ?? []).find((p) => p.id === lookup[1])?.name;
+    const list = (data.get(path) as Array<{ members: Array<string | null> }> | undefined) ?? [];
+    return (name ? list.filter((c) => c.members.includes(name)) : []) as T;
+  }
   const planned = plannerApi(data, path, method, (init.body ?? {}) as Record<string, unknown>);
   if (planned !== undefined) return planned as T;
 

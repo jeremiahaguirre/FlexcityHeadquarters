@@ -7,6 +7,7 @@
  *                                         since the script signs in to the Dev console with a password)
  *   node scripts/capture-demo.cjs
  *   node scripts/capture-demo.cjs --prepare-only   (just the sample data, nothing recorded)
+ *   CAPTURE_ROLES=waterworks,hr node scripts/capture-demo.cjs   (re-record only those roles)
  *
  * Names are swapped for the fictional demo organization before saving.
  */
@@ -354,7 +355,8 @@ async function prepareMessagesSurveys() {
         await guard.call('POST', `/api/messages/conversations/${dep.id}/messages`, { text: 'I can set up the spinal board stations at 6:45.' });
       }
     }
-    const junior = (dir?.people ?? []).find((p) => /Morgan Lee/.test(p.name)) ?? (dir?.people ?? []).find((p) => p.directBlocked);
+    // The directory leaves out people you can't message one to one; the junior guard is still listed for groups.
+    const junior = (dir?.people ?? []).find((p) => /Morgan Lee/.test(p.name));
     const head = (dir?.people ?? []).find((p) => /Avery/.test(p.name) && p.group && p.id !== junior?.id);
     const guardId = guard.user?.id ?? (await guard.call('GET', '/api/me')).id;
     if (junior && head) {
@@ -375,7 +377,7 @@ async function prepareMessagesSurveys() {
     const respondents = ['guard', 'supervisor', 'frontdesk', 'head', 'casual', 'waterworks', 'maintenance'];
     const closesAt = new Date(Date.now() + 10 * 86_400_000).toISOString();
     const runPulse = async (title, repeatOf, scores, notes, close) => {
-      const d = await hr.call('POST', '/api/surveys', { kind: 'PULSE', title, intro: 'Four questions, about a minute. Anonymous: results only for groups of five or more.', questions: Q, closesAt, repeatOf });
+      const d = await hr.call('POST', '/api/surveys', { kind: 'PULSE', title, intro: 'Four questions, about a minute. Anonymous: results only for groups of five or more.', questions: Q, closesAt, repeatOf, breakdown: 'DEPARTMENT' });
       if (!d?.id) return null;
       await hr.call('POST', `/api/surveys/${d.id}/publish`);
       for (const [i, who] of respondents.entries()) {
@@ -451,6 +453,10 @@ async function prepareWeek() {
   const w0 = mondayOf(today);
   const w1 = addDays(w0, 7);
   const board = await sup.call('GET', `/api/schedule/planner?departmentId=${departmentId}&from=${w0}&to=${addDays(w0, 14)}`);
+  // A 30-minute unpaid meal break on the long shifts (BC: after five hours), as a scheduler would set.
+  for (const s of board?.shifts ?? []) {
+    if (s.warnings?.some((w) => w.code === 'BREAK_MISSING')) await sup.call('PATCH', `/api/shifts/${s.id}`, { expectedVersion: s.version, unpaidBreakMinutes: 30 });
+  }
   if ((board?.shifts?.length ?? 0) >= 40) return;
   // Open drafts left by earlier runs (the "on now" shift of other days) make way for the plan.
   const stray = board.shifts.filter((s) => s.status === 'DRAFT' && !s.userId).map((s) => s.id);
@@ -470,7 +476,7 @@ async function prepareWeek() {
     for (const [pos, start, end, count] of blocks(new Date(`${date}T12:00:00Z`).getUTCDay())) {
       const startsAt = cityInstant(date, start);
       const k = `${pos.id}|${Date.parse(startsAt)}`;
-      for (let i = have.get(k) ?? 0; i < count; i++) await sup.call('POST', '/api/schedule/planner/shifts', { facilityId: facility.id, positionId: pos.id, startsAt, endsAt: cityInstant(date, end), userIds: [] });
+      for (let i = have.get(k) ?? 0; i < count; i++) await sup.call('POST', '/api/schedule/planner/shifts', { facilityId: facility.id, positionId: pos.id, startsAt, endsAt: cityInstant(date, end), userIds: [], unpaidBreakMinutes: end - start > 5 * H ? 30 : null });
     }
   }
   const run = (weekStart, weekIndex, carry) => sup.call('POST', '/api/schedule/fill/run', { departmentId, weekStart, horizonStart: w0, weekIndex, horizonWeeks: 2, carry, toggles: options.settings.toggles, weights: options.settings.weights, newShifts: [] });
@@ -496,28 +502,13 @@ async function prepareWeek() {
 }
 
 /**
- * Water works: the operator's own week (day shifts at the treatment plant, this week published,
- * next week's too) and a word from the lead hand; HR's inbox gets a note from the supervisor.
+ * Water works: a word from the lead hand (the operator's shifts come from the API's seed, since
+ * nobody schedules Water Works in the app); HR's inbox gets a note from the supervisor.
  */
 async function prepareWaterWorks() {
   const hr = await apiAs('hr');
   const water = await apiAs('waterworks');
   const sup = await apiAs('supervisor');
-  const today = cityToday();
-  const w0 = mondayOf(today);
-  const mine = await water.call('GET', `/api/me/shifts?from=${encodeURIComponent(cityInstant(w0, 0))}&to=${encodeURIComponent(cityInstant(addDays(w0, 14), 0))}`);
-  const facilities = await hr.call('GET', '/api/facilities');
-  const plant = facilities.find((f) => /treatment/i.test(f.name)) ?? facilities[0];
-  const operator = (await hr.call('GET', '/api/positions')).find((p) => /water works/i.test(p.name));
-  if (Array.isArray(mine) && !mine.length && plant && operator) {
-    for (let d = 0; d < 14; d++) {
-      const date = addDays(w0, d);
-      const dow = new Date(`${date}T12:00:00Z`).getUTCDay();
-      if (dow === 0 || dow === 6) continue;
-      await hr.call('POST', '/api/schedule/planner/shifts', { facilityId: plant.id, positionId: operator.id, startsAt: cityInstant(date, 7 * 60), endsAt: cityInstant(date, 15 * 60 + 30), userIds: [water.user.id] });
-    }
-    await hr.call('POST', '/api/shifts/publish', { facilityId: plant.id, from: cityInstant(w0, 0), to: cityInstant(addDays(w0, 14), 0), acknowledgeWarnings: true });
-  }
   if (!(await water.call('GET', '/api/messages/conversations')).length) {
     const lead = await apiAs('maintenance').catch(() => null);
     if (lead) {
@@ -721,12 +712,13 @@ async function capture(browser, role) {
       }
     }
     if (href === '/manage/surveys') {
-      // Each survey's results (and the pulse trend).
+      // Each survey's results (and the pulse trend), everyone and by the survey's one breakdown.
       const n = Math.min(await page.getByRole('button', { name: 'Results', exact: true }).count(), 4);
       for (let i = 0; i < n; i++) {
         await page.getByRole('button', { name: 'Results', exact: true }).nth(i).click().catch(() => {});
         await page.waitForTimeout(1200);
         for (const name of ['By department', 'By position', 'Everyone']) {
+          // Only the survey's own breakdown is offered; the others aren't there.
           await page.locator('dialog[open] [role=radio]', { hasText: name }).first().click().catch(() => {});
           await page.waitForTimeout(400);
         }
@@ -771,7 +763,17 @@ async function capture(browser, role) {
     for (const href of people) await visit(href);
   }
   await page.close();
+  // Browsing a role takes longer than an access token lasts: sign in again for the recordings below.
+  if (Object.keys(responses).some((k) => k.startsWith('/api/schedule/planner?') || k === '/api/messages-admin/settings')) sessions.delete(ROLES[role]);
   await recordPlanner(role, responses);
+  // HR's conversation lookup is a POST with a reason (audited): record one person's list.
+  if (Object.keys(responses).includes('/api/messages-admin/settings')) {
+    const s = await apiAs(ROLES[role]);
+    const guard = sessions.get('guard') ? await apiAs('guard') : null;
+    const guardId = guard?.user?.id ?? (await s.call('GET', '/api/messages/people'))?.people?.find((p) => /Jordan Singh/.test(p.name))?.id;
+    const list = guardId ? await s.call('POST', `/api/messages-admin/people/${guardId}/conversations`, { reason: 'Demo recording: sample of what HR sees when looking someone up.' }) : null;
+    if (Array.isArray(list)) responses[`/api/messages-admin/people/${guardId}/conversations`] = list;
+  }
 
   const capturedOn = cityToday();
   const json = JSON.parse(rename(JSON.stringify({ capturedOn, responses })));
@@ -865,7 +867,9 @@ async function capturePlatform(browser) {
   await prepare();
   if (process.argv.includes('--prepare-only')) return;
   const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP *.localhost 127.0.0.1'] });
-  for (const role of Object.keys(ROLES)) await capture(browser, role);
+  const only = process.env.CAPTURE_ROLES?.split(',');
+  for (const role of Object.keys(ROLES)) if (!only || only.includes(role)) await capture(browser, role);
+  if (only) return browser.close();
   // Public careers page (no sign-in).
   const page = await browser.newPage();
   let jobs = [];

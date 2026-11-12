@@ -30,7 +30,7 @@ const base: Board = {
   departments: [{ id: 'd1', name: 'Aquatics', nameFr: 'Aquatique' }],
   positions: [guard, instructor],
   facilities: [facility],
-  people: [person('u1', 'Jordan Singh', [guard.id, instructor.id], null), person('u2', 'Maya Fischer', [guard.id], 128)] as Board['people'],
+  people: [person('u1', 'Jordan Singh', [guard.id, instructor.id], null), person('u2', 'Maya Fischer', [guard.id], 128)] as unknown as Board['people'],
   shifts: [
     shift('s1', '2026-11-09', '06:00', '13:00', 'u1'),
     shift('s2', '2026-11-12', '06:00', '13:00'),

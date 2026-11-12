@@ -268,6 +268,28 @@ async function poolCrew(tx: Tx, tenantId: string) {
   }
 }
 
+/**
+ * The water works operator's own schedule (no one in the demo schedules Water Works through the
+ * app): day shifts at the treatment plant, Monday to Friday, this week and next, published.
+ * Added only when the operator has nothing in those two weeks.
+ */
+async function waterWorksWeek(tx: Tx, tenantId: string) {
+  const op = await tx.user.findFirst({ where: { email: 'waterworks@kelowna.test' }, select: { id: true } });
+  const plant = await tx.facility.findFirst({ where: { name: { contains: 'Treatment' } }, select: { id: true, timezone: true } });
+  const position = await tx.position.findFirst({ where: { name: 'Water Works Operator' }, select: { id: true } });
+  if (!op || !plant || !position) return;
+  const monday = DateTime.now().setZone(plant.timezone).startOf('week');
+  const end = monday.plus({ weeks: 2 });
+  if (await tx.shift.count({ where: { userId: op.id, status: { not: 'CANCELLED' }, startsAt: { gte: monday.toJSDate(), lt: end.toJSDate() } } })) return;
+  const data = [];
+  for (let d = 0; d < 14; d++) {
+    const day = monday.plus({ days: d });
+    if (day.weekday > 5) continue;
+    data.push({ tenantId, facilityId: plant.id, positionId: position.id, userId: op.id, status: 'PUBLISHED' as const, startsAt: day.set({ hour: 7 }).toJSDate(), endsAt: day.set({ hour: 15, minute: 30 }).toJSDate(), unpaidBreakMinutes: 30 });
+  }
+  await tx.shift.createMany({ data });
+}
+
 /** Adds whatever is missing for the demo city. */
 export async function seedNewScreens(tenantId: string) {
   await withTenant(tenantId, async (tx) => {
@@ -279,6 +301,7 @@ export async function seedNewScreens(tenantId: string) {
   });
   await withTenant(tenantId, (tx) => jobsAndApplications(tx, tenantId));
   await withTenant(tenantId, (tx) => poolCrew(tx, tenantId));
+  await withTenant(tenantId, (tx) => waterWorksWeek(tx, tenantId));
   await withTenant(tenantId, (tx) => trades(tx, tenantId), { timeoutMs: 60_000 });
 }
 
