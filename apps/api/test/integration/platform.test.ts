@@ -166,7 +166,9 @@ describe('the Dev console sees no one’s personal information', () => {
       bodies.push(JSON.stringify(r.body));
     }
     const all = bodies.join('\n');
-    for (const secret of ['250-555-0199', '2008-03-14', 'EMP-7781', '31.37', 'Harassment', 'never-show-this', staff.email]) expect(all, secret).not.toContain(secret);
+    for (const secret of ['250-555-0199', '2008-03-14', 'EMP-7781', 'Harassment', 'never-show-this', staff.email]) expect(all, secret).not.toContain(secret);
+    // The pay rate is checked everywhere except inside ISO timestamps, where "…:31.371Z" can occur by chance and no rate can.
+    expect(all.replace(/\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?Z/g, '<time>'), 'pay rate').not.toContain('31.37');
     for (const key of ['"dateOfBirth"', '"phone"', '"hourlyRate"', '"sin"', '"passwordHash"', '"employeeNumber"']) expect(all, key).not.toContain(key);
   });
 });
