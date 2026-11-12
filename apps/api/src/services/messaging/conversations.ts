@@ -63,10 +63,21 @@ const SLOW_DOWN = 'You’re sending a lot of messages. Wait a moment and try aga
 
 /** Refused by the rule of two: the same words whoever asks, never an age. */
 export class MinorRuleError extends HttpError {
-  constructor(readonly what: string, readonly entityId: string | null, generic = false) {
+  readonly what: string;
+  readonly entityId: string | null;
+  // One unconditional super() call: with parameter properties and a super() inside an if, tsc's
+  // build assigns them before super() and every refusal crashed with a 500 in production only
+  // (found by the production rehearsal; test/unit/buildSafety.test.ts).
+  constructor(what: string, entityId: string | null, generic = false) {
     // Generic: refused like any read-only conversation, so the refusal says nothing about who is in it.
-    if (generic) super(409, 'READ_ONLY', 'This conversation is read-only.', { reason: 'readOnly' });
-    else super(403, 'MINOR_RULE', 'One-to-one messages aren’t available with this person. A supervisor can start a group that includes you both.');
+    super(
+      generic ? 409 : 403,
+      generic ? 'READ_ONLY' : 'MINOR_RULE',
+      generic ? 'This conversation is read-only.' : 'One-to-one messages aren’t available with this person. A supervisor can start a group that includes you both.',
+      generic ? { reason: 'readOnly' } : undefined,
+    );
+    this.what = what;
+    this.entityId = entityId;
   }
 }
 async function minorRule(_tx: Tx, _a: AuthContext, what: string, entityId: string | null, generic = false): Promise<never> {
