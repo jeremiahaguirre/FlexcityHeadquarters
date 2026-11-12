@@ -4,7 +4,7 @@
 #
 #   docker build --target api     -t fh-api .   # API; the worker is the same image with `node dist/worker.js`
 #   docker build --target migrate -t fh-migrate .  # one-off task: prisma migrate deploy + RLS/roles SQL
-#   docker build --target web --build-arg API_URL=http://api.internal:4000 -t fh-web .
+#   docker build --target web --build-arg NEXT_PUBLIC_RELEASE=<tag> -t fh-web .   # <tag> = the API's RELEASE (image_tag)
 #
 # The marketing site (apps/site) is a static export served from S3, not a container.
 # Base image pinned by digest: Node 26 (the version package.json requires), Debian bookworm slim.
