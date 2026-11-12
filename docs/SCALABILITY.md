@@ -65,6 +65,59 @@ Every claim's events went through the outbox and were delivered on the first try
 
 Scenario 5 is closest to a real day: even 9,000 workers arriving at a steady pace feel instant. Scenario 1 is a stress test. It shows the system queues work rather than failing: every request was answered, just slower.
 
+## Team messaging and staff surveys (12 November 2026)
+
+`apps/api/test/load/seed-comms.ts` adds to the load database: six departments in each of the 30 large cities (worker *i* in department *i* mod 6, about 50 each), birth dates for everyone (adults, so the rule of two leaves conversations open), and a separate organization, `loadpulse`, with 3,000 staff in twelve departments of 5 to 600 people. `apps/api/test/load/comms.ts` then plays:
+
+- **M0. Set-up:** today's shifts (six crews of about 50 per city); each city's six department and six shift conversations opened by a member; a 200-person group made by HR; 400 sealed messages of history in every department conversation, for paging.
+- **M1. Peak five minutes:** 10% of the 9,000 staff send 1 to 4 messages each in their shift or department conversation, 40% of them in the first minute (the shift change). Each opens the unread badge, the list and the thread, sends, and marks it read; one in ten pages back through the department's history; 2% of messages carry a 40 KB image, which the sender opens. Meanwhile 900 staff (every worker of three cities) hold the live stream open and react the way the web app does: a `messages` change refetches the badge; the 30% who have their department's conversation open also refetch the list and the thread, and mark it read when a new message shows up; a notification refetches the bell.
+- **M2. Fan-out:** the 200 group members also open the stream (1,100 open on one process). HR sends 30 messages into the group, one every 2 s, first on a quiet system, then with background senders in other cities (5 a second). Measured from the start of each send to each member's stream receiving `event: change`.
+- **S1–S3. Surveys:** HR sends an organization-wide pulse (eight questions, broken down by department) to the 3,000; 2,400 answers arrive at 10 a second (600 a minute; each person opens their surveys, then answers); HR closes it, opens the results alone and five at once, and downloads the CSV.
+
+**How it was run.** One API process (`WEB_CONCURRENCY=1`) on port 4300 against `flexcity_load`, with `GLOBAL_RATE_LIMIT=off` (all the load comes from one address, 127.0.0.1, and the per-address limit of 1,200 credentialed requests a minute would otherwise measure itself), `RATE_LIMIT_STORE=database` (the per-person limits counted in Postgres, as in production: 30 messages a minute and 600 a day, 20 files an hour, 30 survey answers an hour; the scenarios stay under them, so they cost what they cost in production without refusing anyone), `SLOW_QUERY_MS=200` and metrics on (event-loop delay and memory scraped from `/metrics` every 2 s). Message keys are unwrapped by the local key provider, not KMS (see below). The machine is the same 4-core container, with the load generator, the API and Postgres on it, and it was **shared with other work**: load averages of 6 to 10 during the runs. Compare runs loosely; the differences below are large enough to stand anyway.
+
+### Before and after
+
+| | Before | After |
+| --- | --- | --- |
+| **M1. Peak five minutes** (≈920 senders, ≈2,300 messages, 900 streams) | 40,740 requests in 393 s | 29,116 requests in 339 s |
+| Live `messages` signals received by the 900 streams | 23,241 | 12,064 |
+| Send a message | p50 14.4 s, p95 34.5 s; **2,118 of 2,302 failed** (503 busy, 500) | p50 5.8 s, p95 19.2 s, p99 25.2 s; **0 failed** |
+| Open the thread (newest 50) | p50 13.1 s, p95 42.8 s, 125 failed | p50 2.2 s, p95 7.6 s, 0 failed |
+| Mark read | p50 10.4 s, 112 failed | p50 1.6 s, p95 11.2 s, 0 failed |
+| Older page of history (`?before=`) | p50 14.3 s, 23 failed | p50 2.1 s, p95 8.6 s, 0 failed |
+| Send with a 40 KB image / open it | 38 of 39 failed | p50 9.3 s / p50 2.2 s, 0 failed |
+| Live refetches (badge, list, thread) | p50 ≈ 21 s, 4,818 failed | p50 4.7–5.5 s, 0 failed |
+| API event-loop delay (worst p99 / max), peak RSS | 195 / 458 ms, 1,004 MB | 180 / 295 ms, 700 MB |
+| Queries over 200 ms | 216 (the per-request lookups queueing) | 74 (68 of them `COMMIT`) |
+| **M2. Fan-out to 200 members, quiet** | p50 61 ms, p95 165 ms, p99 524 ms | p50 72 ms, p95 158 ms, p99 165 ms |
+| Fan-out with 5 background sends a second | p50 77 ms, p95 951 ms, p99 998 ms | p50 107 ms, p95 899 ms, p99 1,023 ms |
+| Send to the 200-person group (quiet) | p50 64 ms, p99 515 ms | p50 73 ms, p99 175 ms |
+| **S1. Send a pulse to 3,000 people** | 3.9 s | 0.53 s |
+| **S2. 600 answers a minute** | answer p50 1.0 s, p95 7.4 s, p99 9.2 s; **134 failed (503)**; 1,975 queries over 200 ms; event loop p99 612 ms | answer p50 57 ms, p95 93 ms, p99 143 ms; **0 failed**; 4 over 200 ms (`COMMIT`); event loop p99 42 ms |
+| Open my surveys, during the burst | p50 456 ms, p95 7.4 s | p50 16 ms, p95 31 ms |
+| **S3. Results, 2,400 answers by department** | 84 ms alone, 297 ms five at once; CSV 85 ms | 87 ms alone, 215 ms five at once; CSV 103 ms |
+
+Every member got every fan-out signal in both runs (none missed). Opening 900 streams took p50 160–260 ms each, 50 at a time.
+
+### What was found and fixed
+
+1. **Read receipts multiplied the live traffic.** Marking a conversation read told every member `messages`, so every member's badge and list refetched; with the conversation open on several screens, one message cost members × readers refetches (and the web app refetched once per signal). Now a read tells the reader's own screens `messages` and the other members only `receipts`, which refreshes the open conversation's "seen by" line and nothing else (`services/messaging/conversations.ts`, `lib/changes.ts`, `components/messages/Messages.tsx`). The web app also folds the signals for one topic arriving within 250 ms into one refetch (`apps/web/src/lib/coalesce.ts`). The run's simulated browsers follow the app: `--client each` replays the old behaviour.
+2. **Message sends were refused while other requests queued.** The per-person send limits ran inside the send's transaction, and the shared limiter opens its own transaction, so each send held one connection while waiting for a second from the same pool, with Prisma's 2-second wait: under a burst most sends failed with 503. The limits are now checked before the send's transaction (`routes/messages.ts`, `sendLimits`), and the shared limiter waits for a connection as long as a request does, `DB_POOL_TIMEOUT_S` (`auth/rateLimit.ts`). One difference: a send refused afterwards (read-only, a wrong file type) now counts toward the limit.
+3. **Every survey answer loaded the whole audience.** To decide whether an answer may keep its department, each answer loaded all 3,000 invitations and all 3,000 people with their positions. It now loads only the respondent and the people who could share their group, and still counts only those who were asked (`services/surveys/surveys.ts`).
+4. **Notifications were written two round trips per person.** A pulse to 3,000 people, or the first message to a 200-person group, wrote each notification and its live signal one by one. They are now written 1,000 to a statement, with one statement of signals per 1,000 (`services/notifications/notifier.ts`). Emails are queued the same way; texts and calls stay one by one.
+
+Tests: `apps/api/test/integration/commsAtScale.test.ts` (batched notifications and their signals, nothing signalled on rollback, receipt signals, answer groups counting only those asked, the send limit with the database store, the limiter's wait) and `apps/web/src/lib/coalesce.test.ts`. No index was missing: the unread count, the thread page (`Message (conversationId, createdAt)`), the notification checks and the survey queries all use indexes; their slow entries before the fixes were queueing, not scans.
+
+### What remains
+
+- **The peak five minutes is still slow on one process.** With nothing failing, a send took p50 5.8 s and the live refetches p50 about 5 s. The API process was using about one core (Node runs a process's JavaScript on one), on a machine shared with other work; the remaining slow queries are commits. Each send is about a dozen queries plus the limiter's three small transactions, and each signal makes every open screen refetch. In production run `WEB_CONCURRENCY` = cores and more than one instance (Sizing, below); this run did not measure how far that goes. Further steps, not done: cache the per-request messaging context (settings, department count, provinces) like the other organization caches, and check the three send limits in one limiter transaction.
+- **A shift change in a busy city is the hard case, not a 200-person group.** Fan-out itself is fast (signals reach 200 members in under 0.2 s on a quiet process, under about 1 s with background traffic, none missed); the cost is what every screen does when told.
+- **KMS.** Each send, thread read and file read unwraps the conversation's key once: one KMS `Decrypt` in production. At the peak that was 21 a second on average from this one simulated slice (7,186 in 339 s). This run used the local key provider, so it measured no KMS latency; KMS adds a network round trip to each of those requests, and the account's KMS request quota must cover the peak of all organizations together. If it doesn't, the option is a short-lived in-process cache of unwrapped conversation keys, which changes the "key lives only for the request" rule in `services/messaging/crypto.ts` and needs a security decision first.
+- **Starting conversations** still checks its limit (20 an hour) inside the transaction; it's rare, but the same pattern as fix 2.
+
+To run it: seed as above, then `npx tsx test/load/seed-comms.ts`, start the API with the same `LOCAL_KEK_BASE64` as the load run (it seals the history), `GLOBAL_RATE_LIMIT=off`, `RATE_LIMIT_STORE=database`, `SLOW_QUERY_MS=200` and a `METRICS_TOKEN`, and run `npx tsx test/load/comms.ts --log <api log> --metrics-token <token>` (`--only messaging|surveys`, `--active 0.1`, `--sse-cities 3`, `--msg-seconds 300`, `--answer-rate 10`, `--answer-seconds 240`).
+
 ## What was changed to get here
 
 The first run, before the fixes below, failed many requests in scenarios 1 and 4.
@@ -148,6 +201,9 @@ These are what the load runs above measured on a 4-core test machine with two AP
 | Shift board | 1 s | p95 40 ms | p50 1.4 s (scenario 2) |
 | Claim an open shift | 1 s | — | p95 75 ms, exactly one taker per shift |
 | City-wide pay run (300 people) | 30 s | — | 8.5 s with 30 cities running at once |
+| Answer a survey | 1 s | p95 93 ms at 600 answers a minute (S2) | — |
+| Send a message | 1 s | — | p50 5.8 s at the peak five minutes on one process (M1, see *What remains*) |
+| Live update reaches a 200-person group | 1 s | p95 158 ms (M2, quiet) | p95 0.9 s with background sends |
 
 ### The spikes a city has, and what happens
 
@@ -185,5 +241,7 @@ JWT_SECRET=… DATABASE_URL=postgresql://postgres@localhost:5432/flexcity_load n
 ```
 
 `--scale small` or `--scale big` runs one size only.
+
+Messaging and surveys: see [Team messaging and staff surveys](#team-messaging-and-staff-surveys-12-november-2026) (`test/load/seed-comms.ts`, `test/load/comms.ts`; it writes `test/load/comms-plan.json`, also git-ignored).
 
 To try several processes locally without the cluster module, start two servers on different ports against the same database (`PORT=4200 …` and `PORT=4201 …`): notifications, events and cache invalidation reach both through Postgres. The seed writes the generated sign-ins to `test/load/plan.json`, which is git-ignored.
