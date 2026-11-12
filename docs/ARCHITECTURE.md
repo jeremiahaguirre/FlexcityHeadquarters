@@ -343,3 +343,16 @@ Access tokens carry `aat`, the time the person last proved who they are. Refresh
 ## Static demo
 
 `NEXT_PUBLIC_DEMO=1` builds the web app as static files (GitHub Pages) with no API. `src/lib/demoApi.ts` answers requests in the browser: GETs replay responses recorded per role from a seeded local stack (`scripts/capture-demo.cjs` → `src/lib/demo-fixtures/`), with dates moved so the sample week is always the current one; changes are accepted but not kept. Fixture names are swapped for a fictional organization when recorded, and the city logo is an embedded placeholder emblem. The Dev console is recorded too, and its staff-import preview runs the API's validation in the browser. Passkeys are hidden in the demo (there is no server to verify them).
+
+## Crawlers and AI bots
+
+The app is private and the website is public, so they treat crawlers differently. One list of AI crawlers, `apps/site/src/lib/aiCrawlers.json` (training crawlers, and a separate "AI search / assistants" group), feeds the website's robots.txt, the app's robots.txt (a checked copy in `apps/web/src/lib/aiCrawlers.json`, since the web image is built from `apps/web` alone) and the AWS firewall rules.
+
+| | Search engines | AI training crawlers | AI search / assistants |
+| --- | --- | --- | --- |
+| Website (`apps/site`) | Indexed (robots.txt `*`, meta `index, follow`) | robots.txt `Disallow: /`; `noai, noimageai` meta and header; TDMRep (`/.well-known/tdmrep.json`, `tdm-reservation: 1`); firewall block on AWS, Vercel's AI-bot rules on Vercel | Blocked like training crawlers by default; `ALLOW_AI_ASSISTANTS` in `apps/site/src/lib/crawlers.ts` (and `waf_block_ai_assistants` in Terraform) lets them in |
+| App pages (`apps/web`) | `noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai` (X-Robots-Tag and meta), robots.txt `Disallow: /`, except job postings and program sign-up (`/jobs`, `/signup`), which stay indexable | robots.txt `Disallow: /` everywhere, firewall block | Same as training crawlers |
+| API (`apps/api`) | X-Robots-Tag noindex on every answer (`securityHeaders`) | Firewall block | Firewall block |
+| Demo (GitHub Pages) | `noindex…` meta tag on every page. Its robots.txt sits under the base path, and GitHub Pages only reads one at the domain root, so the meta tag is what counts | Meta tag only | Meta tag only |
+
+robots.txt, the meta tags and TDMRep are requests that well-behaved crawlers honour. The firewalls (`ops/terraform/edge.tf`) enforce by user agent, which a determined scraper can fake; the per-address rate limits and optional AWS Bot Control (`waf_bot_control`) cover more. The terms of use forbid scraping and AI training on the site, demo and app. Blocked counts: [MONITORING.md](MONITORING.md).

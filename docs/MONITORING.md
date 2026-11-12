@@ -26,6 +26,10 @@ Either way, give the scrape job the name `fh-api` (the `ApiDown` rule uses it), 
 
 Each API process exposes its own numbers. With `WEB_CONCURRENCY` above 1, scrape each process, or run one process per container (the plan on ECS Fargate) so one scrape covers one process.
 
+### Blocked crawlers and bots (web firewall)
+
+Crawler blocks happen in AWS WAF, before the API, so they are not in `/metrics`. Each firewall rule has its own CloudWatch metric (namespace `AWS/WAFV2`, metric `BlockedRequests`, dimension `Rule`): on the app's firewall (`fh-<env>`, region `ca-central-1`) `ai-crawlers`, `no-user-agent`, `rate-per-address` and, when turned on, `bot-control`; on the website's (`fh-<env>-<region>-site`, CloudFront, shown in `us-east-1` with `Region=Global`) `site-ai-crawlers` and `site-rate-per-address`. The WAF console's overview shows the same counts, and sampled requests show the user agents. No alert is needed for crawler blocks; a sudden jump in `rate-per-address` is worth a look. On Vercel, see the project's Firewall tab.
+
 ## Service targets
 
 Starting targets for the first months, to be adjusted with real traffic:
