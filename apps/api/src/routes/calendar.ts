@@ -9,7 +9,8 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
-import { allow, count, record } from '../auth/rateLimit.js';
+import { allow } from '../auth/rateLimit.js';
+import { addressKey } from '../lib/address.js';
 import { config } from '../config.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
@@ -88,6 +89,9 @@ export function icsFor(name: string, shifts: Array<{ id: string; startsAt: Date;
   return `${lines.map(fold).join('\r\n')}\r\n`;
 }
 
+/** Links that don't work, per address and organization per hour, before that address gets 429 for them (working links are unaffected). */
+export const CALENDAR_MISSES_PER_HOUR = 300;
+
 /** The feed itself: no sign-in, the secret in the link is the key. Unknown links look the same as a missing feed. */
 publicCalendarRouter.get(
   '/calendar/:tenantId/:file',
@@ -95,9 +99,12 @@ publicCalendarRouter.get(
     const tenantId = z.string().uuid().safeParse(req.params.tenantId);
     const m = /^([A-Za-z0-9_-]{20,64})\.ics$/.exec(String(req.params.file));
     if (!tenantId.success || !m) throw notFound('Calendar');
-    // Calendar services (Google, Apple, Outlook) fetch many people's feeds from a few shared addresses,
-    // so an address is limited on links that don't work (someone guessing), and each feed on its own.
-    if ((await count(`ics-miss:${req.ip}`, 3_600_000)) >= 30) throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
+    // Calendar services (Google, Apple, Outlook) fetch many people's feeds from a few shared
+    // addresses, so a working link is always served (each feed has its own limit), and only links
+    // that don't work are limited, per address and organization, generously: one stale link
+    // fetched by a shared service must never block everyone else's feeds. Guessing is hopeless
+    // anyway: a link's secret is 24 random bytes (192 bits), stored only as a SHA-256 hash.
+    const missKey = `ics-miss:${addressKey(req.ip)}:${tenantId.data}`;
     const out = await withTenant(tenantId.data, async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId.data }, select: { disabledAt: true } });
       if (!tenant || tenant.disabledAt) return null;
@@ -116,7 +123,7 @@ publicCalendarRouter.get(
     });
     if (out === 'busy') throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
     if (!out) {
-      await record(`ics-miss:${req.ip}`);
+      if (!(await allow(missKey, CALENDAR_MISSES_PER_HOUR, 3_600_000))) throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
       throw notFound('Calendar');
     }
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');

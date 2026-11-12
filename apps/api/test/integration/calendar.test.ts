@@ -2,7 +2,9 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
-import { icsFor } from '../../src/routes/calendar.js';
+import { randomBytes } from 'node:crypto';
+import { resetLimits } from '../../src/auth/rateLimit.js';
+import { CALENDAR_MISSES_PER_HOUR, icsFor } from '../../src/routes/calendar.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 const server = createApp();
@@ -60,5 +62,18 @@ describe('calendar feed', () => {
   it('a made-up link or another organization’s id finds nothing', async () => {
     expect((await request(server).get(`/api/calendar/${t.tenant.id}/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.ics`)).status).toBe(404);
     expect((await request(server).get('/api/calendar/not-a-uuid/x.ics')).status).toBe(404);
+  });
+
+  it('a shared calendar service fetching broken links never loses the working feeds; broken links alone are limited, per address and organization', async () => {
+    resetLimits();
+    const google = '66.249.84.1';
+    const r = await as().post('/api/me/calendar');
+    const good = path(r.body.url);
+    const bogus = () => request(server).get(`/api/calendar/${t.tenant.id}/${randomBytes(24).toString('base64url')}.ics`).set('X-Forwarded-For', google);
+    for (let i = 0; i < CALENDAR_MISSES_PER_HOUR; i++) expect((await bogus()).status).toBe(404);
+    expect((await bogus()).status).toBe(429);
+    // The working feed from the same address is still served.
+    expect((await request(server).get(good).set('X-Forwarded-For', google)).status).toBe(200);
+    resetLimits();
   });
 });
