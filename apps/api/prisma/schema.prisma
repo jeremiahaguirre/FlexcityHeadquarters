@@ -531,6 +531,12 @@ model User {
   locale           String    @default("en-CA")
   /// Needed only to apply young-worker rules. Not exported anywhere.
   dateOfBirth      DateTime? @db.Date
+  /// HR confirmed this person is of the age of majority or older (no birth date needed for adult-only
+  /// rules such as messaging's rule of two). A birth date on file always wins. HR only; never shown to staff.
+  adultConfirmedAt   DateTime? @db.Timestamptz(3)
+  adultConfirmedById String?   @db.Uuid
+  /// How it was confirmed (e.g. "ID checked at hire").
+  adultConfirmedNote String?
   /// Identity-provider subject this account is bound to after its first single sign-on ("issuer|subject").
   ssoSubject       String?
   /// Mobile number confirmed with a texted code (E.164), for urgent texts and calls when the city turns them on.
@@ -4449,6 +4455,14 @@ enum SeniorityBasis {
   HOURS
 }
 
+/// How a bid round hands out awards.
+enum BidAwardOrder {
+  /// One award per person per pass, most senior first; then another pass (round robin).
+  ROUND_ROBIN
+  /// Each person, most senior first, gets all their awards (up to the maximum) before the next person.
+  SENIOR_FIRST
+}
+
 /// A shift bid round (only where the organization uses seniority): staff rank shifts or lines, and at
 /// the close each gets their highest-ranked choice still open that they can work, in seniority order.
 /// See services/scheduling/bidding.ts.
@@ -4466,6 +4480,8 @@ model BidRound {
   maxAwardsPerPerson Int            @default(1)
   /// Seniority by date (then hours) or by hours (then date), as the collective agreement says.
   seniorityBasis     SeniorityBasis @default(DATE)
+  /// One at a time in seniority order (round robin, default) or most senior first takes all their awards.
+  awardOrder         BidAwardOrder  @default(ROUND_ROBIN)
   /// Lines built from this weekly template over [rangeFrom, rangeTo).
   templateId         String?        @db.Uuid
   rangeFrom          DateTime?      @db.Date
