@@ -244,6 +244,9 @@ export function installProcessHandlers(): void {
   });
   process.on('uncaughtException', (err) => {
     captureError(err, { source: 'uncaughtException' });
+    // A failure, even if nothing else is left running and the process ends before the timer below
+    // (a refused start-up exited 0, found by the production rehearsal).
+    process.exitCode = 1;
     // Give the report a moment to leave, then stop: a supervisor (ECS, cluster) starts a fresh process.
     setTimeout(() => process.exit(1), 1000).unref();
   });
