@@ -438,6 +438,11 @@ resource "aws_cloudfront_response_headers_policy" "site" {
       referrer_policy = "strict-origin-when-cross-origin"
       override        = true
     }
+    # The same policy the site sends on Vercel (apps/site/vercel.json; a test keeps them equal).
+    content_security_policy {
+      content_security_policy = "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      override                = true
+    }
   }
   # The same AI-training opt-out the site sends on Vercel (apps/site/vercel.json); search indexing stays allowed.
   custom_headers_config {
@@ -449,6 +454,11 @@ resource "aws_cloudfront_response_headers_policy" "site" {
     items {
       header   = "tdm-reservation"
       value    = "1"
+      override = true
+    }
+    items {
+      header   = "Permissions-Policy"
+      value    = "camera=(), microphone=(), geolocation=()"
       override = true
     }
   }

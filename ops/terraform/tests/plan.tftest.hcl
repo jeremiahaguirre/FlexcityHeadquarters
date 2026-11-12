@@ -131,6 +131,16 @@ run "firewalls" {
     condition     = contains([for h in aws_cloudfront_response_headers_policy.site.custom_headers_config[0].items : "${h.header}=${h.value}"], "tdm-reservation=1") && contains([for h in aws_cloudfront_response_headers_policy.site.custom_headers_config[0].items : "${h.header}=${h.value}"], "X-Robots-Tag=noai, noimageai")
     error_message = "The site opts out of AI training (TDMRep, noai) on CloudFront too."
   }
+
+  assert {
+    condition     = aws_cloudfront_response_headers_policy.site.security_headers_config[0].content_security_policy[0].content_security_policy == one([for h in jsondecode(file("../../apps/site/vercel.json")).headers[0].headers : h.value if h.key == "Content-Security-Policy"])
+    error_message = "CloudFront sends the site the same Content-Security-Policy as Vercel (apps/site/vercel.json)."
+  }
+
+  assert {
+    condition     = contains([for h in aws_cloudfront_response_headers_policy.site.custom_headers_config[0].items : "${h.header}=${h.value}"], "Permissions-Policy=${one([for h in jsondecode(file("../../apps/site/vercel.json")).headers[0].headers : h.value if h.key == "Permissions-Policy"])}")
+    error_message = "CloudFront sends the site the same Permissions-Policy as Vercel."
+  }
 }
 
 run "bot_control_and_assistants_allowed" {
