@@ -7,6 +7,7 @@
  * time to fill the form, consent to the organization's terms and privacy
  * notice, and no information about other families is ever returned.
  */
+import { addressKey } from '../lib/address.js';
 import { createHash, randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { DateTime } from 'luxon';
@@ -47,7 +48,7 @@ function assertHuman(b: { website?: string; startedAt: number }) {
   if (Date.now() - b.startedAt < 3000) throw new HttpError(400, 'TOO_FAST', 'Please take a moment to check the form, then send it again.');
 }
 async function rate(req: { ip?: string; tenantId?: string }, what: string, limit: number) {
-  if (!(await allow(`public-${what}:${req.ip}:${req.tenantId}`, limit, 60 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-ups from here. Please call the facility.');
+  if (!(await allow(`public-${what}:${addressKey(req.ip)}:${req.tenantId}`, limit, 60 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-ups from here. Please call the facility.');
 }
 
 // ------------------------------------------------------------------- Public

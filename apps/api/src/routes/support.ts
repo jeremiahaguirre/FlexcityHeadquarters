@@ -4,6 +4,7 @@
  * can withdraw it at any time. The support link from the Dev console lands
  * on /support, which trades its one-time code here for a read-only session.
  */
+import { addressKey } from '../lib/address.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
@@ -24,7 +25,7 @@ supportAuthRouter.post(
   '/auth/support',
   h(async (req, res) => {
     const tenantId = req.tenantId!;
-    if (!(await allow(`support-code:${req.ip}`, 10, 15 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!(await allow(`support-code:${addressKey(req.ip)}`, 10, 15 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const { code } = z.object({ code: z.string().min(20).max(80) }).parse(req.body);
     const { session, grant, admin } = await redeemSupportCode(tenantId, code);
     const granter = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { id: grant.grantedById }, select: { id: true, roles: true, status: true } }));

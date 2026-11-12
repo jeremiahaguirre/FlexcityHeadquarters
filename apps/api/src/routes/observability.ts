@@ -7,6 +7,7 @@
  *   POST /api/client-errors  a browser's error report (window errors, unhandled rejections, error
  *   boundaries), scrubbed and passed to the same reporter. Limited per IP address.
  */
+import { addressKey } from '../lib/address.js';
 import { timingSafeEqual } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -86,7 +87,7 @@ export const clientErrorsRouter = Router();
 clientErrorsRouter.post('/client-errors', async (req, res, next) => {
   try {
     // Per address: 20 a minute is plenty for a browser in trouble, and keeps anyone from flooding the reporter.
-    if (!(await allow(`client-error:${req.ip ?? 'unknown'}`, 20, 60_000))) {
+    if (!(await allow(`client-error:${addressKey(req.ip)}`, 20, 60_000))) {
       res.status(429).json({ code: 'RATE_LIMITED', message: 'Too many reports', requestId: req.id });
       return;
     }

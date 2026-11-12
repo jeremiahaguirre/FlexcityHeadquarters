@@ -7,6 +7,7 @@
  * Mounted under /api/auth so the refresh cookie (path /api/auth) comes with the verify request:
  * a successful code marks the whole session as having a second factor, through token refreshes.
  */
+import { addressKey } from '../lib/address.js';
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -103,7 +104,7 @@ mfaCodeRouter.post(
     const { code } = z.object({ code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code.') }).parse(req.body);
     if (!a.mfaPending) throw notNeeded();
     if (!(await codesAllowed(a.tenantId))) throw codesOff();
-    if (!(await allow(`mfa-verify-ip:${req.ip}`, 30, 15 * MIN)) || !(await allow(`mfa-verify:${a.userId}`, 10, 15 * MIN))) {
+    if (!(await allow(`mfa-verify-ip:${addressKey(req.ip)}`, 30, 15 * MIN)) || !(await allow(`mfa-verify:${a.userId}`, 10, 15 * MIN))) {
       throw tooMany('TOO_MANY_TRIES', 'Too many tries. Wait 15 minutes, or use a passkey.');
     }
     const now = new Date();

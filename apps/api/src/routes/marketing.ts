@@ -3,6 +3,7 @@
  * origin allow-list, a per-address rate limit, a honeypot field, size limits,
  * and nothing returned but an acknowledgement.
  */
+import { addressKey } from '../lib/address.js';
 import express, { type NextFunction, type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import { allow } from '../auth/rateLimit.js';
@@ -52,7 +53,7 @@ marketingRouter.use('/marketing', cors, express.json({ limit: '20kb' }));
 marketingRouter.post(
   '/marketing/leads',
   h(async (req, res) => {
-    if (!await allow(`lead:${req.ip}`, 5, 60 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Thanks! We already have your message. Please try again later.');
+    if (!await allow(`lead:${addressKey(req.ip)}`, 5, 60 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Thanks! We already have your message. Please try again later.');
     const parsed = leadBody.safeParse(req.body);
     // Bots that fill the honeypot get the same answer as people, and nothing is stored.
     if (!parsed.success && (req.body?.website ?? '') !== '') return res.status(201).json({ ok: true });

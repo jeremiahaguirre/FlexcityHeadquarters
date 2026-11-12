@@ -15,6 +15,7 @@
  *   locations of punches. People whose processing is restricted (an erasure request) or who were
  *   anonymized keep their id and status only.
  */
+import { addressKey } from '../lib/address.js';
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { type Quota, count, databaseConsume, record } from '../auth/rateLimit.js';
@@ -57,7 +58,7 @@ export function rateHeaders(res: Response, q: Quota) {
 
 /** The key in the Authorization header: its organization, state, address, rate and scopes. */
 async function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
-  const failKey = `api-key-fail:${req.ip ?? 'unknown'}`;
+  const failKey = `api-key-fail:${addressKey(req.ip)}`;
   const refuse = async (code: string, message: string) => {
     await record(failKey);
     apiKeyAuthFailures.inc();

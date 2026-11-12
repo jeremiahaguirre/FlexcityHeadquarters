@@ -6,6 +6,7 @@
  * - POST /api/email/unsubscribe?token=…  unsubscribe now; also the RFC 8058 one-click target that mail
  *   apps POST to with "List-Unsubscribe=One-Click" (form-encoded), so it accepts that body too.
  */
+import { addressKey } from '../lib/address.js';
 import express, { Router } from 'express';
 import { allow } from '../auth/rateLimit.js';
 import { HttpError } from '../lib/errors.js';
@@ -42,7 +43,7 @@ emailPrefsRouter.post(
     try {
       email = emailOf(req);
     } catch (e) {
-      if (!(await allow(`unsub:${req.ip}`, 30, 60 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many requests. Try again later.');
+      if (!(await allow(`unsub:${addressKey(req.ip)}`, 30, 60 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many requests. Try again later.');
       throw e;
     }
     const oneClick = (req.body as Record<string, string> | undefined)?.['List-Unsubscribe'] === 'One-Click';

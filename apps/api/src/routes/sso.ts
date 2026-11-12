@@ -2,6 +2,7 @@
  * Single sign-on routes. The sign-in ones run before anyone is signed in
  * (mounted with resolveTenant); the settings ones need tenant.configure.
  */
+import { addressKey } from '../lib/address.js';
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, consumeAuthToken } from '../auth/authTokens.js';
@@ -20,7 +21,7 @@ ssoAuthRouter.get(
   '/auth/sso/start',
   h(async (req, res) => {
     const sub = subdomainOf(req)!;
-    if (!(await allow(`sso:${req.ip}:${req.tenantId}`, 30, 10 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
+    if (!(await allow(`sso:${addressKey(req.ip)}:${req.tenantId}`, 30, 10 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
     const hint = typeof req.query.hint === 'string' && req.query.hint.length < 200 ? req.query.hint : undefined;
     try {
       const s = await startSso(req.tenantId!, sub, hint, typeof req.query.next === 'string' ? req.query.next : undefined);
@@ -62,7 +63,7 @@ ssoAuthRouter.post(
   h(async (req, res) => {
     const tenantId = req.tenantId!;
     const { code } = z.object({ code: z.string().min(20).max(100) }).parse(req.body);
-    if (!(await allow(`sso-x:${req.ip}:${tenantId}`, 30, 10 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    if (!(await allow(`sso-x:${addressKey(req.ip)}:${tenantId}`, 30, 10 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const out = await withTenant(tenantId, async (tx) => {
       const t = await consumeAuthToken(tx, code, ['SSO', 'SSO_MFA']);
       if (!t) return null;

@@ -7,6 +7,7 @@
  * someone straight into an account invitation. Applications that didn't end
  * in a hire are deleted after the retention period (retention.ts).
  */
+import { addressKey } from '../lib/address.js';
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -62,7 +63,7 @@ publicApplicationsRouter.post(
     if (b.website) throw new HttpError(400, 'REJECTED', 'This form couldn’t be sent.');
     if (b.age === 'YOUNG' && (!b.guardianConsent || b.guardianName.length < 2)) throw new HttpError(400, 'GUARDIAN_CONSENT', 'Applicants under 16 need a parent’s or guardian’s consent: give their name and tick the box.');
     if (Date.now() - b.startedAt < 3000) throw new HttpError(400, 'TOO_FAST', 'Please take a moment to check the form, then send it again.');
-    if (!(await allow(`apply:${req.ip}:${req.tenantId}`, 10, 3_600_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many applications from here. Try again later.');
+    if (!(await allow(`apply:${addressKey(req.ip)}:${req.tenantId}`, 10, 3_600_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many applications from here. Try again later.');
     const tenantId = req.tenantId!;
     let file: Buffer | null = null;
     if (b.resume) {
