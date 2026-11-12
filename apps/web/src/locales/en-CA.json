@@ -400,7 +400,14 @@
     "poolsOk": "Every pool is open",
     "poolsNeedAttention_one": "pool needs attention",
     "poolsNeedAttention_other": "pools need attention",
-    "comingUp": "Coming up"
+    "comingUp": "Coming up",
+    "survey": {
+      "fromHr": "A short survey from HR",
+      "fromManager": "A short survey from your manager",
+      "closes": "closes {{date}}",
+      "answer": "Answer",
+      "dismiss": "Hide for now"
+    }
   },
   "schedule": {
     "title": "My schedule",
@@ -545,7 +552,8 @@
     "AUDIENCE_TOO_SMALL": "Too few people for an anonymous survey: no one may be singled out. Choose a wider audience.",
     "SURVEY_CLOSED": "This survey has closed.",
     "SURVEY_SENT": "A survey can’t be changed once it’s sent.",
-    "REMINDERS_USED": "This survey has had its two reminders."
+    "REMINDERS_USED": "This survey has had its two reminders.",
+    "BIRTH_DATE_MINOR": "The birth date on file says they’re under the age of majority. Correct the birth date first."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1062,7 +1070,23 @@
     "certifications": "Certifications",
     "exportRecords": "Export records (data file)",
     "exported": "Downloaded. Review it before release; third-party information may need severing.",
-    "exportPdf": "Printable PDF"
+    "exportPdf": "Printable PDF",
+    "adult": {
+      "title": "Confirmed adult (age of majority or older)",
+      "confirmed": "Confirmed",
+      "noDob": "No birth date on file, so messaging treats {{name}} as possibly a minor: no one-to-one conversations with adults. Add a birth date, or confirm here that they’re of the age of majority.",
+      "confirm": "Confirm adult",
+      "note": "How you confirmed it",
+      "noteHint": "For example: ID checked at hire.",
+      "save": "Confirm",
+      "saved": "Confirmed as an adult.",
+      "by": "Confirmed by {{by}} on {{date}}: “{{note}}”",
+      "on": "Confirmed on {{date}}: “{{note}}”",
+      "dobWins": "A birth date is on file, so it’s used instead.",
+      "remove": "Remove confirmation",
+      "removed": "Confirmation removed.",
+      "private": "Only HR sees this."
+    }
   },
   "payroll": {
     "title": "Payroll",
@@ -4675,7 +4699,10 @@
     "done": "Done",
     "confirmTitle": "Finish offboarding {{name}}?",
     "confirmBody": "Their benefit enrolments end on {{date}} and they can no longer sign in. Their records stay on file.",
-    "completed": "{{name}} has been offboarded"
+    "completed": "{{name}} has been offboarded",
+    "sendExitSurvey": "Send exit survey",
+    "exitSurveyMade": "Exit survey created",
+    "seeSurveys": "See surveys"
   },
   "pad": {
     "payor": "Account holder",
@@ -7914,7 +7941,8 @@
       "pushPreviewHelp": "Off (recommended): a notification only says who it’s from. On: up to 60 characters show on lock screens.",
       "shiftArchiveHours": "Shift conversations close after the shift (hours)",
       "shiftArchiveHint": "Between {{min}} and {{max}} hours.",
-      "ruleOfTwo": "Rule of two: anyone under the age of majority in your province (or with no birth date on file) only talks with adults in groups with at least two adults. This can’t be turned off."
+      "ruleOfTwo": "Rule of two: anyone under the age of majority in your province (or with no birth date on file) only talks with adults in groups with at least two adults. This can’t be turned off.",
+      "noBirthDate": "No birth date on file? Then they’re treated as possibly a minor until HR adds their birth date or confirms on their record that they’re of the age of majority (Staff, then the person, then HR record). A birth date always wins."
     }
   },
   "surveys": {
@@ -7949,6 +7977,25 @@
       "right": "About right",
       "heavy": "Too heavy",
       "anything": "Anything you’d like to tell us?"
+    },
+    "exitStarter": {
+      "title": "Before you go",
+      "intro": "Thank you for your time with us. Your answers go to HR with your name, and help us make this a better place to work.",
+      "overall": "How would you rate your time working here?",
+      "reason": "What’s the main reason you’re leaving?",
+      "reasons": {
+        "job": "Another job",
+        "school": "School",
+        "schedule": "Schedule or hours",
+        "pay": "Pay",
+        "team": "Workplace or team",
+        "other": "Something else"
+      },
+      "better": "What could we have done better?",
+      "again": "Would you work here again?",
+      "yes": "Yes",
+      "maybe": "Maybe",
+      "no": "No"
     }
   },
   "surveyAdmin": {
@@ -8193,6 +8240,16 @@
     "seniorityLine": "seniority {{date}} · {{hours}} h",
     "seniorityLineHours": "{{hours}} h · seniority {{date}}",
     "tieNote": "Ties go to the earlier hire date, then to a fixed tie-break recorded for the round.",
-    "nobodyBid": "Nobody bid in this round."
+    "nobodyBid": "Nobody bid in this round.",
+    "wonInTurn": "Choice #{{rank}}, their {{nth}} award",
+    "awardOrder": "Award order",
+    "awardOrderROUND_ROBIN": "One at a time, in seniority order",
+    "awardOrderSENIOR_FIRST": "Most senior first takes all their awards",
+    "awardOrderDefault": "Organization’s ({{order}})",
+    "awardOrderHint": "As your collective agreement says. With one award per person, both give the same result.",
+    "orgAwardOrder": "Default award order for bid rounds",
+    "orgAwardOrderHint": "One at a time: everyone gets one award before anyone gets a second. Most senior first: each person gets all their awards before the next. Each round can use its own.",
+    "howAwardSenior_one": "In that order, each person gets their highest-ranked choice that’s still open and that they can work.",
+    "howAwardSenior_other": "The most senior person gets their highest-ranked choices that are still open and that they can work, up to {{count}}; then the next person does the same, and so on."
   }
 }

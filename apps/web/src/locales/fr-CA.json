@@ -400,7 +400,14 @@
     "poolsOk": "Tous les bassins sont ouverts",
     "poolsNeedAttention_one": "bassin demande votre attention",
     "poolsNeedAttention_other": "bassins demandent votre attention",
-    "comingUp": "À venir"
+    "comingUp": "À venir",
+    "survey": {
+      "fromHr": "Un court sondage des RH",
+      "fromManager": "Un court sondage de votre gestionnaire",
+      "closes": "se termine le {{date}}",
+      "answer": "Répondre",
+      "dismiss": "Masquer pour l’instant"
+    }
   },
   "schedule": {
     "title": "Mon horaire",
@@ -545,7 +552,8 @@
     "AUDIENCE_TOO_SMALL": "Trop peu de personnes pour un sondage anonyme : personne ne doit pouvoir être identifié. Choisissez un public plus large.",
     "SURVEY_CLOSED": "Ce sondage est terminé.",
     "SURVEY_SENT": "Un sondage ne peut plus être modifié une fois envoyé.",
-    "REMINDERS_USED": "Ce sondage a déjà eu ses deux rappels."
+    "REMINDERS_USED": "Ce sondage a déjà eu ses deux rappels.",
+    "BIRTH_DATE_MINOR": "La date de naissance au dossier indique que cette personne n’a pas l’âge de la majorité. Corrigez d’abord la date de naissance."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1062,7 +1070,23 @@
     "certifications": "Certifications",
     "exportRecords": "Exporter les dossiers (fichier de données)",
     "exported": "Téléchargé. Révisez-le avant de le communiquer; les renseignements sur des tiers peuvent devoir être retranchés.",
-    "exportPdf": "PDF imprimable"
+    "exportPdf": "PDF imprimable",
+    "adult": {
+      "title": "Majorité confirmée (âge de la majorité ou plus)",
+      "confirmed": "Confirmée",
+      "noDob": "Aucune date de naissance au dossier : la messagerie traite donc {{name}} comme une personne peut-être mineure (aucune conversation individuelle avec des adultes). Ajoutez une date de naissance, ou confirmez ici qu’elle a l’âge de la majorité.",
+      "confirm": "Confirmer la majorité",
+      "note": "Comment vous l’avez confirmée",
+      "noteHint": "Par exemple : pièce d’identité vérifiée à l’embauche.",
+      "save": "Confirmer",
+      "saved": "Majorité confirmée.",
+      "by": "Confirmée par {{by}} le {{date}} : « {{note}} »",
+      "on": "Confirmée le {{date}} : « {{note}} »",
+      "dobWins": "Une date de naissance est au dossier : c’est elle qui s’applique.",
+      "remove": "Retirer la confirmation",
+      "removed": "Confirmation retirée.",
+      "private": "Seules les RH voient ceci."
+    }
   },
   "payroll": {
     "title": "Paie",
@@ -4675,7 +4699,10 @@
     "done": "Terminé",
     "confirmTitle": "Terminer le départ de {{name}}?",
     "confirmBody": "Ses adhésions aux avantages prennent fin le {{date}} et la personne ne pourra plus se connecter. Ses dossiers sont conservés.",
-    "completed": "Le départ de {{name}} est terminé"
+    "completed": "Le départ de {{name}} est terminé",
+    "sendExitSurvey": "Envoyer le sondage de départ",
+    "exitSurveyMade": "Sondage de départ créé",
+    "seeSurveys": "Voir les sondages"
   },
   "pad": {
     "payor": "Titulaire du compte",
@@ -7914,7 +7941,8 @@
       "pushPreviewHelp": "Désactivé (recommandé) : la notification indique seulement l’expéditeur. Activé : jusqu’à 60 caractères s’affichent sur l’écran verrouillé.",
       "shiftArchiveHours": "Les conversations de quart se ferment après le quart (heures)",
       "shiftArchiveHint": "Entre {{min}} et {{max}} heures.",
-      "ruleOfTwo": "Règle de deux : toute personne qui n’a pas l’âge de la majorité dans votre province (ou sans date de naissance au dossier) n’échange avec des adultes que dans des groupes comptant au moins deux adultes. Ce réglage ne peut pas être désactivé."
+      "ruleOfTwo": "Règle de deux : toute personne qui n’a pas l’âge de la majorité dans votre province (ou sans date de naissance au dossier) n’échange avec des adultes que dans des groupes comptant au moins deux adultes. Ce réglage ne peut pas être désactivé.",
+      "noBirthDate": "Aucune date de naissance au dossier? La personne est alors traitée comme peut-être mineure jusqu’à ce que les RH ajoutent sa date de naissance ou confirment à son dossier qu’elle a l’âge de la majorité (Employés, puis la personne, puis Dossier RH). Une date de naissance l’emporte toujours."
     }
   },
   "surveys": {
@@ -7949,6 +7977,25 @@
       "right": "Correcte",
       "heavy": "Trop lourde",
       "anything": "Avez-vous quelque chose à nous dire?"
+    },
+    "exitStarter": {
+      "title": "Avant votre départ",
+      "intro": "Merci pour le temps passé avec nous. Vos réponses vont aux RH avec votre nom et nous aident à faire de ce milieu un meilleur endroit où travailler.",
+      "overall": "Comment évaluez-vous votre expérience de travail ici?",
+      "reason": "Quelle est la principale raison de votre départ?",
+      "reasons": {
+        "job": "Un autre emploi",
+        "school": "Les études",
+        "schedule": "L’horaire ou les heures",
+        "pay": "La rémunération",
+        "team": "Le milieu de travail ou l’équipe",
+        "other": "Autre chose"
+      },
+      "better": "Qu’aurions-nous pu faire mieux?",
+      "again": "Travailleriez-vous ici de nouveau?",
+      "yes": "Oui",
+      "maybe": "Peut-être",
+      "no": "Non"
     }
   },
   "surveyAdmin": {
@@ -8193,6 +8240,16 @@
     "seniorityLine": "ancienneté {{date}} · {{hours}} h",
     "seniorityLineHours": "{{hours}} h · ancienneté {{date}}",
     "tieNote": "Les égalités vont à la date d’embauche la plus ancienne, puis à un départage fixe enregistré pour la ronde.",
-    "nobodyBid": "Personne n’a soumissionné dans cette ronde."
+    "nobodyBid": "Personne n’a soumissionné dans cette ronde.",
+    "wonInTurn": "Choix no {{rank}}, attribution {{pass}} de son tour",
+    "awardOrder": "Ordre d’attribution",
+    "awardOrderROUND_ROBIN": "Un à la fois, par ordre d’ancienneté",
+    "awardOrderSENIOR_FIRST": "La personne la plus ancienne prend toutes ses attributions d’abord",
+    "awardOrderDefault": "Celui de l’organisation ({{order}})",
+    "awardOrderHint": "Selon votre convention collective. Avec une attribution par personne, les deux donnent le même résultat.",
+    "orgAwardOrder": "Ordre d’attribution par défaut pour les rondes",
+    "orgAwardOrderHint": "Un à la fois : chaque personne obtient une attribution avant que quiconque en obtienne une deuxième. La plus ancienne d’abord : chaque personne obtient toutes ses attributions avant la suivante. Chaque ronde peut avoir le sien.",
+    "howAwardSenior_one": "Dans cet ordre, chaque personne obtient son choix le mieux classé encore libre qu’elle peut travailler.",
+    "howAwardSenior_other": "La personne la plus ancienne obtient ses choix les mieux classés encore libres qu’elle peut travailler, jusqu’à {{count}}; puis la personne suivante fait de même, et ainsi de suite."
   }
 }
