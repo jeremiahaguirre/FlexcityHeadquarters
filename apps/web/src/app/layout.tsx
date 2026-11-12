@@ -16,8 +16,8 @@ import { themeVars } from '@/lib/theme';
 import './globals.css';
 import { BOOT_SCRIPT } from '@/lib/bootScript';
 
-// Brand typeface (wordmark + UI). Self-hosted by Next at build time.
-// Self-hosted (SIL OFL, see src/fonts): builds never depend on Google Fonts being reachable.
+// Brand typeface (wordmark + UI): the woff2 committed in src/fonts (SIL OFL), served from our own origin
+// under /_next/static/media. Builds never download a font and pages never request one from elsewhere.
 // The Latin file covers English and French, accents included.
 const jakarta = localFont({ src: '../fonts/plus-jakarta-sans-latin-wght-normal.woff2', weight: '200 800', variable: '--font-sans', display: 'swap' });
 
@@ -43,6 +43,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang={locale} className={jakarta.variable} style={themeVars(tenant?.themeColors) as CSSProperties} suppressHydrationWarning>
+      <head>
+        {/* The static demo has no response headers: this keeps fonts to our own origin there too. */}
+        <meta httpEquiv="Content-Security-Policy" content="font-src 'self'" />
+      </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         {/*
           First thing in <body>, not in <head>: it still runs before anything paints, and React never has to
@@ -57,10 +61,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {DEMO ? <DemoBanner /> : null}
           <ToastProvider dismissLabel={t('common.dismiss')}>
             {children}
+            <AppUpdates />
           </ToastProvider>
         </Providers>
       </body>
     </html>
-            <AppUpdates />
   );
 }
