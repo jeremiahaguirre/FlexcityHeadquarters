@@ -47,6 +47,7 @@ import { sendRenewalReminders } from './services/billing/renewal.js';
 import { purgeOldEnquiries } from './services/marketing/casl.js';
 import { ensureTrustSeeded } from './services/trust/seed.js';
 import { announceDueNotes } from './services/platform/releaseNotes.js';
+import { releaseTick } from './services/platform/releases.js';
 import { checkOverdueSafety, enableInlineUrgent, kickUrgent, tenantsWithDueSms, URGENT_CHANNEL } from './services/notifications/urgent.js';
 
 const cfg = config();
@@ -146,6 +147,8 @@ const minutely = async () => {
   await exclusive('push', () => perTenant((tx) => deliverPush(tx)));
   // What's new notes published for later: the live signal once their time comes (FH's table, no organization).
   await exclusive('release-notes', () => announceDueNotes(db()));
+  // Staged releases: advance notices to HR admins, then ring stages whose time has come (each step claimed once).
+  await exclusive('releases', () => releaseTick(db()));
 };
 const hourly = async () => {
   await exclusive('patrols', () => perTenant((tx) => patrolReminders(tx)));

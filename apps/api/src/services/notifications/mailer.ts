@@ -44,6 +44,10 @@ type Template = (p: Params) => { subject: string; text: string };
 const APP_URL = () => process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
 
 const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
+  release_scheduled: {
+    'en-CA': (p) => ({ subject: `Coming ${p.whenEn}: ${p.titleEn}`, text: `FlexcityHeadquarters will change some features for your organization on ${p.whenEn}.\n\n${p.summaryEn}\n\nWhat changes, and anything your organization chose itself that stays as it is:\n${APP_URL()}/whats-new` }),
+    'fr-CA': (p) => ({ subject: `À venir le ${p.whenFr} : ${p.titleFr}`, text: `FlexcityHeadquarters modifiera certaines fonctions pour votre organisation le ${p.whenFr}.\n\n${p.summaryFr}\n\nCe qui change, et ce que votre organisation a choisi elle-même et qui reste tel quel :\n${APP_URL()}/whats-new` }),
+  },
   injury_report_due: {
     'en-CA': (p) => ({ subject: `Injury report to ${p.board} due`, text: `An employee injury report to ${p.board} is due by ${p.due} and isn't recorded as filed yet.\n${APP_URL()}/manage/injuries` }),
     'fr-CA': (p) => ({ subject: `Déclaration de lésion à ${p.board} à remettre`, text: `Une déclaration de lésion d'un employé à ${p.board} doit être faite d'ici ${p.due} et n'est pas encore inscrite comme envoyée.\n${APP_URL()}/manage/injuries` }),

@@ -1,13 +1,15 @@
 /**
- * What staff see of FH's updates: What's new notes (shown once, then in the list).
+ * What staff see of FH's updates: What's new notes (shown once, then in the list), and for HR
+ * admins (tenant.configure) the feature changes FH has scheduled for their organization.
  * Every signed-in person may read the notes meant for them; nothing here is a switchable feature.
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf } from '../auth/middleware.js';
+import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
 import { notFound } from '../lib/errors.js';
 import { markRead, notesFor } from '../services/platform/releaseNotes.js';
+import { changesFor } from '../services/platform/releases.js';
 import { h } from './context.js';
 
 export const updatesRouter = Router();
@@ -34,5 +36,15 @@ updatesRouter.post(
     const { ids } = z.object({ ids: z.array(z.string().uuid()).min(1).max(100) }).parse(req.body);
     const marked = await withTenant(a.tenantId, async (tx) => markRead(tx, a.tenantId, { ...(await me(tx, a.userId)), roles: a.roles }, ids));
     res.json({ marked });
+  }),
+);
+
+/** Feature changes coming to this organization from FH's releases (and the last month's), with what its own choices keep. */
+updatesRouter.get(
+  '/updates/changes',
+  requirePermission('tenant.configure'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    res.json(await withTenant(a.tenantId, (tx) => changesFor(tx)));
   }),
 );

@@ -9,12 +9,15 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { NoteBody } from '@/components/updates/NoteBody';
+import { ComingChanges } from '@/components/updates/ComingChanges';
+import { useSession } from '@/lib/session';
 import { noteDate, pick, useWhatsNew } from '@/lib/whatsNew';
 
 /** Every What's new note meant for this person (the last year), newest first. Opening the list counts as reading them. */
 export default function WhatsNewPage() {
   const { t, i18n } = useTranslation();
   const { data, loading, markRead } = useWhatsNew();
+  const { can } = useSession();
   const marked = useRef(false);
   const unread = (data?.notes ?? []).filter((n) => !n.readAt).map((n) => n.id);
   useEffect(() => {
@@ -28,6 +31,7 @@ export default function WhatsNewPage() {
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader title={t('whatsNew.title')} description={t('whatsNew.description')} />
+      {can('tenant.configure') ? <ComingChanges /> : null}
       {loading && !data ? (
         <ListSkeleton rows={3} />
       ) : !data?.notes.length ? (

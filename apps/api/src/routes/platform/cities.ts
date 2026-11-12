@@ -154,6 +154,8 @@ citiesRouter.get(
           signInUrl: appUrl(t.subdomain, '/login'),
         },
         features: resolveFeatures(t.features),
+        /** Switches set on purpose for this organization: releases leave them alone. */
+        featureChoices: t.featureChoices,
         featureDefaults: Object.fromEntries(FEATURE_KEYS.map((k) => [k, FEATURES[k].default])),
         featureRequires: FEATURE_REQUIRES,
         facilities: facilities.map((f) => ({ ...f, latitude: f.latitude?.toNumber() ?? null, longitude: f.longitude?.toNumber() ?? null })),
@@ -199,6 +201,8 @@ citiesRouter.patch(
           ...rest,
           ...(themeColors ? { themeColors: { ...(before.themeColors as object), ...themeColors } } : {}),
           ...(features ? { features: { ...resolveFeatures(before.features), ...features } } : {}),
+          // Set here on purpose: a release never changes these for this organization (services/platform/releases.ts).
+          ...(features ? { featureChoices: [...new Set([...before.featureChoices, ...Object.keys(features)])] } : {}),
         },
       });
       await record(tx, p.adminId, id, features ? 'tenant.features' : 'tenant.update', { ...rest, themeColors, features });
