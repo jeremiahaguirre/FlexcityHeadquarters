@@ -119,6 +119,11 @@ describe('contact form: organizations only, CASL consent', () => {
     expect(form).not.toMatch(/name="consent"[^>]*(defaultChecked|checked)/);
     expect(form).toContain('marketingConsent');
   });
+  it('sends Formspree’s honeypot field (_gotcha) and doesn’t call the client-side consent line a CASL record', () => {
+    expect(form).toMatch(/name="_gotcha"/);
+    expect(form).toMatch(/_gotcha: trap/);
+    expect(form).not.toMatch(/CASL: a record/);
+  });
   it.each(['en', 'fr'] as const)('%s: says it is for organizations, no children’s data, and who is asking for consent', (lang) => {
     const c = copy(lang).contact;
     expect(c.orgOnly).toMatch(lang === 'en' ? /organizations.*children/ : /organisations.*enfants/);

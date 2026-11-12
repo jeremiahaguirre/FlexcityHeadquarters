@@ -25,8 +25,10 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
     const s = (k: string) => String(f.get(k) ?? '').trim() || null;
     // Not connected yet: say so kindly and keep what the person typed.
     if (!SITE.contactFormUrl && !SITE.leadsUrl) return setState('error');
-    // Bots fill the hidden field; they get the same thank-you as people, and nothing is sent.
-    if (String(f.get('website') ?? '') !== '') return setState('sent');
+    // Bots fill the hidden field (_gotcha, Formspree's own honeypot name); they get the same
+    // thank-you as people, and nothing is sent. Formspree also drops any submission with it filled.
+    const trap = String(f.get('_gotcha') ?? '');
+    if (trap !== '') return setState('sent');
     setState('sending');
     if (SITE.contactFormUrl) {
       const kind = (s('kind') ?? 'SALES') as keyof typeof c.kinds;
@@ -38,6 +40,7 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
           headers: { 'content-type': 'application/json', accept: 'application/json' },
           body: JSON.stringify({
             _subject: `FlexcityHeadquarters website: ${c.kinds[kind] ?? kind}`,
+            _gotcha: trap,
             Type: c.kinds[kind] ?? kind,
             Name: s('name'),
             email: s('email'),
@@ -47,7 +50,8 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
             Facilities: s('facilities'),
             Message: s('message'),
             Language: lang === 'fr' ? 'French' : 'English',
-            // CASL: a record of what was agreed to, in the words shown.
+            // What the person ticked, in the words they saw. The browser reports it, so it records what
+            // was asserted, not proof of consent on its own.
             'Marketing consent': consent ? `Yes: “${c.consent}”` : 'No',
           }),
         });
@@ -72,7 +76,7 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
           message: s('message'),
           locale: lang === 'fr' ? 'fr-CA' : 'en-CA',
           marketingConsent: f.get('consent') === 'on',
-          website: String(f.get('website') ?? ''),
+          website: trap,
         }),
       });
       setState(r.ok ? 'sent' : 'error');
@@ -131,7 +135,7 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
       {/* Honeypot: hidden from people and screen readers. */}
       <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
         <label>
-          Website <input name="website" tabIndex={-1} autoComplete="off" />
+          Website <input name="_gotcha" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
       <label className="flex items-start gap-3 text-small">
