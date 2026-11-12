@@ -84,10 +84,11 @@ export async function rotateRefreshToken(
     }
     return null;
   }
-  await tx.refreshToken.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
-  // Rotation keeps the original sign-in time: refreshing is not proving who you are.
-  const token = await issueRefreshToken(tx, existing.tenantId, existing.userId, existing.familyId, existing.authenticatedAt, existing.mfaAt);
-  return { userId: existing.userId, tenantId: existing.tenantId, token, authenticatedAt: existing.authenticatedAt, mfa: !!existing.mfaAt };
+  // The row as it is once locked: a step-up or second factor that committed meanwhile is carried over.
+  const current = await tx.refreshToken.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
+  // Rotation keeps the original sign-in time and second factor: refreshing is not proving who you are.
+  const token = await issueRefreshToken(tx, current.tenantId, current.userId, current.familyId, current.authenticatedAt, current.mfaAt);
+  return { userId: current.userId, tenantId: current.tenantId, token, authenticatedAt: current.authenticatedAt, mfa: !!current.mfaAt };
 }
 
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {
@@ -120,6 +121,9 @@ export const epochSeconds = (d: Date = new Date()) => Math.floor(d.getTime() / 1
 export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Date(), mfa = false): Promise<void> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (existing) {
+    // Waits for a refresh rotating this family right now, so the token it issues is marked too
+    // (the update below then sees it); without this the mark could land only on the revoked one.
+    await tx.$queryRaw`SELECT id FROM "RefreshToken" WHERE "familyId" = ${existing.familyId}::uuid AND "revokedAt" IS NULL FOR UPDATE`;
     await tx.refreshToken.updateMany({ where: { familyId: existing.familyId, revokedAt: null }, data: { authenticatedAt: at, ...(mfa ? { mfaAt: at } : {}) } });
   }
 }

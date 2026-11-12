@@ -33,7 +33,7 @@ export interface AuthContext {
 }
 
 /** What someone who still owes a second factor may reach: enough to give it (a passkey or a code), or set up a passkey. */
-const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/step-up(\/|$)/, /^\/api\/auth\/mfa\/(options|code|code\/verify)$/];
+const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/passkeys$/, /^\/api\/auth\/step-up(\/|$)/, /^\/api\/auth\/mfa\/(options|code|code\/verify)$/];
 /** Powers that need the same second factor as HR. */
 const ADMIN_LEVEL = new Set<string>(['users.write', 'tenant.configure', 'payroll.approve', 'payroll.export', 'roles.manage', 'documents.manage', 'billing.manage', 'audit.read']);
 
@@ -48,7 +48,7 @@ const SUPPORT_BLOCKED = [
 ];
 
 /** All a closed organization's administrators can reach: who they are, their passkeys or a sign-in code, and the export. */
-const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/step-up(\/options)?|auth\/mfa\/(options|code|code\/verify)|data-export(\/.*)?)$/;
+const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/passkeys|auth\/step-up(\/options)?|auth\/mfa\/(options|code|code\/verify)|data-export(\/.*)?)$/;
 const mfaExempt = (url: string) => MFA_EXEMPT.some((r) => r.test(url.split('?')[0]!));
 
 declare global {

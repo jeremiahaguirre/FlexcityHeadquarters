@@ -34,8 +34,9 @@ export async function signInWithPasskey() {
 export async function addPasskey() {
   const o = await api<RegOptions>('/api/me/passkeys/options', { method: 'POST', body: {} });
   const response = await startRegistration({ optionsJSON: o.options });
-  const r = await api<{ id: string; name: string; accessToken?: string }>('/api/me/passkeys', { method: 'POST', body: { challengeId: o.challengeId, response } });
-  // Setting up a first passkey when the organization requires one completes the second factor.
+  // Under /api/auth so the refresh cookie comes along: when this first passkey is the organization's
+  // required second factor, the whole session keeps it, through reloads and token refreshes.
+  const r = await api<{ id: string; name: string; accessToken?: string }>('/api/auth/passkeys', { method: 'POST', body: { challengeId: o.challengeId, response } });
   if (r.accessToken) setAccessToken(r.accessToken);
   return r;
 }

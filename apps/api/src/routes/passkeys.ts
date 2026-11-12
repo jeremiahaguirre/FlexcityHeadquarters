@@ -151,32 +151,37 @@ myPasskeysRouter.post(
   }),
 );
 
-myPasskeysRouter.post(
-  '/me/passkeys',
-  requireRecentAuth,
-  h(async (req, res) => {
-    const a = authOf(req);
-    const body = z.object({ challengeId: uuid, response: credential, name: z.string().trim().min(1).max(60).optional() }).parse(req.body);
-    const r = await verifyRegistration(await rpFor(req), body.challengeId, 'register', body.response as unknown as RegistrationResponseJSON);
-    if (r.challenge.userId !== a.userId) throw new HttpError(400, 'PASSKEY_FAILED', 'That passkey could not be set up.');
-    const p = await withTenant(a.tenantId, async (tx) => {
-      enrolmentOnly(a, await tx.passkey.count({ where: { userId: a.userId } }));
-      const created = await tx.passkey.create({
-        data: { tenantId: a.tenantId, userId: a.userId, credentialId: r.credentialId, publicKey: r.publicKey, counter: r.counter, transports: r.transports, name: body.name ?? deviceName(req.header('user-agent')) },
-      });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.add', entity: 'User', entityId: a.userId, after: { name: created.name } });
-      return created;
+/**
+ * Adds a passkey. The web sends this to /api/auth/passkeys, where the refresh cookie (path
+ * /api/auth) comes along: a first passkey set up as the required second factor then marks the whole
+ * session, so it survives a reload and token refreshes. /api/me/passkeys stays for older builds; it
+ * can only give the second factor to the answer's access token.
+ */
+const addPasskey = h(async (req, res) => {
+  const a = authOf(req);
+  const body = z.object({ challengeId: uuid, response: credential, name: z.string().trim().min(1).max(60).optional() }).parse(req.body);
+  const r = await verifyRegistration(await rpFor(req), body.challengeId, 'register', body.response as unknown as RegistrationResponseJSON);
+  if (r.challenge.userId !== a.userId) throw new HttpError(400, 'PASSKEY_FAILED', 'That passkey could not be set up.');
+  const p = await withTenant(a.tenantId, async (tx) => {
+    enrolmentOnly(a, await tx.passkey.count({ where: { userId: a.userId } }));
+    const created = await tx.passkey.create({
+      data: { tenantId: a.tenantId, userId: a.userId, credentialId: r.credentialId, publicKey: r.publicKey, counter: r.counter, transports: r.transports, name: body.name ?? deviceName(req.header('user-agent')) },
     });
-    // Setting up a first passkey with the device's lock counts as the second factor.
-    if (a.mfaPending) {
-      const raw = req.cookies?.[COOKIE] as string | undefined;
-      if (raw) await withTenant(a.tenantId, (tx) => markReauthenticated(tx, raw, new Date(), true));
-      const accessToken = await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(), mfa: true });
-      return void res.status(201).json({ id: p.id, name: p.name, accessToken });
-    }
-    res.status(201).json({ id: p.id, name: p.name });
-  }),
-);
+    await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.add', entity: 'User', entityId: a.userId, after: { name: created.name } });
+    return created;
+  });
+  // Setting up a first passkey with the device's lock counts as the second factor.
+  if (a.mfaPending) {
+    const raw = req.cookies?.[COOKIE] as string | undefined;
+    if (raw) await withTenant(a.tenantId, (tx) => markReauthenticated(tx, raw, new Date(), true));
+    const accessToken = await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(), mfa: true });
+    return void res.status(201).json({ id: p.id, name: p.name, accessToken });
+  }
+  res.status(201).json({ id: p.id, name: p.name });
+});
+
+myPasskeysRouter.post('/me/passkeys', requireRecentAuth, addPasskey);
+passkeyAuthRouter.post('/auth/passkeys', requireAuth, requireRecentAuth, addPasskey);
 
 myPasskeysRouter.delete(
   '/me/passkeys/:id',
