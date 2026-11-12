@@ -12,7 +12,8 @@ import { SITE_ROBOTS } from '@/lib/crawlers';
 import { SITE_URL, pageMeta } from '@/lib/seo';
 import '../globals.css';
 
-// Self-hosted (SIL OFL, see src/fonts): builds never depend on Google Fonts being reachable.
+// The woff2 committed in src/fonts (SIL OFL), served from our own origin: builds never download a font
+// and pages never request one from elsewhere.
 // The Latin file covers English and French, accents included.
 const jakarta = localFont({ src: '../../fonts/plus-jakarta-sans-latin-wght-normal.woff2', weight: '200 800', variable: '--font-sans', display: 'swap' });
 
@@ -41,6 +42,10 @@ export default async function LangLayout(props: { children: ReactNode; params: P
   const children = props.children;
   return (
     <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable}>
+      <head>
+        {/* Same rule as the font-src header in vercel.json, for any static host that sends no headers. */}
+        <meta httpEquiv="Content-Security-Policy" content="font-src 'self'" />
+      </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <script dangerouslySetInnerHTML={{ __html: REVEAL_BOOT }} />
         <RevealObserver />
