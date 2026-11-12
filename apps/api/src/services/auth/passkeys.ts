@@ -9,7 +9,6 @@
  */
 import {
   type AuthenticationResponseJSON,
-  type AuthenticatorTransportFuture,
   type RegistrationResponseJSON,
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -50,6 +49,14 @@ async function takeChallenge(id: string, purpose: ChallengePurpose) {
   return db().webAuthnChallenge.findUniqueOrThrow({ where: { id } });
 }
 
+/**
+ * Public key algorithms, kept as SimpleWebAuthn 13 had them by default: offered at registration
+ * EdDSA, ES256, RS256; accepted when verifying a registration, every algorithm it could verify.
+ * (Version 14 would also offer ML-DSA-44 and accept fewer.)
+ */
+const OFFERED_ALGORITHMS = [-8, -7, -257];
+const ACCEPTED_ALGORITHMS = [-8, -7, -36, -37, -38, -39, -257, -258, -259, -65535];
+
 export interface StoredPasskey { credentialId: string; publicKey: Uint8Array; counter: number; transports: string[] }
 
 export async function registrationOptions(
@@ -66,16 +73,17 @@ export async function registrationOptions(
     userDisplayName: who.displayName,
     userID: new TextEncoder().encode(who.id),
     attestationType: 'none',
-    excludeCredentials: existing.map((p) => ({ id: p.credentialId, transports: p.transports as AuthenticatorTransportFuture[] })),
+    excludeCredentials: existing.map((p) => ({ id: p.credentialId, transports: p.transports })),
     // Discoverable, so it can sign in without typing an email; the device must check it's you.
     authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
+    supportedAlgorithmIDs: OFFERED_ALGORITHMS,
   });
   return { challengeId: await saveChallenge(options.challenge, purpose, ids), options };
 }
 
 export async function verifyRegistration(rp: RelyingParty, challengeId: string, purpose: 'register' | 'platform-register', response: RegistrationResponseJSON) {
   const ch = await takeChallenge(challengeId, purpose);
-  const v = await verifyRegistrationResponse({ response, expectedChallenge: ch.challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification: true }).catch(() => null);
+  const v = await verifyRegistrationResponse({ response, expectedChallenge: ch.challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification: true, supportedAlgorithmIDs: ACCEPTED_ALGORITHMS }).catch(() => null);
   if (!v?.verified || !v.registrationInfo) throw new HttpError(400, 'PASSKEY_FAILED', 'That passkey could not be set up.');
   const c = v.registrationInfo.credential;
   return { challenge: ch, credentialId: c.id, publicKey: Buffer.from(c.publicKey), counter: c.counter, transports: c.transports ?? [] };
@@ -85,7 +93,7 @@ export async function authenticationOptions(rp: RelyingParty, purpose: 'login' |
   const options = await generateAuthenticationOptions({
     rpID: rp.rpID,
     userVerification: 'required',
-    allowCredentials: allow.map((p) => ({ id: p.credentialId, transports: p.transports as AuthenticatorTransportFuture[] })),
+    allowCredentials: allow.map((p) => ({ id: p.credentialId, transports: p.transports })),
   });
   return { challengeId: await saveChallenge(options.challenge, purpose, ids), options };
 }
@@ -100,7 +108,7 @@ export async function verifyAuthentication(rp: RelyingParty, challengeId: string
     expectedOrigin: rp.origin,
     expectedRPID: rp.rpID,
     requireUserVerification: true,
-    credential: { id: passkey.credentialId, publicKey: passkey.publicKey, counter: passkey.counter, transports: passkey.transports as AuthenticatorTransportFuture[] },
+    credential: { id: passkey.credentialId, publicKey: passkey.publicKey, counter: passkey.counter, transports: passkey.transports },
   }).catch(() => null);
   if (!v?.verified) throw new HttpError(401, 'PASSKEY_FAILED', 'That passkey didn’t work. Try again or use your password.');
   return { challenge: ch, newCounter: v.authenticationInfo.newCounter };
