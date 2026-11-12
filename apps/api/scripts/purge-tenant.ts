@@ -2,15 +2,25 @@
  * npm run tenant:purge -- <subdomain>          (shows what would be deleted)
  * npm run tenant:purge -- <subdomain> --yes    (deletes it; only after the retention date)
  *
- * Uses DATABASE_URL (the database owner). Logged in the platform audit log.
+ * Uses the database owner (DATABASE_URL, or the migration task's DB_* settings). Logged in the platform audit log.
  */
 import { PrismaClient } from '@prisma/client';
 import { prismaUrl } from '../src/lib/dbUrl.js';
 import { purgePlan, purgeTenant } from '../src/services/platform/purge.js';
+// @ts-expect-error a plain JavaScript module without types, shared with the migration scripts
+import { ownerUrl } from './owner-url.mjs';
 
 const [sub, flag] = process.argv.slice(2);
-// Owner connection (DATABASE_URL), its TLS settings translated for Prisma (src/lib/dbUrl.ts).
-const owner = new PrismaClient(process.env.DATABASE_URL ? { datasources: { db: { url: prismaUrl(process.env.DATABASE_URL) } } } : undefined);
+// Owner connection: DATABASE_URL, or on AWS the DB_* parts and the RDS-managed password the
+// migration task gets (scripts/owner-url.mjs), its TLS settings translated for Prisma (src/lib/dbUrl.ts).
+let url: string;
+try {
+  url = ownerUrl();
+} catch (e) {
+  console.error((e as Error).message);
+  process.exit(1);
+}
+const owner = new PrismaClient({ datasources: { db: { url: prismaUrl(url) } } });
 (async () => {
   if (!sub) throw new Error('Give the organization’s address (subdomain).');
   const t = await owner.tenant.findUnique({ where: { subdomain: sub } });
