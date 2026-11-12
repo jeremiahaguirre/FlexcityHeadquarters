@@ -37,8 +37,16 @@ export async function databaseAllow(key: string, limit: number, windowMs: number
     await tx.rateLimitHit.create({ data: { key, at: now } });
     if (Math.random() < 0.01) await tx.rateLimitHit.deleteMany({ where: { at: { lt: new Date(now.getTime() - 86_400_000) } } });
     return true;
-  });
+  }, waitLikeRequests());
 }
+
+/**
+ * A limiter's transaction waits for a free connection as long as a request's own does
+ * (DB_POOL_TIMEOUT_S, lib/db.ts withTenant), not Prisma's 2 s: under a burst (a shift change in a
+ * busy group conversation) the 2 s wait refused message sends with 503 while the requests queued
+ * beside them went through.
+ */
+const waitLikeRequests = () => ({ maxWait: config().DB_POOL_TIMEOUT_S * 1000 });
 
 const shared = () => process.env.RATE_LIMIT_STORE === 'database' || (process.env.RATE_LIMIT_STORE !== 'memory' && (config().NODE_ENV === 'production' || cluster.isWorker));
 
@@ -199,5 +207,5 @@ export async function databaseConsume(key: string, limit: number, windowMs: numb
     await tx.rateLimitHit.create({ data: { key, at: now } });
     if (Math.random() < 0.01) await tx.rateLimitHit.deleteMany({ where: { at: { lt: new Date(now.getTime() - 86_400_000) } } });
     return { allowed: true, limit, remaining: limit - used - 1, resetSeconds };
-  });
+  }, waitLikeRequests());
 }

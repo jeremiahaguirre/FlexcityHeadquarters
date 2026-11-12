@@ -8,14 +8,16 @@
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
 
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
+import { databaseAllow } from '../../src/auth/rateLimit.js';
+import { config } from '../../src/config.js';
 import { CHANGE_CHANNEL } from '../../src/lib/changes.js';
-import { withTenant } from '../../src/lib/db.js';
+import { db, withTenant } from '../../src/lib/db.js';
 import { NOTIFY_CHANNEL, notify } from '../../src/services/notifications/notifier.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
@@ -139,6 +141,18 @@ describe('send limits with the shared (database) limiter', () => {
     } finally {
       if (before === undefined) delete process.env.RATE_LIMIT_STORE;
       else process.env.RATE_LIMIT_STORE = before;
+    }
+  });
+});
+
+describe('the shared limiter waits for a connection like a request', () => {
+  it('its transaction asks for DB_POOL_TIMEOUT_S, not Prisma’s 2 s', async () => {
+    const spy = vi.spyOn(db(), '$transaction');
+    try {
+      expect(await databaseAllow(`scale-wait:${Date.now()}`, 5, 60_000)).toBe(true);
+      expect(spy.mock.calls[0]?.[1]).toMatchObject({ maxWait: config().DB_POOL_TIMEOUT_S * 1000 });
+    } finally {
+      spy.mockRestore();
     }
   });
 });
