@@ -105,7 +105,7 @@ describe('HR confirms an adult with no birth date on file', () => {
     expect((await direct('g0', 'm1')).body.code).toBe('MINOR_RULE');
     // A birth date added later that says minor makes the confirmed person's conversations with adults read-only.
     await owner.user.update({ where: { id: id.u1! }, data: { dateOfBirth: yearsAgo(17) } });
-    expect((await as('g0').post(`/api/messages/conversations/${id.conv}/messages`, { text: 'still there?' })).body.code).toBe('MINOR_RULE');
+    expect((await as('g0').post(`/api/messages/conversations/${id.conv}/messages`, { text: 'still there?' })).body.code).toBe('READ_ONLY');
     await owner.user.update({ where: { id: id.u1! }, data: { dateOfBirth: null } });
   });
 
@@ -122,6 +122,6 @@ describe('HR confirms an adult with no birth date on file', () => {
     expect((await as('hr').del(`/api/users/${id.u1}/adult-confirmation`)).status).toBe(200);
     expect(await owner.auditLog.count({ where: { action: 'user.adult_confirmation_removed', entityId: id.u1! } })).toBe(1);
     expect((await as('hr').get(`/api/users/${id.u1}`)).body.adultConfirmation).toBeNull();
-    expect((await as('g0').post(`/api/messages/conversations/${id.conv}/messages`, { text: 'hello?' })).body.code).toBe('MINOR_RULE');
+    expect((await as('g0').post(`/api/messages/conversations/${id.conv}/messages`, { text: 'hello?' })).body.code).toBe('READ_ONLY');
   });
 });
