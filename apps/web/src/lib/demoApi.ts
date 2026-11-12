@@ -357,6 +357,8 @@ export async function demoPlatformApi<T>(path: string, init: { method?: string; 
   }
   if (!signedIn()) throw new ApiError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console');
   const data = await fixtures('platform');
+  const notes = demoConsoleNotes(path, method);
+  if (notes !== undefined) return notes as T;
 
   const preview = /^\/tenants\/([^/]+)\/import(\/preview)?$/.exec(path);
   if (preview && method === 'POST') {
@@ -379,8 +381,6 @@ export async function demoPlatformApi<T>(path: string, init: { method?: string; 
     else if (r) {
       if (access[2] === 'menu') r.menu = r.menu.map((m) => (m.href === b.href ? { ...m, shown: !!b.shown } : m));
       if (access[2] === 'permission') r.permissions = b.on ? [...new Set([...r.permissions, b.permission!])] : r.permissions.filter((p) => p !== b.permission);
-  const notes = demoConsoleNotes(path, method);
-  if (notes !== undefined) return notes as T;
       r.customized = true;
     }
     if (access[2] === 'reset') {
