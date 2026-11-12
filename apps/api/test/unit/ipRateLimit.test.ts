@@ -11,6 +11,11 @@ function app(opts = { authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2 
   a.get('/healthz', (_q, r) => r.json({ ok: true }));
   a.get('/open', (_q, r) => r.json({ ok: true }));
   a.get('/me', (q, r) => (q.headers.authorization === 'Bearer good' ? r.json({ ok: true }) : r.status(401).json({ code: 'UNAUTHENTICATED' })));
+  a.get('/expired', (_q, r) => {
+    r.locals.credentialExpired = true;
+    r.status(401).json({ code: 'UNAUTHENTICATED' });
+  });
+  a.post('/api/auth/forgot', (_q, r) => r.status(202).json({ ok: true }));
   return a;
 }
 
@@ -74,5 +79,40 @@ describe('global per-address limit', () => {
     expect(hasCredential(req('/api/auth/refresh', { cookie: 'fc_refresh=abc' }))).toBe(true);
     expect(hasCredential(req('/api/public/jobs', { cookie: 'not_fc_refresh=1' }))).toBe(false);
     expect(hasCredential(req('/api/auth/login'))).toBe(false);
+  });
+
+  it('a made-up cookie or header doesn’t move an endpoint that takes no credential to the bigger bucket', async () => {
+    const a = app();
+    const st: number[] = [];
+    for (let i = 0; i < 6; i++) st.push((await request(a).post('/api/auth/forgot').set('X-Forwarded-For', '192.0.2.20').set('cookie', 'fc_refresh=x').set('Authorization', 'Bearer x')).status);
+    expect(st.filter((s) => s === 429)).toHaveLength(3);
+    const req = (path: string, headers: Record<string, string> = {}) => ({ path, headers }) as unknown as express.Request;
+    for (const p of ['/api/auth/login', '/api/auth/forgot', '/api/auth/reset', '/api/auth/passkey', '/api/auth/sso/start', '/api/public/signup', '/api/public/jobs/1/apply', '/api/marketing/leads', '/api/platform/auth/login']) expect(hasCredential(req(p, { cookie: 'fc_refresh=1; fh_platform=1', authorization: 'Bearer x' })), p).toBe(false);
+    expect(hasCredential(req('/api/auth/refresh', { cookie: 'fc_refresh=1' }))).toBe(true);
+    expect(hasCredential(req('/api/me', { authorization: 'Bearer x' }))).toBe(true);
+  });
+
+  it('a genuine but expired access token doesn’t spend the failure budget', async () => {
+    const a = app();
+    for (let i = 0; i < 6; i++) expect((await request(a).get('/expired').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer old')).status).toBe(401);
+    expect((await request(a).get('/me').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer good')).status).toBe(200);
+  });
+
+  it('IPv6: one /64 shares a bucket', async () => {
+    const a = app();
+    const st: number[] = [];
+    for (let i = 0; i < 6; i++) st.push((await request(a).get('/open').set('X-Forwarded-For', `2001:db8:0:1::${i + 1}`)).status);
+    expect(st.filter((s) => s === 429)).toHaveLength(3);
+    expect((await request(a).get('/open').set('X-Forwarded-For', '2001:db8:0:2::1')).status).toBe(200);
+  });
+});
+
+describe('failure buckets', () => {
+  it('stay bounded: draining many addresses sweeps the full (idle) ones past the cap', () => {
+    const b = new TokenBuckets(120, 1000);
+    const t0 = Date.now();
+    for (let i = 0; i < 50_000; i++) b.drain(`2001:db8::${i.toString(16)}`, t0);
+    for (let i = 0; i < 1100; i++) b.drain(`2001:db8:1::${i.toString(16)}`, t0 + 3_600_000);
+    expect(b.size).toBeLessThanOrEqual(1000);
   });
 });

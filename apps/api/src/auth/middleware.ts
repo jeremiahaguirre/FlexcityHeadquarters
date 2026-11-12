@@ -63,11 +63,14 @@ declare global {
 }
 
 /** Verifies the Bearer access token and that it belongs to the subdomain's tenant. */
-export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   try {
     const header = req.header('authorization');
     if (!header?.startsWith('Bearer ')) throw new HttpError(401, 'UNAUTHENTICATED', 'Missing access token');
-    const claims = await verifyAccessToken(header.slice(7)).catch(() => {
+    const claims = await verifyAccessToken(header.slice(7)).catch((e: unknown) => {
+      // Genuine but expired (jose checks the signature before the expiry): the app refreshes it, so
+      // it doesn't spend the address's failure budget (lib/ipRateLimit.ts). Same answer either way.
+      if ((e as { code?: unknown })?.code === 'ERR_JWT_EXPIRED') res.locals.credentialExpired = true;
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
