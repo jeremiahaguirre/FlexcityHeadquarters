@@ -9,7 +9,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
-import { allow } from '../auth/rateLimit.js';
+import { allow, count, record } from '../auth/rateLimit.js';
 import { config } from '../config.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
@@ -95,12 +95,15 @@ publicCalendarRouter.get(
     const tenantId = z.string().uuid().safeParse(req.params.tenantId);
     const m = /^([A-Za-z0-9_-]{20,64})\.ics$/.exec(String(req.params.file));
     if (!tenantId.success || !m) throw notFound('Calendar');
-    if (!(await allow(`ics:${req.ip}`, 120, 3_600_000))) throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
+    // Calendar services (Google, Apple, Outlook) fetch many people's feeds from a few shared addresses,
+    // so an address is limited on links that don't work (someone guessing), and each feed on its own.
+    if ((await count(`ics-miss:${req.ip}`, 3_600_000)) >= 30) throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
     const out = await withTenant(tenantId.data, async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId.data }, select: { disabledAt: true } });
       if (!tenant || tenant.disabledAt) return null;
       const u = await tx.user.findUnique({ where: { calendarTokenHash: sha(m[1]!) }, select: { id: true, status: true, locale: true } });
       if (!u || u.status !== 'ACTIVE') return null;
+      if (!(await allow(`ics-feed:${u.id}`, 60, 3_600_000))) return 'busy' as const;
       const now = Date.now();
       const shifts = await tx.shift.findMany({
         where: { userId: u.id, status: { in: ['PUBLISHED', 'CANCELLED'] }, startsAt: { gte: new Date(now - 30 * 86_400_000), lt: new Date(now + 120 * 86_400_000) } },
@@ -111,7 +114,11 @@ publicCalendarRouter.get(
       const fr = u.locale.startsWith('fr');
       return icsFor(fr ? 'Mes quarts (FH)' : 'My shifts (FH)', shifts.map((s) => ({ id: s.id, startsAt: s.startsAt, endsAt: s.endsAt, status: s.status, position: (fr && s.position.nameFr) || s.position.name, facility: s.facility.name })));
     });
-    if (!out) throw notFound('Calendar');
+    if (out === 'busy') throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
+    if (!out) {
+      await record(`ics-miss:${req.ip}`);
+      throw notFound('Calendar');
+    }
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Cache-Control', 'private, max-age=900');
     res.setHeader('X-Robots-Tag', 'noindex');

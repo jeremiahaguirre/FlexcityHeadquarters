@@ -19,7 +19,8 @@ import { type NextFunction, type Request, type Response, Router } from 'express'
 import { z } from 'zod';
 import type { EmploymentStatus, TimeOffType } from '@prisma/client';
 import type { AuthContext } from '../auth/middleware.js';
-import { databaseAllow } from '../auth/rateLimit.js';
+import { databaseConsume } from '../auth/rateLimit.js';
+import { rateLimited } from '../lib/metrics.js';
 import { actAsApiKey, audit, type Tx, withTenant } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import { dispatchSoon, withEvents } from '../lib/events.js';
@@ -86,8 +87,10 @@ function write(scopes: ApiScope[], fn: (req: Request, w: WriteCtx) => Promise<Wr
         if (hasBody && !req.is('application/json')) throw new HttpError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Send the body as JSON (`Content-Type: application/json`).');
         const settings = await tenantSettings(k.tenantId);
         if (settings.billing.stage === 'suspended') throw new HttpError(402, 'ACCOUNT_SUSPENDED', 'Your organization’s account is read-only until the overdue balance is paid.');
-        if (!(await databaseAllow(`api-key-write:${k.id}`, Math.min(WRITES_PER_MINUTE, k.rateLimitPerMinute), 60_000))) {
-          res.setHeader('Retry-After', '60');
+        const writes = await databaseConsume(`api-key-write:${k.id}`, Math.min(WRITES_PER_MINUTE, k.rateLimitPerMinute), 60_000);
+        if (!writes.allowed) {
+          rateLimited.inc({ layer: 'api_key_writes' });
+          res.setHeader('Retry-After', String(writes.resetSeconds));
           throw new HttpError(429, 'RATE_LIMITED', `This key can make ${Math.min(WRITES_PER_MINUTE, k.rateLimitPerMinute)} changes a minute. Try again shortly.`);
         }
         // POST must carry an Idempotency-Key; PUT may.

@@ -268,13 +268,36 @@ describe('the public API', () => {
   it('limits requests per key (in the database)', async () => {
     const r = await as('hr').post('/api/integrations/api-keys', { name: 'Busy', scopes: ['facilities:read'] });
     await owner.apiKey.update({ where: { id: r.body.apiKey.id }, data: { rateLimitPerMinute: 3 } });
-    for (let i = 0; i < 3; i++) expect((await v1(r.body.key, '/facilities')).status).toBe(200);
+    for (let i = 0; i < 3; i++) {
+      const ok = await v1(r.body.key, '/facilities');
+      expect(ok.status).toBe(200);
+      expect(ok.headers['x-ratelimit-limit']).toBe('3');
+      expect(ok.headers['x-ratelimit-remaining']).toBe(String(2 - i));
+      expect(Number(ok.headers['x-ratelimit-reset'])).toBeGreaterThanOrEqual(1);
+      expect(Number(ok.headers['x-ratelimit-reset'])).toBeLessThanOrEqual(60);
+    }
     const over = await v1(r.body.key, '/facilities');
     expect(over.status).toBe(429);
-    expect(over.headers['retry-after']).toBe('60');
+    expect(over.headers['x-ratelimit-remaining']).toBe('0');
+    // Retry-After: when the oldest request in the minute ages out, not a flat minute.
+    expect(Number(over.headers['retry-after'])).toBeGreaterThanOrEqual(1);
+    expect(Number(over.headers['retry-after'])).toBeLessThanOrEqual(60);
+    expect(over.headers['retry-after']).toBe(over.headers['x-ratelimit-reset']);
     expect(over.body.code).toBe('RATE_LIMITED');
     // Another key isn't affected.
     expect((await v1(keyA, '/facilities')).status).toBe(200);
+  });
+
+  it('limits failed key checks per address: 20 in 10 minutes, then 429 before any lookup', async () => {
+    const from = (ip: string, key: string) => request(server).get('/api/v1/facilities').set('X-Forwarded-For', ip).auth(key, { type: 'bearer' });
+    const bad = `fh_live_abcdefgh_${'x'.repeat(43)}`;
+    for (let i = 0; i < 20; i++) expect((await from('198.51.100.77', bad)).body.code).toBe('API_KEY_INVALID');
+    const blocked = await from('198.51.100.77', bad);
+    expect(blocked.status).toBe(429);
+    expect(blocked.headers['retry-after']).toBe('600');
+    // Even a real key from that address waits; other addresses are unaffected.
+    expect((await from('198.51.100.77', keyA)).status).toBe(429);
+    expect((await from('198.51.100.78', keyA)).status).toBe(200);
   });
 
   it('honours the IP allow list', async () => {

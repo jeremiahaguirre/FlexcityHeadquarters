@@ -17,11 +17,11 @@
  */
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { databaseAllow } from '../auth/rateLimit.js';
+import { type Quota, count, databaseConsume, record } from '../auth/rateLimit.js';
 import { captureError } from '../lib/errorReporter.js';
 import { audit, db, withTenant } from '../lib/db.js';
 import { HttpError, notFound } from '../lib/errors.js';
-import { publicApiRequests, routePattern, statusClass } from '../lib/metrics.js';
+import { apiKeyAuthFailures, publicApiRequests, rateLimited, routePattern, statusClass } from '../lib/metrics.js';
 import { hasModule } from '../services/billing/entitlements.js';
 import { hashKey, ipAllowed, looksLikeKey } from '../services/integrations/apiKeys.js';
 import { openApiSpec } from '../services/integrations/openapi.js';
@@ -45,28 +45,53 @@ publicApiRouter.get('/openapi.json', (_req, res) => {
 
 const unauthenticated = (code: string, message: string) => new HttpError(401, code, message);
 
+/** Failed key checks from one address (unknown, revoked, expired keys): 20 in 10 minutes, then 429 until the window passes. */
+export const KEY_FAILURES = { limit: 20, windowMs: 10 * 60_000 };
+
+/** Sets X-RateLimit-Limit / -Remaining / -Reset (seconds until a slot frees) from a quota. */
+export function rateHeaders(res: Response, q: Quota) {
+  res.setHeader('X-RateLimit-Limit', String(q.limit));
+  res.setHeader('X-RateLimit-Remaining', String(q.remaining));
+  res.setHeader('X-RateLimit-Reset', String(q.resetSeconds));
+}
+
 /** The key in the Authorization header: its organization, state, address, rate and scopes. */
 async function apiKeyAuth(req: Request, res: Response, next: NextFunction) {
+  const failKey = `api-key-fail:${req.ip ?? 'unknown'}`;
+  const refuse = async (code: string, message: string) => {
+    await record(failKey);
+    apiKeyAuthFailures.inc();
+    return unauthenticated(code, message);
+  };
   try {
     const header = req.header('authorization') ?? '';
     const key = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
-    if (!key) throw unauthenticated('API_KEY_MISSING', 'Send your API key as `Authorization: Bearer <key>`.');
-    if (!looksLikeKey(key)) throw unauthenticated('API_KEY_INVALID', 'That API key isn’t valid.');
+    // An address guessing keys is stopped before any lookup.
+    if ((await count(failKey, KEY_FAILURES.windowMs)) >= KEY_FAILURES.limit) {
+      apiKeyAuthFailures.inc();
+      rateLimited.inc({ layer: 'api_key_failures' });
+      res.setHeader('Retry-After', String(KEY_FAILURES.windowMs / 1000));
+      throw new HttpError(429, 'RATE_LIMITED', 'Too many requests with an invalid API key from this address. Try again later.');
+    }
+    if (!key) throw await refuse('API_KEY_MISSING', 'Send your API key as `Authorization: Bearer <key>`.');
+    if (!looksLikeKey(key)) throw await refuse('API_KEY_INVALID', 'That API key isn’t valid.');
     const hash = hashKey(key);
     const rows = await db().$queryRaw<Array<{ id: string | null }>>`SELECT api_key_tenant(${hash}) AS id`;
     const tenantId = rows[0]?.id;
-    if (!tenantId) throw unauthenticated('API_KEY_INVALID', 'That API key isn’t valid.');
+    if (!tenantId) throw await refuse('API_KEY_INVALID', 'That API key isn’t valid.');
     const settings = await tenantSettings(tenantId);
     if (settings.disabledAt) throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed.');
     const k = await withTenant(tenantId, (tx) => tx.apiKey.findUnique({ where: { keyHash: hash } }));
-    if (!k) throw unauthenticated('API_KEY_INVALID', 'That API key isn’t valid.');
-    if (k.revokedAt) throw unauthenticated('API_KEY_REVOKED', 'This API key was revoked.');
-    if (k.expiresAt && k.expiresAt <= new Date()) throw unauthenticated('API_KEY_EXPIRED', 'This API key has expired.');
+    if (!k) throw await refuse('API_KEY_INVALID', 'That API key isn’t valid.');
+    if (k.revokedAt) throw await refuse('API_KEY_REVOKED', 'This API key was revoked.');
+    if (k.expiresAt && k.expiresAt <= new Date()) throw await refuse('API_KEY_EXPIRED', 'This API key has expired.');
     if (!hasModule(settings.billing, 'publicApi')) throw new HttpError(403, 'PLAN_REQUIRED', 'Your plan doesn’t include the API.', { module: 'publicApi' });
     if (!ipAllowed(k.allowedIps, req.ip)) throw new HttpError(403, 'IP_NOT_ALLOWED', 'This API key can’t be used from this address.');
-    res.setHeader('X-RateLimit-Limit', String(k.rateLimitPerMinute));
-    if (!(await databaseAllow(`api-key:${k.id}`, k.rateLimitPerMinute, 60_000))) {
-      res.setHeader('Retry-After', '60');
+    const quota = await databaseConsume(`api-key:${k.id}`, k.rateLimitPerMinute, 60_000);
+    rateHeaders(res, quota);
+    if (!quota.allowed) {
+      rateLimited.inc({ layer: 'api_key' });
+      res.setHeader('Retry-After', String(quota.resetSeconds));
       throw new HttpError(429, 'RATE_LIMITED', `This key is limited to ${k.rateLimitPerMinute} requests a minute. Try again shortly.`);
     }
     await withTenant(tenantId, async (tx) => {
