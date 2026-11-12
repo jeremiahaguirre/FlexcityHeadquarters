@@ -6,7 +6,7 @@ import type { Lang } from './copy';
  * captions beside them. Alt text says what the screen shows; captions only claim what that screen
  * (or the app's code) does. English and Canadian French side by side.
  */
-export const SCREENS = ['phone-board', 'phone-count', 'phone-schedule', 'phone-pay', 'phone-timeoff', 'laptop-hr', 'laptop-casefile', 'laptop-orgchart', 'laptop-coverage', 'laptop-overtime', 'laptop-onboarding'] as const;
+export const SCREENS = ['phone-board', 'phone-count', 'phone-schedule', 'phone-pay', 'phone-timeoff', 'laptop-hr', 'laptop-casefile', 'laptop-orgchart', 'laptop-coverage', 'laptop-overtime', 'laptop-onboarding', 'laptop-schedule'] as const;
 export type ScreenName = (typeof SCREENS)[number];
 
 const ALT: Record<Lang, Record<ScreenName, string>> = {
@@ -21,7 +21,8 @@ const ALT: Record<Lang, Record<ScreenName, string>> = {
     'laptop-orgchart': 'Org chart on a laptop: who reports to whom, filtered by department, with each person’s position',
     'laptop-coverage': 'Required coverage on a laptop: gaps in the next 7 days where the published schedule has fewer certified lifeguards than the rule requires',
     'laptop-overtime': 'Overtime on a laptop: who is offered overtime next, in collective agreement order, with hours charged and seniority dates',
-    'laptop-onboarding': 'Onboarding on a laptop: new staff with their HR, supervisor and employee checklists and how far along each one is',
+    'laptop-onboarding': 'Onboarding on a laptop: each person’s HR, supervisor and employee checklists and how far along they are, with two people still in progress and one who can’t be scheduled yet',
+    'laptop-schedule': 'Schedule builder on a laptop: a week of lifeguard and swim instructor shifts at Lakeview Aquatic Centre, day by day, with each person’s name on their shift; the first days published, the rest drafts with dashed borders, and two weekend shifts still open',
   },
   fr: {
     'phone-board': 'Tableau des quarts sur un téléphone : quarts libres de sauveteur et de moniteur de natation au Lakeview Aquatic Centre, chacun avec un bouton Prendre ce quart',
@@ -34,7 +35,8 @@ const ALT: Record<Lang, Record<ScreenName, string>> = {
     'laptop-orgchart': 'Organigramme sur un ordinateur portable : qui relève de qui, filtré par service, avec le poste de chacun',
     'laptop-coverage': 'Couverture requise sur un ordinateur portable : trous des 7 prochains jours où l’horaire publié compte moins de sauveteurs certifiés que la règle n’en exige',
     'laptop-overtime': 'Heures supplémentaires sur un ordinateur portable : à qui les offrir ensuite, dans l’ordre de la convention collective, avec les heures imputées et les dates d’ancienneté',
-    'laptop-onboarding': 'Intégration sur un ordinateur portable : nouveaux employés avec leurs listes RH, superviseur et employé, et l’avancement de chacune',
+    'laptop-onboarding': 'Intégration sur un ordinateur portable : les listes RH, superviseur et employé de chaque personne et leur avancement, avec deux personnes encore en cours et une qui ne peut pas encore être à l’horaire',
+    'laptop-schedule': 'Création d’horaires sur un ordinateur portable : une semaine de quarts de sauveteur et de moniteur de natation au Lakeview Aquatic Centre, jour par jour, avec le nom de chaque personne sur son quart; les premiers jours publiés, les autres en brouillon aux bordures pointillées, et deux quarts de fin de semaine encore libres',
   },
 };
 
@@ -49,7 +51,9 @@ const CAPTIONS = {
     staffTitle: 'For the people on shift',
     staffBody: 'Give away or trade a shift, ask for time off against your balances, and read your pay statements, from any phone.',
     supTitle: 'For supervisors',
-    supBody: 'Required coverage lists the next seven days where the published schedule doesn’t have enough people holding a valid, verified certificate.',
+    supBody: 'Build the week by hand, dragging people onto shifts, or let Fill the schedule propose it. Every assignment follows the same rules as the shift board, and staff see nothing until you publish.',
+    buildTitle: 'The schedule builder',
+    buildBody: 'A month, a week or a single day, with each person’s hours in the people list. Drag someone onto a shift, or let Fill the schedule propose the open ones with a reason for each pick. Drafts stay drafts until you publish.',
     hrTitle: 'For HR',
     hrBody: 'Each person’s case file keeps dated facts in one timeline, with a reliability score that shows how it was reached.',
     whyTitle: 'One app, at the desk and on the deck',
@@ -69,7 +73,9 @@ const CAPTIONS = {
     staffTitle: 'Pour les personnes en service',
     staffBody: 'Céder ou échanger un quart, demander un congé selon ses soldes et consulter ses relevés de paie, sur n’importe quel téléphone.',
     supTitle: 'Pour la supervision',
-    supBody: 'La couverture requise liste les sept prochains jours où l’horaire publié n’a pas assez de personnes détenant un certificat valide et vérifié.',
+    supBody: 'Bâtissez la semaine à la main en glissant des personnes sur les quarts, ou laissez Remplir l’horaire la proposer. Chaque affectation suit les mêmes règles que le tableau des quarts, et le personnel ne voit rien avant la publication.',
+    buildTitle: 'La création d’horaires',
+    buildBody: 'Un mois, une semaine ou une seule journée, avec les heures de chacun dans la liste des personnes. Glissez une personne sur un quart, ou laissez Remplir l’horaire proposer les quarts libres, avec une raison pour chaque choix. Les brouillons restent des brouillons jusqu’à la publication.',
     hrTitle: 'Pour les RH',
     hrBody: 'Le dossier de chaque personne garde les faits datés sur une seule ligne du temps, avec un score de fiabilité qui montre comment il a été obtenu.',
     whyTitle: 'Une seule appli, au bureau comme au bord du bassin',

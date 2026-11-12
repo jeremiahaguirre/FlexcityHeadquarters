@@ -24,8 +24,8 @@ const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null;
 const NOW = new Date('2026-11-10T22:10:00Z');
 
 const T = {
-  en: { plus: 'One more', calendar: 'Add my shifts to my phone’s calendar' },
-  fr: { plus: 'Un de plus', calendar: 'Ajouter mes quarts à l’agenda de mon téléphone' },
+  en: { plus: 'One more', calendar: 'Add my shifts to my phone’s calendar', week: 'Week', hidePeople: 'Hide the people list', everyone: 'Everyone' },
+  fr: { plus: 'Un de plus', calendar: 'Ajouter mes quarts à l’agenda de mon téléphone', week: 'Semaine', hidePeople: 'Masquer la liste des personnes', everyone: 'Tout le monde' },
 };
 
 const PHONE = { width: 390, height: 844 };
@@ -58,7 +58,23 @@ const SHOTS = {
   'laptop-orgchart': ['HR_ADMIN', LAPTOP, async (p) => go(p, '/manage/org-chart/')],
   'laptop-coverage': ['AQUATIC_SUPERVISOR', LAPTOP, async (p) => go(p, '/manage/coverage/')],
   'laptop-overtime': ['AQUATIC_SUPERVISOR', LAPTOP, async (p) => go(p, '/manage/overtime/')],
-  'laptop-onboarding': ['HR_ADMIN', LAPTOP, async (p) => go(p, '/manage/onboarding/')],
+  // Everyone, not just who needs action: most are done, two are part-way.
+  'laptop-onboarding': ['HR_ADMIN', LAPTOP, async (p, t) => {
+    await go(p, '/manage/onboarding/');
+    await p.getByRole('radio', { name: t.everyone, exact: true }).click();
+    await p.waitForTimeout(800);
+  }],
+  // The week view on the day the demo's sample week was recorded (SCHEDULE_NOW), so the shifts fall
+  // on the weekdays they were planned for. The people list is folded away so the whole week fits.
+  'laptop-schedule': ['AQUATIC_SUPERVISOR', LAPTOP, async (p, t) => {
+    await go(p, '/manage/schedule/');
+    const week = p.getByRole('radio', { name: t.week, exact: true });
+    await week.click();
+    await p.locator('section [data-drop^="shift|"]').first().waitFor({ state: 'attached' });
+    await p.getByRole('button', { name: t.hidePeople }).click();
+    await p.waitForTimeout(1500);
+    await week.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 115));
+  }, new Date(process.env.SCHEDULE_NOW ?? '2026-11-11T22:10:00Z')],
 };
 
 async function go(p, path) {
@@ -69,7 +85,7 @@ async function go(p, path) {
 
 (async () => {
   const b = await chromium.launch();
-  for (const [name, [role, vp, stage]] of Object.entries(SHOTS)) {
+  for (const [name, [role, vp, stage, time]] of Object.entries(SHOTS)) {
     if (ONLY && !ONLY.includes(name)) continue;
     for (const lang of ['en', 'fr']) for (const scheme of ['light', 'dark']) {
       const ctx = await b.newContext({ viewport: vp, deviceScaleFactor: 2, colorScheme: scheme, reducedMotion: 'reduce', serviceWorkers: 'block', timezoneId: vp === PHONE ? 'America/Edmonton' : 'America/Vancouver', locale: lang === 'fr' ? 'fr-CA' : 'en-CA' });
@@ -80,7 +96,7 @@ async function go(p, path) {
         document.head.appendChild(st);
       }));
       const p = await ctx.newPage();
-      await p.clock.install({ time: NOW });
+      await p.clock.install({ time: time ?? NOW });
       await p.goto(`${BASE}/login/?as=${role}&lang=${lang}`);
       await p.waitForURL((u) => !u.pathname.includes('/login'));
       await p.waitForTimeout(1000);

@@ -1,6 +1,6 @@
 import { ArrowRight, Check, MapPin } from 'lucide-react';
 import Link from 'next/link';
-import { DeviceDuo, Laptop, PhoneRow } from '@/components/Device';
+import { DeviceDuo, Laptop, PhoneRow, ShowRow } from '@/components/Device';
 import { PageHero } from '@/components/PageHero';
 import { Icon } from '@/components/Icon';
 import { reveal } from '@/lib/reveal';
@@ -8,6 +8,7 @@ import { DepartmentTabs } from '@/components/DepartmentTabs';
 import { BoardMock, LoneMock, PayrollMock, SlideMock } from '@/components/Mock';
 import { Kicker, Section, SectionHead } from '@/components/Section';
 import { type Lang, copy } from '@/content/copy';
+import { captions } from '@/content/screens';
 import { pageMeta } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
 import { btnPrimary, btnSecondary } from '@/lib/buttons';
@@ -147,6 +148,10 @@ export default async function Product(props: { params: Promise<{ lang: Lang }> }
               <p className="mt-2 text-small leading-6 text-muted">{f.body}</p>
             </article>
           ))}
+        </div>
+        {/* The schedule builder, as it looks with a real week in it */}
+        <div className="mt-16">
+          <ShowRow title={captions(params.lang).buildTitle} body={captions(params.lang).buildBody} visual={<Laptop name="laptop-schedule" lang={params.lang} className="mx-auto max-w-[40rem]" />} />
         </div>
         {/* The everyday details: smaller features, grouped, kept compact */}
         <div className="mt-16" {...reveal()}>

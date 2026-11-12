@@ -94,7 +94,7 @@ export default async function Home(props: { params: Promise<{ lang: Lang }> }) {
         <SectionHead n="02" eyebrow={sc.showKicker} title={sc.showTitle} lead={sc.showLead} />
         <div className="grid gap-20 md:gap-28">
           <ShowRow title={sc.staffTitle} body={sc.staffBody} visual={<PhoneRow names={['phone-schedule', 'phone-timeoff', 'phone-pay']} lang={params.lang} />} />
-          <ShowRow flip title={sc.supTitle} body={sc.supBody} visual={<Laptop name="laptop-coverage" lang={params.lang} className="mx-auto max-w-[40rem]" />} />
+          <ShowRow flip title={sc.supTitle} body={sc.supBody} visual={<Laptop name="laptop-schedule" lang={params.lang} className="mx-auto max-w-[40rem]" />} />
           <ShowRow title={sc.hrTitle} body={sc.hrBody} visual={<Laptop name="laptop-casefile" lang={params.lang} className="mx-auto max-w-[40rem]" />} />
         </div>
       </Section>
