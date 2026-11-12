@@ -29,6 +29,7 @@ import { kioskRouter } from './routes/kiosk.js';
 import { captureError } from './lib/errorReporter.js';
 import { metricsMiddleware, routePattern, startProcessMetrics } from './lib/metrics.js';
 import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
+import { ipRateLimit } from './lib/ipRateLimit.js';
 import { clientErrorsRouter, opsRouter } from './routes/observability.js';
 import { publicApiRouter } from './routes/publicApi.js';
 
@@ -41,6 +42,8 @@ export function createApp() {
   // First: every request gets an id (X-Request-Id, in every log line and error body) and is counted.
   app.use(requestIdMiddleware, metricsMiddleware);
   app.use(securityHeaders);
+  // Per-address token bucket (lib/ipRateLimit.ts); AWS WAF does the fleet-wide limit in front.
+  app.use(ipRateLimit());
   // gzip/brotli for answers over 1 KB. The live notification stream (text/event-stream) is left
   // alone: compressing it would buffer events instead of sending them as they happen.
   app.use(compression({ filter: (req, res) => !String(res.getHeader('Content-Type') ?? '').includes('text/event-stream') && compression.filter(req, res) }));

@@ -7,6 +7,7 @@
  * person is still active and the organization open), read through the main database's app role,
  * which in turn can't read the union schema. FH support visits are refused here as in the main app.
  */
+import { ipRateLimit } from './lib/ipRateLimit.js';
 import express from 'express';
 import { errorHandler, securityHeaders } from './app.js';
 import { requireAuth } from './auth/middleware.js';
@@ -22,6 +23,7 @@ export function createUnionApp() {
   installLogContext();
   app.use(requestIdMiddleware);
   app.use(securityHeaders);
+  app.use(ipRateLimit());
   app.use(express.json({ limit: '100kb' }));
   app.get('/healthz', (_req, res) => res.json({ ok: true, service: 'union-hub' }));
   // Nothing but the hub: any other path is not here.

@@ -104,6 +104,13 @@ export const smsQueueToSent = new Histogram('fh_sms_queue_to_sent_seconds', 'Tim
 export const smsSends = new Counter('fh_sms_sends_total', 'Text and call delivery attempts, by priority and outcome (sent, retry, gave_up).');
 export const safetySmsOverdueAlerts = new Counter('fh_safety_sms_overdue_alerts_total', 'Alerts raised because a safety text or call was still unsent after SAFETY_SMS_ALERT_S.');
 export const dbSlowQueries = new Counter('fh_db_slow_queries_total', 'Database queries slower than SLOW_QUERY_MS.');
+/** Brute-force defences (auth/bruteForce.ts, lib/ipRateLimit.ts). Labels are fixed words, never an address or an account. */
+export const authFailures = new Counter('fh_auth_failures_total', 'Refused sign-ins, by surface (org, platform) and reason (invalid, locked, blocked_ip, rate_limited).');
+export const authLockouts = new Counter('fh_auth_lockouts_total', 'Accounts locked after repeated wrong passwords, by surface (org, platform).');
+export const authIpBlocks = new Counter('fh_auth_ip_blocks_total', 'Addresses blocked from signing in after failing on many different accounts, by surface (org, platform).');
+export const kioskPinLocks = new Counter('fh_kiosk_pin_locks_total', 'Kiosk PIN locks, by scope (employee, tablet).');
+export const apiKeyAuthFailures = new Counter('fh_api_key_auth_failures_total', 'Public API requests refused for a missing, unknown, revoked or expired key, or blocked after too many of those.');
+export const rateLimited = new Counter('fh_rate_limited_total', 'Requests refused by a rate limit, by layer (global_anon, global_auth, global_failures, api_key).');
 export const dbQueryDuration = new Histogram('fh_db_query_duration_seconds', 'Time the database took per query (Prisma).', [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]);
 
 let loopDelay: IntervalHistogram | undefined;
@@ -144,7 +151,7 @@ function processGauges(): Gauge[] {
 
 /** Everything, in Prometheus text format. `extra` are gauges read at scrape time (the outbox backlog). */
 export function renderMetrics(extra: Gauge[] = []): string {
-  return [httpRequests.render(), httpDuration.render(), errorsTotal.render(), publicApiRequests.render(), webhookDeliveries.render(), weatherFetches.render(), smsQueueToSent.render(), smsSends.render(), safetySmsOverdueAlerts.render(), dbQueryDuration.render(), dbSlowQueries.render(), ...processGauges().map(renderGauge), ...extra.map(renderGauge)].join('\n\n') + '\n';
+  return [httpRequests.render(), httpDuration.render(), errorsTotal.render(), publicApiRequests.render(), webhookDeliveries.render(), weatherFetches.render(), smsQueueToSent.render(), smsSends.render(), safetySmsOverdueAlerts.render(), dbQueryDuration.render(), dbSlowQueries.render(), authFailures.render(), authLockouts.render(), authIpBlocks.render(), kioskPinLocks.render(), apiKeyAuthFailures.render(), rateLimited.render(), ...processGauges().map(renderGauge), ...extra.map(renderGauge)].join('\n\n') + '\n';
 }
 
 const pathText = (p: unknown) => (Array.isArray(p) ? p.map(String).join('|') : String(p));
