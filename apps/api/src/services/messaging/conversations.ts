@@ -435,14 +435,23 @@ async function sendable(tx: Tx, a: AuthContext, conversationId: string) {
   return { ctx, conv, rows, people };
 }
 
+/**
+ * The per-person send limits, checked before the send's transaction opens (the route calls this
+ * first). Under load, checking them inside it held the transaction's connection while each check
+ * waited for a second one from the same pool (the shared limiter runs its own transaction), and
+ * a busy pool then refused sends outright.
+ */
+export async function sendLimits(userId: string, withFile: boolean) {
+  await limit('send', userId, SLOW_DOWN);
+  await limit('sendDay', userId, 'You’ve reached today’s limit for messages. Try again tomorrow.');
+  if (withFile) await limit('file', userId, 'You’ve sent a lot of files. Try again in an hour.');
+}
+
 export async function sendMessage(tx: Tx, a: AuthContext, conversationId: string, text: string, file?: Attachment) {
   const body = text.trim();
   if (!body && !file) throw badRequest('Write a message or attach a file.');
   if (body.length > MAX_TEXT) throw badRequest(`Messages can be up to ${MAX_TEXT} characters.`);
   const { conv, rows, people } = await sendable(tx, a, conversationId);
-  await limit('send', a.userId, SLOW_DOWN);
-  await limit('sendDay', a.userId, 'You’ve reached today’s limit for messages. Try again tomorrow.');
-  if (file) await limit('file', a.userId, 'You’ve sent a lot of files. Try again in an hour.');
   let bytes: Buffer | null = null;
   let type: ReturnType<typeof sniff> = null;
   if (file) {

@@ -2,7 +2,8 @@
  * The changes the messaging and survey load run led to (test/load/comms.ts, docs/SCALABILITY.md):
  * notifications written in batches with one live signal each; a read receipt tells the other
  * members 'receipts', not 'messages'; a survey answer's group worked out from the people who could
- * share it, still counting only those who were asked.
+ * share it, still counting only those who were asked; the per-person send limits checked before
+ * the send's transaction (not inside it, where the shared limiter needed a second connection).
  */
 import { randomBytes } from 'node:crypto';
 import pg from 'pg';
@@ -120,5 +121,24 @@ describe('survey answers keep their group only when enough of it was asked', () 
     for (const who of ['b0', 'b1', 's0', 's1']) expect((await as(who).post(`/api/me/surveys/${s.body.id}/answers`, { answers: { mood: 4 } })).status).toBe(201);
     const stored = await owner.surveyResponse.findMany({ where: { surveyId: s.body.id }, select: { departmentId: true } });
     expect(stored.map((r) => r.departmentId).sort()).toEqual([id.big, id.big, null, null].sort());
+  });
+});
+
+describe('send limits with the shared (database) limiter', () => {
+  it('30 a minute per person still holds when checked before the transaction', async () => {
+    const before = process.env.RATE_LIMIT_STORE;
+    process.env.RATE_LIMIT_STORE = 'database';
+    try {
+      await owner.rateLimitHit.deleteMany({ where: { key: { startsWith: `msg-send:${id.b2}` } } });
+      const c = await as('b2').post('/api/messages/department', { departmentId: id.big });
+      const statuses: number[] = [];
+      for (let i = 0; i < 31; i++) statuses.push((await as('b2').post(`/api/messages/conversations/${c.body.id}/messages`, { text: `m${i}` })).status);
+      expect(statuses.slice(0, 30).every((x) => x === 201)).toBe(true);
+      expect(statuses[30]).toBe(429);
+      expect(await owner.rateLimitHit.count({ where: { key: `msg-send:${id.b2}` } })).toBe(30);
+    } finally {
+      if (before === undefined) delete process.env.RATE_LIMIT_STORE;
+      else process.env.RATE_LIMIT_STORE = before;
+    }
   });
 });

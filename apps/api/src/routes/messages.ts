@@ -28,6 +28,7 @@ import {
   removeMember,
   removeMessage,
   reportMessage,
+  sendLimits,
   sendMessage,
   setMuted,
   unreadTotal,
@@ -134,6 +135,7 @@ messagesRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const b = z.object({ text: z.string().max(MAX_TEXT + 200).default(''), attachment: attachment.optional() }).parse(req.body);
+    await sendLimits(a.userId, !!b.attachment);
     res.status(201).json(await inMessaging(a, (tx) => sendMessage(tx, a, id, b.text, b.attachment)));
   }),
 );
