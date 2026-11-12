@@ -93,18 +93,29 @@ export interface PublicGetOptions extends EgressOptions {
   headers?: Record<string, string>;
 }
 
+export interface PublicRequestOptions extends PublicGetOptions {
+  method?: 'GET' | 'POST';
+  body?: string;
+}
+
 /**
  * GET from a public https address: the name is checked first (publicAddress) and the connection
  * goes to the checked address, so a DNS answer can't be swapped in between. Redirects aren't
  * followed. Rejects on a timeout, a network error or an answer over `maxBytes`.
  */
 export async function publicGet(url: string, what: string, opts: PublicGetOptions = {}): Promise<GetResult> {
+  return publicRequest(url, what, opts);
+}
+
+/** publicGet, for any method (e.g. a POST of a form to a sign-in provider's token endpoint). */
+export async function publicRequest(url: string, what: string, opts: PublicRequestOptions = {}): Promise<GetResult> {
   const address = await assertPublicUrl(url, what, opts);
   const u = new URL(url);
   const secure = u.protocol === 'https:';
   const host = u.hostname.replace(/^\[|\]$/g, '');
   const timeoutMs = opts.timeoutMs ?? 10_000;
   const maxBytes = opts.maxBytes ?? 2_000_000;
+  const body = opts.body === undefined ? undefined : Buffer.from(opts.body);
   return new Promise<GetResult>((resolve, reject) => {
     let done = false;
     const fail = (e: Error) => {
@@ -118,9 +129,9 @@ export async function publicGet(url: string, what: string, opts: PublicGetOption
         host: address,
         port: u.port || (secure ? 443 : 80),
         path: `${u.pathname}${u.search}`,
-        method: 'GET',
+        method: opts.method ?? 'GET',
         ...(secure && !isIP(host) ? { servername: host } : {}),
-        headers: { accept: 'application/json', 'user-agent': 'FlexcityHeadquarters/1.0', ...opts.headers, host: u.host },
+        headers: { accept: 'application/json', 'user-agent': 'FlexcityHeadquarters/1.0', ...opts.headers, ...(body ? { 'content-length': String(body.length) } : {}), host: u.host },
         agent: false,
       },
       (res) => {
@@ -149,6 +160,6 @@ export async function publicGet(url: string, what: string, opts: PublicGetOption
       fail(new Error(`${what}: no answer within ${Math.round(timeoutMs / 1000)} s`));
     }, timeoutMs);
     req.on('error', (e) => fail(e));
-    req.end();
+    req.end(body);
   });
 }

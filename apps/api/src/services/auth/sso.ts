@@ -16,12 +16,12 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { SAML, ValidateInResponseTo, type CacheProvider, type Profile } from '@node-saml/node-saml';
 import type { SsoConnection } from '@prisma/client';
-import { createRemoteJWKSet, jwtVerify, SignJWT } from 'jose';
+import { createLocalJWKSet, jwtVerify, SignJWT, type JSONWebKeySet } from 'jose';
 import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import { config } from '../../config.js';
 import { audit, withTenant, type Tx } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';
-import { assertPublicUrl } from '../../lib/egress.js';
+import { assertPublicUrl, publicRequest } from '../../lib/egress.js';
 import { safeNext } from '../../lib/safeNext.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
@@ -99,7 +99,37 @@ export const stateCookieOpts = (p: State['p']) => ({
 
 interface Discovery { issuer: string; authorization_endpoint: string; token_endpoint: string; jwks_uri: string }
 const discoveries = new Map<string, { at: number; doc: Discovery }>();
-const jwks = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+const jwks = new Map<string, { at: number; set: ReturnType<typeof createLocalJWKSet> }>();
+const JWKS_TTL_MS = 10 * 60_000;
+/** A key the cached set doesn't have (the provider rotated): fetch again, but not more often than this. */
+const JWKS_REFRESH_MS = 30_000;
+
+/**
+ * Every call to the provider (discovery, token, keys) goes through lib/egress.ts publicRequest: the
+ * name is resolved and checked once and the connection goes to that checked address, so a DNS
+ * answer that changes between the check and the call (DNS rebinding) can't reach FH's own network.
+ */
+const providerCall = (url: string, init: { method?: 'GET' | 'POST'; body?: string; headers?: Record<string, string> } = {}) =>
+  publicRequest(url, 'The sign-in service', { ...init, timeoutMs: 8000, maxBytes: 1_000_000 }).catch(() => null);
+const json = (body: string): unknown => {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return {};
+  }
+};
+
+async function keySet(uri: string, force = false) {
+  const hit = jwks.get(uri);
+  if (hit && Date.now() - hit.at < (force ? JWKS_REFRESH_MS : JWKS_TTL_MS)) return hit.set;
+  const res = await providerCall(uri);
+  if (!res || res.status !== 200) throw new SsoError('SSO_PROVIDER_UNREACHABLE');
+  const doc = json(res.body) as JSONWebKeySet;
+  if (!doc || !Array.isArray(doc.keys)) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
+  const set = createLocalJWKSet(doc);
+  jwks.set(uri, { at: Date.now(), set });
+  return set;
+}
 
 export async function checkIssuerHost(issuer: string) {
   await assertPublicUrl(issuer, 'The issuer');
@@ -126,9 +156,9 @@ async function discover(issuer: string): Promise<Discovery> {
   // Only public servers, no redirects: the issuer and the addresses it lists are typed in by a city.
   const safe = async (u: string) => assertPublicUrl(u, 'The sign-in service').then(() => true, () => false);
   if (!(await safe(issuer))) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
-  const res = await fetch(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`, { redirect: 'error', signal: AbortSignal.timeout(8000) }).catch(() => null);
-  if (!res?.ok) throw new SsoError('SSO_PROVIDER_UNREACHABLE');
-  const doc = (await res.json().catch(() => ({}))) as Discovery;
+  const res = await providerCall(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`);
+  if (!res || res.status !== 200) throw new SsoError('SSO_PROVIDER_UNREACHABLE');
+  const doc = json(res.body) as Discovery;
   if (doc.issuer !== issuer || !doc.authorization_endpoint || !doc.token_endpoint || !doc.jwks_uri) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
   if (!(await safe(doc.token_endpoint)) || !(await safe(doc.jwks_uri))) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
   discoveries.set(issuer, { at: Date.now(), doc });
@@ -167,18 +197,26 @@ async function oidcFinish(c: SsoConnection, sub: string, st: State, query: Recor
     code_verifier: st.verifier!,
     ...(c.oidcSecret ? { client_secret: await openClientSecret(c.tenantId, c.oidcSecret as unknown as Sealed) } : {}),
   });
-  const res = await fetch(doc.token_endpoint, { method: 'POST', redirect: 'error', body, headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' }, signal: AbortSignal.timeout(8000) }).catch(() => null);
-  if (!res?.ok) throw new SsoError('SSO_TOKEN_REFUSED');
-  const { id_token } = (await res.json()) as { id_token?: string };
-  if (!id_token) throw new SsoError('SSO_TOKEN_REFUSED');
-  if (!jwks.has(doc.jwks_uri)) jwks.set(doc.jwks_uri, createRemoteJWKSet(new URL(doc.jwks_uri)));
+  const res = await providerCall(doc.token_endpoint, { method: 'POST', body: body.toString(), headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' } });
+  if (!res || res.status < 200 || res.status >= 300) throw new SsoError('SSO_TOKEN_REFUSED');
+  const { id_token } = json(res.body) as { id_token?: unknown };
+  if (typeof id_token !== 'string') throw new SsoError('SSO_TOKEN_REFUSED');
+  const verify = async (force: boolean) => (await jwtVerify(id_token, await keySet(doc.jwks_uri, force), { issuer: c.oidcIssuer!, audience: c.oidcClientId!, clockTolerance: 60 })).payload;
   let claims: Record<string, unknown>;
   try {
-    ({ payload: claims } = await jwtVerify(id_token, jwks.get(doc.jwks_uri)!, { issuer: c.oidcIssuer!, audience: c.oidcClientId!, clockTolerance: 60 }));
-  } catch {
+    claims = await verify(false).catch(async (e: unknown) => {
+      // A key we don't have yet: the provider may have rotated its keys.
+      if ((e as { code?: unknown })?.code === 'ERR_JWKS_NO_MATCHING_KEY') return verify(true);
+      throw e;
+    });
+  } catch (e) {
+    if (e instanceof SsoError) throw e;
     throw new SsoError('SSO_TOKEN_INVALID');
   }
   if (claims.nonce !== st.nonce) throw new SsoError('SSO_TOKEN_INVALID');
+  // An address the provider itself says isn't verified never links to an account here (someone
+  // could have typed a colleague's address into their own profile at the provider).
+  if (claims.email_verified === false || claims.email_verified === 'false') throw new SsoError('SSO_EMAIL_UNVERIFIED');
   // Entra puts the address in email, preferred_username or upn depending on the directory.
   const email = [claims.email, claims.preferred_username, claims.upn].find((x): x is string => typeof x === 'string' && x.includes('@'));
   const amr = Array.isArray(claims.amr) ? (claims.amr as unknown[]) : [];

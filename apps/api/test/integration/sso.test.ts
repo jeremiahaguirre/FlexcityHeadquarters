@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { inflateRawSync } from 'node:zlib';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { SignedXml } from 'xml-crypto';
 import { createApp } from '../../src/app.js';
 import { hashPassword, signAccessToken, verifyAccessToken } from '../../src/auth/tokens.js';
@@ -148,6 +148,22 @@ describe('OpenID Connect (Microsoft Entra ID)', () => {
     expect(await go('/manage/payroll')).toBe('/manage/payroll');
     expect(await go('//evil.example')).toBeNull();
     expect(await go('https://evil.example')).toBeNull();
+    expect(await go('/\\evil.example')).toBeNull();
+    expect(await go('/\t/evil.example')).toBeNull();
+  });
+
+  it('talks to the provider only over the checked, pinned connection (never the global fetch)', async () => {
+    const fake = vi.fn(async () => {
+      throw new Error('global fetch used');
+    });
+    vi.stubGlobal('fetch', fake);
+    try {
+      const { location } = await oidcRound({ email: staffEmail });
+      expect(location.searchParams.get('code')).toBeTruthy();
+      expect(fake).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('the provider’s MFA counts when it says so', async () => {
@@ -175,6 +191,8 @@ describe('OpenID Connect (Microsoft Entra ID)', () => {
     const reason = async (claims: Record<string, unknown>) => (await oidcRound(claims)).location.searchParams.get('sso');
     expect(await reason({ email: `nobody@${SUB}.test` })).toBe('SSO_NO_ACCOUNT');
     expect(await reason({ email: 'guard0@elsewhere.ca' })).toBe('SSO_DOMAIN');
+    // An address the provider says isn't verified never links an account.
+    expect(await reason({ email: staffEmail, email_verified: false })).toBe('SSO_EMAIL_UNVERIFIED');
     expect(await reason({ email: staffEmail, sub: 'a-different-person' })).toBe('SSO_SUBJECT_CHANGED');
     const refused = await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.sso.refused' } });
     expect(refused).toBeGreaterThanOrEqual(2);
