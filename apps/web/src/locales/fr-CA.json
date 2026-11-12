@@ -42,7 +42,8 @@
       "SSO_DOMAIN": "Le domaine courriel de ce compte n’est pas autorisé ici.",
       "SSO_NO_ACCOUNT": "Aucun compte actif ici pour ce courriel. Demandez aux RH de vous ajouter.",
       "SSO_SUBJECT_CHANGED": "Ce compte est lié à un autre compte d’annuaire. Communiquez avec les RH.",
-      "LINK_EXPIRED": "Cette connexion a expiré. Réessayez."
+      "LINK_EXPIRED": "Cette connexion a expiré. Réessayez.",
+      "SSO_EMAIL_UNVERIFIED": "Le service de connexion de votre organisation indique que cette adresse courriel n’est pas vérifiée : elle ne peut pas servir à vous connecter ici. Adressez-vous à votre équipe informatique."
     },
     "closedExport": "Le compte de cette organisation est fermé. Les administrateurs peuvent encore se connecter pour télécharger ses données jusqu’au {{date}}.",
     "closedNoAccess": "Le compte de cette organisation est fermé. Communiquez avec votre administrateur ou FlexcityHeadquarters."
@@ -5181,7 +5182,7 @@
     "label": "Nom du bouton",
     "labelHint": "Affiché comme « Se connecter avec … »",
     "domains": "Domaines courriel autorisés",
-    "domainsHint": "Séparés par des virgules. Laissez vide pour tout autoriser.",
+    "domainsHint": "Séparés par des virgules, p. ex. kelowna.ca. Fortement recommandé : seuls les comptes de ces domaines peuvent se connecter par authentification unique. Ne laissez vide que si votre annuaire ne contient que votre propre personnel.",
     "step3": "3. Activez-la",
     "enabled": "Activer l’authentification unique",
     "enabledHint": "Ajoute le bouton à la page de connexion.",

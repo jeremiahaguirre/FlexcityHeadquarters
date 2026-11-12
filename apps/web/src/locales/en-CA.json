@@ -42,7 +42,8 @@
       "SSO_DOMAIN": "That account’s email domain isn’t allowed here.",
       "SSO_NO_ACCOUNT": "There’s no active account here for that email. Ask HR to add you.",
       "SSO_SUBJECT_CHANGED": "This account is linked to a different directory account. Ask HR for help.",
-      "LINK_EXPIRED": "This sign-in has expired. Try again."
+      "LINK_EXPIRED": "This sign-in has expired. Try again.",
+      "SSO_EMAIL_UNVERIFIED": "Your organization’s sign-in service says that email address isn’t verified, so it can’t be used to sign in here. Ask your IT team."
     },
     "closedExport": "This organization’s account is closed. Administrators can still sign in to download its data until {{date}}.",
     "closedNoAccess": "This organization’s account is closed. Contact your administrator or FlexcityHeadquarters."
@@ -5181,7 +5182,7 @@
     "label": "Button name",
     "labelHint": "Shown as “Sign in with …”",
     "domains": "Allowed email domains",
-    "domainsHint": "Comma-separated. Leave empty to allow any.",
+    "domainsHint": "Comma-separated, e.g. kelowna.ca. Strongly recommended: only accounts at these domains can sign in with single sign-on. Leave empty only if your directory holds nothing but your own staff.",
     "step3": "3. Turn it on",
     "enabled": "Turn on single sign-on",
     "enabledHint": "Adds the button to the sign-in page.",
