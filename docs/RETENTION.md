@@ -11,6 +11,7 @@ with their records retention by-law.
 | Time punches | With payroll records | Anonymized with the person | Clock-in never stores coordinates or IP |
 | Attendance events (late clock-ins, missed shifts, excuses) | With the employee file | Anonymized with the person | The attendance score only looks back 90 days (or to the yearly restart HR sets); older events stop counting but are never deleted for it |
 | In-app notifications | 2 years (*set by the city*) | Deleted | Hourly job |
+| What’s new read marks (which FH note a person saw, and when) | As long as in-app notifications (2 years, *set by the city*) | Deleted | Hourly job; the notes themselves are FH’s, not personal data |
 | Email log (address, kind of email; never contents) | 90 days (*set by the city*) | Deleted | Hourly job; contents cleared as soon as an email is sent |
 | Texts and calls (number, kind of alert; contents only until sent) | Same period as the email log (*set by the city*) | Deleted | Hourly job; contents dropped as soon as a text or call is sent, or after 5 failed tries |
 | Mobile number for text alerts and sign-in codes by text | Until the person removes it from their profile | Removed | On request (also cancels texts not yet sent); removed when the person is anonymized |

@@ -341,6 +341,26 @@ Until the current version is signed, `requireConsent` answers every API request 
 `428 CONSENT_REQUIRED` except reading and signing it, sign-in essentials, the data export and a
 working-alone call for help; the web app opens the agreement when it sees that.
 
+## App versions, What's new, releases and maintenance
+
+One deployment serves every organization, so a deploy reaches everyone at once. Each build has a version id
+(web: `<UTC build time>.<release>`, baked in and served at `/version.json`; API: `X-FH-Version` on every answer and
+`GET /api/version`). Open tabs notice a newer web build from a differing `X-FH-Version`, on returning to the
+foreground, after the live stream reconnects, and every 30 minutes (`lib/appUpdate.ts`), and offer "A new version is
+ready · Refresh" only while nothing is in progress (a punch being sent, an open dialog, unsaved typing tracked
+app-wide, queued offline punches or attendance, the kiosk mid-entry); they refresh by themselves when idle or hidden.
+`MIN_WEB_VERSION` makes the API answer older builds `426 CLIENT_OUTDATED` (`lib/version.ts`); offline punches stay
+queued and go out from the new build.
+
+The Dev console's **Updates** area holds What's new notes (`ReleaseNote`, FH's table: written only with no
+organization chosen; inside an organization's session Postgres shows only notes for it or for all — `fh_published` in
+`db/rls.sql`; per-person `ReleaseNoteRead` is tenant data), release rings and staged feature releases
+(`ReleaseRing`/`ReleaseRingMember`/`Release`/`ReleaseStage` are FH-only; each organization's `ReleaseChange` is
+readable by that organization; `Tenant.featureChoices` records switches chosen on purpose, which releases never
+change), and maintenance windows (`MaintenanceWindow`, read like notes). The worker announces notes when due, sends
+release notices and applies due stages (claimed once per organization), and sends maintenance notices; open
+screens update over the live channel (`updates` topic). Owner guide: [RELEASES.md](RELEASES.md).
+
 ## FH Dev console
 
 FH staff (`PlatformAdmin`) are not users of any organization. They sign in at the bare FH address with an opaque, revocable session in an HTTP-only, SameSite=Strict cookie scoped to `/api/platform`; every console request must also send `x-fh-platform: 1`. Organization tokens are refused there and console sessions are refused by organization routes. The console still reads and writes an organization's data only through `withTenant`, so row-level security applies. Every change is written to `PlatformAudit` and to the organization's own audit trail (`platform.*` actions, no user as actor).

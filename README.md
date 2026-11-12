@@ -138,6 +138,7 @@ On AWS (S3 + CloudFront) the same blocks are firewall rules in Terraform: see [o
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — tenancy, flows, events and the outbox, running several processes, health and metrics, the Union Hub service, the Dev console
+- [Releases, What’s new and maintenance](docs/RELEASES.md) — the "new version ready" prompt, MIN_WEB_VERSION, release notes, staged rollouts by ring, maintenance notices
 - [Compliance notes](docs/COMPLIANCE.md) — read before production use
 - [Payroll verification](docs/PAYROLL-VERIFICATION.md) — how FH checks each year's tax tables and the payroll maths
 - [Privacy impact assessment](docs/PIA.md), [electronic monitoring](docs/ELECTRONIC-MONITORING.md), [retention schedule](docs/RETENTION.md) and [subprocessors](docs/SUBPROCESSORS.md)

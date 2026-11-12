@@ -26,6 +26,7 @@
 
 ## Done
 
+- App updates: "new version ready" prompt that never interrupts (punches, dialogs, unsaved forms, offline queues, kiosk), idle auto-refresh and a minimum web version; What’s new notes from the Dev console (EN/FR, once per person); staged feature releases by release ring with advance notice to HR admins, the organization’s own choice always winning, and undo; maintenance notices with banners ([guide](RELEASES.md))
 - Shift bidding by seniority (only where seniority is on): rounds for shifts or season lines from a weekly template, rankings, awards in seniority order with a reason for every choice, manager review with reasoned overrides, union steward read-only view; unawarded shifts to the Shift Board; award order per organization and per round (one at a time in seniority order, or most senior first takes all their awards).
 - Team messaging: one to one, shift, department and group conversations sealed with the organization's key, read receipts, unread counts, edit and remove, files, mute, reports to HR and audited investigations, the rule of two for minors (with HR's audited adult confirmation for people without a birth date), live updates, retention and exports.
 - Staff surveys: anonymous pulse check-ins (participation kept apart from answers, minimum group with complementary suppression, results after closing, trend across repeats, CSV) and named exit surveys sent from the offboarding screen, with two reminders at most; a card on staff's Today screen when one is waiting.
