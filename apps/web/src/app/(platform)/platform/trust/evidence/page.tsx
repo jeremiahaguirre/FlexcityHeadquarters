@@ -1,7 +1,7 @@
 'use client';
 
 import { Download, FileCheck2, Plus } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { type JSX, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { trustDownload, useParam, usePeople, useTrustAccess } from '@/components/platform/trust/hooks';
 import { DataTable, Drawer, Facts, TrustTabs, errorText, useDate } from '@/components/platform/trust/ui';
