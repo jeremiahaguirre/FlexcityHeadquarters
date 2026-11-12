@@ -134,16 +134,18 @@ describe('rule of two (minors)', () => {
     id.mm = r.body.id;
     expect((await send('m1', id.mm!, 'hi')).status).toBe(201);
     await setSettings({ minorDirect: false });
-    expect((await send('m2', id.mm!, 'hello')).body.code).toBe('MINOR_RULE');
-    expect((await as('m2').get(`/api/messages/conversations/${id.mm}`)).body.readOnly).toBe('safeguarding');
+    // Refused as read-only, without saying why (only HR is told it's safeguarding); still recorded.
+    const blocked = await send('m2', id.mm!, 'hello');
+    expect(blocked.body).toMatchObject({ code: 'READ_ONLY', details: { reason: 'readOnly' } });
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'messages.blocked', entityId: id.mm } })).toBe(1);
+    expect((await as('m2').get(`/api/messages/conversations/${id.mm}`)).body.readOnly).toBe('readOnly');
     await setSettings({});
   });
 
-  it('the directory shows who can’t get one-to-one messages without saying why beyond safeguarding, and no ages', async () => {
+  it('the directory leaves out who can’t get one-to-one messages, with no flag, and no ages', async () => {
     const d = (await as('g0').get('/api/messages/people')).body;
-    const m1 = d.people.find((p: { id: string }) => p.id === id.m1);
-    expect(m1).toMatchObject({ direct: false, directBlocked: 'safeguarding' });
-    expect(JSON.stringify(d)).not.toMatch(/dateOfBirth|"age"/);
+    expect(d.people.find((p: { id: string }) => p.id === id.m1)).toBeUndefined();
+    expect(JSON.stringify(d)).not.toMatch(/dateOfBirth|"age"|safeguarding/);
   });
 
   it('turning of age lifts it; a birth-date correction that makes someone a minor makes the conversation read-only, kept', async () => {
@@ -153,9 +155,9 @@ describe('rule of two (minors)', () => {
     id.gm = r.body.id;
     expect((await send('g0', id.gm!, 'Welcome to the team!')).status).toBe(201);
     await owner.user.update({ where: { id: id.m1! }, data: { dateOfBirth: yearsAgo(16) } });
-    expect((await send('g0', id.gm!, 'one more')).body.code).toBe('MINOR_RULE');
+    expect((await send('g0', id.gm!, 'one more')).body.code).toBe('READ_ONLY');
     const c = (await as('m1').get(`/api/messages/conversations/${id.gm}`)).body;
-    expect(c.readOnly).toBe('safeguarding');
+    expect(c.readOnly).toBe('readOnly');
     expect(c.messages).toHaveLength(1);
   });
 
@@ -169,8 +171,8 @@ describe('rule of two (minors)', () => {
     // Adding a second minor keeps two adults: fine.
     expect((await as('sup').post(`/api/messages/conversations/${id.grp}/members`, { userIds: [id.m2] })).status).toBe(200);
     expect((await as('g0').del(`/api/messages/conversations/${id.grp}/members/me`)).status).toBe(200);
-    expect((await send('sup', id.grp!, 'See you at 9')).body.code).toBe('MINOR_RULE');
-    expect((await as('m1').get(`/api/messages/conversations/${id.grp}`)).body.readOnly).toBe('safeguarding');
+    expect((await send('sup', id.grp!, 'See you at 9')).body.code).toBe('READ_ONLY');
+    expect((await as('m1').get(`/api/messages/conversations/${id.grp}`)).body.readOnly).toBe('readOnly');
   });
 
   it('staff can’t make groups; a lead can only add people in their departments', async () => {
@@ -188,7 +190,7 @@ describe('messages', () => {
     await send('g1', c, 'Running 5 minutes late');
     expect(await unread()).toBe(before + 1);
     const n = await owner.notification.findFirstOrThrow({ where: forC });
-    expect(n.params).toEqual({ conversationId: c, from: 'g1 Test' }); // no text by default
+    expect(n.params).toEqual({ conversationId: c, messageId: expect.any(String), from: 'g1 Test' }); // never text
     await send('g1', c, 'Sorry!');
     expect(await owner.notification.count({ where: forC })).toBe(1); // one per conversation until read
     await as('sup').post(`/api/messages/conversations/${c}/read`);
@@ -206,7 +208,12 @@ describe('messages', () => {
     const c = (await direct('hr', 'g1')).body.id;
     await send('hr', c, 'Your benefits enrolment form is ready to sign in the app today.');
     const n = await owner.notification.findFirstOrThrow({ where: { userId: id.g1, type: 'message_new', params: { path: ['conversationId'], equals: c } } });
-    expect((n.params as { preview: string }).preview.length).toBeLessThanOrEqual(60);
+    expect(JSON.stringify(n.params)).not.toContain('benefits');
+    const { messagePreviews } = await import('../../src/services/messaging/conversations.js');
+    const inT = <T>(fn: (tx: never) => Promise<T>) => owner.$transaction(async (tx) => { await tx.$executeRawUnsafe(`SELECT set_config('app.tenant_id', '${t.tenant.id}', true)`); return fn(tx as never); });
+    const preview = (await inT((tx) => messagePreviews(tx, [n]))).get(n.id)!;
+    expect(preview.startsWith('Your benefits')).toBe(true);
+    expect(preview.length).toBeLessThanOrEqual(60);
     await setSettings({});
   });
 

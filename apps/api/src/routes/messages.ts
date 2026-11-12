@@ -258,13 +258,15 @@ messagesRouter.post(
   }),
 );
 
-messagesRouter.get(
+/** Looking up someone's conversations needs a reason, like opening one; it's recorded with the lookup. */
+messagesRouter.post(
   '/messages-admin/people/:id/conversations',
   requireFeature('messaging'),
   investigate,
   h(async (req, res) => {
     const a = authOf(req);
-    res.json(await inMessaging(a, (tx) => conversationsOf(tx, a, uuid.parse(req.params.id))));
+    const b = z.object({ reason: z.string().trim().min(10).max(1000) }).parse(req.body);
+    res.json(await inMessaging(a, (tx) => conversationsOf(tx, a, uuid.parse(req.params.id), b.reason)));
   }),
 );
 

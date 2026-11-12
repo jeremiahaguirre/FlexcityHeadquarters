@@ -11,6 +11,7 @@ import webpush from 'web-push';
 import { config } from '../../config.js';
 import type { Tx } from '../../lib/db.js';
 import { logError } from '../../lib/log.js';
+import { messagePreviews } from '../messaging/conversations.js';
 
 export function pushEnabled(): boolean {
   const c = config();
@@ -62,14 +63,18 @@ const GENERIC: Record<Lang, [string, string]> = { en: ['FlexcityHeadquarters', '
 /** Pushed with high urgency, first, and straight after the commit (services/notifications/urgent.ts). */
 export const URGENT = new Set(['lonework_help', 'lonework_escalated', 'lonework_overdue', 'lonework_check_in_now', 'callout_offer', 'closure_recommended']);
 
-export function pushPayload(n: Pick<Notification, 'id' | 'type' | 'link'> & { params?: unknown }, locale: string) {
+/**
+ * `preview`: for a "new message", its first words, made from the sealed message just now
+ * (services/messaging messagePreviews: only when the organization allows previews and the message
+ * is still there). Never read from the notification, which doesn't hold message text.
+ */
+export function pushPayload(n: Pick<Notification, 'id' | 'type' | 'link'> & { params?: unknown }, locale: string, preview?: string) {
   const lang: Lang = locale.startsWith('fr') ? 'fr' : 'en';
-  // Messages: who it's from; the first words only when the organization turned previews on (services/messaging).
   if (n.type === 'message_new') {
-    const p = (n.params ?? {}) as { from?: unknown; preview?: unknown };
+    const p = (n.params ?? {}) as { from?: unknown };
     const from = typeof p.from === 'string' && p.from ? p.from : null;
     const title = from ? (lang === 'fr' ? `Nouveau message de ${from}` : `New message from ${from}`) : lang === 'fr' ? 'Nouveau message' : 'New message';
-    return { id: n.id, title, body: typeof p.preview === 'string' ? p.preview : lang === 'fr' ? 'Touchez pour lire.' : 'Tap to read.', link: n.link ?? '/messages', urgent: false, tag: `msg-${String((n.params as { conversationId?: string } | null)?.conversationId ?? '').slice(0, 20)}` };
+    return { id: n.id, title, body: preview ? preview : lang === 'fr' ? 'Touchez pour lire.' : 'Tap to read.', link: n.link ?? '/messages', urgent: false, tag: `msg-${String((n.params as { conversationId?: string } | null)?.conversationId ?? '').slice(0, 20)}` };
   }
   const [title, body] = TEXT[n.type]?.[lang] ?? GENERIC[lang];
   return { id: n.id, title, body, link: n.link ?? '/', urgent: URGENT.has(n.type), tag: n.type };
@@ -104,11 +109,12 @@ export async function deliverPush(tx: Tx, now = new Date()): Promise<number> {
     tx.pushSubscription.findMany({ where: { userId: { in: userIds } } }),
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, locale: true, status: true } }),
   ]);
+  const previews = await messagePreviews(tx, due.filter((n) => subs.some((s) => s.userId === n.userId)));
   let sent = 0;
   for (const n of due) {
     const person = people.find((p) => p.id === n.userId);
     const devices = person?.status === 'ACTIVE' ? subs.filter((s) => s.userId === n.userId) : [];
-    for (const d of devices) sent += (await sendOne(tx, d, pushPayload(n, person!.locale))) ? 1 : 0;
+    for (const d of devices) sent += (await sendOne(tx, d, pushPayload(n, person!.locale, previews.get(n.id)))) ? 1 : 0;
     await tx.notification.update({ where: { id: n.id }, data: { pushedAt: now } });
   }
   return sent;

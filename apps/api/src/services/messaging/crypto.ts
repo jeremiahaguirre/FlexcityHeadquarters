@@ -33,7 +33,7 @@ export async function withConversationKey<T>(c: { wrappedKey: Buffer | Uint8Arra
   }
 }
 
-export const messageAad = (tenantId: string, conversationId: string, messageId: string, part: 'text' | 'original' | 'file') => `msg:${part}:${tenantId}:${conversationId}:${messageId}`;
+export const messageAad = (tenantId: string, conversationId: string, messageId: string, part: 'text' | 'original' | 'file' | 'name') => `msg:${part}:${tenantId}:${conversationId}:${messageId}`;
 
 export function sealWith(key: Buffer, data: string | Buffer, aad: string): SealedText {
   const iv = randomBytes(12);
