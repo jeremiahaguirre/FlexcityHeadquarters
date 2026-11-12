@@ -166,6 +166,8 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'surveys.respond',
     'surveys.manage',
     'seniority.read',
+    // Bid rounds organization-wide and the organization's bidding defaults (seniority basis, award order).
+    'bidding.manage',
     'tenant.configure',
     'positions.manage',
     'jobs.manage',
