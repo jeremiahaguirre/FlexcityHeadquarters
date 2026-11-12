@@ -49,7 +49,7 @@ export function SurveyNudge() {
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand-text"><ClipboardPen className="h-5 w-5" aria-hidden="true" /></span>
       <div className="grid min-w-0 flex-1 gap-1">
         <p id={`nudge-${s.id}`} className="text-body-strong text-ink">{t(s.from === 'manager' ? 'today.survey.fromManager' : 'today.survey.fromHr')}</p>
-        <p className="text-small text-muted [overflow-wrap:anywhere]">{s.title} · {t('today.survey.closes', { date: formatInstant(s.closesAt, i18n.language as 'en-CA') })}</p>
+        <p className="text-small text-muted [overflow-wrap:anywhere]">{s.title} · {t('today.survey.closes', { date: formatInstant(s.closesAt, i18n.language as 'en-CA', 'short') })}</p>
         <ButtonLink href={`/surveys?s=${s.id}`} size="sm" className="mt-1 justify-self-start">{t('today.survey.answer')}</ButtonLink>
       </div>
       <button type="button" onClick={hide} aria-label={t('today.survey.dismiss')} title={t('today.survey.dismiss')} className="-mr-2 -mt-2 grid h-11 w-11 shrink-0 place-items-center rounded-xl text-muted hover:bg-surface hover:text-ink">

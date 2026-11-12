@@ -75,7 +75,7 @@ export function OffboardingPanel() {
                     {o.checklist.map((i) => (
                       <li key={i.key}>
                         <label className="flex items-start gap-2 text-small">
-                          <input type="checkbox" checked={i.done} disabled={busy === `${o.id}-${i.key}`} onChange={(e) => void tick(o, i.key, e.target.checked)} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />
+                          <input type="checkbox" checked={i.done} disabled={busy === `${o.id}-${i.key}`} onChange={(e) => void tick(o, i.key, e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--brand))]" />
                           <span>{t(`offboarding.items.${i.key}`)}{i.key === 'exitInterview' ? <span className="text-muted"> ({t('offboarding.optional')})</span> : null}</span>
                         </label>
                       </li>

@@ -38,9 +38,9 @@ export function AdultConfirmation({ userId, name, hasBirthDate, value, onChanged
   };
   return (
     <div className="grid gap-2 rounded-xl border border-line bg-surface/60 p-3 sm:col-span-2">
-      <p className="flex flex-wrap items-center gap-2 text-small font-semibold text-ink">
-        <ShieldCheck className="h-4 w-4 shrink-0 text-brand-text" aria-hidden="true" />
-        {t('staff.adult.title')}
+      <p className="flex items-start gap-2 text-small font-semibold text-ink">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-text" aria-hidden="true" />
+        <span className="min-w-0 flex-1">{t('staff.adult.title')}</span>
         {value ? <StatusPill tone="ok">{t('staff.adult.confirmed')}</StatusPill> : null}
       </p>
       {value ? (
@@ -50,7 +50,7 @@ export function AdultConfirmation({ userId, name, hasBirthDate, value, onChanged
       )}
       {value && hasBirthDate ? <p className="text-caption text-muted">{t('staff.adult.dobWins')}</p> : null}
       {open ? (
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="grid gap-2">
           <Field label={t('staff.adult.note')} hint={t('staff.adult.noteHint')}>
             {(p) => (
               <Input
@@ -70,7 +70,7 @@ export function AdultConfirmation({ userId, name, hasBirthDate, value, onChanged
               />
             )}
           </Field>
-          <div className="flex gap-2 sm:pb-6">
+          <div className="flex gap-2">
             <Button size="sm" loading={busy === 'adult'} disabled={note.trim().length < 3} onClick={() => void save()}>{t('staff.adult.save')}</Button>
             <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setNote(''); }}>{t('common.cancel')}</Button>
           </div>
