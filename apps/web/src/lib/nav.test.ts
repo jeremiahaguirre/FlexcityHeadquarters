@@ -28,7 +28,7 @@ describe('menus per role', () => {
 
   it('HR administrator: people, pay and settings, no personal shift screens or pool deck', () => {
     expect(menu('HR_ADMIN')).toEqual({
-      items: ['/messages', '/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/training', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/on-call', '/manage/work-rules', '/manage/people', '/manage/org-chart', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/expenses', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/reports', '/manage/announcements', '/manage/messages', '/manage/surveys', '/manage/roles', '/manage/billing', '/manage/settings', '/surveys'],
+      items: ['/messages', '/manage/hr', '/manage/approvals', '/manage/staff', '/manage/overtime', '/manage/onboarding', '/manage/training', '/manage/injuries', '/manage/care', '/manage/lone-work', '/manage/call-outs', '/manage/winter', '/manage/bids', '/manage/on-call', '/manage/work-rules', '/manage/people', '/manage/org-chart', '/manage/compliance', '/manage/fleet', '/manage/coverage', '/manage/benchmarks', '/manage/certifications', '/manage/jobs', '/manage/payroll', '/manage/expenses', '/manage/benefits', '/manage/accounting', '/manage/fees', '/manage/bookings', '/manage/reports', '/manage/announcements', '/manage/messages', '/manage/surveys', '/manage/roles', '/manage/billing', '/manage/settings', '/surveys'],
       home: '/manage/hr',
     });
   });
