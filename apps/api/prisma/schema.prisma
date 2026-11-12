@@ -1697,8 +1697,9 @@ model PlatformAdmin {
   disabledAt        DateTime?         @db.Timestamptz(3)
   createdAt         DateTime          @default(now()) @db.Timestamptz(3)
   /// Dev console permissions beyond the console itself: "trust.read" (see the Trust area),
-  /// "trust.manage" (change it). Every console admin had both when Trust was added.
-  permissions       String[]          @default(["trust.read", "trust.manage"])
+  /// "trust.manage" (change it), "releases.manage" (What's new notes, release rings and maintenance
+  /// notices). Every console admin had each one when its area was added.
+  permissions       String[]          @default(["trust.read", "trust.manage", "releases.manage"])
   sessions          PlatformSession[]
 }
 
@@ -4602,4 +4603,46 @@ model BidAward {
   round BidRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
   @@unique([roundId, itemId])
+}
+
+/// FH's "What's new" notes, written in the Dev console (routes/platform/updates.ts). FH's own
+/// content, not an organization's: written only with no organization chosen, and inside an
+/// organization's session readable only when it targets that organization or all (db/rls.sql).
+model ReleaseNote {
+  id          String       @id @default(uuid()) @db.Uuid
+  titleEn     String
+  titleFr     String
+  /// Plain text; lines starting with "- " or "1. " are list items (no HTML, ever).
+  bodyEn      String
+  bodyFr      String
+  /// Who sees it: people holding one of these roles (empty = everyone).
+  roles       AccessRole[]
+  /// Which organizations (empty = all). Release rings chosen in the console are resolved into this list when saved.
+  tenantIds   String[]     @db.Uuid
+  ringIds     String[]     @db.Uuid
+  /// When it appears (now or later).
+  publishAt   DateTime     @db.Timestamptz(3)
+  /// null while a draft.
+  publishedAt DateTime?    @db.Timestamptz(3)
+  /// The live "something new" signal went out (at publishing, or by the worker once publishAt passed).
+  announcedAt DateTime?    @db.Timestamptz(3)
+  withdrawnAt DateTime?    @db.Timestamptz(3)
+  createdById String       @db.Uuid
+  createdAt   DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @db.Timestamptz(3)
+  reads       ReleaseNoteRead[]
+
+  @@index([publishAt])
+}
+
+/// Someone saw a note (dismissing the sheet counts): shown once per person.
+model ReleaseNoteRead {
+  tenantId String      @db.Uuid
+  userId   String      @db.Uuid
+  noteId   String      @db.Uuid
+  readAt   DateTime    @default(now()) @db.Timestamptz(3)
+  note     ReleaseNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@id([userId, noteId])
+  @@index([tenantId, readAt])
 }

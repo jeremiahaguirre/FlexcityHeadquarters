@@ -10,7 +10,7 @@ GRANT USAGE ON SCHEMA public TO flexcity_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO flexcity_app;
 -- No DELETE for the app role on payroll-bearing tables; deletes are limited below.
 REVOKE DELETE ON ALL TABLES IN SCHEMA public FROM flexcity_app;
-GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole", "InvoiceLine", "Invoice", "PositionOnboarding", "RateLimitHit", "SwimLevel", "LessonCampaign", "Member", "FeeItem", "CoverageRule", "Department", "DepartmentManager", "PayStatement", "TrainingRecord", "PadBatch", "PadDebit", "SsoConnection", "EmailOutbox", "AuthToken", "RefreshToken", "PushSubscription", "FacilityHours", "TrainingSpend", "PayAdjustment", "EmergencyContact", "SmsOutbox", "JobApplication", "PayeePayment", "SavedReport", "EventOutbox", "WebhookEndpoint", "WebhookDelivery", "SpecialEvent", "WeatherForecastDay", "WeatherObservation", "ApiIdempotencyKey", "RotationTemplate", "OnCallPeriod", "MfaCode", "ShiftTemplate", "ShiftTemplateSlot", "ShiftTemplateApplication", "ShiftPreference", "ShiftPreferenceLimit", "Conversation", "ConversationMember", "Message", "MessageAttachment", "MessageReport", "ConversationAccess", "Survey", "SurveyInvite", "SurveyResponse", "BidItem", "BidChoice", "BidEntrant", "BidAward" TO flexcity_app;
+GRANT DELETE ON "Availability", "PositionCertRequirement", "UserPosition", "RuleOverride", "PayCodeMapping", "Notification", "SchoolCalendarPeriod", "TenantLogo", "Passkey", "PlatformPasskey", "WebAuthnChallenge", "CustomRole", "UserCustomRole", "InvoiceLine", "Invoice", "PositionOnboarding", "RateLimitHit", "SwimLevel", "LessonCampaign", "Member", "FeeItem", "CoverageRule", "Department", "DepartmentManager", "PayStatement", "TrainingRecord", "PadBatch", "PadDebit", "SsoConnection", "EmailOutbox", "AuthToken", "RefreshToken", "PushSubscription", "FacilityHours", "TrainingSpend", "PayAdjustment", "EmergencyContact", "SmsOutbox", "JobApplication", "PayeePayment", "SavedReport", "EventOutbox", "WebhookEndpoint", "WebhookDelivery", "SpecialEvent", "WeatherForecastDay", "WeatherObservation", "ApiIdempotencyKey", "RotationTemplate", "OnCallPeriod", "MfaCode", "ShiftTemplate", "ShiftTemplateSlot", "ShiftTemplateApplication", "ShiftPreference", "ShiftPreferenceLimit", "Conversation", "ConversationMember", "Message", "MessageAttachment", "MessageReport", "ConversationAccess", "Survey", "SurveyInvite", "SurveyResponse", "BidItem", "BidChoice", "BidEntrant", "BidAward", "ReleaseNoteRead" TO flexcity_app;
 -- Signed consent agreements are evidence: added, never changed or deleted by the app.
 REVOKE UPDATE ON "ConsentRecord" FROM flexcity_app;
 REVOKE UPDATE ON "PolicyAck" FROM flexcity_app;
@@ -38,7 +38,7 @@ DECLARE
     'TimePunchEdit', 'PayCodeMapping', 'ReliabilityEvent', 'PoolBody',
     'ChemicalReading', 'PoolClosure', 'IncidentReport', 'IncidentAccessLog',
     'DisciplinaryRecord', 'AuditLog', 'Notification', 'EmailOutbox', 'AuthToken', 'SchoolCalendarPeriod',
-    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument', 'SupportGrant', 'SsoConnection', 'PushSubscription', 'ConsentRecord', 'FacilityHours', 'TrainingSpend', 'PayrollSync', 'Salary', 'PayAdjustment', 'PayDeductionOrder', 'BidAward', 'BidEntrant', 'BidChoice', 'BidItem', 'BidRound', 'SurveyResponse', 'SurveyInvite', 'Survey', 'ConversationAccess', 'MessageReport', 'MessageAttachment', 'Message', 'ConversationMember', 'Conversation', 'ShiftPreferenceLimit', 'ShiftPreference', 'ShiftTemplateApplication', 'ShiftTemplateSlot', 'ShiftTemplate', 'MfaCode', 'OnCallPeriod', 'RotationTemplate', 'ShiftChange', 'ApiIdempotencyKey', 'SpecialEvent', 'WebhookDelivery', 'WebhookEndpoint', 'ApiKey', 'EventOutbox', 'SavedReport', 'PayeePayment', 'Payee', 'JobApplication', 'AnnouncementRead', 'Announcement', 'LogEntry', 'PolicyAck', 'Policy', 'ExpenseItem', 'ExpenseClaim', 'Kiosk', 'ShiftTrade', 'LieuAdjustment', 'SmsOutbox', 'EmergencyContact'
+    'LessonClass', 'LessonEnrollment', 'LessonAttendance', 'JobPosting', 'TenantLogo', 'Passkey', 'CustomRole', 'UserCustomRole', 'HeadCount', 'ConductNote', 'DeckStation', 'RotationLog', 'OnboardingItem', 'PositionOnboarding', 'OnboardingRecord', 'OvertimeEntry', 'CareCheckIn', 'AccommodationCase', 'LoneWorkSession', 'CallOut', 'CallOutContact', 'PatrolRoute', 'PatrolRecord', 'SwimLevel', 'LessonCampaign', 'Household', 'Member', 'FeeItem', 'Sale', 'BookableService', 'BookingRequest', 'CoverageRule', 'Vehicle', 'VehicleInspection', 'InjuryClaim', 'Department', 'DepartmentManager', 'PayProfile', 'BankAccount', 'PayRun', 'PayStatement', 'PayTransmission', 'BenefitPlan', 'BenefitEnrollment', 'LeaveEntitlement', 'PerformanceReview', 'TrainingCourse', 'TrainingRecord', 'Grievance', 'Offboarding', 'EmployeeDocument', 'SupportGrant', 'SsoConnection', 'PushSubscription', 'ConsentRecord', 'FacilityHours', 'TrainingSpend', 'PayrollSync', 'Salary', 'PayAdjustment', 'PayDeductionOrder', 'ReleaseNoteRead', 'BidAward', 'BidEntrant', 'BidChoice', 'BidItem', 'BidRound', 'SurveyResponse', 'SurveyInvite', 'Survey', 'ConversationAccess', 'MessageReport', 'MessageAttachment', 'Message', 'ConversationMember', 'Conversation', 'ShiftPreferenceLimit', 'ShiftPreference', 'ShiftTemplateApplication', 'ShiftTemplateSlot', 'ShiftTemplate', 'MfaCode', 'OnCallPeriod', 'RotationTemplate', 'ShiftChange', 'ApiIdempotencyKey', 'SpecialEvent', 'WebhookDelivery', 'WebhookEndpoint', 'ApiKey', 'EventOutbox', 'SavedReport', 'PayeePayment', 'Payee', 'JobApplication', 'AnnouncementRead', 'Announcement', 'LogEntry', 'PolicyAck', 'Policy', 'ExpenseItem', 'ExpenseClaim', 'Kiosk', 'ShiftTrade', 'LieuAdjustment', 'SmsOutbox', 'EmergencyContact'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_tables LOOP
@@ -375,3 +375,28 @@ END
 $$;
 DROP TRIGGER IF EXISTS fh_public_event ON "PayRun";
 CREATE TRIGGER fh_public_event AFTER INSERT OR UPDATE ON "PayRun" FOR EACH ROW EXECUTE FUNCTION fh_pay_run_event();
+
+-- FH's published notices (What's new notes; maintenance windows): no city's data. Written only by the
+-- Dev console (no city chosen). Inside a city's session a row is readable only when it targets that
+-- city or every city, so a city can't even see which other cities a notice was for.
+DO $$
+DECLARE
+  t text;
+  fh_published text[] := ARRAY['ReleaseNote'];
+BEGIN
+  FOREACH t IN ARRAY fh_published LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS fh_published_read ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS fh_published_insert ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS fh_published_update ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY fh_published_read ON %I FOR SELECT TO flexcity_app
+         USING (app_current_tenant() IS NULL OR cardinality("tenantIds") = 0 OR app_current_tenant() = ANY("tenantIds"))', t);
+    EXECUTE format('CREATE POLICY fh_published_insert ON %I FOR INSERT TO flexcity_app WITH CHECK (app_current_tenant() IS NULL)', t);
+    EXECUTE format(
+      'CREATE POLICY fh_published_update ON %I FOR UPDATE TO flexcity_app
+         USING (app_current_tenant() IS NULL) WITH CHECK (app_current_tenant() IS NULL)', t);
+  END LOOP;
+END
+$$;
