@@ -113,7 +113,11 @@
     "banner": "Démonstration avec des données fictives — rien n’est enregistré.",
     "hint": "Ou connectez-vous avec l’un d’eux, p. ex. guard@demo.flexcity, mot de passe {{password}}.",
     "pick": "Essayez en tant que :",
-    "back": "Retour au site Web"
+    "back": "Retour au site Web",
+    "devConsole": "Console Dev FH (démo)",
+    "devConsoleHelp": "La console de FlexcityHeadquarters pour configurer et soutenir les organisations, avec des organisations fictives.",
+    "devConsoleOpen": "Ouvrir la console Dev",
+    "devConsoleHint": "Ou connectez-vous sur sa page avec dev@flexcity.dev, mot de passe {{password}}."
   },
   "common": {
     "actions": "Actions",
@@ -2235,7 +2239,8 @@
     "sectorPublic": "Municipalité ou organisme public",
     "sectorPrivate": "Entreprise privée",
     "needsFeature": "Nécessite {{name}}",
-    "invalid": "Le courriel ou le mot de passe est incorrect. Après quelques essais, la connexion est suspendue un moment."
+    "invalid": "Le courriel ou le mot de passe est incorrect. Après quelques essais, la connexion est suspendue un moment.",
+    "demoNoPasskey": "Démonstration : il n’y a pas d’étape de clé d’accès ici. La vraie console Dev demande toujours une clé d’accès après le mot de passe."
   },
   "passkeys": {
     "title": "Clés d’accès",
@@ -2259,7 +2264,8 @@
     "confirmTitle": "Confirmez votre identité",
     "confirmHelp": "Ce changement exige une connexion récente. Utilisez votre clé d’accès ou votre mot de passe pour continuer; on ne vous le redemandera pas pendant 10 minutes.",
     "confirmWithPasskey": "Utiliser Face ID, l’empreinte ou Windows Hello",
-    "confirmWithPassword": "Confirmer avec le mot de passe"
+    "confirmWithPassword": "Confirmer avec le mot de passe",
+    "demo": "Démonstration : les clés d’accès ne sont pas utilisées ici. Dans la vraie application, vous pouvez vous connecter avec votre visage, votre empreinte digitale ou le NIP de votre appareil."
   },
   "customRoles": {
     "title": "Rôles",

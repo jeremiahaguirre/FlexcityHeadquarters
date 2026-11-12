@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { ApiError } from '@/lib/apiError';
+import { DEMO } from '@/lib/demo';
 import { formatDate } from '@/lib/format';
 import { cancelled, passkeysSupported } from '@/lib/passkeys';
 import { PasskeyIcon } from './PasskeyIcon';
@@ -55,7 +56,7 @@ export function PasskeysCard({ list, add, remove }: { list: () => Promise<Passke
         }
       />
       <CardBody className="pt-3">
-        {!supported ? <p className="mb-3 text-small text-muted">{t('passkeys.unsupported')}</p> : null}
+        {!supported ? <p className="mb-3 text-small text-muted">{t(DEMO ? 'passkeys.demo' : 'passkeys.unsupported')}</p> : null}
         {!items?.length ? (
           <p className="text-small text-muted">{t('passkeys.none')}</p>
         ) : (

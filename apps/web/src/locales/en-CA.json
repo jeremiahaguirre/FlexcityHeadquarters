@@ -113,7 +113,11 @@
     "banner": "Demo with sample data — nothing you do here is saved.",
     "hint": "Or sign in with any of them, e.g. guard@demo.flexcity, password {{password}}.",
     "pick": "Try it as:",
-    "back": "Back to the website"
+    "back": "Back to the website",
+    "devConsole": "FH Dev console (demo)",
+    "devConsoleHelp": "FlexcityHeadquarters’ own console for setting up and supporting organizations, with sample organizations.",
+    "devConsoleOpen": "Open the Dev console",
+    "devConsoleHint": "Or sign in on its page with dev@flexcity.dev, password {{password}}."
   },
   "common": {
     "actions": "Actions",
@@ -2235,7 +2239,8 @@
     "sectorPublic": "Municipality or public body",
     "sectorPrivate": "Private-sector company",
     "needsFeature": "Needs {{name}}",
-    "invalid": "Email or password is incorrect. After a few tries, signing in pauses for a while."
+    "invalid": "Email or password is incorrect. After a few tries, signing in pauses for a while.",
+    "demoNoPasskey": "Demo: there’s no passkey step here. The real Dev console always asks for a passkey after the password."
   },
   "passkeys": {
     "title": "Passkeys",
@@ -2259,7 +2264,8 @@
     "confirmTitle": "Confirm it’s you",
     "confirmHelp": "This change needs a recent sign-in. Use your passkey or password to continue; you won’t be asked again for 10 minutes.",
     "confirmWithPasskey": "Use Face ID, fingerprint or Windows Hello",
-    "confirmWithPassword": "Confirm with password"
+    "confirmWithPassword": "Confirm with password",
+    "demo": "Demo: passkeys aren’t used here. In the real app you can sign in with your face, fingerprint or device PIN."
   },
   "customRoles": {
     "title": "Roles",

@@ -1,7 +1,7 @@
 'use client';
 
 import { doneBeat, setAuthMotion } from '@/lib/authMotion';
-import { Building2, LogIn } from 'lucide-react';
+import { Building2, LogIn, Terminal } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useEffect, useState } from 'react';
@@ -159,6 +159,20 @@ function LoginForm() {
         )}
       </form>
       )}
+      {DEMO ? (
+        // FH's own console, kept apart from the organization's roles (the marketing website doesn't link to it).
+        <section aria-labelledby="demo-console" className="mt-8 rounded-2xl border border-dashed border-line p-4">
+          <h2 id="demo-console" className="flex items-center gap-2 text-small font-semibold">
+            <Terminal className="h-4 w-4" aria-hidden="true" />
+            {t('demo.devConsole')}
+          </h2>
+          <p className="mt-1 text-caption text-muted">{t('demo.devConsoleHelp')}</p>
+          <Button variant="secondary" block className="mt-3" disabled={busy} onClick={() => router.push('/platform/login?demo=1')}>
+            {t('demo.devConsoleOpen')}
+          </Button>
+          <p className="mt-2 text-caption text-muted">{t('demo.devConsoleHint', { password: DEMO_PASSWORD })}</p>
+        </section>
+      ) : null}
       <InstallApp className="mt-8" />
       <p className="mt-8 border-t border-line pt-5 text-center text-small text-muted">
         {t('login.notStaff')}{' '}

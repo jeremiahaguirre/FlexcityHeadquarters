@@ -44,7 +44,7 @@ export default function PlatformLogin() {
       )
       .catch(() => undefined);
   }, [router]);
-  // The marketing site links straight into the console: /platform/login?demo=1.
+  // The demo's own sign-in page links straight into the console: /platform/login?demo=1 (the website doesn't).
   useEffect(() => {
     if (DEMO && new URLSearchParams(window.location.search).get("demo") === "1")
       void signIn("dev@flexcity.dev", DEMO_PASSWORD);
@@ -220,6 +220,11 @@ export default function PlatformLogin() {
               >
                 {t("platform.demoSignIn")}
               </Button>
+            ) : null}
+            {DEMO ? (
+              <p className="mt-3 rounded-xl bg-surface px-4 py-3 text-caption text-muted">
+                {t("platform.demoNoPasskey")}
+              </p>
             ) : null}
             <form onSubmit={onSubmit} className="mt-8 grid gap-5" noValidate>
               <Field label={t("login.email")}>
