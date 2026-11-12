@@ -4283,6 +4283,8 @@ model ConversationMember {
   lastReadAt     DateTime?    @db.Timestamptz(3)
   muted          Boolean      @default(false)
   joinedAt       DateTime     @default(now()) @db.Timestamptz(3)
+  /// Added after the conversation was made: they see only messages sent from this moment. Null = the whole history (there from the start).
+  historyFrom    DateTime?    @db.Timestamptz(3)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@unique([conversationId, userId])
@@ -4319,10 +4321,14 @@ model MessageAttachment {
   id          String  @id @default(uuid()) @db.Uuid
   tenantId    String  @db.Uuid
   messageId   String  @unique @db.Uuid
-  fileName    String
+  /// Older rows only: the file name before it was sealed. The retention run seals it and clears this.
+  fileName    String?
+  /// The file name, sealed with the conversation's key (AAD part "name").
+  nameCiphertext Bytes?
+  nameIv         Bytes?
+  nameAuthTag    Bytes?
   contentType String
   size        Int
-  sha256      String
   ciphertext  Bytes
   iv          Bytes
   authTag     Bytes
@@ -4373,6 +4379,13 @@ enum SurveyKind {
   EXIT // one person who is leaving (Offboarding), named and said so up front
 }
 
+/// The one way an anonymous survey's results may be broken down, chosen when it's made and fixed once sent.
+enum SurveyBreakdown {
+  NONE
+  DEPARTMENT
+  POSITION
+}
+
 model Survey {
   id            String     @id @default(uuid()) @db.Uuid
   tenantId      String     @db.Uuid
@@ -4399,6 +4412,8 @@ model Survey {
   closedAt      DateTime?  @db.Timestamptz(3)
   /// The smallest group whose results are shown, fixed when it was published.
   minGroup      Int        @default(5)
+  /// The only breakdown its results offer (one dimension, so groups can't be subtracted across two).
+  breakdown     SurveyBreakdown @default(DEPARTMENT)
   remindersSent Int        @default(0)
   createdById   String     @db.Uuid
   createdAt     DateTime   @default(now()) @db.Timestamptz(3)
@@ -4427,6 +4442,7 @@ model SurveyResponse {
   surveyId     String  @db.Uuid
   /// Named (exit) surveys only.
   userId       String? @db.Uuid
+  /// Only the survey's breakdown dimension is kept (the other stays empty).
   departmentId String? @db.Uuid
   positionId   String? @db.Uuid
   /// { [questionId]: 1..5 | "option" | ["option", …] | "text" }
