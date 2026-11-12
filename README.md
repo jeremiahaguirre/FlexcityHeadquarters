@@ -129,6 +129,12 @@ The site uses Vercel Web Analytics (`@vercel/analytics`, in both root layouts): 
 
 Screenshots on the site come from the demo (`apps/site/public/screens`). Retake them after visible app changes.
 
+**Crawlers and AI bots.** Search engines may index the site; AI training crawlers and AI assistants are asked to stay out (robots.txt from `apps/site/src/lib/crawlers.ts`, `/.well-known/tdmrep.json`, and `noai` / `tdm-reservation` headers in `vercel.json`). robots.txt is only a request, and a static export can't run middleware, so enforce it in the Vercel dashboard (once, by the project owner; names may differ slightly as Vercel changes its interface):
+1. Project → **Firewall** → managed rules (or **Bot Management**): turn on the **AI Bots** ruleset and set it to **Block**. If you later allow AI search engines (`ALLOW_AI_ASSISTANTS`), check that the ruleset can still let them through, or leave it on Log.
+2. Turn on **Bot Protection** (challenge or log non-browser traffic) if your plan offers it, and watch the Firewall tab for a few days to make sure search engines and link previews are not caught.
+
+On AWS (S3 + CloudFront) the same blocks are firewall rules in Terraform: see [ops/terraform](ops/terraform/README.md#crawlers-and-ai-bots).
+
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — tenancy, flows, events and the outbox, running several processes, health and metrics, the Union Hub service, the Dev console
