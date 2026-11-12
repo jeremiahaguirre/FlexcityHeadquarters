@@ -143,7 +143,9 @@ docker stop -t 30 api1    # SIGTERM; the task finishes its requests and ends its
   - S3 and cross-region copies.
   - CloudFront.
 
+**Fixed since the rehearsal:**
+- **Passkey set-up is kept after a refresh.** Setting up a first passkey gave the second factor to that page's access token only, because the refresh cookie is scoped to `/api/auth`. The web now sends it to `POST /api/auth/passkeys`, which marks the session; a refresh racing the second factor no longer drops it either (test/integration/secondFactorSession.test.ts).
+
 **Open before launch:**
 - **No email provider.** Production uses the console mailer, which marks invitations, resets and lockout emails as sent while their contents go nowhere. A real provider is a launch blocker (see "Open choices").
-- **Passkey set-up isn't kept after a refresh.** Setting up a first passkey gives the second factor to that page's access token only, because the refresh cookie is scoped to `/api/auth`. After a reload, HR is asked for the passkey again.
 - **The API's per-address limit is per process.** With two tasks it allows about twice the configured rate. The WAF limit is the fleet-wide one.
