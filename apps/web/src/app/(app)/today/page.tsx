@@ -5,6 +5,7 @@ import { MyCare } from '@/components/people/MyCare';
 import { PoliciesBanner } from '@/components/hr/Policies';
 import { MyAnnouncements } from '@/components/communication/Notices';
 import { MyOnboarding } from '@/components/people/MyOnboarding';
+import { SurveyNudge } from '@/components/surveys/SurveyNudge';
 import { ArrowRight, CalendarOff, ClipboardCheck, Repeat, Waves } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
@@ -75,6 +76,9 @@ export default function TodayPage() {
       <div className="contents xl:col-start-2 xl:row-start-2 xl:grid xl:gap-6">
         <div className="max-xl:order-1 empty:hidden">
           <MyAnnouncements />
+        </div>
+        <div className="max-xl:order-1 empty:hidden">
+          <SurveyNudge />
         </div>
         <div className="max-xl:order-1 empty:hidden">
           <MyStation />

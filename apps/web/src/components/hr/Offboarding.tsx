@@ -1,9 +1,9 @@
 'use client';
 
-import { DoorOpen, Plus } from 'lucide-react';
+import { ClipboardPen, DoorOpen, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/Button';
+import { Button, ButtonLink } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -13,6 +13,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { OFFBOARD_REASONS, type Offboarding } from '@/lib/hr';
+import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { ManagerSelect } from '@/components/people/Reporting';
 
@@ -22,6 +23,10 @@ export function OffboardingPanel() {
   const lng = i18n.language;
   const data = useQuery<{ items: string[]; offboardings: Offboarding[] }>('/api/offboarding');
   const people = useQuery<Array<{ id: string; name: string; status: string }>>('/api/users');
+  // Exit surveys: only with the surveys feature on (its permission goes with it) and for those who manage surveys.
+  const { can } = useSession();
+  const canSurvey = can('surveys.manage');
+  const exits = useQuery<Array<{ id: string; hasSurvey: boolean }>>(canSurvey ? '/api/surveys-admin/offboardings' : null);
   const [adding, setAdding] = useState(false);
   const [confirming, setConfirming] = useState<Offboarding | null>(null);
   const { run, busy } = useAction();
@@ -76,6 +81,18 @@ export function OffboardingPanel() {
                       </li>
                     ))}
                   </ul>
+                ) : null}
+                {!o.completedAt && canSurvey && exits.data ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                    {exits.data.find((x) => x.id === o.id)?.hasSurvey ? (
+                      <>
+                        <StatusPill tone="ok">{t('offboarding.exitSurveyMade')}</StatusPill>
+                        <ButtonLink href="/manage/surveys" size="sm" variant="ghost">{t('offboarding.seeSurveys')}</ButtonLink>
+                      </>
+                    ) : (
+                      <ButtonLink href={`/manage/surveys?exit=${o.id}`} size="sm" variant="secondary" icon={<ClipboardPen className="h-4 w-4" aria-hidden="true" />}>{t('offboarding.sendExitSurvey')}</ButtonLink>
+                    )}
+                  </div>
                 ) : null}
               </section>
             );

@@ -239,6 +239,7 @@ export async function listSurveys(tx: Tx, a: AuthContext) {
     remindersSent: s.remindersSent,
     minGroup: s.minGroup,
     subject: s.subjectUserId ? (subjects.find((u) => u.id === s.subjectUserId) ?? null) : null,
+    offboardingId: s.offboardingId,
     mine: s.createdById === a.userId,
   }));
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { BarChart3, BellRing, ClipboardPen, Copy, Download, EyeOff, Lock, Plus, Send, Trash2, X } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -15,7 +16,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatInstant } from '@/lib/format';
 import { useSession } from '@/lib/session';
-import { MAX_REMINDERS, type Question, type QuestionSummary, type QuestionType, type SurveyResults, type SurveyRow, type TrendRow, share, starterQuestions } from '@/lib/surveys';
+import { MAX_REMINDERS, type Question, type QuestionSummary, type QuestionType, type SurveyResults, type SurveyRow, type TrendRow, exitStarterQuestions, share, starterQuestions } from '@/lib/surveys';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 type Lng = 'en-CA' | 'fr-CA';
@@ -32,7 +33,16 @@ export function SurveyAdmin() {
   const list = useQuery<SurveyRow[]>('/api/surveys');
   const choices = useQuery<Choices>('/api/surveys-admin/choices');
   const { run, busy } = useAction();
-  const [editing, setEditing] = useState<{ row?: SurveyRow; repeatOf?: SurveyRow } | null>(null);
+  const [editing, setEditing] = useState<EditStart | null>(null);
+  // From HR's offboarding screen: ?exit=<offboarding> opens a new exit survey for that person.
+  const params = useSearchParams();
+  const router = useRouter();
+  const exitFor = params.get('exit');
+  useEffect(() => {
+    if (!exitFor || !choices.data) return;
+    if (choices.data.hr) setEditing({ exitFor });
+    router.replace('/manage/surveys');
+  }, [exitFor, choices.data, router]);
   const [results, setResults] = useState<SurveyRow | null>(null);
   const act = (key: string, path: string, ok: string, method = 'POST') => void run(key, () => api(path, { method }), ok).then(() => list.reload());
 
@@ -84,7 +94,7 @@ export function SurveyAdmin() {
         ))
       )}
       {can('tenant.configure') && can('surveys.manage') ? <SurveySettingsCard onSaved={() => void choices.reload()} /> : null}
-      {editing && choices.data ? <Editor key={editing.row?.id ?? editing.repeatOf?.id ?? 'new'} start={editing} choices={choices.data} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void list.reload(); }} /> : null}
+      {editing && choices.data ? <Editor key={editing.row?.id ?? editing.repeatOf?.id ?? editing.exitFor ?? 'new'} start={editing} choices={choices.data} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void list.reload(); }} /> : null}
       <ResultsDialog survey={results} choices={choices.data} onClose={() => setResults(null)} />
     </div>
   );
@@ -93,13 +103,16 @@ export function SurveyAdmin() {
 type DraftQ = Omit<Question, 'id'> & { id?: string; key: string; optionsText: string };
 const toDraft = (q: Omit<Question, 'id'> & { id?: string }, i: number): DraftQ => ({ ...q, key: `${q.id ?? 'q'}-${i}-${Math.random().toString(36).slice(2, 6)}`, optionsText: (q.options ?? []).join('\n') });
 
-function Editor({ start, choices, onClose, onSaved }: { start: { row?: SurveyRow; repeatOf?: SurveyRow }; choices: Choices; onClose: () => void; onSaved: () => void }) {
+interface EditStart { row?: SurveyRow; repeatOf?: SurveyRow; /** A new exit survey for this offboarding. */ exitFor?: string }
+
+function Editor({ start, choices, onClose, onSaved }: { start: EditStart; choices: Choices; onClose: () => void; onSaved: () => void }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language as Lng;
   const { run, busy } = useAction();
   const base = start.row ?? start.repeatOf;
-  const [kind, setKind] = useState<'PULSE' | 'EXIT'>(start.row?.kind ?? 'PULSE');
-  const [qs, setQs] = useState<DraftQ[]>(() => (base ? base.questions : starterQuestions(t)).map(toDraft));
+  const [kind, setKind] = useState<'PULSE' | 'EXIT'>(start.row?.kind ?? (start.exitFor ? 'EXIT' : 'PULSE'));
+  const [qs, setQs] = useState<DraftQ[]>(() => (base ? base.questions : start.exitFor ? exitStarterQuestions(t) : starterQuestions(t)).map(toDraft));
+  const [offboardingId, setOffboardingId] = useState(start.row?.offboardingId ?? start.exitFor ?? '');
   const [deps, setDeps] = useState<string[]>(base?.audience.departmentIds ?? []);
   const [pos, setPos] = useState<string[]>(base?.audience.positionIds ?? []);
   const offs = useQuery<Array<{ id: string; name: string; lastDay: string; hasSurvey: boolean }>>(choices.hr ? '/api/surveys-admin/offboardings' : null);
@@ -116,7 +129,7 @@ function Editor({ start, choices, onClose, onSaved }: { start: { row?: SurveyRow
       questions: qs.map((q) => ({ ...(q.id ? { id: q.id } : {}), type: q.type, text: q.text, required: q.required, ...(q.type === 'CHOICE' || q.type === 'MULTI' ? { options: q.optionsText.split('\n').map((x) => x.trim()).filter(Boolean) } : {}) })),
       audience: { departmentIds: deps, positionIds: pos },
       closesAt: new Date(`${String(f.get('closes'))}T23:59:00`).toISOString(),
-      offboardingId: kind === 'EXIT' ? String(f.get('offboarding') || '') || null : null,
+      offboardingId: kind === 'EXIT' ? offboardingId || null : null,
       repeatOf: start.repeatOf?.id ?? null,
     };
     const r = await run('save', () => api(start.row ? `/api/surveys/${start.row.id}` : '/api/surveys', { method: start.row ? 'PUT' : 'POST', body }), t('surveyAdmin.saved'));
@@ -128,8 +141,8 @@ function Editor({ start, choices, onClose, onSaved }: { start: { row?: SurveyRow
       <form onSubmit={(e) => void save(e)} className="grid gap-5">
         {choices.hr && !start.repeatOf ? <Segmented label={t('surveyAdmin.kindLabel')} value={kind} onChange={setKind} options={[{ value: 'PULSE', label: t('surveyAdmin.kind.PULSE') }, { value: 'EXIT', label: t('surveyAdmin.kind.EXIT') }]} /> : null}
         <p className="rounded-xl bg-surface p-3 text-small text-muted">{kind === 'PULSE' ? t('surveyAdmin.pulseHelp', { count: choices.minGroup }) : t('surveyAdmin.exitHelp')}</p>
-        <Field label={t('surveyAdmin.title')}>{(p) => <Input {...p} name="title" required minLength={3} maxLength={120} defaultValue={base?.title ?? ''} autoComplete="off" />}</Field>
-        <Field label={t('surveyAdmin.intro')} hint={t('surveyAdmin.introHint')}>{(p) => <Textarea {...p} name="intro" rows={2} maxLength={1000} defaultValue={base?.intro ?? ''} />}</Field>
+        <Field label={t('surveyAdmin.title')}>{(p) => <Input {...p} name="title" required minLength={3} maxLength={120} defaultValue={base?.title ?? (start.exitFor ? t('surveys.exitStarter.title') : '')} autoComplete="off" />}</Field>
+        <Field label={t('surveyAdmin.intro')} hint={t('surveyAdmin.introHint')}>{(p) => <Textarea {...p} name="intro" rows={2} maxLength={1000} defaultValue={base?.intro ?? (start.exitFor ? t('surveys.exitStarter.intro') : '')} />}</Field>
         <fieldset className="grid gap-3">
           <legend className="mb-1 text-body-strong">{t('surveyAdmin.questions')}</legend>
           {qs.map((q, i) => (
@@ -155,7 +168,7 @@ function Editor({ start, choices, onClose, onSaved }: { start: { row?: SurveyRow
           </div>
         ) : (
           <Field label={t('surveyAdmin.leaving')} hint={t('surveyAdmin.leavingHint')}>{(p) => (
-            <Select {...p} name="offboarding" required defaultValue="">
+            <Select {...p} name="offboarding" required value={offboardingId} onChange={(e) => setOffboardingId(e.target.value)}>
               <option value="" disabled>{t('surveyAdmin.choosePerson')}</option>
               {(offs.data ?? []).map((o) => <option key={o.id} value={o.id}>{o.name} · {formatInstant(o.lastDay.slice(0, 10), lng)}{o.hasSurvey ? ` · ${t('surveyAdmin.hasSurvey')}` : ''}</option>)}
             </Select>

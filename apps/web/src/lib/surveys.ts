@@ -3,7 +3,7 @@ export type QuestionType = 'RATING' | 'CHOICE' | 'MULTI' | 'TEXT';
 export interface Question { id: string; type: QuestionType; text: string; options?: string[]; required: boolean }
 export type Answer = number | string | string[];
 
-export interface MySurvey { id: string; kind: 'PULSE' | 'EXIT'; title: string; intro: string | null; anonymous: boolean; minGroup: number; closesAt: string; responded: boolean; questions: Question[] }
+export interface MySurvey { id: string; kind: 'PULSE' | 'EXIT'; from?: 'hr' | 'manager'; title: string; intro: string | null; anonymous: boolean; minGroup: number; closesAt: string; responded: boolean; questions: Question[] }
 
 export interface SurveyRow {
   id: string;
@@ -22,6 +22,8 @@ export interface SurveyRow {
   remindersSent: number;
   minGroup: number;
   subject: { firstName: string; lastName: string } | null;
+  /** EXIT: the offboarding it belongs to. */
+  offboardingId?: string | null;
   mine: boolean;
 }
 
@@ -52,6 +54,21 @@ export function missingRequired(questions: Question[], answers: Record<string, A
 export const share = (n: number, of: number) => (of > 0 ? Math.round((n / of) * 100) : 0);
 
 /** A starting pulse: three quick questions people can edit. */
+/** An exit survey's starting point (HR edits it before sending): how it was, why they're leaving, what to do better. */
+export function exitStarterQuestions(t: (k: string) => string): Array<Omit<Question, 'id'>> {
+  return [
+    { type: 'RATING', text: t('surveys.exitStarter.overall'), required: true },
+    { type: 'CHOICE', text: t('surveys.exitStarter.reason'), options: ['job', 'school', 'schedule', 'pay', 'team', 'other'].map((k) => t(`surveys.exitStarter.reasons.${k}`)), required: false },
+    { type: 'TEXT', text: t('surveys.exitStarter.better'), required: false },
+    { type: 'CHOICE', text: t('surveys.exitStarter.again'), options: [t('surveys.exitStarter.yes'), t('surveys.exitStarter.maybe'), t('surveys.exitStarter.no')], required: false },
+  ];
+}
+
+/** The open survey to nudge about on Today: the soonest to close that isn't answered or hidden this session. */
+export function surveyToNudge(list: MySurvey[] | null | undefined, hidden: readonly string[], now = Date.now()): MySurvey | null {
+  return [...(list ?? [])].filter((s) => !s.responded && !hidden.includes(s.id) && Date.parse(s.closesAt) > now).sort((a, b) => a.closesAt.localeCompare(b.closesAt))[0] ?? null;
+}
+
 export function starterQuestions(t: (k: string) => string): Array<Omit<Question, 'id'>> {
   return [
     { type: 'RATING', text: t('surveys.starter.week'), required: true },
