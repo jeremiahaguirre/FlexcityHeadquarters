@@ -1,0 +1,42 @@
+{
+  "training": [
+    "GPTBot",
+    "ClaudeBot",
+    "anthropic-ai",
+    "Claude-Web",
+    "CCBot",
+    "Google-Extended",
+    "Applebot-Extended",
+    "Bytespider",
+    "Amazonbot",
+    "meta-externalagent",
+    "FacebookBot",
+    "cohere-ai",
+    "cohere-training-data-crawler",
+    "Diffbot",
+    "ImagesiftBot",
+    "Omgilibot",
+    "omgili",
+    "Timpibot",
+    "PetalBot",
+    "YouBot",
+    "AI2Bot",
+    "Ai2Bot-Dolma",
+    "Kangaroo Bot",
+    "PanguBot",
+    "Webzio-Extended",
+    "img2dataset",
+    "Scrapy"
+  ],
+  "assistants": [
+    "ChatGPT-User",
+    "OAI-SearchBot",
+    "PerplexityBot",
+    "Perplexity-User",
+    "Claude-SearchBot",
+    "Claude-User",
+    "DuckAssistBot",
+    "MistralAI-User",
+    "meta-externalfetcher"
+  ]
+}

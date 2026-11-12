@@ -8,6 +8,7 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
 import { SiteHeader } from '@/components/SiteHeader';
 import { LANGS, type Lang, copy } from '@/content/copy';
+import { SITE_ROBOTS } from '@/lib/crawlers';
 import { SITE_URL, pageMeta } from '@/lib/seo';
 import '../globals.css';
 
@@ -29,6 +30,8 @@ export async function generateMetadata(props: { params: Promise<{ lang: string }
     applicationName: 'FlexcityHeadquarters',
     icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }, { url: '/logo.png', type: 'image/png', sizes: '512x512' }], apple: '/apple-touch-icon.png' },
     formatDetection: { telephone: false },
+    // Indexed by search engines; "noai, noimageai" asks AI tools not to train on it (src/lib/crawlers.ts).
+    robots: SITE_ROBOTS,
   };
 }
 

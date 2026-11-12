@@ -31,6 +31,14 @@
         {
           "key": "Content-Security-Policy",
           "value": "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noai, noimageai"
+        },
+        {
+          "key": "tdm-reservation",
+          "value": "1"
         }
       ]
     }
