@@ -197,7 +197,7 @@ $$;
 DO $$
 DECLARE
   t text;
-  fh_only_tables text[] := ARRAY['TrustControlState', 'TrustTest', 'TrustTestRun', 'TrustScoreSnapshot', 'TrustEvidence', 'TrustEvidenceRequest', 'TrustPolicy', 'TrustPolicyVersion', 'TrustPolicyAck', 'TrustRisk', 'TrustVendor', 'TrustCommitment', 'TrustCommitmentFulfilment', 'TrustAnswer', 'TrustReminder', 'TrustAlert', 'TrustSettings', 'WorkerJobRun'];
+  fh_only_tables text[] := ARRAY['TrustControlState', 'TrustTest', 'TrustTestRun', 'TrustScoreSnapshot', 'TrustEvidence', 'TrustEvidenceRequest', 'TrustPolicy', 'TrustPolicyVersion', 'TrustPolicyAck', 'TrustRisk', 'TrustVendor', 'TrustCommitment', 'TrustCommitmentFulfilment', 'TrustAnswer', 'TrustReminder', 'TrustAlert', 'TrustSettings', 'WorkerJobRun', 'ReleaseRing', 'ReleaseRingMember', 'Release', 'ReleaseStage'];
 BEGIN
   FOREACH t IN ARRAY fh_only_tables LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
@@ -400,3 +400,14 @@ BEGIN
   END LOOP;
 END
 $$;
+
+-- One organization's part of a release (services/platform/releases.ts): FH's record, and that
+-- organization's to read (its HR admins see what's coming). Never another organization's.
+ALTER TABLE "ReleaseChange" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ReleaseChange" FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS city_or_fh ON "ReleaseChange";
+CREATE POLICY city_or_fh ON "ReleaseChange" TO flexcity_app
+  USING (app_current_tenant() IS NULL OR "tenantId" = app_current_tenant())
+  WITH CHECK (app_current_tenant() IS NULL OR "tenantId" = app_current_tenant());
+-- Ring membership changes as organizations move between rings.
+GRANT DELETE ON "ReleaseRingMember" TO flexcity_app;

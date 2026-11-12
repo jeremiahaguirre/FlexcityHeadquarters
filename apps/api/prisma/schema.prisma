@@ -303,6 +303,9 @@ model Tenant {
   /// Feature switches set from the FH Dev console: { featureKey: boolean }.
   /// Missing keys use the defaults in src/services/platform/features.ts.
   features              Json               @default("{}")
+  /// Feature switches chosen on purpose for this organization (by the Dev console, or by the
+  /// organization itself, e.g. seniority): a release never changes these (services/platform/releases.ts).
+  featureChoices        String[]           @default([])
   createdAt             DateTime           @default(now()) @db.Timestamptz(3)
   updatedAt             DateTime           @updatedAt @db.Timestamptz(3)
 
@@ -4651,4 +4654,90 @@ model ReleaseNoteRead {
 
   @@id([userId, noteId])
   @@index([tenantId, readAt])
+}
+
+/// Release rings: groups of organizations that get feature releases in turn (Pilot, Early, General).
+/// FH's own records: read and written only with no organization chosen (db/rls.sql fh_only).
+model ReleaseRing {
+  id        String              @id @default(uuid()) @db.Uuid
+  name      String              @unique
+  /// Order of progression: lower rings go first.
+  position  Int
+  createdAt DateTime            @default(now()) @db.Timestamptz(3)
+  members   ReleaseRingMember[]
+}
+
+/// An organization is in at most one ring.
+model ReleaseRingMember {
+  tenantId String      @id @db.Uuid
+  ringId   String      @db.Uuid
+  addedAt  DateTime    @default(now()) @db.Timestamptz(3)
+  ring     ReleaseRing @relation(fields: [ringId], references: [id], onDelete: Cascade)
+
+  @@index([ringId])
+}
+
+/// A bundle of feature switches to turn on (or off), ring by ring.
+model Release {
+  id          String         @id @default(uuid()) @db.Uuid
+  name        String
+  /// What changes, in words, for the advance notice to HR admins.
+  summaryEn   String
+  summaryFr   String
+  /// { featureKey: true | false }
+  features    Json
+  createdById String         @db.Uuid
+  createdAt   DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @db.Timestamptz(3)
+  stages      ReleaseStage[]
+}
+
+/// A release for one ring, now or at a set time. SCHEDULED → APPLIED → ROLLED_BACK, or CANCELLED.
+model ReleaseStage {
+  id           String          @id @default(uuid()) @db.Uuid
+  releaseId    String          @db.Uuid
+  ringId       String          @db.Uuid
+  scheduledAt  DateTime        @db.Timestamptz(3)
+  /// HR admins hear about it this many days before (or at once when it's sooner).
+  noticeDays   Int             @default(7)
+  status       String          @default("SCHEDULED")
+  appliedAt    DateTime?       @db.Timestamptz(3)
+  rolledBackAt DateTime?       @db.Timestamptz(3)
+  createdById  String          @db.Uuid
+  createdAt    DateTime        @default(now()) @db.Timestamptz(3)
+  release      Release         @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  changes      ReleaseChange[]
+
+  @@unique([releaseId, ringId])
+  @@index([status, scheduledAt])
+}
+
+/// One organization's part of a stage: what it gets, what it kept (its own choice wins), what it had
+/// before (for undoing). Readable by that organization (its HR admins see what's coming); FH's otherwise.
+model ReleaseChange {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @db.Uuid
+  stageId      String       @db.Uuid
+  releaseId    String       @db.Uuid
+  titleEn      String
+  titleFr      String
+  summaryEn    String
+  summaryFr    String
+  /// { featureKey: value } the release sets here.
+  features     Json
+  /// Keys left alone because this organization's switch was chosen on purpose (decided again when applied).
+  skipped      String[]     @default([])
+  /// { featureKey: value before, or null when it was on its default } — what undoing restores.
+  previous     Json?
+  scheduledAt  DateTime     @db.Timestamptz(3)
+  /// PLANNED → APPLIED → ROLLED_BACK, or CANCELLED.
+  status       String       @default("PLANNED")
+  noticeSentAt DateTime?    @db.Timestamptz(3)
+  appliedAt    DateTime?    @db.Timestamptz(3)
+  rolledBackAt DateTime?    @db.Timestamptz(3)
+  stage        ReleaseStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, tenantId])
+  @@index([tenantId, status])
+  @@index([status, scheduledAt])
 }
