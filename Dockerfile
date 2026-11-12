@@ -61,6 +61,7 @@ CMD ["npm", "run", "db:migrate"]
 # ---- Web app ---------------------------------------------------------------------------------
 FROM base AS web-build
 # Baked in at build time: where /api/* is sent when the load balancer hasn't already routed it.
+# Server-rendered pages read API_URL at run time instead (the web task's environment, compute.tf).
 ARG API_URL=http://localhost:4000
 ARG NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_RELEASE
@@ -84,4 +85,5 @@ COPY --from=web-build /app/apps/web/next.config.mjs apps/web/next.config.mjs
 WORKDIR /app/apps/web
 USER node
 EXPOSE 3000
-CMD ["npx", "next", "start", "-p", "3000"]
+# Next itself as the first process (not npx), so ECS's SIGTERM reaches it and it stops gracefully.
+CMD ["node", "/app/node_modules/next/dist/bin/next", "start", "-p", "3000"]
