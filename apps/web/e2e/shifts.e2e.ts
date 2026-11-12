@@ -117,12 +117,40 @@ test.describe('shift bidding on a phone', () => {
     expect(errors).toEqual([]);
   });
 
+  test('supervisor: tap a round for its detail and back, then the new-round form', async ({ page }) => {
+    const errors = watchErrors(page);
+    await signInAs(page, 'AQUATIC_SUPERVISOR');
+    await open(page, '/manage/bids');
+    await page.getByRole('button', { name: /December weekday shifts.*In review/ }).tap();
+    await expect(page.getByRole('heading', { name: 'December weekday shifts', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Seniority order and outcomes' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm awards' })).toBeVisible();
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+    await page.getByRole('button', { name: 'All rounds' }).tap();
+    await page.getByRole('button', { name: /Summer lines.*Open/ }).tap();
+    await expect(page.getByRole('heading', { name: 'Summer lines', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'On offer' })).toBeVisible();
+    await page.getByRole('button', { name: 'All rounds' }).tap();
+    await page.getByRole('button', { name: 'New bid round' }).tap();
+    const form = page.locator('dialog[open]');
+    await expect(form.getByLabel('Template')).toBeVisible();
+    await expect(form.getByLabel('Template').locator('option', { hasText: 'Summer' })).toHaveCount(1);
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+    expect(errors).toEqual([]);
+  });
+
   test('union steward: closed rounds, read-only', async ({ page }) => {
     await signInAs(page, 'UNION_STEWARD');
     await open(page, '/union/bids');
     await expect(page.getByRole('heading', { name: 'Bid awards' })).toBeVisible();
     await expect(page.getByRole('button', { name: /December weekday shifts.*In review/ })).toBeVisible();
     await expect(page.getByRole('button', { name: 'New bid round' })).toHaveCount(0);
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+    // A round's outcomes, read-only.
+    await page.getByRole('button', { name: /December weekday shifts.*In review/ }).tap();
+    await expect(page.getByText(/^Read-only for union stewards/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Seniority order and outcomes' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm awards' })).toHaveCount(0);
     expect(await sideways(page)).toBeLessThanOrEqual(0);
   });
 

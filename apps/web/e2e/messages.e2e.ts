@@ -82,6 +82,51 @@ test.describe('messages on a phone', () => {
     expect(await sideways(page)).toBeLessThanOrEqual(0);
   });
 
+  test('supervisor: the picker, with a new hire with no birth date only in groups (rule of two)', async ({ page }) => {
+    await signInAs(page, 'AQUATIC_SUPERVISOR');
+    await open(page, '/messages');
+    await page.getByRole('button', { name: 'New', exact: true }).tap();
+    const sheet = page.locator('dialog[open]');
+    await expect(sheet.getByRole('radio', { name: 'A person' })).toBeChecked();
+    await expect(sheet.getByRole('button', { name: 'Jordan Singh' })).toBeVisible();
+    // Quinn's adult confirmation opens one-to-one conversations; Ellis has neither a birth date nor one.
+    await expect(sheet.getByRole('button', { name: 'Quinn Delisle' })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Ellis Barrett' })).toHaveCount(0);
+    await sheet.getByRole('radio', { name: 'A group' }).tap();
+    await sheet.getByRole('button', { name: 'People' }).tap();
+    await expect(sheet.getByRole('option', { name: /Ellis Barrett/ })).toBeVisible();
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+  });
+
+  test('guard: the picker lists the people they can write to', async ({ page }) => {
+    await signInAs(page, 'STAFF');
+    await open(page, '/messages');
+    await page.getByRole('button', { name: 'New', exact: true }).tap();
+    const sheet = page.locator('dialog[open]');
+    await expect(sheet.getByRole('button', { name: 'Sam Okafor' })).toBeVisible();
+    await sheet.getByRole('searchbox', { name: 'Find someone' }).fill('quinn');
+    await expect(sheet.getByRole('button', { name: 'Quinn Delisle' })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Sam Okafor' })).toHaveCount(0);
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+  });
+
+  test('HR: no birth date on file, so the record offers to confirm an adult; a confirmation shows who and how', async ({ page }) => {
+    await signInAs(page, 'HR_ADMIN');
+    // Ellis Barrett: treated as possibly a minor until HR confirms.
+    await open(page, '/manage/staff/person?id=78e8a1d3-c781-48e8-91ff-33baed87e0fe');
+    await expect(page.getByText('Confirmed adult (age of majority or older)')).toBeVisible();
+    await expect(page.getByText(/^No birth date on file, so messaging treats Ellis as possibly a minor/)).toBeVisible();
+    await page.getByRole('button', { name: 'Confirm adult' }).tap();
+    await expect(page.getByLabel('How you confirmed it')).toBeVisible();
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+    // Quinn Delisle: HR's confirmation, with its note.
+    await open(page, '/manage/staff/person?id=81e9296f-88b6-4409-a679-8e916eed8ab2');
+    await expect(page.getByText('Confirmed adult (age of majority or older)')).toBeVisible();
+    await expect(page.getByText(/^Confirmed by Harper Reid on .*Driver’s licence seen at hiring/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Remove confirmation' })).toBeVisible();
+    expect(await sideways(page)).toBeLessThanOrEqual(0);
+  });
+
   test('the HR record shows the birth date, so no adult confirmation is needed', async ({ page }) => {
     await signInAs(page, 'HR_ADMIN');
     // Morgan Lee: a birth date on file, which always wins over a confirmation.
