@@ -120,7 +120,7 @@ Vercel builds it with **Root Directory** `apps/site` (the settings are in `apps/
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | The site's public address, e.g. `https://www.example.ca` (canonical links, sitemap, and the demo's "Back to the website" button). Defaults to the Vercel production address, today `https://flexcity-headquarters-iota.vercel.app` |
 | `NEXT_PUBLIC_DEMO_URL` | The app demo, default `https://jeremiahaguirre.github.io/FlexcityHeadquarters` |
-| `NEXT_PUBLIC_CONTACT_FORM_URL` | For now: the Formspree form endpoint (`https://formspree.io/f/<form id>`) that emails each enquiry to FH's inbox. Only the form id is public; the inbox address is set in Formspree, never here or in the repository |
+| `NEXT_PUBLIC_CONTACT_FORM_URL` | For now: the Formspree form endpoint (`https://formspree.io/f/<form id>`) that emails each enquiry to FH's inbox. Only the form id is public; the inbox address is set in Formspree, never here or in the repository. Keep Formspree's spam filtering on in the form's settings; the form also sends Formspree's `_gotcha` honeypot field |
 | `NEXT_PUBLIC_LEADS_URL` | Later: `https://<api host>/api/marketing/leads`, the app's own enquiry endpoint (used only when the Formspree URL isn't set). With neither, the contact form asks visitors to try again shortly |
 
 On the API, add the website's address to `MARKETING_ORIGINS` so the contact form is accepted.
