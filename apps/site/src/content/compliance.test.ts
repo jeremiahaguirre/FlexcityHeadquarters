@@ -180,7 +180,7 @@ describe('legal pages', () => {
     const all = legalDoc('privacy', lang).sections.map((s) => [s.heading, ...s.body].join(' ')).join(' ');
     const must = lang === 'en'
       ? ['service provider', 'Social Insurance Number', 'Working alone', 'kiosk', 'Text alerts', 'push', 'Error reports', 'ca-central-1'.replace('ca-central-1', 'Canada Central'), 'planned', 'outside Canada', 'portability', 'de-indexed', 'Commission d’accès à l’information', 'Privacy Commissioner of Canada', 'real risk of significant harm', 'exclusively by automated processing', '12.1', 'Children', 'Changes']
-      : ['fournisseur de services', 'numéro d’assurance sociale', 'Travail en solitaire', 'borne', 'Textos', 'notifications', 'Rapports d’erreur', 'Canada (Centre)', 'prévu', 'extérieur du Canada', 'portabilité', 'désindexé', 'Commission d’accès à l’information', 'Commissariat à la protection de la vie privée du Canada', 'risque réel de préjudice grave', 'exclusivement sur un traitement automatisé', '12.1', 'Enfants', 'Modifications'];
+      : ['fournisseur de services', 'numéro d’assurance sociale', 'Travail seul', 'borne', 'Textos', 'notifications', 'Rapports d’erreur', 'Canada (Centre)', 'prévu', 'extérieur du Canada', 'portabilité', 'désindexé', 'Commission d’accès à l’information', 'Commissariat à la protection de la vie privée du Canada', 'risque réel de préjudice grave', 'exclusivement sur un traitement automatisé', '12.1', 'Enfants', 'Modifications'];
     for (const m of must) expect(all, m).toContain(m);
   });
 
