@@ -10,7 +10,7 @@
 import type { Tx } from './db.js';
 
 export const CHANGE_CHANNEL = 'fh_changes';
-export const CHANGE_TOPICS = ['lonework', 'deck', 'templates', 'bids', 'messages'] as const;
+export const CHANGE_TOPICS = ['lonework', 'deck', 'templates', 'bids', 'messages', 'surveys'] as const;
 export type ChangeTopic = (typeof CHANGE_TOPICS)[number];
 
 export async function announceChange(tx: Tx, tenantId: string, topic: ChangeTopic): Promise<void> {

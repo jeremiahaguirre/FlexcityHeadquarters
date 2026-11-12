@@ -95,7 +95,7 @@ describe('anonymity', () => {
     expect(p.body.invited).toBe(10); // 6 lifeguards, 2 parks, HR, the supervisor
     expect(await owner.notification.count({ where: { userId: id.g0, type: 'survey_open' } })).toBe(1);
     const mine = (await as('g0').get('/api/me/surveys')).body;
-    expect(mine[0]).toMatchObject({ id: id.s1, anonymous: true, minGroup: 5, responded: false });
+    expect(mine[0]).toMatchObject({ id: id.s1, from: 'hr', anonymous: true, minGroup: 5, responded: false });
     expect((await as('g0').post(`/api/me/surveys/${id.s1}/answers`, { answers: { mood: 7, load: 'About right' } })).status).toBe(400);
     expect((await answer('g0', id.s1!, 4, 'More lane ropes please')).status).toBe(201);
     expect((await answer('g0', id.s1!, 5)).body.code).toBe('ALREADY_ANSWERED');

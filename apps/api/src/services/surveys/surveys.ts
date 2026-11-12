@@ -20,6 +20,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Prisma, Survey } from '@prisma/client';
 import type { AuthContext } from '../../auth/middleware.js';
+import { announceChange, announceChangeTo } from '../../lib/changes.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { notify } from '../notifications/notifier.js';
@@ -154,6 +155,8 @@ export async function publish(tx: Tx, a: AuthContext, id: string, now = new Date
   await tx.survey.update({ where: { id }, data: { publishedAt: now, opensAt: now, minGroup: settings.minGroup } });
   await notify(tx, a.tenantId, people.map((p) => ({ userId: p.id, type: 'survey_open', params: { title: s.title, surveyId: id }, link: `/surveys?s=${id}` })));
   await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'survey.publish', entity: 'Survey', entityId: id, after: { invited: people.length, minGroup: settings.minGroup } });
+  // Live: the people asked see it on their Today screen at once.
+  await announceChangeTo(tx, a.tenantId, 'surveys', people.map((p) => p.id));
   return { invited: people.length };
 }
 
@@ -164,6 +167,8 @@ export async function mySurveys(tx: Tx, userId: string, now = new Date()) {
   return surveys.map((s) => ({
     id: s.id,
     kind: s.kind,
+    /** Who it comes from: HR (whole organization) or a manager (limited to their departments). */
+    from: s.departmentIds.length ? ('manager' as const) : ('hr' as const),
     title: s.title,
     intro: s.intro,
     anonymous: s.anonymous,
@@ -203,6 +208,7 @@ export async function respond(tx: Tx, a: AuthContext, id: string, raw: Record<st
   await tx.surveyResponse.create({ data: { tenantId: a.tenantId, surveyId: id, userId: s.anonymous ? null : a.userId, departmentId, positionId, answers: v.answers as Prisma.InputJsonValue } });
   // Clears the "survey waiting" notification; it says nothing about the answers.
   await tx.notification.updateMany({ where: { userId: a.userId, type: { in: ['survey_open', 'survey_reminder'] }, readAt: null, params: { path: ['surveyId'], equals: id } }, data: { readAt: now } });
+  await announceChangeTo(tx, a.tenantId, 'surveys', [a.userId]);
 }
 
 /** For HR and the manager who made it: counts only, never who. */
@@ -242,6 +248,7 @@ export async function closeSurvey(tx: Tx, a: AuthContext, id: string) {
   if (!s.publishedAt || isClosed(s)) throw conflict('SURVEY_CLOSED', 'This survey isn’t open.');
   await tx.survey.update({ where: { id }, data: { closedAt: new Date() } });
   await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'survey.close', entity: 'Survey', entityId: id });
+  await announceChange(tx, a.tenantId, 'surveys');
 }
 
 export async function deleteDraft(tx: Tx, a: AuthContext, id: string) {
