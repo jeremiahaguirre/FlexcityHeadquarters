@@ -5,7 +5,7 @@
  * pg_notify, which Postgres delivers only on COMMIT — so live streams on every
  * API instance see a notification exactly when it becomes durable.
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { AccessRole, Prisma, PrismaClient } from '@prisma/client';
 import { type Tx, withTenant } from '../../lib/db.js';
 import type { DomainEvent } from '../../lib/events.js';
@@ -17,6 +17,8 @@ import { pushEnabled, URGENT as URGENT_PUSH } from './push.js';
 import { urgentSoon } from './urgent.js';
 
 export const NOTIFY_CHANNEL = 'fh_notifications';
+/** Notifications (and their signals and emails) written per statement. */
+const BATCH = 1000;
 /** Open shifts starting this soon also go out by text to people who asked. */
 export const URGENT_SHIFT_MS = 24 * 3_600_000;
 
@@ -60,24 +62,19 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
 
   const pushNow = pushEnabled();
   let urgent = false;
+  // In batches, not a round trip per person: a survey to 3,000 people or a message to a 200-person
+  // group writes its notifications in a few statements (ids made here, so each signal can name one).
+  const rows = unique.map((d) => ({ id: randomUUID(), tenantId, userId: d.userId, type: d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, link: d.link ?? null, dedupeKey: keyOf(d) }));
+  for (let i = 0; i < rows.length; i += BATCH) await tx.notification.createMany({ data: rows.slice(i, i + BATCH) });
+  const signals = rows.map((n) => JSON.stringify({ tenantId, userId: n.userId, id: n.id }));
+  for (let i = 0; i < signals.length; i += BATCH) await tx.$executeRaw`SELECT pg_notify(${NOTIFY_CHANNEL}, s) FROM unnest(${signals.slice(i, i + BATCH)}::text[]) AS s`;
+  const emailTo = new Map(people.map((p) => [p.id, p]));
+  const phoneOf = new Map(texted.map((p) => [p.id, p]));
+  const emails: Prisma.EmailOutboxCreateManyInput[] = [];
   for (const d of unique) {
-    const n = await tx.notification.create({
-      data: { tenantId, userId: d.userId, type: d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, link: d.link ?? null, dedupeKey: keyOf(d) },
-    });
-    await tx.$executeRaw`SELECT pg_notify(${NOTIFY_CHANNEL}, ${JSON.stringify({ tenantId, userId: d.userId, id: n.id })})`;
-    const person = d.email && emailOn ? people.find((p) => p.id === d.userId) : undefined;
-    if (person) {
-      await tx.emailOutbox.create({
-        data: {
-          tenantId,
-          toEmail: person.email,
-          template: d.email!,
-          params: (d.params ?? {}) as Prisma.InputJsonValue,
-          locale: person.locale,
-        },
-      });
-    }
-    const phone = d.sms ? texted.find((p) => p.id === d.userId) : undefined;
+    const person = d.email && emailOn ? emailTo.get(d.userId) : undefined;
+    if (person) emails.push({ tenantId, toEmail: person.email, template: d.email!, params: (d.params ?? {}) as Prisma.InputJsonValue, locale: person.locale });
+    const phone = d.sms ? phoneOf.get(d.userId) : undefined;
     if (phone) {
       const base = { tenantId, userId: d.userId, toPhone: phone.smsPhone!, template: d.smsTemplate ?? d.type, params: (d.params ?? {}) as Prisma.InputJsonValue, locale: phone.locale };
       // A call can go unanswered: the text follows it so the words are on the phone.
@@ -88,6 +85,7 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
     // Pushed to phones straight after the commit, not at the worker's next minute.
     if (pushNow && URGENT_PUSH.has(d.type)) urgent = true;
   }
+  for (let i = 0; i < emails.length; i += BATCH) await tx.emailOutbox.createMany({ data: emails.slice(i, i + BATCH) });
   // Texts, calls and urgent pushes go out as soon as this commits (services/notifications/urgent.ts).
   if (urgent) await urgentSoon(tx, tenantId);
   return unique.length;
