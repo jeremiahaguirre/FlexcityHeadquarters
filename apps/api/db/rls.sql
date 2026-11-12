@@ -411,3 +411,28 @@ CREATE POLICY city_or_fh ON "ReleaseChange" TO flexcity_app
   WITH CHECK (app_current_tenant() IS NULL OR "tenantId" = app_current_tenant());
 -- Ring membership changes as organizations move between rings.
 GRANT DELETE ON "ReleaseRingMember" TO flexcity_app;
+
+-- The owner (the role that runs migrations and this file: fh_owner on RDS, a superuser in
+-- development) sees every row. On RDS it is not a superuser, so FORCE ROW LEVEL SECURITY binds it
+-- too, and without this policy the SECURITY DEFINER functions above, which run as the owner (the
+-- organization lookup at sign-in, the worker's list of organizations, the outbox backlog for
+-- /readyz and /metrics, API keys, webhooks), and the operator scripts (tenant:purge) would see no
+-- rows at all: in production the worker would send nothing and no one could sign in. The owner can
+-- switch row-level security off anyway, so this gives it nothing new; the runtime roles
+-- (flexcity_app, flexcity_union) never get it. Found by the production rehearsal (docs/INFRASTRUCTURE.md).
+DO $$
+DECLARE
+  t text;
+BEGIN
+  IF current_user IN ('flexcity_app', 'flexcity_union') THEN
+    RAISE EXCEPTION 'db/rls.sql is applied by the database owner, not a runtime role';
+  END IF;
+  FOR t IN SELECT c.relname FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'r' AND c.relrowsecurity LOOP
+    IF EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = format('%I', t)::regclass AND p.polname = 'owner_all') THEN
+      EXECUTE format('ALTER POLICY owner_all ON %I TO %I USING (true) WITH CHECK (true)', t, current_user);
+    ELSE
+      EXECUTE format('CREATE POLICY owner_all ON %I TO %I USING (true) WITH CHECK (true)', t, current_user);
+    END IF;
+  END LOOP;
+END
+$$;

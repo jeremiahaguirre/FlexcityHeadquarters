@@ -106,7 +106,7 @@ const CROSS_CITY = new Set(['PlatformAudit', 'BillingAccount', 'Invoice', 'Invoi
 export async function checkRls(prisma: PrismaClient, schema = 'public', lists = rlsLists()): Promise<Result> {
   const rows = await prisma.$queryRaw<Array<{ relname: string; rls: boolean; forced: boolean; policies: number; tenant: boolean }>>`
     SELECT c.relname, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced,
-           (SELECT count(*)::int FROM pg_policy p WHERE p.polrelid = c.oid) AS policies,
+           (SELECT count(*)::int FROM pg_policy p WHERE p.polrelid = c.oid AND p.polname <> 'owner_all') AS policies, -- the owner's own policy (db/rls.sql) gives the app nothing
            EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenantId' AND NOT a.attisdropped) AS tenant
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
      WHERE n.nspname = ${schema} AND c.relkind = 'r'`;
