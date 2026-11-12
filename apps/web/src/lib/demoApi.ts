@@ -2,15 +2,19 @@
  * In-browser stand-in for the API, used only by the static demo build.
  * GET requests replay responses recorded from a real local stack
  * (demoFixtures.ts); changes are accepted but not kept. The shift board is
- * simulated so claiming, overtime approval and refusal reasons can be tried.
+ * simulated so claiming, overtime approval and refusal reasons can be tried; a few everyday
+ * actions (a sent message, an answered survey, saved preferences or bids) last for the visit
+ * (demoSession.ts).
  * Real eligibility and overtime decisions are made server-side by the API.
  */
 import { ApiError } from './apiError';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD, type DemoAccount } from './demo';
 import { type DemoRole, type Fixtures, loadFixtures } from './demoFixtures';
 import * as plan from './demoPlanner';
+import { loadSession, saveSession, sessionRead, sessionWrite } from './demoSession';
 import type { Board } from './planner';
 import type { FillWeek } from './fill';
+import type { TemplatesView } from './shiftTemplates';
 
 const FACILITY = { name: 'Lakeview Aquatic Centre', timezone: 'America/Vancouver' };
 const OFFSET = '-07:00';
@@ -132,11 +136,13 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
     const me = (await fixtures(roleOf(account))).get('/api/me') as { id: string; firstName: string; roles: string[] };
     save({ signedIn: true, account, claimed: [], pending: [] });
     plan.savePlan(null);
+    saveSession(null);
     return { accessToken: 'demo', user: { id: me.id, firstName: me.firstName, roles: me.roles, locale: 'en-CA' } } as T;
   }
   if (path === '/api/auth/logout') {
     save({ signedIn: false, claimed: [], pending: [] });
     plan.savePlan(null);
+    saveSession(null);
     return undefined as T;
   }
   if (path.startsWith('/api/auth/')) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
@@ -196,13 +202,21 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
     const list = (data.get(path) as Array<{ members: Array<string | null> }> | undefined) ?? [];
     return (name ? list.filter((c) => c.members.includes(name)) : []) as T;
   }
+  const session = loadSession();
+  if (method !== 'GET') {
+    const kept = sessionWrite(session, path, method, (init.body ?? {}) as Record<string, unknown>, { me: data.get('/api/me') as { id: string }, templates: data.get('/api/schedule/templates') as TemplatesView | undefined });
+    if (kept) {
+      saveSession(kept.state);
+      return kept.response as T;
+    }
+  }
   const planned = plannerApi(data, path, method, (init.body ?? {}) as Record<string, unknown>);
   if (planned !== undefined) return planned as T;
 
   if (method === 'GET') {
     const body = data.get(path);
     if (body === undefined) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
-    return body as T;
+    return sessionRead(session, path, body) as T;
   }
 
   // Changes look like they worked, but nothing is kept (the banner says so).
