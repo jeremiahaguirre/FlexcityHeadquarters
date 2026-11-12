@@ -1,7 +1,7 @@
 'use client';
 
 import { useLogoSeen } from '@/lib/colorScheme';
-import { BookOpen, Building2, Inbox, KeyRound, Landmark, LogOut, MoreHorizontal, Receipt, Scale, ShieldCheck, Terminal } from 'lucide-react';
+import { BookOpen, Building2, Inbox, KeyRound, Landmark, LogOut, Megaphone, MoreHorizontal, Receipt, Scale, ShieldCheck, Terminal } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 import { TRUST_SECTIONS } from '@/components/platform/trust/ui';
 import { CommandMenu, type Destination } from '@/components/shell/CommandMenu';
@@ -33,6 +33,7 @@ const NAV = [
   { href: '/platform/enquiries', key: 'enquiries.nav', icon: Inbox },
   { href: '/platform/payroll-tax', key: 'payTax.nav', icon: Scale },
   { href: '/platform/trust', key: 'trust.nav', icon: ShieldCheck },
+  { href: '/platform/updates', key: 'updatesConsole.nav', icon: Megaphone },
 ] as const;
 /** Phone tab bar: these four, then More for the rest. */
 const PHONE_MAIN: string[] = ['/platform', '/platform/billing', '/platform/enquiries', '/platform/trust'];

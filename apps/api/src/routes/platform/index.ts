@@ -13,6 +13,7 @@ import { consentsRouter } from './consents.js';
 import { platformPayrollRouter } from './payroll.js';
 import { platformIntegrationsRouter } from './integrations.js';
 import { trustRouter } from './trust.js';
+import { updatesRouter } from './updates.js';
 
 /** FH Dev console API: no organization subdomain, its own sessions, larger bodies (logos, CSV). */
 export const platformRouter = Router();
@@ -21,4 +22,4 @@ const json = express.json({ limit: '2mb' });
 const evidenceJson = express.json({ limit: '14mb' });
 platformRouter.use((req, res, next) => (req.method === 'POST' && req.path === '/trust/evidence' ? evidenceJson : json)(req, res, next), cookieParser(), requirePlatformHeader);
 platformRouter.use(platformAuthRouter, platformPasskeyRouter);
-platformRouter.use(requirePlatform, citiesRouter, lifecycleRouter, billingRouter, booksRouter, leadsRouter, payrollTaxRouter, consentsRouter, platformPayrollRouter, platformIntegrationsRouter, trustRouter);
+platformRouter.use(requirePlatform, citiesRouter, lifecycleRouter, billingRouter, booksRouter, leadsRouter, payrollTaxRouter, consentsRouter, platformPayrollRouter, platformIntegrationsRouter, trustRouter, updatesRouter);

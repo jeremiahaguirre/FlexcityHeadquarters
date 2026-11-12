@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Languages, LogOut, UserRound, ShieldCheck } from 'lucide-react';
+import { ChevronDown, Languages, LogOut, Sparkles, UserRound, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -107,6 +107,10 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
           <Link href="/profile" className={item} onClick={() => setOpen(false)}>
             <UserRound className="h-4 w-4 text-muted" aria-hidden="true" />
             {t('shell.profile')}
+          </Link>
+          <Link href="/whats-new" className={item} onClick={() => setOpen(false)}>
+            <Sparkles className="h-4 w-4 text-muted" aria-hidden="true" />
+            {t('whatsNew.menu')}
           </Link>
           <Link href="/privacy" className={item} onClick={() => setOpen(false)}>
             <ShieldCheck className="h-4 w-4 text-muted" aria-hidden="true" />

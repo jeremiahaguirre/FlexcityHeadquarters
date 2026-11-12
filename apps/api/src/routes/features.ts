@@ -29,6 +29,7 @@ import { cancelOffer, claimOffer, decideOffer, postOffer } from '../services/shi
 import { clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
 import { h, keys, tenantKekId } from './context.js';
 import { notificationsRouter } from './notifications.js';
+import { updatesRouter } from './updates.js';
 import { schedulingRouter } from './scheduling.js';
 import { fillRouter } from './fill.js';
 import { workRulesRouter } from './workRules.js';
@@ -112,6 +113,7 @@ api.use((req, _res, next) => {
 });
 api.use(requireConsent);
 api.use(notificationsRouter);
+api.use(updatesRouter);
 api.use(myPasskeysRouter);
 api.use(rolesRouter);
 api.use(departmentsRouter);

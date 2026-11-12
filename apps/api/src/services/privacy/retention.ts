@@ -54,6 +54,8 @@ export async function applyRetention(tx: Tx, now = new Date()): Promise<number> 
   if (!t) return 0;
   const r = readRetention(t.retentionSettings);
   const n = await tx.notification.deleteMany({ where: { createdAt: { lt: ago(now, r.notificationsDays) } } });
+  // Who saw which What's new note: kept as long as notifications.
+  await tx.releaseNoteRead.deleteMany({ where: { readAt: { lt: ago(now, r.notificationsDays) } } });
   // Only finished emails: anything still waiting to go out stays.
   const e = await tx.emailOutbox.deleteMany({ where: { createdAt: { lt: ago(now, r.emailLogDays) }, OR: [{ sentAt: { not: null } }, { attempts: { gte: 5 } }] } });
   // Texts and calls follow the email log's period.

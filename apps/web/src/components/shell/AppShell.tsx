@@ -1,7 +1,7 @@
 'use client';
 
 import { useLogoSeen } from '@/lib/colorScheme';
-import { Lock, MoreHorizontal, ShieldCheck, UserRound } from 'lucide-react';
+import { Lock, MoreHorizontal, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -28,6 +28,7 @@ import { SideNav } from './SideNav';
 import { NoAccess } from './NoAccess';
 import { ConsentGate } from '@/components/privacy/ConsentGate';
 import { Copyright } from '@/components/Copyright';
+import { WhatsNewSheet } from '@/components/updates/WhatsNewSheet';
 
 
 function isActive(pathname: string, href: string) {
@@ -62,6 +63,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   const destinations: Destination[] = [
     ...items.map((n) => ({ href: n.href, label: t(`nav.${n.key}`), group: n.section ? t(`navSections.${n.section}`) : t(`navGroups.${n.group}`), icon: n.icon })),
     { href: '/profile', label: t('jump.profile'), group: t('navGroups.mine'), icon: UserRound },
+    { href: '/whats-new', label: t('whatsNew.menu'), group: t('navGroups.mine'), icon: Sparkles },
   ];
 
   const link = (n: NavItem, onClick?: () => void) => {
@@ -166,6 +168,8 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
 
       <StepUpDialog />
       <MfaDialog />
+      {/* New What's new notes, once (not during an FH support visit: they're for the person, not the visitor). */}
+      {me && !me.support ? <WhatsNewSheet /> : null}
       <PasskeyPrompt userId={me?.id} skip={me?.mfaRequired} list={() => api<unknown[]>('/api/me/passkeys')} add={addPasskey} />
 
       {/* Phone tab bar */}

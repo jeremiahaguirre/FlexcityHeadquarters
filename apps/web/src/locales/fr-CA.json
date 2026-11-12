@@ -564,7 +564,8 @@
     "PIN_WEAK": "Choisissez un NIP plus difficile à deviner : pas de suite comme 2345, pas de répétitions, et pas votre numéro d’employé.",
     "TOO_MANY_ATTEMPTS": "Trop de tentatives. Patientez quelques minutes, puis réessayez.",
     "RATE_LIMITED": "Trop de requêtes. Patientez un moment, puis réessayez.",
-    "CLIENT_OUTDATED": "Cette version de l’application n’est plus à jour. Actualisez pour continuer."
+    "CLIENT_OUTDATED": "Cette version de l’application n’est plus à jour. Actualisez pour continuer.",
+    "NOTE_WITHDRAWN": "Cette note a été retirée."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -8280,5 +8281,61 @@
     "refresh": "Actualiser",
     "later": "Plus tard",
     "outdated": "Cette version n’est plus à jour"
+  },
+  "whatsNew": {
+    "menu": "Quoi de neuf",
+    "title": "Quoi de neuf",
+    "description": "Les changements apportés à FlexcityHeadquarters, du plus récent au plus ancien.",
+    "sheetTitle": "Quoi de neuf",
+    "gotIt": "Compris",
+    "seeAll": "Voir toutes les nouveautés",
+    "seeAllMore_one": "Tout voir ({{count}} de plus)",
+    "seeAllMore_other": "Tout voir ({{count}} de plus)",
+    "new": "Nouveau",
+    "emptyTitle": "Rien de neuf pour l’instant",
+    "empty": "Quand FlexcityHeadquarters aura de nouvelles fonctions ou des changements, ils seront décrits ici."
+  },
+  "updatesConsole": {
+    "nav": "Mises à jour",
+    "navShort": "Mises à jour",
+    "title": "Mises à jour",
+    "description": "Informez les organisations de ce qui change : notes « Quoi de neuf » pour le personnel.",
+    "notesTitle": "Notes « Quoi de neuf »",
+    "notesHelp": "De courtes notes en anglais et en français. Chaque personne voit une note une seule fois, dans une fenêtre après une mise à jour ou à sa prochaine connexion, et elle reste dans « Quoi de neuf » dans le menu de son compte.",
+    "newNote": "Nouvelle note",
+    "editNote": "Modifier la note",
+    "noteFormHelp": "Texte brut. Les lignes qui commencent par « - » deviennent une liste, et par « 1. » une liste numérotée. La publication vous demande de confirmer avec votre clé d’accès.",
+    "langEn": "Anglais",
+    "langFr": "Français",
+    "noteTitle": "Titre",
+    "noteBody": "Texte",
+    "noteBodyHint": "Jusqu’à 4 000 caractères.",
+    "preview": "Aperçu",
+    "roles": "Qui la voit",
+    "rolesHelp": "Ne cochez rien pour tout le monde.",
+    "everyone": "Tout le monde",
+    "organizations": "Organisations",
+    "allOrganizations": "Toutes les organisations",
+    "someOrganizations": "Organisations choisies",
+    "ringOption": "Anneau : {{name}}",
+    "orgCount_one": "{{count}} organisation",
+    "orgCount_other": "{{count}} organisations",
+    "publishAt": "Afficher à partir du",
+    "publishAtHint": "Votre heure. Une heure plus tard la garde cachée jusque-là.",
+    "saveDraft": "Enregistrer le brouillon",
+    "publish": "Publier",
+    "withdraw": "Retirer",
+    "noteSaved": "Note enregistrée.",
+    "notePublished": "Note publiée.",
+    "noteWithdrawn": "Note retirée. Plus personne ne la voit.",
+    "noNotes": "Aucune note pour l’instant",
+    "noNotesHelp": "Rédigez-en une quand une mise à jour change quelque chose que les gens remarqueront.",
+    "noAccess": "Votre compte de la console Dev n’a pas accès aux versions et aux avis.",
+    "noteStatus": {
+      "draft": "Brouillon",
+      "scheduled": "Programmée",
+      "published": "Publiée",
+      "withdrawn": "Retirée"
+    }
   }
 }

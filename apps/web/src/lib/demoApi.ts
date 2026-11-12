@@ -8,6 +8,7 @@
  * Real eligibility and overtime decisions are made server-side by the API.
  */
 import { ApiError } from './apiError';
+import { demoConsoleNotes, demoWhatsNew } from './demoUpdates';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD, type DemoAccount } from './demo';
 import { type DemoRole, type Fixtures, loadFixtures } from './demoFixtures';
 import * as plan from './demoPlanner';
@@ -149,6 +150,9 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
 
   if (!state.signedIn || !state.account) throw new ApiError(401, 'UNAUTHENTICATED', 'Not signed in');
   const data = await fixtures(roleOf(state.account));
+  // What's new: a sample note (lib/demoUpdates.ts), not part of the recordings.
+  const updates = demoWhatsNew(path, method);
+  if (updates !== undefined) return updates as T;
 
   if (path === '/api/shiftboard/offers') {
     return SHIFTS.filter((s) => !state.claimed.includes(s.offerId)).map((s) => toOffer(s, state)) as T;
@@ -353,6 +357,8 @@ export async function demoPlatformApi<T>(path: string, init: { method?: string; 
     else if (r) {
       if (access[2] === 'menu') r.menu = r.menu.map((m) => (m.href === b.href ? { ...m, shown: !!b.shown } : m));
       if (access[2] === 'permission') r.permissions = b.on ? [...new Set([...r.permissions, b.permission!])] : r.permissions.filter((p) => p !== b.permission);
+  const notes = demoConsoleNotes(path, method);
+  if (notes !== undefined) return notes as T;
       r.customized = true;
     }
     if (access[2] === 'reset') {

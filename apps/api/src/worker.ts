@@ -46,6 +46,7 @@ import { deliverTrustAlerts, runReminders } from './services/trust/reminders.js'
 import { sendRenewalReminders } from './services/billing/renewal.js';
 import { purgeOldEnquiries } from './services/marketing/casl.js';
 import { ensureTrustSeeded } from './services/trust/seed.js';
+import { announceDueNotes } from './services/platform/releaseNotes.js';
 import { checkOverdueSafety, enableInlineUrgent, kickUrgent, tenantsWithDueSms, URGENT_CHANNEL } from './services/notifications/urgent.js';
 
 const cfg = config();
@@ -143,6 +144,8 @@ const minutely = async () => {
   await exclusive('email', () => deliverOutbox(db(), mailer));
   await exclusive('sms', () => deliverSms(db(), sms));
   await exclusive('push', () => perTenant((tx) => deliverPush(tx)));
+  // What's new notes published for later: the live signal once their time comes (FH's table, no organization).
+  await exclusive('release-notes', () => announceDueNotes(db()));
 };
 const hourly = async () => {
   await exclusive('patrols', () => perTenant((tx) => patrolReminders(tx)));

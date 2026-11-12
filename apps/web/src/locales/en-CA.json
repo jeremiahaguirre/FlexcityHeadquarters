@@ -564,7 +564,8 @@
     "PIN_WEAK": "Choose a PIN that’s harder to guess: no runs like 2345, no repeats, and not your employee number.",
     "TOO_MANY_ATTEMPTS": "Too many attempts. Wait a few minutes and try again.",
     "RATE_LIMITED": "Too many requests. Wait a moment and try again.",
-    "CLIENT_OUTDATED": "This version of the app is out of date. Refresh to keep going."
+    "CLIENT_OUTDATED": "This version of the app is out of date. Refresh to keep going.",
+    "NOTE_WITHDRAWN": "This note was withdrawn."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -8280,5 +8281,61 @@
     "refresh": "Refresh",
     "later": "Later",
     "outdated": "This version is out of date"
+  },
+  "whatsNew": {
+    "menu": "What’s new",
+    "title": "What’s new",
+    "description": "Changes to FlexcityHeadquarters, newest first.",
+    "sheetTitle": "What’s new",
+    "gotIt": "Got it",
+    "seeAll": "See all updates",
+    "seeAllMore_one": "See all ({{count}} more)",
+    "seeAllMore_other": "See all ({{count}} more)",
+    "new": "New",
+    "emptyTitle": "Nothing new yet",
+    "empty": "When FlexcityHeadquarters gets new features or changes, they’ll be described here."
+  },
+  "updatesConsole": {
+    "nav": "Updates",
+    "navShort": "Updates",
+    "title": "Updates",
+    "description": "Tell organizations what’s changing: What’s new notes for staff.",
+    "notesTitle": "What’s new notes",
+    "notesHelp": "Short notes in English and French. Each person sees a note once, in a sheet after an update or at their next sign-in, and it stays in What’s new in their account menu.",
+    "newNote": "New note",
+    "editNote": "Edit note",
+    "noteFormHelp": "Plain text. Lines starting with “- ” become a list, “1. ” a numbered list. Publishing asks you to confirm with your passkey.",
+    "langEn": "English",
+    "langFr": "French",
+    "noteTitle": "Title",
+    "noteBody": "Text",
+    "noteBodyHint": "Up to 4,000 characters.",
+    "preview": "Preview",
+    "roles": "Who sees it",
+    "rolesHelp": "Leave all unticked for everyone.",
+    "everyone": "Everyone",
+    "organizations": "Organizations",
+    "allOrganizations": "All organizations",
+    "someOrganizations": "Selected organizations",
+    "ringOption": "Ring: {{name}}",
+    "orgCount_one": "{{count}} organization",
+    "orgCount_other": "{{count}} organizations",
+    "publishAt": "Show from",
+    "publishAtHint": "Your time. A later time keeps it hidden until then.",
+    "saveDraft": "Save draft",
+    "publish": "Publish",
+    "withdraw": "Withdraw",
+    "noteSaved": "Note saved.",
+    "notePublished": "Note published.",
+    "noteWithdrawn": "Note withdrawn. Nobody sees it any more.",
+    "noNotes": "No notes yet",
+    "noNotesHelp": "Write one when an update changes something people will notice.",
+    "noAccess": "Your Dev console account doesn’t have access to releases and notices.",
+    "noteStatus": {
+      "draft": "Draft",
+      "scheduled": "Scheduled",
+      "published": "Published",
+      "withdrawn": "Withdrawn"
+    }
   }
 }
