@@ -112,6 +112,42 @@ resource "aws_lb_listener_rule" "api" {
   }
 }
 
+# ---- AI crawlers (one list for the website's robots.txt, the app's and these firewalls) ------
+locals {
+  ai_crawlers       = jsondecode(file("${path.module}/../../apps/site/src/lib/aiCrawlers.json"))
+  ai_crawler_agents = distinct([for a in concat(local.ai_crawlers.training, var.waf_block_ai_assistants ? local.ai_crawlers.assistants : []) : lower(a)])
+  # Matched against the lower-cased User-Agent. A pattern set holds at most 10 patterns of 200 characters.
+  ai_crawler_patterns = [for chunk in chunklist(local.ai_crawler_agents, 5) : join("|", chunk)]
+
+  # The app firewall's rules, in evaluation order (each priority used once; tests/plan.tftest.hcl).
+  app_waf_priority = {
+    ip_reputation    = 1
+    common           = 2
+    known_bad_inputs = 3
+    rate_per_address = 4
+    ai_crawlers      = 5
+    no_user_agent    = 6
+    bot_control      = 7
+  }
+}
+
+resource "aws_wafv2_regex_pattern_set" "ai_crawlers" {
+  name  = "${local.name}-ai-crawlers"
+  scope = "REGIONAL"
+  dynamic "regular_expression" {
+    for_each = local.ai_crawler_patterns
+    content {
+      regex_string = regular_expression.value
+    }
+  }
+  lifecycle {
+    precondition {
+      condition     = length(local.ai_crawler_patterns) <= 10 && alltrue([for p in local.ai_crawler_patterns : length(p) <= 200 && can(regex("^[a-z0-9 |-]+$", p))])
+      error_message = "AI crawler patterns must be plain names, at most 10 patterns of 200 characters (AWS WAF limits)."
+    }
+  }
+}
+
 # ---- Web firewall on the load balancer -----------------------------------------------------
 resource "aws_wafv2_web_acl" "app" {
   name  = local.name
@@ -127,7 +163,7 @@ resource "aws_wafv2_web_acl" "app" {
 
   rule {
     name     = "ip-reputation"
-    priority = 1
+    priority = local.app_waf_priority.ip_reputation
     override_action {
       none {}
     }
@@ -146,7 +182,7 @@ resource "aws_wafv2_web_acl" "app" {
 
   rule {
     name     = "common"
-    priority = 2
+    priority = local.app_waf_priority.common
     override_action {
       none {}
     }
@@ -173,7 +209,7 @@ resource "aws_wafv2_web_acl" "app" {
 
   rule {
     name     = "known-bad-inputs"
-    priority = 3
+    priority = local.app_waf_priority.known_bad_inputs
     override_action {
       none {}
     }
@@ -193,7 +229,7 @@ resource "aws_wafv2_web_acl" "app" {
   # A backstop against floods. The API has its own, finer limits (sign-in, kiosk PINs, public API keys).
   rule {
     name     = "rate-per-address"
-    priority = 4
+    priority = local.app_waf_priority.rate_per_address
     action {
       block {}
     }
@@ -208,6 +244,135 @@ resource "aws_wafv2_web_acl" "app" {
       cloudwatch_metrics_enabled = true
       metric_name                = "rate-per-address"
       sampled_requests_enabled   = true
+    }
+  }
+
+  # AI training crawlers (and, unless waf_block_ai_assistants is false, AI assistants) by user agent.
+  # robots.txt only asks; this enforces it. Blocked counts: metric "ai-crawlers" (docs/MONITORING.md).
+  rule {
+    name     = "ai-crawlers"
+    priority = local.app_waf_priority.ai_crawlers
+    action {
+      block {}
+    }
+    statement {
+      regex_pattern_set_reference_statement {
+        arn = aws_wafv2_regex_pattern_set.ai_crawlers.arn
+        field_to_match {
+          single_header {
+            name = "user-agent"
+          }
+        }
+        text_transformation {
+          priority = 0
+          type     = "LOWERCASE"
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "ai-crawlers"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # Browsers, phones, calendar apps, kiosks and webhooks all send a User-Agent; scripts that hide it don't.
+  rule {
+    name     = "no-user-agent"
+    priority = local.app_waf_priority.no_user_agent
+    action {
+      block {}
+    }
+    statement {
+      and_statement {
+        statement {
+          not_statement {
+            statement {
+              size_constraint_statement {
+                comparison_operator = "GT"
+                size                = 0
+                field_to_match {
+                  single_header {
+                    name = "user-agent"
+                  }
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+          }
+        }
+        statement {
+          not_statement {
+            statement {
+              regex_match_statement {
+                regex_string = "^/(healthz|readyz)$"
+                field_to_match {
+                  uri_path {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "no-user-agent"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # AWS Bot Control (optional, charged per request inspected): blocks unverified bots and
+  # automation on pages; verified search engines are let through. /api/* is left out, because
+  # calendar apps, kiosks, the public API and payment webhooks are legitimate non-browser clients.
+  dynamic "rule" {
+    for_each = var.waf_bot_control ? [1] : []
+    content {
+      name     = "bot-control"
+      priority = local.app_waf_priority.bot_control
+      override_action {
+        none {}
+      }
+      statement {
+        managed_rule_group_statement {
+          vendor_name = "AWS"
+          name        = "AWSManagedRulesBotControlRuleSet"
+          managed_rule_group_configs {
+            aws_managed_rules_bot_control_rule_set {
+              inspection_level = "COMMON"
+            }
+          }
+          scope_down_statement {
+            not_statement {
+              statement {
+                byte_match_statement {
+                  search_string         = "/api/"
+                  positional_constraint = "STARTS_WITH"
+                  field_to_match {
+                    uri_path {}
+                  }
+                  text_transformation {
+                    priority = 0
+                    type     = "NONE"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      visibility_config {
+        cloudwatch_metrics_enabled = true
+        metric_name                = "bot-control"
+        sampled_requests_enabled   = true
+      }
     }
   }
 }
@@ -274,6 +439,94 @@ resource "aws_cloudfront_response_headers_policy" "site" {
       override        = true
     }
   }
+  # The same AI-training opt-out the site sends on Vercel (apps/site/vercel.json); search indexing stays allowed.
+  custom_headers_config {
+    items {
+      header   = "X-Robots-Tag"
+      value    = "noai, noimageai"
+      override = true
+    }
+    items {
+      header   = "tdm-reservation"
+      value    = "1"
+      override = true
+    }
+  }
+}
+
+# CloudFront's firewall: AI crawlers by user agent, and a flood backstop. Global, so it is created
+# in us-east-1 (versions.tf); it holds rules only.
+resource "aws_wafv2_regex_pattern_set" "ai_crawlers_site" {
+  provider = aws.us_east_1
+  name     = "${local.gname}-site-ai-crawlers"
+  scope    = "CLOUDFRONT"
+  dynamic "regular_expression" {
+    for_each = local.ai_crawler_patterns
+    content {
+      regex_string = regular_expression.value
+    }
+  }
+}
+
+resource "aws_wafv2_web_acl" "site" {
+  provider = aws.us_east_1
+  name     = "${local.gname}-site"
+  scope    = "CLOUDFRONT"
+  default_action {
+    allow {}
+  }
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "${local.gname}-site"
+    sampled_requests_enabled   = true
+  }
+
+  rule {
+    name     = "ai-crawlers"
+    priority = 1
+    action {
+      block {}
+    }
+    statement {
+      regex_pattern_set_reference_statement {
+        arn = aws_wafv2_regex_pattern_set.ai_crawlers_site.arn
+        field_to_match {
+          single_header {
+            name = "user-agent"
+          }
+        }
+        text_transformation {
+          priority = 0
+          type     = "LOWERCASE"
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "site-ai-crawlers"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  rule {
+    name     = "rate-per-address"
+    priority = 2
+    action {
+      block {}
+    }
+    statement {
+      rate_based_statement {
+        limit                 = var.site_waf_rate_limit
+        aggregate_key_type    = "IP"
+        evaluation_window_sec = 300
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "site-rate-per-address"
+      sampled_requests_enabled   = true
+    }
+  }
 }
 
 resource "aws_cloudfront_distribution" "site" {
@@ -283,6 +536,7 @@ resource "aws_cloudfront_distribution" "site" {
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
   aliases             = var.site_domain != "" ? [var.site_domain] : []
+  web_acl_id          = aws_wafv2_web_acl.site.arn
 
   origin {
     domain_name              = aws_s3_bucket.site.bucket_regional_domain_name

@@ -32,3 +32,13 @@ provider "aws" {
     tags = local.tags
   }
 }
+
+# CloudFront's web firewall is global and must be created in us-east-1. Only firewall rules live
+# there (no customer data): the marketing site's AI-crawler block and rate limit (edge.tf).
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+  default_tags {
+    tags = local.tags
+  }
+}

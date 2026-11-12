@@ -146,6 +146,24 @@ variable "waf_rate_limit" {
   default     = 20000
 }
 
+variable "waf_block_ai_assistants" {
+  description = "Also block AI search engines and assistants (ChatGPT-User, OAI-SearchBot, PerplexityBot, Claude-User…) at the firewall, not only AI training crawlers. Keep in step with ALLOW_AI_ASSISTANTS in apps/site/src/lib/crawlers.ts."
+  type        = bool
+  default     = true
+}
+
+variable "waf_bot_control" {
+  description = "Add AWS's managed Bot Control rules (common level) to the app's firewall, for pages only (not /api/*). Off by default: it is charged per request on top of the firewall (see AWS WAF pricing)."
+  type        = bool
+  default     = false
+}
+
+variable "site_waf_rate_limit" {
+  description = "Marketing site: requests per 5 minutes from one address before it is blocked."
+  type        = number
+  default     = 2000
+}
+
 variable "alarm_email" {
   description = "Where infrastructure alarms are emailed (confirmed by the recipient)."
   type        = string

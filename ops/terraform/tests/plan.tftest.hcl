@@ -22,6 +22,10 @@ mock_provider "aws" {
   alias = "dr"
 }
 
+mock_provider "aws" {
+  alias = "us_east_1"
+}
+
 variables {
   environment     = "production"
   root_domain     = "example.ca"
@@ -91,6 +95,45 @@ run "production_defaults" {
   assert {
     condition     = toset([for x in local.app_secrets : x.name]) == toset(["JWT_SECRET", "APP_DATABASE_URL", "LISTEN_DATABASE_URL", "METRICS_TOKEN"]) && !contains(keys(local.app_env), "JWT_SECRET")
     error_message = "Secrets come from Secrets Manager, never plain environment."
+  }
+}
+
+# The firewalls' rule sets reference pattern sets whose ARNs are only known after an apply, so
+# the rules are checked through the locals they are built from (bot_control_* plans the optional rule).
+run "firewalls" {
+  command = plan
+
+  assert {
+    condition     = length(distinct(values(local.app_waf_priority))) == length(local.app_waf_priority)
+    error_message = "Firewall rule priorities must be unique."
+  }
+  assert {
+    condition     = length(local.ai_crawler_patterns) <= 10 && alltrue([for p in local.ai_crawler_patterns : length(p) <= 200]) && contains(local.ai_crawler_agents, "gptbot") && contains(local.ai_crawler_agents, "claudebot") && contains(local.ai_crawler_agents, "perplexitybot") && !contains(local.ai_crawler_agents, "googlebot") && !contains(local.ai_crawler_agents, "bingbot")
+    error_message = "AI crawler patterns: training crawlers and assistants, never ordinary search engines, within AWS WAF limits."
+  }
+  assert {
+    condition     = length(aws_wafv2_regex_pattern_set.ai_crawlers.regular_expression) == length(local.ai_crawler_patterns) && length(aws_wafv2_regex_pattern_set.ai_crawlers_site.regular_expression) == length(local.ai_crawler_patterns)
+    error_message = "Both firewalls match the whole AI crawler list."
+  }
+  assert {
+    condition     = aws_wafv2_web_acl.app.scope == "REGIONAL" && aws_wafv2_web_acl.site.scope == "CLOUDFRONT" && aws_wafv2_regex_pattern_set.ai_crawlers_site.scope == "CLOUDFRONT"
+    error_message = "The load balancer's firewall is regional; the marketing site's is CloudFront's (us-east-1)."
+  }
+  assert {
+    condition     = contains([for h in aws_cloudfront_response_headers_policy.site.custom_headers_config[0].items : "${h.header}=${h.value}"], "tdm-reservation=1") && contains([for h in aws_cloudfront_response_headers_policy.site.custom_headers_config[0].items : "${h.header}=${h.value}"], "X-Robots-Tag=noai, noimageai")
+    error_message = "The site opts out of AI training (TDMRep, noai) on CloudFront too."
+  }
+}
+
+run "bot_control_and_assistants_allowed" {
+  command = plan
+  variables {
+    waf_bot_control         = true
+    waf_block_ai_assistants = false
+  }
+  assert {
+    condition     = contains(local.ai_crawler_agents, "gptbot") && !contains(local.ai_crawler_agents, "perplexitybot") && !contains(local.ai_crawler_agents, "chatgpt-user")
+    error_message = "Allowing AI assistants keeps training crawlers blocked."
   }
 }
 
