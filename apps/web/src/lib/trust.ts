@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Tone } from '@/components/ui/StatusPill';
 import { ApiError } from './apiError';
+import { DEMO } from './demo';
+import { papi } from './platform';
 
 /** Dev console › Trust: types, live polling and the small pure helpers the charts use. */
 
@@ -65,6 +67,16 @@ export function useLiveTrust<T>(path: string, intervalMs = 20_000) {
   const load = useCallback(async (fresh = false) => {
     const p = path;
     try {
+      // The static demo answers from its recordings (no ETags there).
+      if (DEMO) {
+        const body = await papi<T>(p);
+        if (current.current !== p) return;
+        setCheckedAt(Date.now());
+        setData(body);
+        setChangedAt(Date.now());
+        setError(null);
+        return;
+      }
       const res = await fetch(`/api/platform${p}`, { credentials: 'include', headers: { 'x-fh-platform': '1', ...(etag.current && !fresh ? { 'if-none-match': etag.current } : {}) } });
       if (current.current !== p) return;
       setCheckedAt(Date.now());

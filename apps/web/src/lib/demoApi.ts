@@ -301,6 +301,28 @@ function plannerApi(data: Fixtures, path: string, method: string, body: Record<s
   return undefined;
 }
 
+/**
+ * A screen asked with options nobody recorded (Trust's Overview with another framework scope, say):
+ * answer with the recording of the same address that shares the most of its options.
+ */
+export function nearest(data: Fixtures, path: string): unknown {
+  const u = new URL(path, 'http://demo');
+  const want = [...u.searchParams.entries()].map(([k, v]) => `${k}=${v}`);
+  let best: { key: string; score: number } | null = null;
+  for (const key of data.keys()) {
+    const k = new URL(key, 'http://demo');
+    if (k.pathname !== u.pathname) continue;
+    const score = [...k.searchParams.entries()].filter(([a, b]) => want.includes(`${a}=${b}`)).length;
+    if (!best || score > best.score) best = { key, score };
+  }
+  return best ? data.get(best.key) : undefined;
+}
+
+/** What a Dev console download saves in the demo: a short note in both languages, no data. */
+export function demoPlatformFile(name: string): Blob {
+  return new Blob([`${name}\n\nFlexcityHeadquarters demo: this file would come from the Dev console. The demo has sample data only, so there is nothing to download.\n\nDémonstration de FlexcityHeadquarters : ce fichier viendrait de la console Dev. La démonstration n’a que des données fictives, donc il n’y a rien à télécharger.\n`], { type: 'text/plain' });
+}
+
 /** Dev console in the static demo: recorded responses; changes look saved but aren't kept. */
 /** Menus-and-access switches flipped in this demo session (never saved). */
 const demoAccess = new Map<string, unknown>();
@@ -371,8 +393,10 @@ export async function demoPlatformApi<T>(path: string, init: { method?: string; 
     demoAccess.set(key, next);
     return next as T;
   }
+  // A new organization opens the recorded demo city (nothing is created).
+  if (path === '/tenants' && method === 'POST') return { id: ((data.get('/tenants') as Array<{ id: string }>)[0] ?? { id: 'demo' }).id } as T;
   if (method === 'GET') {
-    const body = demoAccess.get(path) ?? data.get(path);
+    const body = demoAccess.get(path) ?? data.get(path) ?? nearest(data, path);
     if (body === undefined) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
     // Open the demo's own sign-in page instead of a recorded local address.
     const city = body as { organization?: { signInUrl?: string } };

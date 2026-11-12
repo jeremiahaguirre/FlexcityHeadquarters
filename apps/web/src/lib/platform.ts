@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from './apiError';
 import { DEMO } from './demo';
-import { demoPlatformApi } from './demoApi';
+import { demoPlatformApi, demoPlatformFile } from './demoApi';
 import { CLIENT_HEADERS, markOutdated, noteServerVersion } from './appUpdate';
 
 /**
@@ -73,6 +73,8 @@ export interface CityDetail {
   organization: { id: string; name: string; subdomain: string; defaultLocale: string; timeFormat?: string; themeColors: { primary?: string } | null; logoUrl: string | null; payWeekStartDay: number; vacationPayMode: string; payrollRetentionYears: number; createdAt: string; signInUrl: string };
   features: Record<string, boolean>;
   featureDefaults: Record<string, boolean>;
+  /** Switches set on purpose for this organization: releases leave them alone. */
+  featureChoices?: string[];
   /** Features that only work while another is on (shift bidding → seniority). */
   featureRequires?: Record<string, string>;
   facilities: Facility[];
@@ -96,13 +98,19 @@ export interface ImportPreview {
 
 /** Downloads a file from the Dev console API (bank files, CSV exports) and saves it. */
 export async function pdownload(path: string, fallbackName: string): Promise<void> {
+  // The static demo has no files to hand out: it saves a short note saying so instead.
+  if (DEMO) return saveFile(demoPlatformFile(fallbackName), fallbackName.replace(/\.(pdf|zip)$/, '.txt'));
   const res = await fetch(`/api/platform${path}`, { credentials: 'include', headers: { ...CLIENT_HEADERS, 'x-fh-platform': '1' } });
   if (!res.ok) {
     const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string };
     throw new ApiError(res.status, b.code ?? 'ERROR', b.message ?? res.statusText);
   }
   const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
-  const url = URL.createObjectURL(await res.blob());
+  saveFile(await res.blob(), name);
+}
+
+function saveFile(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = name;

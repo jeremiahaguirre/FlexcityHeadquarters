@@ -66,7 +66,11 @@ function merge(a: unknown, b: unknown): unknown {
   return [...seen.values()];
 }
 
-export interface Fixtures { get(url: string): unknown }
+export interface Fixtures {
+  get(url: string): unknown;
+  /** The recorded addresses (lookup keys). */
+  keys(): string[];
+}
 
 export async function loadFixtures(role: DemoRole | 'public' | 'platform', today = localToday()): Promise<Fixtures> {
   const { default: capture } = await loaders[role]();
@@ -79,6 +83,7 @@ export async function loadFixtures(role: DemoRole | 'public' | 'platform', today
     byShape.set(key.replace(UUID, ':id'), exact.get(key));
   }
   return {
+    keys: () => [...exact.keys()],
     get(url) {
       const find = (k: string) => (exact.has(k) ? exact.get(k) : byShape.get(k.replace(UUID, ':id')));
       let found = find(lookupKey(url));

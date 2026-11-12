@@ -8,6 +8,9 @@
  *   node scripts/capture-demo.cjs
  *   node scripts/capture-demo.cjs --prepare-only   (just the sample data, nothing recorded)
  *   CAPTURE_ROLES=waterworks,hr node scripts/capture-demo.cjs   (re-record only those roles)
+ *   CAPTURE_ROLES=platform node scripts/capture-demo.cjs   (only the Dev console, platform.json; no city sample data)
+ *   CAPTURE_API=http://localhost:4150 CAPTURE_CONSOLE=http://localhost:3155 …   (another API/web pair: the browser's
+ *                                         /api requests are sent to CAPTURE_API, whatever the web server proxies to)
  *
  * Names are swapped for the fictional demo organization before saving.
  */
@@ -37,6 +40,9 @@ const RENAME = [
   ['Lakeshore Rd', 'Shoreline Rd'],
   ['Vernon', 'Ridgeview'],
   ['Penticton', 'Ridgeview'],
+  // Test organizations in the local database.
+  ['Town of Mfa Demo', 'Town of Pinecrest (demo)'],
+  ['mfademo', 'pinecrest'],
   ['@kelowna.test', '@demo.flexcity'],
   ['Kelowna', 'Lakeview'],
   ['kelowna', 'lakeview'],
@@ -815,8 +821,34 @@ async function recordPlanner(role, responses) {
 }
 
 /** The FH Dev console: city list, every city's tabs, and the account page. */
+/** Fictional website enquiries for the Dev console's Enquiries screen (through the public form's own endpoint). */
+const SAMPLE_LEADS = [
+  { kind: 'DEMO', name: 'Morgan Tremblay', email: 'morgan.tremblay@example.org', organization: 'Town of Maplebrook (sample)', role: 'Recreation manager', province: 'ON', facilities: 3, message: 'We run two pools and an arena. Could we see a demo of scheduling and the timeclock for part-time staff?', locale: 'en-CA', marketingConsent: true },
+  { kind: 'SALES', name: 'Camille Bouchard', email: 'camille.bouchard@example.org', organization: 'Ville de Rivière-Claire (exemple)', role: 'Directrice des ressources humaines', province: 'QC', facilities: 5, message: 'Nous aimerions connaître les prix pour environ 180 employés et la paie en français.', locale: 'fr-CA', marketingConsent: false },
+  { kind: 'SUPPORT', name: 'Devon Clarke', email: 'devon.clarke@example.org', organization: 'Northfield Aquatics (sample)', role: 'Head guard', province: 'BC', facilities: 1, message: 'How do staff add the app to their phone home screen? A few of our guards could not find the option.', locale: 'en-CA', marketingConsent: false },
+];
+
+async function preparePlatform() {
+  const login = await fetch(`${API}/api/platform/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-fh-platform': '1' }, body: JSON.stringify({ email: 'dev@flexcity.dev', password: PASSWORD }) });
+  const cookie = login.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+  const list = await fetch(`${API}/api/platform/leads`, { headers: { 'x-fh-platform': '1', cookie } }).then((r) => (r.ok ? r.json() : null));
+  if (Array.isArray(list) && !list.length) {
+    for (const lead of SAMPLE_LEADS) await fetch(`${API}/api/marketing/leads`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(lead) });
+  }
+  await fetch(`${API}/api/platform/auth/logout`, { method: 'POST', headers: { 'x-fh-platform': '1', cookie } });
+}
+
 async function capturePlatform(browser) {
+  await preparePlatform();
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  // Send the browser's API calls to CAPTURE_API (the web server's own proxy may point elsewhere).
+  if (process.env.CAPTURE_API) {
+    await page.route(`${CONSOLE}/api/**`, async (route) => {
+      const u = new URL(route.request().url());
+      const res = await route.fetch({ url: `${API}${u.pathname}${u.search}` });
+      await route.fulfill({ response: res });
+    });
+  }
   const responses = {};
   page.on('response', async (res) => {
     const u = new URL(res.url());
@@ -837,7 +869,7 @@ async function capturePlatform(browser) {
   await page.locator('main a[href*="/platform/city"]').first().waitFor();
   const cities = await page.$$eval('main a[href*="/platform/city"]', (as) => as.map((a) => a.getAttribute('href')));
   // Every city tab that loads its own data, opened by its address (the page reads ?tab=).
-  const CITY_TABS = ['org', 'facilities', 'pools', 'positions', 'features', 'access', 'roles', 'import', 'billing', 'payroll', 'lifecycle', 'consents'];
+  const CITY_TABS = ['org', 'facilities', 'pools', 'positions', 'features', 'access', 'roles', 'integrations', 'import', 'billing', 'payroll', 'lifecycle', 'consents'];
   for (const href of cities) {
     for (const tab of CITY_TABS) {
       await page.goto(`${CONSOLE}${href}${href.includes('?') ? '&' : '?'}tab=${tab}`);
@@ -856,6 +888,26 @@ async function capturePlatform(browser) {
       await page.waitForTimeout(1200);
     }
   }
+  // Every invoice's own page.
+  const invoiceIds = Object.values(responses['/billing/invoices'] ?? []).map((i) => i.id).filter(Boolean);
+  for (const id of invoiceIds) {
+    await page.goto(`${CONSOLE}/platform/invoice?id=${id}`);
+    await page.locator('main h1').first().waitFor();
+    await page.waitForTimeout(700);
+  }
+  // Trust: every section, the Overview at each time range, and each test's 90-day history (its drawer).
+  for (const path of ['/platform/trust', '/platform/trust/frameworks', '/platform/trust/controls', '/platform/trust/tests', '/platform/trust/evidence', '/platform/trust/policies', '/platform/trust/risks', '/platform/trust/vendors', '/platform/trust/commitments', '/platform/trust/questionnaires', '/platform/trust/present']) {
+    await page.goto(`${CONSOLE}${path}`);
+    await page.locator('main h1').first().waitFor();
+    await page.waitForTimeout(1500);
+  }
+  // Asked from the signed-in page and kept as they come back.
+  const record = async (paths) => {
+    const bodies = await page.evaluate((ps) => Promise.all(ps.map((p) => fetch(`/api/platform${p}`, { credentials: 'include', headers: { 'x-fh-platform': '1' } }).then((r) => (r.ok ? r.json() : null)))), paths);
+    paths.forEach((p, i) => bodies[i] !== null && (responses[p] = bodies[i]));
+  };
+  await record([7, 14, 30, 60, 90, 180, 365].map((d) => `/trust/overview?days=${d}`));
+  await record((responses['/trust/tests'] ?? []).map((x) => `/trust/tests/${x.key}/history?days=90`));
   await page.goto(`${CONSOLE}/platform/account`);
   await page.waitForTimeout(1200);
   await page.close();
@@ -864,10 +916,15 @@ async function capturePlatform(browser) {
 }
 
 (async () => {
-  await prepare();
+  // The Dev console alone needs none of the city's sample data.
+  if (process.env.CAPTURE_ROLES !== 'platform') await prepare();
   if (process.argv.includes('--prepare-only')) return;
   const browser = await chromium.launch({ args: ['--host-resolver-rules=MAP *.localhost 127.0.0.1'] });
   const only = process.env.CAPTURE_ROLES?.split(',');
+  if (only?.length === 1 && only[0] === 'platform') {
+    await capturePlatform(browser);
+    return browser.close();
+  }
   for (const role of Object.keys(ROLES)) if (!only || only.includes(role)) await capture(browser, role);
   if (only) return browser.close();
   // Public careers page (no sign-in).

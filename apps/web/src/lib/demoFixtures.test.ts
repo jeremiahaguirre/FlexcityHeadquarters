@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { nearest } from './demoApi';
 import { loadFixtures, lookupKey, shiftDate, shiftDates, within } from './demoFixtures';
 
 describe('demo fixtures', () => {
@@ -36,6 +37,33 @@ describe('demo fixtures', () => {
     expect(cities.length).toBeGreaterThan(1);
     expect(cities.some((c) => c.logoUrl?.startsWith('data:image/png;base64,'))).toBe(true);
     expect(JSON.stringify(cities)).not.toMatch(/api\/public\/logo|kelowna/i);
+  });
+});
+
+describe('Dev console in the demo', () => {
+  it('has a recording for every Dev console screen', async () => {
+    const f = await loadFixtures('platform', '2030-01-15');
+    const cities = f.get('/tenants') as Array<{ id: string }>;
+    const invoices = f.get('/billing/invoices') as Array<{ id: string }>;
+    const tests = f.get('/trust/tests') as Array<{ key: string }>;
+    const screens = [
+      '/me', '/passkeys', '/billing/summary', '/billing/pad-originator', '/billing/pad-debits?date=2030-01-15', '/books', '/books/journal?from=2030-01-01&to=2030-01-15',
+      '/books/trial-balance?asOf=2030-01-15', '/books/income-statement?from=2030-01-01&to=2030-01-15', '/books/aging?asOf=2030-01-15', '/books/sales-tax?from=2030-01-01&to=2030-01-15',
+      '/books/revenue?year=2030', '/leads', '/payroll-tax?year=2030', '/trust/overview?days=30', '/trust/frameworks', '/trust/controls', '/trust/tests', '/trust/evidence',
+      '/trust/policies', '/trust/risks', '/trust/vendors', '/trust/commitments', '/trust/answers', '/trust/people',
+      ...cities.flatMap((c) => [`/tenants/${c.id}`, `/tenants/${c.id}/access`, `/tenants/${c.id}/integrations`, `/tenants/${c.id}/payroll`, `/tenants/${c.id}/lifecycle`, `/tenants/${c.id}/consents`, `/billing/accounts/${c.id}`, `/billing/pad/${c.id}`, `/billing/invoices?tenantId=${c.id}`]),
+      ...invoices.map((i) => `/billing/invoices/${i.id}`),
+      ...tests.map((x) => `/trust/tests/${x.key}/history?days=90`),
+    ];
+    expect(screens.filter((s) => f.get(s) === undefined)).toEqual([]);
+    expect((f.get('/leads') as unknown[]).length).toBeGreaterThan(0);
+  });
+
+  it('answers options nobody recorded with the closest recording of the same address', async () => {
+    const f = await loadFixtures('platform', '2030-01-15');
+    expect(nearest(f, '/trust/overview?days=30&frameworks=soc2,pipeda')).toEqual(f.get('/trust/overview?days=30'));
+    expect(nearest(f, '/trust/overview?days=45')).toBeDefined();
+    expect(nearest(f, '/nothing/here')).toBeUndefined();
   });
 });
 
