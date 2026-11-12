@@ -2,7 +2,13 @@
 export const SITE = {
   /** The live app demo (GitHub Pages). */
   demoUrl: (process.env.NEXT_PUBLIC_DEMO_URL ?? 'https://jeremiahaguirre.github.io/FlexcityHeadquarters').replace(/\/$/, ''),
-  /** POST endpoint for enquiries: https://<api host>/api/marketing/leads. Unset (or unreachable) = the form asks people to try again shortly. */
+  /**
+   * Where the contact form sends enquiries, by email, for now: a Formspree form endpoint
+   * (https://formspree.io/f/<form id>) that forwards each enquiry to FH's inbox. Only the form id is
+   * public; the inbox address is set in Formspree, never on this site. Takes priority over leadsUrl.
+   */
+  contactFormUrl: process.env.NEXT_PUBLIC_CONTACT_FORM_URL ?? '',
+  /** Later, the app's own enquiry endpoint: https://<api host>/api/marketing/leads. Neither set = the form asks people to try again shortly. */
   leadsUrl: process.env.NEXT_PUBLIC_LEADS_URL ?? '',
 };
 

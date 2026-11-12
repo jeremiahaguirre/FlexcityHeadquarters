@@ -9,7 +9,12 @@ import { COMPANY, SITE } from '@/lib/site';
 const PROVINCES = ['BC', 'AB', 'SK', 'MB', 'ON', 'QC', 'NB', 'NS', 'PE', 'NL', 'YT', 'NT', 'NU'];
 const input = 'block h-12 w-full rounded-xl border border-line bg-panel px-3.5 text-body text-ink placeholder:text-muted/70 focus:border-brand';
 
-/** Sales, demo or support request form. It posts to NEXT_PUBLIC_LEADS_URL (the API's leads endpoint); while that isn't set the form says it can't send and keeps what was typed. */
+/**
+ * Sales, demo or support request form. For now it sends to the email form service
+ * (NEXT_PUBLIC_CONTACT_FORM_URL, Formspree), which emails the enquiry to FH's inbox; later it can post to
+ * the app's enquiry endpoint instead (NEXT_PUBLIC_LEADS_URL). With neither set, the form says it can't
+ * send and keeps what was typed.
+ */
 export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' | 'DEMO' | 'SUPPORT' }) {
   const c = copy(lang).contact;
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -19,8 +24,39 @@ export function LeadForm({ lang, kind = 'SALES' }: { lang: Lang; kind?: 'SALES' 
     const f = new FormData(e.currentTarget);
     const s = (k: string) => String(f.get(k) ?? '').trim() || null;
     // Not connected yet: say so kindly and keep what the person typed.
-    if (!SITE.leadsUrl) return setState('error');
+    if (!SITE.contactFormUrl && !SITE.leadsUrl) return setState('error');
+    // Bots fill the hidden field; they get the same thank-you as people, and nothing is sent.
+    if (String(f.get('website') ?? '') !== '') return setState('sent');
     setState('sending');
+    if (SITE.contactFormUrl) {
+      const kind = (s('kind') ?? 'SALES') as keyof typeof c.kinds;
+      const consent = f.get('consent') === 'on';
+      try {
+        // Labelled fields, so the email reads well; "email" becomes the reply-to address.
+        const r = await fetch(SITE.contactFormUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({
+            _subject: `FlexcityHeadquarters website: ${c.kinds[kind] ?? kind}`,
+            Type: c.kinds[kind] ?? kind,
+            Name: s('name'),
+            email: s('email'),
+            Organization: s('organization'),
+            Role: s('role'),
+            Province: s('province'),
+            Facilities: s('facilities'),
+            Message: s('message'),
+            Language: lang === 'fr' ? 'French' : 'English',
+            // CASL: a record of what was agreed to, in the words shown.
+            'Marketing consent': consent ? `Yes: “${c.consent}”` : 'No',
+          }),
+        });
+        setState(r.ok ? 'sent' : 'error');
+      } catch {
+        setState('error');
+      }
+      return;
+    }
     try {
       const r = await fetch(SITE.leadsUrl, {
         method: 'POST',
