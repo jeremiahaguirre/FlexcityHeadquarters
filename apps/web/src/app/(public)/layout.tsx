@@ -1,10 +1,15 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { CoBrand } from '@/components/CoBrand';
 import { Logo } from '@/components/Logo';
 import { AuthLanguageSwitch } from '@/components/shell/AuthLanguageSwitch';
+import { PRIVATE_ROBOTS, PUBLIC_ROBOTS } from '@/lib/crawlers';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { currentTenant } from '@/lib/tenant';
 import { UnknownOrg } from '@/components/UnknownOrg';
+
+// Job postings and sign-up may appear in search results (never in the demo); no AI training either way.
+export const metadata: Metadata = { robots: DEMO ? PRIVATE_ROBOTS : PUBLIC_ROBOTS };
 
 /** Pages anyone can open without signing in (e.g. job postings). */
 export default async function PublicLayout({ children }: { children: ReactNode }) {

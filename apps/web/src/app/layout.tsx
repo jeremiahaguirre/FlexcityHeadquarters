@@ -7,6 +7,7 @@ import { DemoBanner } from '@/components/DemoBanner';
 import { Providers } from '@/components/Providers';
 import { SkipLink } from '@/components/SkipLink';
 import { ToastProvider } from '@/components/ui/Toast';
+import { PRIVATE_ROBOTS } from '@/lib/crawlers';
 import { DEMO, DEMO_TENANT } from '@/lib/demo';
 import { LOCALE_COOKIE, createI18n, normalizeLocale } from '@/lib/i18n';
 import { currentTenant } from '@/lib/tenant';
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
   title: { default: 'FlexcityHeadquarters', template: '%s · FH' },
   description: 'Scheduling, timekeeping, safety and HR for municipal staff',
   applicationName: 'FlexcityHeadquarters',
+  // Private app and demo: no search results, no AI training (public job pages override it in (public)/layout.tsx).
+  robots: PRIVATE_ROBOTS,
 };
 // resizes-content: on Android the page shrinks above the keyboard, so sheets and sticky bars stay reachable.
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, interactiveWidget: 'resizes-content' };

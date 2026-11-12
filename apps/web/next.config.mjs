@@ -18,6 +18,15 @@ const securityHeaders = [
   ...(process.env.NODE_ENV === 'production' ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' }] : []),
 ];
 
+// The app is private: no page in search results or AI training (src/lib/crawlers.ts). Public job postings and
+// program sign-up stay indexable; a later rule with the same key wins in Next, so these override the first.
+const PRIVATE_ROBOTS = 'noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai';
+const PUBLIC_ROBOTS = 'index, follow, noai, noimageai';
+const robotsHeaders = [
+  { source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: PRIVATE_ROBOTS }] },
+  ...['/jobs', '/jobs/:path*', '/signup', '/signup/:path*'].map((source) => ({ source, headers: [{ key: 'X-Robots-Tag', value: PUBLIC_ROBOTS }] })),
+];
+
 const nextConfig = DEMO
   ? {
       output: 'export',
@@ -25,6 +34,8 @@ const nextConfig = DEMO
       trailingSlash: true, // board/index.html, which static hosts serve at /board/
       // The demo previews staff imports with the API's own validation (apps/api/src/services/platform).
       experimental: { externalDir: true },
+      // "*.demo.ts" files exist only in the demo (its robots.txt); live builds ignore them.
+      pageExtensions: ['tsx', 'ts', 'demo.ts'],
       reactStrictMode: true,
       images: { unoptimized: true },
     }
@@ -42,6 +53,7 @@ const nextConfig = DEMO
       async headers() {
         return [
           { source: '/:path*', headers: securityHeaders },
+          ...robotsHeaders,
           // The service worker is always checked for a new version, so fixes reach installed phones on the next visit.
           { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
           // App icons change only with a rebrand: a day in the browser, then revalidated.
