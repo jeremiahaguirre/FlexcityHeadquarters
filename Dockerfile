@@ -73,7 +73,7 @@ RUN npm ci --workspace apps/web --include-workspace-root
 COPY apps/web apps/web
 # The static demo's staff-import preview reuses the API's own parser (apps/web/src/lib/demoApi.ts).
 COPY apps/api/src/services/platform/staffImport.ts apps/api/src/services/platform/staffImport.ts
-RUN cd apps/web && npx next build
+RUN cd apps/web && npx next build --webpack
 
 FROM base AS web
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1

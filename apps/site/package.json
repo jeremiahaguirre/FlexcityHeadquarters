@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3100",
-    "build": "next build",
+    "dev": "next dev --webpack -p 3100",
+    "build": "next build --webpack",
     "start": "next start -p 3100",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
@@ -12,7 +12,7 @@
   "dependencies": {
     "@vercel/analytics": "2.0.1",
     "lucide-react": "0.460.0",
-    "next": "15.5.29",
+    "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
