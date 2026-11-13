@@ -41,7 +41,7 @@ export default async function LangLayout(props: { children: ReactNode; params: P
   const params = (await props.params) as { lang: Lang };
   const children = props.children;
   return (
-    <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable}>
+    <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable} data-scroll-behavior="smooth">
       <head>
         {/* Same rule as the font-src header in vercel.json, for any static host that sends no headers. */}
         <meta httpEquiv="Content-Security-Policy" content="font-src 'self'" />
