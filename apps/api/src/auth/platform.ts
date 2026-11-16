@@ -62,9 +62,19 @@ export async function endPlatformSession(raw: string | undefined): Promise<void>
   if (raw) await db().platformSession.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
-/** CSRF guard for every Dev console request, signed in or not. */
-export function requirePlatformHeader(req: Request, _res: Response, next: NextFunction) {
-  if (req.header(PLATFORM_HEADER) !== '1') return next(new HttpError(403, 'FORBIDDEN', 'Missing Dev console header'));
+/**
+ * CSRF protection for every Dev console request, signed in or not, run before the body is parsed.
+ * The session cookie is SameSite=Strict; on top of that a request must
+ * - carry `x-fh-platform: 1`, which a cross-site form or link can't send and a cross-origin script
+ *   can't add without a CORS preflight this API never answers; and
+ * - not be marked by the browser as coming from another site or origin (Fetch Metadata,
+ *   Sec-Fetch-Site). Clients that send no fetch metadata (scripts, older browsers) still need the header.
+ */
+export function platformCsrfProtection(req: Request, _res: Response, next: NextFunction) {
+  const site = req.header('sec-fetch-site');
+  if (req.header(PLATFORM_HEADER) !== '1' || (site && site !== 'same-origin' && site !== 'none')) {
+    return next(new HttpError(403, 'CSRF_REFUSED', 'This request didn’t come from the Dev console.'));
+  }
   next();
 }
 
