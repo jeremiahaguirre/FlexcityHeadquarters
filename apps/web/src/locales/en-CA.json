@@ -2389,7 +2389,8 @@
       "preferences.self": "State shift preferences",
       "bidding.bid": "Bid on shifts",
       "bidding.manage": "Run bid rounds",
-      "bidding.observe": "See bid award order (read-only)"
+      "bidding.observe": "See bid award order (read-only)",
+      "pay.self": "See their own pay (My pay)"
     },
     "limits": "You can give a role only what you can do yourself, within your own department.",
     "anything": "Supervisory capabilities follow a role’s department: people holding its positions, and shifts at its facilities. The union hub isn’t offered; it follows union membership.",

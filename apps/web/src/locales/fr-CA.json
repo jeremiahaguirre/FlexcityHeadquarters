@@ -2389,7 +2389,8 @@
       "preferences.self": "Indiquer ses préférences de quarts",
       "bidding.bid": "Soumissionner des quarts",
       "bidding.manage": "Gérer les rondes de soumissions",
-      "bidding.observe": "Voir l’ordre d’attribution (lecture seule)"
+      "bidding.observe": "Voir l’ordre d’attribution (lecture seule)",
+      "pay.self": "Voir sa propre paie (Ma paie)"
     },
     "limits": "Vous pouvez seulement donner à un rôle ce que vous pouvez faire vous-même, dans votre propre service.",
     "anything": "Les capacités de supervision suivent le service du rôle : les personnes qui occupent ses postes et les quarts dans ses installations. L’espace syndical n’est pas offert; il suit l’adhésion syndicale.",

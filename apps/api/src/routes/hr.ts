@@ -11,6 +11,8 @@ import type { Prisma, TimeOffType } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { type AuthContext, authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { MENU } from '../auth/menu.js';
+import type { Permission } from '../auth/permissions.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
@@ -531,47 +533,41 @@ hrRouter.post(
 );
 
 // ------------------------------------------------------------- HR overview
+/** Whoever is shown HR in the menu opens its home: the same permissions. */
+const HR_HOME = MENU.find((m) => m.href === '/manage/hr')!.permissions;
+
 /** What needs attention in each HR area, for HR's overview. */
 hrRouter.get(
   '/hr/overview',
-  requirePermission('users.write'),
   h(async (req, res) => {
     const a = authOf(req);
+    // HR home opens for any HR area (a leave administrator, a labour relations officer…); each count only for whoever may act on it.
+    const may = (p: Permission) => a.permissions.has(p);
+    if (!HR_HOME.some(may)) throw forbidden();
     const today = new Date(new Date().toISOString().slice(0, 10));
+    const zero = Promise.resolve(0);
     const out = await withTenant(a.tenantId, async (tx: Tx) => {
       const [staff, openJobs, draftRuns, plans, enrolled, openClaims, activeAccommodations, openGrievances, reviewsOpen, reviewsLate, offboarding, flagged, pendingBank] = await Promise.all([
         tx.user.count({ where: { status: 'ACTIVE', anonymizedAt: null } }),
-        tx.jobPosting.count({ where: { closesOn: { gte: today } } }).catch(() => 0),
-        tx.payRun.count({ where: { status: 'DRAFT' } }),
-        tx.benefitPlan.count({ where: { active: true } }),
-        tx.benefitEnrollment.count({ where: { OR: [{ endsOn: null }, { endsOn: { gte: today } }] } }),
-        tx.injuryClaim.count({ where: { status: 'OPEN' } }),
-        tx.accommodationCase.count({ where: { status: 'ACTIVE' } }),
-        tx.grievance.count({ where: { status: { notIn: ['RESOLVED', 'WITHDRAWN'] } } }),
-        tx.performanceReview.count({ where: { status: { not: 'ACKNOWLEDGED' } } }),
-        tx.performanceReview.count({ where: { status: { not: 'ACKNOWLEDGED' }, dueOn: { lt: today } } }),
-        tx.offboarding.count({ where: { completedAt: null } }),
-        tx.user.count({ where: { reviewFlaggedAt: { not: null }, status: 'ACTIVE' } }),
-        tx.bankAccount.count({ where: { status: 'PENDING' } }),
+        may('jobs.manage') ? tx.jobPosting.count({ where: { closesOn: { gte: today } } }).catch(() => 0) : zero,
+        may('payroll.export') ? tx.payRun.count({ where: { status: 'DRAFT' } }) : zero,
+        may('benefits.manage') ? tx.benefitPlan.count({ where: { active: true } }) : zero,
+        may('benefits.manage') ? tx.benefitEnrollment.count({ where: { OR: [{ endsOn: null }, { endsOn: { gte: today } }] } }) : zero,
+        may('injury.manage') ? tx.injuryClaim.count({ where: { status: 'OPEN' } }) : zero,
+        may('accommodation.manage') ? tx.accommodationCase.count({ where: { status: 'ACTIVE' } }) : zero,
+        may('grievances.manage') ? tx.grievance.count({ where: { status: { notIn: ['RESOLVED', 'WITHDRAWN'] } } }) : zero,
+        may('performance.manage') ? tx.performanceReview.count({ where: { status: { not: 'ACKNOWLEDGED' } } }) : zero,
+        may('performance.manage') ? tx.performanceReview.count({ where: { status: { not: 'ACKNOWLEDGED' }, dueOn: { lt: today } } }) : zero,
+        may('users.write') ? tx.offboarding.count({ where: { completedAt: null } }) : zero,
+        may('reliability.read') ? tx.user.count({ where: { reviewFlaggedAt: { not: null }, status: 'ACTIVE' } }) : zero,
+        may('payroll.export') ? tx.bankAccount.count({ where: { status: 'PENDING' } }) : zero,
       ]);
-      const people = (await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true } })).map((u) => u.id);
-      const training = await trainingStatus(tx, people);
-      return {
-        staff,
-        openJobs,
-        draftRuns,
-        pendingBank,
-        plans,
-        enrolled,
-        openClaims,
-        activeAccommodations,
-        openGrievances,
-        reviewsOpen,
-        reviewsLate,
-        offboarding,
-        flagged,
-        trainingDue: training.due.filter((d) => d.status !== 'DUE_SOON').length,
-      };
+      let trainingDue = 0;
+      if (may('training.manage')) {
+        const people = (await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true } })).map((u) => u.id);
+        trainingDue = (await trainingStatus(tx, people)).due.filter((d) => d.status !== 'DUE_SOON').length;
+      }
+      return { staff, openJobs, draftRuns, pendingBank, plans, enrolled, openClaims, activeAccommodations, openGrievances, reviewsOpen, reviewsLate, offboarding, flagged, trainingDue };
     });
     res.json(out);
   }),

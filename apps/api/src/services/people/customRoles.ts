@@ -17,7 +17,7 @@ import { sharedForget } from '../../lib/cacheBus.js';
 import { singleFlight } from '../../lib/singleFlight.js';
 
 export const CUSTOM_ROLE_PERMISSIONS = {
-  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'preferences.self', 'bidding.bid', 'lonework.self', 'expenses.self', 'logbook.write'],
+  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'pay.self', 'timeoff.self', 'availability.self', 'preferences.self', 'bidding.bid', 'lonework.self', 'expenses.self', 'logbook.write'],
   shiftBoard: ['shiftboard.claim', 'shiftboard.post'],
   safety: ['incidents.create', 'ops.headcount.record'],
   memberServices: ['members.manage', 'lessons.plan', 'fees.manage', 'bookings.manage'],
@@ -30,6 +30,15 @@ export const CUSTOM_ROLE_PERMISSIONS = {
 } as const satisfies Record<string, readonly Permission[]>;
 
 export const ALLOWED_CUSTOM_PERMISSIONS: ReadonlySet<Permission> = new Set(Object.values(CUSTOM_ROLE_PERMISSIONS).flat());
+
+/**
+ * Capabilities whose screen can't work without another: a role holding the first
+ * holds the others too, so its menu item never opens on a page that can't load.
+ */
+export const CUSTOM_PERMISSION_NEEDS: Partial<Record<Permission, Permission[]>> = {
+  'roles.manage': ['users.read'],
+};
+export const withNeeds = (perms: readonly Permission[]): Permission[] => [...new Set(perms.flatMap((p) => [p, ...(CUSTOM_PERMISSION_NEEDS[p] ?? [])]))];
 export const isAllowedCustomPermission = (p: string): p is Permission => ALLOWED_CUSTOM_PERMISSIONS.has(p as Permission);
 
 /** Capabilities that act on other people or their shifts: these follow a role's department. */
@@ -74,7 +83,7 @@ async function loadCustomAccess(tenantId: string, userId: string, key: string): 
     const c = r.customRole;
     const fromDepartments = c.scopeDepartmentIds.length ? inDepartment(c.scopeDepartmentIds) : [];
     const positionIds = c.scopeDepartmentIds.length ? [...new Set([...c.scopePositionIds, ...fromDepartments, NO_POSITION])] : c.scopePositionIds;
-    return { perms: c.permissions.filter(isAllowedCustomPermission), positionIds, facilityIds: c.scopeFacilityIds };
+    return { perms: withNeeds(c.permissions.filter(isAllowedCustomPermission)), positionIds, facilityIds: c.scopeFacilityIds };
   });
   const entry = { at: Date.now(), perms: new Set(roles.flatMap((r) => r.perms)), roles };
   if (accessFlight.fresh(gen)) cache.set(key, entry);

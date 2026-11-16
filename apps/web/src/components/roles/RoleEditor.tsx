@@ -23,6 +23,7 @@ type Named = { id: string; name: string; nameFr?: string | null };
 export function RoleEditor({
   roles,
   catalog,
+  needs = {},
   save,
   remove,
   reload,
@@ -33,6 +34,8 @@ export function RoleEditor({
 }: {
   roles: CustomRole[];
   catalog: RoleCatalog;
+  /** Capabilities that come with another (managing roles needs the staff list). */
+  needs?: Record<string, string[]>;
   save: (body: RoleInput, id?: string) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
   reload: () => Promise<void>;
@@ -60,7 +63,7 @@ export function RoleEditor({
     setChecked((prev) => {
       const next = new Set(prev);
       if (next.has(p)) next.delete(p);
-      else next.add(p);
+      else for (const q of [p, ...(needs[p] ?? [])]) if (can(q)) next.add(q);
       return next;
     });
   const label = (x: Named) => (lng === 'fr-CA' && x.nameFr ? x.nameFr : x.name);
