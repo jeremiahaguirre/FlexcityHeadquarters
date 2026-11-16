@@ -32,11 +32,16 @@ export const CUSTOM_ROLE_PERMISSIONS = {
 export const ALLOWED_CUSTOM_PERMISSIONS: ReadonlySet<Permission> = new Set(Object.values(CUSTOM_ROLE_PERMISSIONS).flat());
 
 /**
- * Capabilities whose screen can't work without another: a role holding the first
- * holds the others too, so its menu item never opens on a page that can't load.
+ * Capabilities whose screen can't work without another (each picks people from the
+ * staff list): a role is saved with both, so its menu item never opens on a page
+ * that can't load, and the role shows everything it grants. The editor ticks them
+ * together; a migration brought roles saved before this rule into line.
  */
 export const CUSTOM_PERMISSION_NEEDS: Partial<Record<Permission, Permission[]>> = {
   'roles.manage': ['users.read'],
+  'performance.manage': ['users.read'],
+  'grievances.manage': ['users.read'],
+  'users.write': ['users.read'],
 };
 export const withNeeds = (perms: readonly Permission[]): Permission[] => [...new Set(perms.flatMap((p) => [p, ...(CUSTOM_PERMISSION_NEEDS[p] ?? [])]))];
 export const isAllowedCustomPermission = (p: string): p is Permission => ALLOWED_CUSTOM_PERMISSIONS.has(p as Permission);
@@ -83,7 +88,7 @@ async function loadCustomAccess(tenantId: string, userId: string, key: string): 
     const c = r.customRole;
     const fromDepartments = c.scopeDepartmentIds.length ? inDepartment(c.scopeDepartmentIds) : [];
     const positionIds = c.scopeDepartmentIds.length ? [...new Set([...c.scopePositionIds, ...fromDepartments, NO_POSITION])] : c.scopePositionIds;
-    return { perms: withNeeds(c.permissions.filter(isAllowedCustomPermission)), positionIds, facilityIds: c.scopeFacilityIds };
+    return { perms: c.permissions.filter(isAllowedCustomPermission), positionIds, facilityIds: c.scopeFacilityIds };
   });
   const entry = { at: Date.now(), perms: new Set(roles.flatMap((r) => r.perms)), roles };
   if (accessFlight.fresh(gen)) cache.set(key, entry);
@@ -173,6 +178,8 @@ export function effective(role: StoredRole, departments: Map<string, string[]>) 
 export async function saveCustomRole(tx: Tx, tenantId: string, id: string | null, body: CustomRoleInput, actor: RoleActor | null = null) {
   const bad = body.permissions.filter((p) => !isAllowedCustomPermission(p));
   if (bad.length) throw new HttpError(400, 'PERMISSION_NOT_ALLOWED', `A custom role can't include: ${bad.join(', ')}.`, { permissions: bad });
+  // Saved with what each capability needs, and checked as saved: the giver must hold those too.
+  body = { ...body, permissions: withNeeds(body.permissions as Permission[]) };
   const scopePositionIds = [...new Set(body.scopePositionIds ?? [])];
   const scopeFacilityIds = [...new Set(body.scopeFacilityIds ?? [])];
   const scopeDepartmentIds = [...new Set(body.scopeDepartmentIds ?? [])];

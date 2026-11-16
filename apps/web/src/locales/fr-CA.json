@@ -2406,7 +2406,8 @@
     "departmentHelp": "Laissez vide pour toute l’organisation. Sinon, les capacités de responsable et de gestionnaire de ce rôle ne s’appliquent qu’aux personnes de ces postes et aux quarts de ces installations.",
     "scopePositions": "Postes",
     "scopeFacilities": "Installations",
-    "scopeDepartments": "Services (comprend les postes ajoutés plus tard)"
+    "scopeDepartments": "Services (comprend les postes ajoutés plus tard)",
+    "neededBy": "Requis par : {{what}}"
   },
   "headcount": {
     "title": "Dénombrement",

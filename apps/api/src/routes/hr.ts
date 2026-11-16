@@ -549,25 +549,30 @@ hrRouter.get(
     const today = new Date(new Date().toISOString().slice(0, 10));
     const zero = Promise.resolve(0);
     const out = await withTenant(a.tenantId, async (tx: Tx) => {
+      // Each count as its own list shows it: someone limited to a department counts their department's people only,
+      // and only HR administrators see every review (others, the ones they conduct; GET /reviews).
+      const people = await peopleInScope(tx, a.scope);
+      const theirs = people ? { userId: { in: [...people] } } : {};
+      const reviews: Prisma.PerformanceReviewWhereInput = a.roles.includes('HR_ADMIN') ? theirs : { reviewerId: a.userId };
       const [staff, openJobs, draftRuns, plans, enrolled, openClaims, activeAccommodations, openGrievances, reviewsOpen, reviewsLate, offboarding, flagged, pendingBank] = await Promise.all([
-        tx.user.count({ where: { status: 'ACTIVE', anonymizedAt: null } }),
+        tx.user.count({ where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) } }),
         may('jobs.manage') ? tx.jobPosting.count({ where: { closesOn: { gte: today } } }).catch(() => 0) : zero,
         may('payroll.export') ? tx.payRun.count({ where: { status: 'DRAFT' } }) : zero,
         may('benefits.manage') ? tx.benefitPlan.count({ where: { active: true } }) : zero,
-        may('benefits.manage') ? tx.benefitEnrollment.count({ where: { OR: [{ endsOn: null }, { endsOn: { gte: today } }] } }) : zero,
-        may('injury.manage') ? tx.injuryClaim.count({ where: { status: 'OPEN' } }) : zero,
-        may('accommodation.manage') ? tx.accommodationCase.count({ where: { status: 'ACTIVE' } }) : zero,
-        may('grievances.manage') ? tx.grievance.count({ where: { status: { notIn: ['RESOLVED', 'WITHDRAWN'] } } }) : zero,
-        may('performance.manage') ? tx.performanceReview.count({ where: { status: { not: 'ACKNOWLEDGED' } } }) : zero,
-        may('performance.manage') ? tx.performanceReview.count({ where: { status: { not: 'ACKNOWLEDGED' }, dueOn: { lt: today } } }) : zero,
-        may('users.write') ? tx.offboarding.count({ where: { completedAt: null } }) : zero,
-        may('reliability.read') ? tx.user.count({ where: { reviewFlaggedAt: { not: null }, status: 'ACTIVE' } }) : zero,
-        may('payroll.export') ? tx.bankAccount.count({ where: { status: 'PENDING' } }) : zero,
+        may('benefits.manage') ? tx.benefitEnrollment.count({ where: { ...theirs, OR: [{ endsOn: null }, { endsOn: { gte: today } }] } }) : zero,
+        may('injury.manage') ? tx.injuryClaim.count({ where: { ...theirs, status: 'OPEN' } }) : zero,
+        may('accommodation.manage') ? tx.accommodationCase.count({ where: { ...theirs, status: 'ACTIVE' } }) : zero,
+        may('grievances.manage') ? tx.grievance.count({ where: { ...theirs, status: { notIn: ['RESOLVED', 'WITHDRAWN'] } } }) : zero,
+        may('performance.manage') ? tx.performanceReview.count({ where: { ...reviews, status: { not: 'ACKNOWLEDGED' } } }) : zero,
+        may('performance.manage') ? tx.performanceReview.count({ where: { ...reviews, status: { not: 'ACKNOWLEDGED' }, dueOn: { lt: today } } }) : zero,
+        may('users.write') ? tx.offboarding.count({ where: { ...theirs, completedAt: null } }) : zero,
+        may('reliability.read') ? tx.user.count({ where: { reviewFlaggedAt: { not: null }, status: 'ACTIVE', ...peopleWhere(a.scope) } }) : zero,
+        may('payroll.export') ? tx.bankAccount.count({ where: { ...theirs, status: 'PENDING' } }) : zero,
       ]);
       let trainingDue = 0;
       if (may('training.manage')) {
-        const people = (await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true } })).map((u) => u.id);
-        trainingDue = (await trainingStatus(tx, people)).due.filter((d) => d.status !== 'DUE_SOON').length;
+        const active = (await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) }, select: { id: true } })).map((u) => u.id);
+        trainingDue = (await trainingStatus(tx, active)).due.filter((d) => d.status !== 'DUE_SOON').length;
       }
       return { staff, openJobs, draftRuns, pendingBank, plans, enrolled, openClaims, activeAccommodations, openGrievances, reviewsOpen, reviewsLate, offboarding, flagged, trainingDue };
     });

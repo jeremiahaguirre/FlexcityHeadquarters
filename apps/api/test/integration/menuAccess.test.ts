@@ -6,6 +6,8 @@
  * whose API answers "no access" or "switched off" (a "No access" page or an
  * endless skeleton) fails here.
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -13,7 +15,7 @@ import { signAccessToken } from '../../src/auth/tokens.js';
 import { MENU } from '../../src/auth/menu.js';
 import type { Permission } from '../../src/auth/permissions.js';
 import { ROLE_PERMISSIONS } from '../../src/auth/permissions.js';
-import { ALLOWED_CUSTOM_PERMISSIONS } from '../../src/services/people/customRoles.js';
+import { ALLOWED_CUSTOM_PERMISSIONS, withNeeds } from '../../src/services/people/customRoles.js';
 import { FEATURE_KEYS, forgetFeatures } from '../../src/services/platform/features.js';
 import type { AccessRole } from '../../src/generated/prisma/client.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
@@ -51,7 +53,16 @@ const LANDING: Record<string, Call[]> = {
   '/status': ['/api/ops/pools'],
   '/ops': ['/api/ops/headcounts/current', `/api/ops/readings?from=${FROM}&to=${TO}`],
   '/incidents': [['/api/incidents?from=' + FROM + '&to=' + TO, ['incidents.read']]],
-  '/manage/hr': ['/api/hr/overview'],
+  // The overview, then each tab the person gets (lib/hr.ts hrTabs) and the staff list its forms pick from.
+  '/manage/hr': [
+    '/api/hr/overview',
+    ['/api/leave/balances?year=2026', ['leave.manage']],
+    ['/api/reviews', ['performance.manage']],
+    ['/api/policies', ['policies.manage']],
+    ['/api/grievances', ['grievances.manage']],
+    ['/api/offboarding', ['users.write']],
+    ['/api/users', ['performance.manage', 'grievances.manage', 'users.write']],
+  ],
   '/members': ['/api/fees'],
   '/manage/programs': ['/api/campaigns', '/api/swim-levels'],
   '/manage/schedule': ['/api/schedule/fill/options'],
@@ -186,9 +197,73 @@ describe('menu, page guard and API agree', () => {
     }
   });
 
-  // One custom role per menu permission a city can give: the screen it shows must load with only that capability.
+  // One custom role per menu permission a city can give: the screen it shows must load with only that
+  // capability, plus what the role is saved with for it (customRoles.ts CUSTOM_PERMISSION_NEEDS).
   const single = [...new Set(MENU.flatMap((m) => m.permissions))].filter((p) => ALLOWED_CUSTOM_PERMISSIONS.has(p));
   it.each(single)('a custom role holding only %s', async (p) => {
-    expect((await brokenScreens(await tokenFor(`only-${p}`, [], [p]))).join('\n')).toBe('');
+    expect((await brokenScreens(await tokenFor(`only-${p}`, [], withNeeds([p])))).join('\n')).toBe('');
+  });
+});
+
+describe('the API refuses what the menu doesn’t offer', () => {
+  it('My pay: without pay.self (a union steward) the pay API refuses too, reads and changes alike', async () => {
+    const steward = await tokenFor('role-UNION_STEWARD', ['UNION_STEWARD']);
+    expect((await menuOf(steward)).items.map((m) => m.href)).not.toContain('/pay');
+    expect((await get(steward, '/api/me/pay')).status).toBe(403);
+    const deposit = await request(server).post('/api/me/bank-accounts').set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' }).send({ holderName: 'S', institution: '004', transit: '12345', account: '1234567' });
+    expect(deposit.status).toBe(403);
+    expect(await owner.bankAccount.count({ where: { tenantId } })).toBe(0);
+  });
+});
+
+describe('HR home for someone limited to a department', () => {
+  it('counts only what their own lists show them', async () => {
+    const mine = await owner.position.create({ data: { tenantId, name: 'Water operator' } });
+    const mk = async (name: string, positionId?: string) => {
+      const u = await owner.user.create({ data: { tenantId, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: name, lastName: 'Scope', email: `${name}@${SUB}.test` } });
+      if (positionId) await owner.userPosition.create({ data: { tenantId, userId: u.id, positionId } });
+      return u;
+    };
+    const inside = await mk('inside', mine.id);
+    const outside = await mk('outside');
+    const hr = await owner.user.create({ data: { tenantId, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'Hr', lastName: 'Scope', email: `hr-scope@${SUB}.test` } });
+    const manager = await mk('manager', mine.id);
+    const role = await owner.customRole.create({ data: { tenantId, name: 'Water Works manager', permissions: withNeeds(['performance.manage', 'grievances.manage']), scopePositionIds: [mine.id] } });
+    await owner.userCustomRole.create({ data: { tenantId, userId: manager.id, customRoleId: role.id } });
+    const past = new Date('2026-01-01');
+    await owner.grievance.create({ data: { tenantId, number: 901, title: 'Overtime order', filedOn: past, userId: outside.id, createdById: hr.id } });
+    await owner.grievance.create({ data: { tenantId, number: 902, title: 'Call-in pay', filedOn: past, userId: inside.id, createdById: hr.id } });
+    await owner.performanceReview.create({ data: { tenantId, userId: outside.id, reviewerId: hr.id, cycle: '2026', dueOn: past, createdById: hr.id } });
+    await owner.performanceReview.create({ data: { tenantId, userId: inside.id, reviewerId: manager.id, cycle: '2026', dueOn: past, createdById: hr.id } });
+
+    const scoped = (await get(await signAccessToken({ sub: manager.id, tid: tenantId, roles: ['EMPLOYEE'] }), '/api/hr/overview')).body;
+    expect(scoped).toMatchObject({ openGrievances: 1, reviewsOpen: 1, reviewsLate: 1 });
+    // The people they reach: those holding the department's position.
+    expect(scoped.staff).toBe(2);
+    const all = (await get(await signAccessToken({ sub: hr.id, tid: tenantId, roles: ['HR_ADMIN'] }), '/api/hr/overview')).body;
+    expect(all.openGrievances).toBe(2);
+    expect(all.reviewsOpen).toBe(2);
+    expect(all.staff).toBeGreaterThan(scoped.staff);
+  });
+});
+
+describe('custom roles carry what their screens need', () => {
+  it('a role saved with roles.manage, performance.manage, grievances.manage or users.write also holds users.read, visibly', async () => {
+    const hr = await tokenFor('role-HR_ADMIN', ['HR_ADMIN']);
+    const r = await request(server).post('/api/roles').set('x-tenant-subdomain', SUB).auth(hr, { type: 'bearer' }).send({ name: 'Role admin', permissions: ['roles.manage'] });
+    expect(r.status).toBe(201);
+    expect((await owner.customRole.findUniqueOrThrow({ where: { id: r.body.id } })).permissions.sort()).toEqual(['roles.manage', 'users.read']);
+    // Access follows what is saved, nothing added on the way in: a role stored without the need doesn't get it.
+    const bare = await tokenFor('bare-roles', [], ['roles.manage']);
+    expect((await get(bare, '/api/me')).body.permissions).not.toContain('users.read');
+  });
+
+  it('the migration gives roles saved earlier what they now need, and pay.self to those who clock in', async () => {
+    const old = await owner.customRole.create({ data: { tenantId, name: 'Saved earlier', permissions: ['shifts.self', 'timeclock.punch', 'grievances.manage'] } });
+    const untouched = await owner.customRole.create({ data: { tenantId, name: 'Read only', permissions: ['schedule.read'] } });
+    const sql = readFileSync(join(__dirname, '../../prisma/migrations/20261116180000_custom_role_needs/migration.sql'), 'utf8');
+    for (const statement of sql.split(';').map((x) => x.replace(/--.*$/gm, '').trim()).filter(Boolean)) await owner.$executeRawUnsafe(`${statement} AND "tenantId" = '${tenantId}'::uuid`); // this test's city only
+    expect((await owner.customRole.findUniqueOrThrow({ where: { id: old.id } })).permissions.sort()).toEqual(['grievances.manage', 'pay.self', 'shifts.self', 'timeclock.punch', 'users.read']);
+    expect((await owner.customRole.findUniqueOrThrow({ where: { id: untouched.id } })).permissions).toEqual(['schedule.read']);
   });
 });

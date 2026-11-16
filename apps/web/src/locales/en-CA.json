@@ -2406,7 +2406,8 @@
     "departmentHelp": "Leave empty for the whole organization. Otherwise, this role’s lead and manager capabilities reach only people in these positions, and shifts at these facilities.",
     "scopePositions": "Positions",
     "scopeFacilities": "Facilities",
-    "scopeDepartments": "Departments (includes positions added later)"
+    "scopeDepartments": "Departments (includes positions added later)",
+    "neededBy": "Needed by: {{what}}"
   },
   "headcount": {
     "title": "Headcount",
