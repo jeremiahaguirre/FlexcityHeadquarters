@@ -25,6 +25,8 @@
  * department can turn seniority off (its agreement doesn't use it), never on when the
  * organization has it off.
  */
+import type { Tx } from '../../lib/db.js';
+import { updateTenantJson } from '../../lib/tenantSettings.js';
 import { z } from 'zod';
 
 export const HORIZONS = [1, 2, 4, 13] as const;
@@ -218,7 +220,27 @@ export function effectiveSettings(s: SolverSettings, departmentId: string | null
   };
 }
 
-/** Writes the solver settings back without touching the overtime policy's own keys. */
+/**
+ * Writes the solver settings back without touching the overtime policy's own keys, or solver keys
+ * this version doesn't know (a newer release may have added them while it rolls out).
+ */
 export function withSolverSettings(overtimePolicy: unknown, solver: SolverSettings): Record<string, unknown> {
-  return { ...obj(overtimePolicy), solver };
+  const op = obj(overtimePolicy);
+  return { ...op, solver: { ...obj(op.solver), ...solver } };
+}
+
+/**
+ * Changes the solver settings under the organization's row lock (lib/tenantSettings.ts), starting
+ * from what is stored now: a schedule fill and a settings change at the same time both keep their
+ * change. Returns the settings before and after.
+ */
+export async function updateSolverSettings(tx: Tx, tenantId: string, change: (current: SolverSettings) => SolverSettings): Promise<{ before: SolverSettings; after: SolverSettings }> {
+  let before!: SolverSettings;
+  let after!: SolverSettings;
+  await updateTenantJson(tx, tenantId, 'overtimePolicy', (op) => {
+    before = parseSolverSettings(op);
+    after = change(structuredClone(before));
+    return withSolverSettings(op, after);
+  });
+  return { before, after };
 }
