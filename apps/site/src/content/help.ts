@@ -93,13 +93,13 @@ export const ARTICLES: Article[] = [
       title: 'Punching at the facility kiosk',
       summary: 'Clock in and out on the shared tablet at your facility with your employee number and a PIN, without a phone.',
       steps: ['In the app, go to your profile and, under Kiosk PIN, tap Set my PIN. Choose 4 to 6 digits that aren’t easy to guess.', 'At the facility tablet, enter your employee number (it’s shown next to your PIN on your profile), then your PIN.', 'Your punch goes to the shift you’re working, the same as a punch on your phone. With no shift there right now, a supervisor reviews it.', 'Never share your PIN. Forgot it? Set a new one on your profile.'],
-      tip: 'Supervisors set up a tablet from Settings › Facilities › Facility kiosks: tap Add kiosk, then open the setup link once on the tablet. The link isn’t shown again.',
+      tip: 'Supervisors set up a tablet from Settings › Facilities › Facility kiosks: tap Add kiosk, then open the setup link once on the tablet. The link isn’t shown again. The tablet needs Safari 16.4 or newer (iPad) or Chrome 111 or newer (Android); an older one shows a notice asking to update it.',
     },
     fr: {
       title: 'Pointer à la borne de l’installation',
       summary: 'Pointez à l’arrivée et au départ sur la tablette partagée de votre installation avec votre numéro d’employé et un NIP, sans téléphone.',
       steps: ['Dans l’application, allez à votre profil et, sous NIP de borne, touchez Créer mon NIP. Choisissez 4 à 6 chiffres difficiles à deviner.', 'À la tablette de l’installation, entrez votre numéro d’employé (il figure à côté de votre NIP, à votre profil), puis votre NIP.', 'Votre pointage va au quart que vous faites, comme un pointage sur votre téléphone. S’il n’y a aucun quart à cet endroit en ce moment, un superviseur le vérifie.', 'Ne partagez jamais votre NIP. Oublié? Créez-en un nouveau à votre profil.'],
-      tip: 'Les superviseurs configurent une tablette dans Paramètres › Installations › Bornes de pointage : touchez Ajouter une borne, puis ouvrez le lien de configuration une fois sur la tablette. Le lien ne sera plus affiché.',
+      tip: 'Les superviseurs configurent une tablette dans Paramètres › Installations › Bornes de pointage : touchez Ajouter une borne, puis ouvrez le lien de configuration une fois sur la tablette. Le lien ne sera plus affiché. La tablette demande Safari 16.4 ou plus récent (iPad) ou Chrome 111 ou plus récent (Android); une tablette plus ancienne affiche un avis demandant de la mettre à jour.',
     },
   },
   {
