@@ -87,7 +87,12 @@ programsRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const b = levelBody.parse(req.body);
-    const l = await withTenant(a.tenantId, (tx) => tx.swimLevel.create({ data: { ...b, tenantId: a.tenantId, nameFr: b.nameFr ?? null, maxAgeMonths: b.maxAgeMonths ?? null } }));
+    if (b.maxAgeMonths != null && b.maxAgeMonths <= b.minAgeMonths) throw invalid('AGE_RANGE', 'The oldest age must be above the youngest.');
+    const l = await withTenant(a.tenantId, async (tx) => {
+      const created = await tx.swimLevel.create({ data: { ...b, tenantId: a.tenantId, nameFr: b.nameFr ?? null, maxAgeMonths: b.maxAgeMonths ?? null } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'level.create', entity: 'SwimLevel', entityId: created.id, after: b });
+      return created;
+    });
     res.status(201).json(l);
   }),
 );
@@ -100,8 +105,13 @@ programsRouter.patch(
     const b = levelBody.partial().parse(req.body);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
-      if (!(await tx.swimLevel.findUnique({ where: { id } }))) throw notFound('Level');
+      const before = await tx.swimLevel.findUnique({ where: { id } });
+      if (!before) throw notFound('Level');
+      const min = b.minAgeMonths ?? before.minAgeMonths;
+      const max = b.maxAgeMonths !== undefined ? b.maxAgeMonths : before.maxAgeMonths;
+      if (max != null && max <= min) throw invalid('AGE_RANGE', 'The oldest age must be above the youngest.');
       await tx.swimLevel.update({ where: { id }, data: b });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'level.update', entity: 'SwimLevel', entityId: id, before, after: b });
     });
     res.json({ ok: true });
   }),
@@ -220,11 +230,33 @@ programsRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = campaignBody.partial().parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      if (!(await tx.lessonCampaign.findUnique({ where: { id } }))) throw notFound('Campaign');
+      const c = await tx.lessonCampaign.findUnique({ where: { id } });
+      if (!c) throw notFound('Campaign');
+      if ((b.endsOn ?? iso(c.endsOn)) < (b.startsOn ?? iso(c.startsOn))) throw invalid('ENDS_BEFORE_START', 'The campaign must end after it starts.');
       await tx.lessonCampaign.update({ where: { id }, data: campaignData(b) });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'campaign.update', entity: 'LessonCampaign', entityId: id, after: b });
     });
     res.json({ ok: true });
+  }),
+);
+
+/** A draft campaign made by mistake: removed with its sets, while nobody is registered in any of them. */
+programsRouter.delete(
+  '/campaigns/:id',
+  requirePermission('lessons.plan'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    await withTenant(a.tenantId, async (tx) => {
+      const c = await tx.lessonCampaign.findUnique({ where: { id } });
+      if (!c) throw notFound('Campaign');
+      if (c.status !== 'DRAFT') throw conflict('CAMPAIGN_NOT_DRAFT', 'Only a draft campaign can be removed. Close a published one instead.');
+      if (await tx.lessonEnrollment.count({ where: { lessonClass: { campaignId: id } } })) throw conflict('HAS_REGISTRATIONS', 'People are registered in this campaign. Cancel their registrations first.');
+      await tx.lessonClass.deleteMany({ where: { campaignId: id } });
+      await tx.lessonCampaign.delete({ where: { id } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'campaign.delete', entity: 'LessonCampaign', entityId: id, before: { name: c.name } });
+    });
+    res.status(204).end();
   }),
 );
 
@@ -331,6 +363,13 @@ programsRouter.patch(
       const s = await tx.lessonClass.findFirst({ where: { id: setId, campaignId: uuid.parse(req.params.id) } });
       if (!s) throw notFound('Set');
       const { capacity, daysOfWeek, startsOn, endsOn, name, ...rest } = b;
+      if ((b.endMinute ?? s.endMinute) <= (b.startMinute ?? s.startMinute)) throw invalid('ENDS_BEFORE_START', 'A set must end after it starts.');
+      if ((endsOn ?? iso(s.endsOn)) < (startsOn ?? iso(s.startsOn))) throw invalid('ENDS_BEFORE_START', 'The last day must be after the first.');
+      if (b.levelId !== undefined) {
+        const level = b.levelId ? await tx.swimLevel.findUnique({ where: { id: b.levelId } }) : null;
+        if (b.levelId && !level) throw notFound('Level');
+        Object.assign(rest, { level: level?.name ?? null });
+      }
       if (capacity !== undefined && capacity < (await tx.lessonEnrollment.count({ where: { classId: setId, status: 'ENROLLED' } }))) throw conflict('BELOW_ENROLLED', 'More people are already registered than that.');
       await tx.lessonClass.update({
         where: { id: setId },
@@ -353,6 +392,7 @@ programsRouter.delete(
       if (!s) throw notFound('Set');
       if (await tx.lessonEnrollment.count({ where: { classId: setId } })) throw conflict('HAS_REGISTRATIONS', 'People are registered in this set. Cancel their registrations first.');
       await tx.lessonClass.delete({ where: { id: setId } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'set.delete', entity: 'LessonClass', entityId: setId, before: { name: s.name, campaignId: s.campaignId } });
     });
     res.status(204).end();
   }),
