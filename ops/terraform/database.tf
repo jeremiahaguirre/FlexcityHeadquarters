@@ -3,6 +3,14 @@ resource "aws_db_subnet_group" "main" {
   subnet_ids = aws_subnet.database[*].id
 }
 
+# The database log that RDS exports (enabled_cloudwatch_logs_exports), created here before the
+# instance so RDS doesn't create it with no retention: kept db_log_retention_days, encrypted.
+resource "aws_cloudwatch_log_group" "postgresql" {
+  name              = "/aws/rds/instance/${local.name}/postgresql"
+  retention_in_days = var.db_log_retention_days
+  kms_key_id        = aws_kms_key.logs.arn
+}
+
 resource "aws_db_parameter_group" "main" {
   name   = "${local.name}-pg16"
   family = "postgres16"
@@ -16,6 +24,17 @@ resource "aws_db_parameter_group" "main" {
   parameter {
     name  = "log_min_duration_statement"
     value = "500"
+  }
+  # The slow-query log shows each statement's text, never its bound values: those are people's
+  # details (names, emails, notes), which would land in CloudWatch outside row-level security and
+  # the audit log (SECURITY-AUDIT SEC-42). The API's own logs already omit them (lib/log.ts).
+  parameter {
+    name  = "log_parameter_max_length"
+    value = "0"
+  }
+  parameter {
+    name  = "log_parameter_max_length_on_error"
+    value = "0"
   }
   parameter {
     name         = "shared_preload_libraries"
@@ -57,6 +76,7 @@ resource "aws_db_instance" "main" {
   performance_insights_enabled    = true
   performance_insights_kms_key_id = aws_kms_key.data.arn
   enabled_cloudwatch_logs_exports = ["postgresql"]
+  depends_on                      = [aws_cloudwatch_log_group.postgresql]
   publicly_accessible             = false
 
   dynamic "restore_to_point_in_time" {

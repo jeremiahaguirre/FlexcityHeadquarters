@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "alarms_key" {
     resources = ["*"]
     principals {
       type        = "Service"
-      identifiers = ["cloudwatch.amazonaws.com"]
+      identifiers = ["cloudwatch.amazonaws.com", "events.amazonaws.com"]
     }
     condition {
       test     = "StringEquals"
@@ -65,6 +65,20 @@ data "aws_iam_policy_document" "alarms_topic" {
       test     = "ArnLike"
       variable = "aws:SourceArn"
       values   = ["arn:aws:cloudwatch:${var.region}:${data.aws_caller_identity.current.account_id}:alarm:${local.name}-*"]
+    }
+  }
+  statement {
+    sid       = "SecurityEvents"
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.alarms.arn]
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+    condition {
+      test     = "ArnEquals"
+      variable = "aws:SourceArn"
+      values   = [aws_cloudwatch_event_rule.kms_create_key_with_policy.arn]
     }
   }
   statement {
@@ -205,4 +219,28 @@ resource "aws_cloudwatch_metric_alarm" "replica_lag" {
   dimensions          = { DBInstanceIdentifier = aws_db_instance.replica[0].identifier }
   alarm_actions       = [aws_sns_topic.alarms.arn]
   ok_actions          = [aws_sns_topic.alarms.arn]
+}
+
+# The app creates organization keys with the default key policy (the account administers them).
+# A CreateKey from the app role that carries a policy of its own could hand the key to someone
+# else, and IAM conditions can't refuse it, so it raises an alarm (SECURITY-AUDIT SEC-52). Needs
+# CloudTrail management events in the account (README.md, "What it does not create").
+resource "aws_cloudwatch_event_rule" "kms_create_key_with_policy" {
+  name        = "${local.name}-kms-createkey-with-policy"
+  description = "The app role created a KMS key with a custom key policy"
+  event_pattern = jsonencode({
+    source        = ["aws.kms"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail = {
+      eventSource       = ["kms.amazonaws.com"]
+      eventName         = ["CreateKey"]
+      userIdentity      = { sessionContext = { sessionIssuer = { arn = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${aws_iam_role.app.name}"] } } }
+      requestParameters = { policy = [{ exists = true }] }
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "kms_create_key_with_policy" {
+  rule = aws_cloudwatch_event_rule.kms_create_key_with_policy.name
+  arn  = aws_sns_topic.alarms.arn
 }
