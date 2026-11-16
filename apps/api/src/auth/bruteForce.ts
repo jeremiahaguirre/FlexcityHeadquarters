@@ -136,8 +136,8 @@ export interface Attempt {
   slot: Release | null;
 }
 
-/** This network's failure counter on the account (exported for tests). */
-export const failKey = (a: Pick<Attempt, 'surface' | 'account' | 'network'>) => `${accountKey(a.surface, a.account)}fail:${a.network}`;
+/** This network's failure counter on the account. */
+const failKey = (a: Pick<Attempt, 'surface' | 'account' | 'network'>) => `${accountKey(a.surface, a.account)}fail:${a.network}`;
 const netLockKey = (a: Pick<Attempt, 'surface' | 'account' | 'network'>) => `${accountKey(a.surface, a.account)}lock:${a.network}`;
 
 /** Until when this network is locked out of the account (the nth lock within the window lasts base × 2^(n−1)), or null. */
@@ -163,6 +163,13 @@ export async function beginAttempt(surface: Surface, account: string, ip: string
   else {
     a.slot = await reserve(failKey(a), p.failures, p.windowMs);
     if (!a.slot) a.refused = 'network';
+    // The failure that locks the network also empties its counter (failedAttempt), so a place
+    // reserved just after that would be a fresh one: check the lock again now that this holds one.
+    else if (await networkLockedUntil(a, now.getTime())) {
+      await a.slot();
+      a.slot = null;
+      a.refused = 'network';
+    }
   }
   return a;
 }

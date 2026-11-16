@@ -1,9 +1,9 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
-import { count, resetLimits } from '../../src/auth/rateLimit.js';
+import { resetLimits } from '../../src/auth/rateLimit.js';
 import { hashPassword } from '../../src/auth/tokens.js';
-import { POLICIES, failKey, networkId, networkLockedUntil } from '../../src/auth/bruteForce.js';
+import { POLICIES } from '../../src/auth/bruteForce.js';
 import { LOGIN_FAILURES_PER_ADDRESS } from '../../src/routes/auth.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
@@ -37,26 +37,20 @@ afterAll(async () => {
 });
 
 describe('parallel guesses', () => {
-  it('29 wrong and the right password in one burst from one network: the right one is refused, the network locks once', async () => {
+  it('30 wrong in one burst from one network: only 5 are let through to a password check, the network locks once, the right password is then refused', async () => {
     const email = 'guard0@srace.test';
-    // Requests arrive in no set order, so the right password is sent once the wrong guesses hold the
-    // network's 5 places, or have already locked it (they may still be in flight): it must be refused.
-    const account = `${t.tenant.id}:${email}`;
-    const a = { surface: 'org' as const, account, network: networkId('org', account, '198.51.100.200') };
-    const taken = async () => (await count(failKey(a), POLICIES.org.windowMs)) >= POLICIES.org.failures || !!(await networkLockedUntil(a));
     const wrong = [];
-    for (let i = 0; i < 29; i++) wrong.push(login(email, `wrong-pass-${i}`, `198.51.100.${i + 1}`).then((r) => r));
-    for (let waited = 0; !(await taken()); waited += 10) {
-      expect(waited, 'the wrong guesses never took the 5 places').toBeLessThan(15_000);
-      await new Promise((r) => setTimeout(r, 10));
-    }
+    for (let i = 0; i < 30; i++) wrong.push(login(email, `wrong-pass-${i}`, `198.51.100.${i + 1}`));
+    for (const r of await Promise.all(wrong)) expect(r.status).toBe(401);
+    // Whatever order they arrive in: only an attempt holding one of the network's 5 places counts
+    // against the account (a refused one doesn't), so exactly 5 did. A check-then-record limiter
+    // lets most of the burst past the check before any failure is recorded, and this is then > 5.
+    expect((await row(email)).failedLoginCount).toBe(POLICIES.org.failures);
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.network_locked', entityId: (await row(email)).id } })).toBe(1);
+    // The right password from that network is refused while it is locked.
     const right = await login(email, PASSWORD, '198.51.100.200');
-    await Promise.all(wrong);
     expect(right.status).toBe(401);
     expect(right.body.code).toBe('INVALID_CREDENTIALS');
-    // Still locked out from that network afterwards; one lock recorded.
-    expect((await login(email, PASSWORD, '198.51.100.201')).status).toBe(401);
-    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.network_locked', entityId: (await row(email)).id } })).toBe(1);
   });
 
   it('60 wrong in parallel from 60 networks: every failure counts (no lost updates), the account locks once, one email', async () => {
