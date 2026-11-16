@@ -7,10 +7,10 @@ export interface Statement {
   line: number;
 }
 export interface Problem {
-  level: 'error' | 'warning' | 'allowed';
+  level: 'error' | 'allowed';
   rule: string;
   message: string;
 }
 export function splitStatements(sql: string): Statement[];
 export function checkStatement(text: string): Problem[];
-export function lintMigrations(dir: string, baseline?: string): { errors: string[]; warnings: string[]; checked: number };
+export function lintMigrations(dir: string, baseline?: string): { errors: string[]; checked: number };

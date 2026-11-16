@@ -38,7 +38,7 @@ as the **only statement in its own migration**: it cannot run inside a transacti
 
 ## When a destructive statement is right
 
-The lint fails on `DROP` (except `DROP DEFAULT` / `DROP NOT NULL`), `RENAME`, a column `TYPE` change, `SET NOT NULL`, `ADD COLUMN … NOT NULL` without a default, `UPDATE` and `DELETE`. When the statement is the contract step of an earlier expand, or the table is known to be small, say so in a marker comment just above it, so the reviewer sees why:
+The lint fails on `DROP` (except `DROP DEFAULT` / `DROP NOT NULL`), `RENAME`, a column `TYPE` change, `SET NOT NULL`, `ADD COLUMN … NOT NULL` without a default, `UPDATE`, `DELETE` and `TRUNCATE` (also inside a `WITH`), any `DO` block (it can hide any of these), and a plain `CREATE INDEX` on a large table. When the statement is the contract step of an earlier expand, or the table is known to be small, say so in a marker comment just above it (or after its semicolon, on the same line), so the reviewer sees why:
 
 ```sql
 -- migration-safety: contract step; nothing reads "Shift"."legacyNote" since 2027.02 (PR #123)
@@ -50,8 +50,8 @@ Prisma writes some of these itself (changing a foreign key's `ON DELETE` drops a
 ## Row-level security and the other SQL files
 
 `db/rls.sql` and `db/union_hub.sql` are applied after the migrations by `scripts/apply-sql.mjs`. It:
-- skips a file when neither the file nor the set of applied migrations changed since it was last applied (recorded in `fh_meta.sql_applied`), so most deployments take no locks at all;
-- otherwise applies it in one transaction with `lock_timeout` (`SQL_LOCK_TIMEOUT_MS`, 2 s by default), so it never waits long behind a slow report while holding locks on other tables, and retries (`SQL_LOCK_RETRIES`, 10) with a growing pause;
+- skips a file when the file, the set of applied migrations and the `public` schema itself are unchanged since it was last applied, **and** every policy and row-level security flag in the database is exactly as these files left it (recorded in `fh_meta.sql_applied`). Most deployments take no locks at all; a schema rebuilt by `prisma migrate reset`, or a policy dropped by hand, gets every file applied again;
+- otherwise applies it in one transaction with `lock_timeout` (`SQL_LOCK_TIMEOUT_MS`, 2 s by default), so it never waits long behind a slow report while holding locks on other tables, and retries (`SQL_LOCK_RETRIES`, 10) with a growing pause. Both must be positive whole numbers, or the task stops;
 - `--force` applies the files whatever the record says.
 
 ## Order of a deployment

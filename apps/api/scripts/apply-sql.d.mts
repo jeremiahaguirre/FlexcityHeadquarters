@@ -14,4 +14,6 @@ export interface ApplyResult {
   attempts: number;
 }
 export function sqlState(client: pg.Client, text: string): Promise<string>;
+export function catalogState(client: pg.Client): Promise<string>;
+export function positiveInt(env: Record<string, string | undefined>, name: string, fallback: number): number;
 export function applySqlFiles(client: pg.Client, files: string[], opts?: ApplyOptions): Promise<ApplyResult[]>;

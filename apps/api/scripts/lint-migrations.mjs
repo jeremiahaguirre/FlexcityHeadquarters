@@ -7,11 +7,12 @@
 // indexes, constraints that old code already satisfies. These fail the check unless the statement
 // carries a marker comment saying why it is safe (a contract step, a backfill in batches, …):
 //   DROP (except DROP DEFAULT / DROP NOT NULL), RENAME, a column TYPE change, SET NOT NULL,
-//   ADD COLUMN … NOT NULL without a DEFAULT, UPDATE, DELETE.
-// Plain CREATE INDEX on a large table is flagged (a warning): it blocks writes while it builds;
-// use CREATE INDEX CONCURRENTLY, alone in its own migration.
+//   ADD COLUMN … NOT NULL without a DEFAULT, UPDATE, DELETE, TRUNCATE (also inside a WITH),
+//   a DO block (it can hide any of these), and a plain CREATE INDEX on a large table (it blocks
+//   writes while it builds: use CREATE INDEX CONCURRENTLY, alone in its own migration).
 //
-// The marker is a comment in the statement or on the lines just before it:
+// The marker is a comment in the statement, on the lines just before it, or after its semicolon
+// on the same line:
 //   -- migration-safety: contract step; nothing reads "Shift"."legacyNote" since release 2027.01
 // Migrations up to BASELINE are not checked: they were written before launch, with no real data.
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
@@ -29,9 +30,21 @@ export const LARGE_TABLES = new Set([
   'AuthToken', 'PlatformAudit', 'IncidentAccessLog', 'OvertimeEntry', 'Availability', 'User', 'Sale', 'AnnouncementRead',
 ]);
 
+/** The statement with comments, string literals and function bodies blanked, whitespace collapsed. */
+function code(text) {
+  return text
+    .replace(/--[^\n]*/g, ' ')
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\$([A-Za-z_]*)\$[\s\S]*?\$\1\$/g, ' $$ ')
+    .replace(/'(?:[^']|'')*'/g, "''")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /**
- * Splits SQL into statements, keeping each statement's leading comments with it. Understands
- * '…' strings, "…" identifiers, $tag$…$tag$ bodies, -- and /* *\/ comments.
+ * Splits SQL into statements. Leading comments go with the statement after them; a comment after a
+ * semicolon on the same line goes with the statement before it; comment-only text is not a
+ * statement. Understands '…' strings, "…" identifiers, $tag$…$tag$ bodies, -- and /* *\/ comments.
  */
 export function splitStatements(sql) {
   const out = [];
@@ -40,7 +53,8 @@ export function splitStatements(sql) {
   let startLine = 1;
   let i = 0;
   const push = () => {
-    if (cur.trim()) out.push({ text: cur, line: startLine });
+    if (code(cur)) out.push({ text: cur, line: startLine });
+    else if (cur.trim() && out.length) out.at(-1).text += `\n${cur}`; // comment-only text at the end
     cur = '';
   };
   while (i < sql.length) {
@@ -88,8 +102,14 @@ export function splitStatements(sql) {
       continue;
     }
     if (c === ';') {
-      push();
       i++;
+      // A comment after the semicolon, on the same line, belongs to this statement.
+      const trailing = sql.slice(i).match(/^[ \t]*(--[^\n]*)/);
+      if (trailing) {
+        cur += ` ${trailing[1]}`;
+        i += trailing[0].length;
+      }
+      push();
       continue;
     }
     if (c === '\n') line++;
@@ -100,54 +120,49 @@ export function splitStatements(sql) {
   return out;
 }
 
-/** The statement with comments, string literals and $$ bodies blanked, whitespace collapsed (identifiers kept). */
-function code(text) {
-  return text
-    .replace(/--[^\n]*/g, ' ')
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/\$([A-Za-z_]*)\$[\s\S]*?\$\1\$/g, ' $$ ')
-    .replace(/'(?:[^']|'')*'/g, "''")
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 const quotedTable = (text) => text.match(/\bON\s+(?:ONLY\s+)?(?:"?public"?\.)?"([^"]+)"/i)?.[1] ?? text.match(/\bON\s+(?:ONLY\s+)?(?:public\.)?([A-Za-z_][\w]*)/i)?.[1];
+const IDENT = '("[^"]+"|\\w+)';
 
-/** Problems in one statement: { level: 'error' | 'warning', rule, message }. */
+/** Problems in one statement: { level: 'error' | 'allowed', rule, message }. */
 export function checkStatement(text) {
   const s = code(text);
   const marked = MARKER.test(text);
   const found = [];
   const err = (rule, message) => found.push({ level: marked ? 'allowed' : 'error', rule, message });
 
-  const drops = [...s.matchAll(/\bDROP\s+(\w+)/gi)].map((m) => m[1].toUpperCase()).filter((w) => w !== 'DEFAULT' && w !== 'NOT');
+  if (/^DO\b/i.test(s)) err('do', 'DO block: it can run anything (a backfill, a drop) out of sight of this check. Say what it does and why it is safe.');
+  const drops = [...s.matchAll(new RegExp(`\\bDROP\\s+${IDENT}`, 'gi'))]
+    .map((m) => (m[1].startsWith('"') ? 'COLUMN' : m[1].toUpperCase()))
+    .filter((w) => w !== 'DEFAULT' && w !== 'NOT');
   if (drops.length) err('drop', `DROP ${drops.join(', DROP ')}: the running release may still use it. Drop it in a later release (contract step).`);
   if (/\bRENAME\b/i.test(s)) err('rename', 'RENAME: the running release still uses the old name. Add the new one, write both, switch reads, drop the old one a release later.');
-  if (/\bALTER\s+COLUMN\s+("[^"]+"|\w+)\s+(SET\s+DATA\s+)?TYPE\b/i.test(s)) err('type', 'Column TYPE change: rewrites the table under an exclusive lock and can break the running release. Add a new column instead.');
+  if (new RegExp(`\\bALTER\\s+(?:COLUMN\\s+)?${IDENT}\\s+(?:SET\\s+DATA\\s+)?TYPE\\b`, 'i').test(s)) err('type', 'Column TYPE change: rewrites the table under an exclusive lock and can break the running release. Add a new column instead.');
   if (/\bSET\s+NOT\s+NULL\b/i.test(s)) err('set-not-null', 'SET NOT NULL: the running release may still write NULL. Add a CHECK (...) NOT VALID, validate it, then SET NOT NULL a release later.');
-  for (const m of s.matchAll(/\bADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?("[^"]+"|\w+)\s+([^,]*)/gi)) {
+  for (const m of s.matchAll(new RegExp(`\\bADD\\s+(?:COLUMN\\s+)?(?:IF\\s+NOT\\s+EXISTS\\s+)?${IDENT}\\s+([^,]*)`, 'gi'))) {
     if (/^(CONSTRAINT|PRIMARY|UNIQUE|FOREIGN|CHECK|EXCLUDE|VALUE)$/i.test(m[1])) continue;
     if (/\bNOT\s+NULL\b/i.test(m[2]) && !/\bDEFAULT\b/i.test(m[2])) {
       err('add-not-null', `ADD COLUMN ${m[1]} NOT NULL without a DEFAULT: inserts from the running release fail. Give it a default, or add it nullable.`);
     }
   }
-  if (/^UPDATE\b/i.test(s)) err('update', 'UPDATE (a backfill) runs inside the deployment and locks every row it touches. Backfill in batches from the worker, or say why the table is small.');
-  if (/^DELETE\b/i.test(s)) err('delete', 'DELETE in a migration: data the running release may still expect. Say why it is safe.');
+  const cte = /^WITH\b/i.test(s);
+  if (/^UPDATE\b/i.test(s) || (cte && new RegExp(`\\bUPDATE\\s+${IDENT}\\s+(?:AS\\s+\\w+\\s+|\\w+\\s+)?SET\\b`, 'i').test(s))) {
+    err('update', 'UPDATE (a backfill) runs inside the deployment and locks every row it touches. Backfill in batches from the worker, or say why the table is small.');
+  }
+  if (/^DELETE\b/i.test(s) || (cte && /\bDELETE\s+FROM\b/i.test(s))) err('delete', 'DELETE in a migration: data the running release may still expect. Say why it is safe.');
   if (/^TRUNCATE\b/i.test(s)) err('truncate', 'TRUNCATE in a migration: data loss. Say why it is safe.');
   if (/^CREATE\s+(UNIQUE\s+)?INDEX\b/i.test(s) && !/\bCONCURRENTLY\b/i.test(s)) {
     const table = quotedTable(s);
-    if (table && LARGE_TABLES.has(table) && !marked) {
-      found.push({ level: 'warning', rule: 'index', message: `Plain CREATE INDEX on "${table}", a large table: it blocks writes while it builds. Use CREATE INDEX CONCURRENTLY, alone in its own migration.` });
+    if (table && LARGE_TABLES.has(table)) {
+      err('index', `Plain CREATE INDEX on "${table}", a large table: it blocks writes while it builds. Use CREATE INDEX CONCURRENTLY, alone in its own migration.`);
     }
   }
   return found;
 }
 
-/** Checks every migration after BASELINE. Returns { errors, warnings, checked }. */
+/** Checks every migration after BASELINE. Returns { errors, checked }. */
 export function lintMigrations(dir, baseline = BASELINE) {
   const names = readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
   const errors = [];
-  const warnings = [];
   let checked = 0;
   for (const name of names) {
     if (name <= baseline) continue;
@@ -157,9 +172,7 @@ export function lintMigrations(dir, baseline = BASELINE) {
     const statements = splitStatements(readFileSync(file, 'utf8'));
     for (const st of statements) {
       for (const p of checkStatement(st.text)) {
-        const where = `${name}/migration.sql:${st.line}`;
-        if (p.level === 'error') errors.push(`${where}: ${p.message}`);
-        if (p.level === 'warning') warnings.push(`${where}: ${p.message}`);
+        if (p.level === 'error') errors.push(`${name}/migration.sql:${st.line}: ${p.message}`);
       }
     }
     // CONCURRENTLY can't run in a transaction: Prisma sends a migration as one script, so it must be alone.
@@ -167,18 +180,17 @@ export function lintMigrations(dir, baseline = BASELINE) {
       errors.push(`${name}/migration.sql: CREATE INDEX CONCURRENTLY must be the only statement in its migration.`);
     }
   }
-  return { errors, warnings, checked };
+  return { errors, checked };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const dir = process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'prisma', 'migrations');
-  const { errors, warnings, checked } = lintMigrations(dir);
+  const { errors, checked } = lintMigrations(dir);
   const gh = process.env.GITHUB_ACTIONS === 'true';
-  for (const w of warnings) console.log(gh ? `::warning::${w}` : `warning: ${w}`);
   for (const e of errors) console.error(gh ? `::error::${e}` : `error: ${e}`);
   if (errors.length) {
     console.error(`\n${errors.length} unsafe statement(s). Make the change additive (docs/MIGRATIONS.md), or add "-- migration-safety: <why>" above the statement.`);
     process.exit(1);
   }
-  console.log(`${checked} migration(s) after ${BASELINE} checked: additive only${warnings.length ? `, ${warnings.length} warning(s)` : ''}.`);
+  console.log(`${checked} migration(s) after ${BASELINE} checked: additive only.`);
 }

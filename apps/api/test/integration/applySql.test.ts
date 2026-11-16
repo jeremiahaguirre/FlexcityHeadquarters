@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { applySqlFiles } from '../../scripts/apply-sql.mjs';
+import { applySqlFiles, positiveInt } from '../../scripts/apply-sql.mjs';
 
 // The deploy-time SQL step (scripts/apply-sql.mjs; ARCHITECTURE-REVIEW A10), as the owner.
 const url = process.env.DATABASE_URL!;
@@ -90,6 +90,54 @@ describe('applying rls.sql and union_hub.sql at deploy time', () => {
     } finally {
       await holder.end();
     }
+  });
+
+  it('applies again when a policy it created was dropped by hand, though the file and migrations are unchanged', async () => {
+    const f = sqlFile(`ALTER TABLE ${probe} ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS probe_read ON ${probe}; CREATE POLICY probe_read ON ${probe} FOR SELECT USING (true)`);
+    await applySqlFiles(client, [f], quiet);
+    expect((await applySqlFiles(client, [f], quiet))[0]).toMatchObject({ status: 'unchanged' });
+    await client.query(`DROP POLICY probe_read ON ${probe}`);
+    expect((await applySqlFiles(client, [f], quiet))[0]).toMatchObject({ status: 'applied' });
+    const p = await client.query(`SELECT count(*)::int AS n FROM pg_policies WHERE tablename = $1 AND policyname = 'probe_read'`, [probe]);
+    expect(p.rows[0].n).toBe(1);
+  });
+
+  it('applies again after the public schema is dropped and rebuilt with the same migrations (prisma migrate reset)', async () => {
+    // A database of its own: the shared test database's schema must stay as it is.
+    const name = `fh_apply_sql_${randomBytes(4).toString('hex')}`;
+    await client.query(`CREATE DATABASE ${name}`);
+    const u = new URL(url);
+    u.pathname = `/${name}`;
+    const other = new pg.Client({ connectionString: u.toString() });
+    await other.connect();
+    const build = async () => {
+      await other.query(`CREATE TABLE "_prisma_migrations" (id text, checksum text, migration_name text, finished_at timestamptz, rolled_back_at timestamptz, applied_steps_count int)`);
+      await other.query(`INSERT INTO "_prisma_migrations" VALUES ('1', 'abc', '20260101000000_init', now(), NULL, 1)`);
+      await other.query(`CREATE TABLE "Thing" (id int)`);
+    };
+    try {
+      await build();
+      const f = sqlFile(`ALTER TABLE "Thing" ENABLE ROW LEVEL SECURITY; DROP POLICY IF EXISTS thing_read ON "Thing"; CREATE POLICY thing_read ON "Thing" FOR SELECT USING (true)`);
+      expect((await applySqlFiles(other, [f], quiet))[0]).toMatchObject({ status: 'applied' });
+      expect((await applySqlFiles(other, [f], quiet))[0]).toMatchObject({ status: 'unchanged' });
+      await other.query('DROP SCHEMA public CASCADE');
+      await other.query('CREATE SCHEMA public');
+      await build();
+      expect((await applySqlFiles(other, [f], quiet))[0]).toMatchObject({ status: 'applied' });
+      const p = await other.query(`SELECT count(*)::int AS n FROM pg_policies WHERE tablename = 'Thing'`);
+      expect(p.rows[0].n).toBe(1);
+    } finally {
+      await other.end();
+      await client.query(`DROP DATABASE ${name}`);
+    }
+  });
+
+  it('refuses lock settings that would wait forever', () => {
+    expect(positiveInt({}, 'SQL_LOCK_RETRIES', 10)).toBe(10);
+    expect(positiveInt({ SQL_LOCK_RETRIES: '3' }, 'SQL_LOCK_RETRIES', 10)).toBe(3);
+    expect(() => positiveInt({ SQL_LOCK_RETRIES: 'abc' }, 'SQL_LOCK_RETRIES', 10)).toThrow(/positive whole number/);
+    expect(() => positiveInt({ SQL_LOCK_TIMEOUT_MS: '0' }, 'SQL_LOCK_TIMEOUT_MS', 2000)).toThrow(/positive whole number/);
+    expect(() => positiveInt({ SQL_LOCK_TIMEOUT_MS: '-5' }, 'SQL_LOCK_TIMEOUT_MS', 2000)).toThrow(/positive whole number/);
   });
 
   it('applies the real rls.sql inside its lock timeout, then skips it on the next deployment', async () => {

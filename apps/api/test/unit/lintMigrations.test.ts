@@ -42,9 +42,35 @@ describe('migration safety lint (ARCHITECTURE-REVIEW A9, docs/MIGRATIONS.md)', (
     expect(rules('-- migration-safety:\nDROP TABLE "Legacy"')).toEqual(['drop']);
   });
 
-  it('flags a plain CREATE INDEX on a large table, not CONCURRENTLY', () => {
-    expect(checkStatement('CREATE INDEX "TimePunch_at_idx" ON "TimePunch"("at")')).toEqual([expect.objectContaining({ level: 'warning', rule: 'index' })]);
-    expect(checkStatement('CREATE INDEX CONCURRENTLY IF NOT EXISTS "TimePunch_at_idx" ON "TimePunch"("at")')).toEqual([]);
+  it('fails a plain CREATE INDEX on a large table, not CONCURRENTLY; the marker can allow it', () => {
+    expect(rules('CREATE INDEX "TimePunch_at_idx" ON "TimePunch"("at")')).toEqual(['index']);
+    expect(rules('CREATE INDEX CONCURRENTLY IF NOT EXISTS "TimePunch_at_idx" ON "TimePunch"("at")')).toEqual([]);
+    expect(rules('-- migration-safety: the table is empty until feature X ships\nCREATE INDEX "TimePunch_at_idx" ON "TimePunch"("at")')).toEqual([]);
+  });
+
+  it('catches the forms the first version missed (review of #51)', () => {
+    // DROP and TYPE without the optional COLUMN keyword.
+    expect(rules('ALTER TABLE "Shift" DROP "note"')).toEqual(['drop']);
+    expect(rules('ALTER TABLE "Shift" ALTER "hours" TYPE INTEGER')).toEqual(['type']);
+    expect(rules('ALTER TABLE "Shift" ALTER "hours" SET DATA TYPE INTEGER')).toEqual(['type']);
+    // UPDATE and DELETE inside a WITH.
+    expect(rules(`WITH x AS (SELECT id FROM "Shift") UPDATE "Shift" SET "kind" = 'a' FROM x WHERE "Shift".id = x.id`)).toEqual(['update']);
+    expect(rules(`WITH x AS (SELECT id FROM "Shift") DELETE FROM "Shift" USING x WHERE "Shift".id = x.id`)).toEqual(['delete']);
+    expect(rules(`WITH x AS (SELECT 1) SELECT * FROM x`)).toEqual([]);
+    // A DO block can hide a backfill or a drop: it needs a reason.
+    expect(rules(`DO $$ BEGIN UPDATE "Shift" SET "kind" = 'a'; END $$`)).toEqual(['do']);
+    expect(rules(`-- migration-safety: fills a 12-row lookup table\nDO $$ BEGIN UPDATE "Kind" SET x = 1; END $$`)).toEqual([]);
+    // A CREATE FUNCTION body is not a migration step.
+    expect(rules(`CREATE OR REPLACE FUNCTION f() RETURNS void LANGUAGE sql AS $$ DELETE FROM "Shift" $$`)).toEqual([]);
+  });
+
+  it('attaches a comment after the semicolon to the statement before it', () => {
+    const st = splitStatements('DROP TABLE "a"; -- migration-safety: a is unused\nDROP TABLE "b";');
+    expect(st).toHaveLength(2);
+    expect(rules(st[0]!.text)).toEqual([]);
+    expect(rules(st[1]!.text)).toEqual(['drop']);
+    // A trailing comment alone is not a second statement.
+    expect(splitStatements('CREATE INDEX CONCURRENTLY "S_idx" ON "Shift"("b"); -- for the purge\n-- end\n')).toHaveLength(1);
   });
 
   it('splits statements on semicolons outside strings, identifiers, comments and $$ bodies', () => {
@@ -52,6 +78,7 @@ describe('migration safety lint (ARCHITECTURE-REVIEW A9, docs/MIGRATIONS.md)', (
     expect(st).toHaveLength(3);
     expect(st[0]!.text).toContain('-- one; still a comment');
     expect(st[1]!.line).toBe(3);
+    expect(rules(st[1]!.text)).toEqual(['do']);
     expect(st[2]!.text).toContain('SELECT 1');
   });
 
@@ -66,10 +93,11 @@ describe('migration safety lint (ARCHITECTURE-REVIEW A9, docs/MIGRATIONS.md)', (
     add('20991231000100_index', 'CREATE INDEX CONCURRENTLY "S_idx" ON "Shift"("b");\nCREATE INDEX "T_idx" ON "Shift"("c");');
     const r = lintMigrations(dir, '20261113103200_maintenance_windows');
     expect(r.checked).toBe(2);
-    expect(r.errors).toHaveLength(3);
+    expect(r.errors).toHaveLength(4);
     expect(r.errors[0]).toMatch(/^20991231000000_new\/migration\.sql:1: RENAME/);
     expect(r.errors[1]).toMatch(/^20991231000000_new\/migration\.sql:2: UPDATE/);
-    expect(r.errors[2]).toMatch(/CONCURRENTLY must be the only statement/);
+    expect(r.errors[2]).toMatch(/^20991231000100_index\/migration\.sql:2: Plain CREATE INDEX on "Shift"/);
+    expect(r.errors[3]).toMatch(/CONCURRENTLY must be the only statement/);
   });
 
   it('would have caught the destructive pre-launch migrations, and passes everything after the baseline', () => {
