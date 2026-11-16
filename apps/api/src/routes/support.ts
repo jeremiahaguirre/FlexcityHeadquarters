@@ -75,7 +75,7 @@ const uuid = z.string().uuid();
 supportRouter.get(
   '/support-access',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const grants = await withTenant(a.tenantId, (tx) => tx.supportGrant.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }));
@@ -93,7 +93,7 @@ supportRouter.get(
 supportRouter.post(
   '/support-access',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     if (a.support) throw forbidden('Support can’t grant itself access.');
@@ -112,7 +112,7 @@ supportRouter.post(
 supportRouter.delete(
   '/support-access/:id',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);

@@ -14,7 +14,7 @@ import { reliabilityPolicy } from '../services/reliability/load.js';
 import { RECOVERY_MODES, RULES, lastRestart, nextRestart } from '../services/reliability/score.js';
 
 export const settingsRouter = Router();
-settingsRouter.use('/settings', requirePermission('tenant.configure'), requireWholeOrganization);
+settingsRouter.use('/settings', requirePermission('tenant.configure'), requireWholeOrganization('tenant.configure'));
 
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

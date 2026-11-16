@@ -277,7 +277,7 @@ messagesRouter.get(
   '/messages-admin/settings',
   requireFeature('messaging'),
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const t = await inMessaging(a, (tx) => tx.tenant.findFirstOrThrow({ select: { messagingSettings: true } }));
@@ -289,7 +289,7 @@ messagesRouter.put(
   '/messages-admin/settings',
   requireFeature('messaging'),
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = z.object({ staffDirect: z.boolean(), minorDirect: z.boolean(), pushPreview: z.boolean(), shiftArchiveHours: z.number().int().min(SHIFT_ARCHIVE_LIMITS[0]).max(SHIFT_ARCHIVE_LIMITS[1]) }).parse(req.body);

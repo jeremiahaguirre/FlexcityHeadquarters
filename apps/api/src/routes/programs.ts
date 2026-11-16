@@ -7,7 +7,7 @@
 import type { LessonClass } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { type AuthContext, authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { type AuthContext, authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
 import type { NextFunction, Request, Response } from 'express';
 import { assertShiftInScope } from '../services/people/scope.js';
 import { audit, withTenant } from '../lib/db.js';
@@ -28,7 +28,7 @@ const anyOf = (...perms: Parameters<typeof requirePermission>) => (req: Paramete
  * city with departments): campaigns are the organization's, so they change only the sets at their
  * own facilities and positions (SEC-29). Member services and whole-organization planners change all.
  */
-const limitedPlanner = (a: AuthContext) => !!a.scope && !a.permissions.has('members.manage');
+const limitedPlanner = (a: AuthContext) => !a.permissions.has('members.manage') && !holdsForWholeOrganization(a, 'lessons.plan');
 const campaignWrite = (req: Request, _res: Response, next: NextFunction) => {
   const a = authOf(req);
   next(limitedPlanner(a) ? new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'Campaigns are set for the whole organization; you can change the sets at your own facility.') : undefined);
