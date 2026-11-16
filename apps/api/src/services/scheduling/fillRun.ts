@@ -17,7 +17,7 @@ import { type Tx, audit, withTenant } from '../../lib/db.js';
 import { badRequest, forbidden, notFound } from '../../lib/errors.js';
 import { addDays, dayOfWeek, localDate, localIso, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
-import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
+import { holidaysTouching, isPaidHoliday, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
 import { facilitiesOf, peopleWhere, shiftInScope, userInScope } from '../people/scope.js';
@@ -154,7 +154,8 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
   // Statutory holidays (as the law and the organization observe them), per province.
   const holidayDays = new Map<Province, Set<string>>();
   for (const prov of new Set(facilities.map((f) => f.province))) {
-    const rows = await holidaysTouching(tx, prov, req.horizonStart, addDays(req.weekStart, 7));
+    // Paid holidays only: the premium and holiday fairness; a city closure day is not paid as one.
+    const rows = (await holidaysTouching(tx, prov, req.horizonStart, addDays(req.weekStart, 7))).filter(isPaidHoliday);
     holidayDays.set(prov, new Set(rows.flatMap((h) => [h.date, statutoryDay(h), organizationDay(h, tenant.holidayObservance)])));
   }
   const isHoliday = (facilityId: string, date: string) => holidayDays.get(facilityById.get(facilityId)!.province)?.has(date) ?? false;

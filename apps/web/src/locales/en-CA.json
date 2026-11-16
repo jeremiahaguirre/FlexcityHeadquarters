@@ -577,7 +577,10 @@
     "STAGE_CLOSED": "This stage is already done, undone or cancelled.",
     "NOTHING_TO_UNDO": "Nothing of this release is scheduled or applied.",
     "MAINTENANCE_PAST": "That window is already over.",
-    "MAINTENANCE_CLOSED": "That window is over or cancelled."
+    "MAINTENANCE_CLOSED": "That window is over or cancelled.",
+    "UNTIL_BEFORE_START": "The last year is before the first date.",
+    "NTH_WEEKDAY_FIFTH": "A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.",
+    "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -679,7 +682,9 @@
     "holidayObserved": "observed {{date}}",
     "holidayMovedIfOff": "{{date}} if you don’t usually work that day",
     "holidaysMore": "Show all {{count}}",
-    "holidaysLess": "Show fewer"
+    "holidaysLess": "Show fewer",
+    "holidayCity": "City holiday",
+    "holidayClosure": "Closed (unpaid)"
   },
   "availability": {
     "title": "Availability",
@@ -1610,7 +1615,7 @@
       "facilities": "Facilities",
       "pools": "Pools",
       "pay": "Pay codes",
-      "calendar": "School calendar",
+      "calendar": "Holidays and calendar",
       "rules": "Agreement rules",
       "roles": "Roles",
       "departments": "Departments",
@@ -8450,5 +8455,45 @@
       "ended": "Ended",
       "cancelled": "Cancelled"
     }
+  },
+  "cityHolidays": {
+    "title": "City holidays and closure days",
+    "help": "Days your organization adds on top of each province’s statutory holidays, such as Boxing Day, Easter Monday or a civic holiday. Payroll pays a paid holiday like a statutory one (holiday pay and the holiday rate for hours worked). A closure day is a day off without holiday pay. Schedules and leave balances leave both out.",
+    "add": "Add a day",
+    "addTitle": "Add a holiday or closure day",
+    "editTitle": "Change a holiday or closure day",
+    "edit": "Change {{name}}",
+    "remove": "Remove {{name}}",
+    "saved": "Holiday saved.",
+    "removed": "Holiday removed.",
+    "empty": "No city holidays yet. Statutory holidays apply automatically.",
+    "name": "Name (English)",
+    "nameFr": "Name (French)",
+    "kindLabel": "Type",
+    "kind": {
+      "PAID": "Paid holiday",
+      "CLOSURE": "Closure day"
+    },
+    "kindHint": {
+      "PAID": "Paid like a statutory holiday: holiday pay, and the holiday rate for hours worked.",
+      "CLOSURE": "The organization is closed. No holiday pay; leave doesn’t count the day."
+    },
+    "date": "Date",
+    "dateFirst": "The first time it applies. Nothing repeats before it.",
+    "recurrenceLabel": "Repeats",
+    "recurrence": {
+      "NONE": "Once",
+      "YEARLY_DATE": "Every year on the same date",
+      "YEARLY_NTH_WEEKDAY": "Every year on the same weekday of the month (e.g. the first Monday of August)",
+      "YEARLY_LAST_WEEKDAY": "Every year on the last such weekday of the month",
+      "EASTER_OFFSET": "Every year, the same number of days from Easter (e.g. Easter Monday)"
+    },
+    "untilYear": "Last year (optional)",
+    "untilYearHint": "Leave empty to keep repeating.",
+    "until": "until {{year}}",
+    "province": "Applies to",
+    "allProvinces": "Every facility",
+    "nextOn": "Next: {{date}}",
+    "noneComing": "None in the coming year."
   }
 }

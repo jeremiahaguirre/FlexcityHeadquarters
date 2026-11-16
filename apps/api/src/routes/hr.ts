@@ -19,7 +19,7 @@ import { OFFBOARD_ITEMS, OFFBOARD_REASONS, startOffboarding } from '../services/
 import { peopleInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { loadGraph, setManagers, setReportsOf } from '../services/people/reporting.js';
 import { h } from './context.js';
-import { leaveHoursFrom, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
+import { leaveDaysOff, leaveHoursOff, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
 import { assertUserInScope } from '../services/people/scope.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../services/payroll/holidayRules.js';
 
@@ -46,11 +46,12 @@ function defaultHours(type: TimeOffType, hireDate: Date | null, year: number): n
 async function balances(tx: Tx, userIds: string[], year: number) {
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
-  const [users, ents, requests, shifts] = await Promise.all([
+  const [users, ents, requests, shifts, daysOff] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, hireDate: true } }),
     tx.leaveEntitlement.findMany({ where: { userId: { in: userIds }, year } }),
     tx.timeOffRequest.findMany({ where: { userId: { in: userIds }, startsAt: { lt: end }, endsAt: { gt: start }, status: { in: ['APPROVED', 'PENDING'] } } }),
     scheduledShifts(tx, userIds, start, end),
+    leaveDaysOff(tx, start, end),
   ]);
   // Approved: what was charged at approval (older requests: the weekday count). Pending: their schedule as it stands.
   const hoursOf = (r: (typeof requests)[number]) =>
@@ -58,7 +59,7 @@ async function balances(tx: Tx, userIds: string[], year: number) {
       ? r.chargedHours != null
         ? Number(r.chargedHours)
         : weekdayLeaveHours(r.startsAt, r.endsAt)
-      : leaveHoursFrom(r, shifts.filter((s) => s.userId === r.userId)).hours;
+      : leaveHoursOff(r, shifts.filter((s) => s.userId === r.userId), daysOff).hours;
   return users.map((u) => ({
     userId: u.id,
     name: `${u.firstName} ${u.lastName}`,
@@ -118,7 +119,7 @@ hrRouter.get(
         tx.facility.findMany({ select: { province: true } }),
       ]);
       const provinces = [...new Set(facilities.map((f) => f.province))].sort();
-      const rows = await Promise.all(provinces.map(async (province) => (await holidaysTouching(tx, province, from, to)).map((h) => ({ province, key: h.key, name: h.name, nameFr: h.nameFr, date: h.date, kind: h.kind, observedOn: h.kind === 'ACTUAL' ? null : statutoryDay(h), closedOn: organizationDay(h, t.holidayObservance) }))));
+      const rows = await Promise.all(provinces.map(async (province) => (await holidaysTouching(tx, province, from, to)).map((h) => ({ province, key: h.key, name: h.name, nameFr: h.nameFr, date: h.date, kind: h.kind, observedOn: h.kind === 'ACTUAL' ? null : statutoryDay(h), closedOn: organizationDay(h, t.holidayObservance), source: h.source ?? 'STATUTORY', paid: h.paid !== false }))));
       return { observance: t.holidayObservance, provinces, holidays: rows.flat().filter((h) => h.closedOn >= from).sort((x, y) => x.closedOn.localeCompare(y.closedOn) || x.province.localeCompare(y.province)) };
     });
     res.json(out);

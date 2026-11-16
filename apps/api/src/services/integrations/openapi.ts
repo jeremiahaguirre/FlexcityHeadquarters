@@ -160,6 +160,8 @@ export function openApiSpec() {
         Department: obj({ id: uuid, external_id: nullable(str()), name: str(), name_fr: nullable(str()), gl_code: nullable(str()), manager_ids: { type: 'array', items: uuid }, created_at: ts, updated_at: ts }),
         Position: obj({ id: uuid, external_id: nullable(str()), name: str(), name_fr: nullable(str()), department_id: nullable(uuid), updated_at: ts }),
         Facility: obj({ id: uuid, name: str(), province: str(), timezone: str(), cost_center: nullable(str()), created_at: ts, updated_at: ts }),
+        Holiday: obj({ province: str(), date, name: str(), name_fr: nullable(str()), source: str({ enum: ['statutory', 'city'], description: 'statutory: the province’s law. city: added by the organization.' }), paid: { type: 'boolean', description: 'False for a closure day: closed, but no holiday pay.' }, observed_on: date, closed_on: date }),
+        HolidayList: obj({ data: { type: 'array', items: ref('Holiday') } }),
         Shift: obj({ id: uuid, facility_id: uuid, position_id: uuid, person_id: nullable(uuid), starts_at: ts, ends_at: ts, type: str(), title: nullable(str()), status: str({ enum: ['published', 'cancelled'] }), updated_at: ts }),
         Timesheet: obj({ id: uuid, person_id: uuid, facility_id: uuid, position_id: uuid, shift_id: nullable(uuid), clock_in: ts, clock_out: ts, hours: decimal, approved_at: nullable(ts), updated_at: ts }),
         TimeOff: obj({
@@ -244,6 +246,7 @@ export function openApiSpec() {
         put: writeOp('Add or change a position by your own id', 'positions:write', 'Creates it (201) or changes it (200).', { body: 'PositionUpsert', response: 'Position', upsert: true, parameters: [externalPath, ifMatchHeader, optionalIdempotency] }),
       },
       '/facilities': op('List facilities', 'facilities:read', 'FacilityPage'),
+      '/holidays': op('List statutory and organization holidays, per facility province', 'facilities:read', 'HolidayList', [{ name: 'from', in: 'query', schema: date, description: 'First day (default today).' }, { name: 'to', in: 'query', schema: date, description: 'End (exclusive; default a year on). At most 400 days.' }]),
       '/shifts': op('List published shifts in a date range', 'schedule:read', 'ShiftPage', [
         ...listParams,
         ...rangeParams,
