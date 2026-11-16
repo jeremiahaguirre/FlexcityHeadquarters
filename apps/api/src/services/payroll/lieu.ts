@@ -14,7 +14,7 @@
  */
 import type { Tx } from '../../lib/db.js';
 import type { PayrollSettings } from './payRuns.js';
-import { weekdayLeaveHours } from '../people/leaveHours.js';
+import { leaveTimeZones, weekdayLeaveHours } from '../people/leaveHours.js';
 
 export interface LieuPolicy {
   enabled: boolean;
@@ -138,6 +138,7 @@ export async function lieuAvailable(tx: Tx, userId: string, ignoreRequestId?: st
   const last = await tx.payRun.findFirst({ where: { kind: 'REGULAR', status: { in: ['APPROVED', 'PAID'] }, statements: { some: { userId } } }, orderBy: { periodEnd: 'desc' }, select: { periodEnd: true } });
   const after = last ? new Date(last.periodEnd.getTime() + 86_400_000) : new Date(0);
   const reqs = await tx.timeOffRequest.findMany({ where: { userId, type: 'LIEU', status: { in: ['APPROVED', 'PENDING'] }, startsAt: { gte: after }, ...(ignoreRequestId ? { id: { not: ignoreRequestId } } : {}) } });
-  const committed = reqs.reduce((a, r) => a + (r.chargedHours != null ? Number(r.chargedHours) : weekdayLeaveHours(r.startsAt, r.endsAt)), 0);
+  const tz = (await leaveTimeZones(tx, [userId], new Date())).get(userId)!;
+  const committed = reqs.reduce((a, r) => a + (r.chargedHours != null ? Number(r.chargedHours) : weekdayLeaveHours(r.startsAt, r.endsAt, tz)), 0);
   return r2(bank.balance - committed);
 }
