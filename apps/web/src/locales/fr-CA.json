@@ -383,7 +383,10 @@
     "kiosk_tablet_locked": "La tablette « {{kiosk}} » est en pause {{minutes}} minutes après de nombreux NIP erronés.",
     "release_scheduled": "À venir le {{whenFr}} : {{titleFr}}. Voyez ce qui change pour votre organisation.",
     "maintenance_scheduled": "Maintenance prévue le {{whenFr}} : {{messageFr}}",
-    "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}"
+    "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}",
+    "time_off_cancelled": "{{name}} a annulé un congé approuvé. {{restored}} de ses quarts lui ont été rendus; {{taken}} avaient déjà été pris par quelqu’un d’autre.",
+    "time_off_shortened": "Votre congé approuvé se termine maintenant plus tôt : {{reason}}",
+    "time_off_revoked": "Votre congé approuvé a été annulé : {{reason}}"
   },
   "today": {
     "morning": "Bonjour",
@@ -577,7 +580,11 @@
     "STAGE_CLOSED": "Cette étape est déjà faite, annulée ou retirée.",
     "NOTHING_TO_UNDO": "Rien de cette version n’est programmé ni appliqué.",
     "MAINTENANCE_PAST": "Cette période est déjà terminée.",
-    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée."
+    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
+    "OWN_REQUEST": "Vous ne pouvez pas trancher votre propre demande. Un autre superviseur doit le faire.",
+    "LEAVE_NOT_APPROVED": "Seul un congé approuvé peut être modifié de cette façon.",
+    "BAD_END": "Le nouveau dernier jour doit suivre le début et précéder la fin actuelle.",
+    "TIME_OFF_TOO_OLD": "Un congé de plus de deux semaines passe par votre superviseur."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -985,7 +992,28 @@
     },
     "whose": "Demandes de qui",
     "myTeam": "Mon équipe",
-    "everyone": "Tous ceux que je peux approuver"
+    "everyone": "Tous ceux que je peux approuver",
+    "leaveView": "Quels congés",
+    "leaveViews": {
+      "PENDING": "En attente de décision",
+      "APPROVED": "Approuvés"
+    },
+    "noApprovedLeave": "Aucun congé approuvé à venir",
+    "noApprovedLeaveHelp": "Les congés approuvés qui ne sont pas terminés s’affichent ici, pour que vous puissiez les écourter ou les annuler.",
+    "changeLeave": "Modifier",
+    "changeLeaveFor": "Modifier le congé de {{name}}",
+    "changeLeaveHelp": "Les quarts libérés que personne n’a pris lui sont rendus. Les heures de congé sont recalculées.",
+    "changeLeaveReason": "La personne voit cette raison. Elle est conservée dans le journal d’audit.",
+    "leaveActions": {
+      "END_EARLY": "L’écourter",
+      "CANCEL": "Annuler le congé"
+    },
+    "newLastDay": "Nouveau dernier jour de congé",
+    "recordTimeOff": "Inscrire un congé",
+    "recordTimeOffHelp": "Pour une personne qui s’est déclarée malade, ou un congé que les RH inscrivent. Il est enregistré comme approuvé, jusqu’à deux semaines en arrière, et la personne en est informée.",
+    "recordNoteHint": "Facultatif. La personne le voit.",
+    "timeOffRecorded": "Congé inscrit.",
+    "person": "Personne"
   },
   "certs": {
     "title": "Certifications",

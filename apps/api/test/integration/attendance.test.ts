@@ -119,3 +119,94 @@ describe('punch review', () => {
     expect(r.body[0].localClockIn).toMatch(/-0[78]:00$/);
   });
 });
+
+describe('changing approved time off', () => {
+  // In-app notices go through the event outbox (delivered after commit).
+  const notices = async (type: string) => (await owner.eventOutbox.findMany({ where: { tenantId: t.tenant.id, type: 'notify' } })).flatMap((e) => (e.payload as { drafts: Array<{ userId: string; type: string; params: Record<string, unknown> }> }).drafts).filter((d) => d.type === type);
+  const shiftFor = (userId: string, days: number) =>
+    owner.shift.create({ data: { tenantId: t.tenant.id, facilityId: t.facility.id, positionId: t.position.id, userId, status: 'PUBLISHED', startsAt: at(days, 16), endsAt: at(days, 20) } });
+  const newGuard = async (first: string) => {
+    const u = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'PART_TIME', firstName: first, lastName: 'theta', email: `${first.toLowerCase()}@theta.test` } });
+    await owner.userPosition.create({ data: { tenantId: t.tenant.id, userId: u.id, positionId: t.position.id } });
+    return { id: u.id, token: await signAccessToken({ sub: u.id, tid: t.tenant.id, roles: ['STAFF'] }) };
+  };
+  const supId = async () => (await owner.user.findFirstOrThrow({ where: { email: 'sup@theta.test' } })).id;
+
+  it('cancelling approved leave gives back the shifts nobody took and tells the approver', async () => {
+    const g = await newGuard('Cass');
+    const open = await shiftFor(g.id, 40);
+    const takenShift = await shiftFor(g.id, 41);
+    const r = await call(g.token).post('/api/me/time-off', { type: 'VACATION', startsAt: at(40, 0), endsAt: at(42, 0) });
+    expect((await call(sup).post(`/api/time-off/${r.body.request.id}/decision`, { decision: 'APPROVE' })).body.reopenedShifts).toBe(2);
+    // A coworker picks up the second shift from the board.
+    await owner.shift.update({ where: { id: takenShift.id }, data: { userId: guardId } });
+    await owner.shiftOffer.updateMany({ where: { shiftId: takenShift.id, status: 'OPEN' }, data: { status: 'COMPLETED', claimedById: guardId } });
+
+    const c = await call(g.token).post(`/api/me/time-off/${r.body.request.id}/cancel`);
+    expect(c.status).toBe(200);
+    expect(c.body).toMatchObject({ status: 'CANCELLED', restoredShifts: 1, takenShifts: 1 });
+    expect((await owner.shift.findUniqueOrThrow({ where: { id: open.id } })).userId).toBe(g.id);
+    expect(await owner.shiftOffer.count({ where: { shiftId: open.id, status: 'OPEN' } })).toBe(0);
+    expect((await owner.shift.findUniqueOrThrow({ where: { id: takenShift.id } })).userId).toBe(guardId);
+    const told = (await notices('time_off_cancelled')).filter((d) => d.params.requestId === r.body.request.id);
+    expect(told.map((d) => d.userId)).toContain(await supId());
+    expect(told[0]!.params).toMatchObject({ restored: 1, taken: 1 });
+  });
+
+  it('a supervisor ends approved leave early: later shifts come back, the hours are measured again, the person is told', async () => {
+    const g = await newGuard('Dana');
+    const kept = await shiftFor(g.id, 51);
+    const later = await shiftFor(g.id, 54);
+    const r = await call(g.token).post('/api/me/time-off', { type: 'VACATION', startsAt: at(50, 0), endsAt: at(56, 0) });
+    await call(sup).post(`/api/time-off/${r.body.request.id}/decision`, { decision: 'APPROVE' });
+    expect(Number((await owner.timeOffRequest.findUniqueOrThrow({ where: { id: r.body.request.id } })).chargedHours)).toBe(8);
+
+    expect((await call(g.token).post(`/api/time-off/${r.body.request.id}/revise`, { action: 'END_EARLY', endsAt: at(53, 0), reason: 'Back early' })).status).toBe(403);
+    expect((await call(sup).post(`/api/time-off/${r.body.request.id}/revise`, { action: 'END_EARLY', endsAt: at(53, 0) })).status).toBe(400);
+    expect((await call(sup).post(`/api/time-off/${r.body.request.id}/revise`, { action: 'END_EARLY', endsAt: at(57, 0), reason: 'Back early' })).body.code).toBe('BAD_END');
+    const approved = await call(sup).get('/api/time-off?status=APPROVED');
+    expect(approved.body.map((x: { id: string }) => x.id)).toContain(r.body.request.id);
+
+    const v = await call(sup).post(`/api/time-off/${r.body.request.id}/revise`, { action: 'END_EARLY', endsAt: at(53, 0), reason: 'Back from holidays early' });
+    expect(v.status).toBe(200);
+    expect(v.body).toMatchObject({ status: 'APPROVED', restoredShifts: 1 });
+    const row = await owner.timeOffRequest.findUniqueOrThrow({ where: { id: r.body.request.id } });
+    expect(row.endsAt.toISOString()).toBe(at(53, 0).toISOString());
+    expect(Number(row.chargedHours)).toBe(4);
+    expect((await owner.shift.findUniqueOrThrow({ where: { id: later.id } })).userId).toBe(g.id);
+    expect((await owner.shift.findUniqueOrThrow({ where: { id: kept.id } })).userId).toBeNull();
+    expect(await owner.auditLog.count({ where: { action: 'timeoff.end_early', entityId: row.id } })).toBe(1);
+    expect((await notices('time_off_shortened')).some((d) => d.userId === g.id && d.params.reason === 'Back from holidays early')).toBe(true);
+  });
+
+  it('approved leave can be cancelled by a supervisor even once it has started, but never their own', async () => {
+    const g = await newGuard('Eli');
+    const started = await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: g.id, type: 'VACATION', status: 'APPROVED', startsAt: at(-1, 0), endsAt: at(3, 0) } });
+    expect((await call(g.token).post(`/api/me/time-off/${started.id}/cancel`)).body.code).toBe('ALREADY_STARTED');
+    const v = await call(sup).post(`/api/time-off/${started.id}/revise`, { action: 'CANCEL', reason: 'Approved the wrong dates' });
+    expect(v.body.status).toBe('CANCELLED');
+    expect((await owner.timeOffRequest.findUniqueOrThrow({ where: { id: started.id } })).decisionNote).toBe('Approved the wrong dates');
+    expect(await owner.auditLog.count({ where: { action: 'timeoff.revoke', entityId: started.id } })).toBe(1);
+    expect((await notices('time_off_revoked')).some((d) => d.userId === g.id)).toBe(true);
+
+    const mine = await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: await supId(), type: 'VACATION', status: 'APPROVED', startsAt: at(60, 0), endsAt: at(61, 0) } });
+    expect((await call(sup).post(`/api/time-off/${mine.id}/revise`, { action: 'CANCEL', reason: 'Not going' })).body.code).toBe('OWN_REQUEST');
+  });
+
+  it('a supervisor records a sick day after the fact; staff can enter their own up to two weeks back', async () => {
+    const g = await newGuard('Fay');
+    const yesterday = await shiftFor(g.id, -1);
+    expect((await call(staff).post(`/api/users/${g.id}/time-off`, { type: 'SICK', startsAt: at(-1, 0), endsAt: at(0, 0) })).status).toBe(403);
+    const r = await call(sup).post(`/api/users/${g.id}/time-off`, { type: 'SICK', startsAt: at(-1, 0), endsAt: at(0, 0), note: 'Called in sick' });
+    expect(r.status).toBe(201);
+    const row = await owner.timeOffRequest.findUniqueOrThrow({ where: { id: r.body.id } });
+    expect(row).toMatchObject({ status: 'APPROVED', decidedById: await supId(), type: 'SICK' });
+    // A past shift isn't posted to the board.
+    expect((await owner.shift.findUniqueOrThrow({ where: { id: yesterday.id } })).userId).toBe(g.id);
+    expect((await call(sup).post(`/api/users/${g.id}/time-off`, { type: 'SICK', startsAt: at(-20, 0), endsAt: at(-19, 0) })).body.code).toBe('TIME_OFF_TOO_OLD');
+
+    const own = await call(g.token).post('/api/me/time-off', { type: 'SICK', startsAt: at(-3, 0), endsAt: at(-2, 0) });
+    expect(own.status).toBe(201);
+    expect((await call(g.token).post('/api/me/time-off', { type: 'SICK', startsAt: at(-20, 0), endsAt: at(-19, 0) })).body.code).toBe('TIME_OFF_TOO_OLD');
+  });
+});

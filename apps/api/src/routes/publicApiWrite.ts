@@ -365,7 +365,7 @@ publicApiWriteRouter.post(
     return w.tx(async (tx) => {
       const r = await tx.timeOffRequest.findUnique({ where: { id }, select: { userId: true, status: true } });
       if (!r) throw notFound('Time-off request');
-      await cancelTimeOff(tx, r.userId, id);
+      await withEvents(tx, cancelTimeOff(tx, r.userId, id));
       await audit(tx, { tenantId: w.actor.tenantId, actorId: w.actor.userId, action: 'timeoff.cancel', entity: 'TimeOffRequest', entityId: id, before: { status: r.status } });
       const after = await tx.timeOffRequest.findUniqueOrThrow({ where: { id }, select: TIME_OFF_SELECT });
       return { status: 200, body: timeOff(after), etag: etagOf(after.updatedAt) };

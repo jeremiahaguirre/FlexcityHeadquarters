@@ -383,7 +383,10 @@
     "kiosk_tablet_locked": "The kiosk “{{kiosk}}” paused for {{minutes}} minutes after many wrong PINs.",
     "release_scheduled": "Coming {{whenEn}}: {{titleEn}}. See what changes for your organization.",
     "maintenance_scheduled": "Planned maintenance {{whenEn}}: {{messageEn}}",
-    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}"
+    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}",
+    "time_off_cancelled": "{{name}} cancelled approved time off. {{restored}} of their shifts went back to them; {{taken}} had already been picked up by someone else.",
+    "time_off_shortened": "Your approved time off now ends earlier: {{reason}}",
+    "time_off_revoked": "Your approved time off was cancelled: {{reason}}"
   },
   "today": {
     "morning": "Good morning",
@@ -577,7 +580,11 @@
     "STAGE_CLOSED": "This stage is already done, undone or cancelled.",
     "NOTHING_TO_UNDO": "Nothing of this release is scheduled or applied.",
     "MAINTENANCE_PAST": "That window is already over.",
-    "MAINTENANCE_CLOSED": "That window is over or cancelled."
+    "MAINTENANCE_CLOSED": "That window is over or cancelled.",
+    "OWN_REQUEST": "You can’t decide your own request. Another supervisor has to.",
+    "LEAVE_NOT_APPROVED": "Only approved time off can be changed this way.",
+    "BAD_END": "The new last day must be after the start and before the current end.",
+    "TIME_OFF_TOO_OLD": "Time off more than two weeks ago goes through your supervisor."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -985,7 +992,28 @@
     },
     "whose": "Whose requests",
     "myTeam": "My team",
-    "everyone": "Everyone I can approve"
+    "everyone": "Everyone I can approve",
+    "leaveView": "Which time off",
+    "leaveViews": {
+      "PENDING": "Waiting for a decision",
+      "APPROVED": "Approved"
+    },
+    "noApprovedLeave": "No approved time off coming up",
+    "noApprovedLeaveHelp": "Approved time off that hasn’t ended shows here, so you can end it early or cancel it.",
+    "changeLeave": "Change",
+    "changeLeaveFor": "Change time off for {{name}}",
+    "changeLeaveHelp": "Shifts it released that nobody has picked up go back to them. Leave hours are measured again.",
+    "changeLeaveReason": "They see this reason. It’s kept in the audit log.",
+    "leaveActions": {
+      "END_EARLY": "End it early",
+      "CANCEL": "Cancel the time off"
+    },
+    "newLastDay": "New last day off",
+    "recordTimeOff": "Record time off",
+    "recordTimeOffHelp": "For someone who called in sick, or leave HR enters. It’s saved as approved, up to two weeks back, and they’re told.",
+    "recordNoteHint": "Optional. They see it.",
+    "timeOffRecorded": "Time off recorded.",
+    "person": "Person"
   },
   "certs": {
     "title": "Certifications",

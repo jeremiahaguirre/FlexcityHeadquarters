@@ -1,15 +1,15 @@
 'use client';
 
 import { OvertimeOrder } from '@/components/OvertimeOrder';
-import { Check, ClipboardCheck, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { CalendarPlus, Check, ClipboardCheck, Pencil, X } from 'lucide-react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Field, Textarea } from '@/components/ui/Field';
+import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { TradeApprovals } from '@/components/shiftboard/Trades';
@@ -20,7 +20,7 @@ import { api } from '@/lib/api';
 import { formatDate, formatDuration, formatHours, formatSpan, formatTime, formatTimeRange } from '@/lib/format';
 import { LONG_PUNCH_HOURS } from '@/lib/punch';
 import { useSession } from '@/lib/session';
-import { useAction, useQuery } from '@/lib/useQuery';
+import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 
 interface Claim { id: string; claimant: { id: string; name: string } | null; complianceSnapshot: { overtimeHours?: string } | null; shift: ShiftLike & { id: string } }
 interface TimeOff { id: string; type: string; startsAt: string; endsAt: string; note: string | null; user: { name: string }; affectedShifts: number }
@@ -54,6 +54,12 @@ export default function ApprovalsPage() {
   const tq = scope.query ? `?${scope.query}` : '';
   const claims = useQuery<Claim[]>(ready && can('shiftboard.approve') ? `/api/offers/pending${tq}` : null);
   const timeOff = useQuery<TimeOff[]>(ready && can('timeoff.approve') ? `/api/time-off${tq}` : null);
+  // Approved time off still to come or under way, to end early or cancel (supervisors and HR leave administrators).
+  const leaveAdmin = can('timeoff.approve') || can('leave.manage');
+  const [leaveView, setLeaveView] = useState<'PENDING' | 'APPROVED'>(can('timeoff.approve') ? 'PENDING' : 'APPROVED');
+  const approvedLeave = useQuery<TimeOff[]>(ready && leaveAdmin && leaveView === 'APPROVED' ? `/api/time-off?status=APPROVED${scope.query ? `&${scope.query}` : ''}` : null);
+  const [revising, setRevising] = useState<TimeOff | null>(null);
+  const [recording, setRecording] = useState(false);
   const punches = useQuery<Punch[]>(ready && can('timeclock.review') ? `/api/punches${tq}` : null);
   const [tab, setTab] = useState<Tab>('claims');
   const { run, busy } = useAction();
@@ -166,7 +172,56 @@ export default function ApprovalsPage() {
         )
       ) : null}
 
-      {tab === 'timeoff' ? (
+      {tab === 'timeoff' && leaveAdmin ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          {can('timeoff.approve') ? (
+            <Segmented
+              label={t('approvals.leaveView')}
+              value={leaveView}
+              onChange={setLeaveView}
+              options={[
+                { value: 'PENDING', label: t('approvals.leaveViews.PENDING') },
+                { value: 'APPROVED', label: t('approvals.leaveViews.APPROVED') },
+              ]}
+            />
+          ) : (
+            <span />
+          )}
+          {can('users.read') ? (
+            <Button size="sm" variant="secondary" icon={<CalendarPlus className="h-4 w-4" aria-hidden="true" />} onClick={() => setRecording(true)}>
+              {t('approvals.recordTimeOff')}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === 'timeoff' && leaveView === 'APPROVED' ? (
+        approvedLeave.loading || !approvedLeave.data ? (
+          <ListSkeleton />
+        ) : !approvedLeave.data.length ? (
+          <EmptyState icon={ClipboardCheck} title={t('approvals.noApprovedLeave')}>
+            {t('approvals.noApprovedLeaveHelp')}
+          </EmptyState>
+        ) : (
+          <div className="grid gap-3">
+            {approvedLeave.data.map((r) => (
+              <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="text-subheading">{r.user.name}</p>
+                  <p className="text-small text-muted">
+                    {t(`timeOff.types.${r.type}`)} · {formatDate(r.startsAt, lng)} – {formatDate(new Date(new Date(r.endsAt).getTime() - 1).toISOString(), lng)}
+                  </p>
+                </div>
+                <Button size="sm" variant="secondary" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('approvals.changeLeaveFor', { name: r.user.name })} onClick={() => setRevising(r)}>
+                  {t('approvals.changeLeave')}
+                </Button>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : null}
+
+      {tab === 'timeoff' && leaveView === 'PENDING' ? (
         timeOff.loading ? (
           <ListSkeleton />
         ) : !timeOff.data?.length ? (
@@ -274,6 +329,26 @@ export default function ApprovalsPage() {
         )
       ) : null}
 
+      {revising ? (
+        <ReviseLeaveDialog
+          request={revising}
+          onClose={() => setRevising(null)}
+          onSaved={async () => {
+            setRevising(null);
+            await approvedLeave.reload();
+          }}
+        />
+      ) : null}
+      {recording ? (
+        <RecordLeaveDialog
+          onClose={() => setRecording(false)}
+          onSaved={async () => {
+            setRecording(false);
+            await approvedLeave.reload();
+          }}
+        />
+      ) : null}
+
       <Dialog
         open={rejecting !== null}
         onClose={() => setRejecting(null)}
@@ -326,5 +401,124 @@ function OfflineNote({ p, lng }: { p: Punch; lng: string }) {
       {parts.length ? ` · ${parts.join(' · ')}` : ''}
       {skewMin >= 1 ? ` · ${t('approvals.offline.clockOff', { count: skewMin })}` : ''}
     </p>
+  );
+}
+
+/** A local date on this device → the instant its day starts (time off is entered in the approver's own time zone, as staff enter it). */
+const dayStart = (date: string, plus = 0) => {
+  const d = new Date(`${date}T00:00:00`);
+  d.setDate(d.getDate() + plus);
+  return d.toISOString();
+};
+const localDay = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** End approved time off early, or cancel it. The person sees the reason; shifts nobody took come back to them. */
+function ReviseLeaveDialog({ request, onClose, onSaved }: { request: TimeOff; onClose: () => void; onSaved: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const { run, busy } = useAction();
+  const [action, setAction] = useState<'END_EARLY' | 'CANCEL'>('END_EARLY');
+  const firstDay = localDay(request.startsAt);
+  const lastDay = localDay(new Date(new Date(request.endsAt).getTime() - 1).toISOString());
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const body = { action, reason: String(f.get('reason') ?? '').trim(), ...(action === 'END_EARLY' ? { endsAt: dayStart(String(f.get('last')), 1) } : {}) };
+    const r = await run('revise', () => api<{ restoredShifts: number }>(`/api/time-off/${request.id}/revise`, { method: 'POST', body }));
+    if (r !== undefined) {
+      await onSaved();
+    }
+  }
+  return (
+    <Dialog open onClose={onClose} title={t('approvals.changeLeaveFor', { name: request.user.name })} description={t('approvals.changeLeaveHelp')} closeLabel={t('common.close')}>
+      <form onSubmit={(e) => void save(e)} className="grid gap-4">
+        <fieldset className="grid gap-2">
+          <legend className="sr-only">{t('approvals.changeLeave')}</legend>
+          {(['END_EARLY', 'CANCEL'] as const).map((a) => (
+            <label key={a} className="flex items-center gap-2 text-small">
+              <input type="radio" name="action" value={a} checked={action === a} onChange={() => setAction(a)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+              {t(`approvals.leaveActions.${a}`)}
+            </label>
+          ))}
+        </fieldset>
+        {action === 'END_EARLY' ? (
+          <Field label={t('approvals.newLastDay')}>{(p) => <Input {...p} name="last" type="date" required min={firstDay} max={lastDay === firstDay ? firstDay : plusDays(lastDay, -1)} />}</Field>
+        ) : null}
+        <Field label={t('approvals.reason')} hint={t('approvals.changeLeaveReason')}>{(p) => <Textarea {...p} name="reason" required minLength={3} maxLength={500} rows={2} />}</Field>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" variant={action === 'CANCEL' ? 'danger' : 'primary'} loading={busy === 'revise'}>
+            {t(`approvals.leaveActions.${action}`)}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+const LEAVE_TYPES = ['SICK', 'VACATION', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER'] as const;
+
+/** Record time off for someone (they called in sick): saved as approved, up to two weeks back. */
+function RecordLeaveDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const { me } = useSession();
+  const people = useQuery<Array<{ id: string; firstName: string; lastName: string }>>('/api/users?status=ACTIVE');
+  const { run, busy } = useAction();
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const from = String(f.get('from'));
+    const to = String(f.get('to') || from);
+    const body = { type: String(f.get('type')), startsAt: dayStart(from), endsAt: dayStart(to < from ? from : to, 1), note: String(f.get('note') ?? '').trim() || null };
+    const r = await run('record', () => api(`/api/users/${String(f.get('person'))}/time-off`, { method: 'POST', body }), t('approvals.timeOffRecorded'));
+    if (r !== undefined) await onSaved();
+  }
+  return (
+    <Dialog open onClose={onClose} title={t('approvals.recordTimeOff')} description={t('approvals.recordTimeOffHelp')} closeLabel={t('common.close')}>
+      <form onSubmit={(e) => void save(e)} className="grid gap-4">
+        <Field label={t('approvals.person')}>
+          {(p) => (
+            <Select {...p} name="person" required defaultValue="">
+              <option value="">{t('common.choose')}</option>
+              {(people.data ?? [])
+                .filter((x) => x.id !== me?.id)
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.firstName} {x.lastName}
+                  </option>
+                ))}
+            </Select>
+          )}
+        </Field>
+        <Field label={t('timeOff.type')}>
+          {(p) => (
+            <Select {...p} name="type" defaultValue="SICK">
+              {LEAVE_TYPES.map((x) => (
+                <option key={x} value={x}>
+                  {t(`timeOff.types.${x}`)}
+                </option>
+              ))}
+            </Select>
+          )}
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('timeOff.from')}>{(p) => <Input {...p} name="from" type="date" required min={plusDays(todayIso(), -14)} />}</Field>
+          <Field label={t('timeOff.to')}>{(p) => <Input {...p} name="to" type="date" min={plusDays(todayIso(), -14)} />}</Field>
+        </div>
+        <Field label={t('timeOff.note')} hint={t('approvals.recordNoteHint')}>{(p) => <Textarea {...p} name="note" maxLength={500} rows={2} />}</Field>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" loading={busy === 'record'}>
+            {t('approvals.recordTimeOff')}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
