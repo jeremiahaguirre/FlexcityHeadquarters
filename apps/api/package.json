@@ -18,7 +18,8 @@
     "platform:admin": "tsx scripts/platform-admin.ts",
     "worker": "tsx src/worker.ts",
     "start:worker": "node dist/worker.js",
-    "tenant:purge": "tsx scripts/purge-tenant.ts"
+    "tenant:purge": "tsx scripts/purge-tenant.ts",
+    "leave:recount-report": "tsx scripts/leave-recount-report.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1160.0",
