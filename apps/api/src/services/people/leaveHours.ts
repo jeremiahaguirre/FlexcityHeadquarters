@@ -47,37 +47,59 @@ export function leaveHoursFrom(request: Interval, shifts: Interval[], timeZone: 
   return { hours: weekdayLeaveHours(request.startsAt, request.endsAt, timeZone), basis: 'WEEKDAYS' };
 }
 
-const LOOKBACK_MS = 90 * 86_400_000;
+const LOOKBACK_DAYS = 90;
+/** Longer than any punch, so the window can bound clockIn from below and the index reads only the window. */
+const LONGEST_PUNCH_DAYS = 7;
+
+/** A request whose zone is wanted; `asOf` is when it was counted (default now), for the recount report. */
+export interface ZoneOf { userId: string; startsAt: Date; asOf?: Date | null }
 
 /**
- * The time zone each person's leave is counted in, the way payroll counts their days
+ * The time zone each request is counted in, the way payroll counts the person's days
  * (payrollRun.ts): their main facility's, the one where they worked the most hours (approved
- * punches) in the 90 days before `at`. With no hours there, the organization's (orgTimeZone).
- * One query for everyone.
+ * punches) in the 90 days before the request starts, or before now for one that hasn't started.
+ * With no hours there, the organization's (orgTimeZone). Every caller uses this, so a request is
+ * counted in the same zone in a balance, against the lieu bank and when it's approved.
+ * One query for all of them; returns the zone of each request asked about.
  */
-export async function leaveTimeZones(tx: Tx, userIds: string[], at: Date): Promise<Map<string, string>> {
-  const ids = [...new Set(userIds)];
-  const rows = ids.length
-    ? await tx.$queryRaw<Array<{ userId: string; timezone: string }>>`
-        SELECT DISTINCT ON (p."userId") p."userId"::text AS "userId", f.timezone
-        FROM "TimePunch" p JOIN "Facility" f ON f.id = p."facilityId"
-        WHERE p."userId" = ANY(${ids}::uuid[]) AND p.status = 'APPROVED' AND p."clockOut" IS NOT NULL
-          AND p."clockOut" > ${new Date(at.getTime() - LOOKBACK_MS)} AND p."clockIn" < ${at}
-        GROUP BY p."userId", f.id
-        ORDER BY p."userId", sum(p."clockOut" - p."clockIn") DESC, f.id`
-    : [];
-  const out = new Map(rows.map((r) => [r.userId, r.timezone]));
-  const missing = ids.filter((id) => !out.has(id));
-  if (missing.length) {
-    const org = await orgTimeZone(tx);
-    for (const id of missing) out.set(id, org);
+export async function leaveTimeZones(tx: Tx, requests: readonly ZoneOf[]): Promise<(r: ZoneOf) => string> {
+  const now = new Date();
+  const moment = (r: ZoneOf) => Math.min(r.startsAt.getTime(), (r.asOf ?? now).getTime());
+  const key = (userId: string, at: number) => `${userId}|${at}`;
+  const asked = new Map(requests.map((r) => [key(r.userId, moment(r)), { userId: r.userId, at: moment(r) }]));
+  const zones = new Map<string, string>();
+  if (asked.size) {
+    const qs = [...asked.values()];
+    // Per person and moment, the facility with the most hours of punches overlapping the window.
+    const rows = await tx.$queryRaw<Array<{ userId: string; at: Date; timezone: string }>>`
+      SELECT q."userId"::text AS "userId", q.at, z.timezone
+      FROM unnest(${qs.map((q) => q.userId)}::uuid[], ${qs.map((q) => new Date(q.at).toISOString())}::timestamptz[]) AS q("userId", at)
+      CROSS JOIN LATERAL (
+        SELECT f.timezone FROM "TimePunch" p JOIN "Facility" f ON f.id = p."facilityId"
+        WHERE p."userId" = q."userId" AND p.status = 'APPROVED'
+          AND p."clockIn" < q.at AND p."clockIn" > q.at - make_interval(days => ${LOOKBACK_DAYS + LONGEST_PUNCH_DAYS}::int)
+          AND p."clockOut" > q.at - make_interval(days => ${LOOKBACK_DAYS}::int)
+        GROUP BY f.id
+        ORDER BY sum(p."clockOut" - p."clockIn") DESC, f.id
+        LIMIT 1
+      ) z`;
+    for (const r of rows) zones.set(key(r.userId, r.at.getTime()), r.timezone);
+    if (zones.size < asked.size) {
+      const org = await orgTimeZone(tx);
+      for (const k of asked.keys()) if (!zones.has(k)) zones.set(k, org);
+    }
   }
-  return out;
+  return (r) => {
+    const z = zones.get(key(r.userId, moment(r)));
+    if (!z) throw new Error('leaveTimeZones: this request was not asked about');
+    return z;
+  };
 }
 
-/** One person's zone for a request: by their hours before it starts (or before now, for one ahead). */
-export async function personLeaveTimeZone(tx: Tx, userId: string, startsAt: Date, now = new Date()): Promise<string> {
-  return (await leaveTimeZones(tx, [userId], new Date(Math.min(startsAt.getTime(), now.getTime())))).get(userId)!;
+/** One request's zone (leaveTimeZones). */
+export async function personLeaveTimeZone(tx: Tx, userId: string, startsAt: Date): Promise<string> {
+  const r = { userId, startsAt };
+  return (await leaveTimeZones(tx, [r]))(r);
 }
 
 /**
@@ -92,9 +114,9 @@ export async function orgTimeZone(tx: Tx): Promise<string> {
 /**
  * Read-only, for payroll to review: approved requests charged by weekdays whose count differs
  * from the current rule (hours charged before weekdays were counted in local time, or before
- * holidays were left out). Each is recounted as charging works now (leaveHoursOff): in the person's
- * zone and with their province's holidays and the organization's own, as of when it was decided.
- * Nothing is changed here.
+ * holidays were left out). Each is recounted as charging works now (leaveHoursOff): in the zone it
+ * was counted in when it was decided, with the holidays of the person's province then and the
+ * organization's own. Nothing is changed here.
  */
 export async function weekdayRecount(tx: Tx) {
   const reqs = await tx.timeOffRequest.findMany({
@@ -102,11 +124,13 @@ export async function weekdayRecount(tx: Tx) {
     select: { id: true, userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true, decidedAt: true },
     orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
   });
+  const asked = reqs.map((r) => ({ userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt }));
+  const [zoneOf, provinceOf] = await Promise.all([leaveTimeZones(tx, asked), leaveProvinces(tx, asked)]);
   const out = [];
   for (const r of reqs) {
-    const at = r.decidedAt ?? new Date();
-    const timeZone = await personLeaveTimeZone(tx, r.userId, r.startsAt, at);
-    const recount = leaveHoursOff(r, [], timeZone, await personLeaveDaysOff(tx, r.userId, r.startsAt, r.endsAt, at)).hours;
+    const asked = { userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt };
+    const timeZone = zoneOf(asked);
+    const recount = leaveHoursOff(r, [], timeZone, await leaveDaysOff(tx, provinceOf(asked), r.startsAt, r.endsAt)).hours;
     const charged = Number(r.chargedHours);
     if (Math.abs(recount - charged) > 0.001) out.push({ id: r.id, userId: r.userId, type: r.type, startsAt: r.startsAt, endsAt: r.endsAt, charged, recount, timeZone });
   }
@@ -141,28 +165,37 @@ export function leaveHoursOff(request: Interval, shifts: Interval[], timeZone: s
 }
 
 /**
- * Each person's province for holidays, the way leaveTimeZones finds their zone: their main
- * facility's (most approved punch hours in the 90 days before `at`), else the organization's oldest
- * facility's; null when the organization has no facility.
+ * The province whose holidays each request is counted with: the province of the facility its zone
+ * comes from (leaveTimeZones: the person's main facility at that moment, by approved punch hours in
+ * the 90 days before), else the organization's oldest facility's; null with no facility at all.
  */
-export async function leaveProvinces(tx: Tx, userIds: string[], at: Date): Promise<Map<string, Province | null>> {
-  const ids = [...new Set(userIds)];
-  const rows = ids.length
-    ? await tx.$queryRaw<Array<{ userId: string; province: Province }>>`
-        SELECT DISTINCT ON (p."userId") p."userId"::text AS "userId", f.province
-        FROM "TimePunch" p JOIN "Facility" f ON f.id = p."facilityId"
-        WHERE p."userId" = ANY(${ids}::uuid[]) AND p.status = 'APPROVED' AND p."clockOut" IS NOT NULL
-          AND p."clockOut" > ${new Date(at.getTime() - LOOKBACK_MS)} AND p."clockIn" < ${at}
-        GROUP BY p."userId", f.id
-        ORDER BY p."userId", sum(p."clockOut" - p."clockIn") DESC, f.id`
-    : [];
-  const out = new Map<string, Province | null>(rows.map((r) => [r.userId, r.province]));
-  const missing = ids.filter((id) => !out.has(id));
-  if (missing.length) {
-    const org = (await tx.facility.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { province: true } }))?.province ?? null;
-    for (const id of missing) out.set(id, org);
+export async function leaveProvinces(tx: Tx, requests: readonly ZoneOf[]): Promise<(r: ZoneOf) => Province | null> {
+  const now = new Date();
+  const moment = (r: ZoneOf) => Math.min(r.startsAt.getTime(), (r.asOf ?? now).getTime());
+  const key = (userId: string, at: number) => `${userId}|${at}`;
+  const asked = new Map(requests.map((r) => [key(r.userId, moment(r)), { userId: r.userId, at: moment(r) }]));
+  const provinces = new Map<string, Province | null>();
+  if (asked.size) {
+    const qs = [...asked.values()];
+    const rows = await tx.$queryRaw<Array<{ userId: string; at: Date; province: Province }>>`
+      SELECT q."userId"::text AS "userId", q.at, z.province
+      FROM unnest(${qs.map((q) => q.userId)}::uuid[], ${qs.map((q) => new Date(q.at).toISOString())}::timestamptz[]) AS q("userId", at)
+      CROSS JOIN LATERAL (
+        SELECT f.province FROM "TimePunch" p JOIN "Facility" f ON f.id = p."facilityId"
+        WHERE p."userId" = q."userId" AND p.status = 'APPROVED'
+          AND p."clockIn" < q.at AND p."clockIn" > q.at - make_interval(days => ${LOOKBACK_DAYS + LONGEST_PUNCH_DAYS}::int)
+          AND p."clockOut" > q.at - make_interval(days => ${LOOKBACK_DAYS}::int)
+        GROUP BY f.id
+        ORDER BY sum(p."clockOut" - p."clockIn") DESC, f.id
+        LIMIT 1
+      ) z`;
+    for (const r of rows) provinces.set(key(r.userId, r.at.getTime()), r.province);
+    if (provinces.size < asked.size) {
+      const org = (await tx.facility.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { province: true } }))?.province ?? null;
+      for (const k of asked.keys()) if (!provinces.has(k)) provinces.set(k, org);
+    }
   }
-  return out;
+  return (r) => provinces.get(key(r.userId, moment(r))) ?? null;
 }
 
 /**
@@ -179,10 +212,10 @@ export async function leaveDaysOff(tx: Tx, province: Province | null, from: Date
   return new Set((await holidaysTouching(tx, province, a, b)).flatMap((h) => [statutoryDay(h), organizationDay(h, t.holidayObservance)]));
 }
 
-/** One person's holiday days off around a request (their province as of its start, or now for one ahead). */
-export async function personLeaveDaysOff(tx: Tx, userId: string, startsAt: Date, endsAt: Date, now = new Date()): Promise<Set<string>> {
-  const province = (await leaveProvinces(tx, [userId], new Date(Math.min(startsAt.getTime(), now.getTime())))).get(userId) ?? null;
-  return leaveDaysOff(tx, province, startsAt, endsAt);
+/** One request's holiday days off (its province as leaveProvinces finds it). */
+export async function personLeaveDaysOff(tx: Tx, userId: string, startsAt: Date, endsAt: Date): Promise<Set<string>> {
+  const r = { userId, startsAt };
+  return leaveDaysOff(tx, (await leaveProvinces(tx, [r]))(r), startsAt, endsAt);
 }
 
 /** The person's scheduled shifts overlapping a period (cancelled ones don't count). */
