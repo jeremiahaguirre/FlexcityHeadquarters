@@ -1,4 +1,6 @@
 /** In-app notifications, their live stream to open pages, and web push subscriptions. */
+import { decodeJwt } from 'jose';
+import { StreamSlots, msUntilExpiry } from '../lib/streamSlots.js';
 import { Router } from 'express';
 import { liveServer } from '../lib/shutdown.js';
 import { z } from 'zod';
@@ -49,8 +51,26 @@ notificationsRouter.post(
  * Server-Sent Events. The browser reads this with fetch() (so it can send the
  * Bearer token) and refetches /notifications when a signal arrives.
  */
+export const streamSlots = new StreamSlots();
+
 notificationsRouter.get('/notifications/stream', (req, res) => {
   const a = authOf(req);
+  // Bounded per person and per process, and closed when the token that opened it expires (lib/streamSlots.ts).
+  const release = streamSlots.admit(a.userId, () => res.end());
+  if (!release) {
+    res.setHeader('Retry-After', '30');
+    res.status(503).json({ code: 'BUSY', message: 'Too many live connections on this server. Try again shortly.', requestId: req.id });
+    return;
+  }
+  const exp = (() => {
+    try {
+      return decodeJwt(req.header('authorization')?.slice(7) ?? '').exp;
+    } catch {
+      return undefined;
+    }
+  })();
+  const ttl = msUntilExpiry(exp);
+  const expiry = ttl === null ? null : setTimeout(() => res.end(), ttl);
   res.status(200).set({
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-store',
@@ -75,6 +95,8 @@ notificationsRouter.get('/notifications/stream', (req, res) => {
   const heartbeat = setInterval(() => res.write(`: keep-alive\n\n`), 25_000);
   req.on('close', () => {
     clearInterval(heartbeat);
+    if (expiry) clearTimeout(expiry);
+    release();
     off();
     offChange();
     offMine();

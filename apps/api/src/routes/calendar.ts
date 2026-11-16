@@ -104,7 +104,9 @@ publicCalendarRouter.get(
     // that don't work are limited, per address and organization, generously: one stale link
     // fetched by a shared service must never block everyone else's feeds. Guessing is hopeless
     // anyway: a link's secret is 24 random bytes (192 bits), stored only as a SHA-256 hash.
-    const missKey = `ics-miss:${addressKey(req.ip)}:${tenantId.data}`;
+    // Per address only: with the organization in the key, every made-up organization id was a fresh
+    // budget (SECURITY-AUDIT SEC-46). The global limiter also counts each miss as a failure.
+    const missKey = `ics-miss:${addressKey(req.ip)}`;
     const out = await withTenant(tenantId.data, async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId.data }, select: { disabledAt: true } });
       if (!tenant || tenant.disabledAt) return null;

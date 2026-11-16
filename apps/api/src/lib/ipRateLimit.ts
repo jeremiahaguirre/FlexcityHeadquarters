@@ -163,6 +163,9 @@ export function ipRateLimit(opts?: LimiterOptions & { force?: boolean }) {
     }
     res.once('finish', () => {
       if (res.statusCode === 401 && !res.locals.credentialExpired) b.failures.drain(ip);
+      // A calendar link that doesn't work counts as a failure too: the path alone is not a
+      // credential, so random links get the failure budget, not the signed-in one (SEC-46).
+      else if (res.statusCode === 404 && req.path.startsWith('/api/calendar/')) b.failures.drain(ip);
     });
     next();
   };

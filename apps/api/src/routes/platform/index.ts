@@ -18,9 +18,17 @@ import { jsonBody } from '../../lib/bodyParsers.js';
 
 /** FH Dev console API: no organization subdomain, its own sessions, larger bodies (logos, CSV). */
 export const platformRouter = Router();
-// Trust evidence files go up to 10 MB (sent as base64); everything else stays at 2 MB.
+// Trust evidence files go up to 10 MB (sent as base64); everything else stays at 2 MB. Only with
+// the console's header and a console session cookie: signing in needs no more than 100 kB, so an
+// anonymous sender can't make the process parse megabytes first (SECURITY-AUDIT SEC-47).
 const json = jsonBody({ limit: '2mb' });
 const evidenceJson = jsonBody({ limit: '14mb' });
-platformRouter.use((req, res, next) => (req.method === 'POST' && req.path === '/trust/evidence' ? evidenceJson : json)(req, res, next), cookieParser(), requirePlatformHeader);
+const anonymousJson = jsonBody({ limit: '100kb' });
+const SESSION_COOKIE = /(?:^|;\s*)fh_platform=/;
+platformRouter.use(
+  requirePlatformHeader,
+  (req, res, next) => (!SESSION_COOKIE.test(req.headers.cookie ?? '') ? anonymousJson : req.method === 'POST' && req.path === '/trust/evidence' ? evidenceJson : json)(req, res, next),
+  cookieParser(),
+);
 platformRouter.use(platformAuthRouter, platformPasskeyRouter);
 platformRouter.use(requirePlatform, citiesRouter, lifecycleRouter, billingRouter, booksRouter, leadsRouter, payrollTaxRouter, consentsRouter, platformPayrollRouter, platformIntegrationsRouter, trustRouter, updatesRouter);

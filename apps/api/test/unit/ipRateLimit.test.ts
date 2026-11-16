@@ -16,6 +16,7 @@ function app(opts = { authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2 
     r.status(401).json({ code: 'UNAUTHENTICATED' });
   });
   a.post('/api/auth/forgot', (_q, r) => r.status(202).json({ ok: true }));
+  a.get('/api/calendar/:t/:f', (q, r) => (q.params.f === 'good.ics' ? r.send('BEGIN:VCALENDAR') : r.status(404).json({ code: 'NOT_FOUND' })));
   return a;
 }
 
@@ -96,6 +97,18 @@ describe('global per-address limit', () => {
     const a = app();
     for (let i = 0; i < 6; i++) expect((await request(a).get('/expired').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer old')).status).toBe(401);
     expect((await request(a).get('/me').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer good')).status).toBe(200);
+  });
+
+  it('calendar links that don’t work use up the failure budget, so made-up links stop at the edge (SEC-46)', async () => {
+    const a = app();
+    const ip = '203.0.113.46';
+    const get = (f: string) => request(a).get(`/api/calendar/00000000-0000-0000-0000-000000000000/${f}`).set('X-Forwarded-For', ip);
+    expect((await get('nope1.ics')).status).toBe(404);
+    expect((await get('nope2.ics')).status).toBe(404);
+    // failuresPerMinute is 2: the address is now limited, before any database work.
+    expect((await get('nope3.ics')).status).toBe(429);
+    // Another address is unaffected, and working links from it are served.
+    expect((await request(a).get('/api/calendar/00000000-0000-0000-0000-000000000000/good.ics').set('X-Forwarded-For', '203.0.113.47')).status).toBe(200);
   });
 
   it('IPv6: one /64 shares a bucket', async () => {
