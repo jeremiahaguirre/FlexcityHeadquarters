@@ -50,7 +50,7 @@ Open connections drop during the database failover. Requests in flight get an er
 
 ### B. A deployment goes wrong
 
-If the circuit breaker didn't roll it back, apply again with the previous `image_tag`. For that to be safe, migrations follow one rule: a release only adds to the schema (new tables, new columns, new indexes), so the previous version still runs on it. Removing or renaming something takes two releases: first stop using it, then remove it.
+If the circuit breaker didn't roll it back, apply again with the previous `image_tag`. For that to be safe, migrations follow one rule: a release only adds to the schema (new tables, new columns, new indexes), so the previous version still runs on it. Removing or renaming something takes two releases: first stop using it, then remove it. The rules and the CI check that enforces them: [MIGRATIONS.md](MIGRATIONS.md).
 
 ### C. Data damaged by a mistake or a bug
 
