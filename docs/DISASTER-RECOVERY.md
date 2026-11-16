@@ -10,7 +10,7 @@ These are internal targets, to be confirmed by the drills below. They are not cu
 | --- | --- | --- | --- |
 | One container or server | ECS replaces the task; the load balancer stops sending it traffic after three failed health checks (45 s) | None | Under a minute |
 | One Availability Zone | The other zones' tasks carry on and ECS starts replacements there. The database fails over to its standby in another zone, typically in 60–120 seconds (AWS's figure) | None (synchronous standby) | About 2 minutes |
-| A bad deployment | The ECS circuit breaker rolls back a deployment whose tasks don't become healthy; otherwise redeploy the previous image tag | None | Minutes |
+| A bad deployment | ECS rolls back a deployment whose tasks don't become healthy (circuit breaker) or whose server-error or health alarms go off while it runs; otherwise redeploy the previous image tag | None | Minutes |
 | Data damaged by a mistake or a bug | Restore a copy of the database to just before the damage and copy back the affected rows (runbook C) | Back to any second within 35 days | Hours, depending on the repair |
 | The whole Montreal region | Rebuild in Calgary from the copies (runbook D) | Target 15 minutes | Target 4 hours |
 
