@@ -13,7 +13,7 @@ import { notify } from '../services/notifications/notifier.js';
 import { POINTS } from '../services/reliability/score.js';
 import { LEVELS, SERIOUS_LEVELS, requiredChecks } from '../services/people/review.js';
 import { h } from './context.js';
-import { hrRecordsBy } from '../services/people/scope.js';
+import { assertUserInScope, hrRecordsBy } from '../services/people/scope.js';
 import { type SignableRecord, recordFingerprint, sha256, signatureCheck } from '../services/people/fingerprint.js';
 
 export const disciplineRouter = Router();
@@ -89,6 +89,7 @@ disciplineRouter.post(
       if (!at || Date.now() - at.getTime() > RECENT_AUTH_MS) throw new HttpError(401, 'STEP_UP_REQUIRED', 'Confirm it’s you to continue.');
     }
     const rec = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
       const subject = await tx.user.findUnique({ where: { id: userId } });
       if (!subject || subject.anonymizedAt) throw notFound('Staff member');
       const missing = requiredChecks(level, subject.unionMember).filter((c) => body.fairProcess[c] !== true);

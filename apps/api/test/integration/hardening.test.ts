@@ -124,6 +124,46 @@ describe('FH support visits never open individual records', () => {
     }
     expect((await call(visit).get('/api/settings')).status).toBe(200);
   });
+
+  it('changing letter case, percent-encoding, extra slashes or a trailing slash doesn’t get past the block (SEC-08/14/24)', async () => {
+    const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
+    const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
+    const session = await owner.supportSession.create({ data: { tenantId: t.tenant.id, grantId: grant.id, adminId: admin.id, codeHash: randomBytes(16).toString('hex'), codeExpiresAt: new Date(Date.now() + 60_000), usedAt: new Date(), endsAt: new Date(Date.now() + 1_800_000) } });
+    const visit = await signAccessToken({ sub: ids.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], mfa: true, sup: session.id });
+    const who = t.users[0]!.id;
+    const incident = '00000000-0000-4000-8000-000000000000';
+    const paths = [
+      `/api/Users/${who}/documents`,
+      `/api/USERS/${who}/Discipline`,
+      `/api/users/${who}/%64ocuments`,
+      `/api/%75sers/${who}/documents`,
+      `/api/users//${who}/documents`,
+      `/api/Documents/${randomBytes(16).toString('hex')}`,
+      '/api/Grievances',
+      '/api/Payroll/people',
+      '/api/Me/pay-statements',
+      '/api/Households',
+      '/api/Data-Export',
+      '/api/Union/locals',
+      '/api/UNION/locals',
+      `/api/incidents/${incident}/`,
+      `/api/Incidents/${incident}`,
+      // Routes that weren't on the list at all.
+      `/api/users/${who}/salary`,
+      `/api/users/${who}/payroll-orders`,
+      `/api/users/${who}/emergency-contacts`,
+      `/api/users/${who}/pay-rates`,
+      `/api/applications/${randomBytes(16).toString('hex')}/resume`,
+      '/api/notifications',
+      '/api/messages/conversations',
+      '/api/messages-admin/reports',
+    ];
+    for (const path of paths) {
+      const r = await call(visit).get(path);
+      expect(r.status, `${path} → ${r.status} ${r.body.code}`).toBe(403);
+    }
+    expect((await call(visit).get('/api/Settings')).status).toBe(200);
+  });
 });
 
 describe('the Dev console can’t take over a city', () => {
