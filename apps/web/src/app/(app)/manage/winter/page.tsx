@@ -1,10 +1,11 @@
 'use client';
 
-import { Download, Plus, Snowflake } from 'lucide-react';
+import { Download, Lock, Pencil, Plus, Snowflake } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -30,6 +31,7 @@ export default function WinterPage() {
   const [range, setRange] = useState(() => ({ from: new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10), to: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10) }));
   const records = useQuery<Patrol[]>(can('winter.records') && settings.data?.patrolsOn ? `/api/patrols?from=${range.from}&to=${range.to}` : null);
   const { run, busy } = useAction();
+  const [editing, setEditing] = useState<RouteStatus | null>(null);
   const manage = can('winter.manage');
   const month = (m: string) => dateFormat(i18n.language, { month: 'long', timeZone: 'UTC' }).format(new Date(`2026-${m}-15T12:00:00Z`));
   const when = (iso: string | null) => (iso ? formatMoment(iso, i18n.language) : '—');
@@ -60,6 +62,15 @@ export default function WinterPage() {
       await routes.reload();
     }
   }
+  async function saveRoute(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const body = { name: String(f.get('name')), roadClass: String(f.get('roadClass') || '') || null, intervalHours: Number(f.get('interval')), active: f.get('active') === 'on' };
+    if ((await run('editRoute', () => api(`/api/winter/routes/${editing!.id}`, { method: 'PATCH', body }), t('winter.routeSaved'))) !== undefined) {
+      setEditing(null);
+      await routes.reload();
+    }
+  }
   async function exportCsv() {
     const r = await apiDownload(`/api/patrols/export?from=${range.from}&to=${range.to}`);
     if (r.ok) saveBlob(r.blob, `patrols-${range.from}-${range.to}.csv`);
@@ -78,12 +89,20 @@ export default function WinterPage() {
           <CardBody className="pt-2">
             <form className="grid gap-5" onSubmit={(e) => void save(e)}>
               <div className="grid gap-3 sm:grid-cols-2">
-                {(['callOutsOn', 'patrolsOn'] as const).map((k) => (
-                  <label key={k} className="flex items-start gap-3 rounded-xl border border-line p-4 text-small">
-                    <input type="checkbox" name={k} defaultChecked={s[k]} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />
-                    <span><span className="font-semibold">{t(`winter.${k}`)}</span><span className="block text-caption text-muted">{t(`winter.${k}Help`)}</span></span>
-                  </label>
-                ))}
+                {(['callOutsOn', 'patrolsOn'] as const).map((k) => {
+                  // Not in the plan: shown off and can't be switched on here; Billing adds it.
+                  const addOn = s.locked?.[k === 'callOutsOn' ? 'callOuts' : 'patrols'];
+                  return (
+                    <label key={k} className="flex items-start gap-3 rounded-xl border border-line p-4 text-small">
+                      <input type="checkbox" name={k} defaultChecked={s[k]} disabled={!!addOn} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))] disabled:opacity-40" />
+                      <span>
+                        <span className="font-semibold">{t(`winter.${k}`)}</span>
+                        <span className="block text-caption text-muted">{t(`winter.${k}Help`)}</span>
+                        {addOn ? <span className="mt-1 flex items-center gap-1 text-caption font-semibold text-warn"><Lock className="h-3.5 w-3.5" aria-hidden="true" />{t('winter.notInPlan', { option: t(`plans.item.${addOn}`) })}</span> : null}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
               <fieldset className="grid gap-2">
                 <legend className="text-small font-semibold">{t('winter.season')}</legend>
@@ -122,7 +141,10 @@ export default function WinterPage() {
                       <p className="font-semibold">{r.name}{r.roadClass ? <span className="ml-2 text-caption text-muted">{t('winter.class', { c: r.roadClass })}</span> : null}</p>
                       <p className="text-caption text-muted">{t('winter.routeTimes', { count: r.intervalHours, last: when(r.lastPatrolAt), due: when(r.dueAt) })}</p>
                     </div>
-                    {!r.active ? <StatusPill tone="neutral">{t('winter.inactive')}</StatusPill> : r.overdue ? <StatusPill tone="danger">{t('winter.overdue')}</StatusPill> : r.inSeason ? <StatusPill tone="ok">{t('winter.onTrack')}</StatusPill> : <StatusPill tone="neutral">{t('winter.offSeason')}</StatusPill>}
+                    <div className="flex items-center gap-2">
+                      {!r.active ? <StatusPill tone="neutral">{t('winter.inactive')}</StatusPill> : r.overdue ? <StatusPill tone="danger">{t('winter.overdue')}</StatusPill> : r.inSeason ? <StatusPill tone="ok">{t('winter.onTrack')}</StatusPill> : <StatusPill tone="neutral">{t('winter.offSeason')}</StatusPill>}
+                      {manage ? <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} onClick={() => setEditing(r)} aria-label={t('winter.editRoute', { name: r.name })}>{t('common.edit')}</Button> : null}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -173,6 +195,22 @@ export default function WinterPage() {
           </CardBody>
         </Card>
       ) : null}
+      <Dialog open={!!editing} onClose={() => setEditing(null)} title={t('winter.editRouteTitle')} closeLabel={t('common.cancel')}>
+        {editing ? (
+          <form key={editing.id} className="grid gap-4" onSubmit={(e) => void saveRoute(e)}>
+            <Field label={t('winter.routeName')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={80} defaultValue={editing.name} />}</Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t('winter.roadClass')} hint={t('common.optional')}>{(p) => <Input {...p} name="roadClass" maxLength={20} defaultValue={editing.roadClass ?? ''} />}</Field>
+              <Field label={t('winter.interval')}>{(p) => <Select {...p} name="interval" defaultValue={String(editing.intervalHours)}>{[...new Set([2, 4, 8, 12, 24, 48, 72, 168, 336, 720, editing.intervalHours])].sort((a, b) => a - b).map((h) => <option key={h} value={h}>{t('winter.everyHours', { count: h })}</option>)}</Select>}</Field>
+            </div>
+            <label className="flex items-start gap-3 rounded-xl border border-line p-4 text-small">
+              <input type="checkbox" name="active" defaultChecked={editing.active} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />
+              <span><span className="font-semibold">{t('winter.routeActive')}</span><span className="block text-caption text-muted">{t('winter.routeActiveHelp')}</span></span>
+            </label>
+            <Button type="submit" loading={busy === 'editRoute'} className="justify-self-start">{t('common.save')}</Button>
+          </form>
+        ) : null}
+      </Dialog>
     </div>
   );
 }

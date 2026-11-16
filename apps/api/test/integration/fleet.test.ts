@@ -14,6 +14,7 @@ let plow: string;
 const call = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  patch: (p: string, b: object = {}) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 const allOk = ['BRAKES', 'STEERING', 'LIGHTS', 'TIRES_WHEELS'].map((item) => ({ item, ok: true }));
 
@@ -65,6 +66,32 @@ describe('fleet', () => {
     const history = (await call(tok.hr).get(`/api/vehicles/${plow}/inspections`)).body;
     expect(history[0]).toMatchObject({ result: 'MAJOR', repairNote: 'Brake chamber replaced, shop WO 4471', driver: 'dee X' });
     expect((await call(tok.driver).get('/api/vehicles')).body.vehicles[0].status).toBe('NEEDS_INSPECTION');
+  });
+});
+
+describe('correcting and retiring vehicles', () => {
+  it('a wrong plate, unit or licence is corrected, on record; a unit number stays unique', async () => {
+    const other = (await call(tok.hr).post('/api/vehicles', { unit: 'T-3', description: 'Pickup' })).body.id;
+    expect((await call(tok.driver).patch(`/api/vehicles/${other}`, { plate: 'X' })).status).toBe(403);
+    expect((await call(tok.hr).patch(`/api/vehicles/${other}`, { unit: 'p-12' })).body.code).toBe('UNIT_EXISTS');
+    expect((await call(tok.hr).patch(`/api/vehicles/${other}`, { unit: 'T-4', plate: 'BC 4471', certificationId: licence })).status).toBe(200);
+    const v = (await call(tok.hr).get('/api/vehicles')).body.vehicles.find((x: { id: string }) => x.id === other);
+    expect(v).toMatchObject({ unit: 'T-4', plate: 'BC 4471', certificationId: licence });
+    // Licence no longer needed: cleared, and an unlicensed driver may inspect it.
+    expect((await call(tok.hr).patch(`/api/vehicles/${other}`, { certificationId: null, plate: null })).status).toBe(200);
+    expect((await call(tok.other).post(`/api/vehicles/${other}/inspections`, { items: allOk })).status).toBe(201);
+    const log = await owner.auditLog.findMany({ where: { tenantId: t.tenant.id, action: 'vehicle.update', entityId: other }, orderBy: { at: 'asc' } });
+    expect(log).toHaveLength(2);
+    expect(log[0]!.before).toMatchObject({ unit: 'T-3', plate: null });
+  });
+
+  it('a retired vehicle leaves drivers’ lists and refuses inspections; managers still see it and can bring it back', async () => {
+    expect((await call(tok.hr).patch(`/api/vehicles/${plow}`, { active: false })).status).toBe(200);
+    expect((await call(tok.driver).get('/api/vehicles')).body.vehicles.map((v: { id: string }) => v.id)).not.toContain(plow);
+    expect((await call(tok.driver).post(`/api/vehicles/${plow}/inspections`, { items: allOk })).status).toBeGreaterThanOrEqual(400);
+    expect((await call(tok.hr).get('/api/vehicles')).body.vehicles.find((v: { id: string }) => v.id === plow)).toMatchObject({ active: false });
+    expect((await call(tok.hr).patch(`/api/vehicles/${plow}`, { active: true })).status).toBe(200);
+    expect((await call(tok.driver).get('/api/vehicles')).body.vehicles.map((v: { id: string }) => v.id)).toContain(plow);
   });
 });
 

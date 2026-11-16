@@ -6,7 +6,7 @@ import { authOf, requireFeature, requirePermission } from '../auth/middleware.js
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { assertShiftInScope } from '../services/people/scope.js';
-import { forgetFeatures, resolveFeatures } from '../services/platform/features.js';
+import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
 import { type Answer, answer, cancelCallOut, createCallOut } from '../services/winter/callOuts.js';
 import { routeStatus } from '../services/winter/patrols.js';
 import { asJson, parseWinter, winterSettingsBody } from '../services/winter/settings.js';
@@ -27,7 +27,9 @@ winterRouter.get(
     const a = authOf(req);
     const t = await withTenant(a.tenantId, (tx) => tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { winterSettings: true, features: true } }));
     const f = resolveFeatures(t.features);
-    res.json({ callOutsOn: f.callOuts, patrolsOn: f.patrols, ...parseWinter(t.winterSettings) });
+    // What the plan doesn't include is off whatever the switch says: say so, with the option that adds it.
+    const { locked } = (await tenantSettings(a.tenantId)).billing;
+    res.json({ callOutsOn: f.callOuts && !locked.callOuts, patrolsOn: f.patrols && !locked.patrols, locked: { callOuts: locked.callOuts ?? null, patrols: locked.patrols ?? null }, ...parseWinter(t.winterSettings) });
   }),
 );
 
@@ -39,6 +41,9 @@ winterRouter.put(
     const a = authOf(req);
     const body = winterSettingsBody.extend({ callOutsOn: z.boolean(), patrolsOn: z.boolean() }).parse(req.body);
     const { callOutsOn, patrolsOn, ...settings } = body;
+    const { locked } = (await tenantSettings(a.tenantId)).billing;
+    const notInPlan = (['callOuts', 'patrols'] as const).find((k) => locked[k] && (k === 'callOuts' ? callOutsOn : patrolsOn));
+    if (notInPlan) throw new HttpError(403, 'PLAN_REQUIRED', 'Your plan doesn’t include this. See Billing to add it.', { module: locked[notInPlan] });
     await withTenant(a.tenantId, async (tx) => {
       const t = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true } });
       const features = { ...(t.features as Record<string, boolean>), callOuts: callOutsOn, patrols: patrolsOn };
@@ -84,8 +89,12 @@ winterRouter.patch(
     const body = routeBody.partial().parse(req.body);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
-      if (!(await tx.patrolRoute.findUnique({ where: { id } }))) throw notFound('Route');
+      const before = await tx.patrolRoute.findUnique({ where: { id } });
+      if (!before) throw notFound('Route');
+      if (body.name && (await tx.patrolRoute.findFirst({ where: { id: { not: id }, name: { equals: body.name, mode: 'insensitive' } } }))) throw conflict('ROUTE_EXISTS', 'There is already a route with that name.');
       await tx.patrolRoute.update({ where: { id }, data: body });
+      // The patrol record is kept for liability: a changed interval or a retired route is on record.
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'winter.route.update', entity: 'PatrolRoute', entityId: id, before: { name: before.name, roadClass: before.roadClass, intervalHours: before.intervalHours, active: before.active }, after: body });
     });
     res.json({ ok: true });
   }),

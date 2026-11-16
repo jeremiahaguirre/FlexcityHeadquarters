@@ -83,8 +83,11 @@ fleetRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = vehicleBody.partial().parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      if (!(await tx.vehicle.findUnique({ where: { id } }))) throw notFound('Vehicle');
+      const before = await tx.vehicle.findUnique({ where: { id } });
+      if (!before) throw notFound('Vehicle');
+      if (b.unit && (await tx.vehicle.findFirst({ where: { id: { not: id }, unit: { equals: b.unit, mode: 'insensitive' } } }))) throw conflict('UNIT_EXISTS', 'There is already a vehicle with that unit number.');
       await tx.vehicle.update({ where: { id }, data: b });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'vehicle.update', entity: 'Vehicle', entityId: id, before: { unit: before.unit, plate: before.plate, facilityId: before.facilityId, certificationId: before.certificationId, active: before.active }, after: b });
     });
     res.json({ ok: true });
   }),
