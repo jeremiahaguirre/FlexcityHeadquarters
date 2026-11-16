@@ -6,7 +6,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { announceChange } from '../lib/changes.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
@@ -249,6 +249,7 @@ biddingRouter.post(
 biddingRouter.put(
   '/bids/settings',
   requirePermission('bidding.manage', 'tenant.configure'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const b = z.object({ seniorityBasis: z.enum(['DATE', 'HOURS']), awardOrder: z.enum(['ROUND_ROBIN', 'SENIOR_FIRST']) }).partial().parse(req.body);

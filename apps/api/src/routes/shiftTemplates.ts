@@ -44,7 +44,7 @@ shiftTemplatesRouter.put(
   '/schedule/templates/settings',
   h(async (req, res) => {
     const a = authOf(req);
-    if (!a.permissions.has('tenant.configure')) throw forbidden();
+    if (!a.permissions.has('tenant.configure') || a.scope) throw forbidden();
     const { autoCreate } = z.object({ autoCreate: z.boolean() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
       const t = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } });

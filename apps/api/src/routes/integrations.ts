@@ -10,7 +10,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { ApiKey, WebhookDelivery, WebhookEndpoint } from '../generated/prisma/client.js';
-import { authOf, requireModule, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requireModule, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, notFound } from '../lib/errors.js';
@@ -21,7 +21,7 @@ import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
 
 export const integrationsRouter = Router();
-integrationsRouter.use('/integrations', requirePermission('tenant.configure'));
+integrationsRouter.use('/integrations', requirePermission('tenant.configure'), requireWholeOrganization);
 
 const MAX_KEYS = 25;
 const MAX_ENDPOINTS = 10;

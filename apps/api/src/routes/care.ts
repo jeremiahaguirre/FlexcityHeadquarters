@@ -2,7 +2,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithRoles } from '../services/notifications/notifier.js';
@@ -69,12 +69,15 @@ careRouter.get(
 careRouter.put(
   '/care/settings',
   requirePermission('care.manage'),
+  // The support text every department sees after a critical incident (SEC-63).
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ eap: z.string().trim().max(500).nullable() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenant.findFirstOrThrow({ select: { careSettings: true } });
       await tx.tenant.update({ where: { id: a.tenantId }, data: { careSettings: body as Prisma.InputJsonValue } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'care.settings', entity: 'Tenant', entityId: a.tenantId });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'care.settings', entity: 'Tenant', entityId: a.tenantId, before: before.careSettings, after: body });
     });
     res.json(body);
   }),

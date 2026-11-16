@@ -5,9 +5,9 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { conflict, notFound } from '../lib/errors.js';
+import { conflict, forbidden, notFound } from '../lib/errors.js';
 import { h } from './context.js';
 
 export const benefitsRouter = Router();
@@ -40,6 +40,7 @@ const planView = (p: { id: string; name: string; nameFr: string | null; kind: st
 benefitsRouter.get(
   '/benefits',
   requirePermission('benefits.manage'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
@@ -69,6 +70,7 @@ benefitsRouter.get(
 benefitsRouter.post(
   '/benefits/plans',
   requirePermission('benefits.manage'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const body = planBody.parse(req.body);
@@ -85,6 +87,7 @@ benefitsRouter.post(
 benefitsRouter.put(
   '/benefits/plans/:id',
   requirePermission('benefits.manage'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -101,9 +104,12 @@ benefitsRouter.put(
 benefitsRouter.post(
   '/benefits/enrollments',
   requirePermission('benefits.manage'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ planId: uuid, userId: uuid, startsOn: isoDate, coverage: z.string().trim().max(40).nullable().optional(), employeeAmount: z.number().min(0).max(10_000).nullable().optional() }).parse(req.body);
+    // Your own deductions are set by someone else (SEC-26), like your own bank account and roles.
+    if (body.userId === a.userId) throw forbidden('Someone else enrolls you in benefits.');
     const e = await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.benefitPlan.findUnique({ where: { id: body.planId } }))) throw notFound('Plan');
       if (!(await tx.user.findUnique({ where: { id: body.userId } }))) throw notFound('Person');
@@ -120,6 +126,7 @@ benefitsRouter.post(
 benefitsRouter.post(
   '/benefits/enrollments/:id/end',
   requirePermission('benefits.manage'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -127,6 +134,7 @@ benefitsRouter.post(
     await withTenant(a.tenantId, async (tx) => {
       const e = await tx.benefitEnrollment.findUnique({ where: { id } });
       if (!e) throw notFound('Enrollment');
+      if (e.userId === a.userId) throw forbidden('Someone else ends your benefits.');
       await tx.benefitEnrollment.update({ where: { id }, data: { endsOn: new Date(endsOn) } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'benefits.end', entity: 'User', entityId: e.userId, after: { planId: e.planId, endsOn } });
     });

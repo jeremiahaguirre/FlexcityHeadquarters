@@ -189,7 +189,7 @@ fillRouter.put(
       const s = parseSolverSettings(tenant.overtimePolicy);
       const before = structuredClone(s);
       if (body.departmentId === null) {
-        if (!a.permissions.has('tenant.configure')) throw forbidden();
+        if (!a.permissions.has('tenant.configure') || a.scope) throw forbidden();
         if (body.planAheadWeeks) s.planAheadWeeks = body.planAheadWeeks;
         s.weights = { ...s.weights, ...(body.weights ?? {}) };
         s.toggles = { ...s.toggles, ...(body.toggles ?? {}) };
@@ -198,7 +198,7 @@ fillRouter.put(
       } else {
         if (!a.permissions.has('schedule.assist')) throw forbidden();
         // Limits and the federal switch are organization policy, even per department.
-        if ((body.limits || body.federallyRegulated !== undefined) && !a.permissions.has('tenant.configure')) throw forbidden();
+        if ((body.limits || body.federallyRegulated !== undefined) && (!a.permissions.has('tenant.configure') || a.scope)) throw forbidden();
         if (!(await schedulableDepartments(tx, a)).some((d) => d.id === body.departmentId)) throw notFound('Department');
         const prev = s.departments[body.departmentId] ?? {};
         s.departments[body.departmentId] = body.reset

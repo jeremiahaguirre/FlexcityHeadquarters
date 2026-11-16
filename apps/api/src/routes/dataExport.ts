@@ -4,9 +4,9 @@
  * After offboarding it's the one thing the administrators can still reach.
  */
 import { Router } from 'express';
-import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { forbidden } from '../lib/errors.js';
+import { HttpError, forbidden } from '../lib/errors.js';
 import { exportSummary, recordExport, writeCityExport } from '../services/platform/cityExport.js';
 import { h } from './context.js';
 
@@ -15,6 +15,7 @@ export const dataExportRouter = Router();
 dataExportRouter.get(
   '/data-export',
   requirePermission('tenant.configure'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     if (a.support) throw forbidden('The data export is only for the organization’s own administrators.');
@@ -27,17 +28,21 @@ dataExportRouter.get(
 dataExportRouter.get(
   '/data-export/download',
   requirePermission('tenant.configure'),
+  requireWholeOrganization,
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    // Every SIN, bank account and medical note (SEC-07): an HR administrator who proved a second factor.
     if (a.support) throw forbidden('The data export is only for the organization’s own administrators.');
+    if (!a.roles.includes('HR_ADMIN')) throw new HttpError(403, 'HR_ONLY', 'Only an HR administrator can download the organization’s data.');
+    if (!a.mfa) throw new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey to download the organization’s data.');
     const [me, t] = await withTenant(a.tenantId, (tx) => Promise.all([tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { firstName: true, lastName: true } }), tx.tenant.findFirstOrThrow({ select: { subdomain: true } })]));
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename="${t.subdomain}-data-${new Date().toISOString().slice(0, 10)}.zip"`);
     res.setHeader('Cache-Control', 'no-store');
     // Recorded before the first byte leaves, with how much is going.
     const summary = await exportSummary(a.tenantId);
-    await recordExport(a.tenantId, a.userId, { tables: summary.tables.length, rows: summary.tables.reduce((n, x) => n + x.rows, 0), files: summary.files });
+    await recordExport(a.tenantId, a.userId, { tables: summary.tables.length, rows: summary.tables.reduce((n, x) => n + x.rows, 0), files: summary.files }, `${me.firstName} ${me.lastName}`);
     await writeCityExport(a.tenantId, { userId: a.userId, name: `${me.firstName} ${me.lastName}` }, (chunk, final) => {
       res.write(Buffer.from(chunk));
       if (final) res.end();

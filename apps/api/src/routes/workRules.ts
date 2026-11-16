@@ -43,7 +43,7 @@ workRulesRouter.get(
         const w = parseWorkRules(tenant.workRules);
         const solver = parseSolverSettings(tenant.overtimePolicy);
         const orgSeniority = resolveFeatures(tenant.features).seniority;
-        const configure = a.permissions.has('tenant.configure');
+        const configure = a.permissions.has('tenant.configure') && !a.scope;
         const departments = (await schedulableDepartments(tx, a)).filter((d) => d.id !== NO_DEPARTMENT);
         const visiblePositions = new Set(configure ? positions.map((p) => p.id) : departments.flatMap((d) => d.positionIds));
         const { departments: _d, ...organization } = w;
@@ -80,7 +80,7 @@ workRulesRouter.put(
   '/schedule/work-rules',
   h(async (req, res) => {
     const a = authOf(req);
-    if (!a.permissions.has('tenant.configure')) throw forbidden();
+    if (!a.permissions.has('tenant.configure') || a.scope) throw forbidden();
     const body = workRulesBody.parse(req.body);
     res.json(
       await withTenant(a.tenantId, async (tx) => {
@@ -109,7 +109,7 @@ workRulesRouter.put(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const body = departmentWorkRulesBody.extend({ reset: z.boolean().optional() }).parse(req.body);
-    const configure = a.permissions.has('tenant.configure');
+    const configure = a.permissions.has('tenant.configure') && !a.scope;
     // Pay rules are organization policy; a department's scheduler may set its meal-break placement and warnings.
     if (!configure && (!a.permissions.has('schedule.assist') || body.callIn || body.notice || body.standby || body.reset)) throw forbidden();
     res.json(

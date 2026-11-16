@@ -2,7 +2,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, notFound } from '../lib/errors.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
@@ -14,7 +14,7 @@ import { reliabilityPolicy } from '../services/reliability/load.js';
 import { RECOVERY_MODES, RULES, lastRestart, nextRestart } from '../services/reliability/score.js';
 
 export const settingsRouter = Router();
-settingsRouter.use('/settings', requirePermission('tenant.configure'));
+settingsRouter.use('/settings', requirePermission('tenant.configure'), requireWholeOrganization);
 
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

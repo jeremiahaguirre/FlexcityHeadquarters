@@ -465,6 +465,8 @@
     "NO_PASSKEY": "Aucune clé d’accès sur ce compte.",
     "TOO_MANY_PASSKEYS": "Retirez une clé d’accès avant d’en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d’accès pour ce compte.",
+    "WHOLE_ORGANIZATION_ONLY": "Ce réglage vaut pour toute l’organisation et revient à une personne dont l’accès n’est pas limité à un service.",
+    "HR_ONLY": "Seul un administrateur RH peut faire ceci.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d’abord.",
     "ALREADY_ENDED": "Cette séance est déjà terminée.",
     "ACCOUNT_SUSPENDED": "Le compte de votre organisation est en lecture seule jusqu’au paiement du solde en retard.",

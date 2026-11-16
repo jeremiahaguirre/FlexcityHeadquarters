@@ -7,7 +7,7 @@
 import { addressKey } from '../lib/address.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { signAccessToken, verifyAccessToken } from '../auth/tokens.js';
 import { config } from '../config.js';
@@ -75,6 +75,7 @@ const uuid = z.string().uuid();
 supportRouter.get(
   '/support-access',
   requirePermission('tenant.configure'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const grants = await withTenant(a.tenantId, (tx) => tx.supportGrant.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }));
@@ -92,6 +93,7 @@ supportRouter.get(
 supportRouter.post(
   '/support-access',
   requirePermission('tenant.configure'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     if (a.support) throw forbidden('Support can’t grant itself access.');
@@ -110,6 +112,7 @@ supportRouter.post(
 supportRouter.delete(
   '/support-access/:id',
   requirePermission('tenant.configure'),
+  requireWholeOrganization,
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);

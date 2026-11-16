@@ -138,6 +138,25 @@ export function requirePermission(...perms: Permission[]) {
   };
 }
 
+/**
+ * Organization-wide settings and data (sign-in rules, pay codes, the data export, departments,
+ * benefits plans, policies…) are only for people whose access isn't limited to a department.
+ * A department-limited holder of the same permission gets 403 WHOLE_ORGANIZATION_ONLY.
+ */
+export function assertWholeOrganization(a: AuthContext) {
+  if (a.scope) throw new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'This is set for the whole organization, by someone whose access isn’t limited to a department.');
+}
+
+/** Route guard form of assertWholeOrganization. */
+export function requireWholeOrganization(req: Request, _res: Response, next: NextFunction) {
+  try {
+    assertWholeOrganization(authOf(req));
+    next();
+  } catch (e) {
+    next(e);
+  }
+}
+
 export function authOf(req: Request): AuthContext {
   if (!req.auth) throw new HttpError(401, 'UNAUTHENTICATED', 'Not signed in');
   return req.auth;
