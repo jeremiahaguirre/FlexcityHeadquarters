@@ -1,14 +1,15 @@
 /** Availability, time-off requests and decisions, and punches (a person's own and the supervisor review). */
 import { Router } from 'express';
-import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
+import { assertUserInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { badRequest, forbidden } from '../lib/errors.js';
+import { badRequest, forbidden, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
-import { localIso } from '../lib/time.js';
+import { atLocal, localIso, localTime } from '../lib/time.js';
 import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
 import { decidePunches, punchVariance } from '../services/timeclock/review.js';
+import { addPunch } from '../services/timeclock/punches.js';
 import { teamOf, teamQuery } from '../services/people/reporting.js';
 import { confirmAvailability } from '../services/scheduling/fillRun.js';
 import { h } from './context.js';
@@ -228,6 +229,40 @@ attendanceRouter.get(
     // Punches that need a look come first.
     view.sort((x, y) => y.attention.length - x.attention.length);
     res.json(view);
+  }),
+);
+
+/**
+ * A supervisor adds a punch for someone (forgot to punch, or an offline punch refused as too old).
+ * Times are the facility's local wall clock. It waits for review like any other punch.
+ */
+attendanceRouter.post(
+  '/punches',
+  requirePermission('timeclock.review'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ userId: uuid, facilityId: uuid, shiftId: uuid.nullable().optional(), positionId: uuid.nullable().optional(), localClockIn: localTime, localClockOut: localTime, reason: z.string().trim().min(3).max(500) }).parse(req.body);
+    if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
+    const p = await withTenant(a.tenantId, async (tx) => {
+      const facility = await tx.facility.findUnique({ where: { id: body.facilityId }, select: { timezone: true } });
+      if (!facility) throw notFound('Facility');
+      const punch = await addPunch(tx, {
+        tenantId: a.tenantId,
+        actorId: a.userId,
+        userId: body.userId,
+        facilityId: body.facilityId,
+        shiftId: body.shiftId ?? null,
+        positionId: body.positionId ?? null,
+        clockIn: atLocal(body.localClockIn, facility.timezone),
+        clockOut: atLocal(body.localClockOut, facility.timezone),
+        reason: body.reason,
+        inScope: (userId) => userInScope(tx, a.scope, userId),
+      });
+      await recordEvents(tx, { type: 'notify', tenantId: a.tenantId, drafts: [{ userId: body.userId, type: 'punch_added', params: { reason: body.reason }, link: '/timeclock' }] });
+      return punch;
+    });
+    dispatchSoon(a.tenantId);
+    res.status(201).json({ id: p.id, status: p.status });
   }),
 );
 

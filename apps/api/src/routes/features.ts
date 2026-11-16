@@ -13,7 +13,7 @@ import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../au
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
-import { localDate, localIso } from '../lib/time.js';
+import { atLocal, localDate, localIso, localTime } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
 import { createIncident, readIncident } from '../services/ops/incidents.js';
 import { decideClosure, recordReading } from '../services/ops/poolOps.js';
@@ -26,8 +26,7 @@ import { lockForAssignment } from '../services/scheduling/locks.js';
 import { evaluateCandidate } from '../services/scheduling/eligibility.js';
 import { evalOpts, loadAssistantCandidates, loadCandidate, loadShiftBundle } from '../services/scheduling/eligibilityLoader.js';
 import { cancelOffer, claimOffer, decideOffer, postOffer } from '../services/shiftboard/offers.js';
-import { addPunch, clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
-import { DateTime } from 'luxon';
+import { clockIn, clockOut, editPunch } from '../services/timeclock/punches.js';
 import { h, keys, tenantKekId } from './context.js';
 import { notificationsRouter } from './notifications.js';
 import { updatesRouter } from './updates.js';
@@ -381,14 +380,6 @@ api.post(
   }),
 );
 
-/** A facility-local wall-clock time, as a date-time picker sends it (2026-11-14T06:30). */
-const localTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-const atLocal = (local: string, timezone: string) => {
-  const at = DateTime.fromISO(local, { zone: timezone });
-  if (!at.isValid) throw badRequest('That date and time aren’t valid.');
-  return at.toJSDate();
-};
-
 api.patch(
   '/punches/:id',
   requirePermission('timeclock.review'),
@@ -408,40 +399,6 @@ api.patch(
     });
     dispatchSoon(a.tenantId);
     res.json({ id: p.id });
-  }),
-);
-
-/**
- * A supervisor adds a punch for someone (forgot to punch, or an offline punch refused as too old).
- * Times are the facility's local wall clock. It waits for review like any other punch.
- */
-api.post(
-  '/punches',
-  requirePermission('timeclock.review'),
-  h(async (req, res) => {
-    const a = authOf(req);
-    const body = z.object({ userId: uuid, facilityId: uuid, shiftId: uuid.nullable().optional(), positionId: uuid.nullable().optional(), localClockIn: localTime, localClockOut: localTime, reason: z.string().trim().min(3).max(500) }).parse(req.body);
-    if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
-    const p = await withTenant(a.tenantId, async (tx) => {
-      const facility = await tx.facility.findUnique({ where: { id: body.facilityId }, select: { timezone: true } });
-      if (!facility) throw notFound('Facility');
-      const punch = await addPunch(tx, {
-        tenantId: a.tenantId,
-        actorId: a.userId,
-        userId: body.userId,
-        facilityId: body.facilityId,
-        shiftId: body.shiftId ?? null,
-        positionId: body.positionId ?? null,
-        clockIn: atLocal(body.localClockIn, facility.timezone),
-        clockOut: atLocal(body.localClockOut, facility.timezone),
-        reason: body.reason,
-        inScope: (userId) => userInScope(tx, a.scope, userId),
-      });
-      await recordEvents(tx, { type: 'notify', tenantId: a.tenantId, drafts: [{ userId: body.userId, type: 'punch_added', params: { reason: body.reason }, link: '/timeclock' }] });
-      return punch;
-    });
-    dispatchSoon(a.tenantId);
-    res.status(201).json({ id: p.id, status: p.status });
   }),
 );
 

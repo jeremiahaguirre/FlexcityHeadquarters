@@ -1,5 +1,7 @@
 /** Dates and times in an organization's own time zone (shifts, pay weeks, local days). */
 import { DateTime } from 'luxon';
+import { z } from 'zod';
+import { badRequest } from './errors.js';
 
 /**
  * Time-zone conversions are the slowest part of checking a shift (each one formats a date
@@ -120,4 +122,14 @@ export function mergeIntervals(intervals: Interval[]): Interval[] {
     }
   }
   return out;
+}
+
+/** A facility-local wall-clock time, as a date-time picker sends it (2026-11-14T06:30). */
+export const localTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+
+/** That wall-clock time in a time zone, as an instant. */
+export function atLocal(local: string, timezone: string): Date {
+  const at = DateTime.fromISO(local, { zone: timezone });
+  if (!at.isValid) throw badRequest('That date and time aren’t valid.');
+  return at.toJSDate();
 }
