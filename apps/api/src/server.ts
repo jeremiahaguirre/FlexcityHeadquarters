@@ -66,7 +66,12 @@ if (workers > 1 && cluster.isPrimary) {
   attachCacheBus(sharedListener(listenUrl));
   await startLiveHub(listenUrl);
 
-  const server = createApp().listen(cfg.PORT, () => {
+  // Express 5 hands a failure to bind (e.g. EADDRINUSE) to this callback instead of throwing it.
+  const server = createApp().listen(cfg.PORT, (err?: Error) => {
+    if (err) {
+      console.error(`FlexcityHeadquarters API could not listen on :${cfg.PORT}: ${err.message}`);
+      process.exit(1);
+    }
     console.log(`FlexcityHeadquarters API listening on :${cfg.PORT}${cluster.isWorker ? ` (worker ${process.pid})` : ''}`);
   });
   // ECS sends SIGTERM when it replaces this task: finish what's in flight, then exit (lib/shutdown.ts).
