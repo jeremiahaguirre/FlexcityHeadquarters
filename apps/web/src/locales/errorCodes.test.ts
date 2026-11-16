@@ -24,11 +24,22 @@ const MACHINE_ONLY = [/^routes\/publicApi[A-Za-z]*\.ts$/, /^services\/integratio
 /** Sent to no person: the main API's answer when a request for the separate Union Hub service reaches it. */
 const INTERNAL = new Set(['UNION_ELSEWHERE']);
 
-const THROWN = /(?:new\s+HttpError\(\s*\d+\s*,\s*|conflict\(\s*|invalid\(\s*)'([A-Z][A-Z0-9_]+)'/g;
+const CODE = /'([A-Z][A-Z0-9_]+)'/g;
 const thrown = new Map<string, string[]>();
-for (const s of sources) for (const m of s.text.matchAll(THROWN)) thrown.set(m[1]!, [...(thrown.get(m[1]!) ?? []), s.file]);
+const add = (code: string, file: string) => thrown.set(code, [...(thrown.get(code) ?? []), file]);
+// Helpers that take the code first and make the error, wherever they're defined: conflict(), invalid(),
+// punchError(), tooMany()… (`(code: string, …) => new HttpError(status, code, …)`).
+const HELPER = /(?:const\s+(\w+)\s*=\s*\(|function\s+(\w+)\s*\()\s*code\s*:\s*string[^)]*\)\s*(?::\s*\w+\s*)?(?:=>|\{\s*return)\s*new\s+HttpError\(\s*\d+\s*,\s*code\b/g;
+const helpers = [...new Set(sources.flatMap((s) => [...s.text.matchAll(HELPER)].map((m) => (m[1] ?? m[2])!)))];
+const helperCall = new RegExp(`\\b(?:${helpers.join('|')})\\(\\s*'([A-Z][A-Z0-9_]+)'`, 'g');
+// new HttpError(status, <code>, …): a literal, or every literal of a conditional (cond ? 'A' : 'B').
+const direct = /new\s+HttpError\(\s*\d+\s*,\s*((?:[^,'"`()]|'[A-Z][A-Z0-9_]+')+?)\s*,/g;
+for (const s of sources) {
+  for (const m of s.text.matchAll(helperCall)) add(m[1]!, s.file);
+  for (const m of s.text.matchAll(direct)) for (const c of m[1]!.matchAll(CODE)) add(c[1]!, s.file);
+}
 // Answered directly as JSON ({ code: 'X' }) rather than thrown.
-for (const s of sources) for (const m of s.text.matchAll(/json\(\{\s*code:\s*'([A-Z][A-Z0-9_]+)'/g)) thrown.set(m[1]!, [...(thrown.get(m[1]!) ?? []), s.file]);
+for (const s of sources) for (const m of s.text.matchAll(/json\(\{\s*code:\s*'([A-Z][A-Z0-9_]+)'/g)) add(m[1]!, s.file);
 // The helpers' own codes, and the demo's.
 for (const c of ['NOT_FOUND', 'FORBIDDEN', 'BAD_REQUEST', 'VALIDATION', 'NOT_IN_DEMO']) thrown.set(c, [...(thrown.get(c) ?? []), 'helper']);
 
@@ -57,6 +68,11 @@ describe('server error codes people can see', () => {
   it('found the codes', () => {
     expect(personFacing.length).toBeGreaterThan(200);
     expect(personFacing).toContain('EMAIL_TAKEN');
+    // Through helpers and conditionals, not only literal HttpError(…, 'CODE').
+    expect(helpers).toEqual(expect.arrayContaining(['conflict', 'invalid', 'punchError', 'tooMany']));
+    expect(thrown.get('PUNCH_TOO_OLD')).toEqual(['services/timeclock/punches.ts']);
+    expect(thrown.get('CALLBACK_REST')).toEqual(['services/scheduling/onCall.ts']);
+    expect(thrown.get('TOO_MANY_TRIES')).toContain('routes/mfaCodes.ts');
     expect(personFacing).not.toContain('IDEMPOTENCY_KEY_REQUIRED');
   });
 
