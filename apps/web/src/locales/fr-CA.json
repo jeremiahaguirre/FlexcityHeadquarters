@@ -7,6 +7,12 @@
     "languageCode": "en-CA",
     "copyright": "© {{year}} FlexcityHeadquarters. Tous droits réservés."
   },
+  "oldBrowser": {
+    "title": "Veuillez mettre à jour votre navigateur",
+    "body": "Ce navigateur est trop ancien pour FlexcityHeadquarters : l’application ne peut pas s’ouvrir. Il faut Chrome, Edge ou Firefox 111 ou plus récent, ou Safari 16.4 ou plus récent (sur iPhone et iPad : iOS ou iPadOS 16.4 ou plus récent).",
+    "update": "Pour le mettre à jour : sur iPhone ou iPad, allez à Réglages › Général › Mise à jour logicielle. Sur Android, mettez Chrome à jour dans le Play Store. Sur un ordinateur, mettez le navigateur à jour depuis son menu Aide ou À propos, ou installez la dernière version de Chrome, Edge, Firefox ou Safari. Rouvrez ensuite cette page.",
+    "kiosk": "C’est la tablette partagée de votre installation : demandez à votre superviseur de la mettre à jour. D’ici là, pointez dans l’application sur votre téléphone, ou demandez à votre superviseur comment enregistrer vos heures."
+  },
   "login": {
     "title": "Connexion",
     "email": "Courriel",
@@ -5671,7 +5677,7 @@
       "CLIENT_OUTDATED": "Cette tablette se met à jour. Réessayez dans un instant."
     },
     "adminTitle": "Bornes de pointage",
-    "adminHelp": "Une tablette partagée dans une installation où le personnel pointe avec son numéro d’employé et un NIP, sans l’application sur un téléphone. Ces pointages comptent comme faits sur place.",
+    "adminHelp": "Une tablette partagée dans une installation où le personnel pointe avec son numéro d’employé et un NIP, sans l’application sur un téléphone. Ces pointages comptent comme faits sur place. La tablette demande Safari 16.4 ou plus récent (iPad) ou Chrome 111 ou plus récent (Android).",
     "setupLink": "Ouvrez ce lien une fois sur la tablette pour la configurer. Par sécurité, il ne sera plus affiché.",
     "setupLinkLabel": "Lien de configuration",
     "none": "Aucune borne pour l’instant.",

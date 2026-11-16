@@ -41,7 +41,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           # The marketing site's hosts, for the demo's "Back to the website" button (empty = the defaults in src/lib/demoBack.ts).
           NEXT_PUBLIC_SITE_HOSTS: ${{ vars.SITE_HOSTS }}
-        run: npx next build
+        run: npx next build --webpack
       - uses: actions/upload-pages-artifact@v5
         with:
           path: apps/web/out

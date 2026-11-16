@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build",
+    "dev": "next dev --webpack -p 3000",
+    "build": "next build --webpack",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build:demo": "NEXT_PUBLIC_DEMO=1 next build",
+    "build:demo": "NEXT_PUBLIC_DEMO=1 next build --webpack",
     "demo:capture": "node scripts/capture-demo.cjs",
     "test:e2e": "playwright test --trace off"
   },
@@ -16,7 +16,7 @@
     "@simplewebauthn/browser": "14.0.0",
     "i18next": "26.5.11",
     "lucide-react": "0.460.0",
-    "next": "15.5.29",
+    "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-i18next": "17.1.9"

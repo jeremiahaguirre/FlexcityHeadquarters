@@ -15,6 +15,8 @@ import { currentTenant } from '@/lib/tenant';
 import { themeVars } from '@/lib/theme';
 import './globals.css';
 import { BOOT_SCRIPT } from '@/lib/bootScript';
+import { BROWSER_CHECK_SCRIPT } from '@/lib/browserCheck';
+import { OldBrowser } from '@/components/OldBrowser';
 
 // Brand typeface (wordmark + UI): the woff2 committed in src/fonts (SIL OFL), served from our own origin
 // under /_next/static/media. Builds never download a font and pages never request one from elsewhere.
@@ -52,9 +54,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           First thing in <body>, not in <head>: it still runs before anything paints, and React never has to
           match it among the <head> scripts the bundle loader removes while the page hydrates (that race was
           React error #418 on some loads). Browsers hide a nonce from the DOM, hence suppressHydrationWarning.
+          The browser check comes first: on a browser too old for Next 16 it swaps the page for <OldBrowser>.
         */}
         {/* eslint-disable-next-line react/no-danger */}
-        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
+        <script nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: BROWSER_CHECK_SCRIPT + BOOT_SCRIPT }} />
+        <OldBrowser locale={locale} />
         <Providers locale={locale}>
           <SkipLink />
           <KeyboardInset />
