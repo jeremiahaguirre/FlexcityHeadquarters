@@ -31,6 +31,8 @@ import { saveDepartment } from '../services/people/departmentAdmin.js';
 import { savePosition } from '../services/people/positionAdmin.js';
 import { OFFBOARD_REASONS, createPerson, startOffboarding, updatePerson } from '../services/people/staffAdmin.js';
 import { cancelTimeOff, decideTimeOff, requestTimeOff } from '../services/people/timeOff.js';
+import { fieldDefs, saveFieldValues } from '../services/people/customFields.js';
+import { typedValue } from '../services/people/customFieldValues.js';
 import { tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { DEPARTMENT_SELECT, type FieldError, PERSON_SELECT, POSITION_SELECT, TIME_OFF_SELECT, checkIfMatch, department, etagOf, invalid, need, person, position, sendProblem, timeOff, toProblem } from './publicApiShared.js';
@@ -298,6 +300,26 @@ publicApiWriteRouter.put(
     const { invite: _invite, locale: _locale, ...change } = b;
     atLeastOne(change);
     return w.tx((tx) => changePerson(w, req, tx, existing.id, change));
+  }),
+);
+
+/**
+ * Sets some of a person's custom fields, by key (null clears). The app's own checks: type, choices,
+ * required fields, and the key maker's access to each field (they hold users.write, so HR's).
+ */
+publicApiWriteRouter.patch(
+  '/people/:id/custom-fields',
+  ...write(['customfields:write'], async (req, w) => {
+    const id = idParam(req, 'Person');
+    const b = body(req, z.record(z.string().max(40), z.union([z.string().max(1000), z.number(), z.boolean(), z.null()])));
+    atLeastOne(b);
+    return w.tx(async (tx) => {
+      const u = await tx.user.findUnique({ where: { id }, select: { processingRestrictedAt: true, anonymizedAt: true } });
+      if (!u || u.processingRestrictedAt || u.anonymizedAt) throw notFound('Person');
+      const changed = await saveFieldValues(tx, w.actor, id, b);
+      const [defs, values] = await Promise.all([fieldDefs(tx), tx.customFieldValue.findMany({ where: { userId: id } })]);
+      return { status: 200, body: { changed, data: Object.fromEntries(defs.map((d) => [d.key, typedValue(d, values.find((v) => v.fieldId === d.id)?.value ?? null)])) } };
+    });
   }),
 );
 

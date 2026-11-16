@@ -8,10 +8,15 @@
  * preview), which has no generated Prisma client. test/unit/staffImport.test.ts fails at compile
  * time if these drift from prisma/schema.prisma.
  */
+import type { FieldAccess, FieldShape } from '../people/customFieldValues.js';
+
 export type AccessRole = 'HR_ADMIN' | 'AQUATIC_SUPERVISOR' | 'HEAD_LIFEGUARD' | 'STAFF' | 'FRONT_DESK' | 'UNION_STEWARD' | 'EMPLOYEE';
 export type EmploymentStatus = 'FULL_TIME' | 'PART_TIME' | 'CASUAL' | 'ON_CALL' | 'VOLUNTEER';
 
 export const MAX_IMPORT_ROWS = 2000;
+
+/** One of the organization's custom fields, for matching a column (by key, English or French label). */
+export interface ImportField extends FieldShape { id: string; labelFr: string; viewAccess: FieldAccess }
 
 /** RFC 4180-ish: quoted fields, doubled quotes, CRLF or LF, optional BOM. */
 export function parseCsv(text: string): string[][] {
@@ -101,6 +106,8 @@ export interface ImportRow {
   unionMember: boolean;
   /** Email of the person they report to: someone already on staff or another row of the file. */
   managerEmail: string | null;
+  /** Custom field values by field id, as stored (manager-level fields only). */
+  customFields: Record<string, string>;
   /** create: will be added · exists: already on staff, skipped · error: fix and re-upload */
   status: 'create' | 'exists' | 'error';
   errors: ImportIssue[];
@@ -110,6 +117,8 @@ export interface ImportPreview {
   rows: ImportRow[];
   missingColumns: string[];
   unknownColumns: string[];
+  /** Columns for HR-only custom fields: never read here (the city's HR fills those in the app). */
+  hrOnlyColumns: string[];
   summary: { create: number; exists: number; error: number };
 }
 
@@ -123,13 +132,30 @@ export function previewImport(
     existingEmails: Set<string>;
     positions: Array<{ id: string; name: string; nameFr: string | null }>;
     customRoles?: Array<{ id: string; name: string; nameFr: string | null }>;
+    /** The organization's custom fields, and the API's value check for them (customFieldValues.ts). */
+    customFields?: ImportField[];
+    normalize?: (field: ImportField, raw: string) => string | null;
     today: string;
   },
 ): ImportPreview {
   const [header = [], ...body] = parseCsv(text);
   const cols = header.map((h) => HEADERS[norm(h).replace(/ /g, '_')] ?? HEADERS[norm(h)] ?? null);
   const missingColumns = ['firstName', 'lastName', 'email'].filter((c) => !cols.includes(c));
-  const unknownColumns = header.filter((_, i) => !cols[i]).map((h) => h.trim()).filter(Boolean);
+  // Custom fields: a column named by the field's key (or cf:key), or its English or French label.
+  const fieldCols = new Map<number, ImportField>();
+  const hrOnlyColumns: string[] = [];
+  header.forEach((h, i) => {
+    if (cols[i]) return;
+    const n = norm(h).replace(/^cf:/, '');
+    const f = (ctx.customFields ?? []).find((x) => [x.key, norm(x.label), norm(x.labelFr)].includes(n) || x.key === n.replace(/ /g, '_'));
+    if (!f) return;
+    if (f.viewAccess === 'HR') hrOnlyColumns.push(h.trim());
+    else fieldCols.set(i, f);
+  });
+  const unknownColumns = header.filter((h, i) => !cols[i] && !fieldCols.has(i) && !hrOnlyColumns.includes(h.trim())).map((h) => h.trim()).filter(Boolean);
+  const importedFields = [...fieldCols.values()];
+  // A required manager-level field with no column: every row would be missing it.
+  for (const f of (ctx.customFields ?? []).filter((x) => x.required && x.viewAccess === 'MANAGER' && !importedFields.includes(x))) missingColumns.push(f.label);
   if (body.length > MAX_IMPORT_ROWS) body.length = MAX_IMPORT_ROWS + 1; // the extra row flags the limit below
   const byName = new Map<string, string>();
   for (const p of ctx.positions) {
@@ -220,6 +246,18 @@ export function previewImport(
     const managerEmail = get('manager').toLowerCase() || null;
     if (managerEmail && managerEmail === email) errors.push({ field: 'manager', code: 'MANAGER_SELF', value: managerEmail });
 
+    const customFields: Record<string, string> = {};
+    for (const [idx, f] of fieldCols) {
+      const raw = (cells[idx] ?? '').trim();
+      try {
+        const v = ctx.normalize ? ctx.normalize(f, raw) : raw || null;
+        if (v !== null) customFields[f.id] = v;
+      } catch (e) {
+        const code = (e as { code?: string }).code === 'CUSTOM_FIELD_REQUIRED' ? 'REQUIRED' : 'CUSTOM_FIELD_INVALID';
+        errors.push({ field: f.label, code, ...(code === 'REQUIRED' ? {} : { value: raw }) });
+      }
+    }
+
     return {
       line,
       firstName,
@@ -237,6 +275,7 @@ export function previewImport(
       locale,
       unionMember,
       managerEmail,
+      customFields,
       status: errors.length ? 'error' : status,
       errors,
       warnings,
@@ -266,5 +305,5 @@ export function previewImport(
 
   const summary = { create: 0, exists: 0, error: 0 };
   for (const r of rows) summary[r.status]++;
-  return { rows, missingColumns, unknownColumns, summary };
+  return { rows, missingColumns, unknownColumns, hrOnlyColumns, summary };
 }

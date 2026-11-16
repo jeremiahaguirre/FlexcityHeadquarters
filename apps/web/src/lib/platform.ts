@@ -93,6 +93,8 @@ export interface ImportPreview {
   rows: Array<{ line: number; firstName: string; lastName: string; email: string; employmentStatus: string | null; positions: string[]; status: 'create' | 'exists' | 'error'; errors: ImportIssue[]; warnings: ImportIssue[] }>;
   missingColumns: string[];
   unknownColumns: string[];
+  /** HR-only custom field columns: refused unread (they never reach FH). */
+  hrOnlyColumns?: string[];
   summary: { create: number; exists: number; error: number };
 }
 

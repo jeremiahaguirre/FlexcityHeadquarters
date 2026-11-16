@@ -1,5 +1,6 @@
 /** Records from the newer features, added to a person's records export. */
 import type { Tx } from '../../lib/db.js';
+import { personFieldRecords } from '../people/customFields.js';
 
 export async function moreRecords(tx: Tx, userId: string) {
   const w = { where: { userId } };
@@ -13,5 +14,5 @@ export async function moreRecords(tx: Tx, userId: string) {
     tx.bidChoice.findMany({ ...w, select: { roundId: true, itemId: true, rank: true, updatedAt: true } }),
     tx.bidEntrant.findMany({ ...w, select: { roundId: true, seniorityRank: true, seniorityDate: true, seniorityHours: true, outcomes: true } }),
   ]);
-  return { emergencyContacts, timeInLieuCorrections: lieuAdjustments, expenseClaims, policiesSigned, shiftPreferences: { preferences: shiftPreferences, preferredLimits: preferredLimits[0] ?? null }, shiftBids: { choices: bidChoices, results: bidResults } };
+  return { customFields: await personFieldRecords(tx, userId), emergencyContacts, timeInLieuCorrections: lieuAdjustments, expenseClaims, policiesSigned, shiftPreferences: { preferences: shiftPreferences, preferredLimits: preferredLimits[0] ?? null }, shiftBids: { choices: bidChoices, results: bidResults } };
 }

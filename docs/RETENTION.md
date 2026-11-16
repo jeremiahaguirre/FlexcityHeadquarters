@@ -16,6 +16,7 @@ with their records retention by-law.
 | Texts and calls (number, kind of alert; contents only until sent) | Same period as the email log (*set by the city*) | Deleted | Hourly job; contents dropped as soon as a text or call is sent, or after 5 failed tries |
 | Mobile number for text alerts and sign-in codes by text | Until the person removes it from their profile | Removed | On request (also cancels texts not yet sent); removed when the person is anonymized |
 | Emergency contacts (other people's names and numbers) | While the person keeps them | Deleted | Replaced whenever the person or HR edits the list; deleted as soon as erasure is requested, without waiting for payroll retention |
+| Staff fields (the organization's own custom fields on people) | While employed, and until anonymization | Deleted | Values are deleted when the person is anonymized; an archived field keeps its values until then |
 | Calendar feed link (a hash of its secret) | Until the person makes a new link or turns it off | Removed | On request; removed as soon as erasure is requested |
 | Kiosk PIN (a hash only) | While the account exists | — | Replaced when the person sets a new one; cleared when the person is anonymized, and refused at the kiosk once they aren't active |
 | Expense and mileage claims, receipts | With payroll records | Anonymized with the person | Receipts are encrypted employee documents and follow the employee file |

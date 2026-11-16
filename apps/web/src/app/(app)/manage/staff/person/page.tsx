@@ -26,6 +26,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
 import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
 import { ReportingCard } from '@/components/people/Reporting';
+import { CustomFieldsCard } from '@/components/people/CustomFieldsCard';
 
 interface Detail {
   id: string;
@@ -151,6 +152,7 @@ function Person() {
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <ReportingCard userId={p.id} name={name} />
+        <CustomFieldsCard userId={p.id} />
         {can('users.scheduling') ? (
           <Section title={t('staff.scheduling')} description={t('staff.schedulingHelp')}>
             <form onSubmit={(e) => void saveScheduling(e)} className="grid gap-4">

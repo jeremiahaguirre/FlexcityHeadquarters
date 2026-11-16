@@ -101,7 +101,13 @@ export function ImportPanel({ id, city, reload }: PanelProps) {
             {preview.missingColumns.length ? (
               <p className="flex gap-2 rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                {t('platform.import.missing', { list: preview.missingColumns.map((c) => t(`platform.import.fields.${c}`)).join(', ') })}
+                {t('platform.import.missing', { list: preview.missingColumns.map((c) => t(`platform.import.fields.${c}`, { defaultValue: c })).join(', ') })}
+              </p>
+            ) : null}
+            {preview.hrOnlyColumns?.length ? (
+              <p className="flex gap-2 rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                {t('platform.import.hrOnly', { list: preview.hrOnlyColumns.join(', ') })}
               </p>
             ) : null}
             {preview.unknownColumns.length ? (
