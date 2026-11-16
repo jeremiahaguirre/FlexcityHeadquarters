@@ -204,6 +204,14 @@ locals {
   }
 }
 
+locals {
+  # Alarms that stop and roll back each service's deployment (alarms.tf).
+  deployment_alarms = {
+    api = [aws_cloudwatch_metric_alarm.error_ratio["api"].alarm_name, aws_cloudwatch_metric_alarm.main["api-unhealthy"].alarm_name]
+    web = [aws_cloudwatch_metric_alarm.error_ratio["web"].alarm_name, aws_cloudwatch_metric_alarm.main["web-unhealthy"].alarm_name]
+  }
+}
+
 resource "aws_ecs_service" "svc" {
   for_each                           = local.services
   name                               = each.key
@@ -227,6 +235,18 @@ resource "aws_ecs_service" "svc" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
+  }
+
+  # A release whose tasks start but then fail requests is rolled back too: ECS watches these alarms
+  # while the deployment runs and rolls back if one goes off (ARCHITECTURE-REVIEW A14). The worker
+  # has no load balancer metrics; it relies on the circuit breaker and the deploy workflow's check.
+  dynamic "alarms" {
+    for_each = contains(keys(local.deployment_alarms), each.key) ? [local.deployment_alarms[each.key]] : []
+    content {
+      enable      = true
+      rollback    = true
+      alarm_names = alarms.value
+    }
   }
 
   dynamic "service_registries" {

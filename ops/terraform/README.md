@@ -11,7 +11,7 @@ Builds one environment of FlexcityHeadquarters in `ca-central-1` (Montreal), wit
 | `iam.tf` | Task roles: the API and worker may use and create KMS keys, never delete them |
 | `compute.tf` | ECS Fargate: API, worker and web services, migration and database-role tasks, autoscaling on CPU and requests |
 | `edge.tf` | Load balancer (HTTPS, `/api/*` to the API, health and metrics hidden), web firewalls (app and site: managed rules, rate limits, AI crawlers), the marketing site on S3 + CloudFront |
-| `alarms.tf` | CloudWatch alarms to an SNS topic |
+| `alarms.tf` | CloudWatch alarms to an SNS topic encrypted under its own key (CloudWatch can publish to it), a server-error ratio per service; the API and web deployments roll back when their alarms go off |
 
 ## Checks
 
@@ -86,6 +86,25 @@ Use a **separate AWS account per environment** (staging, production). The API ma
 ## Every deployment
 
 Push images tagged with the new commit (the web built with the same `NEXT_PUBLIC_RELEASE`), run the migration task, then apply with the new `image_tag`. Tasks stop gracefully on SIGTERM. A full rehearsal of all this on one machine: docs/INFRASTRUCTURE.md, "Production rehearsal". ECS replaces tasks a few at a time, and the circuit breaker rolls back a deployment whose tasks don't become healthy.
+
+## Alarms
+
+Alarms go to the `<env>-alarms` SNS topic, encrypted under `alias/<env>-alarms`, a key whose policy lets CloudWatch publish (the AWS-managed `alias/aws/sns` key can't, so nothing would be delivered). Set `alarm_email` and confirm the subscription email. Then test delivery once per environment:
+
+```bash
+aws cloudwatch set-alarm-state --alarm-name <env>-api-5xx-ratio --state-value ALARM --state-reason "Delivery test"
+```
+
+The email should arrive within a minute; the alarm returns to OK on its own at the next evaluation.
+
+| Alarm | Fires when | Also rolls back a deployment |
+| --- | --- | --- |
+| `<env>-api-5xx-ratio`, `<env>-web-5xx-ratio` | more than `error_ratio_percent` (5) % of that service's requests are server errors in 3 of 5 minutes; minutes with fewer than `error_ratio_min_requests` (20) requests count as healthy | yes, that service's |
+| `<env>-api-unhealthy`, `<env>-web-unhealthy` | no healthy task behind the load balancer for 2 minutes | yes, that service's |
+| `<env>-alb-5xx` | more than 50 server errors a minute (an empty minute is healthy: the load balancer only publishes minutes that had one) | no |
+| `<env>-db-cpu`, `<env>-db-storage`, `<env>-replica-lag` | database CPU, free storage, replica lag | no |
+
+ECS watches each service's alarms while a deployment runs and rolls back to the previous task definition if one goes off. The circuit breaker still rolls back tasks that never become healthy, and it is the worker's only automatic rollback.
 
 ## What it does not create
 

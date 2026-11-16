@@ -170,6 +170,18 @@ variable "alarm_email" {
   default     = ""
 }
 
+variable "error_ratio_percent" {
+  description = "Alarm (and roll back a deployment) when more than this percentage of a service's requests fail with a server error, in 3 of 5 minutes."
+  type        = number
+  default     = 5
+}
+
+variable "error_ratio_min_requests" {
+  description = "Minutes with fewer requests than this count as healthy for the error-ratio alarms, so a few failures at night don't page anyone."
+  type        = number
+  default     = 20
+}
+
 variable "union_role_password" {
   description = "Also set the Union Hub role's password (FLEXCITY_UNION_PASSWORD in the app secret)."
   type        = bool
