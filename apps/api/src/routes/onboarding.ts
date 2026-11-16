@@ -6,7 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { MINORS_SET, checklist, ensureDefaults, recordItem } from '../services/people/onboarding.js';
 import { h } from './context.js';
-import { peopleWhere } from '../services/people/scope.js';
+import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { allOf, departmentFilter, departmentQuery } from '../services/people/departmentAdmin.js';
 import { sha256 } from '../services/people/fingerprint.js';
 
@@ -153,6 +153,7 @@ onboardingRouter.get(
     if (!a.permissions.has('onboarding.hr') && !a.permissions.has('onboarding.lead')) throw forbidden();
     const userId = uuid.parse(req.params.userId);
     const out = await withTenant(a.tenantId, async (tx) => {
+      if (userId !== a.userId) await assertUserInScope(tx, a, userId);
       const u = await tx.user.findUnique({ where: { id: userId }, select: { id: true, firstName: true, lastName: true, anonymizedAt: true } });
       if (!u || u.anonymizedAt) throw notFound('Staff member');
       await ensureDefaults(tx, a.tenantId);
@@ -175,6 +176,7 @@ onboardingRouter.post(
     const itemId = uuid.parse(req.params.itemId);
     const body = recordBody.parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      if (userId !== a.userId) await assertUserInScope(tx, a, userId);
       const r = await recordItem(tx, a.tenantId, a.userId, userId, itemId, body, { ...perms(a), self: userId === a.userId });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: `onboarding.${body.action}`, entity: 'OnboardingRecord', entityId: r.id, after: { userId, itemId, completedOn: body.completedOn } });
     });

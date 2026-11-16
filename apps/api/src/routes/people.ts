@@ -78,6 +78,7 @@ peopleRouter.post(
     const at = new Date(body.occurredAt);
     if (at.getTime() > Date.now() + 60_000) throw badRequest('That date is in the future.');
     const id = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
       const u = await tx.user.findUnique({ where: { id: userId } });
       if (!u || u.anonymizedAt) throw notFound('Staff member');
       const e = await tx.reliabilityEvent.create({ data: { tenantId: a.tenantId, userId, type: body.type, occurredAt: at, note: body.note, recordedById: a.userId } });
@@ -128,6 +129,7 @@ peopleRouter.post(
       })
       .parse(req.body);
     const id = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
       const u = await tx.user.findUnique({ where: { id: userId } });
       if (!u || u.anonymizedAt) throw notFound('Staff member');
       if (body.incidentId && !(await tx.incidentReport.findUnique({ where: { id: body.incidentId }, select: { id: true } }))) throw notFound('Incident');
