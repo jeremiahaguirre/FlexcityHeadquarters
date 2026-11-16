@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, BadgeCheck, FileDown, MailPlus, Plus, ShieldOff } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, FileDown, MailPlus, Pencil, Plus, ShieldOff } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { type FormEvent, type ReactNode, Suspense, useState } from 'react';
@@ -18,6 +18,7 @@ import { RecordText } from '@/components/people/RecordText';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api, apiDownload, saveBlob } from '@/lib/api';
+import { PayRateEditDialog, type RateRow } from '@/components/payroll/PayRateEdit';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import type { CustomRole } from '@/lib/customRoles';
@@ -77,6 +78,7 @@ function Person() {
   const records = useQuery<Record[]>(can('discipline.read') && id ? `/api/users/${id}/discipline` : null);
   const { run, busy } = useAction();
   const [dialog, setDialog] = useState<'cert' | 'rate' | 'record' | 'erase' | null>(null);
+  const [editingRate, setEditingRate] = useState<RateRow | null>(null);
   const p = person.data;
   if (person.error) return <ErrorNotice onRetry={person.reload} />;
   if (!p) return <Skeleton className="h-96" />;
@@ -287,7 +289,14 @@ function Person() {
                     <span>
                       <span className="font-semibold">{r.position}</span> · {d(r.effectiveFrom)} – {r.effectiveTo ? d(r.effectiveTo) : t('staff.current')}
                     </span>
-                    <span className="font-semibold tabular-nums">{formatMoney(r.hourlyRate, lng)}/h</span>
+                    <span className="flex items-center gap-1">
+                      <span className="font-semibold tabular-nums">{formatMoney(r.hourlyRate, lng)}/h</span>
+                      {can('users.write') ? (
+                        <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('staff.correctRate', { position: r.position })} onClick={() => setEditingRate(r)}>
+                          <span className="sr-only sm:not-sr-only">{t('common.edit')}</span>
+                        </Button>
+                      ) : null}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -393,6 +402,18 @@ function Person() {
           </Button>
         </form>
       </Dialog>
+
+      {editingRate ? (
+        <PayRateEditDialog
+          userId={p.id}
+          rate={editingRate}
+          onClose={() => setEditingRate(null)}
+          onSaved={async () => {
+            setEditingRate(null);
+            await person.reload();
+          }}
+        />
+      ) : null}
 
       <Dialog open={dialog === 'rate'} onClose={() => setDialog(null)} title={t('staff.newRate')} description={t('staff.newRateHelp')} closeLabel={t('common.close')}>
         <form

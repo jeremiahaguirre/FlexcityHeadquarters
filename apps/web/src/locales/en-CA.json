@@ -577,7 +577,9 @@
     "STAGE_CLOSED": "This stage is already done, undone or cancelled.",
     "NOTHING_TO_UNDO": "Nothing of this release is scheduled or applied.",
     "MAINTENANCE_PAST": "That window is already over.",
-    "MAINTENANCE_CLOSED": "That window is over or cancelled."
+    "MAINTENANCE_CLOSED": "That window is over or cancelled.",
+    "PERIOD_PAID": "This is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.",
+    "RATE_ORDER": "That start date would overlap another rate for this position."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1110,7 +1112,15 @@
       "remove": "Remove confirmation",
       "removed": "Confirmation removed.",
       "private": "Only HR sees this."
-    }
+    },
+    "correctRate": "Correct the {{position}} rate",
+    "correctRateHelp": "For a rate entered wrong. A raise is a new rate. Pay already approved or paid at this rate is corrected with a one-time item instead.",
+    "rateReasonHint": "Kept in the audit log.",
+    "removeRate": "Remove this rate",
+    "removeRateHelp": "The rate before it, if any, carries on in its place.",
+    "correctInstead": "Correct it instead",
+    "rateCorrected": "Rate corrected.",
+    "rateRemoved": "Rate removed."
   },
   "payroll": {
     "title": "Payroll",
@@ -1599,7 +1609,13 @@
       }
     },
     "saveAll": "Save payroll settings",
-    "saveAllHint": "Saves every card on this page except the bank connection."
+    "saveAllHint": "Saves every card on this page except the bank connection.",
+    "former": {
+      "show": "Show people who left or were laid off",
+      "INACTIVE": "laid off",
+      "TERMINATED": "left"
+    },
+    "voidEffects": "Expense claims this run paid go back to approved, for the next run. One-time items stay on the voided run: add them again on the new one."
   },
   "settings": {
     "title": "Settings",

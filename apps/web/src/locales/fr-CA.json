@@ -577,7 +577,9 @@
     "STAGE_CLOSED": "Cette étape est déjà faite, annulée ou retirée.",
     "NOTHING_TO_UNDO": "Rien de cette version n’est programmé ni appliqué.",
     "MAINTENANCE_PAST": "Cette période est déjà terminée.",
-    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée."
+    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
+    "PERIOD_PAID": "Ceci est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
+    "RATE_ORDER": "Cette date de début chevaucherait un autre taux pour ce poste."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1110,7 +1112,15 @@
       "remove": "Retirer la confirmation",
       "removed": "Confirmation retirée.",
       "private": "Seules les RH voient ceci."
-    }
+    },
+    "correctRate": "Corriger le taux de {{position}}",
+    "correctRateHelp": "Pour un taux mal saisi. Une augmentation est un nouveau taux. La paie déjà approuvée ou versée à ce taux se corrige plutôt avec un élément ponctuel.",
+    "rateReasonHint": "Conservée dans le journal d’audit.",
+    "removeRate": "Retirer ce taux",
+    "removeRateHelp": "Le taux précédent, s’il y en a un, s’applique à sa place.",
+    "correctInstead": "Le corriger plutôt",
+    "rateCorrected": "Taux corrigé.",
+    "rateRemoved": "Taux retiré."
   },
   "payroll": {
     "title": "Paie",
@@ -1599,7 +1609,13 @@
       }
     },
     "saveAll": "Enregistrer les paramètres de paie",
-    "saveAllHint": "Enregistre toutes les cartes de cette page, sauf la connexion bancaire."
+    "saveAllHint": "Enregistre toutes les cartes de cette page, sauf la connexion bancaire.",
+    "former": {
+      "show": "Afficher les personnes parties ou mises à pied",
+      "INACTIVE": "mise à pied",
+      "TERMINATED": "partie"
+    },
+    "voidEffects": "Les demandes de remboursement payées par cette paie redeviennent approuvées, pour la prochaine paie. Les éléments ponctuels restent sur la paie annulée : ajoutez-les de nouveau à la nouvelle."
   },
   "settings": {
     "title": "Paramètres",

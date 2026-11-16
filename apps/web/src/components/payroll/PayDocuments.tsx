@@ -34,7 +34,9 @@ export function PayDocuments() {
   const t4 = useQuery<T4>(`/api/payroll/t4?year=${year}`);
   const rl1 = useQuery<Rl1>(`/api/payroll/rl1?year=${year}`);
   const anyQc = !!t4.data?.slips.some((s) => s.box17Qpp);
-  const people = useQuery<{ people: Array<{ id: string; name: string }> }>('/api/payroll/people');
+  // Seasonal staff laid off at summer's end, and people who left, still need an ROE (and amended ones).
+  const [former, setFormer] = useState(false);
+  const people = useQuery<{ people: Array<{ id: string; name: string; status?: string }> }>(`/api/payroll/people${former ? '?include=former' : ''}`);
   const roe = useQuery<Roe>(person ? `/api/payroll/roe/${person}` : null);
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
@@ -168,10 +170,14 @@ export function PayDocuments() {
             {(p) => (
               <Select {...p} value={person} onChange={(e) => setPerson(e.target.value)}>
                 <option value="">{t('payroll.choosePerson')}</option>
-                {(people.data?.people ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                {(people.data?.people ?? []).map((x) => <option key={x.id} value={x.id}>{x.name}{x.status && x.status !== 'ACTIVE' ? ` · ${t(`payroll.former.${x.status}`)}` : ''}</option>)}
               </Select>
             )}
           </Field>
+          <label className="flex items-center gap-2 text-small">
+            <input type="checkbox" checked={former} onChange={(e) => setFormer(e.target.checked)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+            {t('payroll.former.show')}
+          </label>
           {roe.data ? (
             <div className="grid gap-2 text-small tabular-nums">
               <p>{t('payroll.roeTotals', { hours: roe.data.totalInsurableHours, earnings: money(roe.data.totalInsurableEarnings), first: roe.data.firstDay ? formatDate(roe.data.firstDay, lng, 'dated') : '—', last: roe.data.lastPaidDay ? formatDate(roe.data.lastPaidDay, lng, 'dated') : '—' })}</p>

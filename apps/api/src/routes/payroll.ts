@@ -327,16 +327,21 @@ payrollRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const reason = z.object({ reason: z.string().trim().min(5).max(500) }).parse(req.body).reason;
-    await withTenant(a.tenantId, async (tx) => {
+    const out = await withTenant(a.tenantId, async (tx) => {
       const r = await tx.payRun.findUnique({ where: { id } });
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status === 'PAID' || r.status === 'VOID') throw conflict('CANNOT_VOID', 'A paid pay run can’t be voided; correct it in the next run.');
       if (r.status === 'APPROVED' && !a.permissions.has('payroll.approve')) throw forbidden('Only someone who approves pay runs can void an approved one.');
       await tx.payRun.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date() } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: !!r.depositFileSha256 } });
+      // Expense claims this run paid weren't paid after all: back to approved, for the next run.
+      const claims = await tx.expenseClaim.findMany({ where: { payRunId: id, status: 'PAID' }, select: { id: true } });
+      if (claims.length) await tx.expenseClaim.updateMany({ where: { id: { in: claims.map((c) => c.id) } }, data: { status: 'APPROVED', payRunId: null } });
+      const oneTimeItems = await tx.payAdjustment.count({ where: { payRunId: id } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: !!r.depositFileSha256, releasedClaims: claims.map((c) => c.id), oneTimeItems } });
+      return { releasedClaims: claims.length, oneTimeItems };
     });
-    res.json({ ok: true });
+    res.json({ ok: true, ...out });
   }),
 );
 
@@ -377,18 +382,21 @@ payrollRouter.get(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
+    // ?include=former: also people laid off for the season or who left (an ROE, final vacation pay, retro pay).
+    const former = z.object({ include: z.literal('former').optional() }).parse(req.query).include === 'former';
     const out = await withTenant(a.tenantId, async (tx) => {
       // Tax profiles and banking: only for the people in the viewer's department, and every view is logged.
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.people.view', entity: 'Tenant', entityId: a.tenantId });
       const users = await tx.user.findMany({
-        where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
-        select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
+        where: { status: former ? { in: ['ACTIVE', 'INACTIVE', 'TERMINATED'] } : 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
+        select: { id: true, firstName: true, lastName: true, employeeNumber: true, status: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       });
       return users.map((u) => ({
         id: u.id,
         name: `${u.firstName} ${u.lastName}`,
         employeeNumber: u.employeeNumber,
+        status: u.status,
         departmentIds: [...new Set(u.positions.map((p) => p.position.departmentId).filter(Boolean))],
         profile: profileView(u.payProfile),
         bankAccounts: u.bankAccounts.map(bankView),
