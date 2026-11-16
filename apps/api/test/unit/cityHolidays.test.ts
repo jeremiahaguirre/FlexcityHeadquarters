@@ -22,6 +22,15 @@ describe('leave on holidays', () => {
     // A few hours off on the holiday itself, with nothing scheduled: nothing to charge.
     expect(leaveHoursOff({ startsAt: new Date('2030-03-12T16:00:00Z'), endsAt: new Date('2030-03-12T20:00:00Z') }, [], VAN, off)).toEqual({ hours: 0, basis: 'WEEKDAYS' });
   });
+
+  it('an evening off on the eve of a holiday is charged: its day is the local day, not the UTC one', () => {
+    // Thursday December 24 2026, 18:00 to 22:00 in Vancouver (02:00 to 06:00 UTC on the 25th).
+    const eve = { startsAt: new Date('2026-12-25T02:00:00Z'), endsAt: new Date('2026-12-25T06:00:00Z') };
+    expect(holidayWeekdays(eve.startsAt, eve.endsAt, new Set(['2026-12-25']), VAN)).toBe(0);
+    expect(leaveHoursOff(eve, [], VAN, new Set(['2026-12-25']))).toEqual({ hours: 4, basis: 'WEEKDAYS' });
+    // The same hours on Christmas Day itself in Vancouver aren't charged.
+    expect(leaveHoursOff({ startsAt: new Date('2026-12-26T02:00:00Z'), endsAt: new Date('2026-12-26T06:00:00Z') }, [], VAN, new Set(['2026-12-25']))).toEqual({ hours: 0, basis: 'WEEKDAYS' });
+  });
 });
 
 const rule = (date: string, recurrence: CityHolidayRule['recurrence'], extra: Partial<CityHolidayRule> = {}): CityHolidayRule => ({ id: 'x', name: 'Test', nameFr: 'Essai', kind: 'PAID', date, recurrence, untilYear: null, province: null, ...extra });
@@ -51,6 +60,9 @@ describe('city holiday rules', () => {
   it('the last weekday of the month', () => {
     const r = rule('2026-05-25', 'YEARLY_LAST_WEEKDAY');
     expect([2027, 2028].map((y) => cityHolidayIn(r, y))).toEqual(['2027-05-31', '2028-05-29']);
+    expect(validRule(r)).toBeNull();
+    // May 18 2026 is a Monday but not the last one: the day typed would never be the holiday.
+    expect(validRule(rule('2026-05-18', 'YEARLY_LAST_WEEKDAY'))).toBe('NOT_LAST_WEEKDAY');
   });
 
   it('days from Easter: Easter Monday (Quebec’s choice instead of Good Friday, or an agreement’s)', () => {

@@ -12,7 +12,9 @@ import { signAccessToken } from '../../src/auth/tokens.js';
 import { withTenant } from '../../src/lib/db.js';
 import { addDays, startOfLocalDay } from '../../src/lib/time.js';
 import { runPayroll } from '../../src/services/payroll/payrollRun.js';
+import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { decideTimeOff, requestTimeOff } from '../../src/services/people/timeOff.js';
+import { weekdayRecount } from '../../src/services/people/leaveHours.js';
 import { exportSummary } from '../../src/services/platform/cityExport.js';
 import { purgePlan, purgeTenant } from '../../src/services/platform/purge.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
@@ -138,6 +140,20 @@ describe('settings', () => {
     expect((await call(hrB, B).del(`/api/settings/city-holidays/${civicId}`)).status).toBe(404);
     expect((await call(hrB, B).patch(`/api/settings/city-holidays/${civicId}`, { name: 'Taken', nameFr: 'Pris', kind: 'CLOSURE', date: CIVIC })).status).toBe(404);
   });
+
+  it('an administrator limited to some departments can’t read or change them: holidays change pay everywhere', async () => {
+    const role = await owner.customRole.create({ data: { tenantId: a.tenant.id, name: 'Aquatics admin', permissions: ['tenant.configure', 'users.read'], scopePositionIds: [a.position.id] } });
+    const scopedId = (await owner.user.create({ data: { tenantId: a.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'S', lastName: 'A', email: `scoped@${A}.test` } })).id;
+    await owner.userCustomRole.create({ data: { tenantId: a.tenant.id, userId: scopedId, customRoleId: role.id } });
+    forgetCustomPermissions(a.tenant.id);
+    const scoped = await signAccessToken({ sub: scopedId, tid: a.tenant.id, roles: ['EMPLOYEE'], aat: now(), mfa: true });
+    expect((await call(scoped).get('/api/settings')).status).toBe(200); // they do configure the organization…
+    const body = { name: 'Scoped day', nameFr: 'Jour limité', kind: 'PAID', date: CIVIC };
+    for (const r of [await call(scoped).get('/api/settings/city-holidays'), await call(scoped).post('/api/settings/city-holidays', body), await call(scoped).patch(`/api/settings/city-holidays/${civicId}`, body), await call(scoped).del(`/api/settings/city-holidays/${civicId}`)]) {
+      expect(r.status).toBe(403); // …but not holidays
+    }
+    expect(await owner.tenantHoliday.count({ where: { tenantId: a.tenant.id } })).toBe(2);
+  });
 });
 
 describe('BC payroll on a city-added holiday', () => {
@@ -182,6 +198,8 @@ describe('leave and calendars', () => {
     });
     expect(Number(charged.chargedHours)).toBe(24);
     expect(charged.chargedBasis).toBe('WEEKDAYS');
+    // Payroll's recount report counts it the same way: nothing to review.
+    expect((await withTenant(a.tenant.id, (tx) => weekdayRecount(tx), { readOnly: true })).map((r) => r.id)).not.toContain(charged.id);
   });
 
   it('lists the city’s days with the statutory ones, for staff and through the public API', async () => {

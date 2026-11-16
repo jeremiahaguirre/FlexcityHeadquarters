@@ -580,7 +580,8 @@
     "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
     "UNTIL_BEFORE_START": "La dernière année est avant la première date.",
     "NTH_WEEKDAY_FIFTH": "Un cinquième jour de semaine du mois n’existe pas chaque année. Choisissez plutôt « dernier jour de semaine du mois ».",
-    "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture."
+    "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture.",
+    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -8458,7 +8459,7 @@
   },
   "cityHolidays": {
     "title": "Jours fériés et jours de fermeture de l’organisation",
-    "help": "Les jours que votre organisation ajoute aux jours fériés légaux de chaque province, comme le lendemain de Noël, le lundi de Pâques ou un congé civique. La paie paie un jour férié payé comme un jour férié légal (indemnité de jour férié et taux majoré pour les heures travaillées). Un jour de fermeture est un congé sans indemnité. Les horaires et les soldes de congé n’en tiennent pas compte comme jours de travail.",
+    "help": "Les jours que votre organisation ajoute aux jours fériés légaux de chaque province, comme le lendemain de Noël, le lundi de Pâques ou un congé civique. La paie paie un jour férié payé comme un jour férié légal (indemnité de jour férié et taux majoré pour les heures travaillées); un jour de fermeture ne paie rien de plus. Les congés ne comptent ni l’un ni l’autre, et les rotations et modèles de quarts n’y ajoutent aucun quart aux installations réglées pour fermer les jours fériés (paramètres de Remplir).",
     "add": "Ajouter un jour",
     "addTitle": "Ajouter un jour férié ou de fermeture",
     "editTitle": "Modifier un jour férié ou de fermeture",
@@ -8476,7 +8477,7 @@
     },
     "kindHint": {
       "PAID": "Payé comme un jour férié légal : indemnité de jour férié, et taux majoré pour les heures travaillées.",
-      "CLOSURE": "L’organisation est fermée. Aucune indemnité; le jour n’est pas compté dans les congés."
+      "CLOSURE": "Aucune indemnité ni taux majoré. Le jour n’est pas compté dans les congés, et les installations réglées pour fermer les jours fériés n’y reçoivent aucun nouveau quart."
     },
     "date": "Date",
     "dateFirst": "La première fois qu’il s’applique. Rien ne se répète avant.",

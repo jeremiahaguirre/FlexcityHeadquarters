@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
 import { h } from './context.js';
 import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
@@ -249,11 +249,16 @@ const cityHolidayBody = z.object({
 const CITY_HOLIDAY_ERRORS: Record<string, string> = {
   UNTIL_BEFORE_START: 'The last year is before the first date.',
   NTH_WEEKDAY_FIFTH: 'A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.',
+  NOT_LAST_WEEKDAY: 'For “last weekday of the month”, pick a date that is the last such weekday of its month.',
 };
 const cityHolidayOut = (r: Parameters<typeof cityRule>[0], from: string, to: string) => {
   const c = cityRule(r);
   return { ...c, next: cityHolidayDates(c, from, to) };
 };
+/** Holidays change pay in every department: set for the whole organization, never by a role limited to departments. */
+function orgWide(a: { scope: unknown }) {
+  if (a.scope) throw forbidden('Holidays are set for the whole organization, by HR.');
+}
 function checkRule(b: z.infer<typeof cityHolidayBody>) {
   const bad = validRule(b);
   if (bad) throw new HttpError(400, bad, CITY_HOLIDAY_ERRORS[bad]!);
@@ -264,6 +269,7 @@ settingsRouter.get(
   '/settings/city-holidays',
   h(async (req, res) => {
     const a = authOf(req);
+    orgWide(a);
     const from = new Date().toISOString().slice(0, 10);
     const to = new Date(Date.now() + 366 * 86_400_000).toISOString().slice(0, 10);
     const rows = await withTenant(a.tenantId, (tx) => tx.tenantHoliday.findMany({ orderBy: [{ date: 'asc' }, { name: 'asc' }] }));
@@ -275,6 +281,7 @@ settingsRouter.post(
   '/settings/city-holidays',
   h(async (req, res) => {
     const a = authOf(req);
+    orgWide(a);
     const b = cityHolidayBody.parse(req.body);
     checkRule(b);
     const row = await withTenant(a.tenantId, async (tx) => {
@@ -291,6 +298,7 @@ settingsRouter.patch(
   '/settings/city-holidays/:id',
   h(async (req, res) => {
     const a = authOf(req);
+    orgWide(a);
     const id = uuid.parse(req.params.id);
     const b = cityHolidayBody.parse(req.body);
     checkRule(b);
@@ -308,6 +316,7 @@ settingsRouter.delete(
   '/settings/city-holidays/:id',
   h(async (req, res) => {
     const a = authOf(req);
+    orgWide(a);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
       const before = await tx.tenantHoliday.findUnique({ where: { id } });

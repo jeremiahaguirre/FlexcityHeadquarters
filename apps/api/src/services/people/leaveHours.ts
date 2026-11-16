@@ -91,8 +91,10 @@ export async function orgTimeZone(tx: Tx): Promise<string> {
 
 /**
  * Read-only, for payroll to review: approved requests charged by weekdays whose count differs
- * from the current rule (hours charged before weekdays were counted in local time). Each is
- * recounted in the person's zone as of when it was decided. Nothing is changed here.
+ * from the current rule (hours charged before weekdays were counted in local time, or before
+ * holidays were left out). Each is recounted as charging works now (leaveHoursOff): in the person's
+ * zone and with their province's holidays and the organization's own, as of when it was decided.
+ * Nothing is changed here.
  */
 export async function weekdayRecount(tx: Tx) {
   const reqs = await tx.timeOffRequest.findMany({
@@ -102,8 +104,9 @@ export async function weekdayRecount(tx: Tx) {
   });
   const out = [];
   for (const r of reqs) {
-    const timeZone = await personLeaveTimeZone(tx, r.userId, r.startsAt, r.decidedAt ?? new Date());
-    const recount = weekdayLeaveHours(r.startsAt, r.endsAt, timeZone);
+    const at = r.decidedAt ?? new Date();
+    const timeZone = await personLeaveTimeZone(tx, r.userId, r.startsAt, at);
+    const recount = leaveHoursOff(r, [], timeZone, await personLeaveDaysOff(tx, r.userId, r.startsAt, r.endsAt, at)).hours;
     const charged = Number(r.chargedHours);
     if (Math.abs(recount - charged) > 0.001) out.push({ id: r.id, userId: r.userId, type: r.type, startsAt: r.startsAt, endsAt: r.endsAt, charged, recount, timeZone });
   }

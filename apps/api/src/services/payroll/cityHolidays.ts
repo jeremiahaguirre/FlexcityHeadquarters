@@ -70,11 +70,13 @@ export function cityHolidayIn(rule: Pick<CityHolidayRule, 'date' | 'recurrence' 
   }
 }
 
-/** Whether a rule's first date is a valid start for its recurrence (an nth weekday needs n ≤ 4, or 5 that exists every year: refused). */
+/** Why a rule's first date can't start its recurrence, or null: a fifth weekday isn't there every year; a "last weekday" date must be the last one in its month. */
 export function validRule(rule: Pick<CityHolidayRule, 'date' | 'recurrence' | 'untilYear'>): string | null {
-  const [y0, , d] = parts(rule.date);
+  const [y0, m, d] = parts(rule.date);
   if (rule.untilYear !== null && rule.untilYear < y0) return 'UNTIL_BEFORE_START';
   if (rule.recurrence === 'YEARLY_NTH_WEEKDAY' && d > 28) return 'NTH_WEEKDAY_FIFTH';
+  // The first date must itself be the last such weekday, or the day typed would never be the holiday.
+  if (rule.recurrence === 'YEARLY_LAST_WEEKDAY' && d + 7 <= daysInMonth(y0, m)) return 'NOT_LAST_WEEKDAY';
   return null;
 }
 
