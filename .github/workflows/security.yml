@@ -52,7 +52,7 @@ jobs:
           fi
 
   # Every commit in the history, test files and docs included, with gitleaks' full rule set (SEC-73).
-  # Known test fixtures are listed by fingerprint in .gitleaksignore, never by whole path.
+  # Known fixtures are allowlisted in .gitleaks.toml, each by exact file and value, never by directory.
   secrets-history:
     runs-on: ubuntu-latest
     env:
@@ -71,7 +71,7 @@ jobs:
       # --redact replaces every secret value with REDACTED; --verbose prints each finding's rule,
       # file, line and commit so it can be classified. Known fixtures: .gitleaks.toml.
       - name: Scan the full history
-        run: ./gitleaks git --redact --verbose --no-banner --exit-code 1 .
+        run: ./gitleaks git --config .gitleaks.toml --redact --verbose --no-banner --exit-code 1 .
 
   dependency-review:
     if: github.event_name == 'pull_request'
