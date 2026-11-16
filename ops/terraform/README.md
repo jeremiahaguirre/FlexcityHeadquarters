@@ -66,7 +66,7 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    | `JWT_SECRET` | 64 random bytes, base64 |
    | `METRICS_TOKEN` | 32 random characters; also given to the metrics collector |
 
-   Database URLs are always written in this standard form. `pg` verifies the certificate and host name from it. For Prisma, which doesn't understand `verify-full`, the app translates it to Prisma's own settings (`apps/api/src/lib/dbUrl.ts`). In production the API refuses to start without `sslmode=verify-full` (or `verify-ca`) and an `sslrootcert`.
+   Database URLs are always written in this standard form. `pg` verifies the certificate and host name from it; the app connects only through `pg` (Prisma 7's driver adapter). Only the Prisma CLI used for migrations doesn't understand `verify-full`, so `prisma.config.ts` translates the URL to Prisma's own settings for it (`apps/api/src/lib/dbUrl.ts`). In production the API refuses to start without `sslmode=verify-full` and an `sslrootcert`, and refuses Prisma 5 URL parameters that `pg` would ignore (`connect_timeout`, `schema`, `pgbouncer`, `statement_cache_size`, `socket_timeout`).
 
    The owner (`fh_owner`) password is **not** copied into this secret: RDS manages and rotates it. The migration and database-role tasks read it from the RDS secret and build the connection themselves (`apps/api/scripts/owner-url.mjs`).
 
