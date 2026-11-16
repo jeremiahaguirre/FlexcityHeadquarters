@@ -59,7 +59,10 @@ export async function purgeRateLimitHits(now = new Date(), batch = 5_000): Promi
   const before = new Date(now.getTime() - HIT_RETENTION_MS);
   let total = 0;
   for (;;) {
-    const n = await db().$executeRaw`DELETE FROM "RateLimitHit" WHERE id IN (SELECT id FROM "RateLimitHit" WHERE at < ${before} ORDER BY at LIMIT ${batch})`;
+    // ARRAY(...) runs the batch query once (an InitPlan on the "at" index); the delete then finds
+    // rows by primary key. "id IN (subquery)" was planned as a semi-join over a scan of the whole
+    // table, once per batch.
+    const n = await db().$executeRaw`DELETE FROM "RateLimitHit" WHERE id = ANY(ARRAY(SELECT id FROM "RateLimitHit" WHERE at < ${before} ORDER BY at LIMIT ${batch}))`;
     total += n;
     if (n < batch) return total;
   }

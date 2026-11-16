@@ -43,6 +43,29 @@ describe('rate-limit hit purge (ARCHITECTURE-REVIEW A25)', () => {
   it('has an index on "at" for the purge', async () => {
     const idx = await owner.$queryRaw<Array<{ indexdef: string }>>`SELECT indexdef FROM pg_indexes WHERE tablename = 'RateLimitHit'`;
     expect(idx.map((i) => i.indexdef)).toContainEqual(expect.stringMatching(/USING btree \("?at"?\)$/));
+    // Valid: a failed CONCURRENTLY build leaves an index the planner ignores.
+    const valid = await owner.$queryRaw<Array<{ ok: boolean }>>`SELECT indisvalid AS ok FROM pg_index WHERE indexrelid = '"RateLimitHit_at_idx"'::regclass`;
+    expect(valid).toEqual([{ ok: true }]);
+  });
+
+  it('each purge batch finds its rows through the indexes, never a scan of the whole table', async () => {
+    // A table big enough for the planner to choose honestly: 60,000 hits, two thirds over a day old.
+    const tag = `plan:${randomBytes(4).toString('hex')}`;
+    await owner.$executeRawUnsafe(`INSERT INTO "RateLimitHit" (key, at) SELECT '${tag}', now() - interval '36 hours' + g * interval '1 second' FROM generate_series(1, 60000) g`);
+    await owner.$executeRawUnsafe('ANALYZE "RateLimitHit"');
+    try {
+      const plan = await owner.$queryRawUnsafe<Array<{ 'QUERY PLAN': string }>>(
+        `EXPLAIN DELETE FROM "RateLimitHit" WHERE id = ANY(ARRAY(SELECT id FROM "RateLimitHit" WHERE at < now() - interval '1 day' ORDER BY at LIMIT 5000))`,
+      );
+      const text = plan.map((r) => r['QUERY PLAN']).join('\n');
+      expect(text).not.toMatch(/Seq Scan/);
+      expect(text).toMatch(/RateLimitHit_at_idx/);
+      expect(text).toMatch(/RateLimitHit_pkey/);
+      // purgeRateLimitHits sends exactly this statement.
+      expect(await purgeRateLimitHits(new Date(), 5000)).toBeGreaterThanOrEqual(43_000);
+    } finally {
+      await owner.rateLimitHit.deleteMany({ where: { key: tag } });
+    }
   });
 
   it('requests no longer delete old hits themselves', async () => {
