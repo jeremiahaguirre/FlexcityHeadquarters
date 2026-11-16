@@ -186,3 +186,102 @@ describe('punch corrections (supervisors fix and add time)', () => {
     expect(d.body.code).toBe('OWN_REQUEST');
   });
 });
+
+describe('punch corrections: payroll integrity', () => {
+  const VAN_TZ = 'America/Vancouver';
+  const local = (days: number, hhmm: string) => `${DateTime.now().setZone(VAN_TZ).plus({ days }).toISODate()}T${hhmm}`;
+  const instant = (l: string) => DateTime.fromISO(l, { zone: VAN_TZ }).toJSDate();
+  let sup2: string;
+  let supId: string;
+  let worker: { id: string };
+  beforeAll(async () => {
+    supId = (await owner.user.findFirstOrThrow({ where: { email: 'sup@theta.test' } })).id;
+    const s2 = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['AQUATIC_SUPERVISOR'], employmentStatus: 'FULL_TIME', firstName: 'Second', lastName: 'Sup', email: 'sup2@theta.test' } });
+    sup2 = await signAccessToken({ sub: s2.id, tid: t.tenant.id, roles: ['AQUATIC_SUPERVISOR'] });
+    worker = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'PART_TIME', firstName: 'Pia', lastName: 'Payroll', email: 'pia@theta.test' } });
+    await owner.userPosition.create({ data: { tenantId: t.tenant.id, userId: worker.id, positionId: t.position.id } });
+  });
+  const add = (token: string, inAt: string, outAt: string) => call(token).post('/api/punches', { userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, localClockIn: inAt, localClockOut: outAt, reason: 'Forgot to punch' });
+
+  it('whoever adds or changes time can’t approve it; another supervisor can', async () => {
+    const r = await add(sup, local(-5, '06:00'), local(-5, '14:00'));
+    expect(r.status).toBe(201);
+    const listed = (await call(sup).get('/api/punches')).body.find((p: { id: string }) => p.id === r.body.id);
+    expect(listed.correctedByYou).toBe(true);
+    const own = await call(sup).post('/api/punches/decision', { ids: [r.body.id], decision: 'APPROVE' });
+    expect(own.status).toBe(403);
+    expect(own.body.code).toBe('OWN_CORRECTION');
+    expect((await call(sup2).post('/api/punches/decision', { ids: [r.body.id], decision: 'APPROVE' })).status).toBe(200);
+    // Approved, then padded by the same supervisor: back to review, and again not theirs to approve.
+    expect((await call(sup).patch(`/api/punches/${r.body.id}`, { localClockOut: local(-5, '15:00'), reason: 'Stayed late' })).status).toBe(200);
+    expect((await owner.timePunch.findUniqueOrThrow({ where: { id: r.body.id } })).status).toBe('PENDING');
+    expect((await call(sup).post('/api/punches/decision', { ids: [r.body.id], decision: 'APPROVE' })).body.code).toBe('OWN_CORRECTION');
+  });
+
+  it('time in an approved or paid pay period can’t be added or changed', async () => {
+    const day = DateTime.now().setZone(VAN_TZ).minus({ days: 9 }).toISODate()!;
+    const p = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: instant(`${day}T08:00`), clockOut: instant(`${day}T12:00`), status: 'APPROVED' } });
+    const run = await owner.payRun.create({ data: { tenantId: t.tenant.id, periodStart: new Date(`${day}T00:00:00Z`), periodEnd: new Date(`${day}T00:00:00Z`), payDate: new Date(`${day}T00:00:00Z`), periodsPerYear: 26, status: 'PAID', preparedById: supId } });
+    try {
+      const edit = await call(sup2).patch(`/api/punches/${p.id}`, { localClockOut: `${day}T13:00`, reason: 'Stayed late' });
+      expect(edit.status).toBe(409);
+      expect(edit.body.code).toBe('PERIOD_PAID');
+      const added = await add(sup2, `${day}T14:00`, `${day}T16:00`);
+      expect(added.body.code).toBe('PERIOD_PAID');
+      // A voided run doesn't lock the period.
+      await owner.payRun.update({ where: { id: run.id }, data: { status: 'VOID' } });
+      expect((await add(sup2, `${day}T14:00`, `${day}T16:00`)).status).toBe(201);
+    } finally {
+      await owner.payRun.update({ where: { id: run.id }, data: { status: 'VOID' } });
+    }
+  });
+
+  it('the Approved view lists the last two weeks, newest first', async () => {
+    const old = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: instant(local(-40, '08:00')), clockOut: instant(local(-40, '12:00')), status: 'APPROVED' } });
+    const a = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: instant(local(-3, '08:00')), clockOut: instant(local(-3, '12:00')), status: 'APPROVED' } });
+    const b = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: instant(local(-2, '08:00')), clockOut: instant(local(-2, '12:00')), status: 'APPROVED' } });
+    const ids = (await call(sup).get('/api/punches?status=APPROVED')).body.map((x: { id: string }) => x.id);
+    expect(ids).not.toContain(old.id);
+    expect(ids.indexOf(b.id)).toBeLessThan(ids.indexOf(a.id));
+    expect((await call(sup).get(`/api/punches?status=APPROVED&from=${instant(local(-45, '00:00')).toISOString()}`)).body.map((x: { id: string }) => x.id)).toContain(old.id);
+  });
+
+  it('a rejected punch can be corrected back into review, or the right time added over it', async () => {
+    const r = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: instant(local(-6, '08:00')), clockOut: instant(local(-6, '20:00')), status: 'REJECTED' } });
+    expect((await add(sup, local(-6, '09:00'), local(-6, '13:00'))).status).toBe(201);
+    const fixed = await call(sup).patch(`/api/punches/${r.id}`, { localClockOut: local(-6, '08:45'), reason: 'Wrong clock-out; corrected' });
+    expect(fixed.status).toBe(200);
+    expect((await owner.timePunch.findUniqueOrThrow({ where: { id: r.id } })).status).toBe('PENDING');
+  });
+
+  it('a lead limited to one position can’t add or change time under another position', async () => {
+    const arena = await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Arena Attendant' } });
+    await owner.userPosition.create({ data: { tenantId: t.tenant.id, userId: worker.id, positionId: arena.id } });
+    const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Pool lead', permissions: ['timeclock.review', 'users.read'], scopePositionIds: [t.position.id] } });
+    const leadUser = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'Lena', lastName: 'Lead', email: 'lena@theta.test' } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: leadUser.id, customRoleId: role.id } });
+    const lead = await signAccessToken({ sub: leadUser.id, tid: t.tenant.id, roles: ['EMPLOYEE'] });
+    const asArena = await call(lead).post('/api/punches', { userId: worker.id, facilityId: t.facility.id, positionId: arena.id, localClockIn: local(-7, '08:00'), localClockOut: local(-7, '10:00'), reason: 'Rink shift' });
+    expect(asArena.status).toBe(403);
+    const arenaPunch = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: arena.id, clockIn: instant(local(-8, '08:00')), clockOut: instant(local(-8, '10:00')) } });
+    expect((await call(lead).patch(`/api/punches/${arenaPunch.id}`, { localClockOut: local(-8, '11:00'), reason: 'Stayed late' })).status).toBe(403);
+    expect((await call(lead).post('/api/punches', { userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, localClockIn: local(-7, '08:00'), localClockOut: local(-7, '10:00'), reason: 'Pool shift' })).status).toBe(201);
+  });
+
+  it('daylight saving: a skipped time is refused, a doubled time asks which one, an edit can’t stretch past 24 h', async () => {
+    // Ontario still changes its clocks (British Columbia stays on daylight time from 2026).
+    const toronto = await owner.facility.create({ data: { tenantId: t.tenant.id, name: 'Lakeshore Arena', province: 'ON', timezone: 'America/Toronto', latitude: 43.6, longitude: -79.4, costCenter: 'CC-ON' } });
+    const addAt = (inAt: string, outAt: string) => call(sup).post('/api/punches', { userId: worker.id, facilityId: toronto.id, positionId: t.position.id, localClockIn: inAt, localClockOut: outAt, reason: 'Forgot to punch' });
+    const skipped = await addAt('2026-03-08T02:30', '2026-03-08T05:00');
+    expect(skipped.body).toMatchObject({ code: 'TIME_NOT_EXIST', details: { field: 'localClockIn' } });
+    const twice = await addAt('2026-11-01T01:30', '2026-11-01T04:00');
+    expect(twice.body).toMatchObject({ code: 'AMBIGUOUS_TIME', details: { field: 'localClockIn', offsets: ['-04:00', '-05:00'] } });
+    const first = await addAt('2026-11-01T01:30-04:00', '2026-11-01T04:00');
+    expect(first.status).toBe(201);
+    const p = await owner.timePunch.findUniqueOrThrow({ where: { id: first.body.id } });
+    expect(p.clockIn.toISOString()).toBe('2026-11-01T05:30:00.000Z');
+    // 01:30 EDT to 04:00 EST is 3.5 hours, not 2.5.
+    expect((p.clockOut!.getTime() - p.clockIn.getTime()) / 3_600_000).toBe(3.5);
+    expect((await call(sup2).patch(`/api/punches/${p.id}`, { localClockOut: '2026-11-02T09:00', reason: 'typo' })).status).toBe(400);
+  });
+});

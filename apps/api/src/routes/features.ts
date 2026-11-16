@@ -391,9 +391,9 @@ api.patch(
       const punch = await tx.timePunch.findUnique({ where: { id }, select: { facility: { select: { timezone: true } } } });
       if (!punch) throw notFound('Punch');
       const tz = punch.facility.timezone;
-      const clockIn = body.localClockIn ? atLocal(body.localClockIn, tz) : body.clockIn;
-      const clockOut = body.localClockOut ? atLocal(body.localClockOut, tz) : body.clockOut;
-      const updated = await editPunch(tx, { tenantId: a.tenantId, actorId: a.userId, punchId: id, clockIn, clockOut, reason: body.reason, inScope: (userId) => userInScope(tx, a.scope, userId) });
+      const clockIn = body.localClockIn ? atLocal(body.localClockIn, tz, 'localClockIn') : body.clockIn;
+      const clockOut = body.localClockOut ? atLocal(body.localClockOut, tz, 'localClockOut') : body.clockOut;
+      const updated = await editPunch(tx, { tenantId: a.tenantId, actorId: a.userId, punchId: id, clockIn, clockOut, reason: body.reason, inScope: (userId) => userInScope(tx, a.scope, userId), placeInScope: (place) => shiftInScope(a.scope, place) });
       await recordEvents(tx, { type: 'notify', tenantId: a.tenantId, drafts: [{ userId: updated.userId, type: 'punch_corrected', params: { reason: body.reason }, link: '/timeclock' }] });
       return updated;
     });

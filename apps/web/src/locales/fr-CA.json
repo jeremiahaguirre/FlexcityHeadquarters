@@ -581,7 +581,12 @@
     "MAINTENANCE_PAST": "Cette période est déjà terminée.",
     "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
     "OWN_PUNCH": "Vous ne pouvez pas réviser ni modifier vos propres pointages. Un autre superviseur doit le faire.",
-    "OWN_REQUEST": "Vous ne pouvez pas trancher votre propre demande. Un autre superviseur doit le faire."
+    "OWN_REQUEST": "Vous ne pouvez pas trancher votre propre demande. Un autre superviseur doit le faire.",
+    "OWN_CORRECTION": "Vous avez ajouté ou modifié ce temps; un autre superviseur doit donc l’approuver.",
+    "PERIOD_PAID": "Ce temps est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
+    "TIME_NOT_EXIST": "Cette heure n’existe pas : on avançait l’heure à ce moment-là.",
+    "AMBIGUOUS_TIME": "Cette heure a eu lieu deux fois (on reculait l’heure). Choisissez laquelle, puis enregistrez de nouveau.",
+    "BAD_TIME_OFFSET": "Cette heure et ce décalage ne correspondent pas au fuseau horaire de l’installation."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -993,12 +998,13 @@
     "punchView": "Quels pointages",
     "punchViews": {
       "PENDING": "En attente de révision",
-      "APPROVED": "Approuvés"
+      "APPROVED": "Approuvés",
+      "REJECTED": "Refusés"
     },
     "addPunch": "Ajouter un pointage",
     "addPunchHelp": "Pour du temps travaillé qui n’a pas pu être pointé. Il attend ici sa révision comme tout pointage, et la personne en est informée.",
     "noApprovedPunches": "Aucun pointage approuvé",
-    "noApprovedPunchesHelp": "Les pointages approuvés récemment s’affichent ici, pour que vous puissiez corriger une heure.",
+    "noApprovedPunchesHelp": "Les pointages des deux dernières semaines s’affichent ici, pour que vous puissiez corriger une heure.",
     "editTimes": "Modifier les heures",
     "editTimesFor": "Modifier les heures de {{name}}",
     "addClockOut": "Ajouter la sortie",
@@ -1012,7 +1018,14 @@
     "reapprovalNote": "Ce pointage était approuvé. Après un changement, il retourne en révision par quelqu’un d’autre.",
     "person": "Personne",
     "facility": "Installation",
-    "position": "Poste"
+    "position": "Poste",
+    "noRejectedPunches": "Aucun pointage refusé",
+    "correctedByYou": "Vous avez modifié ce temps : quelqu’un d’autre l’approuve",
+    "whichClockIn": "Quelle heure d’entrée?",
+    "whichClockOut": "Quelle heure de sortie?",
+    "twiceHint": "On a reculé l’heure cette nuit-là, donc cette heure a eu lieu deux fois.",
+    "firstOccurrence": "La première ({{offset}}, avant le recul de l’heure)",
+    "secondOccurrence": "La deuxième ({{offset}}, après le recul de l’heure)"
   },
   "certs": {
     "title": "Certifications",

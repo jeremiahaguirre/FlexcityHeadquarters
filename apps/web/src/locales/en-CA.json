@@ -581,7 +581,12 @@
     "MAINTENANCE_PAST": "That window is already over.",
     "MAINTENANCE_CLOSED": "That window is over or cancelled.",
     "OWN_PUNCH": "You can’t review or change your own punches. Another supervisor has to.",
-    "OWN_REQUEST": "You can’t decide your own request. Another supervisor has to."
+    "OWN_REQUEST": "You can’t decide your own request. Another supervisor has to.",
+    "OWN_CORRECTION": "You added or changed this time, so another supervisor has to approve it.",
+    "PERIOD_PAID": "This time is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.",
+    "TIME_NOT_EXIST": "That time doesn’t exist: the clocks went forward then.",
+    "AMBIGUOUS_TIME": "That time happened twice (the clocks went back). Choose which one, then save again.",
+    "BAD_TIME_OFFSET": "That time and offset don’t match the facility’s time zone."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -993,12 +998,13 @@
     "punchView": "Which punches",
     "punchViews": {
       "PENDING": "Waiting for review",
-      "APPROVED": "Approved"
+      "APPROVED": "Approved",
+      "REJECTED": "Rejected"
     },
     "addPunch": "Add a punch",
     "addPunchHelp": "For time someone worked but couldn’t punch. It waits here for review like any punch, and they’re told.",
     "noApprovedPunches": "No approved punches",
-    "noApprovedPunchesHelp": "Approved punches from the last while show here, so you can correct a time.",
+    "noApprovedPunchesHelp": "Punches from the last two weeks show here, so you can correct a time.",
     "editTimes": "Edit times",
     "editTimesFor": "Edit times for {{name}}",
     "addClockOut": "Add clock-out",
@@ -1012,7 +1018,14 @@
     "reapprovalNote": "This punch was approved. After a change it goes back for review by someone else.",
     "person": "Person",
     "facility": "Facility",
-    "position": "Position"
+    "position": "Position",
+    "noRejectedPunches": "No rejected punches",
+    "correctedByYou": "You changed this time: someone else approves it",
+    "whichClockIn": "Which clock-in time?",
+    "whichClockOut": "Which clock-out time?",
+    "twiceHint": "The clocks went back that night, so this time happened twice.",
+    "firstOccurrence": "The first one ({{offset}}, before the clocks went back)",
+    "secondOccurrence": "The second one ({{offset}}, after the clocks went back)"
   },
   "certs": {
     "title": "Certifications",
