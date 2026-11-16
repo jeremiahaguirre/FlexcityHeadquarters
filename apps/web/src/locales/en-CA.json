@@ -467,6 +467,8 @@
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
     "WHOLE_ORGANIZATION_ONLY": "This is set for the whole organization, by someone whose access isn’t limited to a department.",
     "HR_ONLY": "Only an HR administrator can do this.",
+    "SELF_BENEFITS": "Another HR administrator enrolls you in benefits or ends your enrolment.",
+    "KEY_OWNER_LIMITED": "The person who made this key now has this access for a department only, so the key can’t make organization-wide changes.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
     "ALREADY_ENDED": "This session has already ended.",
     "ACCOUNT_SUSPENDED": "Your organization’s account is read-only until the overdue balance is paid.",

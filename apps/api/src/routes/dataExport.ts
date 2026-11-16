@@ -15,7 +15,7 @@ export const dataExportRouter = Router();
 dataExportRouter.get(
   '/data-export',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     if (a.support) throw forbidden('The data export is only for the organization’s own administrators.');
@@ -28,7 +28,7 @@ dataExportRouter.get(
 dataExportRouter.get(
   '/data-export/download',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);

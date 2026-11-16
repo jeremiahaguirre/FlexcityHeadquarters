@@ -32,7 +32,7 @@ departmentsRouter.get(
 departmentsRouter.post(
   '/departments',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = departmentBody.parse(req.body);
@@ -48,7 +48,7 @@ departmentsRouter.post(
 departmentsRouter.put(
   '/departments/:id',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -64,7 +64,7 @@ departmentsRouter.put(
 departmentsRouter.delete(
   '/departments/:id',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);

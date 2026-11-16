@@ -115,7 +115,7 @@ function view(c: Awaited<ReturnType<typeof connectionFor>>, sub: string) {
 ssoRouter.get(
   '/sso',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     res.json(view(await withTenant(a.tenantId, connectionFor), subdomainOf(req)!));
@@ -133,7 +133,7 @@ function assertStrongAdmin(a: ReturnType<typeof authOf>) {
 ssoRouter.put(
   '/sso',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   requireModule('sso'),
   requireRecentAuth,
   h(async (req, res) => {
@@ -187,7 +187,7 @@ ssoRouter.put(
 ssoRouter.delete(
   '/sso',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);

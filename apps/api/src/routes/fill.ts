@@ -2,7 +2,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
@@ -189,7 +189,7 @@ fillRouter.put(
       const s = parseSolverSettings(tenant.overtimePolicy);
       const before = structuredClone(s);
       if (body.departmentId === null) {
-        if (!a.permissions.has('tenant.configure') || a.scope) throw forbidden();
+        if (!holdsForWholeOrganization(a, 'tenant.configure')) throw forbidden();
         if (body.planAheadWeeks) s.planAheadWeeks = body.planAheadWeeks;
         s.weights = { ...s.weights, ...(body.weights ?? {}) };
         s.toggles = { ...s.toggles, ...(body.toggles ?? {}) };
@@ -198,7 +198,7 @@ fillRouter.put(
       } else {
         if (!a.permissions.has('schedule.assist')) throw forbidden();
         // Limits and the federal switch are organization policy, even per department.
-        if ((body.limits || body.federallyRegulated !== undefined) && (!a.permissions.has('tenant.configure') || a.scope)) throw forbidden();
+        if ((body.limits || body.federallyRegulated !== undefined) && !holdsForWholeOrganization(a, 'tenant.configure')) throw forbidden();
         if (!(await schedulableDepartments(tx, a)).some((d) => d.id === body.departmentId)) throw notFound('Department');
         const prev = s.departments[body.departmentId] ?? {};
         s.departments[body.departmentId] = body.reset

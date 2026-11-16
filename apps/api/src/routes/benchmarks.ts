@@ -36,7 +36,7 @@ benchmarksRouter.get(
 benchmarksRouter.put(
   '/benchmarks/opt-in',
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const { on } = z.object({ on: z.boolean() }).parse(req.body);

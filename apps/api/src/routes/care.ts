@@ -70,7 +70,7 @@ careRouter.put(
   '/care/settings',
   requirePermission('care.manage'),
   // The support text every department sees after a critical incident (SEC-63).
-  requireWholeOrganization,
+  requireWholeOrganization('care.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ eap: z.string().trim().max(500).nullable() }).parse(req.body);

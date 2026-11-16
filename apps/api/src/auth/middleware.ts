@@ -7,7 +7,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';
 import { verifyAccessToken } from './tokens.js';
-import { type Scope, customAccess, scopeOf, stillActive } from '../services/people/customRoles.js';
+import { type Scope, customAccess, scopeOf, stillActive, wholeOrganizationPermissions } from '../services/people/customRoles.js';
 import { managedScope } from '../services/people/departments.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
@@ -28,6 +28,8 @@ export interface AuthContext {
   mfaPending: boolean;
   /** Where supervisory capabilities reach: null = the whole organization, else a department. */
   scope: Scope;
+  /** The permissions held for the whole organization (empty when scope isn't null): requireWholeOrganization. */
+  wholeOrg: ReadonlySet<Permission>;
   /** An FH support visit (read-only, with the organization's consent). */
   support?: { sessionId: string; level: 'SETUP' | 'FULL'; endsAt: Date; adminId: string };
 }
@@ -91,6 +93,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     // anyone holding HR-level powers through a custom role needs it too.
     const adminLike = mfaRoles.includes('HR_ADMIN') && [...granted].some((p) => ADMIN_LEVEL.has(p));
     const mfaPending = !mfa && (claims.roles.some((r) => mfaRoles.includes(r)) || adminLike);
+    const scope = scopeOf(builtIn, custom, { roles: claims.roles, managed });
     req.auth = {
       userId: claims.sub,
       tenantId: claims.tid,
@@ -99,7 +102,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null,
       mfa,
       mfaPending,
-      scope: scopeOf(builtIn, custom, { roles: claims.roles, managed }),
+      scope,
+      wholeOrg: wholeOrganizationPermissions(builtIn, custom, scope, claims.roles),
     };
     // FH support, with the organization's consent: read-only, what the grant allows, every page logged.
     if (claims.sup) {
@@ -143,18 +147,23 @@ export function requirePermission(...perms: Permission[]) {
  * benefits plans, policies…) are only for people whose access isn't limited to a department.
  * A department-limited holder of the same permission gets 403 WHOLE_ORGANIZATION_ONLY.
  */
-export function assertWholeOrganization(a: AuthContext) {
-  if (a.scope) throw new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'This is set for the whole organization, by someone whose access isn’t limited to a department.');
+export const holdsForWholeOrganization = (a: AuthContext, perm: Permission) => !a.scope && a.permissions.has(perm) && a.wholeOrg.has(perm);
+
+/**
+ * Decided per capability: the person holds `perm` for the whole organization, from a built-in role
+ * or a custom role with no department limit (customRoles.ts wholeOrganizationPermissions).
+ */
+export function assertWholeOrganization(a: AuthContext, perm: Permission) {
+  if (!holdsForWholeOrganization(a, perm)) throw new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'This is set for the whole organization, by someone whose access isn’t limited to a department.');
 }
 
-/** Route guard form of assertWholeOrganization. */
-export function requireWholeOrganization(req: Request, _res: Response, next: NextFunction) {
-  try {
-    assertWholeOrganization(authOf(req));
-    next();
-  } catch (e) {
-    next(e);
-  }
+/** Route guard form of assertWholeOrganization, used after requirePermission(perm). */
+export function requireWholeOrganization(perm: Permission) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const a = req.auth;
+    if (!a) return next(new HttpError(401, 'UNAUTHENTICATED', 'Not signed in'));
+    next(holdsForWholeOrganization(a, perm) ? undefined : new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'This is set for the whole organization, by someone whose access isn’t limited to a department.'));
+  };
 }
 
 export function authOf(req: Request): AuthContext {
@@ -214,5 +223,6 @@ export async function accessOf(tenantId: string, userId: string, roles: AccessRo
   const [{ features, overrides }, custom, ok, managed] = await Promise.all([tenantSettings(tenantId), customAccess(tenantId, userId), stillActive(tenantId, userId), managedScope(tenantId, userId)]);
   if (!ok) return null;
   const builtIn = permissionsWithOverrides(roles, overrides);
-  return { userId, tenantId, roles, permissions: withoutDisabled(new Set([...builtIn, ...custom.perms]), features), authenticatedAt: null, mfa: false, mfaPending: false, scope: scopeOf(builtIn, custom, { roles, managed }) };
+  const scope = scopeOf(builtIn, custom, { roles, managed });
+  return { userId, tenantId, roles, permissions: withoutDisabled(new Set([...builtIn, ...custom.perms]), features), authenticatedAt: null, mfa: false, mfaPending: false, scope, wholeOrg: wholeOrganizationPermissions(builtIn, custom, scope, roles) };
 }

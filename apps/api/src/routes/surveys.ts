@@ -211,7 +211,7 @@ surveysRouter.put(
   '/surveys-admin/settings',
   requirePermission('surveys.manage'),
   requirePermission('tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = z.object({ minGroup: z.number().int().min(MIN_GROUP_FLOOR).max(MIN_GROUP_CEILING), managersCreate: z.boolean() }).parse(req.body);

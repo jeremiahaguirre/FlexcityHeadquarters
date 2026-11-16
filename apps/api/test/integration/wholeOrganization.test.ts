@@ -3,6 +3,10 @@
  * department (SEC-07, SEC-13, SEC-15, SEC-25, SEC-26, SEC-29, SEC-63, SEC-64): a department-limited
  * holder of the same permission is refused, and a whole-organization holder still gets through.
  */
+import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+import { type AddressInfo, connect } from 'node:net';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -34,7 +38,7 @@ const mk = async (roles: Role[], name: string, position?: string) => {
 
 beforeAll(async () => {
   t = await seedTenant(SUB, 0);
-  await owner.tenant.update({ where: { id: t.tenant.id }, data: { features: { registration: true, payroll: true } } }).catch(() => undefined);
+  await owner.tenant.update({ where: { id: t.tenant.id }, data: { features: { registration: true, payroll: true, shiftBidding: true } } }).catch(() => undefined);
   pos.guard = (await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Pool Lifeguard' } })).id;
   pos.parks = (await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Parks Worker' } })).id;
   ids.hr = await mk(['HR_ADMIN'], 'hr');
@@ -137,11 +141,27 @@ describe('HR, for the whole organization', () => {
     expect((await call(tok.hr).put(`/api/departments/${dept.parks}`, { name: 'Parks', positionIds: [pos.parks], managerIds: [] })).status).toBe(200);
   });
 
-  it('can’t enrol themselves in benefits (SEC-26)', async () => {
+  it('as the only HR administrator, enrols themselves at the plan’s rates only, audited (SEC-26)', async () => {
     const plan = await call(tok.hr).post('/api/benefits/plans', { name: 'Dental', kind: 'DENTAL', employeeAmount: 10 });
     expect(plan.status).toBe(201);
-    expect((await call(tok.hr).post('/api/benefits/enrollments', { planId: plan.body.id, userId: ids.hr, startsOn: '2026-01-01', employeeAmount: 0 })).status).toBe(403);
+    const override = await call(tok.hr).post('/api/benefits/enrollments', { planId: plan.body.id, userId: ids.hr, startsOn: '2026-01-01', employeeAmount: 0 });
+    expect([override.status, override.body.code]).toEqual([403, 'SELF_BENEFITS']);
+    const self = await call(tok.hr).post('/api/benefits/enrollments', { planId: plan.body.id, userId: ids.hr, startsOn: '2026-01-01' });
+    expect(self.status).toBe(201);
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'benefits.self_change', actorId: ids.hr } })).toBe(1);
     expect((await call(tok.hr).post('/api/benefits/enrollments', { planId: plan.body.id, userId: ids.worker, startsOn: '2026-01-01' })).status).toBe(201);
+    // A department-limited benefits holder can't enrol or end anyone.
+    const worker = (await owner.benefitEnrollment.findFirstOrThrow({ where: { userId: ids.worker } })).id;
+    refused(await call(tok.parks).post('/api/benefits/enrollments', { planId: plan.body.id, userId: ids.worker, startsOn: '2026-02-01' }), 'enrol');
+    refused(await call(tok.parks).post(`/api/benefits/enrollments/${worker}/end`, { endsOn: '2026-06-30' }), 'end');
+    // Once there's another HR administrator, they do it: ending your own is refused.
+    const second = await mk(['HR_ADMIN'], 'hrbenefits');
+    const mine = (await owner.benefitEnrollment.findFirstOrThrow({ where: { userId: ids.hr } })).id;
+    const end = await call(tok.hr).post(`/api/benefits/enrollments/${mine}/end`, { endsOn: '2026-06-30' });
+    expect([end.status, end.body.code]).toEqual([403, 'SELF_BENEFITS']);
+    const tok2 = await signAccessToken({ sub: second, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
+    expect((await call(tok2).post(`/api/benefits/enrollments/${mine}/end`, { endsOn: '2026-06-30' })).status).toBe(200);
+    await owner.user.update({ where: { id: second }, data: { status: 'INACTIVE' } });
   });
 
   it('downloads the data export only with a second factor, and the other HR administrators are told (SEC-07)', async () => {
@@ -157,5 +177,125 @@ describe('HR, for the whole organization', () => {
     const mail = await owner.emailOutbox.findMany({ where: { tenantId: t.tenant.id, template: 'data_exported' } });
     expect(mail.map((m) => m.toEmail)).toEqual([`hr2@${SUB}.test`]);
     expect(other).toBeTruthy();
+  });
+});
+
+describe('more organization-wide settings a department-limited role can’t change (review of #50)', () => {
+  it('refuses each one to a role holding every capability but limited to Parks, and lets HR through', async () => {
+    const catalog = (await call(tok.hr).get('/api/roles')).body.catalog as Record<string, string[]>;
+    const role = await call(tok.hr).post('/api/roles', { name: 'Parks everything', permissions: Object.values(catalog).flat(), scopeDepartmentIds: [dept.parks] });
+    expect(role.status).toBe(201);
+    const who = await mk(['EMPLOYEE'], 'parkseverything', pos.parks);
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: who, customRoleId: role.body.id } });
+    forgetCustomPermissions(t.tenant.id);
+    const limited = await signAccessToken({ sub: who, tid: t.tenant.id, roles: ['EMPLOYEE'], aat: now(), mfa: true });
+    const before = await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id }, select: { overtimePolicy: true, winterSettings: true, signupSettings: true, features: true } });
+    const winter = { season: { start: '11-01', end: '04-15' }, callOuts: { responseMinutes: 30, minRestHours: 8 }, patrols: { graceMinutes: 60 }, callOutsOn: true, patrolsOn: true };
+    const writes: Array<[string, () => Promise<request.Response>]> = [
+      ['winter settings', () => call(limited).put('/api/winter/settings', winter)],
+      ['overtime policy', () => call(limited).put('/api/overtime/policy', { countRefusals: true, clause: 'Article 99', periodStartMonth: 4 })],
+      ['sign-up settings', () => call(limited).put('/api/signup/settings', { enabled: true, terms: 'x', payment: 'y' })],
+      ['new position', () => call(limited).post('/api/positions', { name: 'Shadow position', requiredCertificationIds: [], departmentId: dept.aquatics })],
+      ['move a position', () => call(limited).put(`/api/positions/${pos.guard}`, { name: 'Pool Lifeguard', requiredCertificationIds: [], departmentId: dept.parks })],
+      ['scheduling assistant (organization)', () => call(limited).put('/api/schedule/fill/settings', { departmentId: null, planAheadWeeks: 4 })],
+      ['shift templates', () => call(limited).put('/api/schedule/templates/settings', { autoCreate: true })],
+      ['bidding defaults', () => call(limited).put('/api/bids/settings', { seniorityBasis: 'HOURS' })],
+      ['messaging settings', () => call(limited).put('/api/messages-admin/settings', { staffDirect: true, minorDirect: true, pushPreview: true, shiftArchiveHours: 48 })],
+      ['survey settings', () => call(limited).put('/api/surveys-admin/settings', { minGroup: 5, managersCreate: true })],
+      ['sign-in rules', () => call(limited).put('/api/settings/mfa', { roles: [], codes: true })],
+      ['remove SSO', () => call(limited).delete('/api/sso')],
+    ];
+    for (const [what, send] of writes) refused(await send(), what);
+    const after = await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id }, select: { overtimePolicy: true, winterSettings: true, signupSettings: true, features: true } });
+    expect(after).toEqual(before);
+    expect(await owner.position.count({ where: { tenantId: t.tenant.id, name: 'Shadow position' } })).toBe(0);
+    // HR, for the whole organization, may.
+    expect((await call(tok.hr).put('/api/overtime/policy', { countRefusals: false, clause: null, periodStartMonth: 1 })).status).toBe(200);
+  });
+
+  it('an absolute-form request line gets the same answer', async () => {
+    const listening = createServer(server).listen(0);
+    await once(listening, 'listening');
+    const port = (listening.address() as AddressInfo).port;
+    try {
+      for (const scheme of ['http', 'HTTP']) {
+        const status = await new Promise<number>((resolve, reject) => {
+          const s = connect(port, '127.0.0.1');
+          let out = '';
+          s.on('data', (c) => (out += c.toString('latin1')));
+          s.on('end', () => resolve(Number(/^HTTP\/1\.1 (\d{3})/.exec(out)?.[1] ?? 0)));
+          s.on('error', reject);
+          s.write(`GET ${scheme}://${SUB}.example.test/api/settings HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nX-Tenant-Subdomain: ${SUB}\r\nAuthorization: Bearer ${tok.parks}\r\nConnection: close\r\n\r\n`);
+        });
+        expect([400, 403], scheme).toContain(status);
+      }
+    } finally {
+      listening.close();
+    }
+  });
+
+  it('an API key keeps writing only while its maker holds that access for the whole organization', async () => {
+    const maker = await mk(['HR_ADMIN'], 'keymaker');
+    const makerTok = await signAccessToken({ sub: maker, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
+    const k = await call(makerTok).post('/api/integrations/api-keys', { name: 'Departments sync', scopes: ['departments:write'] });
+    expect(k.status, JSON.stringify(k.body)).toBe(201);
+    const post = (name: string) => request(server).post('/api/v1/departments').auth(k.body.key, { type: 'bearer' }).set('Idempotency-Key', randomUUID()).send({ name });
+    expect((await post('Synced one')).status).toBe(201);
+    // The maker is no longer HR: organization settings only through a role limited to Parks.
+    const role = await call(tok.hr).post('/api/roles', { name: 'Parks settings', permissions: ['users.read', 'tenant.configure'], scopeDepartmentIds: [dept.parks] });
+    await owner.user.update({ where: { id: maker }, data: { roles: ['EMPLOYEE'] } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: maker, customRoleId: role.body.id } });
+    forgetCustomPermissions(t.tenant.id);
+    const r = await post('Synced two');
+    expect([r.status, r.body.code]).toEqual([403, 'KEY_OWNER_LIMITED']);
+  });
+});
+
+describe('a city without departments: whole-organization access is per capability', () => {
+  const NSUB = 'wholeorgnd';
+  let n: Awaited<ReturnType<typeof seedTenant>>;
+  const ncall = (token: string) => ({
+    get: (p: string) => request(server).get(p).set('x-tenant-subdomain', NSUB).auth(token, { type: 'bearer' }),
+    post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', NSUB).auth(token, { type: 'bearer' }).send(b),
+  });
+  const person = async (roles: Role[], name: string) => (await owner.user.create({ data: { tenantId: n.tenant.id, roles, employmentStatus: 'FULL_TIME', firstName: name, lastName: 'N', email: `${name}@${NSUB}.test` } })).id;
+  let poolAdmin = '';
+  let unlimited = '';
+
+  beforeAll(async () => {
+    n = await seedTenant(NSUB, 0);
+    await owner.tenant.update({ where: { id: n.tenant.id }, data: { features: { payroll: true } } }).catch(() => undefined);
+    const hr = await person(['HR_ADMIN'], 'hr');
+    const hrTok = await signAccessToken({ sub: hr, tid: n.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
+    const pool = await ncall(hrTok).post('/api/roles', { name: 'Pool admin', permissions: ['tenant.configure', 'benefits.manage'], scopeFacilityIds: [n.facility.id] });
+    const ann = await ncall(hrTok).post('/api/roles', { name: 'Announcer', permissions: ['announcements.post'] });
+    expect([pool.status, ann.status]).toEqual([201, 201]);
+    poolAdmin = pool.body.id;
+    unlimited = ann.body.id;
+  });
+
+  const check = async (roles: Role[], extraRole: string | null, name: string) => {
+    const id = await person(roles, name);
+    await owner.userCustomRole.create({ data: { tenantId: n.tenant.id, userId: id, customRoleId: poolAdmin } });
+    if (extraRole) await owner.userCustomRole.create({ data: { tenantId: n.tenant.id, userId: id, customRoleId: extraRole } });
+    forgetCustomPermissions(n.tenant.id);
+    const token = await signAccessToken({ sub: id, tid: n.tenant.id, roles, aat: now(), mfa: true });
+    for (const p of ['/api/settings', '/api/benefits', '/api/data-export']) refused(await ncall(token).get(p), `${name} ${p}`);
+  };
+
+  it('a facility-limited admin role alone is refused', async () => check(['EMPLOYEE'], null, 'alone'));
+  it('…and still refused with a built-in head lifeguard role on top', async () => check(['HEAD_LIFEGUARD', 'STAFF'], null, 'withhead'));
+  it('…and still refused with an unlimited custom role on top', async () => check(['EMPLOYEE'], unlimited, 'withannouncer'));
+
+  it('an unlimited custom role with organization settings, not HR, sees the export but can’t download it (HR_ONLY)', async () => {
+    const hrTok = await signAccessToken({ sub: (await owner.user.findFirstOrThrow({ where: { tenantId: n.tenant.id, roles: { has: 'HR_ADMIN' } } })).id, tid: n.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
+    const role = await ncall(hrTok).post('/api/roles', { name: 'IT admin', permissions: ['tenant.configure'] });
+    const itAdmin = await person(['EMPLOYEE'], 'itadmin');
+    await owner.userCustomRole.create({ data: { tenantId: n.tenant.id, userId: itAdmin, customRoleId: role.body.id } });
+    forgetCustomPermissions(n.tenant.id);
+    const token = await signAccessToken({ sub: itAdmin, tid: n.tenant.id, roles: ['EMPLOYEE'], aat: now(), mfa: true });
+    expect((await ncall(token).get('/api/data-export')).status).toBe(200);
+    const r = await ncall(token).get('/api/data-export/download');
+    expect([r.status, r.body.code]).toEqual([403, 'HR_ONLY']);
   });
 });

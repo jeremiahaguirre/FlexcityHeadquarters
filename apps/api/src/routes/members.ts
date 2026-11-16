@@ -7,7 +7,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { ageInMonths, fitsAge } from '../services/programs/levels.js';
@@ -282,7 +282,7 @@ membersRouter.get(
     const list = await withTenant(a.tenantId, async (tx) => {
       // A planner limited to some facilities, outside member services, reads only their own sets'
       // class lists: children's names and safety notes (SEC-29).
-      if (a.scope && !a.permissions.has('members.manage')) {
+      if (!a.permissions.has('members.manage') && !holdsForWholeOrganization(a, 'lessons.plan')) {
         const set = await tx.lessonClass.findUnique({ where: { id: setId }, select: { facilityId: true, positionId: true } });
         if (!set || !shiftInScope(a.scope, set)) throw notFound('Set');
       }

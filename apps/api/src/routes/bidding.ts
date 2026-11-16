@@ -249,7 +249,7 @@ biddingRouter.post(
 biddingRouter.put(
   '/bids/settings',
   requirePermission('bidding.manage', 'tenant.configure'),
-  requireWholeOrganization,
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = z.object({ seniorityBasis: z.enum(['DATE', 'HOURS']), awardOrder: z.enum(['ROUND_ROBIN', 'SENIOR_FIRST']) }).partial().parse(req.body);

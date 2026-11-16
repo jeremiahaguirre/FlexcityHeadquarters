@@ -69,7 +69,7 @@ policiesRouter.post(
 policiesRouter.get(
   '/policies',
   requirePermission('policies.manage'),
-  requireWholeOrganization,
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     res.json(
@@ -98,7 +98,7 @@ async function publish(tx: Tx, tenantId: string, actorId: string, b: z.infer<typ
 policiesRouter.post(
   '/policies',
   requirePermission('policies.manage'),
-  requireWholeOrganization,
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = draft.parse(req.body);
@@ -111,7 +111,7 @@ policiesRouter.post(
 policiesRouter.post(
   '/policies/:id/revise',
   requirePermission('policies.manage'),
-  requireWholeOrganization,
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -128,7 +128,7 @@ policiesRouter.post(
 policiesRouter.post(
   '/policies/:id/retire',
   requirePermission('policies.manage'),
-  requireWholeOrganization,
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -145,7 +145,7 @@ policiesRouter.post(
 policiesRouter.get(
   '/policies/:id/status',
   requirePermission('policies.manage'),
-  requireWholeOrganization,
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
