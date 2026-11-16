@@ -36,16 +36,16 @@ const named = (lng: string) => (x: { name: string; nameFr: string | null }) => (
  * for arenas, water and wastewater plants and driver's licences) and the positions that require them.
  */
 export function PositionsSettings() {
-  const certs = useQuery<CatalogCert[]>('/api/certifications');
+  const catalog = useQuery<CatalogCert[]>('/api/certifications');
   return (
     <div className="grid max-w-4xl gap-6">
-      <CertCatalogCard certs={certs.data} error={!!certs.error} reload={certs.reload} />
-      <PositionsCard certs={certs.data ?? []} />
+      <CertCatalogCard catalog={catalog.data} error={!!catalog.error} reload={catalog.reload} />
+      <PositionsCard catalog={catalog.data ?? []} />
     </div>
   );
 }
 
-function CertCatalogCard({ certs, error, reload }: { certs: CatalogCert[] | null | undefined; error: boolean; reload: () => Promise<void> }) {
+function CertCatalogCard({ catalog, error, reload }: { catalog: CatalogCert[] | null | undefined; error: boolean; reload: () => Promise<void> }) {
   const { t, i18n } = useTranslation();
   const name = named(i18n.language);
   const { run, busy } = useAction();
@@ -84,13 +84,13 @@ function CertCatalogCard({ certs, error, reload }: { certs: CatalogCert[] | null
       <CardBody className="pt-3">
         {error ? (
           <ErrorNotice onRetry={reload} />
-        ) : !certs ? (
+        ) : !catalog ? (
           <ListSkeleton rows={3} />
-        ) : !certs.length ? (
+        ) : !catalog.length ? (
           <EmptyState icon={BadgeCheck} title={t('catalog.empty')}>{t('catalog.emptyHelp')}</EmptyState>
         ) : (
           <ul className="divide-y divide-line">
-            {certs.map((c) => (
+            {catalog.map((c) => (
               <li key={c.id}>
                 <button type="button" disabled={!c.tenantId} onClick={() => setEditing(c)} className="grid w-full gap-0.5 rounded-lg py-3 text-left enabled:hover:bg-surface/60">
                   <span className="text-body-strong">{name(c)}</span>
@@ -189,7 +189,7 @@ function StarterDialog({ onClose, onAdded }: { onClose: () => void; onAdded: () 
   );
 }
 
-function PositionsCard({ certs }: { certs: CatalogCert[] }) {
+function PositionsCard({ catalog }: { catalog: CatalogCert[] }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const name = named(lng);
@@ -198,7 +198,7 @@ function PositionsCard({ certs }: { certs: CatalogCert[] }) {
   const { run, busy } = useAction();
   const [editing, setEditing] = useState<CityPosition | 'new' | null>(null);
   const current = editing === 'new' ? null : editing;
-  const certName = new Map(certs.map((c) => [c.id, name(c)]));
+  const certName = new Map(catalog.map((c) => [c.id, name(c)]));
   const deptName = new Map((departments.data?.departments ?? []).map((d) => [d.id, name(d)]));
 
   async function save(e: FormEvent<HTMLFormElement>) {
@@ -211,7 +211,7 @@ function PositionsCard({ certs }: { certs: CatalogCert[] }) {
       nameFr: String(f.get('nameFr') ?? '').trim() || null,
       minimumAge: n('age'),
       departmentId: String(f.get('department') ?? '') || null,
-      requiredCertificationIds: f.getAll('certs').map(String),
+      requiredCertificationIds: f.getAll('required').map(String),
       hoursOfService: hos.maxDailyHours || hos.minRestHours || hos.maxHoursIn7Days ? hos : null,
       unpaidBreakMinutes: n('break'),
       neverAlone: f.get('neverAlone') === 'on',
@@ -281,10 +281,10 @@ function PositionsCard({ certs }: { certs: CatalogCert[] }) {
           </div>
           <fieldset className="grid gap-2">
             <legend className="mb-1 text-small font-semibold">{t('platform.requiredCerts')}</legend>
-            {!certs.length ? <p className="text-caption text-muted">{t('settings.addCertsFirst')}</p> : null}
-            {certs.map((c) => (
+            {!catalog.length ? <p className="text-caption text-muted">{t('settings.addCertsFirst')}</p> : null}
+            {catalog.map((c) => (
               <label key={c.id} className="flex items-center gap-2 text-small">
-                <input type="checkbox" name="certs" value={c.id} defaultChecked={current?.requirements.some((r) => r.certificationId === c.id)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+                <input type="checkbox" name="required" value={c.id} defaultChecked={current?.requirements.some((r) => r.certificationId === c.id)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
                 {name(c)}
               </label>
             ))}
