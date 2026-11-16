@@ -1,4 +1,5 @@
 import request from 'supertest';
+import { DateTime } from 'luxon';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
@@ -21,6 +22,7 @@ const call = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
   put: (p: string, b: object) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  patch: (p: string, b: object) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 
 beforeAll(async () => {
@@ -117,5 +119,70 @@ describe('punch review', () => {
     const r = await call(staff).get(`/api/me/punches?from=${at(-5, 0).toISOString()}&to=${at(1, 0).toISOString()}`);
     expect(r.body.length).toBe(2);
     expect(r.body[0].localClockIn).toMatch(/-0[78]:00$/);
+  });
+});
+
+describe('punch corrections (supervisors fix and add time)', () => {
+  // A facility-local wall-clock time `days` from today, as the date-time picker sends it.
+  const local = (days: number, hhmm: string) => `${DateTime.now().setZone('America/Vancouver').plus({ days }).toISODate()}T${hhmm}`;
+  const supId = async () => (await owner.user.findFirstOrThrow({ where: { email: 'sup@theta.test' } })).id;
+  // In-app notices go through the event outbox (delivered after commit).
+  const told = async (userId: string, type: string) => (await owner.eventOutbox.findMany({ where: { tenantId: t.tenant.id, type: 'notify' } })).some((e) => JSON.stringify(e.payload).includes(userId) && JSON.stringify(e.payload).includes(type));
+
+  it('adds a punch someone forgot, in facility time, for review, with the reason kept', async () => {
+    const other = t.users[1]!.id;
+    const body = { userId: other, facilityId: t.facility.id, positionId: t.position.id, localClockIn: local(-1, '06:00'), localClockOut: local(-1, '10:30'), reason: 'Phone died; confirmed with the head guard' };
+    expect((await call(staff).post('/api/punches', body)).status).toBe(403);
+    const r = await call(sup).post('/api/punches', body);
+    expect(r.status).toBe(201);
+    expect(r.body.status).toBe('PENDING');
+    const p = await owner.timePunch.findUniqueOrThrow({ where: { id: r.body.id } });
+    expect((p.clockOut!.getTime() - p.clockIn.getTime()) / 3_600_000).toBe(4.5);
+    expect(DateTime.fromJSDate(p.clockIn, { zone: 'America/Vancouver' }).toFormat('HH:mm')).toBe('06:00');
+    const edits = await owner.timePunchEdit.findMany({ where: { punchId: p.id } });
+    expect(edits.map((e) => [e.field, e.oldValue, e.reason]).sort()).toEqual([
+      ['clockIn', null, body.reason],
+      ['clockOut', null, body.reason],
+    ]);
+    expect(await owner.auditLog.count({ where: { action: 'punch.add', entityId: p.id } })).toBe(1);
+    expect(await told(other, 'punch_added')).toBe(true);
+    // It is waiting in the review list like any other punch.
+    expect((await call(sup).get('/api/punches')).body.map((x: { id: string }) => x.id)).toContain(p.id);
+
+    // Overlapping time, the future, and their own time are refused.
+    const overlap = await call(sup).post('/api/punches', { ...body, localClockIn: local(-1, '09:00'), localClockOut: local(-1, '12:00') });
+    expect(overlap.status).toBe(409);
+    expect(overlap.body.code).toBe('PUNCH_OVERLAPS');
+    expect((await call(sup).post('/api/punches', { ...body, localClockIn: local(1, '06:00'), localClockOut: local(1, '08:00') })).body.code).toBe('PUNCH_IN_FUTURE');
+    const own = await call(sup).post('/api/punches', { ...body, userId: await supId() });
+    expect(own.status).toBe(403);
+    expect(own.body.code).toBe('OWN_PUNCH');
+  });
+
+  it('closes a punch someone forgot to clock out of, and tells them', async () => {
+    const other = t.users[1]!.id;
+    const open = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: other, facilityId: t.facility.id, positionId: t.position.id, clockIn: DateTime.fromISO(local(-2, '14:00'), { zone: 'America/Vancouver' }).toJSDate() } });
+    const r = await call(sup).patch(`/api/punches/${open.id}`, { localClockOut: local(-2, '18:15'), reason: 'Forgot to clock out at close' });
+    expect(r.status).toBe(200);
+    const p = await owner.timePunch.findUniqueOrThrow({ where: { id: open.id } });
+    expect(DateTime.fromJSDate(p.clockOut!, { zone: 'America/Vancouver' }).toFormat('HH:mm')).toBe('18:15');
+    expect(await owner.timePunchEdit.count({ where: { punchId: open.id, field: 'clockOut', oldValue: null } })).toBe(1);
+    expect(await told(other, 'punch_corrected')).toBe(true);
+    const backwards = await call(sup).patch(`/api/punches/${open.id}`, { localClockOut: local(-2, '13:00'), reason: 'typo' });
+    expect(backwards.body.code).toBe('PUNCH_OUT_BEFORE_IN');
+  });
+
+  it('a supervisor’s own punches and time off stay out of their queue, and deciding them says why', async () => {
+    const me = await supId();
+    const mine = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: me, facilityId: t.facility.id, positionId: t.position.id, clockIn: at(-4, 16), clockOut: at(-4, 20) } });
+    const myLeave = await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: me, type: 'VACATION', startsAt: at(30, 0), endsAt: at(31, 0) } });
+    expect((await call(sup).get('/api/punches')).body.map((x: { id: string }) => x.id)).not.toContain(mine.id);
+    expect((await call(sup).get('/api/time-off')).body.map((x: { id: string }) => x.id)).not.toContain(myLeave.id);
+    const p = await call(sup).post('/api/punches/decision', { ids: [mine.id], decision: 'APPROVE' });
+    expect(p.status).toBe(403);
+    expect(p.body.code).toBe('OWN_PUNCH');
+    const d = await call(sup).post(`/api/time-off/${myLeave.id}/decision`, { decision: 'APPROVE' });
+    expect(d.status).toBe(403);
+    expect(d.body.code).toBe('OWN_REQUEST');
   });
 });

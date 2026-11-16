@@ -210,10 +210,14 @@ export async function editPunch(
   const punch = await tx.timePunch.findUnique({ where: { id: input.punchId } });
   if (!punch) throw notFound('Punch');
   // Nobody corrects their own time, or time outside their department.
-  if (punch.userId === input.actorId) throw forbidden('You can’t edit your own punches. Ask another supervisor.');
+  if (punch.userId === input.actorId) throw new HttpError(403, 'OWN_PUNCH', 'You can’t edit your own punches. Ask another supervisor.');
   if (input.inScope && !(await input.inScope(punch.userId))) throw forbidden('This person isn’t in your department.');
   const next = { clockIn: input.clockIn ?? punch.clockIn, clockOut: input.clockOut ?? punch.clockOut };
-  if (next.clockOut && next.clockOut <= next.clockIn) throw badRequest('Clock-out must be after clock-in.');
+  if (next.clockOut && next.clockOut <= next.clockIn) throw punchError('PUNCH_OUT_BEFORE_IN', 'Clock-out must be after clock-in.');
+  if (next.clockIn.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs || (next.clockOut && next.clockOut.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs)) {
+    throw punchError('PUNCH_IN_FUTURE', 'A punch can’t be in the future.');
+  }
+  await assertNoOverlap(tx, punch.userId, next.clockIn, next.clockOut, punch.id);
 
   for (const field of ['clockIn', 'clockOut'] as const) {
     const newVal = input[field];
@@ -236,4 +240,71 @@ export async function editPunch(
   const updated = await tx.timePunch.update({ where: { id: punch.id }, data: { ...next, varianceReason: input.reason, ...(changed && punch.status === 'APPROVED' ? { status: 'PENDING' } : {}) } });
   await audit(tx, { tenantId: input.tenantId, actorId: input.actorId, action: 'punch.edit', entity: 'TimePunch', entityId: punch.id, before: punch, after: updated });
   return updated;
+}
+
+/** Another punch of this person's overlaps the time (an open punch overlaps everything after its start). */
+async function assertNoOverlap(tx: Tx, userId: string, from: Date, to: Date | null, exceptId: string | null = null) {
+  const clash = await tx.timePunch.findFirst({
+    where: {
+      userId,
+      ...(exceptId ? { id: { not: exceptId } } : {}),
+      ...(to ? { clockIn: { lt: to } } : {}),
+      OR: [{ clockOut: null }, { clockOut: { gt: from } }],
+    },
+    select: { id: true },
+  });
+  if (clash) throw conflict('PUNCH_OVERLAPS', 'This person already has a punch covering this time.', { punchId: clash.id });
+}
+
+/**
+ * A supervisor adds time someone worked but couldn't punch (forgot, phone dead, an offline punch
+ * refused as too old). It goes to review like any punch, never straight to payroll, and the time
+ * entered and the reason are kept in the punch's edit history and the audit log.
+ */
+export async function addPunch(
+  tx: Tx,
+  input: { tenantId: string; actorId: string; userId: string; facilityId: string; shiftId?: string | null; positionId?: string | null; clockIn: Date; clockOut: Date; reason: string; inScope?: (userId: string) => Promise<boolean> },
+) {
+  const reason = input.reason.trim();
+  if (reason.length < 3) throw badRequest('A reason is required to add a punch.');
+  if (input.userId === input.actorId) throw new HttpError(403, 'OWN_PUNCH', 'You can’t add time for yourself. Ask another supervisor.');
+  if (input.inScope && !(await input.inScope(input.userId))) throw forbidden('This person isn’t in your department.');
+  if (input.clockOut <= input.clockIn) throw punchError('PUNCH_OUT_BEFORE_IN', 'Clock-out must be after clock-in.');
+  if (input.clockOut.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs) throw punchError('PUNCH_IN_FUTURE', 'A punch can’t be in the future.');
+  if (input.clockOut.getTime() - input.clockIn.getTime() > 24 * 3_600_000) throw badRequest('A punch can’t be longer than 24 hours.');
+  await advisoryLock(tx, `punch:${input.userId}`);
+  const person = await tx.user.findUnique({ where: { id: input.userId }, select: { id: true, status: true } });
+  if (!person) throw notFound('Person');
+  if (!(await tx.facility.findUnique({ where: { id: input.facilityId }, select: { id: true } }))) throw notFound('Facility');
+  let positionId = input.positionId ?? null;
+  if (input.shiftId) {
+    const shift = await tx.shift.findUnique({ where: { id: input.shiftId } });
+    if (!shift) throw notFound('Shift');
+    if (shift.userId !== input.userId) throw badRequest('This shift isn’t theirs.');
+    positionId = shift.positionId;
+  }
+  if (!positionId) throw badRequest('Choose the position they worked.');
+  if (!(await tx.userPosition.findFirst({ where: { userId: input.userId, positionId }, select: { userId: true } }))) throw badRequest('They don’t hold this position.');
+  await assertNoOverlap(tx, input.userId, input.clockIn, input.clockOut);
+
+  await announceChange(tx, input.tenantId, 'deck');
+  const punch = await tx.timePunch.create({
+    data: {
+      tenantId: input.tenantId,
+      userId: input.userId,
+      facilityId: input.facilityId,
+      shiftId: input.shiftId ?? null,
+      positionId,
+      clockIn: input.clockIn,
+      clockOut: input.clockOut,
+      locationStatus: 'NO_LOCATION',
+      status: 'PENDING',
+      varianceReason: reason,
+    },
+  });
+  for (const field of ['clockIn', 'clockOut'] as const) {
+    await tx.timePunchEdit.create({ data: { tenantId: input.tenantId, punchId: punch.id, editedById: input.actorId, field, oldValue: null, newValue: punch[field]!.toISOString(), reason } });
+  }
+  await audit(tx, { tenantId: input.tenantId, actorId: input.actorId, action: 'punch.add', entity: 'TimePunch', entityId: punch.id, after: { userId: input.userId, clockIn: punch.clockIn, clockOut: punch.clockOut, positionId, facilityId: input.facilityId, reason } });
+  return punch;
 }

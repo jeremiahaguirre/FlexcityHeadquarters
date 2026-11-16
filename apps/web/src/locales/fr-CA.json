@@ -383,7 +383,9 @@
     "kiosk_tablet_locked": "La tablette « {{kiosk}} » est en pause {{minutes}} minutes après de nombreux NIP erronés.",
     "release_scheduled": "À venir le {{whenFr}} : {{titleFr}}. Voyez ce qui change pour votre organisation.",
     "maintenance_scheduled": "Maintenance prévue le {{whenFr}} : {{messageFr}}",
-    "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}"
+    "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}",
+    "punch_added": "Un superviseur a ajouté du temps pour vous : {{reason}}",
+    "punch_corrected": "Un superviseur a corrigé un de vos pointages : {{reason}}"
   },
   "today": {
     "morning": "Bonjour",
@@ -577,7 +579,9 @@
     "STAGE_CLOSED": "Cette étape est déjà faite, annulée ou retirée.",
     "NOTHING_TO_UNDO": "Rien de cette version n’est programmé ni appliqué.",
     "MAINTENANCE_PAST": "Cette période est déjà terminée.",
-    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée."
+    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
+    "OWN_PUNCH": "Vous ne pouvez pas réviser ni modifier vos propres pointages. Un autre superviseur doit le faire.",
+    "OWN_REQUEST": "Vous ne pouvez pas trancher votre propre demande. Un autre superviseur doit le faire."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -985,7 +989,30 @@
     },
     "whose": "Demandes de qui",
     "myTeam": "Mon équipe",
-    "everyone": "Tous ceux que je peux approuver"
+    "everyone": "Tous ceux que je peux approuver",
+    "punchView": "Quels pointages",
+    "punchViews": {
+      "PENDING": "En attente de révision",
+      "APPROVED": "Approuvés"
+    },
+    "addPunch": "Ajouter un pointage",
+    "addPunchHelp": "Pour du temps travaillé qui n’a pas pu être pointé. Il attend ici sa révision comme tout pointage, et la personne en est informée.",
+    "noApprovedPunches": "Aucun pointage approuvé",
+    "noApprovedPunchesHelp": "Les pointages approuvés récemment s’affichent ici, pour que vous puissiez corriger une heure.",
+    "editTimes": "Modifier les heures",
+    "editTimesFor": "Modifier les heures de {{name}}",
+    "addClockOut": "Ajouter la sortie",
+    "stillOpen": "Toujours pointé",
+    "punchCorrected": "Enregistré. {{name}} a été informé du changement.",
+    "punchAdded": "Pointage ajouté. Il attend sa révision.",
+    "facilityTime": "Les heures sont dans le fuseau horaire de l’installation.",
+    "clockIn": "Entrée",
+    "clockOut": "Sortie",
+    "correctionHint": "La personne voit cette raison. Elle est conservée avec l’historique du pointage.",
+    "reapprovalNote": "Ce pointage était approuvé. Après un changement, il retourne en révision par quelqu’un d’autre.",
+    "person": "Personne",
+    "facility": "Installation",
+    "position": "Poste"
   },
   "certs": {
     "title": "Certifications",

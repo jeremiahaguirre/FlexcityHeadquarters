@@ -107,7 +107,8 @@ attendanceRouter.get(
     const rows = await withTenant(a.tenantId, async (tx) => {
       const team = q.team ? await teamOf(tx, a.userId) : null;
       const list = await tx.timeOffRequest.findMany({
-        where: { status: q.status, user: peopleWhere(a.scope), ...(team ? { userId: { in: team } } : {}) },
+        // Never their own request: someone else decides it.
+        where: { status: q.status, user: peopleWhere(a.scope), userId: team ? { in: team, not: a.userId } : { not: a.userId } },
         include: { user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { startsAt: 'asc' },
         take: 200,
@@ -194,7 +195,8 @@ attendanceRouter.get(
           user: peopleWhere(a.scope),
           ...(a.scope?.facilityIds.length ? { facilityId: { in: a.scope.facilityIds } } : {}),
           // "My team" only narrows what the permission already shows.
-          ...(q.team ? { userId: { in: await teamOf(tx, a.userId) } } : {}),
+          // Never their own punches: someone else reviews them.
+          userId: q.team ? { in: await teamOf(tx, a.userId), not: a.userId } : { not: a.userId },
         },
         include: { ...punchInclude, user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { clockIn: 'asc' },

@@ -383,7 +383,9 @@
     "kiosk_tablet_locked": "The kiosk “{{kiosk}}” paused for {{minutes}} minutes after many wrong PINs.",
     "release_scheduled": "Coming {{whenEn}}: {{titleEn}}. See what changes for your organization.",
     "maintenance_scheduled": "Planned maintenance {{whenEn}}: {{messageEn}}",
-    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}"
+    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}",
+    "punch_added": "A supervisor added time for you: {{reason}}",
+    "punch_corrected": "A supervisor corrected one of your punches: {{reason}}"
   },
   "today": {
     "morning": "Good morning",
@@ -577,7 +579,9 @@
     "STAGE_CLOSED": "This stage is already done, undone or cancelled.",
     "NOTHING_TO_UNDO": "Nothing of this release is scheduled or applied.",
     "MAINTENANCE_PAST": "That window is already over.",
-    "MAINTENANCE_CLOSED": "That window is over or cancelled."
+    "MAINTENANCE_CLOSED": "That window is over or cancelled.",
+    "OWN_PUNCH": "You can’t review or change your own punches. Another supervisor has to.",
+    "OWN_REQUEST": "You can’t decide your own request. Another supervisor has to."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -985,7 +989,30 @@
     },
     "whose": "Whose requests",
     "myTeam": "My team",
-    "everyone": "Everyone I can approve"
+    "everyone": "Everyone I can approve",
+    "punchView": "Which punches",
+    "punchViews": {
+      "PENDING": "Waiting for review",
+      "APPROVED": "Approved"
+    },
+    "addPunch": "Add a punch",
+    "addPunchHelp": "For time someone worked but couldn’t punch. It waits here for review like any punch, and they’re told.",
+    "noApprovedPunches": "No approved punches",
+    "noApprovedPunchesHelp": "Approved punches from the last while show here, so you can correct a time.",
+    "editTimes": "Edit times",
+    "editTimesFor": "Edit times for {{name}}",
+    "addClockOut": "Add clock-out",
+    "stillOpen": "Still clocked in",
+    "punchCorrected": "Saved. {{name}} was told about the change.",
+    "punchAdded": "Punch added. It’s waiting for review.",
+    "facilityTime": "Times are in the facility’s time zone.",
+    "clockIn": "Clock-in",
+    "clockOut": "Clock-out",
+    "correctionHint": "The person sees this reason. It’s kept with the punch’s history.",
+    "reapprovalNote": "This punch was approved. After a change it goes back for review by someone else.",
+    "person": "Person",
+    "facility": "Facility",
+    "position": "Position"
   },
   "certs": {
     "title": "Certifications",

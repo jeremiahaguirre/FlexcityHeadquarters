@@ -5,7 +5,7 @@
  */
 import type { PunchLocationStatus } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { badRequest } from '../../lib/errors.js';
+import { HttpError, badRequest } from '../../lib/errors.js';
 import { OFFLINE_RULES } from './punches.js';
 
 export interface VarianceInput {
@@ -55,7 +55,7 @@ export async function decidePunches(
   const open = punches.filter((p) => !p.clockOut);
   if (decision === 'APPROVE' && open.length) throw badRequest('Punches without a clock-out cannot be approved. Fix the time first.');
   const own = punches.filter((p) => p.userId === actor.userId);
-  if (own.length) throw badRequest('You cannot review your own punches.');
+  if (own.length) throw new HttpError(403, 'OWN_PUNCH', 'You can’t review your own punches. Another supervisor has to.');
 
   const status = decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
   await tx.timePunch.updateMany({
