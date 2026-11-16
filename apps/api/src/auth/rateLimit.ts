@@ -35,7 +35,6 @@ export async function databaseAllow(key: string, limit: number, windowMs: number
     const count = await tx.rateLimitHit.count({ where: { key, at: { gt: since } } });
     if (count >= limit) return false;
     await tx.rateLimitHit.create({ data: { key, at: now } });
-    if (Math.random() < 0.01) await tx.rateLimitHit.deleteMany({ where: { at: { lt: new Date(now.getTime() - 86_400_000) } } });
     return true;
   }, waitLikeRequests());
 }
@@ -47,6 +46,24 @@ export async function databaseAllow(key: string, limit: number, windowMs: number
  * beside them went through.
  */
 const waitLikeRequests = () => ({ maxWait: config().DB_POOL_TIMEOUT_S * 1000 });
+
+/** Hits are kept this long: longer than any limiter's window. */
+export const HIT_RETENTION_MS = 86_400_000;
+
+/**
+ * Deletes hits older than HIT_RETENTION_MS, `batch` rows per statement, so no statement holds
+ * locks for long. Run by the worker (hourly); requests used to do this inline, scanning the whole
+ * table inside a sign-in (ARCHITECTURE-REVIEW A25). Uses the index on "at". Returns rows deleted.
+ */
+export async function purgeRateLimitHits(now = new Date(), batch = 5_000): Promise<number> {
+  const before = new Date(now.getTime() - HIT_RETENTION_MS);
+  let total = 0;
+  for (;;) {
+    const n = await db().$executeRaw`DELETE FROM "RateLimitHit" WHERE id IN (SELECT id FROM "RateLimitHit" WHERE at < ${before} ORDER BY at LIMIT ${batch})`;
+    total += n;
+    if (n < batch) return total;
+  }
+}
 
 const shared = () => process.env.RATE_LIMIT_STORE === 'database' || (process.env.RATE_LIMIT_STORE !== 'memory' && (config().NODE_ENV === 'production' || cluster.isWorker));
 
@@ -205,7 +222,6 @@ export async function databaseConsume(key: string, limit: number, windowMs: numb
     const resetSeconds = Math.max(1, Math.ceil(((oldest ? oldest.at.getTime() + windowMs : now.getTime() + windowMs) - now.getTime()) / 1000));
     if (used >= limit) return { allowed: false, limit, remaining: 0, resetSeconds };
     await tx.rateLimitHit.create({ data: { key, at: now } });
-    if (Math.random() < 0.01) await tx.rateLimitHit.deleteMany({ where: { at: { lt: new Date(now.getTime() - 86_400_000) } } });
     return { allowed: true, limit, remaining: limit - used - 1, resetSeconds };
   }, waitLikeRequests());
 }
