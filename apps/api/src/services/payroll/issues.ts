@@ -28,6 +28,7 @@ const EN: Record<string, (p: Record<string, string | number>) => string> = {
   NO_SIN: (p) => `${p.name} has no SIN on file; it’s needed for their T4.`,
   PUNCHES_PENDING: (p) => `${p.count} punch(es) in or near this period are still pending approval and were excluded.`,
   PUNCHES_OPEN: (p) => `${p.count} punch(es) have no clock-out and were excluded.`,
+  LEAVE_NO_RATE: (p) => `${p.name} has no pay rate for ${p.date}, so their ${p.leave} wasn't paid on this run. Add a rate and run it again.`,
   STAT_PAY_DATES: (p) => `Statutory holiday pay for ${p.province} (${p.dates}) is not automated; add it manually.`,
   STAT_SUBSTITUTE_DAY: (p) => `${p.name}: ${p.holiday} (${p.date}) fell on their day off. Their holiday pay is on this run; give them another day off for it (${p.province} rule).`,
   NO_HIRE_DATE: (p) => `${p.name} has no hire date; holiday pay eligibility assumed.`,

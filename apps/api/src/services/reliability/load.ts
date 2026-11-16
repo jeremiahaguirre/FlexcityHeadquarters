@@ -48,7 +48,7 @@ export async function loadScoreInputs(tx: Tx, userIds: string[] | null, policy: 
   const credits = policy.mode !== 'RESET';
   const [events, leave, punches, notes] = await Promise.all([
     tx.reliabilityEvent.findMany({ where: { ...who, occurredAt: { gte: since, lte: now }, ...(onlyBy ? { recordedById: onlyBy } : {}) }, select: { id: true, userId: true, type: true, occurredAt: true, excludedReason: true, sourceId: true } }),
-    tx.timeOffRequest.findMany({ where: { ...who, endsAt: { gte: since } }, select: { userId: true, type: true, status: true, startsAt: true, endsAt: true } }),
+    tx.timeOffRequest.findMany({ where: { ...who, endsAt: { gte: since } }, select: { userId: true, type: true, status: true, startsAt: true, endsAt: true, leaveType: { select: { protectedLeave: true } } } }),
     credits && !onlyBy
       ? tx.timePunch.findMany({ where: { ...who, clockIn: { gte: since, lte: now }, clockOut: { not: null }, status: { not: 'REJECTED' } }, select: { id: true, userId: true, clockIn: true } })
       : Promise.resolve([] as Array<{ id: string; userId: string; clockIn: Date }>),
@@ -64,7 +64,7 @@ export async function loadScoreInputs(tx: Tx, userIds: string[] | null, policy: 
   };
   for (const id of userIds ?? []) of(id);
   for (const e of events) of(e.userId).events.push(e);
-  for (const l of leave) of(l.userId).leave.push(l);
+  for (const { leaveType, ...l } of leave) of(l.userId).leave.push({ ...l, protectedLeave: leaveType?.protectedLeave ?? false });
   for (const p of punches) of(p.userId).shifts.push({ id: p.id, at: p.clockIn });
   for (const n of notes) of(n.userId).notes.push(n);
   return out;

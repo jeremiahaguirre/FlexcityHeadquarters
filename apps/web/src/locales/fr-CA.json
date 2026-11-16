@@ -577,7 +577,15 @@
     "STAGE_CLOSED": "Cette étape est déjà faite, annulée ou retirée.",
     "NOTHING_TO_UNDO": "Rien de cette version n’est programmé ni appliqué.",
     "MAINTENANCE_PAST": "Cette période est déjà terminée.",
-    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée."
+    "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
+    "LEAVE_TYPE_UNKNOWN": "Ce type de congé n’est pas offert ici.",
+    "LEAVE_TYPE_ARCHIVED": "Ce type de congé n’est plus offert.",
+    "LEAVE_TYPE_SYSTEM": "Un type de congé intégré garde son fonctionnement : changez seulement ses noms, son code de paie ou son ordre.",
+    "LEAVE_TYPE_NO_BALANCE": "Ce type de congé n’a pas de solde.",
+    "LEAVE_CHAIN_REPEATS": "Chaque approbateur figure une seule fois dans la chaîne.",
+    "LEAVE_STEP_NOT_YOURS": "Cette demande attend l’approbation de quelqu’un d’autre.",
+    "CARRYOVER_OVER_LIMIT": "C’est plus de report que ce type de congé ne permet.",
+    "TOO_MANY_LEAVE_TYPES": "Une organisation peut ajouter jusqu’à 40 types de congé."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -985,7 +993,8 @@
     },
     "whose": "Demandes de qui",
     "myTeam": "Mon équipe",
-    "everyone": "Tous ceux que je peux approuver"
+    "everyone": "Tous ceux que je peux approuver",
+    "chainStep": "Étape {{step}} de {{of}} : {{who}}"
   },
   "certs": {
     "title": "Certifications",
@@ -1223,7 +1232,8 @@
       "CALLBACK_PAY": "Minimum de rappel",
       "REPORTING_PAY": "Paie minimale de rappel au travail",
       "SCHEDULE_CHANGE_PREMIUM": "Prime pour changement d’horaire tardif",
-      "STANDBY_PAY": "Indemnité de disponibilité (garde)"
+      "STANDBY_PAY": "Indemnité de disponibilité (garde)",
+      "LEAVE_PAY": "Congé payé (types de congé de votre organisation)"
     },
     "d": {
       "cpp": "Cotisations au RPC",
@@ -1683,7 +1693,8 @@
       "CALLBACK_PAY": "Minimum de rappel",
       "REPORTING_PAY": "Paie minimale de rappel au travail",
       "SCHEDULE_CHANGE_PREMIUM": "Prime pour changement d’horaire tardif",
-      "STANDBY_PAY": "Indemnité de disponibilité (garde)"
+      "STANDBY_PAY": "Indemnité de disponibilité (garde)",
+      "LEAVE_PAY": "Congé payé (types de congé de votre organisation)"
     },
     "calendar": "Calendrier scolaire",
     "calendarHelp": "Les jeunes ne peuvent pas travailler pendant les heures de classe les jours d’école. Ajoutez les périodes scolaires et les congés pour que les règles sachent quels jours comptent.",
@@ -5034,7 +5045,8 @@
     "LIEU_SHORT": "{{name}} prend ou se fait payer plus de temps accumulé qu’il n’en a ({{hours}} heures). Vérifiez ses congés compensatoires et ses paiements.",
     "LIEU_NO_RATE": "{{name}} a des congés compensatoires à payer mais aucun taux horaire. Ajoutez son taux de rémunération.",
     "LIEU_EXPIRED": "{{name}} a {{hours}} heures supplémentaires accumulées depuis plus de {{months}} mois. Planifiez-les en congé ou payez-les.",
-    "LIEU_OWED": "{{name}} quitte avec {{hours}} heures supplémentaires accumulées. Payez-les sur sa dernière paie."
+    "LIEU_OWED": "{{name}} quitte avec {{hours}} heures supplémentaires accumulées. Payez-les sur sa dernière paie.",
+    "LEAVE_NO_RATE": "{{name}} n’a pas de taux de salaire pour le {{date}}; son {{leave}} n’a donc pas été payé dans cette paie. Ajoutez un taux et relancez-la."
   },
   "documents": {
     "title": "Documents",
@@ -8450,5 +8462,45 @@
       "ended": "Terminée",
       "cancelled": "Annulée"
     }
+  },
+  "leaveTypes": {
+    "title": "Types de congé",
+    "help": "Ce que les gens peuvent demander. Les types intégrés fonctionnent comme toujours. Ajoutez les vôtres, comme le deuil, le congé syndical ou la fonction de juré, avec des noms en anglais et en français.",
+    "add": "Ajouter un type de congé",
+    "addTitle": "Ajouter un type de congé",
+    "editTitle": "Modifier un type de congé",
+    "edit": "Modifier {{name}}",
+    "saved": "Enregistré.",
+    "builtIn": "Intégré",
+    "builtInHelp": "Un type intégré garde son fonctionnement. Vous pouvez changer ses noms, son code de paie et son ordre.",
+    "archived": "Archivé",
+    "name": "Nom (anglais)",
+    "nameFr": "Nom (français)",
+    "paid": "Payé",
+    "unpaid": "Non payé",
+    "balance": "A un solde",
+    "yearly": "{{hours}} h par année",
+    "protected": "Ne peut être refusé sans motif",
+    "paidLabel": "Payé : les heures approuvées sont payées dans les paies et l’exportation de paie",
+    "balanceLabel": "A un solde dans les soldes de congé",
+    "yearlyHours": "Heures par année",
+    "yearlyHoursHint": "Le droit de chaque personne, sauf si les RH en fixent un autre.",
+    "carryOver": "Heures reportées au maximum",
+    "carryOverHint": "Laissez vide pour aucune limite.",
+    "protectedLabel": "Protégé : un refus exige un motif écrit",
+    "chainLabel": "Qui approuve",
+    "chains": {
+      "default": "Son gestionnaire (comme pour les autres congés)",
+      "hr": "Les RH",
+      "managerHr": "Son gestionnaire, puis les RH"
+    },
+    "steps": {
+      "MANAGER": "son gestionnaire",
+      "HR": "les RH"
+    },
+    "payCode": "Code d’exportation de paie (facultatif)",
+    "payCodeHint": "Le code de gains de votre fournisseur de paie pour ces heures. Vide : le code Congé payé des codes de paie.",
+    "payCodeShown": "code {{code}}",
+    "archiveLabel": "Archivé : plus offert; les demandes passées le gardent"
   }
 }

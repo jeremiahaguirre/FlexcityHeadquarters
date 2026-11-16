@@ -87,7 +87,7 @@ export function buildPayrollCsv(employees: ExportEmployee[], codes: PayCodeLooku
     if (!e.employeeNumber) problems.push(issue('NO_EMPLOYEE_NUMBER', { name: e.displayName }));
     if (!e.costCenter) problems.push(issue('NO_COST_CENTRE', { name: e.displayName }));
     for (const l of e.lines) {
-      const code = codes.resolve(l.code, l.positionId);
+      const code = l.exportCode ?? codes.resolve(l.code, l.positionId);
       if (!code) {
         problems.push(issue('NO_PAY_CODE', { name: e.displayName, code: l.code }));
         continue;

@@ -10,8 +10,12 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatTile } from '@/components/ui/StatTile';
 import { api } from '@/lib/api';
 import { formatHours } from '@/lib/format';
-import { LEAVE_TYPES, type LeaveBalance, type LeaveType, type PersonBalances } from '@/lib/hr';
+import { type LeaveBalance, type PersonBalances } from '@/lib/hr';
+import { leaveLabel } from '@/lib/leaveTypes';
 import { useAction, useQuery } from '@/lib/useQuery';
+
+/** A balance's kind of leave: built-in kinds by the app's words, the organization's by their names. */
+const balanceLabel = (t: (k: string) => string, lng: string, b: LeaveBalance) => (b.system === false ? leaveLabel(t, lng, { system: null, code: b.type, name: b.name ?? b.type, nameFr: b.nameFr ?? b.name ?? b.type }) : t(`timeOff.types.${b.type}`));
 
 /** One person's balances as small tiles: remaining of entitled, with used and pending. */
 export function BalanceTiles({ types }: { types: LeaveBalance[] }) {
@@ -25,7 +29,7 @@ export function BalanceTiles({ types }: { types: LeaveBalance[] }) {
         const pct = total ? Math.min(100, Math.round(((b.used + b.pending) / total) * 100)) : 0;
         return (
           <li key={b.type}>
-            <StatTile surface="inset" label={t(`timeOff.types.${b.type}`)} value={b.remaining != null ? t('leave.hoursLeft', { hours: formatHours(b.remaining, lng) }) : t('leave.hoursUsed', { hours: formatHours(b.used, lng) })}>
+            <StatTile surface="inset" label={balanceLabel(t, lng, b)} value={b.remaining != null ? t('leave.hoursLeft', { hours: formatHours(b.remaining, lng) }) : t('leave.hoursUsed', { hours: formatHours(b.used, lng) })}>
             {b.entitled != null ? (
               <>
                 <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true"><div className="fh-bar h-full rounded-full bg-brand" style={{ width: `${pct}%` }} /></div>
@@ -59,7 +63,7 @@ export function LeavePanel({ canEdit }: { canEdit: boolean }) {
   const lng = i18n.language;
   const [year, setYear] = useState(new Date().getFullYear());
   const data = useQuery<{ year: number; people: PersonBalances[] }>(`/api/leave/balances?year=${year}`);
-  const [editing, setEditing] = useState<{ person: PersonBalances; type: LeaveType } | null>(null);
+  const [editing, setEditing] = useState<{ person: PersonBalances; type: string } | null>(null);
   const { run, busy } = useAction();
   const [q, setQ] = useState('');
 
@@ -67,7 +71,7 @@ export function LeavePanel({ canEdit }: { canEdit: boolean }) {
     e.preventDefault();
     if (!editing) return;
     const f = new FormData(e.currentTarget);
-    const r = await run('ent', () => api(`/api/users/${editing.person.userId}/leave`, { method: 'PUT', body: { year, type: String(f.get('type')), hours: Number(f.get('hours')), carryover: Number(f.get('carryover') || 0), note: String(f.get('note') || '') || null } }), t('leave.saved'));
+    const r = await run('ent', () => api(`/api/users/${editing.person.userId}/leave`, { method: 'PUT', body: { year, ...(() => { const b = editing.person.types.find((x) => x.type === String(f.get('type'))); return b?.leaveTypeId ? { leaveTypeId: b.leaveTypeId } : { type: String(f.get('type')) }; })(), hours: Number(f.get('hours')), carryover: Number(f.get('carryover') || 0), note: String(f.get('note') || '') || null } }), t('leave.saved'));
     if (r !== undefined) {
       setEditing(null);
       await data.reload();
@@ -105,7 +109,7 @@ export function LeavePanel({ canEdit }: { canEdit: boolean }) {
               </thead>
               <tbody className="divide-y divide-line">
                 {people.map((p) => {
-                  const by = (k: LeaveType) => p.types.find((b) => b.type === k);
+                  const by = (k: string) => p.types.find((b) => b.type === k);
                   const low = (by('VACATION')?.remaining ?? 1) < 0;
                   return (
                     <tr key={p.userId}>
@@ -125,7 +129,7 @@ export function LeavePanel({ canEdit }: { canEdit: boolean }) {
       <Dialog open={!!editing} onClose={() => setEditing(null)} title={editing ? t('leave.setFor', { name: editing.person.name, year }) : ''}>
         {editing ? (
           <form onSubmit={(e) => void save(e)} className="grid gap-3">
-            <Field label={t('leave.type')}>{(p) => <Select {...p} name="type" defaultValue={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value as LeaveType })}>{LEAVE_TYPES.map((k) => <option key={k} value={k}>{t(`timeOff.types.${k}`)}</option>)}</Select>}</Field>
+            <Field label={t('leave.type')}>{(p) => <Select {...p} name="type" defaultValue={editing.type} onChange={(e) => setEditing({ ...editing, type: e.target.value })}>{editing.person.types.map((b) => <option key={b.type} value={b.type}>{balanceLabel(t, lng, b)}</option>)}</Select>}</Field>
             {(() => {
               const b = editing.person.types.find((x) => x.type === editing.type);
               return (

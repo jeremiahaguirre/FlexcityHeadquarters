@@ -82,6 +82,8 @@ export interface ScoreEvent {
 
 export interface ScoreLeave {
   type: TimeOffType;
+  /** The organization's own kind of leave that is protected like sick days (LeaveType.protectedLeave). */
+  protectedLeave?: boolean;
   status: 'PENDING' | 'APPROVED' | 'DENIED' | 'CANCELLED';
   startsAt: Date;
   endsAt: Date;
@@ -165,7 +167,7 @@ export function readPolicy(stored: unknown, timeZone?: string | null): Reliabili
 
 /** Whether an event counts against the person at all (not excused, not on sick days or protected leave). */
 export function protectedAt(leave: ScoreLeave[], t: number): boolean {
-  return leave.some((l) => l.status !== 'DENIED' && l.status !== 'CANCELLED' && PROTECTED.has(l.type) && l.startsAt.getTime() <= t && l.endsAt.getTime() >= t);
+  return leave.some((l) => l.status !== 'DENIED' && l.status !== 'CANCELLED' && (PROTECTED.has(l.type) || l.protectedLeave === true) && l.startsAt.getTime() <= t && l.endsAt.getTime() >= t);
 }
 
 /** Why an event the score doesn't look at no longer counts: the yearly restart, or its age. */
