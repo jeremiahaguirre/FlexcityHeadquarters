@@ -420,16 +420,21 @@ signupRouter.post(
   }),
 );
 
-/** Online sign-ups that still need payment taken (registered, not waitlisted). */
+/**
+ * Registrations that still need payment taken: online sign-ups, and any confirmed spot with no payment on
+ * file, such as a family registered at the desk and moved off the waitlist.
+ */
 signupRouter.get(
   '/online-registrations',
   requirePermission('members.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
-      const list = await tx.lessonEnrollment.findMany({ where: { source: 'ONLINE', status: { not: 'CANCELLED' } }, include: { lessonClass: true }, orderBy: { createdAt: 'desc' }, take: 200 });
-      const paid = await tx.sale.findMany({ where: { enrollmentId: { in: list.map((e) => e.id) }, refundedAt: null }, select: { enrollmentId: true } });
-      return list.map((e) => ({ id: e.id, reference: e.reference, swimmerName: e.swimmerName, householdId: e.householdId, status: e.status, priceCents: e.priceCents, set: e.lessonClass.name, createdAt: e.createdAt, paid: paid.some((p) => p.enrollmentId === e.id) }));
+      const online = await tx.lessonEnrollment.findMany({ where: { source: 'ONLINE', status: { not: 'CANCELLED' } }, include: { lessonClass: true }, orderBy: { createdAt: 'desc' }, take: 200 });
+      const desk = await tx.lessonEnrollment.findMany({ where: { source: { not: 'ONLINE' }, status: 'ENROLLED' }, include: { lessonClass: true }, orderBy: { createdAt: 'desc' }, take: 500 });
+      const paid = new Set((await tx.sale.findMany({ where: { enrollmentId: { in: [...online, ...desk].map((e) => e.id) }, refundedAt: null }, select: { enrollmentId: true } })).map((p) => p.enrollmentId));
+      const list = [...online, ...desk.filter((e) => !paid.has(e.id))].sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime());
+      return list.map((e) => ({ id: e.id, reference: e.reference, source: e.source, swimmerName: e.swimmerName, householdId: e.householdId, status: e.status, priceCents: e.priceCents, set: e.lessonClass.name, createdAt: e.createdAt, paid: paid.has(e.id) }));
     });
     res.json(out);
   }),
