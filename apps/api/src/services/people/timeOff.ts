@@ -14,7 +14,7 @@ import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/
 import { lieuAvailable, lieuPolicy } from '../payroll/lieu.js';
 import { readSettings } from '../payroll/payRuns.js';
 import type { DomainEvent } from '../../lib/events.js';
-import { addDays } from '../../lib/time.js';
+import { addDays, localDate } from '../../lib/time.js';
 import { approversFor } from './reporting.js';
 import { postOffer } from '../shiftboard/offers.js';
 import { leaveHoursFrom, personLeaveTimeZone, scheduledShifts } from './leaveHours.js';
@@ -150,6 +150,24 @@ export async function cancelTimeOff(tx: Tx, userId: string, id: string) {
 }
 
 /**
+ * Leave from `from` to `to` overlaps a regular pay run that was approved or paid (city-wide, or for
+ * one of the person's departments): its leave and banked-time hours are on a pay statement, so it
+ * can't be changed or added after the fact. A correction is a one-time item on the next run.
+ */
+export async function assertLeavePeriodOpen(tx: Tx, userId: string, from: Date, to: Date) {
+  if (to <= from) return;
+  const tz = await personLeaveTimeZone(tx, userId, from);
+  const first = new Date(`${localDate(from, tz)}T00:00:00Z`);
+  const last = new Date(`${localDate(new Date(to.getTime() - 1), tz)}T00:00:00Z`);
+  const departments = (await tx.userPosition.findMany({ where: { userId }, select: { position: { select: { departmentId: true } } } })).map((p) => p.position.departmentId).filter((d): d is string => !!d);
+  const run = await tx.payRun.findFirst({
+    where: { kind: 'REGULAR', status: { in: ['APPROVED', 'PAID'] }, periodStart: { lte: last }, periodEnd: { gte: first }, OR: [{ departmentId: null }, ...(departments.length ? [{ departmentId: { in: departments } }] : [])] },
+    select: { id: true },
+  });
+  if (run) throw conflict('PERIOD_PAID', 'Part of this time off is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.', { payRunId: run.id });
+}
+
+/**
  * A supervisor or HR changes approved leave: ends it early (back a week early) or cancels it
  * (approved by mistake, or reversed). A reason is required; it is audited and the person is told.
  * Shifts the leave released after the new end that nobody has taken go back to the person, and
@@ -174,6 +192,8 @@ export async function reviseTimeOff(
     endsAt = change.endsAt;
   }
   const from = change.action === 'CANCEL' ? r.startsAt : endsAt;
+  // The part that goes away must not be in a pay period already paid.
+  await assertLeavePeriodOpen(tx, r.userId, from, r.endsAt);
   const shifts = await giveBackShifts(tx, r, from);
   // Leave hours for what is left: the shifts it still covers (released ones included), as at approval.
   let kept: ReturnType<typeof leaveHoursFrom> | null = null;

@@ -7,7 +7,7 @@ import { withTenant } from '../lib/db.js';
 import { HttpError, badRequest, forbidden } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localIso } from '../lib/time.js';
-import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff, reviseTimeOff } from '../services/people/timeOff.js';
+import { assertLeavePeriodOpen, cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff, reviseTimeOff } from '../services/people/timeOff.js';
 import type { AuthContext } from '../auth/middleware.js';
 import { decidePunches, punchVariance } from '../services/timeclock/review.js';
 import { teamOf, teamQuery } from '../services/people/reporting.js';
@@ -145,6 +145,7 @@ attendanceRouter.post(
       await assertUserInScope(tx, a, userId);
       const person = await tx.user.findUnique({ where: { id: userId }, select: { status: true } });
       if (!person || person.status !== 'ACTIVE') throw badRequest('They aren’t an active member of staff.');
+      await assertLeavePeriodOpen(tx, userId, body.startsAt, body.endsAt);
       // Recorded, not requested: no "request waiting" notices to approvers.
       const made = await requestTimeOff(tx, a.tenantId, userId, { ...body, note: body.note ?? null });
       const decided = await withEvents(tx, decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, made.request.id, 'APPROVE', body.note ?? null));

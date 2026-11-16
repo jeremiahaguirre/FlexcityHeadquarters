@@ -210,3 +210,25 @@ describe('changing approved time off', () => {
     expect((await call(g.token).post('/api/me/time-off', { type: 'SICK', startsAt: at(-20, 0), endsAt: at(-19, 0) })).body.code).toBe('TIME_OFF_TOO_OLD');
   });
 });
+
+describe('approved time off in a paid pay period', () => {
+  it('can’t be cancelled or shortened there, and can’t be recorded there', async () => {
+    const u = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'PART_TIME', firstName: 'Hal', lastName: 'theta', email: 'hal@theta.test' } });
+    await owner.userPosition.create({ data: { tenantId: t.tenant.id, userId: u.id, positionId: t.position.id } });
+    const supId = (await owner.user.findFirstOrThrow({ where: { email: 'sup@theta.test' } })).id;
+    const leave = await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: u.id, type: 'VACATION', status: 'APPROVED', startsAt: at(-12, 8), endsAt: at(-10, 8) } });
+    const day = at(-11, 20).toISOString().slice(0, 10);
+    const run = await owner.payRun.create({ data: { tenantId: t.tenant.id, periodStart: new Date(`${day}T00:00:00Z`), periodEnd: new Date(`${day}T00:00:00Z`), payDate: new Date(`${day}T00:00:00Z`), periodsPerYear: 26, status: 'PAID', preparedById: supId } });
+    try {
+      const c = await call(sup).post(`/api/time-off/${leave.id}/revise`, { action: 'CANCEL', reason: 'Came back early' });
+      expect(c.status).toBe(409);
+      expect(c.body.code).toBe('PERIOD_PAID');
+      const rec = await call(sup).post(`/api/users/${u.id}/time-off`, { type: 'SICK', startsAt: at(-11, 12), endsAt: at(-11, 20) });
+      expect(rec.body.code).toBe('PERIOD_PAID');
+      await owner.payRun.update({ where: { id: run.id }, data: { status: 'VOID' } });
+      expect((await call(sup).post(`/api/time-off/${leave.id}/revise`, { action: 'CANCEL', reason: 'Came back early' })).status).toBe(200);
+    } finally {
+      await owner.payRun.update({ where: { id: run.id }, data: { status: 'VOID' } });
+    }
+  });
+});
