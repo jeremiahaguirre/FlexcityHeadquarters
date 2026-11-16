@@ -325,10 +325,12 @@ describe('time off', () => {
   });
 
   it('pre-approved only with timeoff:approve, from a maker who approves time off', async () => {
-    const no = await v1(pendingOnlyKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(60), ends_at: at9(61), status: 'approved' });
+    // A Wednesday 60+ days out: 16:00 UTC is Wednesday morning in the facility's zone (Vancouver), so a weekday whatever today is.
+    const wed = 60 + ((3 - day(60).getUTCDay() + 7) % 7);
+    const no = await v1(pendingOnlyKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(wed), ends_at: at9(wed + 1), status: 'approved' });
     expect(no.status).toBe(403);
     expect(no.body).toMatchObject({ code: 'INSUFFICIENT_SCOPE', details: { scope: 'timeoff:approve' } });
-    const ok = await v1(writeKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(60), ends_at: at9(61), status: 'approved' });
+    const ok = await v1(writeKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(wed), ends_at: at9(wed + 1), status: 'approved' });
     expect(ok.status).toBe(201);
     expect(ok.body.status).toBe('approved');
     expect(ok.body.hours).toBe('8.00');
