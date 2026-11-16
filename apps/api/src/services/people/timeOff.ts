@@ -182,7 +182,7 @@ export async function reviseTimeOff(
       where: { status: { not: 'CANCELLED' }, startsAt: { lt: endsAt }, endsAt: { gt: r.startsAt }, OR: [{ id: { in: r.releasedShiftIds } }, { userId: r.userId }] },
       select: { startsAt: true, endsAt: true },
     });
-    kept = leaveHoursFrom({ startsAt: r.startsAt, endsAt }, covered);
+    kept = leaveHoursFrom({ startsAt: r.startsAt, endsAt }, covered, await personLeaveTimeZone(tx, r.userId, r.startsAt));
   }
   await tx.timeOffRequest.update({
     where: { id },
