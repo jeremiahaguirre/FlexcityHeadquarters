@@ -28,7 +28,9 @@ terraform test
 - that regions outside Canada are refused.
 - the firewalls: unique rule priorities, the AI-crawler patterns within AWS limits (and never an ordinary search engine), the site's AI-training opt-out headers.
 
-Commit a lock file generated with registry access: `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64`.
+`.terraform.lock.hcl` is committed and pins the AWS provider's checksums; `terraform init` refuses a provider package that doesn't match. It holds the `linux_amd64` checksum (what CI and the deploy workflow use). Working on another platform, add its checksums once with registry access and commit the result: `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=darwin_amd64`. Dependabot proposes provider updates together with the new lock file.
+
+Container images are scanned on push and, with `ecr_continuous_scanning` (default `true`), re-scanned by Amazon Inspector whenever a new vulnerability is published. Inspector charges per image scanned; `false` keeps only the free scan on push.
 
 ## Crawlers and AI bots
 

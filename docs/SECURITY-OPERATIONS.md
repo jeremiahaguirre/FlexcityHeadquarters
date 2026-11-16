@@ -34,7 +34,8 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
 
 ## Weekly
 
-- Merge Dependabot patch and minor updates after CI passes; schedule majors.
+- Merge Dependabot patch and minor updates after CI passes; schedule majors. This includes the Docker base image, the Terraform provider (with its lock file) and the GitHub Actions commit pins.
+- Review Amazon Inspector findings for the container images (re-scanned continuously, `ecr_continuous_scanning`).
 - Full backup copied to a separate AWS account in `ca-west-1` with S3 Object Lock (compliance mode, 35 days). Confirm the copy landed.
 - Review CI dependency-audit output and the WAF block log.
 
