@@ -54,21 +54,20 @@ async function balances(tx: Tx, tenantId: string, userIds: string[], year: numbe
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
   const kinds = (await leaveTypes(tx, tenantId)).filter((t) => (t.system ? t.system !== 'LIEU' : t.hasBalance));
-  const [users, ents, requests, shifts, zones] = await Promise.all([
+  const [users, ents, requests, shifts] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, hireDate: true } }),
     tx.leaveEntitlement.findMany({ where: { userId: { in: userIds }, year } }),
     tx.timeOffRequest.findMany({ where: { userId: { in: userIds }, startsAt: { lt: end }, endsAt: { gt: start }, status: { in: ['APPROVED', 'PENDING'] } } }),
     scheduledShifts(tx, userIds, start, end),
-    // Each person's zone (one query), by their hours before the year's end, or before now in the current year.
-    leaveTimeZones(tx, userIds, new Date(Math.min(end.getTime(), Date.now()))),
   ]);
+  const zoneOf = await leaveTimeZones(tx, requests); // one query, the zone each request is counted in
   // Approved: what was charged at approval (older requests: the weekday count). Pending: their schedule as it stands.
   const hoursOf = (r: (typeof requests)[number]) =>
     r.status === 'APPROVED'
       ? r.chargedHours != null
         ? Number(r.chargedHours)
-        : weekdayLeaveHours(r.startsAt, r.endsAt, zones.get(r.userId)!)
-      : leaveHoursFrom(r, shifts.filter((s) => s.userId === r.userId), zones.get(r.userId)!).hours;
+        : weekdayLeaveHours(r.startsAt, r.endsAt, zoneOf(r))
+      : leaveHoursFrom(r, shifts.filter((s) => s.userId === r.userId), zoneOf(r)).hours;
   return users.map((u) => ({
     userId: u.id,
     name: `${u.firstName} ${u.lastName}`,
