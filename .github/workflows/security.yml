@@ -51,7 +51,8 @@ jobs:
             echo "Possible secret in the repository"; exit 1
           fi
 
-  # Every commit in the history, test files and docs included, with gitleaks' full rule set (SEC-73).
+  # Every commit in the tested history (on a pull request, the merge with main), test files and docs
+  # included, with gitleaks' full rule set (SEC-73). Other branches are scanned by their own runs.
   # Known fixtures are allowlisted in .gitleaks.toml, each by exact file and value, never by directory.
   secrets-history:
     runs-on: ubuntu-latest
@@ -71,7 +72,7 @@ jobs:
       # --redact replaces every secret value with REDACTED; --verbose prints each finding's rule,
       # file, line and commit so it can be classified. Known fixtures: .gitleaks.toml.
       - name: Scan the full history
-        run: ./gitleaks git --config .gitleaks.toml --redact --verbose --no-banner --exit-code 1 .
+        run: ./gitleaks git --config .gitleaks.toml --log-opts=HEAD --redact --verbose --no-banner --exit-code 1 .
 
   dependency-review:
     if: github.event_name == 'pull_request'
