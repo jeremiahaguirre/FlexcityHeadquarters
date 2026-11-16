@@ -8,15 +8,24 @@ import { demoPlatformApi, demoPlatformFile } from './demoApi';
 import { CLIENT_HEADERS, markOutdated, noteServerVersion } from './appUpdate';
 
 /**
+ * The headers that show the API a request comes from the console's own pages: x-fh-platform, and
+ * the double-submit CSRF token (the readable fh_csrf cookie set at sign-in) echoed in x-fh-csrf.
+ */
+export function platformHeaders(): Record<string, string> {
+  const m = typeof document === 'undefined' ? null : /(?:^|;\s*)fh_csrf=([^;]+)/.exec(document.cookie);
+  return { 'x-fh-platform': '1', ...(m ? { 'x-fh-csrf': decodeURIComponent(m[1]!) } : {}) };
+}
+
+/**
  * FH Dev console client. The session is an HTTP-only cookie the browser sends
- * by itself; the x-fh-platform header is the API's guard against cross-site requests.
+ * by itself; platformHeaders() are the API's guard against cross-site requests.
  */
 export async function papi<T>(path: string, init: { method?: string; body?: unknown; steppedUp?: boolean } = {}): Promise<T> {
   if (DEMO) return demoPlatformApi<T>(path, init);
   const res = await fetch(`/api/platform${path}`, {
     method: init.method ?? 'GET',
     credentials: 'include',
-    headers: { ...CLIENT_HEADERS, 'x-fh-platform': '1', ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}) },
+    headers: { ...CLIENT_HEADERS, ...platformHeaders(), ...(init.body !== undefined ? { 'content-type': 'application/json' } : {}) },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
   noteServerVersion(res.headers.get('x-fh-version'));
@@ -100,7 +109,7 @@ export interface ImportPreview {
 export async function pdownload(path: string, fallbackName: string): Promise<void> {
   // The static demo has no files to hand out: it saves a short note saying so instead.
   if (DEMO) return saveFile(demoPlatformFile(fallbackName), fallbackName.replace(/\.(pdf|zip)$/, '.txt'));
-  const res = await fetch(`/api/platform${path}`, { credentials: 'include', headers: { ...CLIENT_HEADERS, 'x-fh-platform': '1' } });
+  const res = await fetch(`/api/platform${path}`, { credentials: 'include', headers: { ...CLIENT_HEADERS, ...platformHeaders() } });
   if (!res.ok) {
     const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string };
     throw new ApiError(res.status, b.code ?? 'ERROR', b.message ?? res.statusText);

@@ -72,10 +72,30 @@ export async function endPlatformSession(raw: string | undefined): Promise<void>
  */
 export function platformCsrfProtection(req: Request, _res: Response, next: NextFunction) {
   const site = req.header('sec-fetch-site');
-  if (req.header(PLATFORM_HEADER) !== '1' || (site && site !== 'same-origin' && site !== 'none')) {
-    return next(new HttpError(403, 'CSRF_REFUSED', 'This request didn’t come from the Dev console.'));
-  }
+  const refused = () => next(new HttpError(403, 'CSRF_REFUSED', 'This request didn’t come from the Dev console.'));
+  if (req.header(PLATFORM_HEADER) !== '1' || (site && site !== 'same-origin' && site !== 'none')) return refused();
+  // Double-submit token: a browser signed in to the console holds fh_csrf, which only the console's
+  // own pages can read and echo in x-fh-csrf. A request carrying the cookie without the matching
+  // header (another site riding on the browser's cookies) is refused. Clients without the cookie
+  // (scripts, the test suite) rely on the header and the same-site cookie rules above.
+  const csrfCookie: string | undefined = req.cookies?.fh_csrf;
+  if (csrfCookie !== undefined && csrfCookie !== req.header(PLATFORM_CSRF_HEADER)) return refused();
   next();
+}
+
+/** The double-submit CSRF token (platformCsrfProtection): readable by the console's pages, never sent cross-site. */
+export const PLATFORM_CSRF_COOKIE = 'fh_csrf';
+export const PLATFORM_CSRF_HEADER = 'x-fh-csrf';
+
+/** Signs the browser in: the HTTP-only session cookie, then a fresh CSRF token for the console's pages to echo. */
+export function setPlatformCookies(res: Response, session: string) {
+  res.cookie(PLATFORM_COOKIE, session, platformCookieOpts());
+  res.cookie(PLATFORM_CSRF_COOKIE, randomBytes(24).toString('base64url'), { ...platformCookieOpts(), httpOnly: false, path: '/' });
+}
+
+export function clearPlatformCookies(res: Response) {
+  res.clearCookie(PLATFORM_COOKIE, { path: '/api/platform' });
+  res.clearCookie(PLATFORM_CSRF_COOKIE, { path: '/' });
 }
 
 /**

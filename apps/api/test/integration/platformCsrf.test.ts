@@ -63,6 +63,27 @@ describe('Dev console CSRF defence', () => {
     expect((await request(server).get('/api/platform/tenants').set('x-fh-platform', '1').set('Cookie', cookie)).status).toBe(200);
   });
 
+  it('a browser signed in holds a readable CSRF token, and must echo it (double submit)', async () => {
+    const login = await request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').send({ email, password: 'right password!' });
+    const all = login.headers['set-cookie'] as unknown as string[];
+    const session = all.find((c) => c.startsWith('fh_platform='))!.split(';')[0]!;
+    const csrfCookie = all.find((c) => c.startsWith('fh_csrf='))!;
+    expect(csrfCookie).toMatch(/SameSite=Strict/i);
+    expect(csrfCookie).not.toMatch(/HttpOnly/i);
+    expect(csrfCookie).toMatch(/Path=\//i);
+    const token = csrfCookie.split(';')[0]!.slice('fh_csrf='.length);
+    const both = `${session}; fh_csrf=${token}`;
+    // The cookies alone, or a wrong token, are refused; the right token is accepted.
+    const none = await request(server).get('/api/platform/tenants').set('x-fh-platform', '1').set('Cookie', both);
+    expect([none.status, none.body.code]).toEqual([403, 'CSRF_REFUSED']);
+    expect((await request(server).get('/api/platform/tenants').set('x-fh-platform', '1').set('x-fh-csrf', 'guess').set('Cookie', both)).status).toBe(403);
+    expect((await request(server).get('/api/platform/tenants').set('x-fh-platform', '1').set('x-fh-csrf', token).set('Cookie', both)).status).toBe(200);
+    // Signing out clears both.
+    const out = await request(server).post('/api/platform/auth/logout').set('x-fh-platform', '1').set('x-fh-csrf', token).set('Cookie', both).send({});
+    expect(out.status).toBe(204);
+    expect(String(out.headers['set-cookie'])).toMatch(/fh_csrf=;/);
+  });
+
   it('answers no CORS preflight, so another origin’s script can’t add the header', async () => {
     const r = await request(server).options('/api/platform/tenants').set('Origin', 'https://evil.example').set('Access-Control-Request-Method', 'POST').set('Access-Control-Request-Headers', 'x-fh-platform');
     expect(r.headers['access-control-allow-origin']).toBeUndefined();
