@@ -50,11 +50,6 @@ const at9 = (n: number) => {
   const d = day(n);
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 16)).toISOString();
 };
-/** The first day from `n` on that starts a Monday-to-Thursday, so a one-day request always counts as one working day (8 h). */
-const midweek = (n: number) => {
-  while (![1, 2, 3, 4].includes(day(n).getUTCDay())) n += 1;
-  return n;
-};
 const outbox = (type: string) => owner.eventOutbox.findMany({ where: { tenantId: a.tenant.id, type } });
 
 beforeAll(async () => {
@@ -330,12 +325,12 @@ describe('time off', () => {
   });
 
   it('pre-approved only with timeoff:approve, from a maker who approves time off', async () => {
-    // A weekday, whatever day the suite runs: weekend days count no leave hours.
-    const d = midweek(60);
-    const no = await v1(pendingOnlyKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(d), ends_at: at9(d + 1), status: 'approved' });
+    // A Wednesday 60+ days out: 16:00 UTC is Wednesday morning in the facility's zone (Vancouver), so a weekday whatever today is.
+    const wed = 60 + ((3 - day(60).getUTCDay() + 7) % 7);
+    const no = await v1(pendingOnlyKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(wed), ends_at: at9(wed + 1), status: 'approved' });
     expect(no.status).toBe(403);
     expect(no.body).toMatchObject({ code: 'INSUFFICIENT_SCOPE', details: { scope: 'timeoff:approve' } });
-    const ok = await v1(writeKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(d), ends_at: at9(d + 1), status: 'approved' });
+    const ok = await v1(writeKey).post('/time-off', { person_id: a.users[1]!.id, type: 'vacation', starts_at: at9(wed), ends_at: at9(wed + 1), status: 'approved' });
     expect(ok.status).toBe(201);
     expect(ok.body.status).toBe('approved');
     expect(ok.body.hours).toBe('8.00');
