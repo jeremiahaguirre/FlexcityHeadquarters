@@ -5,17 +5,22 @@ import { statHolidays } from '../../src/services/payroll/statHolidays.js';
 import { holidayWeekdays, leaveHoursOff } from '../../src/services/people/leaveHours.js';
 
 describe('leave on holidays', () => {
-  const at = (iso: string) => new Date(`${iso}T08:00:00Z`);
-  it('the weekday fallback leaves out holidays and closure days; scheduled shifts are charged as they are', () => {
+  const VAN = 'America/Vancouver';
+  // 08:00 in Vancouver (16:00 UTC): a day read in UTC 12 hours in would be the next day.
+  const at = (iso: string) => new Date(`${iso}T16:00:00Z`);
+  it('the weekday fallback leaves out holidays and closure days, each day read in the person’s zone; scheduled shifts are charged as they are', () => {
     const week = { startsAt: at('2030-03-11'), endsAt: at('2030-03-16') };
     const off = new Set(['2030-03-12', '2030-03-14', '2030-03-16']);
-    expect(holidayWeekdays(week.startsAt, week.endsAt, off)).toBe(2);
-    expect(leaveHoursOff(week, [], off)).toEqual({ hours: 24, basis: 'WEEKDAYS' });
-    expect(leaveHoursOff(week, [], new Set())).toEqual({ hours: 40, basis: 'WEEKDAYS' });
+    expect(holidayWeekdays(week.startsAt, week.endsAt, off, VAN)).toBe(2);
+    expect(leaveHoursOff(week, [], VAN, off)).toEqual({ hours: 24, basis: 'WEEKDAYS' });
+    expect(leaveHoursOff(week, [], VAN, new Set())).toEqual({ hours: 40, basis: 'WEEKDAYS' });
+    // Friday March 15 08:00 to Saturday 08:00 in Vancouver is Friday: a Friday holiday isn't charged.
+    expect(leaveHoursOff({ startsAt: at('2030-03-15'), endsAt: at('2030-03-16') }, [], VAN, new Set(['2030-03-15']))).toEqual({ hours: 0, basis: 'WEEKDAYS' });
+    expect(leaveHoursOff({ startsAt: at('2030-03-15'), endsAt: at('2030-03-16') }, [], VAN, new Set(['2030-03-16']))).toEqual({ hours: 8, basis: 'WEEKDAYS' });
     const shift = { startsAt: new Date('2030-03-12T16:00:00Z'), endsAt: new Date('2030-03-13T00:00:00Z') };
-    expect(leaveHoursOff(week, [shift], off)).toEqual({ hours: 8, basis: 'SHIFTS' });
+    expect(leaveHoursOff(week, [shift], VAN, off)).toEqual({ hours: 8, basis: 'SHIFTS' });
     // A few hours off on the holiday itself, with nothing scheduled: nothing to charge.
-    expect(leaveHoursOff({ startsAt: new Date('2030-03-12T16:00:00Z'), endsAt: new Date('2030-03-12T20:00:00Z') }, [], off)).toEqual({ hours: 0, basis: 'WEEKDAYS' });
+    expect(leaveHoursOff({ startsAt: new Date('2030-03-12T16:00:00Z'), endsAt: new Date('2030-03-12T20:00:00Z') }, [], VAN, off)).toEqual({ hours: 0, basis: 'WEEKDAYS' });
   });
 });
 
