@@ -193,7 +193,7 @@ describe('changing approved time off', () => {
     expect((await call(sup).post(`/api/time-off/${mine.id}/revise`, { action: 'CANCEL', reason: 'Not going' })).body.code).toBe('OWN_REQUEST');
   });
 
-  it('a supervisor records a sick day after the fact; staff can enter their own up to two weeks back', async () => {
+  it('a supervisor records a sick day after the fact (up to two weeks back); staff can enter their own past sick day', async () => {
     const g = await newGuard('Fay');
     const yesterday = await shiftFor(g.id, -1);
     expect((await call(staff).post(`/api/users/${g.id}/time-off`, { type: 'SICK', startsAt: at(-1, 0), endsAt: at(0, 0) })).status).toBe(403);
@@ -207,7 +207,6 @@ describe('changing approved time off', () => {
 
     const own = await call(g.token).post('/api/me/time-off', { type: 'SICK', startsAt: at(-3, 0), endsAt: at(-2, 0) });
     expect(own.status).toBe(201);
-    expect((await call(g.token).post('/api/me/time-off', { type: 'SICK', startsAt: at(-20, 0), endsAt: at(-19, 0) })).body.code).toBe('TIME_OFF_TOO_OLD');
   });
 });
 

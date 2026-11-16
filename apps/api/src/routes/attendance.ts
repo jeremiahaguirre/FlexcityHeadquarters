@@ -85,8 +85,6 @@ attendanceRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ type: timeOffType, startsAt: z.coerce.date(), endsAt: z.coerce.date(), note: z.string().max(500).nullable().optional() }).parse(req.body);
-    // A sick day or protected leave can be entered after the fact (called in sick, opened the app the next day), within two weeks.
-    if (body.startsAt.getTime() < Date.now() - PAST_LIMIT_MS) throw new HttpError(400, 'TIME_OFF_TOO_OLD', 'Time off more than two weeks ago goes through your supervisor.');
     const out = await withTenant(a.tenantId, (tx) => withEvents(tx, requestTimeOff(tx, a.tenantId, a.userId, body)));
     dispatchSoon(a.tenantId);
     res.status(201).json({ request: out.request, affectedShifts: out.affectedShifts });

@@ -584,7 +584,7 @@
     "OWN_REQUEST": "Vous ne pouvez pas trancher votre propre demande. Un autre superviseur doit le faire.",
     "LEAVE_NOT_APPROVED": "Seul un congé approuvé peut être modifié de cette façon.",
     "BAD_END": "Le nouveau dernier jour doit suivre le début et précéder la fin actuelle.",
-    "TIME_OFF_TOO_OLD": "Un congé de plus de deux semaines passe par votre superviseur.",
+    "TIME_OFF_TOO_OLD": "Un congé de plus de deux semaines ne peut pas être inscrit ici. Adressez-vous aux RH.",
     "PERIOD_PAID": "Ce temps est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie."
   },
   "timeclock": {

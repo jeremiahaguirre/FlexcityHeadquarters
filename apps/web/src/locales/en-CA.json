@@ -584,7 +584,7 @@
     "OWN_REQUEST": "You can’t decide your own request. Another supervisor has to.",
     "LEAVE_NOT_APPROVED": "Only approved time off can be changed this way.",
     "BAD_END": "The new last day must be after the start and before the current end.",
-    "TIME_OFF_TOO_OLD": "Time off more than two weeks ago goes through your supervisor.",
+    "TIME_OFF_TOO_OLD": "Time off more than two weeks ago can’t be recorded here. Ask HR.",
     "PERIOD_PAID": "This time is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run."
   },
   "timeclock": {
