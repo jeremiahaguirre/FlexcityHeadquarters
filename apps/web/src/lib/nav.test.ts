@@ -42,6 +42,12 @@ describe('menus per role', () => {
     for (const r of ['STAFF', 'HEAD_LIFEGUARD', 'FRONT_DESK', 'UNION_STEWARD', 'EMPLOYEE'] as const) expect(menu(r).items).not.toContain('/manage/people');
   });
 
+  it('a custom role that keeps positions and certificates (positions.manage alone) reaches Settings', () => {
+    const can = (p: string) => p === 'positions.manage';
+    expect(visibleNav(can).map((n) => n.href)).toContain('/manage/settings');
+    expect(MENU.find((m) => m.href === '/manage/settings')?.permissions).toContain('positions.manage');
+  });
+
   it('a steward who is also a lifeguard gets both', () => {
     expect(menu('UNION_STEWARD', 'STAFF').items).toContain('/board');
   });

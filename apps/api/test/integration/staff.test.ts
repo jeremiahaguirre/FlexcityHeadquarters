@@ -19,6 +19,7 @@ const call = (token?: string) => {
     get: (p: string) => w(request(server).get(p)),
     post: (p: string, b: object = {}) => w(request(server).post(p)).send(b),
     patch: (p: string, b: object) => w(request(server).patch(p)).send(b),
+    delete: (p: string) => w(request(server).delete(p)),
   };
 };
 const tokenFrom = (url: string) => new URL(url).searchParams.get('token')!;
@@ -137,6 +138,90 @@ describe('certifications', () => {
     expect(v.body.verified).toBe(true);
     const claimed = await call(leeToken).post(`/api/offers/${offer.id}/claim`, {});
     expect(claimed.body.outcome).toBe('ASSIGNED');
+  });
+
+  it('everyone who can verify the person is told, not only aquatic supervisors, and the notice opens Certifications', async () => {
+    const guard = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'CASUAL', firstName: 'Ola', lastName: 'Notice', email: 'ola@iota.test' } });
+    const tok = await signAccessToken({ sub: guard.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const added = await call(tok).post('/api/me/certifications', { certificationId: t.nls.id, issueDate: '2026-02-01', expiryDate: null });
+    expect(added.status).toBe(201);
+    const notices = await owner.notification.findMany({ where: { type: 'cert_to_verify', params: { path: ['userCertificationId'], equals: added.body.id } } });
+    const hrUser = await owner.user.findFirstOrThrow({ where: { email: 'hr@iota.test' } });
+    expect(notices.map((n) => n.userId).sort()).toEqual([hrUser.id, supId].sort());
+    expect(new Set(notices.map((n) => n.link))).toEqual(new Set(['/manage/certifications']));
+  });
+
+  it('staff correct or remove a certificate of their own until it is verified', async () => {
+    const guard = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'CASUAL', firstName: 'Pat', lastName: 'Typo', email: 'pat@iota.test' } });
+    const tok = await signAccessToken({ sub: guard.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const other = await signAccessToken({ sub: t.users[0]!.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const added = await call(tok).post('/api/me/certifications', { certificationId: t.nls.id, issueDate: '2026-02-01', expiryDate: '2026-02-02' });
+    // Someone else's entry: not theirs to change.
+    expect((await call(other).patch(`/api/me/certifications/${added.body.id}`, { certificationId: t.nls.id, issueDate: '2026-02-01', expiryDate: '2028-02-01' })).status).toBe(404);
+    const fixed = await call(tok).patch(`/api/me/certifications/${added.body.id}`, { certificationId: t.nls.id, issueDate: '2026-02-01', expiryDate: '2028-02-01' });
+    expect(fixed.status).toBe(200);
+    expect(fixed.body.expiryDate).toBe('2028-02-01');
+
+    const gone = await call(tok).delete(`/api/me/certifications/${added.body.id}`);
+    expect(gone.status).toBe(200);
+    expect(await owner.userCertification.count({ where: { id: added.body.id } })).toBe(0);
+    // The supervisors' "to verify" notice goes with it.
+    expect(await owner.notification.count({ where: { type: 'cert_to_verify', params: { path: ['userCertificationId'], equals: added.body.id } } })).toBe(0);
+    expect(await owner.auditLog.count({ where: { action: 'cert.remove', entityId: added.body.id } })).toBe(1);
+
+    // Once verified, it is the supervisor's record.
+    const again = await call(tok).post('/api/me/certifications', { certificationId: t.nls.id, issueDate: '2026-02-01', expiryDate: null });
+    await call(sup).post(`/api/user-certifications/${again.body.id}/verify`);
+    const locked = await call(tok).delete(`/api/me/certifications/${again.body.id}`);
+    expect(locked.status).toBe(409);
+    expect(locked.body.code).toBe('CERT_VERIFIED');
+  });
+
+  it('a verifier turns down a wrong entry with a reason, and the employee is told why', async () => {
+    const guard = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'CASUAL', firstName: 'Rae', lastName: 'Wrong', email: 'rae@iota.test' } });
+    const tok = await signAccessToken({ sub: guard.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const added = await call(tok).post('/api/me/certifications', { certificationId: t.nls.id, issueDate: '2026-02-01', expiryDate: null });
+    expect((await call(tok).post(`/api/user-certifications/${added.body.id}/reject`, { reason: 'nope' })).status).toBe(403);
+    expect((await call(sup).post(`/api/user-certifications/${added.body.id}/reject`, {})).status).toBe(400);
+    const r = await call(sup).post(`/api/user-certifications/${added.body.id}/reject`, { reason: 'The card photo shows Standard First Aid, not NL.' });
+    expect(r.status).toBe(200);
+    expect(await owner.userCertification.count({ where: { id: added.body.id } })).toBe(0);
+    const told = await owner.notification.findFirstOrThrow({ where: { userId: guard.id, type: 'cert_rejected' } });
+    expect(told.params).toMatchObject({ name: t.nls.name, reason: 'The card photo shows Standard First Aid, not NL.' });
+    expect(told.link).toBe('/profile');
+    const log = await owner.auditLog.findFirstOrThrow({ where: { action: 'cert.reject', entityId: added.body.id } });
+    expect(log.actorId).toBe(supId);
+  });
+
+  it('positions.manage holders keep the catalog: add, correct, and pick from the starter list', async () => {
+    const staffTok = await signAccessToken({ sub: t.users[0]!.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const body = { name: 'Ice Plant Operatr', nameFr: null, issuingBody: 'Technical Safety BC', validityMonths: null };
+    expect((await call(staffTok).post('/api/certifications', body)).status).toBe(403);
+    const made = await call(hr).post('/api/certifications', body);
+    expect(made.status).toBe(201);
+    const dup = await call(hr).post('/api/certifications', { ...body, name: 'ice plant operatr' });
+    expect(dup.status).toBe(409);
+    expect(dup.body.code).toBe('CERT_EXISTS');
+
+    expect((await call(staffTok).patch(`/api/certifications/${made.body.id}`, body)).status).toBe(403);
+    const fixed = await call(sup).patch(`/api/certifications/${made.body.id}`, { ...body, name: 'Ice Plant Operator', nameFr: 'Opérateur d’usine à glace', validityMonths: 36 });
+    expect(fixed.status).toBe(200);
+    expect(fixed.body).toMatchObject({ name: 'Ice Plant Operator', nameFr: 'Opérateur d’usine à glace', validityMonths: 36 });
+    expect(await owner.auditLog.count({ where: { entity: 'Certification', entityId: made.body.id } })).toBe(2);
+
+    const starter = await call(hr).get('/api/certifications/starter');
+    expect(starter.status).toBe(200);
+    const keys = starter.body.map((c: { key: string }) => c.key);
+    expect(keys).toEqual(expect.arrayContaining(['refrigeration-operator', 'water-treatment-1', 'wastewater-collection-4', 'licence-class-3', 'air-brake']));
+    expect(starter.body.every((c: { name: string; nameFr: string; added: boolean }) => c.name && c.nameFr && c.added === false)).toBe(true);
+    expect((await call(hr).post('/api/certifications/starter', { keys: ['nope'] })).status).toBe(400);
+    const add = await call(hr).post('/api/certifications/starter', { keys: ['water-treatment-1', 'licence-class-3'] });
+    expect(add.body.added).toBe(2);
+    expect((await call(hr).post('/api/certifications/starter', { keys: ['water-treatment-1'] })).body.added).toBe(0);
+    const after = await call(hr).get('/api/certifications/starter');
+    expect(after.body.filter((c: { added: boolean }) => c.added).map((c: { key: string }) => c.key).sort()).toEqual(['licence-class-3', 'water-treatment-1']);
+    const catalog = await call(staffTok).get('/api/certifications');
+    expect(catalog.body.map((c: { name: string }) => c.name)).toEqual(expect.arrayContaining(['Water Treatment – Level I', 'Driver’s licence – Class 3', 'Ice Plant Operator']));
   });
 
   it('lists certifications expiring soon', async () => {

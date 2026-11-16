@@ -4,11 +4,11 @@ import { Router } from 'express';
 import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { accessOf, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
-import { audit, withTenant } from '../lib/db.js';
+import { audit, type Tx, withTenant } from '../lib/db.js';
 import { db as rootDb } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
@@ -18,9 +18,11 @@ import { FEATURES, type FeatureKey, tenantSettings } from '../services/platform/
 import { MENU } from '../auth/menu.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { hiddenMenuFor, parseOverrides } from '../services/platform/roleOverrides.js';
-import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
+import { assertUserInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { allOf, departmentFilter, departmentQuery, forget as forgetDepartmentScope } from '../services/people/departmentAdmin.js';
 import { positionBody, savePosition } from '../services/people/positionAdmin.js';
+import { STARTER_CERTS, assertCertNameFree, catalogNames, certBody } from '../services/people/certCatalog.js';
+import { usersWithPermission } from '../services/notifications/notifier.js';
 import { createPerson, updatePerson } from '../services/people/staffAdmin.js';
 import { adultConfirmationView, confirmAdult, removeAdultConfirmation } from '../services/people/adultConfirmation.js';
 
@@ -143,24 +145,89 @@ staffRouter.post(
 );
 
 /** Staff add their own certifications; they count once a supervisor verifies them. */
+const ownCertBody = z.object({ certificationId: uuid, issueDate: isoDate, expiryDate: isoDate.nullable(), documentUrl: z.string().url().nullable().optional() });
+const checkCertDates = (b: { issueDate: string; expiryDate: string | null }) => {
+  if (b.expiryDate && b.expiryDate <= b.issueDate) throw badRequest('Expiry must be after the issue date.');
+};
+
+/**
+ * Everyone who can verify this person's certificate (certs.verify, with the person in their scope),
+ * not only aquatic supervisors: HR, custom roles, and the supervisors of non-aquatic departments.
+ */
+async function certVerifiers(tx: Tx, tenantId: string, subjectId: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const id of await usersWithPermission(tx, tenantId, 'certs.verify', [subjectId])) {
+    const u = await tx.user.findUnique({ where: { id }, select: { roles: true } });
+    const access = u ? await accessOf(tenantId, id, u.roles) : null;
+    if (access?.permissions.has('certs.verify') && (await userInScope(tx, access.scope, subjectId))) out.push(id);
+  }
+  return out;
+}
+
 staffRouter.post(
   '/me/certifications',
   h(async (req, res) => {
     const a = authOf(req);
-    const body = z.object({ certificationId: uuid, issueDate: isoDate, expiryDate: isoDate.nullable(), documentUrl: z.string().url().nullable().optional() }).parse(req.body);
-    if (body.expiryDate && body.expiryDate <= body.issueDate) throw badRequest('Expiry must be after the issue date.');
+    const body = ownCertBody.parse(req.body);
+    checkCertDates(body);
     const c = await withTenant(a.tenantId, async (tx) => {
       const created = await tx.userCertification.create({
         data: { tenantId: a.tenantId, userId: a.userId, certificationId: body.certificationId, issueDate: d(body.issueDate)!, expiryDate: d(body.expiryDate) ?? null, documentUrl: body.documentUrl ?? null },
         include: certInclude,
       });
-      const verifiers = await tx.user.findMany({ where: { roles: { hasSome: ['AQUATIC_SUPERVISOR'] }, status: 'ACTIVE' }, select: { id: true } });
-      for (const v of verifiers) {
-        await tx.notification.create({ data: { tenantId: a.tenantId, userId: v.id, type: 'cert_to_verify', params: { userCertificationId: created.id }, link: '/manage/staff' } });
+      for (const v of await certVerifiers(tx, a.tenantId, a.userId)) {
+        await tx.notification.create({ data: { tenantId: a.tenantId, userId: v, type: 'cert_to_verify', params: { userCertificationId: created.id }, link: '/manage/certifications' } });
       }
       return created;
     });
     res.status(201).json(certView(c));
+  }),
+);
+
+/** One of my own certificates that nobody has verified yet (a verified one is the supervisor's record). */
+async function ownUnverified(tx: Tx, a: { userId: string }, id: string) {
+  const row = await tx.userCertification.findUnique({ where: { id }, include: certInclude });
+  if (!row || row.userId !== a.userId) throw notFound('Certification');
+  if (row.verifiedAt) throw conflict('CERT_VERIFIED', 'This certificate was already verified. Ask your supervisor to change it.');
+  return row;
+}
+
+/** The "to verify" notices about a certificate that is gone (removed or turned down). */
+const forgetToVerify = (tx: Tx, id: string) => tx.notification.deleteMany({ where: { type: 'cert_to_verify', params: { path: ['userCertificationId'], equals: id } } });
+
+/** Staff correct a certificate they entered (wrong type, dates or card) while it still awaits verification. */
+staffRouter.patch(
+  '/me/certifications/:id',
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = ownCertBody.parse(req.body);
+    checkCertDates(body);
+    const c = await withTenant(a.tenantId, async (tx) => {
+      await ownUnverified(tx, a, id);
+      return tx.userCertification.update({
+        where: { id },
+        data: { certificationId: body.certificationId, issueDate: d(body.issueDate)!, expiryDate: d(body.expiryDate) ?? null, documentUrl: body.documentUrl ?? null },
+        include: certInclude,
+      });
+    });
+    res.json(certView(c));
+  }),
+);
+
+/** Staff remove a certificate they entered by mistake, while it still awaits verification. */
+staffRouter.delete(
+  '/me/certifications/:id',
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    await withTenant(a.tenantId, async (tx) => {
+      const row = await ownUnverified(tx, a, id);
+      await tx.userCertification.delete({ where: { id } });
+      await forgetToVerify(tx, id);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cert.remove', entity: 'UserCertification', entityId: id, before: certView(row) });
+    });
+    res.json({ ok: true });
   }),
 );
 
@@ -178,8 +245,69 @@ staffRouter.post(
   requirePermission('positions.manage'),
   h(async (req, res) => {
     const a = authOf(req);
-    const body = z.object({ name: z.string().min(2).max(120), nameFr: z.string().max(120).nullable().optional(), issuingBody: z.string().min(2).max(120), validityMonths: z.number().int().min(1).max(120).nullable() }).parse(req.body);
-    res.status(201).json(await withTenant(a.tenantId, (tx) => tx.certification.create({ data: { ...body, tenantId: a.tenantId } })));
+    const body = certBody.parse(req.body);
+    const created = await withTenant(a.tenantId, async (tx) => {
+      await assertCertNameFree(tx, body.name);
+      const c = await tx.certification.create({ data: { ...body, nameFr: body.nameFr || null, tenantId: a.tenantId } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'certification.create', entity: 'Certification', entityId: c.id, after: body });
+      return c;
+    });
+    res.status(201).json(created);
+  }),
+);
+
+/** The starter list (arena, water and wastewater operators, licence classes), marking the ones already in the catalog. */
+staffRouter.get(
+  '/certifications/starter',
+  requirePermission('positions.manage'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const have = await withTenant(a.tenantId, catalogNames);
+    res.json(STARTER_CERTS.map((c) => ({ ...c, added: have.has(c.name.toLowerCase()) })));
+  }),
+);
+
+/** Adds the chosen starter entries; any already in the catalog are left as they are. */
+staffRouter.post(
+  '/certifications/starter',
+  requirePermission('positions.manage'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const { keys } = z.object({ keys: z.array(z.string().max(60)).min(1).max(STARTER_CERTS.length) }).parse(req.body);
+    const picked = STARTER_CERTS.filter((c) => keys.includes(c.key));
+    if (picked.length !== new Set(keys).size) throw badRequest('Unknown starter certificate.');
+    const added = await withTenant(a.tenantId, async (tx) => {
+      const have = await catalogNames(tx);
+      const fresh = picked.filter((c) => !have.has(c.name.toLowerCase()));
+      for (const c of fresh) {
+        const row = await tx.certification.create({ data: { tenantId: a.tenantId, name: c.name, nameFr: c.nameFr, issuingBody: c.issuingBody, validityMonths: c.validityMonths } });
+        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'certification.create', entity: 'Certification', entityId: row.id, after: { starter: c.key } });
+      }
+      return fresh.length;
+    });
+    res.status(201).json({ added });
+  }),
+);
+
+/** Corrects a catalog entry (a typo, the French name, the issuing body or how long it stays valid). */
+staffRouter.patch(
+  '/certifications/:id',
+  requirePermission('positions.manage'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const body = certBody.parse(req.body);
+    const updated = await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.certification.findUnique({ where: { id } });
+      if (!before) throw notFound('Certification');
+      // Shared reference rows (no organization) belong to FH, not to the city.
+      if (before.tenantId !== a.tenantId) throw new HttpError(403, 'CERT_SHARED', 'This certificate is shared by every organization and can’t be changed here.');
+      await assertCertNameFree(tx, body.name, id);
+      const c = await tx.certification.update({ where: { id }, data: { ...body, nameFr: body.nameFr || null } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'certification.update', entity: 'Certification', entityId: id, before, after: body });
+      return c;
+    });
+    res.json(updated);
   }),
 );
 
@@ -200,6 +328,34 @@ staffRouter.post(
       return updated;
     });
     res.json(certView(c));
+  }),
+);
+
+/**
+ * A verifier turns down a self-entered certificate (wrong type, wrong dates, unreadable card): the
+ * entry is removed, the reason kept in the audit log, and the employee told why so they can re-enter it.
+ */
+staffRouter.post(
+  '/user-certifications/:id/reject',
+  requirePermission('certs.verify'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const { reason } = z.object({ reason: z.string().trim().min(2).max(500) }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const row = await tx.userCertification.findUnique({ where: { id }, include: certInclude });
+      if (!row) throw notFound('Certification');
+      if (row.userId === a.userId) throw forbidden('You cannot verify your own certification.');
+      await assertUserInScope(tx, a, row.userId);
+      if (row.verifiedAt) throw conflict('CERT_VERIFIED', 'This certificate was already verified.');
+      await tx.userCertification.delete({ where: { id } });
+      await forgetToVerify(tx, id);
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cert.reject', entity: 'UserCertification', entityId: id, before: { ...certView(row), userId: row.userId }, after: { reason } });
+      await tx.notification.create({
+        data: { tenantId: a.tenantId, userId: row.userId, type: 'cert_rejected', params: { name: row.certification.name, nameFr: row.certification.nameFr, reason }, link: '/profile' },
+      });
+    });
+    res.json({ ok: true });
   }),
 );
 
