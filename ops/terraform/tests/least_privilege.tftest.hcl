@@ -63,27 +63,31 @@ run "app_creates_only_keys_like_its_own" {
   assert {
     condition = alltrue([
       for s in data.aws_iam_policy_document.app.statement : s.sid != "CreateOrganizationKeys" || (
-        contains([for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"], "StringEquals kms:KeySpec SYMMETRIC_DEFAULT") &&
-        contains([for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"], "StringEquals kms:KeyUsage ENCRYPT_DECRYPT") &&
+        contains([for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"], "StringEqualsIfExists kms:KeySpec SYMMETRIC_DEFAULT") &&
+        contains([for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"], "StringEqualsIfExists kms:KeyUsage ENCRYPT_DECRYPT") &&
         contains([for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"], "StringEqualsIfExists kms:KeyOrigin AWS_KMS")
       )
     ])
     error_message = "CreateKey only for KMS-generated symmetric encryption keys (SEC-52)."
   }
   assert {
-    condition     = anytrue([for s in data.aws_iam_policy_document.app.statement : s.effect == "Deny" && contains(s.actions, "kms:CreateKey") && contains([for c in s.condition : c.variable], "kms:BypassPolicyLockoutSafetyCheck")])
+    condition     = anytrue([for s in data.aws_iam_policy_document.app.statement : s.effect == "Deny" && contains(s.actions, "kms:CreateKey") && contains(s.actions, "kms:ReplicateKey") && contains(s.actions, "kms:PutKeyPolicy") && contains([for c in s.condition : c.variable], "kms:BypassPolicyLockoutSafetyCheck")])
     error_message = "The app can never bypass the key policy lockout safety check."
   }
   assert {
-    condition     = strcontains(aws_cloudwatch_event_rule.kms_create_key_with_policy.event_pattern, "\"CreateKey\"") && strcontains(aws_cloudwatch_event_rule.kms_create_key_with_policy.event_pattern, "\"policy\"")
-    error_message = "A CreateKey carrying a custom key policy raises an alarm."
+    condition     = contains(jsondecode(aws_cloudwatch_event_rule.kms_create_key_with_policy.event_pattern).detail.eventName, "CreateKey") && contains(jsondecode(aws_cloudwatch_event_rule.kms_create_key_with_policy.event_pattern).detail.eventName, "ReplicateKey") && strcontains(aws_cloudwatch_event_rule.kms_create_key_with_policy.event_pattern, "\"policy\"")
+    error_message = "A CreateKey or ReplicateKey carrying a custom key policy raises an alarm."
+  }
+  assert {
+    condition     = aws_cloudwatch_event_rule.kms_create_key_with_policy_dr[0].event_pattern == aws_cloudwatch_event_rule.kms_create_key_with_policy.event_pattern && aws_cloudwatch_event_target.kms_create_key_with_policy_dr[0].arn == "arn:aws:events:ca-central-1:111122223333:event-bus/default"
+    error_message = "The recovery region watches for the same calls and forwards them to the primary region's bus."
   }
 }
 
 run "database_log_without_values" {
   command = plan
   assert {
-    condition     = contains([for p in aws_db_parameter_group.main.parameter : "${p.name}=${p.value}"], "log_parameter_max_length=0") && contains([for p in aws_db_parameter_group.main.parameter : "${p.name}=${p.value}"], "log_parameter_max_length_on_error=0")
+    condition     = contains([for p in aws_db_parameter_group.main.parameter : "${p.name}=${p.value}"], "log_parameter_max_length=0") && contains([for p in aws_db_parameter_group.main.parameter : "${p.name}=${p.value}"], "log_parameter_max_length_on_error=0") && contains([for p in aws_db_parameter_group.main.parameter : "${p.name}=${p.value}"], "log_error_verbosity=terse")
     error_message = "The slow-statement log never carries bound values (SEC-42)."
   }
   assert {

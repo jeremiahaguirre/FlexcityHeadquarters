@@ -36,6 +36,12 @@ resource "aws_db_parameter_group" "main" {
     name  = "log_parameter_max_length_on_error"
     value = "0"
   }
+  # Constraint errors log a DETAIL line with the row's values ("Key (email)=(…) already exists",
+  # "Failing row contains (…)"). Terse drops DETAIL from the server log; the client still gets it.
+  parameter {
+    name  = "log_error_verbosity"
+    value = "terse"
+  }
   parameter {
     name         = "shared_preload_libraries"
     value        = "pg_stat_statements"

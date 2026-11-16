@@ -222,22 +222,72 @@ resource "aws_cloudwatch_metric_alarm" "replica_lag" {
 }
 
 # The app creates organization keys with the default key policy (the account administers them).
-# A CreateKey from the app role that carries a policy of its own could hand the key to someone
-# else, and IAM conditions can't refuse it, so it raises an alarm (SECURITY-AUDIT SEC-52). Needs
-# CloudTrail management events in the account (README.md, "What it does not create").
-resource "aws_cloudwatch_event_rule" "kms_create_key_with_policy" {
-  name        = "${local.name}-kms-createkey-with-policy"
-  description = "The app role created a KMS key with a custom key policy"
-  event_pattern = jsonencode({
+# A key the app role creates with a policy of its own could hand the key to someone else, and IAM
+# conditions can't refuse it, so it raises an alarm (SECURITY-AUDIT SEC-52). Both ways count:
+# CreateKey with a Policy, and ReplicateKey with a Policy (logged as ReplicateKey here and as
+# CreateKey in the recovery region). Needs CloudTrail management events in the account (README.md,
+# "What it does not create"). EventBridge only sees its own region's events, so the recovery region
+# has the same rule, forwarding to this region's default bus, where this rule (which matches
+# events from any region) sends them to the alarm topic.
+locals {
+  kms_policy_event_pattern = jsonencode({
     source        = ["aws.kms"]
     "detail-type" = ["AWS API Call via CloudTrail"]
     detail = {
       eventSource       = ["kms.amazonaws.com"]
-      eventName         = ["CreateKey"]
+      eventName         = ["CreateKey", "ReplicateKey"]
       userIdentity      = { sessionContext = { sessionIssuer = { arn = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${aws_iam_role.app.name}"] } } }
       requestParameters = { policy = [{ exists = true }] }
     }
   })
+}
+
+resource "aws_cloudwatch_event_rule" "kms_create_key_with_policy" {
+  name          = "${local.name}-kms-createkey-with-policy"
+  description   = "The app role created or replicated a KMS key with a custom key policy"
+  event_pattern = local.kms_policy_event_pattern
+}
+
+resource "aws_cloudwatch_event_rule" "kms_create_key_with_policy_dr" {
+  count         = var.recovery_mode ? 0 : 1
+  provider      = aws.dr
+  name          = "${local.name}-kms-createkey-with-policy"
+  description   = "The app role created or replicated a KMS key with a custom key policy (recovery region; forwarded to ${var.region})"
+  event_pattern = local.kms_policy_event_pattern
+}
+
+data "aws_iam_policy_document" "events_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+  }
+}
+
+# Lets the recovery region's rule put the events on this region's default bus.
+resource "aws_iam_role" "events_forward" {
+  count              = var.recovery_mode ? 0 : 1
+  name               = "${local.gname}-events-forward"
+  assume_role_policy = data.aws_iam_policy_document.events_assume.json
+}
+
+resource "aws_iam_role_policy" "events_forward" {
+  count = var.recovery_mode ? 0 : 1
+  role  = aws_iam_role.events_forward[0].id
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Action = "events:PutEvents", Resource = "arn:aws:events:${var.region}:${data.aws_caller_identity.current.account_id}:event-bus/default" }]
+  })
+}
+
+resource "aws_cloudwatch_event_target" "kms_create_key_with_policy_dr" {
+  count    = var.recovery_mode ? 0 : 1
+  provider = aws.dr
+  rule     = aws_cloudwatch_event_rule.kms_create_key_with_policy_dr[0].name
+  arn      = "arn:aws:events:${var.region}:${data.aws_caller_identity.current.account_id}:event-bus/default"
+  role_arn = aws_iam_role.events_forward[0].arn
 }
 
 resource "aws_cloudwatch_event_target" "kms_create_key_with_policy" {
