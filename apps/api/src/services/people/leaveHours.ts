@@ -45,37 +45,59 @@ export function leaveHoursFrom(request: Interval, shifts: Interval[], timeZone: 
   return { hours: weekdayLeaveHours(request.startsAt, request.endsAt, timeZone), basis: 'WEEKDAYS' };
 }
 
-const LOOKBACK_MS = 90 * 86_400_000;
+const LOOKBACK_DAYS = 90;
+/** Longer than any punch, so the window can bound clockIn from below and the index reads only the window. */
+const LONGEST_PUNCH_DAYS = 7;
+
+/** A request whose zone is wanted; `asOf` is when it was counted (default now), for the recount report. */
+export interface ZoneOf { userId: string; startsAt: Date; asOf?: Date | null }
 
 /**
- * The time zone each person's leave is counted in, the way payroll counts their days
+ * The time zone each request is counted in, the way payroll counts the person's days
  * (payrollRun.ts): their main facility's, the one where they worked the most hours (approved
- * punches) in the 90 days before `at`. With no hours there, the organization's (orgTimeZone).
- * One query for everyone.
+ * punches) in the 90 days before the request starts, or before now for one that hasn't started.
+ * With no hours there, the organization's (orgTimeZone). Every caller uses this, so a request is
+ * counted in the same zone in a balance, against the lieu bank and when it's approved.
+ * One query for all of them; returns the zone of each request asked about.
  */
-export async function leaveTimeZones(tx: Tx, userIds: string[], at: Date): Promise<Map<string, string>> {
-  const ids = [...new Set(userIds)];
-  const rows = ids.length
-    ? await tx.$queryRaw<Array<{ userId: string; timezone: string }>>`
-        SELECT DISTINCT ON (p."userId") p."userId"::text AS "userId", f.timezone
-        FROM "TimePunch" p JOIN "Facility" f ON f.id = p."facilityId"
-        WHERE p."userId" = ANY(${ids}::uuid[]) AND p.status = 'APPROVED' AND p."clockOut" IS NOT NULL
-          AND p."clockOut" > ${new Date(at.getTime() - LOOKBACK_MS)} AND p."clockIn" < ${at}
-        GROUP BY p."userId", f.id
-        ORDER BY p."userId", sum(p."clockOut" - p."clockIn") DESC, f.id`
-    : [];
-  const out = new Map(rows.map((r) => [r.userId, r.timezone]));
-  const missing = ids.filter((id) => !out.has(id));
-  if (missing.length) {
-    const org = await orgTimeZone(tx);
-    for (const id of missing) out.set(id, org);
+export async function leaveTimeZones(tx: Tx, requests: readonly ZoneOf[]): Promise<(r: ZoneOf) => string> {
+  const now = new Date();
+  const moment = (r: ZoneOf) => Math.min(r.startsAt.getTime(), (r.asOf ?? now).getTime());
+  const key = (userId: string, at: number) => `${userId}|${at}`;
+  const asked = new Map(requests.map((r) => [key(r.userId, moment(r)), { userId: r.userId, at: moment(r) }]));
+  const zones = new Map<string, string>();
+  if (asked.size) {
+    const qs = [...asked.values()];
+    // Per person and moment, the facility with the most hours of punches overlapping the window.
+    const rows = await tx.$queryRaw<Array<{ userId: string; at: Date; timezone: string }>>`
+      SELECT q."userId"::text AS "userId", q.at, z.timezone
+      FROM unnest(${qs.map((q) => q.userId)}::uuid[], ${qs.map((q) => new Date(q.at).toISOString())}::timestamptz[]) AS q("userId", at)
+      CROSS JOIN LATERAL (
+        SELECT f.timezone FROM "TimePunch" p JOIN "Facility" f ON f.id = p."facilityId"
+        WHERE p."userId" = q."userId" AND p.status = 'APPROVED'
+          AND p."clockIn" < q.at AND p."clockIn" > q.at - make_interval(days => ${LOOKBACK_DAYS + LONGEST_PUNCH_DAYS}::int)
+          AND p."clockOut" > q.at - make_interval(days => ${LOOKBACK_DAYS}::int)
+        GROUP BY f.id
+        ORDER BY sum(p."clockOut" - p."clockIn") DESC, f.id
+        LIMIT 1
+      ) z`;
+    for (const r of rows) zones.set(key(r.userId, r.at.getTime()), r.timezone);
+    if (zones.size < asked.size) {
+      const org = await orgTimeZone(tx);
+      for (const k of asked.keys()) if (!zones.has(k)) zones.set(k, org);
+    }
   }
-  return out;
+  return (r) => {
+    const z = zones.get(key(r.userId, moment(r)));
+    if (!z) throw new Error('leaveTimeZones: this request was not asked about');
+    return z;
+  };
 }
 
-/** One person's zone for a request: by their hours before it starts (or before now, for one ahead). */
-export async function personLeaveTimeZone(tx: Tx, userId: string, startsAt: Date, now = new Date()): Promise<string> {
-  return (await leaveTimeZones(tx, [userId], new Date(Math.min(startsAt.getTime(), now.getTime())))).get(userId)!;
+/** One request's zone (leaveTimeZones). */
+export async function personLeaveTimeZone(tx: Tx, userId: string, startsAt: Date): Promise<string> {
+  const r = { userId, startsAt };
+  return (await leaveTimeZones(tx, [r]))(r);
 }
 
 /**
@@ -90,7 +112,7 @@ export async function orgTimeZone(tx: Tx): Promise<string> {
 /**
  * Read-only, for payroll to review: approved requests charged by weekdays whose count differs
  * from the current rule (hours charged before weekdays were counted in local time). Each is
- * recounted in the person's zone as of when it was decided. Nothing is changed here.
+ * recounted in the zone it was counted in when it was decided. Nothing is changed here.
  */
 export async function weekdayRecount(tx: Tx) {
   const reqs = await tx.timeOffRequest.findMany({
@@ -98,9 +120,10 @@ export async function weekdayRecount(tx: Tx) {
     select: { id: true, userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true, decidedAt: true },
     orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
   });
+  const zoneOf = await leaveTimeZones(tx, reqs.map((r) => ({ userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt })));
   const out = [];
   for (const r of reqs) {
-    const timeZone = await personLeaveTimeZone(tx, r.userId, r.startsAt, r.decidedAt ?? new Date());
+    const timeZone = zoneOf({ userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt });
     const recount = weekdayLeaveHours(r.startsAt, r.endsAt, timeZone);
     const charged = Number(r.chargedHours);
     if (Math.abs(recount - charged) > 0.001) out.push({ id: r.id, userId: r.userId, type: r.type, startsAt: r.startsAt, endsAt: r.endsAt, charged, recount, timeZone });
