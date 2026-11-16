@@ -17,7 +17,7 @@ import type { DomainEvent } from '../../lib/events.js';
 import { addDays } from '../../lib/time.js';
 import { approversFor } from './reporting.js';
 import { postOffer } from '../shiftboard/offers.js';
-import { leaveHoursFrom, scheduledShifts } from './leaveHours.js';
+import { leaveHoursFrom, personLeaveTimeZone, scheduledShifts } from './leaveHours.js';
 
 export interface AvailabilityWindow {
   dayOfWeek: number;
@@ -70,7 +70,7 @@ export async function requestTimeOff(
   if (input.type === 'LIEU') {
     const policy = lieuPolicy(readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings));
     if (!policy.enabled) throw badRequest('Your organization doesn’t use time in lieu.');
-    const want = leaveHoursFrom({ startsAt: input.startsAt, endsAt: input.endsAt }, await scheduledShifts(tx, [userId], input.startsAt, input.endsAt)).hours;
+    const want = leaveHoursFrom({ startsAt: input.startsAt, endsAt: input.endsAt }, await scheduledShifts(tx, [userId], input.startsAt, input.endsAt), await personLeaveTimeZone(tx, userId, input.startsAt)).hours;
     const have = await lieuAvailable(tx, userId);
     if (want > have + 0.001) throw new HttpError(400, 'LIEU_SHORT', `This needs ${want} hours of banked time; you have ${Math.max(0, have)}.`, { need: want, have: Math.max(0, have) });
   }
@@ -117,7 +117,7 @@ export async function decideTimeOff(
 
   const status = decision === 'APPROVE' ? 'APPROVED' : 'DENIED';
   // Measured now, from the shifts it takes them off, before those shifts are released below.
-  const charged = status === 'APPROVED' ? leaveHoursFrom(r, await scheduledShifts(tx, [r.userId], r.startsAt, r.endsAt)) : null;
+  const charged = status === 'APPROVED' ? leaveHoursFrom(r, await scheduledShifts(tx, [r.userId], r.startsAt, r.endsAt), await personLeaveTimeZone(tx, r.userId, r.startsAt)) : null;
   if (charged && r.type === 'LIEU') {
     const have = await lieuAvailable(tx, r.userId, r.id);
     if (charged.hours > have + 0.001) throw new HttpError(409, 'LIEU_SHORT', `This needs ${charged.hours} hours of banked time; they have ${Math.max(0, have)}.`, { need: charged.hours, have: Math.max(0, have) });
