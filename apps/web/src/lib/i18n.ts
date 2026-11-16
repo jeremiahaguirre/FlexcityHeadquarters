@@ -23,7 +23,7 @@ export function createI18n(locale: Locale, plugins: Module[] = []): i18n {
     fallbackLng: 'en-CA',
     resources: { 'en-CA': { translation: enCA }, 'fr-CA': { translation: frCA } },
     interpolation: { escapeValue: false }, // React escapes
-    initImmediate: false,
+    initAsync: false, // initialize synchronously (i18next 24 renamed initImmediate)
   });
   return instance;
 }
