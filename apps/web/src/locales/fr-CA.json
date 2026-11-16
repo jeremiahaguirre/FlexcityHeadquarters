@@ -384,7 +384,7 @@
     "release_scheduled": "À venir le {{whenFr}} : {{titleFr}}. Voyez ce qui change pour votre organisation.",
     "maintenance_scheduled": "Maintenance prévue le {{whenFr}} : {{messageFr}}",
     "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}",
-    "cert_rejected": "Votre certification {{name}} n’a pas été acceptée : {{reason}}. Vérifiez-la et ajoutez-la de nouveau."
+    "cert_rejected": "Votre certification {{nameFr}} n’a pas été acceptée : {{reason}}. Vérifiez-la et ajoutez-la de nouveau."
   },
   "today": {
     "morning": "Bonjour",
@@ -581,7 +581,8 @@
     "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
     "CERT_EXISTS": "Un certificat porte déjà ce nom.",
     "CERT_VERIFIED": "Ce certificat a déjà été vérifié. Demandez à votre superviseur de le modifier.",
-    "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici."
+    "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
+    "CERT_ORG_WIDE": "Corriger la liste des certificats la modifie pour tous les services. Demandez aux RH."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1784,7 +1785,8 @@
     "addCertsFirst": "Ajoutez d’abord des certificats au catalogue ci-dessus.",
     "unpaidBreak": "Pause-repas non payée (minutes)",
     "unpaidBreakHint": "Retirée du temps payé de chaque quart. Un quart peut avoir sa propre valeur.",
-    "neverAlone": "Jamais seul : au moins deux personnes qualifiées doivent se chevaucher sur ses quarts"
+    "neverAlone": "Jamais seul : au moins deux personnes qualifiées doivent se chevaucher sur ses quarts",
+    "departmentsUnavailable": "Les services n’ont pas pu être chargés; le service du poste reste tel quel."
   },
   "jobs": {
     "title": "Offres d’emploi",

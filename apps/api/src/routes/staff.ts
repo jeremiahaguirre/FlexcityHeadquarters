@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
-import { accessOf, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { type AuthContext, accessOf, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
@@ -204,12 +204,16 @@ staffRouter.patch(
     const body = ownCertBody.parse(req.body);
     checkCertDates(body);
     const c = await withTenant(a.tenantId, async (tx) => {
-      await ownUnverified(tx, a, id);
-      return tx.userCertification.update({
-        where: { id },
-        data: { certificationId: body.certificationId, issueDate: d(body.issueDate)!, expiryDate: d(body.expiryDate) ?? null, documentUrl: body.documentUrl ?? null },
-        include: certInclude,
+      const before = await ownUnverified(tx, a, id);
+      // Only while still unverified: a supervisor verifying it in between wins.
+      const { count } = await tx.userCertification.updateMany({
+        where: { id, userId: a.userId, verifiedAt: null },
+        data: { certificationId: body.certificationId, issueDate: d(body.issueDate)!, expiryDate: d(body.expiryDate) ?? null, ...(body.documentUrl !== undefined ? { documentUrl: body.documentUrl } : {}) },
       });
+      if (!count) throw conflict('CERT_VERIFIED', 'This certificate was already verified. Ask your supervisor to change it.');
+      const after = await tx.userCertification.findUniqueOrThrow({ where: { id }, include: certInclude });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cert.correct', entity: 'UserCertification', entityId: id, before: certView(before), after: certView(after) });
+      return after;
     });
     res.json(certView(c));
   }),
@@ -223,7 +227,8 @@ staffRouter.delete(
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
       const row = await ownUnverified(tx, a, id);
-      await tx.userCertification.delete({ where: { id } });
+      const { count } = await tx.userCertification.deleteMany({ where: { id, userId: a.userId, verifiedAt: null } });
+      if (!count) throw conflict('CERT_VERIFIED', 'This certificate was already verified. Ask your supervisor to change it.');
       await forgetToVerify(tx, id);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cert.remove', entity: 'UserCertification', entityId: id, before: certView(row) });
     });
@@ -300,6 +305,7 @@ staffRouter.patch(
     const updated = await withTenant(a.tenantId, async (tx) => {
       const before = await tx.certification.findUnique({ where: { id } });
       if (!before) throw notFound('Certification');
+      if (a.scope?.positionIds.length) throw new HttpError(403, 'CERT_ORG_WIDE', 'Correcting the certificate list changes it for every department. Ask HR.');
       // Shared reference rows (no organization) belong to FH, not to the city.
       if (before.tenantId !== a.tenantId) throw new HttpError(403, 'CERT_SHARED', 'This certificate is shared by every organization and can’t be changed here.');
       await assertCertNameFree(tx, body.name, id);
@@ -348,11 +354,12 @@ staffRouter.post(
       if (row.userId === a.userId) throw forbidden('You cannot verify your own certification.');
       await assertUserInScope(tx, a, row.userId);
       if (row.verifiedAt) throw conflict('CERT_VERIFIED', 'This certificate was already verified.');
-      await tx.userCertification.delete({ where: { id } });
+      const { count } = await tx.userCertification.deleteMany({ where: { id, verifiedAt: null } });
+      if (!count) throw conflict('CERT_VERIFIED', 'This certificate was already verified.');
       await forgetToVerify(tx, id);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cert.reject', entity: 'UserCertification', entityId: id, before: { ...certView(row), userId: row.userId }, after: { reason } });
       await tx.notification.create({
-        data: { tenantId: a.tenantId, userId: row.userId, type: 'cert_rejected', params: { name: row.certification.name, nameFr: row.certification.nameFr, reason }, link: '/profile' },
+        data: { tenantId: a.tenantId, userId: row.userId, type: 'cert_rejected', params: { name: row.certification.name, nameFr: row.certification.nameFr ?? row.certification.name, reason }, link: '/profile' },
       });
     });
     res.json({ ok: true });
@@ -396,6 +403,22 @@ staffRouter.get(
 
 // -------------------------------------------------------------- Positions
 
+/**
+ * A supervisor limited to some departments changes only their own departments' positions: the
+ * position must be one of theirs, and a new or moved position must land in one of their
+ * departments. (A position's department decides whose staff a department supervisor sees.)
+ */
+async function assertPositionChangeInScope(tx: Tx, a: AuthContext, id: string | null, departmentId: string | null | undefined) {
+  const mine = a.scope?.positionIds.length ? a.scope.positionIds : null;
+  if (!mine) return;
+  const before = id ? await tx.position.findUnique({ where: { id }, select: { departmentId: true } }) : null;
+  if (id && (!before || !mine.includes(id))) throw notFound('Position');
+  const target = departmentId === undefined ? (before?.departmentId ?? null) : departmentId;
+  if (id && departmentId === undefined) return;
+  const myDepartments = new Set((await tx.position.findMany({ where: { id: { in: mine } }, select: { departmentId: true } })).map((p) => p.departmentId).filter((d): d is string => !!d));
+  if (!target || !myDepartments.has(target)) throw forbidden('Positions can only be added to, or moved within, your own departments.');
+}
+
 staffRouter.post(
   '/positions',
   requirePermission('positions.manage'),
@@ -403,6 +426,7 @@ staffRouter.post(
     const a = authOf(req);
     const body = positionBody.parse(req.body);
     const p = await withTenant(a.tenantId, async (tx) => {
+      await assertPositionChangeInScope(tx, a, null, body.departmentId);
       const pos = await savePosition(tx, a.tenantId, null, { ...body, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'position.create', entity: 'Position', entityId: pos.id, after: body });
       return pos;
@@ -420,6 +444,7 @@ staffRouter.put(
     const id = uuid.parse(req.params.id);
     const body = positionBody.parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      await assertPositionChangeInScope(tx, a, id, body.departmentId);
       await savePosition(tx, a.tenantId, id, { ...body, nameFr: body.nameFr ?? null, minimumAge: body.minimumAge ?? null });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'position.update', entity: 'Position', entityId: id, after: body });
     });

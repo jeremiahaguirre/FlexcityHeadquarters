@@ -19,6 +19,7 @@ const call = (token?: string) => {
     get: (p: string) => w(request(server).get(p)),
     post: (p: string, b: object = {}) => w(request(server).post(p)).send(b),
     patch: (p: string, b: object) => w(request(server).patch(p)).send(b),
+    put: (p: string, b: object) => w(request(server).put(p)).send(b),
     delete: (p: string) => w(request(server).delete(p)),
   };
 };
@@ -256,5 +257,91 @@ describe('staff admin', () => {
     const id = t.users[0]!.id;
     expect((await call(sup).patch(`/api/users/${id}/scheduling`, { shadowTier: 'A_SQUAD', weeklyMaxHours: '24' })).status).toBe(200);
     expect((await call(sup).patch(`/api/users/${id}`, { roles: ['HR_ADMIN'] })).status).toBe(403);
+  });
+});
+
+// Last: it puts the positions into departments, which changes who supervisors see.
+describe('department-limited leads, the catalog and certificate checks', () => {
+  let lead: string;
+  let leadId: string;
+  let waterPos: string;
+  let aquaticsId: string;
+  let waterId: string;
+  beforeAll(async () => {
+    const aq = await owner.department.create({ data: { tenantId: t.tenant.id, name: 'Aquatics', aquatic: true } });
+    const wa = await owner.department.create({ data: { tenantId: t.tenant.id, name: 'Water Works' } });
+    aquaticsId = aq.id;
+    waterId = wa.id;
+    await owner.position.update({ where: { id: t.position.id }, data: { departmentId: aq.id } });
+    waterPos = (await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Water Operator', departmentId: wa.id } })).id;
+    const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Aquatics lead', permissions: ['positions.manage', 'certs.verify', 'users.read'], scopePositionIds: [t.position.id] } });
+    const u = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'Lou', lastName: 'Lead', email: 'lead@iota.test' } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: u.id, customRoleId: role.id } });
+    leadId = u.id;
+    lead = await signAccessToken({ sub: u.id, tid: t.tenant.id, roles: ['EMPLOYEE'] });
+  });
+  const posBody = (over: object = {}) => ({ name: 'Lifeguard', nameFr: null, minimumAge: null, requiredCertificationIds: [t.nls.id], ...over });
+
+  it('changes only their own departments’ positions, and never moves one out of them', async () => {
+    expect((await call(lead).put(`/api/positions/${waterPos}`, posBody({ name: 'Water Operator' }))).status).toBe(404);
+    expect((await call(lead).put(`/api/positions/${t.position.id}`, posBody({ departmentId: waterId }))).status).toBe(403);
+    expect((await call(lead).put(`/api/positions/${t.position.id}`, posBody({ departmentId: null }))).status).toBe(403);
+    // Leaving the department out keeps it.
+    expect((await call(lead).put(`/api/positions/${t.position.id}`, posBody({ minimumAge: 16 }))).status).toBe(200);
+    expect(await owner.position.findUniqueOrThrow({ where: { id: t.position.id } })).toMatchObject({ departmentId: aquaticsId, minimumAge: 16 });
+    expect((await call(lead).post('/api/positions', posBody({ name: 'Plant Helper', departmentId: waterId }))).status).toBe(403);
+    expect((await call(lead).post('/api/positions', posBody({ name: 'No Department' }))).status).toBe(403);
+    expect((await call(lead).post('/api/positions', posBody({ name: 'Pool Attendant', departmentId: aquaticsId }))).status).toBe(201);
+    // HR (not limited) can do both.
+    expect((await call(hr).put(`/api/positions/${waterPos}`, posBody({ name: 'Water Operator', departmentId: waterId }))).status).toBe(200);
+  });
+
+  it('can’t correct the organization-wide catalog; nobody can correct a shared reference row', async () => {
+    const mine = await owner.certification.create({ data: { tenantId: t.tenant.id, name: 'Confined Space Entry iota', issuingBody: 'WorkSafeBC', validityMonths: null } });
+    const body = { name: 'Confined Space Entry iota', nameFr: null, issuingBody: 'WorkSafeBC', validityMonths: 36 };
+    const r = await call(lead).patch(`/api/certifications/${mine.id}`, body);
+    expect(r.status).toBe(403);
+    expect(r.body.code).toBe('CERT_ORG_WIDE');
+    const shared = await owner.certification.create({ data: { tenantId: null, name: 'Shared reference row iota', issuingBody: 'FH', validityMonths: null } });
+    try {
+      const s = await call(hr).patch(`/api/certifications/${shared.id}`, { ...body, name: 'Shared reference row iota' });
+      expect(s.status).toBe(403);
+      expect(s.body.code).toBe('CERT_SHARED');
+    } finally {
+      await owner.certification.delete({ where: { id: shared.id } });
+    }
+  });
+
+  it('a verifier in another department isn’t told about, and can’t turn down, someone outside it; a verified entry can’t be turned down', async () => {
+    const op = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'Wes', lastName: 'Water', email: 'wes@iota.test' } });
+    await owner.userPosition.create({ data: { tenantId: t.tenant.id, userId: op.id, positionId: waterPos } });
+    const opTok = await signAccessToken({ sub: op.id, tid: t.tenant.id, roles: ['EMPLOYEE'] });
+    const added = await call(opTok).post('/api/me/certifications', { certificationId: t.nls.id, issueDate: '2026-03-01', expiryDate: null });
+    const told = (await owner.notification.findMany({ where: { type: 'cert_to_verify', params: { path: ['userCertificationId'], equals: added.body.id } } })).map((n) => n.userId);
+    expect(told).not.toContain(leadId);
+    expect(told).toContain((await owner.user.findFirstOrThrow({ where: { email: 'hr@iota.test' } })).id);
+    expect((await call(lead).post(`/api/user-certifications/${added.body.id}/reject`, { reason: 'Not mine to check' })).status).toBe(403);
+
+    await call(hr).post(`/api/user-certifications/${added.body.id}/verify`);
+    const late = await call(hr).post(`/api/user-certifications/${added.body.id}/reject`, { reason: 'Too late' });
+    expect(late.status).toBe(409);
+    expect(late.body.code).toBe('CERT_VERIFIED');
+  });
+
+  it('a correction is audited, keeps the card photo link, and the French notice gets the French name', async () => {
+    const guard = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'CASUAL', firstName: 'Gil', lastName: 'Photo', email: 'gil@iota.test' } });
+    const tok = await signAccessToken({ sub: guard.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const frCert = await owner.certification.create({ data: { tenantId: t.tenant.id, name: 'Bronze Cross iota', nameFr: 'Croix de bronze iota', issuingBody: 'Lifesaving Society', validityMonths: 24 } });
+    const added = await call(tok).post('/api/me/certifications', { certificationId: frCert.id, issueDate: '2026-03-01', expiryDate: null, documentUrl: 'https://files.example/card.jpg' });
+    const fixed = await call(tok).patch(`/api/me/certifications/${added.body.id}`, { certificationId: frCert.id, issueDate: '2026-03-02', expiryDate: null });
+    expect(fixed.status).toBe(200);
+    expect(fixed.body.documentUrl).toBe('https://files.example/card.jpg');
+    const log = await owner.auditLog.findFirstOrThrow({ where: { action: 'cert.correct', entityId: added.body.id } });
+    expect(log.before).toMatchObject({ issueDate: '2026-03-01' });
+    expect(log.after).toMatchObject({ issueDate: '2026-03-02' });
+
+    expect((await call(hr).post(`/api/user-certifications/${added.body.id}/reject`, { reason: 'Blurry photo' })).status).toBe(200);
+    const n = await owner.notification.findFirstOrThrow({ where: { userId: guard.id, type: 'cert_rejected' } });
+    expect(n.params).toMatchObject({ name: 'Bronze Cross iota', nameFr: 'Croix de bronze iota' });
   });
 });

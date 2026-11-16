@@ -200,6 +200,11 @@ function PositionsCard({ catalog }: { catalog: CatalogCert[] }) {
   const current = editing === 'new' ? null : editing;
   const certName = new Map(catalog.map((c) => [c.id, name(c)]));
   const deptName = new Map((departments.data?.departments ?? []).map((d) => [d.id, name(d)]));
+  // A supervisor limited to some departments edits only their own departments' positions (the server enforces it too).
+  const editable = departments.data?.limited ? new Set([...departments.data.departments.flatMap((d) => d.positions.map((p) => p.id)), ...departments.data.unassigned.map((p) => p.id)]) : null;
+  const shown = positions.data && (editable ? positions.data.filter((p) => editable.has(p.id)) : positions.data);
+  // The department field is sent only when it was loaded and changed: otherwise the position keeps its department.
+  const deptsReady = !!departments.data && !departments.error;
 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -210,7 +215,11 @@ function PositionsCard({ catalog }: { catalog: CatalogCert[] }) {
       name: String(f.get('name')).trim(),
       nameFr: String(f.get('nameFr') ?? '').trim() || null,
       minimumAge: n('age'),
-      departmentId: String(f.get('department') ?? '') || null,
+      ...(() => {
+        if (!deptsReady) return {};
+        const chosen = String(f.get('department') ?? '') || null;
+        return current && chosen === current.departmentId ? {} : { departmentId: chosen };
+      })(),
       requiredCertificationIds: f.getAll('required').map(String),
       hoursOfService: hos.maxDailyHours || hos.minRestHours || hos.maxHoursIn7Days ? hos : null,
       unpaidBreakMinutes: n('break'),
@@ -233,13 +242,13 @@ function PositionsCard({ catalog }: { catalog: CatalogCert[] }) {
       <CardBody className="pt-3">
         {positions.error ? (
           <ErrorNotice onRetry={positions.reload} />
-        ) : !positions.data ? (
+        ) : !shown || (departments.loading && !departments.data && !departments.error) ? (
           <ListSkeleton rows={3} />
-        ) : !positions.data.length ? (
+        ) : !shown.length ? (
           <EmptyState icon={BriefcaseBusiness} title={t('platform.noPositions')}>{t('settings.noPositionsHelp')}</EmptyState>
         ) : (
           <ul className="divide-y divide-line">
-            {positions.data.map((p) => (
+            {shown.map((p) => (
               <li key={p.id}>
                 <button type="button" onClick={() => setEditing(p)} className="grid w-full gap-0.5 rounded-lg py-3 text-left hover:bg-surface/60">
                   <span className="text-body-strong">{name(p)}</span>
@@ -265,9 +274,9 @@ function PositionsCard({ catalog }: { catalog: CatalogCert[] }) {
             <Field label={t('platform.positionNameFr')} hint={t('jobs.optional')}>{(p) => <Input {...p} name="nameFr" maxLength={80} defaultValue={current?.nameFr ?? ''} />}</Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('settings.positionDepartment')}>
+            <Field label={t('settings.positionDepartment')} hint={departments.error ? t('settings.departmentsUnavailable') : undefined}>
               {(p) => (
-                <Select {...p} name="department" defaultValue={current?.departmentId ?? ''}>
+                <Select {...p} name="department" defaultValue={current?.departmentId ?? ''} disabled={!deptsReady}>
                   <option value="">{t('settings.noDepartment')}</option>
                   {(departments.data?.departments ?? []).map((d) => (
                     <option key={d.id} value={d.id}>

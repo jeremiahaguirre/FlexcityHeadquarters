@@ -581,7 +581,8 @@
     "MAINTENANCE_CLOSED": "That window is over or cancelled.",
     "CERT_EXISTS": "There’s already a certificate with that name.",
     "CERT_VERIFIED": "This certificate was already verified. Ask your supervisor to change it.",
-    "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here."
+    "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
+    "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1784,7 +1785,8 @@
     "addCertsFirst": "Add certificates to the catalog above first.",
     "unpaidBreak": "Unpaid meal break (minutes)",
     "unpaidBreakHint": "Taken off each shift’s paid time. A shift can set its own.",
-    "neverAlone": "Never alone: at least two qualified people must overlap on its shifts"
+    "neverAlone": "Never alone: at least two qualified people must overlap on its shifts",
+    "departmentsUnavailable": "Departments couldn’t be loaded, so a position’s department stays as it is."
   },
   "jobs": {
     "title": "Job postings",
