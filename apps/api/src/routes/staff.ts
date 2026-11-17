@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
@@ -243,6 +243,7 @@ staffRouter.get(
 staffRouter.post(
   '/positions',
   requirePermission('positions.manage'),
+  requireWholeOrganization('positions.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = positionBody.parse(req.body);
@@ -259,6 +260,7 @@ staffRouter.post(
 staffRouter.put(
   '/positions/:id',
   requirePermission('positions.manage'),
+  requireWholeOrganization('positions.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -412,6 +414,7 @@ staffRouter.post(
     const id = uuid.parse(req.params.id);
     const sub = subdomainOf(req)!;
     await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
       const u = await tx.user.findUnique({ where: { id } });
       if (!u || u.status !== 'ACTIVE') throw notFound('Active staff member');
       const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
@@ -525,6 +528,7 @@ staffRouter.post(
     const body = z.object({ positionId: uuid, hourlyRate: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/), effectiveFrom: isoDate }).parse(req.body);
     if (Number(body.hourlyRate) < 10) throw badRequest('That rate is below any Canadian minimum wage. Check the amount.');
     const rate = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
       const later = await tx.payRate.findFirst({ where: { userId: id, positionId: body.positionId, effectiveFrom: { gte: d(body.effectiveFrom)! } } });
       if (later) throw conflict('RATE_EXISTS', 'A rate already starts on or after that date for this position.');
       await tx.payRate.updateMany({

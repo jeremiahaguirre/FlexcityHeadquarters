@@ -6,7 +6,7 @@ import { addressKey } from '../lib/address.js';
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, consumeAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth, requireModule, requireWholeOrganization } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, issueRefreshToken, signAccessToken } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
@@ -115,6 +115,7 @@ function view(c: Awaited<ReturnType<typeof connectionFor>>, sub: string) {
 ssoRouter.get(
   '/sso',
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     res.json(view(await withTenant(a.tenantId, connectionFor), subdomainOf(req)!));
@@ -132,6 +133,7 @@ function assertStrongAdmin(a: ReturnType<typeof authOf>) {
 ssoRouter.put(
   '/sso',
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   requireModule('sso'),
   requireRecentAuth,
   h(async (req, res) => {
@@ -185,6 +187,7 @@ ssoRouter.put(
 ssoRouter.delete(
   '/sso',
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);

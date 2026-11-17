@@ -1,7 +1,7 @@
 /** Departments: list, add, rename and remove. */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { departmentBody, deleteDepartment, listDepartments, saveDepartment } from '../services/people/departmentAdmin.js';
 import { h } from './context.js';
@@ -32,6 +32,7 @@ departmentsRouter.get(
 departmentsRouter.post(
   '/departments',
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = departmentBody.parse(req.body);
@@ -47,6 +48,7 @@ departmentsRouter.post(
 departmentsRouter.put(
   '/departments/:id',
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -62,6 +64,7 @@ departmentsRouter.put(
 departmentsRouter.delete(
   '/departments/:id',
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);

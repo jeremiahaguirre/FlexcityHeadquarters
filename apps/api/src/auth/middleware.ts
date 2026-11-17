@@ -7,13 +7,14 @@ import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';
 import { verifyAccessToken } from './tokens.js';
-import { type Scope, customAccess, scopeOf, stillActive } from '../services/people/customRoles.js';
+import { type Scope, customAccess, scopeOf, stillActive, wholeOrganizationPermissions } from '../services/people/customRoles.js';
 import { managedScope } from '../services/people/departments.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
 import { type Module, allowedWhileSuspended, hasModule } from '../services/billing/entitlements.js';
 import { SETUP_PERMISSIONS, supportStillAllowed } from '../services/platform/support.js';
 import { audit, withTenant } from '../lib/db.js';
+import { canonicalPath, routedPath } from '../lib/canonicalPath.js';
 
 export interface AuthContext {
   userId: string;
@@ -28,6 +29,8 @@ export interface AuthContext {
   mfaPending: boolean;
   /** Where supervisory capabilities reach: null = the whole organization, else a department. */
   scope: Scope;
+  /** The permissions held for the whole organization (empty when scope isn't null): requireWholeOrganization. */
+  wholeOrg: ReadonlySet<Permission>;
   /** An FH support visit (read-only, with the organization's consent). */
   support?: { sessionId: string; level: 'SETUP' | 'FULL'; endsAt: Date; adminId: string };
 }
@@ -37,15 +40,28 @@ const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/
 /** Powers that need the same second factor as HR. */
 const ADMIN_LEVEL = new Set<string>(['users.write', 'tenant.configure', 'payroll.approve', 'payroll.export', 'roles.manage', 'documents.manage', 'billing.manage', 'audit.read']);
 
-/** Never open to an FH support visit, whatever the organization allowed. */
+/**
+ * Never open to an FH support visit, whatever the organization allowed. Matched against the
+ * canonical path (decoded, lower case, no trailing slash: lib/canonicalPath.ts), because routing
+ * ignores case and decodes parameters; the raw URL let `/api/Users/…/documents` through.
+ */
 const SUPPORT_BLOCKED = [
   /^\/api\/me\/.+/, // the granting person's own pay, documents, discipline…
-  /^\/api\/incidents\/[^/]+$/,
-  /^\/api\/(documents|accommodations|injury-claims|grievances|reviews|households|registrations|online-registrations|care\/checkins|people\/review|discipline)(\/|$)/,
-  /^\/api\/users\/[^/]+\/(documents|accommodations|case-file|discipline|records-export|records-export\.pdf|sin|reliability|conduct|pay-profile|bank-accounts)(\/|$)/,
+  // Incident narratives (some involve children), HR files, health, pay, people's messages and
+  // whereabouts, who is leaving and why, applicants and payees.
+  /^\/api\/(incidents|documents|accommodations|injury-claims|grievances|reviews|households|registrations|online-registrations|care\/checkins|people\/review|discipline|notifications|messages|messages-admin|expenses|lone-work|offboarding|leave|lieu|payees|benefits|training|time-off|applications|surveys-admin\/offboardings)(\/|$)/,
+  /^\/api\/users\/[^/]+\/(documents|accommodations|case-file|discipline|records-export|records-export\.pdf|sin|reliability|conduct|conduct-notes|pay-profile|bank-accounts|salary|payroll-orders|pay-rates|emergency-contacts)(\/|$)/,
+  /^\/api\/jobs\/[^/]+\/applications$/,
   /^\/api\/payroll\/(?!settings$|export-settings$).+/,
   /^\/api\/data-export(\/|$)/,
+  // The union local's hub is never open to FH, whoever allowed the visit.
+  /^\/api\/union(\/|$)/,
 ];
+/** Whether an FH support visit may open this URL at all (nothing on the block list; a malformed escape never). */
+export const supportMayOpen = (url: string) => {
+  const path = canonicalPath(url);
+  return path !== null && !SUPPORT_BLOCKED.some((r) => r.test(path));
+};
 
 /** All a closed organization's administrators can reach: who they are, their passkeys or a sign-in code, and the export. */
 const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/passkeys|auth\/step-up(\/options)?|auth\/mfa\/(options|code|code\/verify)|data-export(\/.*)?)$/;
@@ -91,6 +107,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     // anyone holding HR-level powers through a custom role needs it too.
     const adminLike = mfaRoles.includes('HR_ADMIN') && [...granted].some((p) => ADMIN_LEVEL.has(p));
     const mfaPending = !mfa && (claims.roles.some((r) => mfaRoles.includes(r)) || adminLike);
+    const scope = scopeOf(builtIn, custom, { roles: claims.roles, managed });
     req.auth = {
       userId: claims.sub,
       tenantId: claims.tid,
@@ -99,7 +116,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null,
       mfa,
       mfaPending,
-      scope: scopeOf(builtIn, custom, { roles: claims.roles, managed }),
+      scope,
+      wholeOrg: wholeOrganizationPermissions(builtIn, custom, scope, claims.roles),
     };
     // FH support, with the organization's consent: read-only, what the grant allows, every page logged.
     if (claims.sup) {
@@ -109,13 +127,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       req.auth.mfaPending = false;
       if (allowed.level === 'SETUP') req.auth.permissions = new Set([...req.auth.permissions].filter((p) => SETUP_PERMISSIONS.includes(p)));
       // Logged first, so attempts that are refused are on record too.
-      await withTenant(claims.tid, (tx) => audit(tx, { tenantId: claims.tid, actorId: null, action: 'support.view', entity: 'SupportSession', entityId: claims.sup!, after: { method: req.method, path: req.originalUrl.split('?')[0] } }));
+      await withTenant(claims.tid, (tx) => audit(tx, { tenantId: claims.tid, actorId: null, action: 'support.view', entity: 'SupportSession', entityId: claims.sup!, after: { method: req.method, path: routedPath(req) } }));
       if (req.method !== 'GET' && !req.originalUrl.startsWith('/api/auth/logout')) throw new HttpError(403, 'SUPPORT_READ_ONLY', 'FH support can look, not change anything.');
-      // The union local's hub is never open to FH, whoever allowed the visit.
-      if (req.originalUrl.startsWith('/api/union')) throw new HttpError(403, 'FORBIDDEN', 'The union hub isn’t part of support access.');
-      // Nor are individual sensitive records, at any level: support helps with setup and schedules,
-      // it doesn't read narratives, health or HR files, children's details, SINs or anyone's own pages.
-      if (SUPPORT_BLOCKED.some((r) => r.test(req.originalUrl.split('?')[0]!))) throw new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.');
+      // The union hub and individual sensitive records are never open, at any level: support helps
+      // with setup and schedules, it doesn't read narratives, health or HR files, children's
+      // details, SINs, messages, union threads or anyone's own pages.
+      if (!supportMayOpen(routedPath(req))) throw new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.');
       req.auth.permissions.delete('union.hub');
     }
     // Unpaid past the grace period: read-only, except safety work, clocking and paying.
@@ -135,6 +152,30 @@ export function requirePermission(...perms: Permission[]) {
     if (!auth) return next(new HttpError(401, 'UNAUTHENTICATED', 'Not signed in'));
     if (!perms.every((p) => auth.permissions.has(p))) return next(forbidden());
     next();
+  };
+}
+
+/**
+ * Organization-wide settings and data (sign-in rules, pay codes, the data export, departments,
+ * benefits plans, policies…) are only for people whose access isn't limited to a department.
+ * A department-limited holder of the same permission gets 403 WHOLE_ORGANIZATION_ONLY.
+ */
+export const holdsForWholeOrganization = (a: AuthContext, perm: Permission) => !a.scope && a.permissions.has(perm) && a.wholeOrg.has(perm);
+
+/**
+ * Decided per capability: the person holds `perm` for the whole organization, from a built-in role
+ * or a custom role with no department limit (customRoles.ts wholeOrganizationPermissions).
+ */
+export function assertWholeOrganization(a: AuthContext, perm: Permission) {
+  if (!holdsForWholeOrganization(a, perm)) throw new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'This is set for the whole organization, by someone whose access isn’t limited to a department.');
+}
+
+/** Route guard form of assertWholeOrganization, used after requirePermission(perm). */
+export function requireWholeOrganization(perm: Permission) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    const a = req.auth;
+    if (!a) return next(new HttpError(401, 'UNAUTHENTICATED', 'Not signed in'));
+    next(holdsForWholeOrganization(a, perm) ? undefined : new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'This is set for the whole organization, by someone whose access isn’t limited to a department.'));
   };
 }
 
@@ -195,5 +236,6 @@ export async function accessOf(tenantId: string, userId: string, roles: AccessRo
   const [{ features, overrides }, custom, ok, managed] = await Promise.all([tenantSettings(tenantId), customAccess(tenantId, userId), stillActive(tenantId, userId), managedScope(tenantId, userId)]);
   if (!ok) return null;
   const builtIn = permissionsWithOverrides(roles, overrides);
-  return { userId, tenantId, roles, permissions: withoutDisabled(new Set([...builtIn, ...custom.perms]), features), authenticatedAt: null, mfa: false, mfaPending: false, scope: scopeOf(builtIn, custom, { roles, managed }) };
+  const scope = scopeOf(builtIn, custom, { roles, managed });
+  return { userId, tenantId, roles, permissions: withoutDisabled(new Set([...builtIn, ...custom.perms]), features), authenticatedAt: null, mfa: false, mfaPending: false, scope, wholeOrg: wholeOrganizationPermissions(builtIn, custom, scope, roles) };
 }

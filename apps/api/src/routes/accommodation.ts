@@ -6,7 +6,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { h } from './context.js';
-import { hrRecordsBy } from '../services/people/scope.js';
+import { assertUserInScope, hrRecordsBy } from '../services/people/scope.js';
 
 export const accommodationRouter = Router();
 accommodationRouter.use(['/accommodations', '/me/accommodations', '/users/:id/accommodations'], requireFeature('accommodation'));
@@ -67,6 +67,7 @@ accommodationRouter.post(
     const b = body.parse(req.body);
     if (b.endsOn && b.endsOn < b.startsOn) throw badRequest('The end date is before the start date.');
     const c = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
       if (!(await tx.user.findUnique({ where: { id: userId } }))) throw notFound('Staff member');
       const created = await tx.accommodationCase.create({ data: { tenantId: a.tenantId, userId, label: b.label, startsOn: day(b.startsOn)!, endsOn: day(b.endsOn), reviewOn: day(b.reviewOn), maxShiftHours: b.maxShiftHours, maxWeeklyHours: b.maxWeeklyHours, noStartBefore: b.noStartBefore, noEndAfter: b.noEndAfter, daysOff: b.daysOff, excludedPositionIds: b.excludedPositionIds, createdById: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'accommodation.create', entity: 'AccommodationCase', entityId: created.id });

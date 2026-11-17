@@ -477,7 +477,7 @@ hrRouter.post(
     const userId = uuid.parse(req.params.id);
     if (userId === a.userId) throw forbidden('Someone else has to offboard you.');
     const b = z.object({ lastDay: isoDate, reason: z.enum(OFFBOARD_REASONS) }).parse(req.body);
-    const o = await withTenant(a.tenantId, (tx) => startOffboarding(tx, a, userId, b));
+    const o = await withTenant(a.tenantId, async (tx) => (await assertUserInScope(tx, a, userId), startOffboarding(tx, a, userId, b)));
     res.status(201).json({ id: o.id });
   }),
 );

@@ -10,7 +10,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { localIso } from '../lib/time.js';
@@ -43,7 +43,7 @@ workRulesRouter.get(
         const w = parseWorkRules(tenant.workRules);
         const solver = parseSolverSettings(tenant.overtimePolicy);
         const orgSeniority = resolveFeatures(tenant.features).seniority;
-        const configure = a.permissions.has('tenant.configure');
+        const configure = holdsForWholeOrganization(a, 'tenant.configure');
         const departments = (await schedulableDepartments(tx, a)).filter((d) => d.id !== NO_DEPARTMENT);
         const visiblePositions = new Set(configure ? positions.map((p) => p.id) : departments.flatMap((d) => d.positionIds));
         const { departments: _d, ...organization } = w;
@@ -80,7 +80,7 @@ workRulesRouter.put(
   '/schedule/work-rules',
   h(async (req, res) => {
     const a = authOf(req);
-    if (!a.permissions.has('tenant.configure')) throw forbidden();
+    if (!holdsForWholeOrganization(a, 'tenant.configure')) throw forbidden();
     const body = workRulesBody.parse(req.body);
     res.json(
       await withTenant(a.tenantId, async (tx) => {
@@ -109,7 +109,7 @@ workRulesRouter.put(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const body = departmentWorkRulesBody.extend({ reset: z.boolean().optional() }).parse(req.body);
-    const configure = a.permissions.has('tenant.configure');
+    const configure = holdsForWholeOrganization(a, 'tenant.configure');
     // Pay rules are organization policy; a department's scheduler may set its meal-break placement and warnings.
     if (!configure && (!a.permissions.has('schedule.assist') || body.callIn || body.notice || body.standby || body.reset)) throw forbidden();
     res.json(
@@ -147,7 +147,8 @@ workRulesRouter.patch(
         const pos = await tx.position.findUnique({ where: { id }, select: { id: true, unpaidBreakMinutes: true, neverAlone: true } });
         if (!pos) throw notFound('Position');
         const mine = a.permissions.has('schedule.assist') && (await schedulableDepartments(tx, a)).some((d) => d.positionIds.includes(id));
-        if (!a.permissions.has('tenant.configure') && !a.permissions.has('positions.manage') && !mine) throw forbidden();
+        // Organization-wide holders change any position; a department's scheduler only its own (SEC-25).
+        if (!holdsForWholeOrganization(a, 'tenant.configure') && !holdsForWholeOrganization(a, 'positions.manage') && !mine) throw forbidden();
         const out = await tx.position.update({
           where: { id },
           data: { ...(body.unpaidBreakMinutes !== undefined ? { unpaidBreakMinutes: body.unpaidBreakMinutes || null } : {}), ...(body.neverAlone !== undefined ? { neverAlone: body.neverAlone } : {}) },
