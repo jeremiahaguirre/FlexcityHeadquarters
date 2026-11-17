@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 /** @type {import('next').NextConfig} */
 const API_URL = process.env.API_URL ?? 'http://localhost:4000';
 // The Union Hub's own service, when it runs separately (UNION_HUB_MODE=separate on the API).
@@ -33,7 +35,9 @@ const robotsHeaders = [
 // is deployed (src/lib/appUpdate.ts) and the API can refuse builds older than MIN_WEB_VERSION (docs/RELEASES.md).
 const RELEASE = (process.env.NEXT_PUBLIC_RELEASE || '').replace(/[^\w.-]/g, '').slice(0, 60);
 const FH_VERSION = process.env.NEXT_PUBLIC_FH_VERSION || (RELEASE ? `${new Date().toISOString().replace(/\D/g, '').slice(0, 12)}.${RELEASE}` : 'dev');
-const env = { NEXT_PUBLIC_FH_VERSION: FH_VERSION };
+// NEXT_PUBLIC_DEMO is always set at build time ('1' or ''), so `DEMO` (src/lib/demo.ts) is a constant
+// the minifier folds: in a live build every demo-only branch, string and import drops out.
+const env = { NEXT_PUBLIC_FH_VERSION: FH_VERSION, NEXT_PUBLIC_DEMO: DEMO ? '1' : '' };
 
 const nextConfig = DEMO
   ? {
@@ -56,6 +60,12 @@ const nextConfig = DEMO
       poweredByHeader: false,
       // "*.live.tsx" pages and middleware.live.ts need a server: only live builds include them.
       pageExtensions: ['tsx', 'ts', 'live.tsx', 'live.ts'],
+      // The demo's request handlers, sample data (about 2 MB), simulations and the API code they borrow
+      // are replaced by a stub that throws: none of it ships to production (ARCHITECTURE-REVIEW A15).
+      webpack(config, { webpack }) {
+        config.plugins.push(new webpack.NormalModuleReplacementPlugin(/^(?:\.\/|@\/lib\/)demoApi$/, fileURLToPath(new URL('./src/lib/stubs/demoApi.ts', import.meta.url))));
+        return config;
+      },
       // /api/* is proxied to the API so cookies stay first-party. In production the
       // load balancer normally routes /api/* to the API service before it reaches
       // Next; this rewrite keeps single-host deployments (and `next start`) working.

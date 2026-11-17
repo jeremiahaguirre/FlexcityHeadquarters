@@ -14,5 +14,13 @@ export const notFound = (what: string) => new HttpError(404, 'NOT_FOUND', `${wha
 export const forbidden = (msg = 'Forbidden') => new HttpError(403, 'FORBIDDEN', msg);
 export const conflict = (code: string, msg: string, details?: unknown) =>
   new HttpError(409, code, msg, details);
+/** A generic 400: the app can only say "some details aren't right". Prefer invalid() with a specific code. */
 export const badRequest = (msg: string, details?: unknown) =>
   new HttpError(400, 'BAD_REQUEST', msg, details);
+/**
+ * A 400 the person can fix, with its own code so the app explains it in their
+ * language (errors.<CODE> in en-CA and fr-CA; locales/errorCodes.test.ts checks).
+ * `details` values fill the message's {{placeholders}}.
+ */
+export const invalid = (code: string, msg: string, details?: unknown) =>
+  new HttpError(400, code, msg, details);

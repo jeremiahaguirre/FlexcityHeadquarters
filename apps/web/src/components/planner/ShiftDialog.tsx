@@ -15,6 +15,7 @@ import { ApiError, api } from '@/lib/api';
 import { formatDate, formatHours, formatTimeRange } from '@/lib/format';
 import { useQuery } from '@/lib/useQuery';
 import type { ChangeEffect, ChangePreview, ShiftWarning } from '@/lib/workRules';
+import { errorText } from '@/lib/apiError';
 
 interface Position { id: string; name: string; nameFr: string | null }
 export interface DialogShift {
@@ -67,7 +68,7 @@ export function ShiftDialog({ shift, onClose, onChanged }: { shift: DialogShift;
       onChanged();
       onClose();
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
     } finally {
       setBusy(null);
     }
@@ -85,7 +86,7 @@ export function ShiftDialog({ shift, onClose, onChanged }: { shift: DialogShift;
       onClose();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'OVERTIME_REQUIRES_ACK' && userId) setAckFor({ userId, ...(e.details as { overtimeHours: string; skipped?: Skipped[]; clause?: string | null }), hours: (e.details as { overtimeHours: string }).overtimeHours, skipped: (e.details as { skipped?: Skipped[] }).skipped ?? [], clause: (e.details as { clause?: string | null }).clause ?? null });
-      else toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      else toast(errorText(t, e), 'warn');
     } finally {
       setBusy(null);
     }
