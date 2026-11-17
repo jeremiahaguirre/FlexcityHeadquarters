@@ -10,14 +10,16 @@ import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { audit, withTenant } from '../lib/db.js';
+import { advisoryLock, audit, withTenant } from '../lib/db.js';
 import { HttpError, forbidden, invalid, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
-import { localDate, localIso } from '../lib/time.js';
+import { addDays, localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
 import { createIncident, readIncident } from '../services/ops/incidents.js';
 import { decideClosure, recordReading } from '../services/ops/poolOps.js';
 import { runPayroll } from '../services/payroll/payrollRun.js';
+import { holdClaimsForProvider, settleHeldClaims } from '../services/payroll/expenses.js';
+import { createHash, randomUUID } from 'node:crypto';
 import { requestErasure } from '../services/privacy/erasure.js';
 import { loadReliability } from '../services/reliability/load.js';
 import { RULES } from '../services/reliability/score.js';
@@ -498,12 +500,31 @@ api.get(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5), format: z.enum(EXPORT_FORMATS).optional() }).parse(req.query);
+    const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5), format: z.enum(EXPORT_FORMATS).optional(), claims: z.literal('1').optional() }).parse(req.query);
     // A supervisor limited to a department exports only their department's hours.
     const out = await withTenant(a.tenantId, async (tx) => {
-      const saved = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings).providerExport;
+      const settings = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings);
+      const saved = settings.providerExport;
       const options = { ...saved, format: q.format ?? saved?.format ?? 'generic' };
-      return { ...(await runPayroll(tx, a.tenantId, q.periodStart, q.weeks, await peopleInScope(tx, a.scope), null, options)), format: options.format };
+      const people = await peopleInScope(tx, a.scope);
+      // The provider card's whole-organization file, while paying through a provider: approved expense
+      // claims go in it as an untaxed reimbursement, held for that file until they're marked reimbursed
+      // (uploaded) or put back. Department files and the plain export never carry claims.
+      const mode = settings.payrollProvider?.mode ?? 'in_app';
+      const periodEnd = addDays(q.periodStart, q.weeks * 7 - 1);
+      const withClaims = q.claims === '1' && mode !== 'in_app' && !a.scope;
+      const downloadId = randomUUID();
+      if (withClaims) await advisoryLock(tx, `payroll-provider:${a.tenantId}`);
+      const claims = withClaims ? await holdClaimsForProvider(tx, { syncId: downloadId, periodEnd, download: true }) : [];
+      const run = await runPayroll(tx, a.tenantId, q.periodStart, q.weeks, people, null, options, claims);
+      const claimIds = claims.flatMap((c) => c.claimIds);
+      if (claimIds.length && !run.csv.ok) await settleHeldClaims(tx, downloadId, false);
+      if (claimIds.length && run.csv.ok) {
+        const fileSha256 = createHash('sha256').update(run.csv.csv).digest('hex');
+        await tx.payrollSync.create({ data: { id: downloadId, tenantId: a.tenantId, provider: mode, periodStart: new Date(`${q.periodStart}T00:00:00Z`), periodEnd: new Date(`${periodEnd}T00:00:00Z`), status: 'DOWNLOADED', rows: run.csv.rowCount, fileSha256, sentById: a.userId } });
+        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.provider.download', entity: 'PayrollSync', entityId: downloadId, after: { provider: mode, periodStart: q.periodStart, periodEnd, fileSha256, claimIds } });
+      }
+      return { ...run, format: options.format, claimIds, downloadId };
     }, { timeoutMs: 120_000 });
     if (!out.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', problems: out.csv.problems, warnings: out.warnings });
@@ -511,6 +532,11 @@ api.get(
     }
     // Codes and details (JSON), so the screen shows them in the reader's language.
     if (out.warnings.length) res.setHeader('X-Flexcity-Warnings', encodeURIComponent(JSON.stringify(out.warnings)));
+    // The file holds expense claims: mark them reimbursed once it's uploaded (or put them back).
+    if (out.claimIds.length) {
+      res.setHeader('X-Flexcity-Download', out.downloadId);
+      res.setHeader('X-Flexcity-Claims', String(out.claimIds.length));
+    }
     res.type('text/csv').attachment(`payroll-${out.format}-${q.periodStart}.csv`).send(out.csv.csv);
   }),
 );

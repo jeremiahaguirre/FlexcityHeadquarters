@@ -18,7 +18,17 @@ import { parseWorkRules } from '../scheduling/workRules.js';
 
 /** `onlyUsers`: a department supervisor's people; null = everyone (HR). */
 /** `positionIds`: one department's positions; null = every position. */
-export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, weeks: number, onlyUsers: Set<string> | null = null, positionIds: string[] | null = null, exportOptions: ExportOptions = {}) {
+export async function runPayroll(
+  tx: Tx,
+  tenantId: string,
+  periodStart: string,
+  weeks: number,
+  onlyUsers: Set<string> | null = null,
+  positionIds: string[] | null = null,
+  exportOptions: ExportOptions = {},
+  /** Provider exports: approved expense claims paid back as REIMBURSEMENT (not taxed), one line a person. */
+  reimbursements: Array<{ userId: string; amount: number }> = [],
+) {
   const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, include: { ruleOverrides: true, payCodeMappings: true } });
   const facilities = await tx.facility.findMany();
   const periodEnd = addDays(periodStart, weeks * 7);
@@ -176,6 +186,22 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
       employees.push({ userId: x.userId, employeeNumber: x.employeeNumber, displayName: x.displayName, costCenter: f?.costCenter ?? null, lines: target.result.lines });
     }
     for (const l of x.lines) addEarning(target.result, l, tenant.vacationPayMode);
+  }
+
+  // Expense claims paid through the provider, as an untaxed amount (people with no hours too).
+  for (const x of reimbursements) {
+    if (!(x.amount > 0)) continue;
+    let target = employees.find((e) => e.userId === x.userId);
+    if (!target) {
+      const u = await tx.user.findUnique({ where: { id: x.userId }, select: { firstName: true, lastName: true, employeeNumber: true } });
+      if (!u) continue;
+      // Their cost centre: where they last punched, else the organization's first facility.
+      const last = await tx.timePunch.findFirst({ where: { userId: x.userId }, orderBy: { clockIn: 'desc' }, select: { facilityId: true } });
+      const f = facilities.find((g) => g.id === last?.facilityId) ?? facilities[0];
+      target = { userId: x.userId, employeeNumber: u.employeeNumber, displayName: `${u.firstName} ${u.lastName}`, costCenter: f?.costCenter ?? null, lines: [] };
+      employees.push(target);
+    }
+    target.lines.push({ code: 'REIMBURSEMENT', positionId: null, hours: ZERO, rate: ZERO, multiplier: ZERO, amount: new Decimal(x.amount.toFixed(2)) });
   }
 
   const resolve = (key: PayCodeKey, positionId: string | null) =>
