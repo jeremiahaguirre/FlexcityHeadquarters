@@ -34,3 +34,24 @@ export function ageRange(min: number | null, max: number | null, t: (k: string, 
   if (max === null) return t('programs.agePlus', { min: one(min ?? 0) });
   return t('programs.ageBetween', { min: one(min ?? 0), max: one(max) });
 }
+
+/** A bookable service's form as the API takes it: blanks clear the French name, descriptions and party limit. */
+export function serviceBody(f: FormData, daysOfWeek: number[]) {
+  const s = (k: string) => String(f.get(k) ?? '').trim();
+  return {
+    facilityId: s('facility'),
+    name: s('name'),
+    nameFr: s('nameFr') || null,
+    description: s('description') || null,
+    descriptionFr: s('descriptionFr') || null,
+    durationMinutes: Number(s('duration')),
+    priceCents: Math.round(Number(s('price').replace(',', '.')) * 100),
+    capacity: Number(s('capacity') || 1),
+    maxPartySize: s('party') ? Number(s('party')) : null,
+    daysOfWeek,
+    openMinute: toMinutes(s('open')),
+    closeMinute: toMinutes(s('close')),
+    leadDays: Number(s('lead') || 2),
+    active: f.get('active') === 'on',
+  };
+}
