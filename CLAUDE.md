@@ -28,14 +28,17 @@ Monorepo: `apps/api` (Express 5, Prisma 7, PostgreSQL with row-level security), 
 `.github/workflows/ci.yml` is the source of truth; these are the same steps, run from the repository root (each line in its own subshell, so they can be pasted together):
 
 ```bash
-# API (integration tests need DATABASE_URL, an owner/superuser URL, and APP_DATABASE_URL for flexcity_app)
+# API. Integration tests need DATABASE_URL (owner/superuser), APP_DATABASE_URL (flexcity_app) and
+# JWT_SECRET (32+ characters); README.md has the full command.
 (cd apps/api && npx prisma generate && npx prisma validate && npx tsc --noEmit && npm test)
 (cd apps/api && SHADOW_DATABASE_URL=<an empty database> npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code)
 (cd apps/api && npm run test:integration)
-# Web: types and unit tests, the static demo build, then the phone tests against it
-(cd apps/web && npx tsc --noEmit && npm test && npm run build:demo && npx playwright test --trace off)
+# Web: the API's Prisma client first (web tests import the API's permission matrix), types and
+# unit tests, the static demo build, its fonts check, then the phone tests against it.
+# The first time on a machine: (cd apps/web && npx playwright install chromium)
+(cd apps/api && npx prisma generate) && (cd apps/web && npx tsc --noEmit && npm test && npm run build:demo && npx vitest run src/lib/selfHostedFonts.test.ts && npx playwright test --trace off)
 # Marketing site, when it changed
-(cd apps/site && npx tsc --noEmit && npm test && npm run build)
+(cd apps/site && npx tsc --noEmit && npm test && npm run build && npx vitest run src/lib/selfHostedFonts.test.ts)
 # Terraform, when ops/terraform changed (not in CI yet)
 (cd ops/terraform && terraform fmt -check -recursive && terraform init -backend=false && terraform validate && terraform test)
 ```
