@@ -305,7 +305,7 @@ staffRouter.patch(
     const updated = await withTenant(a.tenantId, async (tx) => {
       const before = await tx.certification.findUnique({ where: { id } });
       if (!before) throw notFound('Certification');
-      if (a.scope?.positionIds.length) throw new HttpError(403, 'CERT_ORG_WIDE', 'Correcting the certificate list changes it for every department. Ask HR.');
+      if (limited(a)) throw new HttpError(403, 'CERT_ORG_WIDE', 'Correcting the certificate list changes it for every department. Ask HR.');
       // Shared reference rows (no organization) belong to FH, not to the city.
       if (before.tenantId !== a.tenantId) throw new HttpError(403, 'CERT_SHARED', 'This certificate is shared by every organization and can’t be changed here.');
       await assertCertNameFree(tx, body.name, id);
@@ -323,12 +323,31 @@ staffRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
+    // What the verifier saw (the employee can still correct an entry until it's verified).
+    const seen = z.object({ certificationId: uuid, issueDate: isoDate, expiryDate: isoDate.nullable(), documentUrl: z.string().nullable().optional() }).partial().parse(req.body ?? {});
     const c = await withTenant(a.tenantId, async (tx) => {
       const row = await tx.userCertification.findUnique({ where: { id } });
       if (!row) throw notFound('Certification');
       if (row.userId === a.userId) throw forbidden('You cannot verify your own certification.');
       await assertUserInScope(tx, a, row.userId);
-      const updated = await tx.userCertification.update({ where: { id }, data: { verifiedById: a.userId, verifiedAt: new Date() }, include: certInclude });
+      // Only the entry as it was shown, and only once.
+      const { count } = await tx.userCertification.updateMany({
+        where: {
+          id,
+          verifiedAt: null,
+          ...(seen.certificationId ? { certificationId: seen.certificationId } : {}),
+          ...(seen.issueDate ? { issueDate: d(seen.issueDate)! } : {}),
+          ...(seen.expiryDate !== undefined ? { expiryDate: d(seen.expiryDate) ?? null } : {}),
+          ...(seen.documentUrl !== undefined ? { documentUrl: seen.documentUrl } : {}),
+        },
+        data: { verifiedById: a.userId, verifiedAt: new Date() },
+      });
+      if (!count) {
+        const now = await tx.userCertification.findUnique({ where: { id }, select: { verifiedAt: true } });
+        if (now?.verifiedAt) throw conflict('CERT_VERIFIED', 'This certificate was already verified.');
+        throw conflict('CERT_CHANGED', 'The employee changed this entry since you opened it. Check it again.');
+      }
+      const updated = await tx.userCertification.findUniqueOrThrow({ where: { id }, include: certInclude });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cert.verify', entity: 'UserCertification', entityId: id });
       await tx.notification.create({ data: { tenantId: a.tenantId, userId: row.userId, type: 'cert_verified', params: { name: updated.certification.name }, link: '/profile' } });
       return updated;
@@ -403,14 +422,19 @@ staffRouter.get(
 
 // -------------------------------------------------------------- Positions
 
+/** Limited to some positions or facilities (a department lead), not the whole organization. */
+const limited = (a: AuthContext) => !!a.scope && (a.scope.positionIds.length > 0 || a.scope.facilityIds.length > 0);
+
 /**
  * A supervisor limited to some departments changes only their own departments' positions: the
  * position must be one of theirs, and a new or moved position must land in one of their
  * departments. (A position's department decides whose staff a department supervisor sees.)
  */
 async function assertPositionChangeInScope(tx: Tx, a: AuthContext, id: string | null, departmentId: string | null | undefined) {
-  const mine = a.scope?.positionIds.length ? a.scope.positionIds : null;
-  if (!mine) return;
+  if (!limited(a)) return;
+  // Limited to facilities only: no positions of their own to change.
+  const mine = a.scope!.positionIds;
+  if (!mine.length) throw forbidden('Positions are changed by HR, or by a supervisor of their department.');
   const before = id ? await tx.position.findUnique({ where: { id }, select: { departmentId: true } }) : null;
   if (id && (!before || !mine.includes(id))) throw notFound('Position');
   const target = departmentId === undefined ? (before?.departmentId ?? null) : departmentId;

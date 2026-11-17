@@ -582,7 +582,8 @@
     "CERT_EXISTS": "There’s already a certificate with that name.",
     "CERT_VERIFIED": "This certificate was already verified. Ask your supervisor to change it.",
     "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
-    "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR."
+    "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
+    "CERT_CHANGED": "The employee changed this entry since you opened it. Check it again."
   },
   "timeclock": {
     "title": "Timeclock",

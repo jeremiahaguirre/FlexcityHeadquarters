@@ -344,4 +344,33 @@ describe('department-limited leads, the catalog and certificate checks', () => {
     const n = await owner.notification.findFirstOrThrow({ where: { userId: guard.id, type: 'cert_rejected' } });
     expect(n.params).toMatchObject({ name: 'Bronze Cross iota', nameFr: 'Croix de bronze iota' });
   });
+
+  it('a lead limited only to facilities can’t change positions or the catalog', async () => {
+    const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Site lead', permissions: ['positions.manage', 'users.read'], scopeFacilityIds: [t.facility.id] } });
+    const u = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'Fay', lastName: 'Facility', email: 'fay@iota.test' } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: u.id, customRoleId: role.id } });
+    const site = await signAccessToken({ sub: u.id, tid: t.tenant.id, roles: ['EMPLOYEE'] });
+    expect((await call(site).put(`/api/positions/${waterPos}`, posBody({ name: 'Water Operator', departmentId: aquaticsId }))).status).toBe(403);
+    expect((await call(site).post('/api/positions', posBody({ name: 'Anything', departmentId: aquaticsId }))).status).toBe(403);
+    const cert = await owner.certification.create({ data: { tenantId: t.tenant.id, name: 'Site cert iota', issuingBody: 'X', validityMonths: null } });
+    expect((await call(site).patch(`/api/certifications/${cert.id}`, { name: 'Site cert iota', nameFr: null, issuingBody: 'Another body', validityMonths: null })).body.code).toBe('CERT_ORG_WIDE');
+    expect(await owner.position.findUniqueOrThrow({ where: { id: waterPos } })).toMatchObject({ departmentId: waterId });
+  });
+
+  it('verifying checks the entry is still what the verifier saw', async () => {
+    const guard = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'CASUAL', firstName: 'Vic', lastName: 'Swap', email: 'vic@iota.test' } });
+    const tok = await signAccessToken({ sub: guard.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const other = await owner.certification.create({ data: { tenantId: t.tenant.id, name: 'Swim Instructor iota', issuingBody: 'Lifesaving Society', validityMonths: 24 } });
+    const added = await call(tok).post('/api/me/certifications', { certificationId: other.id, issueDate: '2026-03-01', expiryDate: null });
+    const shown = { certificationId: other.id, issueDate: '2026-03-01', expiryDate: null, documentUrl: null };
+    // The employee swaps it for another certificate before the verifier clicks.
+    await call(tok).patch(`/api/me/certifications/${added.body.id}`, { certificationId: t.nls.id, issueDate: '2026-02-01', expiryDate: null });
+    const stale = await call(hr).post(`/api/user-certifications/${added.body.id}/verify`, shown);
+    expect(stale.status).toBe(409);
+    expect(stale.body.code).toBe('CERT_CHANGED');
+    expect((await owner.userCertification.findUniqueOrThrow({ where: { id: added.body.id } })).verifiedAt).toBeNull();
+    const ok = await call(hr).post(`/api/user-certifications/${added.body.id}/verify`, { ...shown, certificationId: t.nls.id, issueDate: '2026-02-01' });
+    expect(ok.status).toBe(200);
+    expect((await call(hr).post(`/api/user-certifications/${added.body.id}/verify`, {})).body.code).toBe('CERT_VERIFIED');
+  });
 });

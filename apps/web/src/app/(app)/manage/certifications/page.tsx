@@ -14,7 +14,7 @@ import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { useAction, useQuery } from '@/lib/useQuery';
 
-interface Cert { id: string; certification: { name: string; nameFr: string | null; issuingBody: string }; issueDate: string; expiryDate: string | null; user: { id: string; name: string }; expired?: boolean }
+interface Cert { id: string; certification: { id?: string; name: string; nameFr: string | null; issuingBody: string }; issueDate: string; expiryDate: string | null; documentUrl?: string | null; user: { id: string; name: string }; expired?: boolean }
 
 /** Certifications to verify and to renew. Expired or unverified cards never count toward shifts, so this is where supervisors clear the queue. */
 export default function CertificationsPage() {
@@ -68,7 +68,7 @@ export default function CertificationsPage() {
                       <Button size="sm" variant="ghost" icon={<X className="h-4 w-4" aria-hidden="true" />} onClick={() => setRejecting(c)}>
                         {t('certs.reject')}
                       </Button>
-                      <Button size="sm" icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />} loading={busy === c.id} onClick={() => void run(c.id, () => api(`/api/user-certifications/${c.id}/verify`, { method: 'POST' }), t('certs.verified', { name: c.user.name })).then(() => unverified.reload())}>
+                      <Button size="sm" icon={<BadgeCheck className="h-4 w-4" aria-hidden="true" />} loading={busy === c.id} onClick={() => void run(c.id, () => api(`/api/user-certifications/${c.id}/verify`, { method: 'POST', body: { certificationId: c.certification.id, issueDate: c.issueDate, expiryDate: c.expiryDate, documentUrl: c.documentUrl ?? null } }), t('certs.verified', { name: c.user.name })).then(() => unverified.reload())}>
                         {t('certs.verify')}
                       </Button>
                     </div>
