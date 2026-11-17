@@ -147,7 +147,8 @@ workRulesRouter.patch(
         const pos = await tx.position.findUnique({ where: { id }, select: { id: true, unpaidBreakMinutes: true, neverAlone: true } });
         if (!pos) throw notFound('Position');
         const mine = a.permissions.has('schedule.assist') && (await schedulableDepartments(tx, a)).some((d) => d.positionIds.includes(id));
-        if (!a.permissions.has('tenant.configure') && !a.permissions.has('positions.manage') && !mine) throw forbidden();
+        // Organization-wide holders change any position; a department's scheduler only its own (SEC-25).
+        if (!holdsForWholeOrganization(a, 'tenant.configure') && !holdsForWholeOrganization(a, 'positions.manage') && !mine) throw forbidden();
         const out = await tx.position.update({
           where: { id },
           data: { ...(body.unpaidBreakMinutes !== undefined ? { unpaidBreakMinutes: body.unpaidBreakMinutes || null } : {}), ...(body.neverAlone !== undefined ? { neverAlone: body.neverAlone } : {}) },
