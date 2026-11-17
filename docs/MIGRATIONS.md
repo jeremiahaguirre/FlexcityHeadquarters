@@ -38,7 +38,7 @@ as the **only statement in its own migration**: it cannot run inside a transacti
 
 ## When a destructive statement is right
 
-The lint fails on `DROP` (except `DROP DEFAULT` / `DROP NOT NULL`), `RENAME`, a column `TYPE` change, `SET NOT NULL`, `ADD COLUMN … NOT NULL` without a default, `UPDATE`, `DELETE` and `TRUNCATE` (also inside a `WITH`), any `DO` block (it can hide any of these), and a plain `CREATE INDEX` on a large table. When the statement is the contract step of an earlier expand, or the table is known to be small, say so in a marker comment just above it (or after its semicolon, on the same line), so the reviewer sees why:
+The lint fails on `DROP` (except `DROP DEFAULT` / `DROP NOT NULL`), `RENAME`, a column `TYPE` change, `SET NOT NULL`, `ADD COLUMN … NOT NULL` without a default, `UPDATE`, `DELETE` and `TRUNCATE` (also inside a `WITH`), any `DO` block or `CALL`, or a `SELECT` of a function the same migration creates (a function body is not checked, so either can hide any of these), and a plain `CREATE INDEX` on a large table. The marker counts only in a comment, never inside a string. When the statement is the contract step of an earlier expand, or the table is known to be small, say so in a marker comment just above it (or after its semicolon, on the same line), so the reviewer sees why:
 
 ```sql
 -- migration-safety: contract step; nothing reads "Shift"."legacyNote" since 2027.02 (PR #123)

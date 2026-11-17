@@ -64,6 +64,33 @@ describe('migration safety lint (ARCHITECTURE-REVIEW A9, docs/MIGRATIONS.md)', (
     expect(rules(`CREATE OR REPLACE FUNCTION f() RETURNS void LANGUAGE sql AS $$ DELETE FROM "Shift" $$`)).toEqual([]);
   });
 
+  it('catches what the second review found (#51)', () => {
+    // A type with a comma: the required money column Prisma writes for a Decimal with no default.
+    expect(rules('ALTER TABLE "Shift" ADD COLUMN "amount" DECIMAL(65,30) NOT NULL')).toEqual(['add-not-null']);
+    expect(rules('ALTER TABLE "Shift" ADD COLUMN "amount" NUMERIC(10,2) NOT NULL')).toEqual(['add-not-null']);
+    expect(rules('ALTER TABLE "Shift" ADD COLUMN "amount" DECIMAL(65,30) NOT NULL DEFAULT 0')).toEqual([]);
+    expect(rules('ALTER TABLE "Shift" ADD COLUMN "a" DECIMAL(9,6), ADD COLUMN "b" TEXT NOT NULL')).toEqual(['add-not-null']);
+    // A "--" inside a string is not a comment, and a marker inside a string is not a marker.
+    expect(rules(`ALTER TABLE "Shift" ADD COLUMN "a" TEXT DEFAULT '--', DROP COLUMN "b"`)).toEqual(['drop']);
+    expect(rules(`UPDATE "Shift" SET note = '-- migration-safety: x'`)).toEqual(['update']);
+  });
+
+  it('a function created and run by the same migration needs a marker; a trigger function does not', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fh-migrations-'));
+    const add = (name: string, sql: string) => {
+      mkdirSync(join(dir, name));
+      writeFileSync(join(dir, name, 'migration.sql'), sql);
+    };
+    add('20991231000000_backfill', `CREATE FUNCTION bf() RETURNS void AS $$ UPDATE "Shift" SET a = 1 $$ LANGUAGE sql;\nSELECT bf();`);
+    add('20991231000100_proc', `CALL refresh_everything();`);
+    add('20991231000200_trigger', `CREATE OR REPLACE FUNCTION touch() RETURNS trigger AS $$ BEGIN NEW.x := 1; RETURN NEW; END $$ LANGUAGE plpgsql;\nCREATE TRIGGER t BEFORE UPDATE ON "Shift" FOR EACH ROW EXECUTE FUNCTION touch();`);
+    add('20991231000300_marked', `CREATE FUNCTION bf2() RETURNS void AS $$ UPDATE "Kind" SET a = 1 $$ LANGUAGE sql;\n-- migration-safety: fills a 12-row lookup table\nSELECT bf2();`);
+    const r = lintMigrations(dir, '20261113103200_maintenance_windows');
+    expect(r.errors).toHaveLength(2);
+    expect(r.errors[0]).toMatch(/^20991231000000_backfill\/migration\.sql:2: Runs a function/);
+    expect(r.errors[1]).toMatch(/^20991231000100_proc\/migration\.sql:1: Runs a function/);
+  });
+
   it('attaches a comment after the semicolon to the statement before it', () => {
     const st = splitStatements('DROP TABLE "a"; -- migration-safety: a is unused\nDROP TABLE "b";');
     expect(st).toHaveLength(2);

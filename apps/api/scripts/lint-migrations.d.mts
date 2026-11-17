@@ -13,4 +13,6 @@ export interface Problem {
 }
 export function splitStatements(sql: string): Statement[];
 export function checkStatement(text: string): Problem[];
+export function createdRoutines(statements: Statement[]): Set<string>;
+export function checkRoutineCall(text: string, created: Set<string>): Problem[];
 export function lintMigrations(dir: string, baseline?: string): { errors: string[]; checked: number };
