@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 import type { Tx } from '../../lib/db.js';
-import { badRequest, notFound } from '../../lib/errors.js';
+import { invalid, notFound } from '../../lib/errors.js';
 import { localIso } from '../../lib/time.js';
 import { notify, usersWithRoles } from '../notifications/notifier.js';
 import { lifeguardsRequired } from './chemistry.js';
@@ -27,7 +27,7 @@ export const poolDetailsBody = z.object({
 export type PoolDetails = z.infer<typeof poolDetailsBody>;
 
 function check(b: Partial<PoolDetails>) {
-  if (b.depthMinM && b.depthMaxM && Number(b.depthMinM) > Number(b.depthMaxM)) throw badRequest('The shallow end must not be deeper than the deep end.');
+  if (b.depthMinM && b.depthMaxM && Number(b.depthMinM) > Number(b.depthMaxM)) throw invalid('POOL_DEPTH', 'The shallow end must not be deeper than the deep end.');
 }
 
 export async function createPool(tx: Tx, tenantId: string, b: PoolDetails) {

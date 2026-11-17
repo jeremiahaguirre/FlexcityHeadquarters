@@ -14,9 +14,11 @@ export interface NavItem {
   section?: ManageSection;
   /** Shown only when the person has this permission (or any of these). */
   permission?: string | string[];
+  /** …and only while this feature is on, for screens whose API follows a switch some of their permissions don't. */
+  feature?: string;
   /** Order in the phone tab bar (lower first); omitted = only under "More". */
   tab?: number;
-  /** False: never the page someone lands on after signing in (messages, surveys), even when it's first in their menu. */
+  /** False: never the page someone lands on after signing in (messages, surveys, My pay), even when it's first in their menu, nor a phone tab unless it has one. */
   home?: false;
   /** Set once the screen exists, so navigation never leads to a missing page. */
   ready: boolean;
@@ -35,7 +37,7 @@ export const NAV: NavItem[] = [
   { href: '/alone', key: 'loneWork', icon: ShieldCheck, group: 'mine', permission: 'lonework.self', ready: true },
   { href: '/patrol', key: 'patrol', icon: Snowflake, group: 'mine', permission: 'winter.patrol', ready: true },
   { href: '/pretrip', key: 'pretrip', icon: Truck, group: 'mine', permission: 'fleet.inspect', ready: true },
-  { href: '/pay', key: 'myPay', icon: Wallet, group: 'mine', permission: 'timeclock.punch', ready: true },
+  { href: '/pay', key: 'myPay', icon: Wallet, group: 'mine', permission: 'pay.self', home: false, ready: true },
   { href: '/expenses', key: 'expenses', icon: ReceiptText, group: 'mine', permission: 'expenses.self', ready: true },
   { href: '/logbook', key: 'logbook', icon: NotebookPen, group: 'mine', permission: 'logbook.write', ready: true },
   { href: '/messages', key: 'messages', icon: MessagesSquare, group: 'mine', permission: 'messages.use', tab: 8, home: false, ready: true },
@@ -44,12 +46,12 @@ export const NAV: NavItem[] = [
   { href: '/status', key: 'status', icon: Waves, group: 'deck', permission: 'ops.status.read', tab: 6, ready: true },
   { href: '/ops', key: 'ops', icon: Droplets, group: 'deck', permission: 'ops.chemical.record', ready: true },
   { href: '/incidents', key: 'incidents', icon: ShieldAlert, group: 'deck', permission: 'incidents.create', ready: true },
-  { href: '/manage/hr', key: 'hr', icon: Building2, group: 'manage', section: 'people', permission: 'leave.manage', ready: true },
+  { href: '/manage/hr', key: 'hr', icon: Building2, group: 'manage', section: 'people', permission: ['users.write', 'leave.manage', 'performance.manage', 'policies.manage', 'grievances.manage'], ready: true },
   { href: '/members', key: 'members', icon: IdCard, group: 'manage', section: 'programs', permission: 'members.manage', tab: 7, ready: true },
   { href: '/manage/programs', key: 'programs', icon: Layers, group: 'manage', section: 'programs', permission: 'lessons.plan', ready: true },
   { href: '/manage/schedule', key: 'manageSchedule', icon: CalendarRange, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
   { href: '/manage/forecast', key: 'forecast', icon: TrendingUp, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
-  { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', section: 'time', permission: 'timeclock.review', ready: true },
+  { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', section: 'time', permission: ['timeclock.review', 'timeoff.approve', 'shiftboard.approve'], ready: true },
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', section: 'people', permission: 'users.read', ready: true },
   { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', section: 'time', permission: 'overtime.manage', ready: true },
   { href: '/manage/onboarding', key: 'onboarding', icon: ClipboardList, group: 'manage', section: 'people', permission: ['onboarding.hr', 'onboarding.lead'], ready: true },
@@ -68,8 +70,8 @@ export const NAV: NavItem[] = [
   { href: '/manage/org-chart', key: 'orgChart', icon: Network, group: 'manage', section: 'people', permission: 'users.read', ready: true },
   { href: '/manage/compliance', key: 'compliance', icon: FileSearch, group: 'manage', section: 'safety', permission: 'compliance.report', ready: true },
   { href: '/manage/fleet', key: 'fleet', icon: Truck, group: 'manage', section: 'safety', permission: 'fleet.manage', ready: true },
-  { href: '/manage/coverage', key: 'coverage', icon: BadgeCheck, group: 'manage', section: 'time', permission: ['coverage.manage', 'schedule.write'], ready: true },
-  { href: '/manage/benchmarks', key: 'benchmarks', icon: Gauge, group: 'manage', section: 'organization', permission: ['tenant.configure', 'reliability.read'], ready: true },
+  { href: '/manage/coverage', key: 'coverage', icon: BadgeCheck, group: 'manage', section: 'time', permission: ['coverage.manage', 'schedule.write'], feature: 'coverage', ready: true },
+  { href: '/manage/benchmarks', key: 'benchmarks', icon: Gauge, group: 'manage', section: 'organization', permission: ['tenant.configure', 'reliability.read'], feature: 'benchmarks', ready: true },
   { href: '/manage/certifications', key: 'certifications', icon: BadgeCheck, group: 'manage', section: 'people', permission: 'certs.verify', ready: true },
   { href: '/manage/jobs', key: 'jobs', icon: Briefcase, group: 'manage', section: 'people', permission: 'jobs.manage', ready: true },
   { href: '/manage/payroll', key: 'payroll', icon: Banknote, group: 'manage', section: 'pay', permission: 'payroll.export', ready: true },
@@ -90,9 +92,9 @@ export const NAV: NavItem[] = [
   { href: '/surveys', key: 'surveys', icon: ClipboardPen, group: 'mine', permission: 'surveys.respond', home: false, ready: true },
 ];
 
-/** Menu items a person may open, minus any the city's Dev console hid for their roles. */
-export function visibleNav(can: (p: string) => boolean, hidden: readonly string[] = []): NavItem[] {
-  return NAV.filter((n) => n.ready && !hidden.includes(n.href) && (!n.permission || [n.permission].flat().some(can)));
+/** Menu items a person may open, minus any the city's Dev console hid for their roles and any whose feature is off. */
+export function visibleNav(can: (p: string) => boolean, hidden: readonly string[] = [], features?: Readonly<Record<string, boolean>>): NavItem[] {
+  return NAV.filter((n) => n.ready && !hidden.includes(n.href) && (!n.permission || [n.permission].flat().some(can)) && !(n.feature && features?.[n.feature] === false));
 }
 
 /**
@@ -101,12 +103,12 @@ export function visibleNav(can: (p: string) => boolean, hidden: readonly string[
  */
 export function phoneTabs(items: NavItem[]): { tabs: NavItem[]; more: NavItem[] } {
   const tabbable = items.filter((n) => n.tab !== undefined).sort((a, b) => a.tab! - b.tab!);
-  const fill = items.filter((n) => n.tab === undefined);
+  const fill = items.filter((n) => n.tab === undefined && n.home !== false);
   const tabs = [...tabbable, ...fill].slice(0, 4);
   return { tabs, more: items.filter((n) => !tabs.includes(n)) };
 }
 
-export function homePath(can: (p: string) => boolean, hidden: readonly string[] = []): string {
-  const items = visibleNav(can, hidden);
+export function homePath(can: (p: string) => boolean, hidden: readonly string[] = [], features?: Readonly<Record<string, boolean>>): string {
+  const items = visibleNav(can, hidden, features);
   return (items.find((n) => n.home !== false) ?? items[0])?.href ?? '/profile';
 }

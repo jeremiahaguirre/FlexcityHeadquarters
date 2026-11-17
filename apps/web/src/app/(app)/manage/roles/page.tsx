@@ -21,7 +21,7 @@ interface Person { id: string; name: string; customRoles: Array<{ id: string; na
 export default function RolesPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
-  const roles = useQuery<{ roles: CustomRole[]; catalog: RoleCatalog; grantable: string[] | null }>('/api/roles');
+  const roles = useQuery<{ roles: CustomRole[]; catalog: RoleCatalog; needs?: Record<string, string[]>; grantable: string[] | null }>('/api/roles');
   const positions = useQuery<Array<{ id: string; name: string; nameFr: string | null }>>('/api/positions');
   const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
   const departments = useQuery<Departments>('/api/departments');
@@ -51,6 +51,7 @@ export default function RolesPage() {
         <RoleEditor
           roles={roles.data.roles}
           catalog={roles.data.catalog}
+          needs={roles.data.needs}
           grantable={roles.data.grantable}
           positions={positions.data}
           facilities={facilities.data}

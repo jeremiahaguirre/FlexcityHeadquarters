@@ -17,6 +17,7 @@ import { formatLocal } from '@/lib/localTime';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { toLocalInput } from '@/lib/winter';
 import type { OnCallPeriod, OnCallView } from '@/lib/workRules';
+import { errorText } from '@/lib/apiError';
 
 interface Named { id: string; name: string; nameFr: string | null }
 interface Person { id: string; name: string; status: string; positions: Array<{ id: string; departmentId: string | null }> }
@@ -76,7 +77,7 @@ export function OnCall({ canWrite }: { canWrite: boolean }) {
         await reload();
       } catch (err) {
         if (err instanceof ApiError && err.code === 'CALLBACK_REST') setEmergencyAsk(true);
-        toast(err instanceof ApiError ? t(`errors.${err.code}`, { defaultValue: err.message }) : t('common.error'), 'warn');
+        toast(errorText(t, err), 'warn');
       }
     }
   }

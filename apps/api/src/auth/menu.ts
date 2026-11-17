@@ -1,11 +1,17 @@
 /**
  * The app's menu, as the API knows it: each screen and the permission(s) that
  * show it (any one is enough). The web menu (apps/web/src/lib/nav.ts) must
- * match; a web test checks they stay in step.
+ * match; a web test checks they stay in step, and an API test
+ * (test/integration/menuAccess.test.ts) opens every screen as each role.
  */
 import type { Permission } from './permissions.js';
+import type { FeatureKey } from '../services/platform/features.js';
 
-export interface MenuItem { href: string; key: string; group: 'mine' | 'deck' | 'manage' | 'union'; permissions: Permission[] }
+/**
+ * `feature`: the screen's API follows this feature switch (and the plan) although
+ * some of its permissions don't, so the item is hidden while the feature is off.
+ */
+export interface MenuItem { href: string; key: string; group: 'mine' | 'deck' | 'manage' | 'union'; permissions: Permission[]; feature?: FeatureKey }
 
 export const MENU: MenuItem[] = [
   { href: '/today', key: 'today', group: 'mine', permissions: ['shifts.self'] },
@@ -20,7 +26,7 @@ export const MENU: MenuItem[] = [
   { href: '/alone', key: 'loneWork', group: 'mine', permissions: ['lonework.self'] },
   { href: '/patrol', key: 'patrol', group: 'mine', permissions: ['winter.patrol'] },
   { href: '/pretrip', key: 'pretrip', group: 'mine', permissions: ['fleet.inspect'] },
-  { href: '/pay', key: 'myPay', group: 'mine', permissions: ['timeclock.punch'] },
+  { href: '/pay', key: 'myPay', group: 'mine', permissions: ['pay.self'] },
   { href: '/expenses', key: 'expenses', group: 'mine', permissions: ['expenses.self'] },
   { href: '/logbook', key: 'logbook', group: 'mine', permissions: ['logbook.write'] },
   { href: '/messages', key: 'messages', group: 'mine', permissions: ['messages.use'] },
@@ -29,12 +35,12 @@ export const MENU: MenuItem[] = [
   { href: '/status', key: 'status', group: 'deck', permissions: ['ops.status.read'] },
   { href: '/ops', key: 'ops', group: 'deck', permissions: ['ops.chemical.record'] },
   { href: '/incidents', key: 'incidents', group: 'deck', permissions: ['incidents.create'] },
-  { href: '/manage/hr', key: 'hr', group: 'manage', permissions: ['leave.manage'] },
+  { href: '/manage/hr', key: 'hr', group: 'manage', permissions: ['users.write', 'leave.manage', 'performance.manage', 'policies.manage', 'grievances.manage'] },
   { href: '/members', key: 'members', group: 'manage', permissions: ['members.manage'] },
   { href: '/manage/programs', key: 'programs', group: 'manage', permissions: ['lessons.plan'] },
   { href: '/manage/schedule', key: 'manageSchedule', group: 'manage', permissions: ['schedule.write'] },
   { href: '/manage/forecast', key: 'forecast', group: 'manage', permissions: ['schedule.write'] },
-  { href: '/manage/approvals', key: 'approvals', group: 'manage', permissions: ['timeclock.review'] },
+  { href: '/manage/approvals', key: 'approvals', group: 'manage', permissions: ['timeclock.review', 'timeoff.approve', 'shiftboard.approve'] },
   { href: '/manage/staff', key: 'staff', group: 'manage', permissions: ['users.read'] },
   { href: '/manage/overtime', key: 'overtime', group: 'manage', permissions: ['overtime.manage'] },
   { href: '/manage/onboarding', key: 'onboarding', group: 'manage', permissions: ['onboarding.hr', 'onboarding.lead'] },
@@ -53,8 +59,8 @@ export const MENU: MenuItem[] = [
   { href: '/manage/org-chart', key: 'orgChart', group: 'manage', permissions: ['users.read'] },
   { href: '/manage/compliance', key: 'compliance', group: 'manage', permissions: ['compliance.report'] },
   { href: '/manage/fleet', key: 'fleet', group: 'manage', permissions: ['fleet.manage'] },
-  { href: '/manage/coverage', key: 'coverage', group: 'manage', permissions: ['coverage.manage', 'schedule.write'] },
-  { href: '/manage/benchmarks', key: 'benchmarks', group: 'manage', permissions: ['tenant.configure', 'reliability.read'] },
+  { href: '/manage/coverage', key: 'coverage', group: 'manage', permissions: ['coverage.manage', 'schedule.write'], feature: 'coverage' },
+  { href: '/manage/benchmarks', key: 'benchmarks', group: 'manage', permissions: ['tenant.configure', 'reliability.read'], feature: 'benchmarks' },
   { href: '/manage/certifications', key: 'certifications', group: 'manage', permissions: ['certs.verify'] },
   { href: '/manage/jobs', key: 'jobs', group: 'manage', permissions: ['jobs.manage'] },
   { href: '/manage/payroll', key: 'payroll', group: 'manage', permissions: ['payroll.export'] },
