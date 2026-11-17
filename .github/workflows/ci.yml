@@ -47,6 +47,9 @@ jobs:
         continue-on-error: true
       - run: npx prisma generate
       - run: npx prisma validate
+      # Additive-only migrations: the previous release keeps running on the new schema (docs/MIGRATIONS.md).
+      - name: Migration safety
+        run: npm run lint:migrations
       - run: npm run typecheck
       - run: npm test
       - name: Check migrations match the schema

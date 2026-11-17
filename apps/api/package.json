@@ -14,6 +14,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "prisma:generate": "prisma generate",
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs && node --env-file-if-exists=.env scripts/apply-sql.mjs db/rls.sql db/union_hub.sql",
+    "lint:migrations": "node scripts/lint-migrations.mjs",
     "db:seed": "node --env-file-if-exists=.env --import tsx prisma/seed.ts",
     "platform:admin": "tsx scripts/platform-admin.ts",
     "worker": "tsx src/worker.ts",
