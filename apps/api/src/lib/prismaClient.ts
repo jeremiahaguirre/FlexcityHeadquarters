@@ -8,9 +8,11 @@
  * why the app no longer needs the Prisma-spelled URL (lib/dbUrl.ts prismaUrl(), still used for the
  * Prisma CLI's schema engine in prisma.config.ts).
  *
- * The Prisma 5 pool parameters some URLs carry (connection_limit, pool_timeout, connect_timeout)
- * still work: they become pg's max and connectionTimeoutMillis, and are taken out of the URL.
- * Prisma-only parameters pg would misread are refused rather than silently ignored.
+ * Prisma 5's pool parameters connection_limit and pool_timeout still work: they become pg's max and
+ * connectionTimeoutMillis, and are taken out of the URL. Prisma-only parameters pg would ignore or
+ * misread are refused rather than silently dropped (PRISMA_ONLY below). That includes
+ * connect_timeout: pg has one timeout for both waiting for a free connection and opening a new one,
+ * so it can't keep Prisma's meaning (opening only) without also changing the pool wait.
  */
 import { PrismaPg } from '@prisma/adapter-pg';
 import type pg from 'pg';
@@ -25,6 +27,9 @@ export interface PoolOptions {
   applicationName?: string;
 }
 
+/** Prisma 5 URL parameters with no pg equivalent: refused, never silently dropped. */
+const PRISMA_ONLY = ['connect_timeout', 'schema', 'pgbouncer', 'statement_cache_size', 'socket_timeout'];
+
 /** pg.Pool settings for a libpq URL (see above). Exported for tests. */
 export function poolConfig(url: string, opts: PoolOptions = {}): pg.PoolConfig {
   const u = new URL(url);
@@ -32,6 +37,8 @@ export function poolConfig(url: string, opts: PoolOptions = {}): pg.PoolConfig {
   // In Prisma's spelling sslcert meant the server's CA; pg (like libpq) reads it as a client
   // certificate. A Prisma-translated URL here would quietly change meaning, so refuse it.
   if (p.has('sslaccept')) throw new Error('Database URL uses Prisma’s TLS spelling (sslaccept); give the libpq form: sslmode=verify-full&sslrootcert=<CA file>');
+  const prismaOnly = PRISMA_ONLY.filter((k) => p.has(k));
+  if (prismaOnly.length) throw new Error(`Database URL has Prisma 5 parameters that pg would ignore: ${prismaOnly.join(', ')}. Remove them (pool wait: pool_timeout or DB_POOL_TIMEOUT_S; schema: the role's search_path)`);
   const num = (k: string) => {
     const v = p.get(k);
     p.delete(k);
@@ -39,8 +46,7 @@ export function poolConfig(url: string, opts: PoolOptions = {}): pg.PoolConfig {
   };
   const limit = num('connection_limit');
   const poolTimeout = num('pool_timeout');
-  const connectTimeout = num('connect_timeout');
-  const timeoutS = poolTimeout ?? connectTimeout ?? opts.poolTimeoutS;
+  const timeoutS = poolTimeout ?? opts.poolTimeoutS;
   return {
     connectionString: u.toString(),
     ...(limit ?? opts.poolSize ? { max: limit ?? opts.poolSize } : {}),
