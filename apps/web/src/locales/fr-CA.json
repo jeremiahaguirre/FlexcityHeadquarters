@@ -770,7 +770,14 @@
     "NOT_IN_DEMO": "Cette fonction n’est pas offerte dans la démo.",
     "EXPORT_INVALID": "Il manque des renseignements pour envoyer cette période.",
     "PROVIDER_SEND_FAILED": "Le fournisseur de paie n’a pas accepté les heures. Réessayez ou téléchargez le fichier.",
-    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard."
+    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard.",
+    "RATE_ORDER": "Cette date de début chevaucherait un autre taux pour ce poste.",
+    "RUN_CHANGED": "Cette paie a changé pendant que vous l’annuliez. Ouvrez-la de nouveau.",
+    "PERIOD_PAID": "Ceci est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
+    "RUN_SENT_TO_BANK": "Le fichier de dépôt de cette paie a été envoyé à la banque; elle ne peut donc pas être annulée. Corrigez-la à la prochaine paie.",
+    "OWN_PAY_RATE": "Vous ne pouvez pas fixer ni modifier votre propre taux de rémunération. Un autre administrateur doit le faire.",
+    "RATE_AFTER_END": "Le début doit être au plus tard le dernier jour de ce taux.",
+    "RATE_BELOW_MINIMUM": "Ce taux est inférieur à tout salaire minimum au Canada. Vérifiez le montant."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1303,7 +1310,15 @@
       "remove": "Retirer la confirmation",
       "removed": "Confirmation retirée.",
       "private": "Seules les RH voient ceci."
-    }
+    },
+    "correctRate": "Corriger le taux de {{position}}",
+    "correctRateHelp": "Pour un taux mal saisi. Une augmentation est un nouveau taux. La paie déjà approuvée ou versée à ce taux se corrige plutôt avec un élément ponctuel.",
+    "rateReasonHint": "Conservée dans le journal d’audit.",
+    "removeRate": "Retirer ce taux",
+    "removeRateHelp": "Le taux précédent, s’il y en a un, s’applique à sa place.",
+    "correctInstead": "Le corriger plutôt",
+    "rateCorrected": "Taux corrigé.",
+    "rateRemoved": "Taux retiré."
   },
   "payroll": {
     "title": "Paie",
@@ -1792,7 +1807,15 @@
       }
     },
     "saveAll": "Enregistrer les paramètres de paie",
-    "saveAllHint": "Enregistre toutes les cartes de cette page, sauf la connexion bancaire."
+    "saveAllHint": "Enregistre toutes les cartes de cette page, sauf la connexion bancaire.",
+    "former": {
+      "show": "Afficher les personnes parties ou mises à pied",
+      "INACTIVE": "mise à pied",
+      "TERMINATED": "partie"
+    },
+    "voidEffects": "Les demandes de remboursement payées par cette paie redeviennent approuvées, pour la prochaine paie. Les éléments ponctuels restent sur la paie annulée : ajoutez-les de nouveau à la nouvelle.",
+    "voidClaimsKept_one": "Son fichier de dépôt a été téléchargé; {{count}} demande de remboursement reste donc payée. Si elle n’a pas été payée, ajoutez-la comme remboursement ponctuel à la prochaine paie.",
+    "voidClaimsKept_other": "Son fichier de dépôt a été téléchargé; {{count}} demandes de remboursement restent donc payées. Si elles n’ont pas été payées, ajoutez-les comme remboursements ponctuels à la prochaine paie."
   },
   "settings": {
     "title": "Paramètres",

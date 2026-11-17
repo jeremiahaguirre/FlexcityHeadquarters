@@ -770,7 +770,14 @@
     "NOT_IN_DEMO": "This isn’t available in the demo.",
     "EXPORT_INVALID": "Some details are missing before this period can be sent.",
     "PROVIDER_SEND_FAILED": "The payroll provider didn’t take the hours. Try again, or download the file.",
-    "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later."
+    "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later.",
+    "PERIOD_PAID": "This is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.",
+    "RUN_SENT_TO_BANK": "This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.",
+    "RATE_AFTER_END": "The start must be on or before the day this rate ends.",
+    "OWN_PAY_RATE": "You can’t set or change your own pay rate. Another administrator has to.",
+    "RUN_CHANGED": "This pay run changed while you were voiding it. Open it again.",
+    "RATE_ORDER": "That start date would overlap another rate for this position.",
+    "RATE_BELOW_MINIMUM": "That rate is below any Canadian minimum wage. Check the amount."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1303,7 +1310,15 @@
       "remove": "Remove confirmation",
       "removed": "Confirmation removed.",
       "private": "Only HR sees this."
-    }
+    },
+    "correctRate": "Correct the {{position}} rate",
+    "correctRateHelp": "For a rate entered wrong. A raise is a new rate. Pay already approved or paid at this rate is corrected with a one-time item instead.",
+    "rateReasonHint": "Kept in the audit log.",
+    "removeRate": "Remove this rate",
+    "removeRateHelp": "The rate before it, if any, carries on in its place.",
+    "correctInstead": "Correct it instead",
+    "rateCorrected": "Rate corrected.",
+    "rateRemoved": "Rate removed."
   },
   "payroll": {
     "title": "Payroll",
@@ -1792,7 +1807,15 @@
       }
     },
     "saveAll": "Save payroll settings",
-    "saveAllHint": "Saves every card on this page except the bank connection."
+    "saveAllHint": "Saves every card on this page except the bank connection.",
+    "former": {
+      "show": "Show people who left or were laid off",
+      "INACTIVE": "laid off",
+      "TERMINATED": "left"
+    },
+    "voidEffects": "Expense claims this run paid go back to approved, for the next run. One-time items stay on the voided run: add them again on the new one.",
+    "voidClaimsKept_one": "Its deposit file was downloaded, so {{count}} expense claim stays paid. If it wasn’t paid, add it as a one-time reimbursement on the next run.",
+    "voidClaimsKept_other": "Its deposit file was downloaded, so {{count}} expense claims stay paid. If they weren’t paid, add them as one-time reimbursements on the next run."
   },
   "settings": {
     "title": "Settings",

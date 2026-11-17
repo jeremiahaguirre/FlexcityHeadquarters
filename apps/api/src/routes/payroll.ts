@@ -329,16 +329,30 @@ payrollRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const reason = z.object({ reason: z.string().trim().min(5).max(500) }).parse(req.body).reason;
-    await withTenant(a.tenantId, async (tx) => {
+    const out = await withTenant(a.tenantId, async (tx) => {
       const r = await tx.payRun.findUnique({ where: { id } });
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status === 'PAID' || r.status === 'VOID') throw conflict('CANNOT_VOID', 'A paid pay run can’t be voided; correct it in the next run.');
       if (r.status === 'APPROVED' && !a.permissions.has('payroll.approve')) throw forbidden('Only someone who approves pay runs can void an approved one.');
-      await tx.payRun.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date() } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: !!r.depositFileSha256 } });
+      // Money already sent to the bank can't be taken back by voiding: correct it in the next run.
+      if (await tx.payTransmission.findFirst({ where: { payRunId: id, status: 'SENT' }, select: { id: true } })) {
+        throw conflict('RUN_SENT_TO_BANK', 'This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.');
+      }
+      // Only from the status just read: a run approved (or voided) meanwhile isn't voided on stale information.
+      const { count } = await tx.payRun.updateMany({ where: { id, status: r.status }, data: { status: 'VOID', voidedAt: new Date() } });
+      if (count !== 1) throw conflict('RUN_CHANGED', 'This pay run changed while you were voiding it. Open it again.');
+      // Expense claims this run paid weren't paid after all: back to approved, for the next run. Not when its
+      // deposit file was downloaded: it may be at the bank already, and the claims with it.
+      const fileOut = !!r.depositFileSha256;
+      const claims = await tx.expenseClaim.findMany({ where: { payRunId: id, status: 'PAID' }, select: { id: true } });
+      if (claims.length && !fileOut) await tx.expenseClaim.updateMany({ where: { id: { in: claims.map((c) => c.id) } }, data: { status: 'APPROVED', payRunId: null } });
+      const released = fileOut ? [] : claims.map((c) => c.id);
+      const oneTimeItems = await tx.payAdjustment.count({ where: { payRunId: id } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: fileOut, releasedClaims: released, claimsKeptPaid: fileOut ? claims.map((c) => c.id) : [], oneTimeItems } });
+      return { releasedClaims: released.length, claimsKeptPaid: fileOut ? claims.length : 0, oneTimeItems };
     });
-    res.json({ ok: true });
+    res.json({ ok: true, ...out });
   }),
 );
 
@@ -379,18 +393,21 @@ payrollRouter.get(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
+    // ?include=former: also people laid off for the season or who left (an ROE, final vacation pay, retro pay).
+    const former = z.object({ include: z.literal('former').optional() }).parse(req.query).include === 'former';
     const out = await withTenant(a.tenantId, async (tx) => {
       // Tax profiles and banking: only for the people in the viewer's department, and every view is logged.
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.people.view', entity: 'Tenant', entityId: a.tenantId });
       const users = await tx.user.findMany({
-        where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
-        select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
+        where: { status: former ? { in: ['ACTIVE', 'INACTIVE', 'TERMINATED'] } : 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
+        select: { id: true, firstName: true, lastName: true, employeeNumber: true, status: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       });
       return users.map((u) => ({
         id: u.id,
         name: `${u.firstName} ${u.lastName}`,
         employeeNumber: u.employeeNumber,
+        status: u.status,
         departmentIds: [...new Set(u.positions.map((p) => p.position.departmentId).filter(Boolean))],
         profile: profileView(u.payProfile),
         bankAccounts: u.bankAccounts.map(bankView),

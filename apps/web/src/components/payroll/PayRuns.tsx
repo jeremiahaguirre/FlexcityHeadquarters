@@ -222,7 +222,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
             {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') ? <Button size="sm" variant={settings.data?.bank.configured ? 'secondary' : 'primary'} icon={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/deposit-file`, 'deposit.txt', 'deposit')}>{t('payroll.depositFile')}</Button> : null}
             <Button size="sm" variant="secondary" icon={<FileSpreadsheet className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/register.csv`, 'payroll-register.csv', 'register')}>{t('payroll.register')}</Button>
             {d.run.status === 'APPROVED' && can('payroll.approve') ? <Button size="sm" variant="secondary" icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} loading={busy === 'paid'} onClick={() => void act('paid', `/api/payroll/runs/${id}/paid`, t('payroll.markedPaid'))}>{t('payroll.markPaid')}</Button> : null}
-            {(d.run.status === 'DRAFT' || d.run.status === 'APPROVED') && can('payroll.approve') ? <Button size="sm" variant="ghost" onClick={() => setVoiding(true)}>{t('payroll.void')}</Button> : null}
+            {(d.run.status === 'DRAFT' && (can('payroll.export') || can('payroll.approve'))) || (d.run.status === 'APPROVED' && can('payroll.approve')) ? <Button size="sm" variant="ghost" onClick={() => setVoiding(true)}>{t('payroll.void')}</Button> : null}
           </div>
           {d.run.status === 'DRAFT' && d.run.preparedById === me?.id && settings.data?.twoPersonApproval !== false ? <p className="text-caption text-muted">{t('payroll.secondPerson')}</p> : null}
           {d.transmissions.length ? (
@@ -242,11 +242,17 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
               onSubmit={(e) => {
                 e.preventDefault();
                 const reason = String(new FormData(e.currentTarget).get('reason'));
-                void act('void', `/api/payroll/runs/${id}/void`, t('payroll.voided'), { reason }).then((r) => r !== undefined && setVoiding(false));
+                void act('void', `/api/payroll/runs/${id}/void`, t('payroll.voided'), { reason }).then((r) => {
+                  if (r === undefined) return;
+                  setVoiding(false);
+                  const kept = (r as { claimsKeptPaid?: number }).claimsKeptPaid ?? 0;
+                  if (kept) toast(t('payroll.voidClaimsKept', { count: kept }), 'warn');
+                });
               }}
               className="grid gap-3 rounded-2xl border border-line p-4"
             >
               <Field label={t('payroll.voidReason')}>{(p) => <Textarea {...p} name="reason" required minLength={5} rows={2} />}</Field>
+              <p className="text-caption text-muted">{t('payroll.voidEffects')}</p>
               <div className="flex gap-2"><Button type="submit" size="sm" variant="danger" loading={busy === 'void'}>{t('payroll.void')}</Button><Button size="sm" variant="ghost" onClick={() => setVoiding(false)}>{t('common.cancel')}</Button></div>
             </form>
           ) : null}
