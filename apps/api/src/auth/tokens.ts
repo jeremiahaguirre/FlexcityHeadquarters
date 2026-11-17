@@ -91,6 +91,22 @@ export async function rotateRefreshToken(
   return { userId: current.userId, tenantId: current.tenantId, token, authenticatedAt: current.authenticatedAt, mfa: !!current.mfaAt };
 }
 
+/**
+ * Ends every other session of the person (SEC-31): after a password change or a passkey removal,
+ * a session someone else holds stops working. The session making the change stays signed in: the
+ * one whose refresh cookie came with the request, or else (the cookie is only sent to /api/auth)
+ * the one whose last sign-in matches the access token's (`aat`, to the second). Returns how many ended.
+ */
+export async function revokeOtherSessions(tx: Tx, userId: string, current: { raw?: string; authenticatedAt?: Date | null }): Promise<number> {
+  const live = await tx.refreshToken.findMany({ where: { userId, revokedAt: null }, select: { id: true, familyId: true, tokenHash: true, authenticatedAt: true } });
+  const byCookie = current.raw ? live.find((t) => t.tokenHash === sha256(current.raw!)) : undefined;
+  const sec = (d: Date | null | undefined) => (d ? Math.floor(d.getTime() / 1000) : null);
+  const keep = new Set(byCookie ? [byCookie.familyId] : live.filter((t) => current.authenticatedAt && sec(t.authenticatedAt) === sec(current.authenticatedAt)).map((t) => t.familyId));
+  const end = live.filter((t) => !keep.has(t.familyId)).map((t) => t.id);
+  if (end.length) await tx.refreshToken.updateMany({ where: { id: { in: end } }, data: { revokedAt: new Date() } });
+  return end.length;
+}
+
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (existing) {

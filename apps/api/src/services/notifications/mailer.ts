@@ -176,6 +176,36 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Quelqu’un a modifié la façon dont votre organisation se connecte à FlexcityHeadquarters (authentification unique). Si ce n’était pas prévu, vérifiez-le maintenant dans les paramètres et consultez le journal d’audit.`,
     }),
   },
+  password_changed_alert: {
+    'en-CA': () => ({
+      subject: 'Your FlexcityHeadquarters password was changed',
+      text: `The password for your FlexcityHeadquarters account was just changed, and every other device was signed out. If this wasn’t you, use “Forgot password” on the sign-in page right away and tell your HR department.`,
+    }),
+    'fr-CA': () => ({
+      subject: 'Votre mot de passe FlexcityHeadquarters a été modifié',
+      text: `Le mot de passe de votre compte FlexcityHeadquarters vient d’être modifié et tous vos autres appareils ont été déconnectés. Si ce n’était pas vous, utilisez sans tarder « Mot de passe oublié » sur la page de connexion et avisez vos RH.`,
+    }),
+  },
+  passkey_added: {
+    'en-CA': (p) => ({
+      subject: 'A passkey was added to your FlexcityHeadquarters account',
+      text: `A passkey (“${p.name}”) was added to your FlexcityHeadquarters account. It lets that device sign in without your password. If this wasn’t you, remove it under Profile › Passkeys, change your password and tell your HR department right away.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Une clé d’accès a été ajoutée à votre compte FlexcityHeadquarters',
+      text: `Une clé d’accès (« ${p.name} ») a été ajoutée à votre compte FlexcityHeadquarters. Elle permet à cet appareil de se connecter sans votre mot de passe. Si ce n’était pas vous, retirez-la dans Profil › Clés d’accès, changez votre mot de passe et avisez vos RH sans tarder.`,
+    }),
+  },
+  passkey_removed: {
+    'en-CA': (p) => ({
+      subject: 'A passkey was removed from your FlexcityHeadquarters account',
+      text: `A passkey (“${p.name}”) was removed from your FlexcityHeadquarters account, and every other device was signed out. If this wasn’t you, change your password and tell your HR department right away.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Une clé d’accès a été retirée de votre compte FlexcityHeadquarters',
+      text: `Une clé d’accès (« ${p.name} ») a été retirée de votre compte FlexcityHeadquarters et tous vos autres appareils ont été déconnectés. Si ce n’était pas vous, changez votre mot de passe et avisez vos RH sans tarder.`,
+    }),
+  },
   email_changed: {
     'en-CA': (p) => ({
       subject: 'Your FlexcityHeadquarters sign-in email was changed',

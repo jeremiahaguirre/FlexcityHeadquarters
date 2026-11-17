@@ -46,8 +46,13 @@ describe('cities: a passkey required for chosen access levels', () => {
     const me = await as(token).get('/api/me');
     expect(me.status).toBe(200);
     expect(me.body.mfaRequired).toBe(true);
-    // No passkey yet: they may set up their first one.
+    // No passkey yet. Where the organization accepts codes, the password alone can't add a first
+    // passkey: a code comes first (SEC-02). Where it accepts passkeys only, it may set one up.
+    const first = await as(token).post('/api/me/passkeys/options');
+    expect([first.status, first.body.code]).toEqual([403, 'MFA_CODE_FIRST']);
+    await owner.tenant.update({ where: { id: t.tenant.id }, data: { mfaCodes: false } });
     expect((await as(token).post('/api/me/passkeys/options')).status).toBe(200);
+    await owner.tenant.update({ where: { id: t.tenant.id }, data: { mfaCodes: true } });
     // Confirming with the password renews the sign-in time but isn't a second factor.
     const up = await as(token).post('/api/auth/step-up', { password: PASSWORD });
     expect(up.status).toBe(200);

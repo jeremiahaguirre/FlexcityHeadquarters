@@ -5,7 +5,7 @@ import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
 import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { hashPassword, verifyPassword } from '../auth/tokens.js';
+import { hashPassword, revokeOtherSessions, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
 import { audit, withTenant } from '../lib/db.js';
@@ -135,6 +135,11 @@ staffRouter.post(
       if (body.newPassword === body.currentPassword) throw new HttpError(400, 'PASSWORD_REUSED', 'Choose a password different from your current one.');
       checkPersonalPassword(body.newPassword, { ...u, organization: u.tenant.name, subdomain: u.tenant.subdomain });
       await tx.user.update({ where: { id: a.userId }, data: { passwordHash: hash } });
+      // Every other session ends (SEC-31): someone holding an old session loses it with the old
+      // password. This one stays signed in. The person is told by email.
+      const ended = await revokeOtherSessions(tx, a.userId, { raw: req.cookies?.fc_refresh as string | undefined, authenticatedAt: a.authenticatedAt });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.password_change', entity: 'User', entityId: a.userId, after: { sessionsEnded: ended } });
+      await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: u.email, template: 'password_changed_alert', locale: u.locale, params: {} } });
       return true;
     });
     if (!ok) throw new HttpError(400, 'WRONG_PASSWORD', 'Your current password is incorrect.');

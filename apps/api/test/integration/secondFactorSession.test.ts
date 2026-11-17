@@ -58,8 +58,18 @@ const as = (token: string, cookie = '') => ({
 });
 const mfaOf = async (token: string) => (await verifyAccessToken(token)).mfa;
 const hasSecondFactor = async (token: string) => (await as(token).get('/api/users')).status === 200;
-const enrol = (token: string, cookie: string, path = '/api/auth/passkeys') =>
-  as(token, cookie).post(path, { challengeId: randomUUID(), response: { id: `cred-${randomBytes(4).toString('hex')}`, who: { userId: hrId } } });
+/**
+ * A first passkey from a password-only session: allowed only where the organization accepts
+ * passkeys alone (no emailed or texted codes, SEC-02), so the enrolment happens with codes off.
+ */
+const enrol = async (token: string, cookie: string, path = '/api/auth/passkeys') => {
+  await owner.tenant.update({ where: { id: t.tenant.id }, data: { mfaCodes: false } });
+  try {
+    return await as(token, cookie).post(path, { challengeId: randomUUID(), response: { id: `cred-${randomBytes(4).toString('hex')}`, who: { userId: hrId } } });
+  } finally {
+    await owner.tenant.update({ where: { id: t.tenant.id }, data: { mfaCodes: true } });
+  }
+};
 
 beforeAll(async () => {
   t = await seedTenant(SUB, 0);

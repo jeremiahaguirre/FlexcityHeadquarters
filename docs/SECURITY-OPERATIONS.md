@@ -70,7 +70,7 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
 
 - **City staff:** HR sets the person to Terminated. Their sessions end on their next action, and refresh tokens are revoked.
 - **Dev console admin:**
-  - delete or disable the `PlatformAdmin` row, which ends their server-side sessions immediately;
+  - delete or disable the `PlatformAdmin` row: sessions are refused while it's disabled. Re-enabling it or resetting its password with `npm run platform:admin` ends every session it had, so a session taken earlier never comes back;
   - remove their IAM access and VPN account the same day.
 
 ## Incident response playbook

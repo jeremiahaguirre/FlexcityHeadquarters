@@ -27,7 +27,7 @@ export const mfaCodeRouter = Router();
 const MIN = 60_000;
 const tooMany = (code: string, message: string) => new HttpError(429, code, message);
 
-async function codesAllowed(tenantId: string): Promise<boolean> {
+export async function codesAllowed(tenantId: string): Promise<boolean> {
   const t = await withTenant(tenantId, (tx) => tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { mfaCodes: true } }));
   return t.mfaCodes;
 }

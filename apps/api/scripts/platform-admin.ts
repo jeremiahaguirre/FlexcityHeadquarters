@@ -1,5 +1,5 @@
 /**
- * Creates (or re-enables) an FH Dev console account.
+ * Creates (or re-enables) an FH Dev console account, ending any session it already had.
  *
  *   PLATFORM_ADMIN_PASSWORD='…' npm run platform:admin -- you@flexcity.ca "Your Name"
  *
@@ -7,6 +7,7 @@
  */
 import { createPrismaClient } from '../src/lib/prismaClient.js';
 import { hashPassword } from '../src/auth/tokens.js';
+import { setPlatformAdmin } from '../src/auth/platform.js';
 // @ts-expect-error a plain JavaScript module without types, shared with the migration scripts
 import { ownerUrl } from './owner-url.mjs';
 
@@ -27,10 +28,7 @@ try {
 }
 const prisma = createPrismaClient(url); // libpq URL: pg verifies sslmode=verify-full itself
 const passwordHash = await hashPassword(password);
-const a = await prisma.platformAdmin.upsert({
-  where: { email: email.toLowerCase() },
-  update: { passwordHash, name: nameParts.join(' '), disabledAt: null, failedLogins: 0, lockedUntil: null },
-  create: { email: email.toLowerCase(), name: nameParts.join(' '), passwordHash },
-});
-console.log(`Dev console account ready: ${a.email}`);
+// Re-enabling or resetting ends every session the account had (src/auth/platform.ts, SEC-34).
+const { admin: a, sessionsEnded } = await setPlatformAdmin(prisma, { email, name: nameParts.join(' '), passwordHash });
+console.log(`Dev console account ready: ${a.email}${sessionsEnded ? ` (${sessionsEnded} earlier session(s) ended)` : ''}`);
 await prisma.$disconnect();
