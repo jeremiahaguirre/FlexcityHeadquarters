@@ -164,11 +164,13 @@ resource "aws_ecs_task_definition" "web" {
     cpu_architecture        = "X86_64"
   }
   container_definitions = jsonencode([{
-    name             = "web"
-    image            = local.image["web"]
-    essential        = true
-    portMappings     = [{ containerPort = 3000, protocol = "tcp" }]
-    environment      = [for k, v in local.web_env : { name = k, value = v }]
+    name         = "web"
+    image        = local.image["web"]
+    essential    = true
+    portMappings = [{ containerPort = 3000, protocol = "tcp" }]
+    environment  = [for k, v in local.web_env : { name = k, value = v }]
+    # Marks the web server's own calls to the API, which gives them their own rate-limit budget (SEC-48).
+    secrets          = [{ name = "INTERNAL_API_TOKEN", valueFrom = "${local.app_secret_arn}:INTERNAL_API_TOKEN::" }]
     logConfiguration = local.log["web"]
   }])
 }

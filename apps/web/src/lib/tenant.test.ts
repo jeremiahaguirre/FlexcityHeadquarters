@@ -15,6 +15,11 @@ describe('tenantApiHeaders', () => {
     const { tenantApiHeaders } = await load('flexcity.ca');
     expect(tenantApiHeaders('kelowna')).toEqual({ 'x-tenant-subdomain': 'kelowna', 'x-forwarded-host': 'kelowna.flexcity.ca' });
   });
+  it('marks the web server’s own calls with the internal token when it has one (SEC-48)', async () => {
+    vi.stubEnv('INTERNAL_API_TOKEN', 'x'.repeat(40));
+    const { tenantApiHeaders } = await load('flexcity.ca');
+    expect(tenantApiHeaders('kelowna')['x-fh-internal']).toBe('x'.repeat(40));
+  });
   it('round-trips through subdomainFromHost', async () => {
     const { tenantApiHeaders, subdomainFromHost } = await load('flexcity.ca');
     expect(subdomainFromHost(tenantApiHeaders('maple')['x-forwarded-host']!)).toBe('maple');

@@ -24,7 +24,10 @@ const ROOT_DOMAIN = process.env.ROOT_DOMAIN ?? 'localhost';
  * X-Forwarded-Host, which the API reads as the host (Express `trust proxy`, one hop).
  */
 export function tenantApiHeaders(sub: string): Record<string, string> {
-  return { 'x-tenant-subdomain': sub, 'x-forwarded-host': `${sub}.${ROOT_DOMAIN}` };
+  // Server-side only (INTERNAL_API_TOKEN is not a NEXT_PUBLIC_ variable): marks the web app's own
+  // calls, so the API gives them their own budget, not every visitor's anonymous one (SEC-48).
+  const internal = process.env.INTERNAL_API_TOKEN;
+  return { 'x-tenant-subdomain': sub, 'x-forwarded-host': `${sub}.${ROOT_DOMAIN}`, ...(internal ? { 'x-fh-internal': internal } : {}) };
 }
 
 /** "kelowna.flexcity.ca" → "kelowna"; "kelowna.localhost:3000" → "kelowna". */
