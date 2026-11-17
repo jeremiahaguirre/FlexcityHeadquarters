@@ -31,6 +31,8 @@ const payrollTx = <T>(tenantId: string, fn: (tx: Parameters<Parameters<typeof wi
 
 export const payrollRouter = Router();
 payrollRouter.use(['/payroll', '/me/pay', '/me/pay-statements', '/me/bank-accounts', '/me/pay-profile'], requireFeature('payroll'));
+// Someone's own pay: whoever the menu shows My pay to (pay.self), nobody else. Not on /payroll: HR's statement view shares a handler.
+payrollRouter.use(['/me/pay', '/me/pay-statements', '/me/bank-accounts', '/me/pay-profile'], requirePermission('pay.self'));
 
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
