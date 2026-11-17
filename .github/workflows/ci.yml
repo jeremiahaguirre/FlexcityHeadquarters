@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Every job runs all dependency code (npm ci, builds, tests): read-only token, never kept on disk.
+permissions:
+  contents: read
+
 jobs:
   api:
     runs-on: ubuntu-latest
@@ -27,8 +31,10 @@ jobs:
       APP_DATABASE_URL: postgresql://flexcity_app:change-me@localhost:5432/flexcity_test
       JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -61,8 +67,10 @@ jobs:
       run:
         working-directory: apps/site
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -82,8 +90,10 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -95,6 +105,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       # Phone tests (iPhone 13 screen) against the static demo: sample data, no API or database.
+      # The live build (what production serves) carries none of the demo (ARCHITECTURE-REVIEW A15).
+      - name: Live build has no demo code or data
+        run: NEXT_DIST_DIR=.next-live npx next build && node scripts/check-live-build.mjs .next-live
       - name: Build static demo
         run: npm run build:demo
       - name: Fonts in the build are our own

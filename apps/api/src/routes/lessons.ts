@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, conflict, notFound } from '../lib/errors.js';
+import { conflict, invalid, notFound } from '../lib/errors.js';
 import { listSessions, recordAttendance } from '../services/lessons/lessons.js';
 import { assertShiftInScope, placeWhere, shiftInScope } from '../services/people/scope.js';
 import { h } from './context.js';
@@ -22,7 +22,7 @@ lessonsRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = range.parse(req.query);
-    if (days(q) > MAX_DAYS) throw badRequest(`Choose up to ${MAX_DAYS} days.`);
+    if (days(q) > MAX_DAYS) throw invalid('RANGE_TOO_LONG', `Choose up to ${MAX_DAYS} days.`, { maxDays: MAX_DAYS });
     res.json(await withTenant(a.tenantId, (tx) => listSessions(tx, q.from, q.to, a.userId)));
   }),
 );
@@ -33,7 +33,7 @@ lessonsRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = range.parse(req.query);
-    if (days(q) > MAX_DAYS) throw badRequest(`Choose up to ${MAX_DAYS} days.`);
+    if (days(q) > MAX_DAYS) throw invalid('RANGE_TOO_LONG', `Choose up to ${MAX_DAYS} days.`, { maxDays: MAX_DAYS });
     res.json(await withTenant(a.tenantId, (tx) => listSessions(tx, q.from, q.to, undefined, a.scope)));
   }),
 );
@@ -92,8 +92,8 @@ lessonsRouter.post(
       })
       .parse(req.body);
     assertShiftInScope(a, body);
-    if (body.endMinute <= body.startMinute) throw badRequest('A class must end after it starts.');
-    if (body.endsOn < body.startsOn) throw badRequest('The last date must be after the first.');
+    if (body.endMinute <= body.startMinute) throw invalid('ENDS_BEFORE_START', 'A class must end after it starts.');
+    if (body.endsOn < body.startsOn) throw invalid('ENDS_BEFORE_START', 'The last date must be after the first.');
     const c = await withTenant(a.tenantId, (tx) =>
       tx.lessonClass.create({ data: { ...body, level: body.level ?? null, tenantId: a.tenantId, startsOn: new Date(body.startsOn), endsOn: new Date(body.endsOn) } }),
     );
@@ -111,7 +111,7 @@ lessonsRouter.post(
     const e = await withTenant(a.tenantId, async (tx) => {
       const cls = await tx.lessonClass.findUnique({ where: { id: classId }, include: { _count: { select: { enrollments: { where: { active: true } } } } } });
       if (!cls || !shiftInScope(a.scope, cls)) throw notFound('Class');
-      if (cls._count.enrollments >= cls.maxSwimmers) throw conflict('CLASS_FULL', `This class is full (${cls.maxSwimmers} swimmers).`);
+      if (cls._count.enrollments >= cls.maxSwimmers) throw conflict('CLASS_FULL', `This class is full (${cls.maxSwimmers} swimmers).`, { max: cls.maxSwimmers });
       const created = await tx.lessonEnrollment.create({ data: { tenantId: a.tenantId, classId, swimmerName: body.swimmerName, safetyNote: body.safetyNote ?? null } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'lesson.enroll', entity: 'LessonEnrollment', entityId: created.id });
       return created;

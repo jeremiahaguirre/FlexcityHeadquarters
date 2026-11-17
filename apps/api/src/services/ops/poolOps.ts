@@ -1,7 +1,7 @@
 /** Recording water-chemistry readings (an unsafe one recommends closing the pool) and confirming or dismissing those closures. */
 import type { Prisma } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { dec } from '../../lib/money.js';
 import { ThresholdsNotConfiguredError, evaluateReading, validateReading } from './chemistry.js';
@@ -24,7 +24,7 @@ export async function recordReading(tx: Tx, tenantId: string, userId: string, in
     ph: input.ph != null ? dec(input.ph) : null,
   };
   const errors = validateReading(reading);
-  if (errors.length) throw badRequest('Reading looks invalid — please re-check.', { errors });
+  if (errors.length) throw invalid('READING_INVALID', 'Reading looks invalid — please re-check.', { errors });
 
   let result: ReturnType<typeof evaluateReading>;
   try {
@@ -94,7 +94,7 @@ export async function decideClosure(
     status = 'CLOSED';
   } else if (action === 'DISMISS') {
     if (pool.status !== 'CLOSURE_RECOMMENDED' || !closure) throw conflict('NO_RECOMMENDATION', 'There is no closure awaiting confirmation.');
-    if (!note?.trim()) throw badRequest('Dismissing a closure requires a note (e.g. retest result).');
+    if (!note?.trim()) throw invalid('NOTE_REQUIRED', 'Dismissing a closure requires a note (e.g. retest result).');
     await tx.poolClosure.update({ where: { id: closure.id }, data: { dismissedById: userId, dismissedAt: now, reason: `${closure.reason} | dismissed: ${note}` } });
     status = 'OPEN';
   } else {
