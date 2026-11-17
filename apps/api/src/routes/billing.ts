@@ -134,7 +134,7 @@ stripeWebhookRouter.post(
   h(async (req, res) => {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) throw new HttpError(404, 'NOT_FOUND', 'Not configured');
-    const event = verifyWebhook(req.body as Buffer, req.header('stripe-signature'), secret) as StripeEvent;
+    const event = verifyWebhook(req.body as Buffer | undefined,req.header('stripe-signature'), secret) as StripeEvent;
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
       const s = event.data.object;
       const invoiceId = s.metadata?.invoiceId;

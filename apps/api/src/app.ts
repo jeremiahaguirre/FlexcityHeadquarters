@@ -142,7 +142,7 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
  * an unreachable server comes back as P2010 with the "can't reach" message.
  */
 export function isOverload(err: unknown): boolean {
-  if (err instanceof Error && err.message === PG_POOL_TIMEOUT) return true;
+  if (err instanceof Error && PG_CONNECT_TIMEOUTS.includes(err.message)) return true;
   // Can't connect at all: busy only when the server isn't reachable. A wrong password or a TLS
   // problem is a configuration error that retrying won't fix, so it stays a 500.
   if (err instanceof Prisma.PrismaClientInitializationError) return ['P1001', 'P1002'].includes(err.errorCode ?? '') || /can't reach database server|timed out/i.test(err.message);
@@ -152,8 +152,12 @@ export function isOverload(err: unknown): boolean {
   return err.code === 'P2028' && /unable to start a transaction in the given time/i.test(err.message);
 }
 
-/** pg-pool's error when no connection came free (or could be opened) within connectionTimeoutMillis. */
-const PG_POOL_TIMEOUT = 'timeout exceeded when trying to connect';
+/**
+ * pg's errors when no connection was had within connectionTimeoutMillis: pg-pool's when none came
+ * free, and pg's own when a new one hung while opening (a failover's old host that no longer
+ * answers; Prisma 5 called that P1001).
+ */
+const PG_CONNECT_TIMEOUTS = ['timeout exceeded when trying to connect', 'Connection terminated due to connection timeout'];
 
 function report(err: unknown, req: Request) {
   captureError(err, { source: 'request', requestId: req.id, method: req.method, route: routePattern(req), tenantId: req.auth?.tenantId ?? req.tenantId, userId: req.auth?.userId });
