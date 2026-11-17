@@ -34,3 +34,46 @@ export function ageRange(min: number | null, max: number | null, t: (k: string, 
   if (max === null) return t('programs.agePlus', { min: one(min ?? 0) });
   return t('programs.ageBetween', { min: one(min ?? 0), max: one(max) });
 }
+
+const text = (f: FormData, k: string) => String(f.get(k) ?? '').trim();
+const isoDay = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A `datetime-local` value (the device's time) for an instant, or '' for none. */
+export const toLocalDateTime = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date(iso).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '');
+
+/** The campaign form as the API takes it, the same for a new campaign and an edit: blanks clear what they stand for. */
+export function campaignBody(f: FormData) {
+  const s = (k: string) => text(f, k) || null;
+  return {
+    name: text(f, 'name'),
+    nameFr: s('nameFr'),
+    kind: text(f, 'kind'),
+    startsOn: text(f, 'startsOn'),
+    endsOn: text(f, 'endsOn'),
+    registrationOpensAt: s('opens') ? new Date(String(s('opens'))).toISOString() : null,
+    registrationClosesAt: s('closes') ? new Date(String(s('closes'))).toISOString() : null,
+    skipDates: text(f, 'skip').split(/[\s,]+/).filter((x) => isoDay.test(x)),
+    notes: s('notes'),
+  };
+}
+
+/** Prices typed as dollars ("95", "95.50", "95,50") in cents; blank is none. */
+export const cents = (v: string) => (v.trim() ? Math.round(Number(v.trim().replace(',', '.')) * 100) : null);
+
+/** Ages typed as years and months, in months; blank years and months is none. */
+export const ageMonths = (years: string, months: string) => (years.trim() || months.trim() ? Number(years || 0) * 12 + Number(months || 0) : null);
+
+/** The level form as the API takes it. */
+export function levelBody(f: FormData) {
+  return {
+    program: text(f, 'program'),
+    name: text(f, 'name'),
+    nameFr: text(f, 'nameFr') || null,
+    minAgeMonths: ageMonths(text(f, 'minYears'), text(f, 'minMonths')) ?? 0,
+    maxAgeMonths: ageMonths(text(f, 'maxYears'), text(f, 'maxMonths')),
+    ratio: Number(text(f, 'ratio')),
+    durationMinutes: Number(text(f, 'duration')),
+    parentInWater: f.get('parentInWater') === 'on',
+    active: f.get('active') === 'on',
+  };
+}

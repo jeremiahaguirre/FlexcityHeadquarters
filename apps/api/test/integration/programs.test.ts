@@ -14,6 +14,8 @@ const tok = { head: '', desk: '', guard: '' };
 const call = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  patch: (p: string, b: object = {}) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  del: (p: string) => request(server).delete(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
 });
 // A Monday in the future, so campaign dates are stable.
 const monday = (() => {
@@ -176,5 +178,84 @@ describe('planning and registration', () => {
     expect(r.body.priceCents).toBe(8000);
     const day = (await call(tok.desk).get('/api/sales/summary')).body;
     expect(day.byMethod.CASH).toBeGreaterThan(0);
+  });
+});
+
+describe('correcting plans after they are made', () => {
+  it('a city adds its own level, corrects its ages and ratio, and retires it; the range stays sensible', async () => {
+    const l = await call(tok.head).post('/api/swim-levels', { program: 'Adult learn to swim', name: 'Adult 1', nameFr: 'Adulte 1', minAgeMonths: 216, ratio: 6, durationMinutes: 45 });
+    expect(l.status).toBe(201);
+    expect((await call(tok.desk).patch(`/api/swim-levels/${l.body.id}`, { ratio: 8 })).status).toBe(403);
+    expect((await call(tok.head).patch(`/api/swim-levels/${l.body.id}`, { maxAgeMonths: 120 })).body.code).toBe('AGE_RANGE');
+    expect((await call(tok.head).patch(`/api/swim-levels/${l.body.id}`, { minAgeMonths: 192, ratio: 8, active: false })).status).toBe(200);
+    const row = (await call(tok.head).get('/api/swim-levels')).body.find((x: { id: string }) => x.id === l.body.id);
+    expect(row).toMatchObject({ minAgeMonths: 192, ratio: 8, active: false, nameFr: 'Adulte 1' });
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, entityId: l.body.id, action: { in: ['level.create', 'level.update'] } } })).toBe(2);
+  });
+
+  it('a campaign gets a French name and new dates, never ending before it starts', async () => {
+    const c = (await call(tok.head).post('/api/campaigns', { name: 'Winter lessons', kind: 'LESSONS', startsOn: monday, endsOn: plus(monday, 55) })).body.id;
+    expect((await call(tok.head).patch(`/api/campaigns/${c}`, { endsOn: plus(monday, -1) })).body.code).toBe('ENDS_BEFORE_START');
+    expect((await call(tok.head).patch(`/api/campaigns/${c}`, { nameFr: 'Cours d’hiver', endsOn: plus(monday, 62) })).status).toBe(200);
+    expect((await call(tok.head).get(`/api/campaigns/${c}`)).body).toMatchObject({ nameFr: 'Cours d’hiver', endsOn: plus(monday, 62) });
+  });
+
+  it('a set is corrected (time, level, price); its times stay in order; an empty one is removed, on record', async () => {
+    const c = (await call(tok.head).post('/api/campaigns', { name: 'Spring lessons', kind: 'LESSONS', startsOn: monday, endsOn: plus(monday, 55) })).body.id;
+    const level = (await call(tok.head).get('/api/swim-levels')).body.find((x: { active: boolean }) => x.active);
+    const set = (await call(tok.head).post(`/api/campaigns/${c}/sets`, { facilityId: t.facility.id, positionId: t.position.id, daysOfWeek: [1], startMinute: 1020, endMinute: 1050, startsOn: monday, endsOn: plus(monday, 49), priceCents: 9500 })).body.id;
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { startMinute: 1080 })).body.code).toBe('ENDS_BEFORE_START');
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { startMinute: 1080, endMinute: 1110, levelId: level.id, priceCents: 10500 })).status).toBe(200);
+    const view = (await call(tok.head).get(`/api/campaigns/${c}`)).body.sets[0];
+    // A new level brings its name and its ages: registration checks the set's own ages.
+    expect(view).toMatchObject({ startMinute: 1080, endMinute: 1110, levelId: level.id, level: level.name, priceCents: 10500, minAgeMonths: level.minAgeMonths, maxAgeMonths: level.maxAgeMonths });
+    expect((await call(tok.head).del(`/api/campaigns/${c}/sets/${set}`)).status).toBe(204);
+    expect((await call(tok.head).get(`/api/campaigns/${c}`)).body.sets).toEqual([]);
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'set.delete', entityId: set } })).toBe(1);
+  });
+
+  it('a level’s name is unique in its program (409, not a 500), and renaming it renames the sets that use it', async () => {
+    const mk = (name: string) => call(tok.head).post('/api/swim-levels', { program: 'Learn to Play Hockey', name, minAgeMonths: 48, ratio: 10, durationMinutes: 50 });
+    const first = (await mk('Step 1')).body.id;
+    expect((await mk('Step 1')).body.code).toBe('LEVEL_EXISTS');
+    await mk('Step 2');
+    expect((await call(tok.head).patch(`/api/swim-levels/${first}`, { name: 'Step 2' })).body.code).toBe('LEVEL_EXISTS');
+    const c = (await call(tok.head).post('/api/campaigns', { name: 'Hockey', kind: 'OTHER', startsOn: monday, endsOn: plus(monday, 30) })).body.id;
+    const set = (await call(tok.head).post(`/api/campaigns/${c}/sets`, { facilityId: t.facility.id, positionId: t.position.id, levelId: first, daysOfWeek: [6], startMinute: 540, endMinute: 590, startsOn: plus(monday, 5), endsOn: plus(monday, 26), priceCents: 12000 })).body.id;
+    expect((await call(tok.head).patch(`/api/swim-levels/${first}`, { name: 'Step One' })).status).toBe(200);
+    expect((await call(tok.head).get(`/api/campaigns/${c}`)).body.sets.find((x: { id: string }) => x.id === set)).toMatchObject({ level: 'Step One' });
+  });
+
+  it('while people are registered, a set’s days and dates stay; its price and times can still change', async () => {
+    const c = (await call(tok.head).post('/api/campaigns', { name: 'Summer lessons', kind: 'LESSONS', startsOn: monday, endsOn: plus(monday, 30) })).body.id;
+    const set = (await call(tok.head).post(`/api/campaigns/${c}/sets`, { facilityId: t.facility.id, positionId: t.position.id, daysOfWeek: [1], startMinute: 960, endMinute: 990, startsOn: monday, endsOn: plus(monday, 28), priceCents: 9000 })).body.id;
+    await call(tok.head).post(`/api/campaigns/${c}/publish`);
+    const hh = (await call(tok.desk).post('/api/households', { name: 'Nguyen', members: [{ role: 'GUARDIAN', firstName: 'Linh', lastName: 'Nguyen' }, { role: 'CHILD', firstName: 'An', lastName: 'Nguyen', dateOfBirth: '2019-05-01' }] })).body.id;
+    const child = (await call(tok.desk).get(`/api/households/${hh}`)).body.members.find((m: { role: string }) => m.role === 'CHILD').id;
+    expect((await call(tok.desk).post('/api/registrations', { setId: set, memberId: child, paymentMethod: 'DEBIT' })).status).toBe(201);
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { daysOfWeek: [2] })).body.code).toBe('SCHEDULE_HAS_PEOPLE');
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { endsOn: plus(monday, 21) })).body.code).toBe('SCHEDULE_HAS_PEOPLE');
+    // The form sends the same days and dates back with other changes: that's fine.
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { daysOfWeek: [1], startsOn: monday, endsOn: plus(monday, 28), startMinute: 975, endMinute: 1005, priceCents: 9500 })).status).toBe(200);
+
+    // A date with attendance can't become a skip date (class lists leave skipped dates out); a later, empty one can.
+    const enrollment = await owner.lessonEnrollment.findFirstOrThrow({ where: { classId: set, memberId: child } });
+    await owner.lessonAttendance.create({ data: { tenantId: t.tenant.id, classId: set, enrollmentId: enrollment.id, sessionDate: new Date(monday), status: 'PRESENT', recordedById: t.users[0]!.id, recordedAt: new Date(), clientId: `skip-${set}` } });
+    const skip = await call(tok.head).patch(`/api/campaigns/${c}`, { skipDates: [monday] });
+    expect(skip.body).toMatchObject({ code: 'SKIP_HAS_ATTENDANCE', details: { dates: [monday] } });
+    expect((await withTenant(t.tenant.id, (tx) => listSessions(tx, monday, monday))).find((x) => x.classId === set)?.roster).toEqual([expect.objectContaining({ swimmerName: 'An Nguyen' })]);
+    expect((await call(tok.head).patch(`/api/campaigns/${c}`, { skipDates: [plus(monday, 14)] })).status).toBe(200);
+  });
+
+  it('a draft made by mistake is deleted with its sets; a published campaign can’t be', async () => {
+    const c = (await call(tok.head).post('/api/campaigns', { name: 'Oops', kind: 'CAMP', startsOn: monday, endsOn: plus(monday, 4) })).body.id;
+    await call(tok.head).post(`/api/campaigns/${c}/sets`, { facilityId: t.facility.id, positionId: t.position.id, daysOfWeek: [1, 2, 3, 4, 5], startMinute: 540, endMinute: 960, startsOn: monday, endsOn: plus(monday, 4), priceCents: 20000 });
+    expect((await call(tok.desk).del(`/api/campaigns/${c}`)).status).toBe(403);
+    expect((await call(tok.head).del(`/api/campaigns/${c}`)).status).toBe(204);
+    expect((await call(tok.head).get(`/api/campaigns/${c}`)).status).toBe(404);
+    const live = (await call(tok.head).post('/api/campaigns', { name: 'Live', kind: 'CAMP', startsOn: monday, endsOn: plus(monday, 4) })).body.id;
+    await call(tok.head).post(`/api/campaigns/${live}/sets`, { facilityId: t.facility.id, positionId: t.position.id, daysOfWeek: [1], startMinute: 540, endMinute: 600, startsOn: monday, endsOn: monday, priceCents: 1000 });
+    await call(tok.head).post(`/api/campaigns/${live}/publish`);
+    expect((await call(tok.head).del(`/api/campaigns/${live}`)).body.code).toBe('CAMPAIGN_NOT_DRAFT');
   });
 });
