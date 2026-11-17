@@ -101,7 +101,7 @@ run "production_defaults" {
     error_message = "API must be told the recovery region for keys."
   }
   assert {
-    condition     = toset([for x in local.app_secrets : x.name]) == toset(["JWT_SECRET", "APP_DATABASE_URL", "LISTEN_DATABASE_URL", "METRICS_TOKEN"]) && !contains(keys(local.app_env), "JWT_SECRET")
+    condition     = toset([for x in local.app_secrets : x.name]) == toset(["JWT_SECRET", "APP_DATABASE_URL", "LISTEN_DATABASE_URL", "METRICS_TOKEN", "INTERNAL_API_TOKEN"]) && !contains(keys(local.app_env), "JWT_SECRET")
     error_message = "Secrets come from Secrets Manager, never plain environment."
   }
 }

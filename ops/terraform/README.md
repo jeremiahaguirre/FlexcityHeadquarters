@@ -67,6 +67,7 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    | `LISTEN_DATABASE_URL` | The same as `APP_DATABASE_URL` (direct to the database, never through a transaction pooler) |
    | `JWT_SECRET` | 64 random bytes, base64 |
    | `METRICS_TOKEN` | 32 random characters; also given to the metrics collector |
+   | `INTERNAL_API_TOKEN` | 48 random characters. The web tasks send it on their server-side calls to the API, which then rate-limits them on their own budget instead of the anonymous one every sign-in page shares |
 
    Database URLs are always written in this standard form. `pg` verifies the certificate and host name from it; the app connects only through `pg` (Prisma 7's driver adapter). Only the Prisma CLI used for migrations doesn't understand `verify-full`, so `prisma.config.ts` translates the URL to Prisma's own settings for it (`apps/api/src/lib/dbUrl.ts`). In production the API refuses to start without `sslmode=verify-full` and an `sslrootcert`, and refuses Prisma 5 URL parameters that `pg` would ignore (`connect_timeout`, `schema`, `pgbouncer`, `statement_cache_size`, `socket_timeout`).
 

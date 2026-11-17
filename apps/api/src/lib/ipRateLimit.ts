@@ -26,6 +26,7 @@
  * On by default in production; GLOBAL_RATE_LIMIT=on|off overrides (off in development and tests,
  * so local tools and the test suite, all from 127.0.0.1, aren't throttled).
  */
+import { timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { addressKey } from './address.js';
 import { rateLimited } from './metrics.js';
@@ -36,6 +37,21 @@ export interface LimiterOptions {
   failuresPerMinute: number;
   /** Most addresses tracked per process before idle (full) buckets are forgotten. */
   maxAddresses?: number;
+  /** The web app's server-side calls, which all come from the web tasks' addresses (SEC-48). */
+  internalPerMinute?: number;
+  /** INTERNAL_API_TOKEN: a request carrying it in x-fh-internal is the web app's server. */
+  internalToken?: string;
+}
+
+export const INTERNAL_HEADER = 'x-fh-internal';
+
+/** Whether the request carries the web app's internal token (compared in constant time). */
+export function isInternal(req: Request, token: string | undefined): boolean {
+  const sent = req.headers[INTERNAL_HEADER];
+  if (!token || token.length < 32 || typeof sent !== 'string') return false;
+  const a = Buffer.from(sent);
+  const b = Buffer.from(token);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 interface Bucket {
@@ -125,15 +141,23 @@ export const defaultOptions = (): LimiterOptions => ({
   authPerMinute: num(process.env.GLOBAL_RATE_LIMIT_AUTH, 1200),
   anonPerMinute: num(process.env.GLOBAL_RATE_LIMIT_ANON, 120),
   failuresPerMinute: num(process.env.GLOBAL_RATE_LIMIT_FAILURES, 120),
+  internalPerMinute: num(process.env.GLOBAL_RATE_LIMIT_INTERNAL, 6000),
+  internalToken: process.env.INTERNAL_API_TOKEN,
 });
 
 /** The middleware. `opts` fixed for tests; otherwise read from the environment once. */
 export function ipRateLimit(opts?: LimiterOptions & { force?: boolean }) {
-  let state: { auth: TokenBuckets; anon: TokenBuckets; failures: TokenBuckets } | null = null;
+  let state: { auth: TokenBuckets; anon: TokenBuckets; failures: TokenBuckets; internal: TokenBuckets; token?: string } | null = null;
   const buckets = () => {
     if (!state) {
       const o = opts ?? defaultOptions();
-      state = { auth: new TokenBuckets(o.authPerMinute, o.maxAddresses), anon: new TokenBuckets(o.anonPerMinute, o.maxAddresses), failures: new TokenBuckets(o.failuresPerMinute, o.maxAddresses) };
+      state = {
+        auth: new TokenBuckets(o.authPerMinute, o.maxAddresses),
+        anon: new TokenBuckets(o.anonPerMinute, o.maxAddresses),
+        failures: new TokenBuckets(o.failuresPerMinute, o.maxAddresses),
+        internal: new TokenBuckets(o.internalPerMinute ?? 6000, o.maxAddresses),
+        token: o.internalToken,
+      };
     }
     return state;
   };
@@ -144,7 +168,14 @@ export function ipRateLimit(opts?: LimiterOptions & { force?: boolean }) {
     const credentialed = hasCredential(req);
     let wait: number;
     let layer: string;
-    if (credentialed) {
+    // The web app's server-side page renders (an organization's branding, its job postings) all
+    // come from the web tasks' few addresses: with the token they get their own, larger budget, so
+    // anonymous page views can't use up the anonymous budget every sign-in page depends on (SEC-48).
+    // The firewall still limits each visitor's address in front of the web app.
+    if (isInternal(req, b.token)) {
+      wait = b.internal.take(ip);
+      layer = 'global_internal';
+    } else if (credentialed) {
       wait = b.failures.peek(ip);
       layer = 'global_failures';
       if (!wait) {
