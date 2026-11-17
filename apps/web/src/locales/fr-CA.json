@@ -158,6 +158,15 @@
     "expired": "Ce lien est expiré ou a déjà servi. Demandez-en un nouveau à la page de connexion.",
     "doneTitle": "Votre mot de passe est enregistré"
   },
+  "confirmEmail": {
+    "title": "Confirmez votre nouveau courriel de connexion",
+    "body": "Votre organisation a demandé que vous vous connectiez désormais avec cette adresse. Confirmez-la pour qu’elle devienne votre courriel de connexion. D’ici là, votre ancienne adresse reste en vigueur.",
+    "submit": "Confirmer ce courriel",
+    "expired": "Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau à vos RH.",
+    "taken": "Une personne de votre organisation utilise déjà ce courriel. Communiquez avec vos RH.",
+    "doneTitle": "Votre courriel de connexion est modifié",
+    "doneBody": "Toutes vos sessions ont été fermées. Reconnectez-vous avec votre nouveau courriel."
+  },
   "shell": {
     "mainNav": "Principal",
     "notifications": "Notifications",
@@ -465,6 +474,10 @@
     "NO_PASSKEY": "Aucune clé d’accès sur ce compte.",
     "TOO_MANY_PASSKEYS": "Retirez une clé d’accès avant d’en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d’accès pour ce compte.",
+    "ACCOUNT_PROTECTED": "Seul un administrateur RH pour toute l’organisation peut modifier le courriel de connexion ou le statut de cette personne.",
+    "ALREADY_SET_UP": "Cette personne a déjà configuré sa connexion. Elle peut utiliser « Mot de passe oublié » sur la page de connexion.",
+    "KEY_CANNOT_CHANGE_EMAIL": "Une clé d’API ne peut pas modifier le courriel de connexion d’une personne ayant un accès de supervision ou d’administration.",
+    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien FH.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d’abord.",
     "ALREADY_ENDED": "Cette séance est déjà terminée.",
     "ACCOUNT_SUSPENDED": "Le compte de votre organisation est en lecture seule jusqu’au paiement du solde en retard.",

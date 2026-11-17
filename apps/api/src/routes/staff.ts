@@ -22,6 +22,7 @@ import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { allOf, departmentFilter, departmentQuery, forget as forgetDepartmentScope } from '../services/people/departmentAdmin.js';
 import { positionBody, savePosition } from '../services/people/positionAdmin.js';
 import { createPerson, updatePerson } from '../services/people/staffAdmin.js';
+import { hasSignedIn } from '../services/people/emailChange.js';
 import { adultConfirmationView, confirmAdult, removeAdultConfirmation } from '../services/people/adultConfirmation.js';
 
 export const staffRouter = Router();
@@ -412,8 +413,11 @@ staffRouter.post(
     const id = uuid.parse(req.params.id);
     const sub = subdomainOf(req)!;
     await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
       const u = await tx.user.findUnique({ where: { id } });
       if (!u || u.status !== 'ACTIVE') throw notFound('Active staff member');
+      // An invitation sets a first password; someone who already signed in uses Forgot password (SEC-01).
+      if (await hasSignedIn(tx, u)) throw conflict('ALREADY_SET_UP', 'This person has already set up their sign-in. They can use “Forgot password” on the sign-in page.');
       const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
       const token = await issueAuthToken(tx, a.tenantId, id, 'INVITE');
       await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: u.email, template: 'invite', locale: u.locale, params: { organization: tenant.name, url: appUrl(sub, `/reset?token=${token}&invite=1`) } } });
@@ -448,8 +452,8 @@ staffRouter.patch(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const body = hrPatch.parse(req.body);
-    await withTenant(a.tenantId, (tx) => updatePerson(tx, a, id, body));
-    res.json({ ok: true });
+    const out = await withTenant(a.tenantId, (tx) => updatePerson(tx, a, id, body));
+    res.json({ ok: true, emailPending: out.emailPending });
   }),
 );
 
@@ -525,6 +529,7 @@ staffRouter.post(
     const body = z.object({ positionId: uuid, hourlyRate: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/), effectiveFrom: isoDate }).parse(req.body);
     if (Number(body.hourlyRate) < 10) throw badRequest('That rate is below any Canadian minimum wage. Check the amount.');
     const rate = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
       const later = await tx.payRate.findFirst({ where: { userId: id, positionId: body.positionId, effectiveFrom: { gte: d(body.effectiveFrom)! } } });
       if (later) throw conflict('RATE_EXISTS', 'A rate already starts on or after that date for this position.');
       await tx.payRate.updateMany({

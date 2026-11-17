@@ -158,6 +158,15 @@
     "expired": "This link has expired or was already used. Ask for a new one from the sign-in page.",
     "doneTitle": "Your password is saved"
   },
+  "confirmEmail": {
+    "title": "Confirm your new sign-in email",
+    "body": "Your organization asked to change the email you sign in with to this address. Confirm it to make it your sign-in. Until then, your old address stays your sign-in.",
+    "submit": "Confirm this email",
+    "expired": "This link has expired or was already used. Ask your HR department to send a new one.",
+    "taken": "Someone in your organization already uses this email. Contact your HR department.",
+    "doneTitle": "Your sign-in email is changed",
+    "doneBody": "You were signed out everywhere. Sign in again with your new email."
+  },
   "shell": {
     "mainNav": "Main",
     "notifications": "Notifications",
@@ -465,6 +474,10 @@
     "NO_PASSKEY": "No passkey on this account.",
     "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
+    "ACCOUNT_PROTECTED": "Only an HR administrator for the whole organization can change this person’s sign-in email or status.",
+    "ALREADY_SET_UP": "This person has already set up their sign-in. They can use “Forgot password” on the sign-in page.",
+    "KEY_CANNOT_CHANGE_EMAIL": "An API key can’t change the sign-in email of someone with supervisory or administrator access.",
+    "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
     "ALREADY_ENDED": "This session has already ended.",
     "ACCOUNT_SUSPENDED": "Your organization’s account is read-only until the overdue balance is paid.",

@@ -15,6 +15,7 @@ import { resolveTenant } from './routes/context.js';
 import { requireConsent } from './routes/consent.js';
 import { unionRouter } from './routes/union.js';
 import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
+import { originFormOnly } from './lib/canonicalPath.js';
 import { jsonBody } from './lib/bodyParsers.js';
 
 export function createUnionApp() {
@@ -22,7 +23,7 @@ export function createUnionApp() {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
   installLogContext();
-  app.use(requestIdMiddleware);
+  app.use(requestIdMiddleware, originFormOnly);
   app.use(securityHeaders);
   app.use(ipRateLimit());
   app.use(jsonBody({ limit: '100kb' }));

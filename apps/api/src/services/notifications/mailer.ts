@@ -176,6 +176,26 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Quelqu’un a modifié la façon dont votre organisation se connecte à FlexcityHeadquarters (authentification unique). Si ce n’était pas prévu, vérifiez-le maintenant dans les paramètres et consultez le journal d’audit.`,
     }),
   },
+  email_change_confirm: {
+    'en-CA': (p) => ({
+      subject: 'Confirm your new FlexcityHeadquarters sign-in email',
+      text: `${p.organization} asked to change the email you sign in with to this address. Use this link within 24 hours to confirm it:\n${p.url}\n\nUntil you do, your old address stays your sign-in. If you didn’t expect this, ignore this email.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Confirmez votre nouveau courriel de connexion FlexcityHeadquarters',
+      text: `${p.organization} a demandé que vous vous connectiez désormais avec cette adresse. Utilisez ce lien dans les 24 heures pour la confirmer :\n${p.url}\n\nD’ici là, votre ancienne adresse reste votre courriel de connexion. Si vous ne vous y attendiez pas, ignorez ce courriel.`,
+    }),
+  },
+  email_change_requested: {
+    'en-CA': (p) => ({
+      subject: 'A change to your FlexcityHeadquarters sign-in email was requested',
+      text: `Your organization asked to change the email you sign in with to ${p.newEmail}. It changes only once that address confirms it. If you didn’t expect this, contact your HR department right away.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Une modification de votre courriel de connexion FlexcityHeadquarters a été demandée',
+      text: `Votre organisation a demandé de remplacer votre courriel de connexion par ${p.newEmail}. Le changement ne se fera qu’une fois cette adresse confirmée. Si vous ne vous y attendiez pas, communiquez sans tarder avec vos RH.`,
+    }),
+  },
   email_changed: {
     'en-CA': (p) => ({
       subject: 'Your FlexcityHeadquarters sign-in email was changed',
