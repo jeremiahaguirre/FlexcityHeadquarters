@@ -88,10 +88,13 @@ describe('push subscriptions', () => {
 
 describe('delivery', () => {
   it('sends each new notification once, in the person’s language, with nothing sensitive on the lock screen', async () => {
+    // A second apart: deliveries go oldest first, and two rows made in one insert share a timestamp,
+    // so their order would depend on what else is in the table.
+    const at = Date.now();
     await owner.notification.createMany({
       data: [
-        { tenantId: t.tenant.id, userId: id.a, type: 'shift_assigned', link: '/schedule', params: {} },
-        { tenantId: t.tenant.id, userId: id.a, type: 'discipline_issued', link: '/profile', params: { reason: 'Late three times' } },
+        { tenantId: t.tenant.id, userId: id.a, type: 'shift_assigned', link: '/schedule', params: {}, createdAt: new Date(at - 2000) },
+        { tenantId: t.tenant.id, userId: id.a, type: 'discipline_issued', link: '/profile', params: { reason: 'Late three times' }, createdAt: new Date(at - 1000) },
       ],
     });
     expect(await run()).toBe(2);
