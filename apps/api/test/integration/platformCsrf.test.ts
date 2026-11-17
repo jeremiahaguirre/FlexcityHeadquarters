@@ -52,6 +52,17 @@ describe('Dev console CSRF defence', () => {
     expect(post.status).toBe(403);
   });
 
+  it('the check runs before the body is parsed: malformed or oversized JSON from another site is refused, not read', async () => {
+    const malformed = await request(server).post('/api/platform/auth/login').set('Sec-Fetch-Site', 'cross-site').set('Content-Type', 'application/json').send('{"email":');
+    expect([malformed.status, malformed.body.code]).toEqual([403, 'CSRF_REFUSED']);
+    const noHeader = await request(server).post('/api/platform/auth/login').set('Content-Type', 'application/json').send('{"email":');
+    expect([noHeader.status, noHeader.body.code]).toEqual([403, 'CSRF_REFUSED']);
+    const big = await request(server).post('/api/platform/tenants').set('Cookie', cookie).set('Content-Type', 'application/json').send(JSON.stringify({ pad: 'x'.repeat(3 * 1024 * 1024) }));
+    expect([big.status, big.body.code]).toEqual([403, 'CSRF_REFUSED']);
+    // With the header the same malformed body reaches the parser (400), so the order is what's tested.
+    expect((await request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').set('Content-Type', 'application/json').send('{"email":')).status).toBe(400);
+  });
+
   it('a form post (the only body a cross-site page can send without a preflight) is refused, never parsed', async () => {
     const r = await request(server).post('/api/platform/auth/login').type('form').send({ email, password: 'right password!' });
     expect(r.status).toBe(403);

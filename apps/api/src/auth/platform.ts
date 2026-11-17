@@ -3,7 +3,11 @@
  * - opaque, revocable session tokens (only the hash is stored), in an HTTP-only,
  *   SameSite=Strict cookie scoped to /api/platform;
  * - every request must also carry the `x-fh-platform: 1` header, which a
- *   cross-site form or link can't add;
+ *   cross-site form or link can't add, and isn't marked by the browser as
+ *   coming from another site or origin (Sec-Fetch-Site);
+ * - signing in sets `fh_csrf`, a random double-submit token the console's pages
+ *   read and echo in `x-fh-csrf`; a request carrying the cookie without the
+ *   matching header is refused (platformCsrfProtection, before any body is parsed);
  * - organization access tokens are never accepted here, and these sessions are
  *   never accepted by organization routes.
  */
