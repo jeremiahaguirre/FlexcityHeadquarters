@@ -30,7 +30,7 @@ import { announceChangeTo } from '../../lib/changes.js';
 import { allow } from '../../auth/rateLimit.js';
 import { localIso } from '../../lib/time.js';
 import { type Tx, audit, withTenant } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { sniff, storedName } from '../../lib/files.js';
 import { notify, usersWithPermission } from '../notifications/notifier.js';
 import { shiftInScope } from '../people/scope.js';
@@ -156,7 +156,7 @@ export async function openDirect(tx: Tx, a: AuthContext, otherId: string) {
 export async function createGroup(tx: Tx, a: AuthContext, title: string, memberIds: string[]) {
   const ctx = await loadContext(tx);
   const ids = [...new Set([a.userId, ...memberIds])];
-  if (ids.length < 3) throw badRequest('A group needs at least two other people. For one person, start a one-to-one conversation.');
+  if (ids.length < 3) throw invalid('GROUP_TOO_SMALL', 'A group needs at least two other people. For one person, start a one-to-one conversation.');
   const people = await loadPeople(tx, ctx, ids);
   const me = people.get(a.userId)!;
   for (const id of ids.slice(1)) {
@@ -460,14 +460,14 @@ export async function sendLimits(userId: string, withFile: boolean) {
 
 export async function sendMessage(tx: Tx, a: AuthContext, conversationId: string, text: string, file?: Attachment) {
   const body = text.trim();
-  if (!body && !file) throw badRequest('Write a message or attach a file.');
-  if (body.length > MAX_TEXT) throw badRequest(`Messages can be up to ${MAX_TEXT} characters.`);
+  if (!body && !file) throw invalid('MESSAGE_EMPTY', 'Write a message or attach a file.');
+  if (body.length > MAX_TEXT) throw invalid('MESSAGE_TOO_LONG', `Messages can be up to ${MAX_TEXT} characters.`, { max: MAX_TEXT });
   const { conv, rows, people } = await sendable(tx, a, conversationId);
   let bytes: Buffer | null = null;
   let type: ReturnType<typeof sniff> = null;
   if (file) {
     bytes = Buffer.from(file.data.slice(file.data.indexOf(',') + 1), 'base64');
-    if (!bytes.length) throw badRequest('The file is empty.');
+    if (!bytes.length) throw invalid('FILE_EMPTY', 'The file is empty.');
     if (bytes.length > MAX_FILE_BYTES) throw new HttpError(413, 'TOO_LARGE', 'Files can be up to 10 MB.');
     type = sniff(bytes);
     if (!type) throw new HttpError(415, 'UNSUPPORTED_TYPE', 'Attach a PDF, PNG, JPEG or WebP file.');
@@ -500,8 +500,8 @@ export async function sendMessage(tx: Tx, a: AuthContext, conversationId: string
 
 export async function editMessage(tx: Tx, a: AuthContext, messageId: string, text: string) {
   const body = text.trim();
-  if (!body) throw badRequest('A message can’t be empty. Remove it instead.');
-  if (body.length > MAX_TEXT) throw badRequest(`Messages can be up to ${MAX_TEXT} characters.`);
+  if (!body) throw invalid('MESSAGE_EMPTY', 'A message can’t be empty. Remove it instead.');
+  if (body.length > MAX_TEXT) throw invalid('MESSAGE_TOO_LONG', `Messages can be up to ${MAX_TEXT} characters.`, { max: MAX_TEXT });
   const m = await tx.message.findUnique({ where: { id: messageId } });
   if (!m || m.authorId !== a.userId) throw notFound('Message');
   if (m.deletedAt) throw conflict('REMOVED', 'This message was removed.');

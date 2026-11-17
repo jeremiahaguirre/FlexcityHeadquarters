@@ -13,6 +13,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { ApiError, api } from '@/lib/api';
 import { ageRange, hhmm, money } from '@/lib/programs';
 import { dateFormat, formatInstant, setTimeFormat } from '@/lib/format';
+import { errorText } from '@/lib/apiError';
 
 interface PublicSet { id: string; name: string; facility: string; daysOfWeek: number[]; startMinute: number; endMinute: number; startsOn: string; endsOn: string; sessions: number; minAgeMonths: number | null; maxAgeMonths: number | null; priceCents: number | null; spotsLeft: number; majorityAge?: number }
 interface Program { id: string; name: string; nameFr: string | null; kind: string; open: boolean; opensAt: string | null; sets: PublicSet[] }
@@ -171,7 +172,7 @@ function useSubmit(onDone: (r: { reference: string; status?: string }) => void) 
     try {
       onDone(await api<{ reference: string; status?: string }>(path, { method: 'POST', body: { ...body, startedAt: started.current } }, false));
     } catch (e) {
-      setError(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'));
+      setError(errorText(t, e));
     } finally {
       setBusy(false);
     }

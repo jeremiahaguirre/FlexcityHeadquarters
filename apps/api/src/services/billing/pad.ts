@@ -19,7 +19,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { billingContact, config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import { type Sealed, open, seal } from '../crypto/envelope.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { buildCpa005 } from '../payroll/cpa005.js';
@@ -102,7 +102,7 @@ export async function activeAgreement(tenantId: string) {
 /** A new agreement replaces any active one. The billing contact gets the written confirmation the rules call for. */
 export async function createAgreement(tenantId: string, input: z.infer<typeof agreementBody>, channel: 'DEV_CONSOLE' | 'ORGANIZATION', authorizedBy: string) {
   const account = await db().billingAccount.findUnique({ where: { tenantId } });
-  if (!account) throw badRequest('Set up the billing account first.');
+  if (!account) throw invalid('BILLING_ACCOUNT_REQUIRED', 'Set up the billing account first.');
   const sealed = await seal(keys(), tenantKekId(tenantId), input.account, padAad(tenantId));
   const created = await db().$transaction(async (tx) => {
     await tx.padAgreement.updateMany({ where: { tenantId, status: 'ACTIVE' }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Replaced by a new agreement' } });
@@ -163,7 +163,7 @@ type StoredOriginator = Omit<z.infer<typeof originatorBody>, 'returns'> & { retu
 export async function saveOriginator(input: z.infer<typeof originatorBody>) {
   const books = await db().fhBooks.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
   const prev = books.padOriginator as StoredOriginator | null;
-  if (!input.returns.account && !prev) throw badRequest('Enter the account returned debits go back to.');
+  if (!input.returns.account && !prev) throw invalid('RETURNS_ACCOUNT_REQUIRED', 'Enter the account returned debits go back to.');
   const sealed = input.returns.account ? toJson(await seal(keys(), platformKekId(), input.returns.account, 'pad:returns')) : prev!.returns.sealed;
   const stored: StoredOriginator = { ...input, returns: { institution: input.returns.institution, transit: input.returns.transit, last4: input.returns.account?.slice(-4) ?? prev!.returns.last4, sealed } };
   await db().fhBooks.update({ where: { id: 1 }, data: { padOriginator: stored as unknown as Prisma.InputJsonValue } });
