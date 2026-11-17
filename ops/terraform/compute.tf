@@ -29,6 +29,8 @@ locals {
     # New organizations' keys are copied to the recovery region, except while running there
     # after losing the primary (it can't be reached; their keys stay single-region).
     var.recovery_mode ? {} : { KMS_REPLICA_REGION = var.dr_region },
+    # The Union Hub runs as its own service (union.tf): the API and worker refuse its database role.
+    var.union_hub_separate ? { UNION_HUB_MODE = "separate" } : {},
   var.app_environment)
 
   app_secrets = [for k in var.app_secret_keys : { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }]
