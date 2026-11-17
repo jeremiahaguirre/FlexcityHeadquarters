@@ -10,6 +10,7 @@ import { api, setStepUpHandler } from '@/lib/api';
 import { ApiError } from '@/lib/apiError';
 import { cancelled, passkeysSupported, stepUpWithPasskey, stepUpWithPassword } from '@/lib/passkeys';
 import { PasskeyIcon } from './PasskeyIcon';
+import { errorText } from '@/lib/apiError';
 
 /**
  * "Confirm it's you": sensitive actions (payroll, pay rates, roles, passkeys)
@@ -53,7 +54,7 @@ export function StepUpDialog() {
       await stepUpWithPasskey();
       finish(true);
     } catch (e) {
-      if (!cancelled(e)) setError(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('passkeys.failed'));
+      if (!cancelled(e)) setError(errorText(t, e, t('passkeys.failed')));
     } finally {
       setBusy(null);
     }

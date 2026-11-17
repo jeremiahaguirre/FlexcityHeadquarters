@@ -14,7 +14,7 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
-import { ApiError } from '@/lib/apiError';
+import { ApiError, errorText } from '@/lib/apiError';
 import { type InvoiceRow, STATUS_TONE, cad } from '@/lib/billing';
 import { formatDate } from '@/lib/format';
 import { papi, usePlatformQuery } from '@/lib/platform';
@@ -50,7 +50,7 @@ function Invoice() {
       setDialog(null);
       await inv.reload();
     } catch (e) {
-      toast(e instanceof ApiError ? t(`billing.errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(e instanceof ApiError ? t(`billing.errors.${e.code}`, { defaultValue: errorText(t, e) }) : t('common.error'), 'warn');
     } finally {
       setBusy(null);
     }

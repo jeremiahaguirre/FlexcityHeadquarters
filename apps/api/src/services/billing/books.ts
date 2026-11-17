@@ -18,7 +18,7 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { db, tenantIds, withTenant } from '../../lib/db.js';
-import { HttpError, badRequest, notFound } from '../../lib/errors.js';
+import { HttpError, invalid, notFound } from '../../lib/errors.js';
 import { csvCell } from '../payroll/export.js';
 
 export type AccountType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
@@ -66,7 +66,7 @@ export async function saveChart(input: z.infer<typeof chartBody>) {
   const codes = CHART_KEYS.map((k) => input.codes[k] ?? DEFAULT_CHART[k].code);
   const all = [...codes, ...input.custom.map((c) => c.code)];
   const dup = all.find((c, i) => all.indexOf(c) !== i);
-  if (dup) throw badRequest(`Account ${dup} is used twice.`);
+  if (dup) throw invalid('ACCOUNT_TWICE', `Account ${dup} is used twice.`, { account: dup });
   await books();
   await db().fhBooks.update({ where: { id: 1 }, data: { accounts: input as unknown as Prisma.InputJsonValue } });
 }
@@ -187,8 +187,8 @@ export async function addManualEntry(input: z.infer<typeof manualBody>, adminId:
   await assertOpenPeriod(input.date);
   const { accounts } = await chart();
   for (const l of input.lines) {
-    if (!accounts.some((a) => a.code === l.account)) throw badRequest(`Account ${l.account} isn’t in the chart of accounts.`);
-    if (!!l.debitCents === !!l.creditCents) throw badRequest('Each line is either a debit or a credit.');
+    if (!accounts.some((a) => a.code === l.account)) throw invalid('ACCOUNT_UNKNOWN', `Account ${l.account} isn’t in the chart of accounts.`, { account: l.account });
+    if (!!l.debitCents === !!l.creditCents) throw invalid('DEBIT_OR_CREDIT', 'Each line is either a debit or a credit.');
   }
   const dr = input.lines.reduce((s, l) => s + l.debitCents, 0);
   const cr = input.lines.reduce((s, l) => s + l.creditCents, 0);

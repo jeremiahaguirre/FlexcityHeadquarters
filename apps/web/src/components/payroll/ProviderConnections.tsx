@@ -16,6 +16,7 @@ import { DEMO } from '@/lib/demo';
 import { formatDate } from '@/lib/format';
 import { type Issue, issueLabel } from '@/lib/payrollIssues';
 import { plusDays, todayIso, useQuery } from '@/lib/useQuery';
+import { errorText } from '@/lib/apiError';
 
 type Provider = 'adp' | 'dayforce' | 'wagepoint';
 type Mode = 'in_app' | Provider;
@@ -241,7 +242,7 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
                 } catch (e) {
                   // Missing details (like the file download): list them, in the reader's language.
                   const problems = e instanceof ApiError ? ((e.details as { problems?: Array<Issue | string> } | undefined)?.problems ?? []) : [];
-                  setResult({ ok: false, text: problems.length ? `${e instanceof ApiError ? e.message : ''} ${problems.map((p) => issueLabel(t, p)).join(' · ')}` : e instanceof ApiError ? e.message : t('common.error') });
+                  setResult({ ok: false, text: problems.length ? `${errorText(t, e, '')} ${problems.map((p) => issueLabel(t, p)).join(' · ')}` : errorText(t, e) });
                 }
                 await reload();
               })}>{t('payroll.connect.send', { what: name })}</Button>
