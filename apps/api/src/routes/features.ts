@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { canonicalPath } from '../lib/canonicalPath.js';
-import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, forbidden, invalid, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
@@ -109,7 +109,7 @@ const PERSON_PATH = /^\/(?:users|onboarding\/people)\/([0-9a-f]{8}-[0-9a-f]{4}-[
 api.use((req, _res, next) => {
   const a = authOf(req);
   const path = canonicalPath(req.path);
-  if (path === null) return next(badRequest('Malformed address'));
+  if (path === null) return next(invalid('MALFORMED_ADDRESS', 'Malformed address'));
   const id = PERSON_PATH.exec(path)?.[1];
   if (!a.scope || !id || id === a.userId.toLowerCase()) return next();
   withTenant(a.tenantId, (tx) => userInScope(tx, a.scope, id))
@@ -301,7 +301,7 @@ api.post(
       .refine((b) => b.facilityId || b.facilityIds?.length, { message: 'Choose at least one facility.' })
       .parse(req.body);
     const facilityIds = [...new Set([...(body.facilityIds ?? []), ...(body.facilityId ? [body.facilityId] : [])])];
-    if (body.to <= body.from) throw badRequest('`to` must be after `from`');
+    if (body.to <= body.from) throw invalid('ENDS_BEFORE_START', '`to` must be after `from`');
 
     const out = await withTenant(a.tenantId, async (tx) => {
       const facilities = await tx.facility.findMany({ where: { id: { in: facilityIds } }, include: { tenant: true } });

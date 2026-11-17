@@ -13,13 +13,18 @@ function pageFor(href: string): string | undefined {
   return GROUPS.map((g) => join(APP, g, ...href.split('/').filter(Boolean), 'page.tsx')).find((f) => existsSync(f));
 }
 
-/** True when git would leave the file out of a commit (a too-broad .gitignore rule once hid the coverage screen). */
+/**
+ * True when git would leave the file out of a commit (a too-broad .gitignore rule once hid the coverage screen).
+ * check-ignore skips files git already tracks; that's fine, since a committed page ships.
+ * Any other failure (no git, not a work tree) fails the test instead of passing it unchecked.
+ */
 function ignoredByGit(file: string): boolean {
   try {
     execFileSync('git', ['check-ignore', '-q', file], { cwd: APP, stdio: 'ignore' });
     return true; // exit 0: ignored
-  } catch {
-    return false; // exit 1: not ignored
+  } catch (e) {
+    if ((e as { status?: number }).status === 1) return false; // exit 1: not ignored
+    throw e;
   }
 }
 

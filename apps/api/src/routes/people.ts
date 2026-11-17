@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
+import { conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { loadCaseFile } from '../services/people/caseFile.js';
 import { reviewList } from '../services/people/reviewList.js';
@@ -76,7 +76,7 @@ peopleRouter.post(
     if (userId === a.userId) throw forbidden('You cannot record events about yourself.');
     const body = z.object({ type: z.enum(['NO_SHOW', 'MISSED_IN_SERVICE']), occurredAt: when, note: z.string().trim().min(5).max(1000) }).parse(req.body);
     const at = new Date(body.occurredAt);
-    if (at.getTime() > Date.now() + 60_000) throw badRequest('That date is in the future.');
+    if (at.getTime() > Date.now() + 60_000) throw invalid('FUTURE_DATE', 'That date is in the future.');
     const id = await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, userId);
       const u = await tx.user.findUnique({ where: { id: userId } });
