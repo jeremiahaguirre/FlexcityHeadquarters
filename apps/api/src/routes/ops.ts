@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, forbidden, notFound } from '../lib/errors.js';
+import { forbidden, invalid, notFound } from '../lib/errors.js';
 import { localIso } from '../lib/time.js';
 import { lifeguardsRequired } from '../services/ops/chemistry.js';
 import { createPool, headcountBoard, headcountReport, poolDetailsBody, poolDetailsView, recordHeadcount, updatePool } from '../services/ops/pools.js';
@@ -90,10 +90,10 @@ const thresholdBody = z.object({
 
 function checkThresholds(t: z.infer<typeof thresholdBody>) {
   const lt = (a: string | null, b: string | null) => a !== null && b !== null && Number(a) >= Number(b);
-  if (lt(t.freeChlorineMinPpm, t.freeChlorineMaxPpm)) throw badRequest('Free chlorine minimum must be below the maximum.');
-  if (lt(t.phMin, t.phMax)) throw badRequest('pH minimum must be below the maximum.');
-  for (const v of [t.phMin, t.phMax]) if (v !== null && (Number(v) < 6 || Number(v) > 9)) throw badRequest('pH limits must be between 6 and 9.');
-  if (t.freeChlorineMinPpm === null && t.phMin === null) throw badRequest('Set at least a free chlorine minimum or a pH range.');
+  if (lt(t.freeChlorineMinPpm, t.freeChlorineMaxPpm)) throw invalid('CHLORINE_RANGE', 'Free chlorine minimum must be below the maximum.');
+  if (lt(t.phMin, t.phMax)) throw invalid('PH_RANGE', 'pH minimum must be below the maximum.');
+  for (const v of [t.phMin, t.phMax]) if (v !== null && (Number(v) < 6 || Number(v) > 9)) throw invalid('PH_LIMITS', 'pH limits must be between 6 and 9.');
+  if (t.freeChlorineMinPpm === null && t.phMin === null) throw invalid('LIMITS_REQUIRED', 'Set at least a free chlorine minimum or a pH range.');
 }
 
 opsRouter.post(
@@ -161,7 +161,7 @@ opsRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = z.object({ from: z.coerce.date(), to: z.coerce.date(), poolBodyId: uuid.optional() }).parse(req.query);
-    if (q.to.getTime() - q.from.getTime() > 93 * 86_400_000) throw badRequest('Choose a period of three months or less.');
+    if (q.to.getTime() - q.from.getTime() > 93 * 86_400_000) throw invalid('RANGE_TOO_LONG', 'Choose a period of three months or less.', { maxDays: 93 });
     res.json(await withTenant(a.tenantId, (tx) => headcountReport(tx, q.from, q.to, q.poolBodyId)));
   }),
 );

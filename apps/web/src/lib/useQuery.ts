@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/components/ui/Toast';
 import { ApiError, api } from './api';
+import { errorText } from './apiError';
 
 /** Load JSON from the API. Pass null to skip. `reload` refetches without flashing a loader. */
 export function useQuery<T>(path: string | null) {
@@ -54,8 +55,7 @@ export function useAction() {
         if (success) toast(success, 'ok');
         return r;
       } catch (e) {
-        if (e instanceof ApiError) toast(t(`errors.${e.code}`, { defaultValue: e.message }), 'warn');
-        else toast(t('common.error'), 'warn');
+        toast(errorText(t, e), 'warn');
         return undefined;
       } finally {
         setBusy(null);

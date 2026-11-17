@@ -10,7 +10,7 @@ import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
 import { audit, withTenant } from '../lib/db.js';
 import { db as rootDb } from '../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
 import { checkPersonalPassword, passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
@@ -497,7 +497,7 @@ staffRouter.patch(
       .object({ shadowTier: z.enum(['A_SQUAD', 'B_SQUAD', 'C_SQUAD', 'UNASSIGNED']), weeklyMinHours: hours, weeklyMaxHours: hours, positionIds: z.array(uuid).max(10) })
       .partial()
       .parse(req.body);
-    if (body.weeklyMinHours && body.weeklyMaxHours && Number(body.weeklyMinHours) > Number(body.weeklyMaxHours)) throw badRequest('Weekly minimum cannot exceed the maximum.');
+    if (body.weeklyMinHours && body.weeklyMaxHours && Number(body.weeklyMinHours) > Number(body.weeklyMaxHours)) throw invalid('WEEKLY_MIN_ABOVE_MAX', 'Weekly minimum cannot exceed the maximum.');
     await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, id);
       const { positionIds, ...rest } = body;

@@ -18,6 +18,7 @@ import { type Fee, type LessonSet, PAYMENT_METHODS, ageLabel, ageRange, earlyOnl
 import { useAction, useQuery } from '@/lib/useQuery';
 import { useToast } from '@/components/ui/Toast';
 import { dateFormat, formatInstant } from '@/lib/format';
+import { errorText } from '@/lib/apiError';
 
 interface Member { id: string; role: 'GUARDIAN' | 'CHILD' | 'ADULT'; firstName: string; lastName: string; dateOfBirth: string | null; ageMonths: number | null; email: string | null; phone: string | null; safetyNote: string | null; photoConsent?: boolean }
 interface Family {
@@ -223,7 +224,7 @@ function FamilyView({ id }: { id: string }) {
       await fam.reload();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'AGE_OUTSIDE_LEVEL') { setEarly(null); setOverride({ set, pay, early: isEarly }); }
-      else toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      else toast(errorText(t, e), 'warn');
     }
   }
   async function saveFamily(e: FormEvent<HTMLFormElement>) {

@@ -1,0 +1,62 @@
+# gitleaks configuration for the Security workflow's full-history scan (SECURITY-AUDIT SEC-73).
+# The full default rule set, plus allowlist entries for known false positives. Each entry matches
+# one fixture: the exact file AND the exact value (or a narrow pattern), never a whole directory.
+# Add an entry only after checking the finding is not a credential; a real one is rotated, not listed.
+title = "FlexcityHeadquarters"
+
+[extend]
+useDefault = true
+
+# Recorded demo data: the "key" field of catalogue entries, which is a readable name, not a secret:
+# rotation pattern names ("FOUR_ON_FOUR_OFF", "PITMAN_2_2_3") and certificate slugs
+# ("water-treatment-2", "wastewater-collection-4"). Upper-case words, or lower-case words and
+# digits joined by hyphens; a random token would not match either.
+[[allowlists]]
+description = "Demo fixtures: catalogue keys (rotation patterns, certificate slugs)"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/web/src/lib/demo-fixtures/(supervisor|hr)\.json$''']
+regexes = ['''^[A-Z][A-Z0-9_]*$''', '''^[a-z]+(-[a-z]+)*(-[0-9])?$''']
+
+# A Terraform test asserting the NAME of the environment variable that carries the owner password
+# ("DB_PASSWORD"); there is no password in it.
+[[allowlists]]
+description = "Terraform test: environment variable name"
+condition = "AND"
+targetRules = ["hashicorp-tf-password"]
+paths = ['''^ops/terraform/tests/[^/]+\.tftest\.hcl$''']
+regexes = ['''^"?DB_PASSWORD"?$''']
+
+# Public API docs: an example Idempotency-Key (a random UUID) in a curl example.
+[[allowlists]]
+description = "Docs: example idempotency key"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^docs/PUBLIC-API\.md$''']
+regexes = ['''^7d3f2a8e-1c4b-4f7e-9a51-0b2c6d9e8f10$''']
+
+# The error scrubber's test feeds it fake tokens to prove they are removed from reports.
+[[allowlists]]
+description = "Unit test: fake token the log scrubber must remove"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/api/test/unit/observability\.test\.ts$''']
+regexes = ['''^abcdef123456$''']
+
+# A made-up Wagepoint API key sent to the API under test (the provider is mocked).
+[[allowlists]]
+description = "Integration test: fake payroll provider key"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/api/test/integration/payrollProvider\.test\.ts$''']
+regexes = ['''^wp-key-0123456789abcdef$''']
+
+# Web push tests: a VAPID key pair generated for these tests only (web-push is mocked, the key is
+# used nowhere else; each environment generates its own pair), and a fake subscription auth value
+# (base64 of "secret-auth-123").
+[[allowlists]]
+description = "Integration test: test-only VAPID key and fake push subscription"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/api/test/integration/push\.test\.ts$''']
+regexes = ['''^-mDBL3w-m4zwmJSW6O1hpEgwAJBxxO7F98ocPKC9edI$''', '''^c2VjcmV0LWF1dGgtMTIz$''']
