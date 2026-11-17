@@ -2,7 +2,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
-import { signAccessToken } from '../../src/auth/tokens.js';
+import { hashPassword, signAccessToken } from '../../src/auth/tokens.js';
 import { owner, seedTenant } from './fixtures.js';
 
 const server = createApp();
@@ -48,5 +48,23 @@ describe('large bodies before authentication', () => {
     // A small request without the header is still refused by the header check.
     const small = await request(server).post('/api/platform/auth/login').set('content-type', 'application/json').send({ email: 'x@example.ca', password: 'x' });
     expect(small.status).toBe(403);
+  });
+
+  it('a made-up console cookie gets the 100 kB limit; only a live session gets more (review of #67)', async () => {
+    const forged = (path: string, bytes: number) => request(server).post(path).set('x-fh-platform', '1').set('Cookie', 'fh_platform=forged').set('content-type', 'application/json').send(junk(bytes));
+    expect((await forged('/api/platform/auth/login', 200_000)).status).toBe(413);
+    expect((await forged('/api/platform/trust/evidence', 1_500_000)).status).toBe(413);
+    // A signed-in console session: 1.5 MB is read and parsed (then refused as malformed JSON).
+    const email = `dev-bodylimits@flexcity.dev`;
+    await owner.platformAdmin.create({ data: { email, name: 'Body Limits', passwordHash: await hashPassword('correct horse battery') } });
+    const login = await request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').send({ email, password: 'correct horse battery' });
+    expect(login.status).toBe(200);
+    const cookie = String(login.headers['set-cookie']).split(';')[0]!;
+    const live = await request(server).post('/api/platform/tenants').set('x-fh-platform', '1').set('Cookie', cookie).set('content-type', 'application/json').send(junk(1_500_000));
+    expect(live.status).toBe(400);
+    // Signed out: the same cookie is back to 100 kB.
+    await request(server).post('/api/platform/auth/logout').set('x-fh-platform', '1').set('Cookie', cookie).send({});
+    const after = await request(server).post('/api/platform/tenants').set('x-fh-platform', '1').set('Cookie', cookie).set('content-type', 'application/json').send(junk(200_000));
+    expect(after.status).toBe(413);
   });
 });

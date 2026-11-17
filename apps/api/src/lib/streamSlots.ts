@@ -2,7 +2,9 @@
  * Bounds on the live notification streams (routes/notifications.ts; SECURITY-AUDIT SEC-70).
  *
  * - Per person: a few tabs and devices are normal; past PER_USER, the oldest stream is closed
- *   (its tab reconnects if it is still open), so one account can't hold thousands open.
+ *   with an `evicted` event, so one account can't hold thousands open. That tab then waits
+ *   (at least 5 minutes, and until it is visible) before reconnecting, instead of reconnecting
+ *   at once and closing the next-oldest in turn, which with 11 tabs would never stop.
  * - Per process: past PER_PROCESS, new streams are refused with 503 and Retry-After, so the
  *   streams of one organization can't exhaust a process every organization shares.
  * - Each stream is closed when the access token that opened it expires: the browser reconnects

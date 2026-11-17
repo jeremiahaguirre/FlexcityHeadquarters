@@ -52,11 +52,14 @@ notificationsRouter.post(
  * Bearer token) and refetches /notifications when a signal arrives.
  */
 export const streamSlots = new StreamSlots();
+export const EVICTED_EVENT = `event: evicted\ndata: {}\n\n`;
 
 notificationsRouter.get('/notifications/stream', (req, res) => {
   const a = authOf(req);
   // Bounded per person and per process, and closed when the token that opened it expires (lib/streamSlots.ts).
-  const release = streamSlots.admit(a.userId, () => res.end());
+  // Closed to make room for this person's newer stream: `evicted` tells that tab not to reconnect
+  // right away (apps/web lib/api.ts), so tabs past the limit don't take turns closing each other.
+  const release = streamSlots.admit(a.userId, () => res.end(EVICTED_EVENT));
   if (!release) {
     res.setHeader('Retry-After', '30');
     res.status(503).json({ code: 'BUSY', message: 'Too many live connections on this server. Try again shortly.', requestId: req.id });
