@@ -63,6 +63,24 @@ describe('organization settings writes', () => {
     expect(await policy()).toMatchObject({ other: 1, solver: { futureKey: 'kept' }, countRefusals: false, periodStartMonth: 4 });
   });
 
+  it('settings writers and inserts that point at the organization neither deadlock nor wait on each other', async () => {
+    // Each transaction inserts a row with a foreign key to the organization (which takes FOR KEY
+    // SHARE on it), then writes a setting. With FOR UPDATE this deadlocked (review of #63).
+    let ready = 0;
+    const both = new Promise<void>((resolve) => {
+      const check = setInterval(() => ready >= 2 && (clearInterval(check), resolve()), 10);
+    });
+    const writer = (n: number) =>
+      withTenant(t.tenant.id, async (tx) => {
+        await tx.department.create({ data: { tenantId: t.tenant.id, name: `Dept ${n} ${Date.now()}` } });
+        ready++;
+        await both;
+        await updateTenantJson(tx, t.tenant.id, 'overtimePolicy', (cur) => ({ ...cur, [`w${n}`]: n }));
+      });
+    await Promise.all([writer(1), writer(2)]);
+    expect(await policy()).toMatchObject({ w1: 1, w2: 2 });
+  });
+
   it('refuses a column that is not a settings column', async () => {
     await expect(withTenant(t.tenant.id, (tx) => updateTenantJson(tx, t.tenant.id, 'name' as never, (c) => c))).rejects.toThrow(/Not a Tenant settings column/);
   });

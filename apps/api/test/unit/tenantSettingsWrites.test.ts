@@ -15,7 +15,8 @@ const NOT_YET_MOVED: Record<string, number> = {
   'routes/messages.ts': 1,
   'routes/payroll.ts': 4,
   'routes/payrollProvider.ts': 1,
-  'routes/platform/cities.ts': 1,
+  // The organization editor (themeColors and features) and the role overrides.
+  'routes/platform/cities.ts': 2,
   'routes/platform/payroll.ts': 1,
   'routes/settings.ts': 3,
   'routes/signup.ts': 1,
@@ -36,15 +37,34 @@ function files(dir: string): string[] {
   });
 }
 
+/** The text of each `tenant.update(…)` call, to its matching parenthesis (calls span lines). */
+function updateCalls(text: string): string[] {
+  const calls: string[] = [];
+  for (const m of text.matchAll(/tenant\.update\(/g)) {
+    let depth = 0;
+    let i = m.index! + m[0].length - 1;
+    for (; i < text.length; i++) {
+      if (text[i] === '(') depth++;
+      else if (text[i] === ')' && --depth === 0) break;
+    }
+    calls.push(text.slice(m.index!, i + 1));
+  }
+  return calls;
+}
+
 describe('organization settings writes go through the locking helper', () => {
-  const settingsWrite = new RegExp(`tenant\\.update\\([^\\n]*\\b(${TENANT_JSON_COLUMNS.join('|')})\\b`, 'g');
+  const column = new RegExp(`\\b(${TENANT_JSON_COLUMNS.join('|')})\\b`);
   const found: Record<string, number> = {};
   for (const f of files(SRC)) {
     const rel = relative(SRC, f).split('\\').join('/');
     if (rel === 'lib/tenantSettings.ts') continue;
-    const n = (readFileSync(f, 'utf8').match(settingsWrite) ?? []).length;
+    const n = updateCalls(readFileSync(f, 'utf8')).filter((c) => column.test(c)).length;
     if (n) found[rel] = n;
   }
+
+  it('finds a write that spans lines', () => {
+    expect(updateCalls('await tx.tenant.update({\n  where: { id },\n  data: { themeColors: x },\n});').filter((c) => column.test(c))).toHaveLength(1);
+  });
 
   it('no new direct write of a settings column, and the old ones only go away', () => {
     const grown = Object.entries(found).filter(([f, n]) => n > (NOT_YET_MOVED[f] ?? 0));
@@ -52,7 +72,7 @@ describe('organization settings writes go through the locking helper', () => {
   });
 
   it('every overtime policy and solver settings write uses it (the schedule fill used to reset settings changed meanwhile)', () => {
-    const op = files(SRC).filter((f) => !f.endsWith('tenantSettings.ts') && !f.endsWith('routes/fill.ts')).filter((f) => /tenant\.update\([^\n]*overtimePolicy/.test(readFileSync(f, 'utf8')));
+    const op = files(SRC).filter((f) => !f.endsWith('tenantSettings.ts') && !f.endsWith('routes/fill.ts')).filter((f) => updateCalls(readFileSync(f, 'utf8')).some((c) => /\bovertimePolicy\b/.test(c)));
     expect(op.map((f) => relative(SRC, f))).toEqual([]);
   });
 
