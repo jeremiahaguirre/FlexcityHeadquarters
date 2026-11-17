@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.100.0"
+      version = "6.72.0"
     }
   }
   # State in S3 in Canada, with locking. Create the bucket and table once by hand, then uncomment.
