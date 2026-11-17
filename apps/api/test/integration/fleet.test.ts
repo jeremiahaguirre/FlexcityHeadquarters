@@ -82,7 +82,7 @@ describe('correcting and retiring vehicles', () => {
     expect((await call(tok.other).post(`/api/vehicles/${other}/inspections`, { items: allOk })).status).toBe(201);
     const log = await owner.auditLog.findMany({ where: { tenantId: t.tenant.id, action: 'vehicle.update', entityId: other }, orderBy: { at: 'asc' } });
     expect(log).toHaveLength(2);
-    expect(log[0]!.before).toMatchObject({ unit: 'T-3', plate: null });
+    expect(log[0]!.before).toMatchObject({ unit: 'T-3', description: 'Pickup', plate: null });
   });
 
   it('a retired vehicle leaves drivers’ lists and refuses inspections; managers still see it and can bring it back', async () => {

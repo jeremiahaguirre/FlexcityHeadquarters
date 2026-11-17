@@ -154,6 +154,12 @@ describe('patrol records', () => {
     expect(winter.find((r) => r.id === routeId)).toMatchObject({ name: 'Route 7: Hillside Drive', roadClass: '2', intervalHours: 12, active: false, overdue: false });
     const log = await owner.auditLog.findMany({ where: { tenantId: t.tenant.id, action: 'winter.route.update', entityId: routeId }, orderBy: { at: 'asc' } });
     expect(log.map((l) => l.before)).toEqual([expect.objectContaining({ name: 'Route 7: Hillside Dr', intervalHours: 24 }), expect.objectContaining({ active: true })]);
+    // The patrol done before the rename still reads, and exports, as the route it was done on.
+    const patrols = (await call(tok.hr).get('/api/patrols?from=2020-01-01&to=2030-01-01')).body;
+    expect(patrols.find((p: { routeId: string }) => p.routeId === routeId)).toMatchObject({ route: 'Route 7: Hillside Dr', roadClass: '3' });
+    const csv = (await call(tok.hr).get('/api/patrols/export?from=2020-01-01&to=2030-01-01')).text;
+    expect(csv).toContain('"Route 7: Hillside Dr","3"');
+    expect(csv).not.toContain('Hillside Drive');
   });
 
   it('switching patrols off hides them from everyone', async () => {
@@ -177,7 +183,10 @@ describe('winter options the plan doesn’t include', () => {
     const on = await call(tok.hr).put('/api/winter/settings', { ...SETTINGS, callOutsOn: true, patrolsOn: false });
     expect(on.status).toBe(403);
     expect(on.body).toMatchObject({ code: 'PLAN_REQUIRED', details: { module: 'winter' } });
-    // Saving the time frames with both off still works.
+    // Saving the time frames with both off (the locked boxes can't be ticked) still works, and keeps the city's own choice.
     expect((await call(tok.hr).put('/api/winter/settings', { ...SETTINGS, callOutsOn: false, patrolsOn: false })).status).toBe(200);
+    await owner.billingAccount.update({ where: { tenantId: t.tenant.id }, data: { level: 'ENTERPRISE' } });
+    forgetFeatures(t.tenant.id);
+    expect((await call(tok.hr).get('/api/winter/settings')).body).toMatchObject({ callOutsOn: true, patrolsOn: false, locked: { callOuts: null, patrols: null } });
   });
 });

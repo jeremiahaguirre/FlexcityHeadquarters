@@ -11,7 +11,7 @@ export interface WinterSettings {
   locked?: { callOuts: string | null; patrols: string | null };
 }
 export interface RouteStatus { id: string; name: string; roadClass: string | null; intervalHours: number; active: boolean; lastPatrolAt: string | null; dueAt: string | null; overdue: boolean; inSeason: boolean }
-export interface Patrol { id: string; routeId: string; route: string; person: string; startedAt: string; endedAt: string | null; conditions: string[]; actions: string[]; snowCm: number | null; airTempC: number | null; roadTempC: number | null; materialTonnes: number | null; vehicle: string | null; notes: string | null }
+export interface Patrol { id: string; routeId: string; route: string; roadClass?: string | null; person: string; startedAt: string; endedAt: string | null; conditions: string[]; actions: string[]; snowCm: number | null; airTempC: number | null; roadTempC: number | null; materialTonnes: number | null; vehicle: string | null; notes: string | null }
 export interface CallOutContact { id: string; userId: string; name: string; phone: string | null; rank: number; status: 'WAITING' | 'OFFERED' | 'ACCEPTED' | 'DECLINED' | 'NO_ANSWER' | 'SKIPPED' | 'NOT_NEEDED'; skipReason: string | null; offeredAt: string | null }
 export interface CallOut { id: string; reason: string; status: 'OPEN' | 'FILLED' | 'CANCELLED'; startsAt: string; endsAt: string; responseMinutes: number; facility: string; position: { name: string; nameFr: string | null } | null; filledBy: string | null; contacts: CallOutContact[] }
 

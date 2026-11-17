@@ -46,7 +46,9 @@ winterRouter.put(
     if (notInPlan) throw new HttpError(403, 'PLAN_REQUIRED', 'Your plan doesn’t include this. See Billing to add it.', { module: locked[notInPlan] });
     await withTenant(a.tenantId, async (tx) => {
       const t = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { features: true } });
-      const features = { ...(t.features as Record<string, boolean>), callOuts: callOutsOn, patrols: patrolsOn };
+      // A switch the plan locks shows as off and can't be changed here: keep the city's own choice for when the plan includes it again.
+      const stored = resolveFeatures(t.features);
+      const features = { ...(t.features as Record<string, boolean>), callOuts: locked.callOuts ? stored.callOuts : callOutsOn, patrols: locked.patrols ? stored.patrols : patrolsOn };
       await tx.tenant.update({ where: { id: a.tenantId }, data: { winterSettings: asJson(settings), features } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'winter.settings', entity: 'Tenant', entityId: a.tenantId, after: body });
     });
@@ -231,7 +233,9 @@ const finishBody = z.object({
 const patrolView = (p: Prisma.PatrolRecordGetPayload<object>, names: Map<string, string>, routes: Map<string, string>) => ({
   id: p.id,
   routeId: p.routeId,
-  route: routes.get(p.routeId) ?? '',
+  // As it was when patrolled (a later rename doesn't rewrite the record).
+  route: p.routeName ?? routes.get(p.routeId) ?? '',
+  roadClass: p.routeClass,
   userId: p.userId,
   person: names.get(p.userId) ?? '',
   startedAt: p.startedAt,
@@ -256,7 +260,7 @@ winterRouter.post(
       const route = await tx.patrolRoute.findUnique({ where: { id: body.routeId } });
       if (!route || !route.active) throw notFound('Route');
       if (await tx.patrolRecord.findFirst({ where: { userId: a.userId, endedAt: null } })) throw conflict('PATROL_OPEN', 'Finish your current patrol first.');
-      return tx.patrolRecord.create({ data: { tenantId: a.tenantId, routeId: route.id, userId: a.userId, vehicle: body.vehicle ?? null, startLat: body.startLat ?? null, startLng: body.startLng ?? null, conditions: [], actions: [] } });
+      return tx.patrolRecord.create({ data: { tenantId: a.tenantId, routeId: route.id, routeName: route.name, routeClass: route.roadClass, userId: a.userId, vehicle: body.vehicle ?? null, startLat: body.startLat ?? null, startLng: body.startLng ?? null, conditions: [], actions: [] } });
     });
     res.status(201).json({ id: p.id });
   }),
@@ -331,8 +335,8 @@ winterRouter.get(
       const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
       return `"${safe.replace(/"/g, '""')}"`;
     };
-    const head = ['route', 'person', 'started_at', 'ended_at', 'conditions', 'actions', 'snow_cm', 'air_temp_c', 'road_temp_c', 'material_tonnes', 'vehicle', 'notes'];
-    const lines = [head.join(','), ...rows.map((r) => [r.route, r.person, r.startedAt, r.endedAt, r.conditions, r.actions, r.snowCm, r.airTempC, r.roadTempC, r.materialTonnes, r.vehicle, r.notes].map(cell).join(','))];
+    const head = ['route', 'road_class', 'person', 'started_at', 'ended_at', 'conditions', 'actions', 'snow_cm', 'air_temp_c', 'road_temp_c', 'material_tonnes', 'vehicle', 'notes'];
+    const lines = [head.join(','), ...rows.map((r) => [r.route, r.roadClass, r.person, r.startedAt, r.endedAt, r.conditions, r.actions, r.snowCm, r.airTempC, r.roadTempC, r.materialTonnes, r.vehicle, r.notes].map(cell).join(','))];
     await withTenant(a.tenantId, (tx) => audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'patrol.export', entity: 'PatrolRecord', entityId: a.tenantId, after: { from: q.from, to: q.to, rows: rows.length } }));
     res.setHeader('content-type', 'text/csv; charset=utf-8');
     res.setHeader('content-disposition', `attachment; filename="patrols-${q.from.toISOString().slice(0, 10)}-${q.to.toISOString().slice(0, 10)}.csv"`);
