@@ -19,7 +19,7 @@ import { OFFBOARD_ITEMS, OFFBOARD_REASONS, startOffboarding } from '../services/
 import { peopleInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { loadGraph, setManagers, setReportsOf } from '../services/people/reporting.js';
 import { h } from './context.js';
-import { leaveHoursFrom, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
+import { leaveHoursFrom, leaveTimeZones, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
 import { assertUserInScope } from '../services/people/scope.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../services/payroll/holidayRules.js';
 
@@ -52,13 +52,14 @@ async function balances(tx: Tx, userIds: string[], year: number) {
     tx.timeOffRequest.findMany({ where: { userId: { in: userIds }, startsAt: { lt: end }, endsAt: { gt: start }, status: { in: ['APPROVED', 'PENDING'] } } }),
     scheduledShifts(tx, userIds, start, end),
   ]);
+  const zoneOf = await leaveTimeZones(tx, requests); // one query, the zone each request is counted in
   // Approved: what was charged at approval (older requests: the weekday count). Pending: their schedule as it stands.
   const hoursOf = (r: (typeof requests)[number]) =>
     r.status === 'APPROVED'
       ? r.chargedHours != null
         ? Number(r.chargedHours)
-        : weekdayLeaveHours(r.startsAt, r.endsAt)
-      : leaveHoursFrom(r, shifts.filter((s) => s.userId === r.userId)).hours;
+        : weekdayLeaveHours(r.startsAt, r.endsAt, zoneOf(r))
+      : leaveHoursFrom(r, shifts.filter((s) => s.userId === r.userId), zoneOf(r)).hours;
   return users.map((u) => ({
     userId: u.id,
     name: `${u.firstName} ${u.lastName}`,

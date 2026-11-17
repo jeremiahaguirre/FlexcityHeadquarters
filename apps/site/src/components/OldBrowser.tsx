@@ -13,7 +13,8 @@ export function OldBrowser({ lang }: { lang: Lang }) {
     <>
       {/* eslint-disable-next-line react/no-danger */}
       <style dangerouslySetInnerHTML={{ __html: OLD_BROWSER_CSS }} />
-      <div id="fh-old-browser" className="min-h-screen px-4 py-10">
+      {/* data-nosnippet: the site is indexed; search engines that read hidden text never quote this notice. */}
+      <div id="fh-old-browser" data-nosnippet="" className="min-h-screen px-4 py-10">
         <div className="mx-auto max-w-lg rounded-xl2 border border-line bg-panel p-6 shadow-card sm:p-8">
           <Logo size={32} />
           {order.map((l, i) => {

@@ -2,7 +2,7 @@
  * Captures the website's app screenshots (apps/site/public/screens/*.webp) from the static demo
  * build of the app: the fictional "City of Lakeview (demo)" with invented people, nothing real.
  *
- *   1. Build the demo:   cd apps/web && NEXT_PUBLIC_DEMO=1 npx next build        (writes apps/web/out)
+ *   1. Build the demo:   cd apps/web && NEXT_PUBLIC_DEMO=1 npx next build --webpack   (writes apps/web/out)
  *      (a build made with NEXT_BASE_PATH works too: pass the same path in DEMO_BASE below)
  *   2. Serve it:         node apps/web/e2e/serve-demo.cjs 3310
  *   3. Capture:          NODE_PATH=/opt/node-tools/node_modules node apps/site/scripts/capture-screens.cjs

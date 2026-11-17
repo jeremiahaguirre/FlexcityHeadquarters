@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import * as app from '../../../web/src/lib/browserCheck';
@@ -34,6 +36,11 @@ describe('browser check (site)', () => {
   it('is plain ES5', () => {
     const out = (target: ts.ScriptTarget) => ts.transpileModule(BROWSER_CHECK_SCRIPT, { compilerOptions: { target, module: ts.ModuleKind.None } }).outputText;
     expect(out(ts.ScriptTarget.ES5)).toBe(out(ts.ScriptTarget.ESNext));
+  });
+
+  it('keeps the hidden notice out of search snippets (the site is indexed)', () => {
+    const src = readFileSync(join(__dirname, '../components/OldBrowser.tsx'), 'utf8');
+    expect(src).toMatch(/<div id="fh-old-browser" data-nosnippet=""/);
   });
 
   it('names the minimum versions in both languages', () => {
