@@ -92,6 +92,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       # Phone tests (iPhone 13 screen) against the static demo: sample data, no API or database.
+      # The live build (what production serves) carries none of the demo (ARCHITECTURE-REVIEW A15).
+      - name: Live build has no demo code or data
+        run: NEXT_DIST_DIR=.next-live npx next build && node scripts/check-live-build.mjs .next-live
       - name: Build static demo
         run: npm run build:demo
       - name: Fonts in the build are our own
