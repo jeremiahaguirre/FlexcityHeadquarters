@@ -580,12 +580,14 @@
     "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
     "LEAVE_TYPE_UNKNOWN": "Ce type de congé n’est pas offert ici.",
     "LEAVE_TYPE_ARCHIVED": "Ce type de congé n’est plus offert.",
-    "LEAVE_TYPE_SYSTEM": "Un type de congé intégré garde son fonctionnement : changez seulement ses noms, son code de paie ou son ordre.",
+    "LEAVE_TYPE_SYSTEM": "Un type de congé intégré garde ses noms et son fonctionnement : changez seulement son code de paie ou son ordre.",
     "LEAVE_TYPE_NO_BALANCE": "Ce type de congé n’a pas de solde.",
     "LEAVE_CHAIN_REPEATS": "Chaque approbateur figure une seule fois dans la chaîne.",
     "LEAVE_STEP_NOT_YOURS": "Cette demande attend l’approbation de quelqu’un d’autre.",
     "CARRYOVER_OVER_LIMIT": "C’est plus de report que ce type de congé ne permet.",
-    "TOO_MANY_LEAVE_TYPES": "Une organisation peut ajouter jusqu’à 40 types de congé."
+    "TOO_MANY_LEAVE_TYPES": "Une organisation peut ajouter jusqu’à 40 types de congé.",
+    "LEAVE_TYPE_IN_USE": "Des gens ont déjà demandé ce type de congé; sa paie et sa protection ne peuvent donc plus changer. Archivez-le et ajoutez un nouveau type.",
+    "LEAVE_PAY_CODE_NOT_YOURS": "Seules les personnes qui fixent les codes de paie ou approuvent les paies peuvent changer un code de paie."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -5046,7 +5048,7 @@
     "LIEU_NO_RATE": "{{name}} a des congés compensatoires à payer mais aucun taux horaire. Ajoutez son taux de rémunération.",
     "LIEU_EXPIRED": "{{name}} a {{hours}} heures supplémentaires accumulées depuis plus de {{months}} mois. Planifiez-les en congé ou payez-les.",
     "LIEU_OWED": "{{name}} quitte avec {{hours}} heures supplémentaires accumulées. Payez-les sur sa dernière paie.",
-    "LEAVE_NO_RATE": "{{name}} n’a pas de taux de salaire pour le {{date}}; son {{leave}} n’a donc pas été payé dans cette paie. Ajoutez un taux et relancez-la."
+    "LEAVE_NO_RATE": "{{name}} n’a pas de taux de salaire pour le {{date}}; son {{leaveFr}} de ce jour n’a donc pas été payé dans cette paie. Ajoutez un taux et relancez-la."
   },
   "documents": {
     "title": "Documents",
@@ -8472,7 +8474,7 @@
     "edit": "Modifier {{name}}",
     "saved": "Enregistré.",
     "builtIn": "Intégré",
-    "builtInHelp": "Un type intégré garde son fonctionnement. Vous pouvez changer ses noms, son code de paie et son ordre.",
+    "builtInHelp": "Un type intégré garde ses noms et son fonctionnement. Vous pouvez changer son code de paie et son ordre.",
     "archived": "Archivé",
     "name": "Nom (anglais)",
     "nameFr": "Nom (français)",

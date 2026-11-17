@@ -26,7 +26,7 @@ export async function sendScheduledReports(tx: Tx, now = new Date()): Promise<nu
     }
     const w = windowFor(schedule, now);
     const days = Number((r.params as { days?: number }).days ?? 30);
-    const out = await runReport(tx, a, r.reportKey, { ...w, days });
+    const out = await runReport(tx, a, r.reportKey, { ...w, days, lang: owner!.locale === 'fr-CA' ? 'fr-CA' : 'en-CA' });
     const preview = out.rows.slice(0, 15).map((row) => out.columns.map((c) => row[c] ?? '').join(' · ')).join('\n') + (out.rows.length > 15 ? `\n… (+${out.rows.length - 15})` : '');
     await tx.emailOutbox.create({ data: { tenantId: r.tenantId, toEmail: owner!.email, template: 'report_ready', locale: owner!.locale, params: { name: r.name, from: w.from, to: w.to, count: out.rows.length, preview } } });
     await tx.savedReport.update({ where: { id: r.id }, data: { lastSentAt: now } });

@@ -5,9 +5,9 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { type AuthContext, authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, notFound } from '../lib/errors.js';
+import { HttpError, forbidden, notFound } from '../lib/errors.js';
 import { chainOf, leaveTypes } from '../services/people/leaveTypes.js';
 import { h } from './context.js';
 
@@ -47,6 +47,17 @@ const editable = z.object({
 });
 const codeOf = (name: string) => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'LEAVE';
 
+/**
+ * Kinds of leave apply to the whole organization and change pay: never set by a role limited to
+ * departments. An export pay code also needs whoever maps pay codes (tenant.configure) or approves pay.
+ */
+function checkWho(a: AuthContext, payCode: { from: string | null; to: string | null }) {
+  if (a.scope) throw forbidden('Kinds of leave are set by HR for the whole organization.');
+  if (payCode.from !== payCode.to && !a.permissions.has('tenant.configure') && !a.permissions.has('payroll.approve')) {
+    throw new HttpError(403, 'LEAVE_PAY_CODE_NOT_YOURS', 'Only people who set pay codes or approve pay runs can change a pay code.');
+  }
+}
+
 function checkChain(chain: string[]) {
   if (new Set(chain).size !== chain.length) throw new HttpError(400, 'LEAVE_CHAIN_REPEATS', 'Each approver appears once in the chain.');
 }
@@ -69,6 +80,7 @@ leaveTypesRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const b = editable.parse(req.body);
+    checkWho(a, { from: null, to: b.payCode });
     checkChain(b.approvalChain);
     const row = await withTenant(a.tenantId, async (tx) => {
       const existing = await leaveTypes(tx, a.tenantId, { archived: true });
@@ -97,12 +109,16 @@ leaveTypesRouter.patch(
     await withTenant(a.tenantId, async (tx) => {
       const before = await tx.leaveType.findUnique({ where: { id } });
       if (!before) throw notFound('Leave type');
+      checkWho(a, { from: before.payCode, to: b.payCode });
       const { archived, ...rest } = b;
-      const data = before.system
-        ? { name: b.name, nameFr: b.nameFr, payCode: b.payCode, sortOrder: b.sortOrder }
-        : { ...rest, archivedAt: archived ? (before.archivedAt ?? new Date()) : null };
-      if (before.system && (archived || b.paid !== before.paid || b.hasBalance !== before.hasBalance || b.protectedLeave !== before.protectedLeave || b.approvalChain.length)) {
-        throw new HttpError(400, 'LEAVE_TYPE_SYSTEM', 'A built-in kind of leave keeps how it works: change its names, pay code or order only.');
+      // A built-in kind keeps its names (the app shows its own words for them) and how it works.
+      const data = before.system ? { payCode: b.payCode, sortOrder: b.sortOrder } : { ...rest, archivedAt: archived ? (before.archivedAt ?? new Date()) : null };
+      if (before.system && (archived || b.name !== before.name || b.nameFr !== before.nameFr || b.paid !== before.paid || b.hasBalance !== before.hasBalance || b.protectedLeave !== before.protectedLeave || b.approvalChain.length)) {
+        throw new HttpError(400, 'LEAVE_TYPE_SYSTEM', 'A built-in kind of leave keeps its names and how it works: change its pay code or order only.');
+      }
+      // Once people have used a kind, how it's paid and protected stays as it was for them: archive it and add a new kind instead.
+      if (!before.system && (b.paid !== before.paid || b.hasBalance !== before.hasBalance || b.protectedLeave !== before.protectedLeave || b.payCode !== before.payCode) && (await tx.timeOffRequest.count({ where: { leaveTypeId: id } }))) {
+        throw new HttpError(409, 'LEAVE_TYPE_IN_USE', 'People have already asked for this kind of leave, so how it’s paid and protected can’t change. Archive it and add a new kind.');
       }
       await tx.leaveType.update({ where: { id }, data });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'leavetype.update', entity: 'LeaveType', entityId: id, before: leaveTypeOut(before), after: b });

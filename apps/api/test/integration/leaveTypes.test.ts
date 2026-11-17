@@ -12,6 +12,8 @@ import { resetLimits } from '../../src/auth/rateLimit.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { withTenant } from '../../src/lib/db.js';
 import { runPayroll } from '../../src/services/payroll/payrollRun.js';
+import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
+import { addDays, startOfLocalDay } from '../../src/lib/time.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 const server = createApp();
@@ -105,10 +107,11 @@ describe('the built-in kinds behave exactly as before', () => {
     expect((await owner.leaveEntitlement.findFirstOrThrow({ where: { userId: t.users[0]!.id, year: 2027 } })).leaveTypeId).toBe(kinds[1]!.id);
   });
 
-  it('a built-in kind can be renamed and given a pay code, never changed in how it works', async () => {
+  it('a built-in kind can be given a pay code, never renamed (the app shows its own words) or changed in how it works', async () => {
     const sick = kinds[1]!;
-    const same = { name: 'Sick leave', nameFr: 'Congé de maladie', paid: true, hasBalance: true, protectedLeave: true, payCode: 'SCK' };
+    const same = { name: sick.name, nameFr: sick.nameFr, paid: true, hasBalance: true, protectedLeave: true, payCode: 'SCK' };
     expect((await call(tok.hr).patch(`/api/settings/leave-types/${sick.id}`, same)).status).toBe(200);
+    expect((await call(tok.hr).patch(`/api/settings/leave-types/${sick.id}`, { ...same, name: 'Sick leave' })).body.code).toBe('LEAVE_TYPE_SYSTEM');
     expect((await call(tok.hr).patch(`/api/settings/leave-types/${sick.id}`, { ...same, protectedLeave: false })).body.code).toBe('LEAVE_TYPE_SYSTEM');
     expect((await call(tok.hr).patch(`/api/settings/leave-types/${sick.id}`, { ...same, archived: true })).body.code).toBe('LEAVE_TYPE_SYSTEM');
     expect((await owner.leaveType.findUniqueOrThrow({ where: { id: sick.id } })).protectedLeave).toBe(true);
@@ -189,6 +192,81 @@ describe('the organization’s own kinds', () => {
     expect((await call(tok.guard).get('/api/leave-types')).body.types.map((k: Kind) => k.id)).not.toContain(union);
     expect((await call(tok.guard).post('/api/me/time-off', { leaveTypeId: union, ...day('2027-06-01') })).body.code).toBe('LEAVE_TYPE_ARCHIVED');
     expect((await owner.timeOffRequest.count({ where: { leaveTypeId: union } }))).toBe(1);
+  });
+});
+
+describe('review round 1', () => {
+  it('a role limited to departments can’t define or change kinds; a pay code needs someone who sets pay codes or approves pay', async () => {
+    const scopedRole = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Aquatics HR', permissions: ['leave.manage', 'users.read'], scopePositionIds: [t.position.id] } });
+    const leaveOnly = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Leave clerk', permissions: ['leave.manage'] } });
+    const mkUser = async (name: string, roleId: string) => {
+      const u = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: name, lastName: 'X', email: `${name}@${SUB}.test` } });
+      await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: u.id, customRoleId: roleId } });
+      return signAccessToken({ sub: u.id, tid: t.tenant.id, roles: ['EMPLOYEE'], aat: now(), mfa: true });
+    };
+    const scoped = await mkUser('scopedhr', scopedRole.id);
+    const clerk = await mkUser('clerk', leaveOnly.id);
+    forgetCustomPermissions(t.tenant.id);
+    const body = { name: 'Jury duty', nameFr: 'Fonction de juré', paid: true, hasBalance: false };
+    expect((await call(scoped).post('/api/settings/leave-types', body)).status).toBe(403);
+    expect((await call(scoped).patch(`/api/settings/leave-types/${bereavement}`, { name: 'Bereavement', nameFr: 'Deuil', paid: true, hasBalance: true, yearlyHours: 24, carryOverMaxHours: 0, protectedLeave: true, payCode: 'BRV' })).status).toBe(403);
+    expect((await call(clerk).post('/api/settings/leave-types', { ...body, payCode: 'JRY' })).body.code).toBe('LEAVE_PAY_CODE_NOT_YOURS');
+    const jury = await call(clerk).post('/api/settings/leave-types', body);
+    expect(jury.status).toBe(201);
+    expect((await call(clerk).patch(`/api/settings/leave-types/${jury.body.id}`, { ...body, payCode: 'JRY' })).body.code).toBe('LEAVE_PAY_CODE_NOT_YOURS');
+  });
+
+  it('once a kind has been used, how it is paid and protected can’t change', async () => {
+    const was = { name: 'Bereavement', nameFr: 'Deuil', paid: true, hasBalance: true, yearlyHours: 24, carryOverMaxHours: 0, protectedLeave: true, payCode: 'BRV' };
+    expect((await call(tok.hr).patch(`/api/settings/leave-types/${bereavement}`, { ...was, paid: false })).body.code).toBe('LEAVE_TYPE_IN_USE');
+    expect((await call(tok.hr).patch(`/api/settings/leave-types/${bereavement}`, { ...was, payCode: 'BRV2' })).body.code).toBe('LEAVE_TYPE_IN_USE');
+    expect((await call(tok.hr).patch(`/api/settings/leave-types/${bereavement}`, { ...was, yearlyHours: 32 })).status).toBe(200);
+    expect((await call(tok.hr).patch(`/api/settings/leave-types/${bereavement}`, was)).status).toBe(200);
+  });
+
+  const pay = async (week: string) => {
+    const out = await withTenant(t.tenant.id, (tx) => runPayroll(tx, t.tenant.id, week, 1));
+    return out.results.filter((x) => x.userId === t.users[1]!.id).flatMap((x) => x.result.lines).filter((l) => l.code === 'LEAVE_PAY').reduce((a, l) => a + Number(l.hours), 0);
+  };
+
+  it('leave across two pay periods is paid in each, day by day', async () => {
+    // Thursday May 13 08:00 to Tuesday May 18 08:00 in Vancouver: Thursday, Friday and Monday, 24 hours.
+    const r = await call(tok.guard2).post('/api/me/time-off', { leaveTypeId: bereavement, startsAt: '2027-05-13T15:00:00.000Z', endsAt: '2027-05-18T15:00:00.000Z' });
+    expect((await call(tok.sup).post(`/api/time-off/${r.body.request.id}/decision`, { decision: 'APPROVE' })).body.status).toBe('APPROVED');
+    // Pay weeks start on Sunday: May 9–15 holds Thursday and Friday, May 16–22 the Monday.
+    expect([await pay('2027-05-09'), await pay('2027-05-16')]).toEqual([16, 8]);
+  });
+
+  it('leave approved after its period was run is paid in the period of the approval', async () => {
+    const r = await call(tok.guard2).post('/api/me/time-off', { leaveTypeId: bereavement, ...day('2027-05-24') });
+    expect((await call(tok.sup).post(`/api/time-off/${r.body.request.id}/decision`, { decision: 'APPROVE' })).body.status).toBe('APPROVED');
+    // Approved on Wednesday June 2, after the week of May 23 was paid.
+    await owner.timeOffRequest.update({ where: { id: r.body.request.id }, data: { decidedAt: new Date('2027-06-02T18:00:00Z') } });
+    expect([await pay('2027-05-23'), await pay('2027-05-30')]).toEqual([0, 8]);
+  });
+});
+
+describe('statutory holiday pay counts paid leave as wages', () => {
+  it('Ontario: three days of bereavement in the four weeks before Family Day count, as days worked would', async () => {
+    const on = await seedTenant('leavetypeson', 1);
+    await owner.facility.update({ where: { id: on.facility.id }, data: { province: 'ON', timezone: 'America/Toronto' } });
+    const who = on.users[0]!.id;
+    await owner.user.update({ where: { id: who }, data: { hireDate: new Date('2020-01-01') } });
+    await owner.payRate.create({ data: { tenantId: on.tenant.id, userId: who, positionId: on.position.id, hourlyRate: 20, effectiveFrom: new Date('2025-01-01') } });
+    await owner.statutoryHoliday.upsert({ where: { province_date: { province: 'ON', date: new Date('2031-02-17') } }, create: { province: 'ON', date: new Date('2031-02-17'), name: 'Family Day', nameFr: 'Fête de la famille', key: 'FAMILY_DAY' }, update: {} });
+    // Monday to Friday, 8 hours at $20, January 20 to February 14, except Monday to Wednesday January 27–29 on bereavement.
+    const leaveDays = ['2031-01-27', '2031-01-28', '2031-01-29'];
+    for (let d = '2031-01-20'; d < '2031-02-15'; d = addDays(d, 1)) {
+      if ([0, 6].includes(new Date(`${d}T00:00:00Z`).getUTCDay()) || leaveDays.includes(d)) continue;
+      const start = new Date(startOfLocalDay(d, 'America/Toronto').getTime() + 9 * 3_600_000);
+      await owner.timePunch.create({ data: { tenantId: on.tenant.id, userId: who, facilityId: on.facility.id, positionId: on.position.id, clockIn: start, clockOut: new Date(start.getTime() + 8 * 3_600_000), status: 'APPROVED' } });
+    }
+    const kind = await owner.leaveType.create({ data: { tenantId: on.tenant.id, code: 'BEREAVEMENT', name: 'Bereavement', nameFr: 'Deuil', paid: true } });
+    await owner.timeOffRequest.create({ data: { tenantId: on.tenant.id, userId: who, type: 'OTHER', leaveTypeId: kind.id, status: 'APPROVED', startsAt: startOfLocalDay('2031-01-27', 'America/Toronto'), endsAt: startOfLocalDay('2031-01-30', 'America/Toronto'), chargedHours: 24, chargedBasis: 'WEEKDAYS', decidedAt: new Date('2031-01-25T15:00:00Z') } });
+    const out = await withTenant(on.tenant.id, (tx) => runPayroll(tx, on.tenant.id, '2031-02-16', 1));
+    const hp = out.results.find((x) => x.userId === who)!.result.lines.filter((l) => l.code === 'STAT_HOLIDAY_PAY').reduce((a, l) => a + Number(l.amount), 0);
+    // Four weeks' wages ÷ 20: 17 days worked and 3 days of paid leave, $160 each.
+    expect(hp).toBe(160);
   });
 });
 

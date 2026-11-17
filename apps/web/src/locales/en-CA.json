@@ -580,12 +580,14 @@
     "MAINTENANCE_CLOSED": "That window is over or cancelled.",
     "LEAVE_TYPE_UNKNOWN": "That kind of leave isn’t offered here.",
     "LEAVE_TYPE_ARCHIVED": "That kind of leave is no longer offered.",
-    "LEAVE_TYPE_SYSTEM": "A built-in kind of leave keeps how it works: change its names, pay code or order only.",
+    "LEAVE_TYPE_SYSTEM": "A built-in kind of leave keeps its names and how it works: change its pay code or order only.",
     "LEAVE_TYPE_NO_BALANCE": "This kind of leave doesn’t keep a balance.",
     "LEAVE_CHAIN_REPEATS": "Each approver appears once in the chain.",
     "LEAVE_STEP_NOT_YOURS": "This request is waiting for someone else’s approval.",
     "CARRYOVER_OVER_LIMIT": "That’s more carry-over than this kind of leave allows.",
-    "TOO_MANY_LEAVE_TYPES": "An organization can add up to 40 kinds of leave."
+    "TOO_MANY_LEAVE_TYPES": "An organization can add up to 40 kinds of leave.",
+    "LEAVE_TYPE_IN_USE": "People have already asked for this kind of leave, so how it’s paid and protected can’t change. Archive it and add a new kind.",
+    "LEAVE_PAY_CODE_NOT_YOURS": "Only people who set pay codes or approve pay runs can change a pay code."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -5046,7 +5048,7 @@
     "LIEU_NO_RATE": "{{name}} has time in lieu to be paid but no hourly rate. Add their pay rate.",
     "LIEU_EXPIRED": "{{name}} has {{hours}} hours of banked overtime older than {{months}} months. Schedule it as time off or pay it out.",
     "LIEU_OWED": "{{name}} is leaving with {{hours}} hours of banked overtime. Pay it out on their final pay.",
-    "LEAVE_NO_RATE": "{{name}} has no pay rate for {{date}}, so their {{leave}} wasn’t paid on this run. Add a rate and run it again."
+    "LEAVE_NO_RATE": "{{name}} has no pay rate for {{date}}, so their {{leave}} that day wasn’t paid on this run. Add a rate and run it again."
   },
   "documents": {
     "title": "Documents",
@@ -8472,7 +8474,7 @@
     "edit": "Change {{name}}",
     "saved": "Saved.",
     "builtIn": "Built in",
-    "builtInHelp": "A built-in kind keeps how it works. You can change its names, pay code and order.",
+    "builtInHelp": "A built-in kind keeps its names and how it works. You can change its pay code and order.",
     "archived": "Archived",
     "name": "Name (English)",
     "nameFr": "Name (French)",

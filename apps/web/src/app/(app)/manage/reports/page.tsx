@@ -31,7 +31,7 @@ export default function ReportsPage() {
   const [result, setResult] = useState<Result | null>(null);
   const current = defs.data?.find((d) => d.key === (key || defs.data?.[0]?.key));
   const k = current?.key ?? '';
-  const qs = (x = k) => `key=${x}&from=${from}&to=${to}&days=${days}`;
+  const qs = (x = k) => `key=${x}&from=${from}&to=${to}&days=${days}&lang=${lng.startsWith('fr') ? 'fr-CA' : 'en-CA'}`;
   const label = (c: string) => t(`reports.columns.${c}`, { defaultValue: c });
   const MONEY = new Set(['gross', 'employerCosts', 'total']);
   const cell = (c: string, v: string | number | null) => (v === null || v === '' ? '—' : typeof v === 'number' ? (MONEY.has(c) ? formatMoney(v, lng) : v.toLocaleString(lng)) : c === 'type' ? t(`timeOff.types.${v}`, { defaultValue: v }) : c === 'category' ? t(`incidents.categories.${v}`, { defaultValue: v }) : v);

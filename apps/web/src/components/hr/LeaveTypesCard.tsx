@@ -84,8 +84,8 @@ export function LeaveTypesCard() {
         {editing ? (
           <form className="grid gap-4" onSubmit={(e) => void save(e)}>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label={t('leaveTypes.name')}>{(p) => <Input {...p} required minLength={2} maxLength={80} value={editing.draft.name} onChange={(e) => set({ name: e.target.value })} />}</Field>
-              <Field label={t('leaveTypes.nameFr')}>{(p) => <Input {...p} lang="fr" required minLength={2} maxLength={80} value={editing.draft.nameFr} onChange={(e) => set({ nameFr: e.target.value })} />}</Field>
+              <Field label={t('leaveTypes.name')}>{(p) => <Input {...p} required disabled={builtIn} minLength={2} maxLength={80} value={editing.draft.name} onChange={(e) => set({ name: e.target.value })} />}</Field>
+              <Field label={t('leaveTypes.nameFr')}>{(p) => <Input {...p} lang="fr" required disabled={builtIn} minLength={2} maxLength={80} value={editing.draft.nameFr} onChange={(e) => set({ nameFr: e.target.value })} />}</Field>
             </div>
             {check(t('leaveTypes.paidLabel'), editing.draft.paid, (paid) => set({ paid }))}
             {check(t('leaveTypes.balanceLabel'), editing.draft.hasBalance, (hasBalance) => set({ hasBalance }))}
