@@ -16,7 +16,10 @@ reproduce it, and what an attacker could do with it.
 - Every change: unit and integration tests (including `apps/api/test/integration/hardening.test.ts`,
   which replays each attack found in reviews), a dependency audit, and CodeQL static analysis
   (`.github/workflows/security.yml`, also weekly).
-- Dependencies: Dependabot updates; high or critical advisories fail the build.
+- Dependencies: Dependabot updates for npm, GitHub Actions, the Docker base image and the Terraform
+  provider, with a cooldown before a new release is proposed; high or critical advisories fail the
+  build. Actions are pinned to commit SHAs, workflow tokens are read-only unless a job needs more,
+  and the whole git history is scanned for secrets with gitleaks on every change.
 - Reviews: an adversarial code review and a role-by-role privacy review (November 2026), recorded in
   [docs/SECURITY-LEGAL-AUDIT.md](docs/SECURITY-LEGAL-AUDIT.md).
 - Before the first city goes live and yearly after: an independent penetration test

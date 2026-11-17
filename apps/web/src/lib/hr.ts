@@ -38,3 +38,9 @@ export interface Offboarding { id: string; userId: string; name: string; lastDay
 export interface HrOverview { staff: number; openJobs: number; draftRuns: number; pendingBank: number; plans: number; enrolled: number; openClaims: number; activeAccommodations: number; openGrievances: number; reviewsOpen: number; reviewsLate: number; offboarding: number; flagged: number; trainingDue: number }
 
 export const courseName = (c: { name: string; nameFr: string | null }, lng: string) => (lng === 'fr-CA' && c.nameFr ? c.nameFr : c.name);
+
+export const HR_TABS = ['overview', 'leave', 'reviews', 'policies', 'labour', 'offboarding'] as const;
+export type HrTab = (typeof HR_TABS)[number];
+/** Each HR tab for whoever may use it (its API's permission); the overview for everyone who reaches HR. */
+const HR_TAB_PERMISSION: Record<HrTab, string | null> = { overview: null, leave: 'leave.manage', reviews: 'performance.manage', policies: 'policies.manage', labour: 'grievances.manage', offboarding: 'users.write' };
+export const hrTabs = (can: (p: string) => boolean): HrTab[] => HR_TABS.filter((v) => !HR_TAB_PERMISSION[v] || can(HR_TAB_PERMISSION[v]!));

@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ApiError } from '@/lib/apiError';
 import { type CitySummary, papi, usePlatformQuery } from '@/lib/platform';
 import { type Ring, box, chip, fromLocalInput, toLocalInput, whenText } from './shared';
+import { errorText } from '@/lib/apiError';
 
 type StageStatus = 'SCHEDULED' | 'APPLIED' | 'ROLLED_BACK' | 'CANCELLED';
 interface Stage { id: string; ringId: string; scheduledAt: string; noticeDays: number; status: StageStatus; organizations: number; applied: number; noticesSent: number; keptOwnChoice: number }
@@ -43,7 +44,7 @@ export function ReleasesPanel({ rings, reloadRings, features }: { rings: Ring[] 
       toast(ok, 'ok');
       return true;
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
       return false;
     } finally {
       setBusy(null);
