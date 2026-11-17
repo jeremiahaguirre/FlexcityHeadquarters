@@ -67,11 +67,13 @@ data "aws_iam_policy_document" "deploy_trust" {
 }
 
 resource "aws_iam_role" "deploy" {
-  count                = local.deploy_enabled ? 1 : 0
-  name                 = "${local.gname}-github-deploy"
-  description          = "GitHub Actions deployments of ${var.github_repository} (${var.environment})"
-  assume_role_policy   = data.aws_iam_policy_document.deploy_trust.json
-  max_session_duration = 3600
+  count              = local.deploy_enabled ? 1 : 0
+  name               = "${local.gname}-github-deploy"
+  description        = "GitHub Actions deployments of ${var.github_repository} (${var.environment})"
+  assume_role_policy = data.aws_iam_policy_document.deploy_trust.json
+  # Two hours: a production run (promote, migrate, apply, a 10-minute watch, then possibly a
+  # rollback apply) must still hold valid credentials for its rollback.
+  max_session_duration = 7200
 }
 
 resource "aws_iam_role_policy_attachment" "deploy_admin" {
@@ -95,6 +97,24 @@ data "aws_iam_policy_document" "deploy_guardrails" {
       "iam:CreateUser", "iam:CreateAccessKey", "iam:CreateLoginProfile",
       "organizations:*", "account:*", "cloudtrail:StopLogging", "cloudtrail:DeleteTrail",
     ]
+    resources = ["*"]
+  }
+  # The role can't loosen itself: not its policies, its trust, its boundary, or the GitHub provider
+  # it trusts. Changes to the deploy role are made by hand, like its first apply (docs/DEPLOYING.md).
+  statement {
+    sid    = "CannotChangeItself"
+    effect = "Deny"
+    actions = [
+      "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:AttachRolePolicy", "iam:DetachRolePolicy",
+      "iam:UpdateAssumeRolePolicy", "iam:UpdateRole", "iam:DeleteRole", "iam:TagRole", "iam:UntagRole",
+      "iam:PutRolePermissionsBoundary", "iam:DeleteRolePermissionsBoundary",
+    ]
+    resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.gname}-github-deploy"]
+  }
+  statement {
+    sid       = "CannotChangeWhoMayDeploy"
+    effect    = "Deny"
+    actions   = ["iam:CreateOpenIDConnectProvider", "iam:DeleteOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint", "iam:AddClientIDToOpenIDConnectProvider", "iam:RemoveClientIDFromOpenIDConnectProvider", "iam:TagOpenIDConnectProvider"]
     resources = ["*"]
   }
 }
@@ -128,6 +148,11 @@ resource "aws_ecr_repository_policy" "pull" {
 output "deploy_role_arn" {
   description = "The GitHub Actions deploy role: STAGING_AWS_ROLE_ARN or PRODUCTION_AWS_ROLE_ARN (docs/DEPLOYING.md)."
   value       = try(aws_iam_role.deploy[0].arn, "")
+}
+
+output "deployment_alarm_names" {
+  description = "The alarms that roll a deployment back (alarms.tf); the deploy workflow keeps watching them after the services are stable."
+  value       = flatten(values(local.deployment_alarms))
 }
 
 output "image_tag" {

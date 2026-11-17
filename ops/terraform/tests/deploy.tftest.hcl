@@ -66,6 +66,22 @@ run "deploy_role_only_for_this_repository_and_environment" {
     condition     = length(aws_ecr_repository_policy.pull) == 0
     error_message = "No cross-account pull unless asked."
   }
+  assert {
+    condition     = alltrue([for a in ["iam:DeleteRolePolicy", "iam:PutRolePolicy", "iam:UpdateAssumeRolePolicy", "iam:AttachRolePolicy", "iam:DetachRolePolicy", "iam:DeleteRolePermissionsBoundary"] : contains(flatten([for s in data.aws_iam_policy_document.deploy_guardrails.statement : s.actions if s.effect == "Deny" && contains(s.resources, "arn:aws:iam::111122223333:role/fh-production-ca-central-1-github-deploy")]), a)])
+    error_message = "The deploy role can't remove its own guardrails or widen its trust (review of #58)."
+  }
+  assert {
+    condition     = contains(flatten([for s in data.aws_iam_policy_document.deploy_guardrails.statement : s.actions if s.effect == "Deny"]), "iam:UpdateOpenIDConnectProviderThumbprint")
+    error_message = "The deploy role can't change the GitHub provider it trusts."
+  }
+  assert {
+    condition     = aws_iam_role.deploy[0].max_session_duration == 7200
+    error_message = "Sessions last long enough for a production run's rollback."
+  }
+  assert {
+    condition     = toset(output.deployment_alarm_names) == toset(["fh-production-api-5xx-ratio", "fh-production-api-unhealthy", "fh-production-web-5xx-ratio", "fh-production-web-unhealthy"])
+    error_message = "The deploy workflow knows the alarms to keep watching after the services are stable."
+  }
 }
 
 run "existing_oidc_provider_and_promotion" {
