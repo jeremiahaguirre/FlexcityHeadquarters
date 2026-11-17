@@ -273,7 +273,8 @@
     "mine": "My work",
     "deck": "Pool deck",
     "manage": "Manage",
-    "union": "Union"
+    "union": "Union",
+    "deckGeneral": "On site"
   },
   "roles": {
     "HR_ADMIN": "HR administrator",
@@ -2221,7 +2222,8 @@
         "TOO_MANY_ROWS": "Over 2,000 rows; import the rest separately.",
         "MANAGER_SELF": "Someone can’t report to themselves.",
         "MANAGER_UNKNOWN": "No one with the email {{value}} on staff or in the file.",
-        "MANAGER_CYCLE": "The managers in the file go in a circle (through {{value}})."
+        "MANAGER_CYCLE": "The managers in the file go in a circle (through {{value}}).",
+        "POOL_ROLE": "“{{value}}” is a pool role, and this organization has no pools. Use one of its own role names."
       },
       "help_one": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} position to match against.",
       "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} positions to match against."
@@ -8449,6 +8451,48 @@
       "active": "Under way",
       "ended": "Ended",
       "cancelled": "Cancelled"
+    }
+  },
+  "roleNames": {
+    "MUNICIPAL": {
+      "HR_ADMIN": "HR administrator",
+      "AQUATIC_SUPERVISOR": "Supervisor",
+      "HEAD_LIFEGUARD": "Lead hand",
+      "STAFF": "Frontline staff",
+      "FRONT_DESK": "Front desk",
+      "UNION_STEWARD": "Union steward",
+      "EMPLOYEE": "General employee"
+    },
+    "PRIVATE": {
+      "HR_ADMIN": "HR administrator",
+      "AQUATIC_SUPERVISOR": "Manager",
+      "HEAD_LIFEGUARD": "Team lead",
+      "STAFF": "Team member",
+      "FRONT_DESK": "Reception",
+      "UNION_STEWARD": "Union steward",
+      "EMPLOYEE": "Employee"
+    }
+  },
+  "roleLabels": {
+    "title": "Names for the built-in roles",
+    "help": "Your organization uses the {{profile}} words by default. Give any role your own name in English and French; leave both empty to keep the default.",
+    "profiles": {
+      "AQUATIC": "aquatics",
+      "MUNICIPAL": "municipal",
+      "PRIVATE": "workplace"
+    },
+    "en": "English",
+    "fr": "French",
+    "both": "Give the name in both languages, or leave both empty.",
+    "wordsOnly": "Only the names change; what each role can do stays the same.",
+    "saved": "Role names saved.",
+    "profile": "Default words",
+    "profileHint": "Automatic: workplace words for a private employer, pool words where you have pools or an aquatic department, neutral words once you have departments and none is aquatic.",
+    "profileAuto": "Automatic",
+    "profileNames": {
+      "AQUATIC": "Aquatics (Lifeguard / instructor, Pool deck)",
+      "MUNICIPAL": "Municipal (Frontline staff, On site)",
+      "PRIVATE": "Workplace (Team member, Manager)"
     }
   }
 }

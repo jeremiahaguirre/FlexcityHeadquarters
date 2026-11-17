@@ -3,6 +3,7 @@
 import { ChevronDown } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useVocabulary } from '@/lib/vocabulary';
 import { cn } from '@/lib/cn';
 import type { NavItem } from '@/lib/nav';
 import { ManageNav, SECTION_THRESHOLD } from './ManageNav';
@@ -15,6 +16,7 @@ type Locked = { href: string; key: string; group: NavItem['group']; addOn: strin
 
 export function SideNav({ items, locked, activeHref, link, lockedLink }: { items: NavItem[]; locked: Locked[]; activeHref: string | null; link: (n: NavItem) => ReactNode; lockedLink: (l: Locked) => ReactNode }) {
   const { t } = useTranslation();
+  const vocab = useVocabulary();
   const long = items.length + locked.length >= LONG_MENU;
   const activeGroup = items.find((n) => n.href === activeHref)?.group ?? null;
   const [open, setOpen] = useState<Array<NavItem['group']>>([]);
@@ -54,7 +56,7 @@ export function SideNav({ items, locked, activeHref, link, lockedLink }: { items
         if (!long) {
           return (
             <div key={g}>
-              <p className="mb-1.5 px-3 text-label uppercase text-muted">{t(`navGroups.${g}`)}</p>
+              <p className="mb-1.5 px-3 text-label uppercase text-muted">{vocab.group(g)}</p>
               {body}
             </div>
           );
@@ -68,7 +70,7 @@ export function SideNav({ items, locked, activeHref, link, lockedLink }: { items
               onClick={() => toggle(g)}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-label uppercase text-muted transition-colors hover:bg-surface hover:text-ink"
             >
-              <span className="flex-1">{t(`navGroups.${g}`)}</span>
+              <span className="flex-1">{vocab.group(g)}</span>
               {!isOpen ? <span className="rounded-full bg-surface px-1.5 normal-case tracking-normal tabular-nums">{list.length}</span> : null}
               <ChevronDown className={cn('h-4 w-4 transition-transform duration-200', isOpen ? 'rotate-180' : '')} aria-hidden="true" />
             </button>

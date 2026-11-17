@@ -17,6 +17,7 @@ import { CaseFilePanel } from '@/components/people/CaseFilePanel';
 import { RecordText } from '@/components/people/RecordText';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { useVocabulary } from '@/lib/vocabulary';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useSession } from '@/lib/session';
@@ -67,6 +68,7 @@ function Section({ title, description, action, children }: { title: string; desc
 
 function Person() {
   const { t, i18n } = useTranslation();
+  const vocab = useVocabulary();
   const lng = i18n.language;
   const id = useSearchParams().get('id') ?? '';
   const { can, me } = useSession();
@@ -251,7 +253,7 @@ function Person() {
                   {ROLES.map((r) => (
                     <label key={r} className="flex items-center gap-2 text-small">
                       <input type="checkbox" name="roles" value={r} defaultChecked={p.roles.includes(r)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
-                      {t(`roles.${r}`)}
+                      {vocab.role(r)}
                     </label>
                   ))}
                 </div>

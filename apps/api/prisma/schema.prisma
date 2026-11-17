@@ -159,6 +159,13 @@ enum OfferStatus {
   CANCELLED
 }
 
+/// The default words for the built-in roles: pool words, neutral municipal words, or workplace words.
+enum RoleVocabulary {
+  AQUATIC
+  MUNICIPAL
+  PRIVATE
+}
+
 enum TimeOffType {
   VACATION
   SICK // statutory sick leave — protected
@@ -324,6 +331,10 @@ model Tenant {
   payCodeMappings   PayCodeMapping[]
   /// Dev console per-role customization: { ROLE: { grant: [], revoke: [], hideMenu: [] } }.
   roleOverrides     Json             @default("{}")
+  /// The organization's own names for the built-in roles: { STAFF: { en, fr }, … } (services/people/vocabulary.ts).
+  roleLabels        Json             @default("{}")
+  /// Which default words the screens use for the built-in roles; null = worked out (services/people/vocabulary.ts).
+  roleVocabulary    RoleVocabulary?
   /// Overtime equalization: { countRefusals, clause, periodStartMonth }.
   overtimePolicy    Json             @default("{}")
   /// Care after critical incidents: { eap: "Employee assistance: 1-800-…" }.

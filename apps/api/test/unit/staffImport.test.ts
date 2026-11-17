@@ -66,6 +66,27 @@ describe('staff import preview', () => {
   });
 });
 
+describe('staff import outside aquatics', () => {
+  const csv = 'first_name,last_name,email,roles\nA,One,a@city.ca,supervisor\nB,Two,b@city.ca,staff\nC,Three,c@city.ca,\nD,Four,d@city.ca,head lifeguard\nE,Five,e@city.ca,front desk\n';
+  it('a municipal organization without pools: "supervisor" or "head lifeguard" must name its own role; staff and no role are general employees', () => {
+    const rows = previewImport(csv, { ...ctx, profile: 'MUNICIPAL' }).rows;
+    expect(rows.map((r) => [r.roles, r.errors.map((e) => e.code)])).toEqual([
+      [['EMPLOYEE'], ['POOL_ROLE']],
+      [['EMPLOYEE'], []],
+      [['EMPLOYEE'], []],
+      [['EMPLOYEE'], ['POOL_ROLE']],
+      [['FRONT_DESK'], []],
+    ]);
+    const own = previewImport(csv, { ...ctx, profile: 'PRIVATE', customRoles: [{ id: 'r1', name: 'Supervisor', nameFr: 'Superviseur' }] }).rows[0]!;
+    expect([own.roles, own.customRoleIds, own.errors]).toEqual([['EMPLOYEE'], ['r1'], []]);
+  });
+  it('aquatics (and callers that don’t say) keep the old meaning', () => {
+    for (const profile of ['AQUATIC', undefined] as const) {
+      expect(previewImport(csv, { ...ctx, profile }).rows.map((r) => r.roles)).toEqual([['AQUATIC_SUPERVISOR'], ['STAFF'], ['STAFF'], ['HEAD_LIFEGUARD'], ['FRONT_DESK']]);
+    }
+  });
+});
+
 describe('logo upload', () => {
   const png = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex').toString('base64');
   it('accepts a real PNG and refuses a mislabelled or SVG file', () => {

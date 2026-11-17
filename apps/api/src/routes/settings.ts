@@ -4,7 +4,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { ACCESS_ROLES, vocabularyOf } from '../services/people/vocabulary.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
 import { h } from './context.js';
 import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
@@ -231,6 +232,43 @@ settingsRouter.put(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'schoolcalendar.replace', entity: 'Tenant', entityId: a.tenantId, after: periods });
     });
     res.json({ ok: true, count: periods.length });
+  }),
+);
+
+// ------------------------------------------------- Names for the built-in roles
+
+/** The organization's profile (aquatic, municipal, private) and its own names for the built-in roles. */
+settingsRouter.get(
+  '/settings/role-labels',
+  h(async (req, res) => {
+    const a = authOf(req);
+    res.json(await withTenant(a.tenantId, (tx) => vocabularyOf(tx, a.tenantId)));
+  }),
+);
+
+/**
+ * Which default words to use (`profile`: AQUATIC, MUNICIPAL, PRIVATE, or null to work it out) and the
+ * organization's own names (`roleLabels`): a role left out (or null) goes back to the default words.
+ */
+settingsRouter.put(
+  '/settings/role-labels',
+  h(async (req, res) => {
+    const a = authOf(req);
+    // Names show in every department: set for the whole organization.
+    if (a.scope) throw forbidden('Role names are set for the whole organization, by HR.');
+    const name = z.string().trim().min(2).max(60);
+    const entry = z.object({ en: name, fr: name }).nullable().optional();
+    const b = z
+      .object({ profile: z.enum(['AQUATIC', 'MUNICIPAL', 'PRIVATE']).nullable(), roleLabels: z.object(Object.fromEntries(ACCESS_ROLES.map((r) => [r, entry]))).strict() })
+      .strict()
+      .parse(req.body);
+    const labels = Object.fromEntries(Object.entries(b.roleLabels).filter(([, v]) => v));
+    await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId }, select: { roleLabels: true, roleVocabulary: true } });
+      await tx.tenant.update({ where: { id: a.tenantId }, data: { roleLabels: labels, roleVocabulary: b.profile } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.role_labels', entity: 'Tenant', entityId: a.tenantId, before: { profile: before.roleVocabulary, roleLabels: before.roleLabels }, after: { profile: b.profile, roleLabels: labels } });
+    });
+    res.json(await withTenant(a.tenantId, (tx) => vocabularyOf(tx, a.tenantId)));
   }),
 );
 

@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { useVocabulary } from '@/lib/vocabulary';
 import { formatDate } from '@/lib/format';
 import { type ReviewRow, dayOf } from '@/lib/people';
 import { useQuery } from '@/lib/useQuery';
@@ -23,6 +24,7 @@ import { useSession } from '@/lib/session';
 /** People review: who may need a conversation and exactly why, from attendance, supervisors' notes and records already in the app. HR sees everyone; a supervisor sees their own people. */
 export default function PeopleReviewPage() {
   const { t, i18n } = useTranslation();
+  const vocab = useVocabulary();
   const { me } = useSession();
   const lng = i18n.language;
   const [department, setDepartment] = useDepartmentTab();
@@ -68,7 +70,7 @@ export default function PeopleReviewPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-body-strong">{r.name}</p>
-                      <span className="text-caption text-muted">{r.roles.map((x) => t(`roles.${x}`)).join(' · ')}</span>
+                      <span className="text-caption text-muted">{r.roles.map((x) => vocab.role(x)).join(' · ')}</span>
                     </div>
                     {r.review.flags.length ? (
                       <ul className="mt-1.5 flex flex-wrap gap-1.5">

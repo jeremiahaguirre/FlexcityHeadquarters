@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { useVocabulary } from '@/lib/vocabulary';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { type CustomRole, roleName } from '@/lib/customRoles';
@@ -41,6 +42,7 @@ interface Person {
 /** Staff list: search, add people, and set roles, positions and managers in bulk. */
 export default function StaffPage() {
   const { t, i18n } = useTranslation();
+  const vocab = useVocabulary();
   const lng = i18n.language;
   const { can, me } = useSession();
   const [status, setStatus] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
@@ -165,7 +167,7 @@ export default function StaffPage() {
                 ))}
                 {p.roles.filter((r) => r !== 'STAFF' && !(r === 'EMPLOYEE' && p.customRoles?.length)).map((r) => (
                   <StatusPill key={r} tone="brand">
-                    {t(`roles.${r}`)}
+                    {vocab.role(r)}
                   </StatusPill>
                 ))}
               </div>
@@ -236,7 +238,7 @@ export default function StaffPage() {
               {ROLES.map((r) => (
                 <label key={r} className="flex items-center gap-2 text-small">
                   <input type="checkbox" name="roles" value={r} defaultChecked={r === 'STAFF'} className="h-5 w-5 accent-[rgb(var(--brand))]" />
-                  {t(`roles.${r}`)}
+                  {vocab.role(r)}
                 </label>
               ))}
             </div>

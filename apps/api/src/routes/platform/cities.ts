@@ -15,6 +15,7 @@ import { FILE_CSP } from '../../lib/files.js';
 import { FEATURE_KEYS, FEATURE_REQUIRES, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
+import { vocabularyOf } from '../../services/people/vocabulary.js';
 import { setManagers } from '../../services/people/reporting.js';
 import { createPool, poolDetailsBody, poolDetailsView, updatePool } from '../../services/ops/pools.js';
 import { CUSTOM_ROLE_PERMISSIONS, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../../services/people/customRoles.js';
@@ -452,7 +453,8 @@ async function preview(tx: Tx, csv: string) {
     tx.position.findMany({ select: { id: true, name: true, nameFr: true } }),
     tx.customRole.findMany({ select: { id: true, name: true, nameFr: true } }),
   ]);
-  return previewImport(csv, { existingEmails: new Set(users.map((u) => u.email.toLowerCase())), positions, customRoles, today: new Date().toISOString().slice(0, 10) });
+  const { profile } = await vocabularyOf(tx, (await tx.tenant.findFirstOrThrow({ select: { id: true } })).id);
+  return previewImport(csv, { existingEmails: new Set(users.map((u) => u.email.toLowerCase())), positions, customRoles, profile, today: new Date().toISOString().slice(0, 10) });
 }
 
 citiesRouter.post(

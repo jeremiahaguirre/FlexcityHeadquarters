@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input } from '@/components/ui/Field';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { MultiSelect } from '@/components/ui/MultiSelect';
+import { useVocabulary } from '@/lib/vocabulary';
 import type { Department, Departments } from '@/lib/departments';
 import { useAction } from '@/lib/useQuery';
 
@@ -44,6 +45,7 @@ export function DepartmentsEditor({ data, save, remove, reload }: { data: Depart
 
 function DepartmentForm({ department, data, save, remove, reload, onCancel }: { department?: Department; data: Departments; save: (id: string | null, body: DepartmentBody) => Promise<unknown>; remove: (id: string) => Promise<unknown>; reload: () => Promise<void>; onCancel?: () => void }) {
   const { t, i18n } = useTranslation();
+  const vocab = useVocabulary();
   const lng = i18n.language;
   const { run, busy } = useAction();
   const [confirming, setConfirming] = useState(false);
@@ -94,7 +96,7 @@ function DepartmentForm({ department, data, save, remove, reload, onCancel }: { 
               value: o.id,
               label: o.name,
               // What makes them a manager: their built-in and custom roles.
-              hint: [...o.roles.map((r) => t(`roles.${r}`)), ...o.customRoles.map((r) => name(r))].join(' · '),
+              hint: [...o.roles.map((r) => vocab.role(r)), ...o.customRoles.map((r) => name(r))].join(' · '),
             }))}
           />
         )}

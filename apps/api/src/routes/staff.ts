@@ -13,6 +13,7 @@ import { db as rootDb } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
 import { checkPersonalPassword, passwordRule } from './auth.js';
+import { vocabularyOf } from '../services/people/vocabulary.js';
 import { h, subdomainOf } from './context.js';
 import { FEATURES, type FeatureKey, tenantSettings } from '../services/platform/features.js';
 import { MENU } from '../auth/menu.js';
@@ -59,6 +60,8 @@ staffRouter.get(
       ]),
     );
     const { features, billing } = await tenantSettings(a.tenantId);
+    // The words for the built-in roles: aquatic, municipal or private-sector, and the organization's own names.
+    const vocabulary = await withTenant(a.tenantId, (tx) => vocabularyOf(tx, a.tenantId));
     const mustSign = a.support ? false : await withTenant(a.tenantId, (tx) => consentRequired(tx, a.userId));
     // For whoever handles billing: screens their roles would have if the plan included them.
     const lockedMenu = a.permissions.has('billing.manage')
@@ -77,7 +80,7 @@ staffRouter.get(
     // An FH support visit shows as support, not as the person who allowed it.
     if (a.support) {
       const admin = await rootDb().platformAdmin.findUnique({ where: { id: a.support.adminId }, select: { name: true } });
-      res.json({ id: me.id, firstName: 'FH', lastName: 'support', email: '', phone: null, locale: me.locale, timeFormat: tenant.timeFormat, roles: me.roles, customRoles: [], permissions: [...permissions].filter((p) => p !== 'union.hub').sort(), features, hiddenMenu: [], employmentStatus: me.employmentStatus, positions: [], certifications: [], mfaRequired: false, lockedMenu: [], billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: false }, support: { admin: admin?.name ?? 'FH support', level: a.support.level, endsAt: a.support.endsAt } });
+      res.json({ id: me.id, firstName: 'FH', lastName: 'support', email: '', phone: null, locale: me.locale, timeFormat: tenant.timeFormat, roles: me.roles, customRoles: [], permissions: [...permissions].filter((p) => p !== 'union.hub').sort(), features, hiddenMenu: [], employmentStatus: me.employmentStatus, positions: [], certifications: [], mfaRequired: false, lockedMenu: [], vocabulary, billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: false }, support: { admin: admin?.name ?? 'FH support', level: a.support.level, endsAt: a.support.endsAt } });
       return;
     }
     res.json({
@@ -103,6 +106,7 @@ staffRouter.get(
       // Limited to some departments, positions or facilities: whole-organization screens (payroll documents, settings) don't apply.
       scoped: !!a.scope,
       lockedMenu,
+      vocabulary,
       billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: a.permissions.has('billing.manage') },
       // Offboarded: the app shows only the data export.
       ...(closed.disabledAt ? { closed: { exportUntil: closed.exportUntil } } : {}),

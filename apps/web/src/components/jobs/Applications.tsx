@@ -10,6 +10,7 @@ import { FileInput } from '@/components/ui/FileInput';
 import { MultiSelect } from '@/components/ui/MultiSelect';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
+import { useVocabulary } from '@/lib/vocabulary';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { EMPLOYMENT } from '@/lib/staff';
@@ -87,6 +88,7 @@ export function ApplyForm({ jobId, workAge }: { jobId: string; workAge?: WorkAge
 /** HR: one posting's applications. */
 export function ApplicationsDialog({ job, onClose }: { job: { id: string; title: string } | null; onClose: () => void }) {
   const { t, i18n } = useTranslation();
+  const vocab = useVocabulary();
   const q = useQuery<App[]>(job ? `/api/jobs/${job.id}/applications` : null);
   const positions = useQuery<Array<{ id: string; name: string; nameFr: string | null }>>(job ? '/api/positions' : null);
   const { run, busy } = useAction();
@@ -126,7 +128,7 @@ export function ApplicationsDialog({ job, onClose }: { job: { id: string; title:
       <p className="mt-3 text-caption text-muted">{t('jobs.retention')}</p>
       <Dialog open={!!hiring} onClose={() => setHiring(null)} title={t('jobs.hireTitle', { name: hiring?.name ?? '' })} description={t('jobs.hireHelp')} closeLabel={t('common.cancel')}>
         <form onSubmit={(e) => void hire(e)} className="grid gap-4">
-          <Field label={t('jobs.role')}>{(p) => <Select {...p} name="role" defaultValue="STAFF">{(['STAFF', 'EMPLOYEE', 'FRONT_DESK', 'HEAD_LIFEGUARD'] as const).map((r) => <option key={r} value={r}>{t(`roles.${r}`)}</option>)}</Select>}</Field>
+          <Field label={t('jobs.role')}>{(p) => <Select {...p} name="role" defaultValue={vocab.vocabulary && vocab.vocabulary.profile !== 'AQUATIC' ? 'EMPLOYEE' : 'STAFF'}>{(['STAFF', 'EMPLOYEE', 'FRONT_DESK', 'HEAD_LIFEGUARD'] as const).map((r) => <option key={r} value={r}>{vocab.role(r)}</option>)}</Select>}</Field>
           <Field label={t('jobs.employment')}>{(p) => <Select {...p} name="employment" defaultValue="CASUAL">{EMPLOYMENT.map((x) => <option key={x} value={x}>{t(`staff.employment.${x}`)}</option>)}</Select>}</Field>
           <Field label={t('jobs.positions')}>{(p) => <MultiSelect id={p.id} name="positions" options={(positions.data ?? []).map((x) => ({ value: x.id, label: (i18n.language === 'fr-CA' && x.nameFr) || x.name }))} onChange={setPos} placeholder={t('jobs.choosePositions')} />}</Field>
           <Field label={t('jobs.hireDate')}>{(p) => <Input {...p} name="hireDate" type="date" />}</Field>

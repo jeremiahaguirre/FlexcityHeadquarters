@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
+import { useVocabulary } from '@/lib/vocabulary';
 import { cn } from '@/lib/cn';
 import { formatDate, formatTime } from '@/lib/format';
 import { type QueuedPunch, clearPunches, deviceLocalIso, queuedPunches } from '@/lib/offlinePunches';
@@ -34,6 +35,7 @@ export function useLanguageSwitch() {
 /** Avatar button with profile, language and sign-out. `compact` shows only the avatar. */
 export function UserMenu({ compact = false, placement = 'down' }: { compact?: boolean; placement?: 'down' | 'up' }) {
   const { t, i18n } = useTranslation();
+  const vocab = useVocabulary();
   const { me, signOut } = useSession();
   const { switchLanguage } = useLanguageSwitch();
   const [open, setOpen] = useState(false);
@@ -87,7 +89,7 @@ export function UserMenu({ compact = false, placement = 'down' }: { compact?: bo
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-small font-semibold text-ink">{name}</span>
-              <span className="block truncate text-caption text-muted">{me.customRoles?.[0] ? roleName(me.customRoles[0], i18n.language) : t(`roles.${me.roles[0]}`)}</span>
+              <span className="block truncate text-caption text-muted">{me.customRoles?.[0] ? roleName(me.customRoles[0], i18n.language) : vocab.role(me.roles[0]!)}</span>
             </span>
             <ChevronDown className="h-4 w-4 text-muted" aria-hidden="true" />
           </>

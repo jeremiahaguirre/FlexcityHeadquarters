@@ -273,7 +273,8 @@
     "mine": "Mon travail",
     "deck": "Bord du bassin",
     "manage": "Gestion",
-    "union": "Syndicat"
+    "union": "Syndicat",
+    "deckGeneral": "Sur place"
   },
   "roles": {
     "HR_ADMIN": "Administration RH",
@@ -2221,7 +2222,8 @@
         "TOO_MANY_ROWS": "Plus de 2 000 lignes; importez le reste séparément.",
         "MANAGER_SELF": "Une personne ne peut pas relever d’elle-même.",
         "MANAGER_UNKNOWN": "Personne avec le courriel {{value}} dans le personnel ou le fichier.",
-        "MANAGER_CYCLE": "Les gestionnaires du fichier tournent en rond (en passant par {{value}})."
+        "MANAGER_CYCLE": "Les gestionnaires du fichier tournent en rond (en passant par {{value}}).",
+        "POOL_ROLE": "« {{value}} » est un rôle de piscine, et cette organisation n’a pas de piscine. Utilisez un de ses propres noms de rôle."
       },
       "help_one": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} poste reconnu.",
       "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus."
@@ -8449,6 +8451,48 @@
       "active": "En cours",
       "ended": "Terminée",
       "cancelled": "Annulée"
+    }
+  },
+  "roleNames": {
+    "MUNICIPAL": {
+      "HR_ADMIN": "Administration RH",
+      "AQUATIC_SUPERVISOR": "Superviseur",
+      "HEAD_LIFEGUARD": "Chef d’équipe",
+      "STAFF": "Personnel de première ligne",
+      "FRONT_DESK": "Accueil",
+      "UNION_STEWARD": "Délégué syndical",
+      "EMPLOYEE": "Employé (général)"
+    },
+    "PRIVATE": {
+      "HR_ADMIN": "Administration RH",
+      "AQUATIC_SUPERVISOR": "Gestionnaire",
+      "HEAD_LIFEGUARD": "Chef d’équipe",
+      "STAFF": "Membre de l’équipe",
+      "FRONT_DESK": "Réception",
+      "UNION_STEWARD": "Délégué syndical",
+      "EMPLOYEE": "Employé"
+    }
+  },
+  "roleLabels": {
+    "title": "Noms des rôles intégrés",
+    "help": "Votre organisation utilise les termes {{profile}} par défaut. Donnez à un rôle votre propre nom en anglais et en français; laissez les deux vides pour garder celui par défaut.",
+    "profiles": {
+      "AQUATIC": "aquatiques",
+      "MUNICIPAL": "municipaux",
+      "PRIVATE": "de milieu de travail"
+    },
+    "en": "Anglais",
+    "fr": "Français",
+    "both": "Donnez le nom dans les deux langues, ou laissez les deux vides.",
+    "wordsOnly": "Seuls les noms changent; ce que chaque rôle peut faire reste le même.",
+    "saved": "Noms des rôles enregistrés.",
+    "profile": "Termes par défaut",
+    "profileHint": "Automatique : termes de milieu de travail pour un employeur privé, termes aquatiques si vous avez des bassins ou un service aquatique, termes neutres dès que vous avez des services et qu’aucun n’est aquatique.",
+    "profileAuto": "Automatique",
+    "profileNames": {
+      "AQUATIC": "Aquatique (Sauveteur / moniteur, Bord du bassin)",
+      "MUNICIPAL": "Municipal (Personnel de première ligne, Sur place)",
+      "PRIVATE": "Milieu de travail (Membre de l’équipe, Gestionnaire)"
     }
   }
 }

@@ -4,6 +4,7 @@ import { type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
+import { useVocabulary } from '@/lib/vocabulary';
 import { api } from '@/lib/api';
 import { useAction, useQuery } from '@/lib/useQuery';
 
@@ -13,6 +14,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
  */
 export function MfaCard() {
   const { t } = useTranslation();
+  const vocab = useVocabulary();
   const data = useQuery<{ roles: string[]; all: string[]; codes?: boolean }>('/api/settings/mfa');
   const { run, busy } = useAction();
   if (data.error || !data.data) return null;
@@ -32,7 +34,7 @@ export function MfaCard() {
             {d.all.map((r) => (
               <label key={r} className="flex items-center gap-3 text-small">
                 <input type="checkbox" name="role" value={r} defaultChecked={d.roles.includes(r) || r === 'HR_ADMIN'} disabled={r === 'HR_ADMIN'} className="h-5 w-5 accent-[rgb(var(--brand))]" />
-                {t(`roles.${r}`)}
+                {vocab.role(r)}
               </label>
             ))}
           </div>

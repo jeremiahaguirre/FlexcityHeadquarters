@@ -16,6 +16,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { useVocabulary } from '@/lib/vocabulary';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { LOCALE_COOKIE } from '@/lib/i18n';
@@ -38,6 +39,7 @@ interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt
 /** The signed-in person's own profile: contact details and language, password and passkeys, certifications, and records waiting for their signature. */
 export default function ProfilePage() {
   const { t, i18n } = useTranslation();
+  const vocab = useVocabulary();
   const lng = i18n.language;
   const { me, reload } = useSession();
   const { run, busy } = useAction();
@@ -103,7 +105,7 @@ export default function ProfilePage() {
         <div>
           <h1 className="text-title">{name}</h1>
           <p className="text-body text-muted">
-            {me.roles.map((r) => t(`roles.${r}`)).join(' · ')} · {me.email}
+            {me.roles.map((r) => vocab.role(r)).join(' · ')} · {me.email}
           </p>
         </div>
       </header>

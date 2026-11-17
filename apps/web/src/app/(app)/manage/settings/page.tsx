@@ -31,6 +31,7 @@ import { SeniorityCard } from '@/components/settings/SeniorityCard';
 import { FillSettingsCard } from '@/components/settings/FillSettingsCard';
 import { ReliabilityCard } from '@/components/settings/ReliabilityCard';
 import { HolidayWeekendCard } from '@/components/settings/HolidayWeekendCard';
+import { RoleLabelsCard } from '@/components/settings/RoleLabelsCard';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
@@ -80,7 +81,7 @@ function Section({ title, description, action, children }: { title: string; desc
 /** Organization settings: the organization itself, its facilities, pools and pay rules. Sections show only to people allowed to change them. */
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const { can } = useSession();
+  const { can, me } = useSession();
   const org = can('tenant.configure');
   const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
@@ -113,6 +114,7 @@ export default function SettingsPage() {
       ) : (
         <div className="grid max-w-4xl gap-6">
           {tab === 'org' ? <Organization s={settings.data} reload={settings.reload} /> : null}
+          {tab === 'org' && !me?.scoped ? <RoleLabelsCard /> : null}
           {tab === 'org' ? <SeniorityCard /> : null}
           {tab === 'org' ? <FillSettingsCard /> : null}
           {tab === 'org' ? <ReliabilityCard /> : null}
