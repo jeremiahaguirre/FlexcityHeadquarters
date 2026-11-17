@@ -118,6 +118,12 @@ variable "db_read_replica" {
   type        = bool
   default     = false
 }
+variable "db_log_retention_days" {
+  description = "Days the database's exported log (slow statements, errors; never their values) is kept in CloudWatch."
+  type        = number
+  default     = 30
+}
+
 variable "db_backup_retention_days" {
   type    = number
   default = 35
@@ -174,6 +180,18 @@ variable "alarm_email" {
   description = "Where infrastructure alarms are emailed (confirmed by the recipient)."
   type        = string
   default     = ""
+}
+
+variable "error_ratio_percent" {
+  description = "Alarm (and roll back a deployment) when more than this percentage of a service's requests fail with a server error, in 3 of 5 minutes."
+  type        = number
+  default     = 5
+}
+
+variable "error_ratio_min_requests" {
+  description = "Minutes with fewer requests than this count as healthy for the error-ratio alarms, so a few failures at night don't page anyone."
+  type        = number
+  default     = 20
 }
 
 variable "union_role_password" {

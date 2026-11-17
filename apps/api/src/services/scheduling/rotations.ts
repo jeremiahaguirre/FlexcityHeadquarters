@@ -16,7 +16,7 @@
 import { z } from 'zod';
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { badRequest, forbidden, notFound } from '../../lib/errors.js';
+import { forbidden, invalid, notFound } from '../../lib/errors.js';
 import { addDays, localDate } from '../../lib/time.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { shiftInScope, userInScope } from '../people/scope.js';
@@ -105,8 +105,8 @@ export const MAX_GENERATE_DAYS = 91;
 /** Creates (or previews) the drafts the active templates ask for in a range. */
 export async function generateFromTemplates(tx: Tx, a: AuthContext, input: GenerateInput) {
   const days = daysBetween(input.from, input.to);
-  if (days <= 0) throw badRequest('The range must end after it starts.');
-  if (days > MAX_GENERATE_DAYS) throw badRequest(`Choose a range of up to ${MAX_GENERATE_DAYS} days.`);
+  if (days <= 0) throw invalid('ENDS_BEFORE_START', 'The range must end after it starts.');
+  if (days > MAX_GENERATE_DAYS) throw invalid('RANGE_TOO_LONG', `Choose a range of up to ${MAX_GENERATE_DAYS} days.`, { maxDays: MAX_GENERATE_DAYS });
   const departments = await schedulableDepartments(tx, a);
   const allowedPositions = new Set(departments.flatMap((d) => d.positionIds));
   const templates = await tx.rotationTemplate.findMany({
@@ -210,7 +210,7 @@ export async function assertTemplateWritable(tx: Tx, a: AuthContext, t: Pick<Tem
   const pos = await tx.position.findUnique({ where: { id: t.positionId }, select: { departmentId: true } });
   if (!pos) throw notFound('Position');
   if (!(await tx.facility.findUnique({ where: { id: t.facilityId }, select: { id: true } }))) throw notFound('Facility');
-  if (t.departmentId && pos.departmentId !== t.departmentId) throw badRequest('The position isn’t in that department.');
+  if (t.departmentId && pos.departmentId !== t.departmentId) throw invalid('POSITION_NOT_IN_DEPARTMENT', 'The position isn’t in that department.');
   for (const u of [...new Set(t.crews.flatMap((c) => c.userIds))]) if (!(await userInScope(tx, a.scope, u))) throw forbidden('Someone on a crew isn’t in your department.');
   return pos.departmentId;
 }

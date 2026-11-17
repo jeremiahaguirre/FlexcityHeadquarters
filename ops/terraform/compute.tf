@@ -10,6 +10,7 @@ resource "aws_cloudwatch_log_group" "svc" {
   for_each          = toset(["api", "worker", "web", "migrate"])
   name              = "/fh/${var.environment}/${each.key}"
   retention_in_days = 90
+  kms_key_id        = aws_kms_key.logs.arn
 }
 
 locals {
@@ -198,9 +199,17 @@ locals {
   # directly at its private name, not through the public load balancer (apps/web/src/lib/tenant.ts).
   web_env = { NODE_ENV = "production", ROOT_DOMAIN = var.root_domain, API_URL = "http://api.${local.name}.internal:4000" }
   services = {
-    api    = { task = aws_ecs_task_definition.api.arn, count = var.api_min, port = 4000, tg = aws_lb_target_group.api.arn }
-    web    = { task = aws_ecs_task_definition.web.arn, count = var.web_min, port = 3000, tg = aws_lb_target_group.web.arn }
-    worker = { task = aws_ecs_task_definition.worker.arn, count = var.worker_count, port = null, tg = null }
+    api    = { task = aws_ecs_task_definition.api.arn, count = var.api_min, port = 4000, tg = aws_lb_target_group.api.arn, sg = aws_security_group.api.id, sg_name = aws_security_group.api.name }
+    web    = { task = aws_ecs_task_definition.web.arn, count = var.web_min, port = 3000, tg = aws_lb_target_group.web.arn, sg = aws_security_group.web.id, sg_name = aws_security_group.web.name }
+    worker = { task = aws_ecs_task_definition.worker.arn, count = var.worker_count, port = null, tg = null, sg = aws_security_group.worker.id, sg_name = aws_security_group.worker.name }
+  }
+}
+
+locals {
+  # Alarms that stop and roll back each service's deployment (alarms.tf).
+  deployment_alarms = {
+    api = [aws_cloudwatch_metric_alarm.error_ratio["api"].alarm_name, aws_cloudwatch_metric_alarm.main["api-unhealthy"].alarm_name]
+    web = [aws_cloudwatch_metric_alarm.error_ratio["web"].alarm_name, aws_cloudwatch_metric_alarm.main["web-unhealthy"].alarm_name]
   }
 }
 
@@ -219,7 +228,7 @@ resource "aws_ecs_service" "svc" {
 
   network_configuration {
     subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.app.id]
+    security_groups  = [each.value.sg]
     assign_public_ip = false
   }
 
@@ -227,6 +236,18 @@ resource "aws_ecs_service" "svc" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
+  }
+
+  # A release whose tasks start but then fail requests is rolled back too: ECS watches these alarms
+  # while the deployment runs and rolls back if one goes off (ARCHITECTURE-REVIEW A14). The worker
+  # has no load balancer metrics; it relies on the circuit breaker and the deploy workflow's check.
+  dynamic "alarms" {
+    for_each = contains(keys(local.deployment_alarms), each.key) ? [local.deployment_alarms[each.key]] : []
+    content {
+      enable      = true
+      rollback    = true
+      alarm_names = alarms.value
+    }
   }
 
   dynamic "service_registries" {
