@@ -5,7 +5,7 @@
  * head guard applies; the log proves rotations happened.
  */
 import type { Tx } from '../../lib/db.js';
-import { badRequest } from '../../lib/errors.js';
+import { invalid } from '../../lib/errors.js';
 
 const MIN = 60_000;
 /** Gap that still counts as continuous chair time when someone moves straight to the next station. */
@@ -125,9 +125,9 @@ export async function loadPlan(tx: Tx, facilityId: string, now = new Date()) {
 export async function applyRotation(tx: Tx, tenantId: string, facilityId: string, actorId: string, assignments: Array<{ stationId: string; userId: string | null }>, now = new Date()) {
   const stations = await tx.deckStation.findMany({ where: { facilityId, archivedAt: null }, select: { id: true } });
   const valid = new Set(stations.map((s) => s.id));
-  if (assignments.some((a) => !valid.has(a.stationId))) throw badRequest('A station is not on this deck.');
+  if (assignments.some((a) => !valid.has(a.stationId))) throw invalid('STATION_UNKNOWN', 'A station is not on this deck.');
   const people = assignments.map((a) => a.userId).filter((u): u is string => !!u);
-  if (new Set(people).size !== people.length) throw badRequest('Someone is on two stations at once.');
+  if (new Set(people).size !== people.length) throw invalid('STATION_TWICE', 'Someone is on two stations at once.');
   const open = await tx.rotationLog.findMany({ where: { facilityId, endedAt: null } });
   await tx.rotationLog.updateMany({ where: { facilityId, endedAt: null }, data: { endedAt: now } });
   const assigned = new Set(people);

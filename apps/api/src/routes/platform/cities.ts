@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { type Tx, tenantIds, withTenant } from '../../lib/db.js';
-import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { FILE_CSP } from '../../lib/files.js';
 import { FEATURE_KEYS, FEATURE_REQUIRES, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
@@ -480,7 +480,7 @@ citiesRouter.post(
         const tenant = await tx.tenant.findUnique({ where: { id } });
         if (!tenant) throw notFound('Organization');
         const pv = await preview(tx, csv);
-        if (pv.missingColumns.length) throw badRequest(`Missing columns: ${pv.missingColumns.join(', ')}`);
+        if (pv.missingColumns.length) throw invalid('COLUMNS_MISSING', `Missing columns: ${pv.missingColumns.join(', ')}`, { columns: pv.missingColumns.join(', ') });
         const ready = pv.rows.filter((r) => r.status === 'create');
         // FH creates a city's first HR administrators while setting it up; after that, only the city's own HR can.
         if (ready.some((r) => r.roles.includes('HR_ADMIN')) && (await tx.user.count({ where: { status: 'ACTIVE', roles: { has: 'HR_ADMIN' } } }))) {

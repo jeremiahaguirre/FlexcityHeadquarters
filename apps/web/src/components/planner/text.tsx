@@ -7,6 +7,7 @@ import { formatHours, formatTime } from '@/lib/format';
 import type { Reason, Status } from '@/lib/planner';
 import { ApiError } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { errorText } from '@/lib/apiError';
 
 /** Reasons whose sentence needs a number, a time or a certificate; without it, a plainer one. */
 const NEEDS: Record<string, 'n' | 'at' | 'cert'> = {
@@ -70,7 +71,7 @@ export function reasonsFromError(t: TFunction, lng: string, e: unknown): string[
   if (e instanceof ApiError) {
     const blocks = (e.details as { blocks?: Array<{ code: string; message?: string }> } | undefined)?.blocks;
     if (blocks?.length) return blocks.map((b) => reasonText(t, lng, { code: b.code, n: numbersIn(b.message ?? '') }));
-    return [t(`errors.${e.code}`, { defaultValue: e.message })];
+    return [errorText(t, e)];
   }
   return [t('common.error')];
 }
