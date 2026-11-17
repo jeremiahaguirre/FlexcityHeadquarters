@@ -770,7 +770,8 @@
     "NOT_IN_DEMO": "This isn’t available in the demo.",
     "EXPORT_INVALID": "Some details are missing before this period can be sent.",
     "PROVIDER_SEND_FAILED": "The payroll provider didn’t take the hours. Try again, or download the file.",
-    "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later."
+    "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later.",
+    "BOOKING_OVER": "This booking has already happened."
   },
   "timeclock": {
     "title": "Timeclock",

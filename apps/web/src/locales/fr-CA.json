@@ -770,7 +770,8 @@
     "NOT_IN_DEMO": "Cette fonction n’est pas offerte dans la démo.",
     "EXPORT_INVALID": "Il manque des renseignements pour envoyer cette période.",
     "PROVIDER_SEND_FAILED": "Le fournisseur de paie n’a pas accepté les heures. Réessayez ou téléchargez le fichier.",
-    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard."
+    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard.",
+    "BOOKING_OVER": "Cette réservation a déjà eu lieu."
   },
   "timeclock": {
     "title": "Horodateur",
