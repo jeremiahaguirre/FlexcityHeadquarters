@@ -138,7 +138,7 @@ export async function lieuAvailable(tx: Tx, userId: string, ignoreRequestId?: st
   const last = await tx.payRun.findFirst({ where: { kind: 'REGULAR', status: { in: ['APPROVED', 'PAID'] }, statements: { some: { userId } } }, orderBy: { periodEnd: 'desc' }, select: { periodEnd: true } });
   const after = last ? new Date(last.periodEnd.getTime() + 86_400_000) : new Date(0);
   const reqs = await tx.timeOffRequest.findMany({ where: { userId, type: 'LIEU', status: { in: ['APPROVED', 'PENDING'] }, startsAt: { gte: after }, ...(ignoreRequestId ? { id: { not: ignoreRequestId } } : {}) } });
-  const tz = (await leaveTimeZones(tx, [userId], new Date())).get(userId)!;
-  const committed = reqs.reduce((a, r) => a + (r.chargedHours != null ? Number(r.chargedHours) : weekdayLeaveHours(r.startsAt, r.endsAt, tz)), 0);
+  const zoneOf = await leaveTimeZones(tx, reqs.filter((r) => r.chargedHours == null));
+  const committed = reqs.reduce((a, r) => a + (r.chargedHours != null ? Number(r.chargedHours) : weekdayLeaveHours(r.startsAt, r.endsAt, zoneOf(r))), 0);
   return r2(bank.balance - committed);
 }
