@@ -106,10 +106,10 @@ export function workRuleIntervals(ps: ReadonlyArray<PunchLike>, ctx: { rules: Pr
 }
 
 /** Adds an earning line (and the vacation pay on it) to a pay result, in place. */
-export function addEarning(result: PayResult, line: { code: PayCodeKey; positionId: string | null; hours: Decimal; rate: Decimal; multiplier: Decimal; amount?: Decimal }, mode: 'PAY_EACH_PERIOD' | 'ACCRUE') {
+export function addEarning(result: PayResult, line: { code: PayCodeKey; positionId: string | null; hours: Decimal; rate: Decimal; multiplier: Decimal; amount?: Decimal; exportCode?: string | null }, mode: 'PAY_EACH_PERIOD' | 'ACCRUE') {
   const amount = line.amount ?? cents(line.hours.mul(line.rate).mul(line.multiplier));
   if (amount.lte(0)) return;
-  const l: PayLine = { code: line.code, positionId: line.positionId, hours: line.hours, rate: line.rate, multiplier: line.multiplier, amount };
+  const l: PayLine = { code: line.code, positionId: line.positionId, hours: line.hours, rate: line.rate, multiplier: line.multiplier, amount, ...(line.exportCode ? { exportCode: line.exportCode } : {}) };
   // Keep vacation pay the last line.
   const vacIdx = result.lines.findIndex((x) => x.code === 'VACATION_PAY');
   if (vacIdx >= 0) result.lines.splice(vacIdx, 0, l);

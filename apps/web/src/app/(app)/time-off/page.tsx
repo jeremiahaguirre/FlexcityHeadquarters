@@ -17,6 +17,7 @@ import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { useAction, useQuery, todayIso } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
+import { type LeaveKind, type LeaveKindBrief, leaveLabel } from '@/lib/leaveTypes';
 
 type Status = 'PENDING' | 'APPROVED' | 'DENIED' | 'CANCELLED';
 interface Request {
@@ -27,6 +28,7 @@ interface Request {
   endsAt: string;
   note: string | null;
   decisionNote: string | null;
+  leaveType?: LeaveKindBrief | null;
 }
 const TONE: Record<Status, Tone> = { PENDING: 'pending', APPROVED: 'ok', DENIED: 'warn', CANCELLED: 'inactive' };
 const TYPES = ['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER', 'LIEU'] as const;
@@ -43,7 +45,12 @@ export default function TimeOffPage() {
   const types = TYPES.filter((x) => x !== 'LIEU' || lieu.data?.policy.enabled);
   const { run, busy } = useAction();
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<(typeof TYPES)[number]>('VACATION');
+  // A built-in type's code, or the id of one of the organization's own kinds.
+  const [type, setType] = useState<string>('VACATION');
+  // The organization's own kinds of leave (bereavement, jury duty…), after the built-in ones.
+  const kinds = useQuery<{ types: LeaveKind[] }>('/api/leave-types');
+  const own = (kinds.data?.types ?? []).filter((k) => !k.system && !k.archived);
+  const ownKind = own.find((k) => k.id === type);
   const [partial, setPartial] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +79,7 @@ export default function TimeOffPage() {
     })();
     if (endsAt <= startsAt) return setError(t('timeOff.endBeforeStart'));
     setError(null);
-    const r = await run('submit', () => api<{ affectedShifts: number }>('/api/me/time-off', { method: 'POST', body: { type, startsAt, endsAt, note: String(f.get('note') || '') || null } }));
+    const r = await run('submit', () => api<{ affectedShifts: number }>('/api/me/time-off', { method: 'POST', body: { ...(ownKind ? { leaveTypeId: ownKind.id } : { type }), startsAt, endsAt, note: String(f.get('note') || '') || null } }));
     if (r) {
       setOpen(false);
       setPartial(false);
@@ -106,7 +113,7 @@ export default function TimeOffPage() {
           {list.data.map((r) => (
             <Card key={r.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="min-w-0">
-                <p className="text-subheading">{t(`timeOff.types.${r.type}`)}</p>
+                <p className="text-subheading">{leaveLabel(t, lng, r.leaveType, r.type)}</p>
                 <p className="text-small text-muted">{fmtRange(r)}</p>
                 {r.decisionNote ? <p className="mt-1 text-small text-ink">“{r.decisionNote}”</p> : null}
               </div>
@@ -125,12 +132,17 @@ export default function TimeOffPage() {
 
       <Dialog open={open} onClose={() => setOpen(false)} title={t('timeOff.request')} closeLabel={t('common.close')}>
         <form onSubmit={(e) => void submit(e)} className="grid gap-4">
-          <Field label={t('timeOff.type')} hint={type === 'SICK' || type === 'PROTECTED_LEAVE' ? t('timeOff.protectedHint') : type === 'LIEU' ? t('timeOff.lieuHint', { n: Math.max(0, lieu.data?.available ?? 0) }) : undefined}>
+          <Field label={t('timeOff.type')} hint={type === 'SICK' || type === 'PROTECTED_LEAVE' || ownKind?.protectedLeave ? t('timeOff.protectedHint') : type === 'LIEU' ? t('timeOff.lieuHint', { n: Math.max(0, lieu.data?.available ?? 0) }) : undefined}>
             {(p) => (
-              <Select {...p} value={type} onChange={(e) => setType(e.target.value as (typeof TYPES)[number])}>
+              <Select {...p} value={type} onChange={(e) => setType(e.target.value)}>
                 {types.map((x) => (
                   <option key={x} value={x}>
                     {t(`timeOff.types.${x}`)}
+                  </option>
+                ))}
+                {own.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {leaveLabel(t, lng, k)}
                   </option>
                 ))}
               </Select>

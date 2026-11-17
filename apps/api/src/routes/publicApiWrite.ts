@@ -325,14 +325,17 @@ const when = z.string().datetime({ offset: true });
 const timeOffCreate = z
   .object({
     person_id: uuid,
-    type: z.enum(TIME_OFF_TYPES),
+    /** A built-in type, or `leave_type_id` for one of the organization's own (GET /leave-types). */
+    type: z.enum(TIME_OFF_TYPES).optional(),
+    leave_type_id: uuid.optional(),
     starts_at: when,
     ends_at: when,
     note: z.string().trim().max(500).nullable().optional(),
     /** pending (default): their manager approves it in the app. approved: needs timeoff:approve. */
     status: z.enum(['pending', 'approved']).default('pending'),
   })
-  .strict();
+  .strict()
+  .refine((b) => !!b.type !== !!b.leave_type_id, { message: 'Send type or leave_type_id (one of them).', path: ['type'] });
 
 publicApiWriteRouter.post(
   '/time-off',
@@ -346,10 +349,10 @@ publicApiWriteRouter.post(
       const u = await tx.user.findUnique({ where: { id: b.person_id }, select: { status: true, anonymizedAt: true } });
       if (!u || u.anonymizedAt) throw notFound('Person');
       if (u.status === 'TERMINATED') throw new HttpError(409, 'PERSON_NOT_ACTIVE', 'This person no longer works here.', { field: 'person_id' });
-      const out = await requestTimeOff(tx, w.actor.tenantId, b.person_id, { type: b.type.toUpperCase() as TimeOffType, startsAt: new Date(b.starts_at), endsAt: new Date(b.ends_at), note: b.note ?? null });
-      await audit(tx, { tenantId: w.actor.tenantId, actorId: w.actor.userId, action: 'timeoff.request', entity: 'TimeOffRequest', entityId: out.request.id, after: { personId: b.person_id, type: b.type, startsAt: b.starts_at, endsAt: b.ends_at, status: b.status } });
+      const out = await requestTimeOff(tx, w.actor.tenantId, b.person_id, { type: b.type ? (b.type.toUpperCase() as TimeOffType) : null, leaveTypeId: b.leave_type_id ?? null, startsAt: new Date(b.starts_at), endsAt: new Date(b.ends_at), note: b.note ?? null });
+      await audit(tx, { tenantId: w.actor.tenantId, actorId: w.actor.userId, action: 'timeoff.request', entity: 'TimeOffRequest', entityId: out.request.id, after: { personId: b.person_id, type: b.type ?? null, leaveTypeId: b.leave_type_id ?? null, startsAt: b.starts_at, endsAt: b.ends_at, status: b.status } });
       // Already approved: approvers aren't asked; the person is told, and their shifts are released, as when a manager approves.
-      if (approve) await withEvents(tx, decideTimeOff(tx, { userId: w.actor.userId, tenantId: w.actor.tenantId }, out.request.id, 'APPROVE', null));
+      if (approve) await withEvents(tx, decideTimeOff(tx, { userId: w.actor.userId, tenantId: w.actor.tenantId }, out.request.id, 'APPROVE', null, { permissions: w.actor.permissions, allSteps: true }));
       else await withEvents(tx, out);
       const r = await tx.timeOffRequest.findUniqueOrThrow({ where: { id: out.request.id }, select: TIME_OFF_SELECT });
       return { status: 201, body: timeOff(r), etag: etagOf(r.updatedAt), location: `/api/v1/time-off/${r.id}` };

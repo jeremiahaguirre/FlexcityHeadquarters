@@ -18,6 +18,7 @@ import { addDays } from '../../lib/time.js';
 import { approversFor } from './reporting.js';
 import { postOffer } from '../shiftboard/offers.js';
 import { leaveHoursFrom, personLeaveTimeZone, scheduledShifts } from './leaveHours.js';
+import { type ApprovalStep, chainOf, resolveLeaveType, typeOfRequest } from './leaveTypes.js';
 
 export interface AvailabilityWindow {
   dayOfWeek: number;
@@ -53,14 +54,15 @@ export async function replaceAvailability(tx: Tx, tenantId: string, userId: stri
   return tx.availability.findMany({ where: { userId, effectiveFrom: from }, orderBy: [{ dayOfWeek: 'asc' }, { startMinute: 'asc' }] });
 }
 
-const PROTECTED: ReadonlySet<TimeOffType> = new Set(['SICK', 'PROTECTED_LEAVE']);
-
 export async function requestTimeOff(
   tx: Tx,
   tenantId: string,
   userId: string,
-  input: { type: TimeOffType; startsAt: Date; endsAt: Date; note?: string | null },
+  given: { type?: TimeOffType | null; leaveTypeId?: string | null; startsAt: Date; endsAt: Date; note?: string | null },
 ) {
+  // A system type by its TimeOffType, or the organization's own by id (leaveTypes.ts).
+  const { type, leaveType } = await resolveLeaveType(tx, tenantId, given);
+  const input = { type, startsAt: given.startsAt, endsAt: given.endsAt, note: given.note };
   if (input.endsAt <= input.startsAt) throw badRequest('Time off must end after it starts.');
   if (input.endsAt.getTime() - input.startsAt.getTime() > 120 * 86_400_000) throw badRequest('Requests longer than 120 days go through HR.');
   const overlapping = await tx.timeOffRequest.findFirst({
@@ -75,18 +77,19 @@ export async function requestTimeOff(
     if (want > have + 0.001) throw new HttpError(400, 'LIEU_SHORT', `This needs ${want} hours of banked time; you have ${Math.max(0, have)}.`, { need: want, have: Math.max(0, have) });
   }
 
-  const req = await tx.timeOffRequest.create({ data: { tenantId, userId, ...input, note: input.note ?? null } });
+  const req = await tx.timeOffRequest.create({ data: { tenantId, userId, ...input, leaveTypeId: leaveType.id, note: input.note ?? null } });
   const affected = await tx.shift.findMany({
     where: { userId, status: 'PUBLISHED', startsAt: { lt: input.endsAt }, endsAt: { gt: input.startsAt } },
     select: { id: true },
   });
-  // Their manager first; then their department's managers; then everyone who approves time off.
-  const approvers = (await approversFor(tx, tenantId, [userId], 'timeoff.approve')).to;
+  // The first step of the type's approval chain: HR (leave.manage), or, as always, their manager
+  // first, then their department's managers, then everyone who approves time off.
+  const approvers = (await approversFor(tx, tenantId, [userId], chainOf(leaveType)[0] === 'HR' ? 'leave.manage' : 'timeoff.approve')).to;
   const events: DomainEvent[] = [
     {
       type: 'notify',
       tenantId,
-      drafts: approvers.map((id) => ({ userId: id, type: 'time_off_requested', params: { requestId: req.id, kind: input.type, shifts: affected.length }, link: '/manage/approvals' })),
+      drafts: approvers.map((id) => ({ userId: id, type: 'time_off_requested', params: { requestId: req.id, kind: input.type, ...(leaveType.system ? {} : { leaveType: leaveType.name, leaveTypeFr: leaveType.nameFr }), shifts: affected.length }, link: '/manage/approvals' })),
     },
   ];
   return { request: req, affectedShifts: affected.length, events };
@@ -106,13 +109,39 @@ export async function decideTimeOff(
   id: string,
   decision: 'APPROVE' | 'DENY',
   note?: string | null,
+  /**
+   * `permissions`: the decider's, for the steps of the type's approval chain (HR steps need
+   * leave.manage); unset = an internal caller allowed every step. `allSteps`: approve every
+   * remaining step at once (time off sent in already approved through the API).
+   */
+  opts: { permissions?: ReadonlySet<string>; allSteps?: boolean } = {},
 ) {
   const r = await tx.timeOffRequest.findUnique({ where: { id } });
   if (!r) throw notFound('Time-off request');
   if (r.userId === actor.userId) throw forbidden('You cannot decide your own request.');
   if (r.status !== 'PENDING') throw conflict('NOT_PENDING', 'This request has already been decided.');
-  if (decision === 'DENY' && PROTECTED.has(r.type) && !note?.trim()) {
+  const leaveType = await typeOfRequest(tx, actor.tenantId, r);
+  if (decision === 'DENY' && leaveType.protectedLeave && !note?.trim()) {
     throw badRequest('Statutory sick days and protected leave usually cannot be refused. Record the reason to decline.');
+  }
+  // The type's approval chain: each step by the right people, the request staying pending until the last.
+  const chain = chainOf(leaveType);
+  const may = (step: ApprovalStep) => !opts.permissions || opts.permissions.has(step === 'HR' ? 'leave.manage' : 'timeoff.approve');
+  const remaining = chain.slice(Math.min(r.approvalStep, Math.max(0, chain.length - 1)));
+  // No chain: whoever approves time off, as always.
+  if (!remaining.length && opts.permissions && !opts.permissions.has('timeoff.approve')) throw forbidden();
+  if (remaining.length && !(decision === 'APPROVE' && opts.allSteps ? remaining.every(may) : may(remaining[0]!))) {
+    throw new HttpError(403, 'LEAVE_STEP_NOT_YOURS', remaining[0] === 'HR' ? 'This request is waiting for HR’s approval.' : 'This request is waiting for a manager’s approval.');
+  }
+  if (decision === 'APPROVE' && !opts.allSteps && remaining.length > 1) {
+    const step = r.approvalStep + 1;
+    await tx.timeOffRequest.update({ where: { id }, data: { approvalStep: step } });
+    const next = (await approversFor(tx, actor.tenantId, [r.userId], remaining[1] === 'HR' ? 'leave.manage' : 'timeoff.approve', [actor.userId])).to;
+    await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: 'timeoff.step', entity: 'TimeOffRequest', entityId: id, after: { step, of: chain.length, note } });
+    const events: DomainEvent[] = [
+      { type: 'notify', tenantId: actor.tenantId, drafts: next.map((u) => ({ userId: u, type: 'time_off_requested', params: { requestId: id, kind: r.type, step: step + 1, of: chain.length, ...(leaveType.system ? {} : { leaveType: leaveType.name, leaveTypeFr: leaveType.nameFr }) }, link: '/manage/approvals' })) },
+    ];
+    return { status: 'PENDING' as const, reopenedShifts: 0, events, step };
   }
 
   const status = decision === 'APPROVE' ? 'APPROVED' : 'DENIED';
@@ -124,7 +153,7 @@ export async function decideTimeOff(
   }
   await tx.timeOffRequest.update({
     where: { id },
-    data: { status, decisionNote: note ?? null, decidedById: actor.userId, decidedAt: new Date(), ...(charged ? { chargedHours: charged.hours, chargedBasis: charged.basis } : {}) },
+    data: { status, decisionNote: note ?? null, decidedById: actor.userId, decidedAt: new Date(), ...(status === 'APPROVED' ? { approvalStep: chain.length } : {}), ...(charged ? { chargedHours: charged.hours, chargedBasis: charged.basis } : {}) },
   });
 
   const events: DomainEvent[] = [];
@@ -149,5 +178,5 @@ export async function decideTimeOff(
     drafts: [{ userId: r.userId, type: 'time_off_decided', params: { requestId: id, status, note: note ?? null }, link: '/time-off', email: 'time_off_decided' }],
   });
   await audit(tx, { tenantId: actor.tenantId, actorId: actor.userId, action: `timeoff.${decision.toLowerCase()}`, entity: 'TimeOffRequest', entityId: id, after: { note, reopenedShifts: reopened, ...(charged ? { leaveHours: charged.hours, basis: charged.basis } : {}) } });
-  return { status, reopenedShifts: reopened, events };
+  return { status, reopenedShifts: reopened, events, step: r.approvalStep };
 }

@@ -8,6 +8,7 @@ import { badRequest, forbidden } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localIso } from '../lib/time.js';
 import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
+import { chainOf } from '../services/people/leaveTypes.js';
 import { decidePunches, punchVariance } from '../services/timeclock/review.js';
 import { teamOf, teamQuery } from '../services/people/reporting.js';
 import { confirmAvailability } from '../services/scheduling/fillRun.js';
@@ -68,13 +69,15 @@ attendanceRouter.get(
 );
 
 // ---------------------------------------------------------------- Time off
+/** What a time-off list shows of each request's kind of leave (with its chain, for "waiting for HR"). */
+const LEAVE_TYPE_BRIEF = { id: true, code: true, name: true, nameFr: true, system: true, protectedLeave: true, approvalChain: true } as const;
 const timeOffType = z.enum(['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER', 'LIEU']);
 
 attendanceRouter.get(
   '/me/time-off',
   h(async (req, res) => {
     const a = authOf(req);
-    res.json(await withTenant(a.tenantId, (tx) => tx.timeOffRequest.findMany({ where: { userId: a.userId }, orderBy: { startsAt: 'desc' }, take: 100 })));
+    res.json(await withTenant(a.tenantId, (tx) => tx.timeOffRequest.findMany({ where: { userId: a.userId }, orderBy: { startsAt: 'desc' }, take: 100, include: { leaveType: { select: LEAVE_TYPE_BRIEF } } })));
   }),
 );
 
@@ -83,7 +86,11 @@ attendanceRouter.post(
   requirePermission('timeoff.self'),
   h(async (req, res) => {
     const a = authOf(req);
-    const body = z.object({ type: timeOffType, startsAt: z.coerce.date(), endsAt: z.coerce.date(), note: z.string().max(500).nullable().optional() }).parse(req.body);
+    // A system type by `type`, or the organization's own by `leaveTypeId`.
+    const body = z
+      .object({ type: timeOffType.optional(), leaveTypeId: uuid.optional(), startsAt: z.coerce.date(), endsAt: z.coerce.date(), note: z.string().max(500).nullable().optional() })
+      .refine((b) => !!b.type !== !!b.leaveTypeId, 'Send a type or a leaveTypeId.')
+      .parse(req.body);
     const out = await withTenant(a.tenantId, (tx) => withEvents(tx, requestTimeOff(tx, a.tenantId, a.userId, body)));
     dispatchSoon(a.tenantId);
     res.status(201).json({ request: out.request, affectedShifts: out.affectedShifts });
@@ -98,22 +105,29 @@ attendanceRouter.post(
   }),
 );
 
+/** Approvers, and HR (leave.manage) for the HR steps of a leave type's approval chain. */
+const decidesTimeOff = (a: { permissions: ReadonlySet<string> }) => {
+  if (!a.permissions.has('timeoff.approve') && !a.permissions.has('leave.manage')) throw forbidden();
+};
+
 attendanceRouter.get(
   '/time-off',
-  requirePermission('timeoff.approve'),
   h(async (req, res) => {
     const a = authOf(req);
+    decidesTimeOff(a);
     const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'DENIED', 'CANCELLED']).default('PENDING'), team: teamQuery }).parse(req.query);
     const rows = await withTenant(a.tenantId, async (tx) => {
       const team = q.team ? await teamOf(tx, a.userId) : null;
       const list = await tx.timeOffRequest.findMany({
         where: { status: q.status, user: peopleWhere(a.scope), ...(team ? { userId: { in: team } } : {}) },
-        include: { user: { select: { id: true, firstName: true, lastName: true } } },
+        include: { user: { select: { id: true, firstName: true, lastName: true } }, leaveType: { select: LEAVE_TYPE_BRIEF } },
         orderBy: { startsAt: 'asc' },
         take: 200,
       });
+      // Someone who manages leave but doesn't approve time off sees only requests waiting for an HR step.
+      const shown = a.permissions.has('timeoff.approve') ? list : list.filter((r) => chainOf(r.leaveType ?? { approvalChain: [] })[r.approvalStep] === 'HR');
       return Promise.all(
-        list.map(async (r) => ({
+        shown.map(async (r) => ({
           ...r,
           user: { id: r.user.id, name: `${r.user.firstName} ${r.user.lastName}` },
           affectedShifts: await tx.shift.count({ where: { userId: r.userId, status: 'PUBLISHED', startsAt: { lt: r.endsAt }, endsAt: { gt: r.startsAt } } }),
@@ -126,17 +140,18 @@ attendanceRouter.get(
 
 attendanceRouter.post(
   '/time-off/:id/decision',
-  requirePermission('timeoff.approve'),
   h(async (req, res) => {
     const a = authOf(req);
+    decidesTimeOff(a);
     const body = z.object({ decision: z.enum(['APPROVE', 'DENY']), note: z.string().max(500).nullable().optional() }).parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
       const r = await tx.timeOffRequest.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { userId: true } });
       if (r) await assertUserInScope(tx, a, r.userId);
-      return withEvents(tx, decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, uuid.parse(req.params.id), body.decision, body.note));
+      return withEvents(tx, decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, uuid.parse(req.params.id), body.decision, body.note, { permissions: a.permissions }));
     });
     dispatchSoon(a.tenantId);
-    res.json({ status: out.status, reopenedShifts: out.reopenedShifts });
+    // Waiting for the next step of the kind's approval chain: which step it's at now.
+    res.json({ status: out.status, reopenedShifts: out.reopenedShifts, ...(out.status === 'PENDING' ? { step: out.step } : {}) });
   }),
 );
 

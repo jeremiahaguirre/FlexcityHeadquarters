@@ -211,11 +211,13 @@ export const POSITION_SELECT = { id: true, name: true, nameFr: true, departmentI
 export const position = (p: Prisma.PositionGetPayload<{ select: typeof POSITION_SELECT }>) => ({ id: p.id, external_id: p.externalId, name: p.name, name_fr: p.nameFr, department_id: p.departmentId, updated_at: iso(p.updatedAt) });
 
 // Never the person's note or the decision note: they can hold health details.
-export const TIME_OFF_SELECT = { id: true, userId: true, type: true, status: true, startsAt: true, endsAt: true, chargedHours: true, decidedAt: true, createdAt: true, updatedAt: true } satisfies Prisma.TimeOffRequestSelect;
+export const TIME_OFF_SELECT = { id: true, userId: true, type: true, status: true, startsAt: true, endsAt: true, chargedHours: true, decidedAt: true, createdAt: true, updatedAt: true, leaveType: { select: { id: true, code: true, name: true, nameFr: true } } } satisfies Prisma.TimeOffRequestSelect;
 export const timeOff = (r: Prisma.TimeOffRequestGetPayload<{ select: typeof TIME_OFF_SELECT }>) => ({
   id: r.id,
   person_id: r.userId,
   type: r.type.toLowerCase(),
+  /** The kind of leave: a built-in type's own, or one of the organization's (their type is "other"). Null on requests from before leave types. */
+  leave_type: r.leaveType ? { id: r.leaveType.id, code: r.leaveType.code, name: r.leaveType.name, name_fr: r.leaveType.nameFr } : null,
   status: r.status.toLowerCase(),
   starts_at: iso(r.startsAt),
   ends_at: iso(r.endsAt),

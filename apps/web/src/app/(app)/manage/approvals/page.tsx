@@ -17,13 +17,14 @@ import { TeamScopeSwitch, useTeamScope } from '@/components/people/Reporting';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
+import { type LeaveKindBrief, chainSteps, leaveLabel } from '@/lib/leaveTypes';
 import { formatDate, formatDuration, formatHours, formatSpan, formatTime, formatTimeRange } from '@/lib/format';
 import { LONG_PUNCH_HOURS } from '@/lib/punch';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Claim { id: string; claimant: { id: string; name: string } | null; complianceSnapshot: { overtimeHours?: string } | null; shift: ShiftLike & { id: string } }
-interface TimeOff { id: string; type: string; startsAt: string; endsAt: string; note: string | null; user: { name: string }; affectedShifts: number }
+interface TimeOff { id: string; type: string; startsAt: string; endsAt: string; note: string | null; user: { name: string }; affectedShifts: number; leaveType?: LeaveKindBrief | null; approvalStep?: number }
 interface Punch {
   id: string;
   user: { name: string };
@@ -42,6 +43,8 @@ interface Punch {
 }
 type Tab = 'claims' | 'trades' | 'timeoff' | 'punches';
 const PROTECTED = new Set(['SICK', 'PROTECTED_LEAVE']);
+/** Protected like sick days: the built-in kinds, or the organization's own marked so. */
+const isProtected = (r: TimeOff) => r.leaveType?.protectedLeave ?? PROTECTED.has(r.type);
 
 /** Everything waiting for a supervisor in one place: shift claims, time off, punches and trades, each tab shown only with the permission to decide it. */
 export default function ApprovalsPage() {
@@ -181,15 +184,18 @@ export default function ApprovalsPage() {
                   <div className="min-w-0">
                     <p className="text-subheading">{r.user.name}</p>
                     <p className="text-small text-muted">
-                      {t(`timeOff.types.${r.type}`)} · {formatDate(r.startsAt, lng)} – {formatDate(new Date(new Date(r.endsAt).getTime() - 1).toISOString(), lng)}
+                      {leaveLabel(t, lng, r.leaveType, r.type)} · {formatDate(r.startsAt, lng)} – {formatDate(new Date(new Date(r.endsAt).getTime() - 1).toISOString(), lng)}
                     </p>
                     {r.note ? <p className="mt-1 text-small">“{r.note}”</p> : null}
                   </div>
                   {r.affectedShifts ? <StatusPill tone="warn">{t('approvals.affects', { count: r.affectedShifts })}</StatusPill> : <StatusPill tone="ok">{t('approvals.noShifts')}</StatusPill>}
                 </div>
-                {PROTECTED.has(r.type) ? <p className="mt-3 rounded-xl bg-surface px-3 py-2 text-caption text-muted">{t('approvals.protectedNote')}</p> : null}
+                {chainSteps(r.leaveType).length > 1 ? (
+                  <p className="mt-2 text-caption text-muted">{t('approvals.chainStep', { step: Math.min((r.approvalStep ?? 0) + 1, chainSteps(r.leaveType).length), of: chainSteps(r.leaveType).length, who: t(`leaveTypes.steps.${chainSteps(r.leaveType)[Math.min(r.approvalStep ?? 0, chainSteps(r.leaveType).length - 1)]}`) })}</p>
+                ) : null}
+                {isProtected(r) ? <p className="mt-3 rounded-xl bg-surface px-3 py-2 text-caption text-muted">{t('approvals.protectedNote')}</p> : null}
                 <div className="mt-4 flex justify-end gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => setRejecting({ kind: 'timeoff', ids: [r.id], protectedLeave: PROTECTED.has(r.type) })}>
+                  <Button variant="secondary" size="sm" onClick={() => setRejecting({ kind: 'timeoff', ids: [r.id], protectedLeave: isProtected(r) })}>
                     {t('approvals.decline')}
                   </Button>
                   <Button size="sm" loading={busy === `APPROVE-${r.id}`} onClick={() => void decideTimeOff(r.id, 'APPROVE').then((x) => x && undefined)}>

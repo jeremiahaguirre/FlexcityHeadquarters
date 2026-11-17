@@ -85,9 +85,10 @@ export const REPORTS: Record<string, Report> = {
     permissions: ['leave.manage', 'timeoff.approve'],
     kind: 'range',
     async run(tx, a, p) {
-      const reqs = await tx.timeOffRequest.findMany({ where: { ...(await people(tx, a)), status: 'APPROVED', startsAt: { lt: after(p.to) }, endsAt: { gt: start(p.from) } }, select: { userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true } });
+      const reqs = await tx.timeOffRequest.findMany({ where: { ...(await people(tx, a)), status: 'APPROVED', startsAt: { lt: after(p.to) }, endsAt: { gt: start(p.from) } }, select: { userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true, leaveType: { select: { system: true, name: true } } } });
       const n = await names(tx, reqs.map((r) => r.userId));
-      return { columns: ['person', 'type', 'from', 'to', 'hours'], rows: reqs.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()).map((r) => ({ person: n.get(r.userId) ?? '', type: r.type, from: day(r.startsAt), to: day(r.endsAt), hours: r.chargedHours == null ? null : Number(r.chargedHours) })) };
+      // The organization's own kinds by name; built-in kinds by code, as before (the screen translates them).
+      return { columns: ['person', 'type', 'from', 'to', 'hours'], rows: reqs.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()).map((r) => ({ person: n.get(r.userId) ?? '', type: r.leaveType && !r.leaveType.system ? r.leaveType.name : r.type, from: day(r.startsAt), to: day(r.endsAt), hours: r.chargedHours == null ? null : Number(r.chargedHours) })) };
     },
   },
   certs_expiring: {

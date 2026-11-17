@@ -21,6 +21,7 @@ import { loadGraph, setManagers, setReportsOf } from '../services/people/reporti
 import { h } from './context.js';
 import { leaveHoursFrom, leaveTimeZones, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
 import { assertUserInScope } from '../services/people/scope.js';
+import { leaveTypes, resolveLeaveType } from '../services/people/leaveTypes.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../services/payroll/holidayRules.js';
 
 export const hrRouter = Router();
@@ -43,9 +44,16 @@ function defaultHours(type: TimeOffType, hireDate: Date | null, year: number): n
   return null;
 }
 
-async function balances(tx: Tx, userIds: string[], year: number) {
+/**
+ * Leave balances per person and kind of leave: the five built-in kinds with a balance (as always,
+ * time in lieu has its own bank) and the organization's own kinds that keep one (LeaveType.hasBalance),
+ * whose default entitlement is their yearly hours. A request counts for its own kind; requests and
+ * entitlements written before leave types (no leaveTypeId) count for their TimeOffType's built-in kind.
+ */
+async function balances(tx: Tx, tenantId: string, userIds: string[], year: number) {
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
+  const kinds = (await leaveTypes(tx, tenantId)).filter((t) => (t.system ? t.system !== 'LIEU' : t.hasBalance));
   const [users, ents, requests, shifts] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, hireDate: true } }),
     tx.leaveEntitlement.findMany({ where: { userId: { in: userIds }, year } }),
@@ -63,14 +71,16 @@ async function balances(tx: Tx, userIds: string[], year: number) {
   return users.map((u) => ({
     userId: u.id,
     name: `${u.firstName} ${u.lastName}`,
-    types: LEAVE_TYPES.map((type) => {
-      const e = ents.find((x) => x.userId === u.id && x.type === type);
-      const entitled = e ? Number(e.hours) : defaultHours(type, u.hireDate, year);
+    types: kinds.map((k) => {
+      const of = (x: { leaveTypeId: string | null; type: TimeOffType | null }) => x.leaveTypeId === k.id || (x.leaveTypeId === null && !!k.system && x.type === k.system);
+      const e = ents.find((x) => x.userId === u.id && of(x));
+      const entitled = e ? Number(e.hours) : k.system ? defaultHours(k.system, u.hireDate, year) : k.yearlyHours === null ? null : Number(k.yearlyHours);
       const carryover = e ? Number(e.carryover) : 0;
-      const mine = requests.filter((r) => r.userId === u.id && r.type === type);
+      const mine = requests.filter((r) => r.userId === u.id && of(r));
+      const type = k.code;
       const used = r2(mine.filter((r) => r.status === 'APPROVED').reduce((s, r) => s + hoursOf(r), 0));
       const pending = r2(mine.filter((r) => r.status === 'PENDING').reduce((s, r) => s + hoursOf(r), 0));
-      return { type, entitled, carryover, used, pending, remaining: entitled == null ? null : r2(entitled + carryover - used), set: !!e, note: e?.note ?? null };
+      return { type, leaveTypeId: k.id, name: k.name, nameFr: k.nameFr, system: !!k.system, entitled, carryover, used, pending, remaining: entitled == null ? null : r2(entitled + carryover - used), set: !!e, note: e?.note ?? null };
     }),
   }));
 }
@@ -84,7 +94,7 @@ hrRouter.get(
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year ?? new Date().getUTCFullYear());
     const out = await withTenant(a.tenantId, async (tx) => {
       const ids = (await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) }, select: { id: true }, orderBy: [{ lastName: 'asc' }] })).map((u) => u.id);
-      const rows = await balances(tx, ids, year);
+      const rows = await balances(tx, a.tenantId, ids, year);
       return rows.sort((x, y) => x.name.localeCompare(y.name));
     });
     res.json({ year, people: out });
@@ -96,7 +106,7 @@ hrRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year ?? new Date().getUTCFullYear());
-    const [mine] = await withTenant(a.tenantId, (tx) => balances(tx, [a.userId], year));
+    const [mine] = await withTenant(a.tenantId, (tx) => balances(tx, a.tenantId, [a.userId], year));
     res.json({ year, types: mine?.types ?? [] });
   }),
 );
@@ -132,15 +142,22 @@ hrRouter.put(
   h(async (req, res) => {
     const a = authOf(req);
     const userId = uuid.parse(req.params.id);
-    const b = z.object({ year: z.number().int().min(2020).max(2100), type: z.enum(LEAVE_TYPES), hours: z.number().min(0).max(2000), carryover: z.number().min(0).max(2000).default(0), note: z.string().trim().max(200).nullable().optional() }).parse(req.body);
+    // A built-in kind by `type`, or the organization's own by `leaveTypeId`.
+    const b = z
+      .object({ year: z.number().int().min(2020).max(2100), type: z.enum(LEAVE_TYPES).optional(), leaveTypeId: uuid.optional(), hours: z.number().min(0).max(2000), carryover: z.number().min(0).max(2000).default(0), note: z.string().trim().max(200).nullable().optional() })
+      .refine((x) => !!x.type !== !!x.leaveTypeId, 'Send a type or a leaveTypeId.')
+      .parse(req.body);
     if (userId === a.userId) throw forbidden('You can’t set your own leave entitlement.');
     await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, userId);
-      await tx.leaveEntitlement.upsert({
-        where: { userId_year_type: { userId, year: b.year, type: b.type } },
-        update: { hours: b.hours, carryover: b.carryover, note: b.note ?? null },
-        create: { tenantId: a.tenantId, userId, year: b.year, type: b.type, hours: b.hours, carryover: b.carryover, note: b.note ?? null },
-      });
+      const { leaveType: k } = await resolveLeaveType(tx, a.tenantId, { type: b.type ?? null, leaveTypeId: b.leaveTypeId ?? null });
+      if (!k.system && !k.hasBalance) throw new HttpError(400, 'LEAVE_TYPE_NO_BALANCE', 'This kind of leave doesn’t keep a balance.');
+      if (k.carryOverMaxHours !== null && b.carryover > Number(k.carryOverMaxHours)) throw new HttpError(400, 'CARRYOVER_OVER_LIMIT', `At most ${Number(k.carryOverMaxHours)} hours of this kind of leave carry over.`, { max: Number(k.carryOverMaxHours) });
+      const values = { hours: b.hours, carryover: b.carryover, note: b.note ?? null };
+      // Rows from before leave types are found by their built-in type and linked.
+      const existing = await tx.leaveEntitlement.findFirst({ where: { userId, year: b.year, OR: [{ leaveTypeId: k.id }, ...(k.system ? [{ leaveTypeId: null, type: k.system }] : [])] } });
+      if (existing) await tx.leaveEntitlement.update({ where: { id: existing.id }, data: { ...values, leaveTypeId: k.id } });
+      else await tx.leaveEntitlement.create({ data: { tenantId: a.tenantId, userId, year: b.year, type: k.system, leaveTypeId: k.id, ...values } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'leave.entitlement', entity: 'User', entityId: userId, after: b });
     });
     res.json({ ok: true });
