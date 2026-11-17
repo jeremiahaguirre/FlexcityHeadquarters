@@ -13,11 +13,12 @@ import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../au
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
-import { localDate, localIso } from '../lib/time.js';
+import { addDays, localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
 import { createIncident, readIncident } from '../services/ops/incidents.js';
 import { decideClosure, recordReading } from '../services/ops/poolOps.js';
 import { runPayroll } from '../services/payroll/payrollRun.js';
+import { claimsForProvider } from '../services/payroll/expenses.js';
 import { requestErasure } from '../services/privacy/erasure.js';
 import { loadReliability } from '../services/reliability/load.js';
 import { RULES } from '../services/reliability/score.js';
@@ -501,9 +502,15 @@ api.get(
     const q = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.coerce.number().int().min(1).max(5), format: z.enum(EXPORT_FORMATS).optional() }).parse(req.query);
     // A supervisor limited to a department exports only their department's hours.
     const out = await withTenant(a.tenantId, async (tx) => {
-      const saved = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings).providerExport;
+      const settings = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings);
+      const saved = settings.providerExport;
       const options = { ...saved, format: q.format ?? saved?.format ?? 'generic' };
-      return { ...(await runPayroll(tx, a.tenantId, q.periodStart, q.weeks, await peopleInScope(tx, a.scope), null, options)), format: options.format };
+      const people = await peopleInScope(tx, a.scope);
+      // Paying through a provider: approved expense claims go in the file as an untaxed reimbursement.
+      // (Paying in the app, pay runs pay them instead.)
+      const mode = settings.payrollProvider?.mode ?? 'in_app';
+      const claims = mode !== 'in_app' ? await claimsForProvider(tx, { provider: mode, periodStart: q.periodStart, periodEnd: addDays(q.periodStart, q.weeks * 7 - 1), resend: false, userIds: people }) : [];
+      return { ...(await runPayroll(tx, a.tenantId, q.periodStart, q.weeks, people, null, options, claims)), format: options.format, claimIds: claims.flatMap((c) => c.claimIds) };
     }, { timeoutMs: 120_000 });
     if (!out.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', problems: out.csv.problems, warnings: out.warnings });
@@ -511,6 +518,8 @@ api.get(
     }
     // Codes and details (JSON), so the screen shows them in the reader's language.
     if (out.warnings.length) res.setHeader('X-Flexcity-Warnings', encodeURIComponent(JSON.stringify(out.warnings)));
+    // The claims in this file, to mark reimbursed once it's uploaded to the provider.
+    if (out.claimIds.length) res.setHeader('X-Flexcity-Claims', out.claimIds.join(','));
     res.type('text/csv').attachment(`payroll-${out.format}-${q.periodStart}.csv`).send(out.csv.csv);
   }),
 );

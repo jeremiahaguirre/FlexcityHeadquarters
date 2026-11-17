@@ -138,3 +138,50 @@ describe('payroll provider connections', () => {
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.provider.send' } })).toBe(4);
   });
 });
+
+describe('expense claims when payroll runs through a provider', () => {
+  const claim = (userId: string, total: number) =>
+    owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId, title: 'Mileage', status: 'APPROVED', total, decidedAt: new Date('2026-03-01T12:00:00Z') } });
+
+  it('sends approved claims as an untaxed reimbursement and marks them paid by that send', async () => {
+    expect((await call(tok.hr).put('/api/payroll/provider/mode', { mode: 'wagepoint' })).status).toBe(200);
+    const c = await claim(t.users[0]!.id, 42.5);
+    // Without a pay code for reimbursements, the file can't be sent (and nothing is marked paid).
+    const missing = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-09', weeks: 1 });
+    expect(missing.status).toBe(422);
+    expect(JSON.stringify(missing.body.problems)).toContain('REIMBURSEMENT');
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('APPROVED');
+
+    await owner.payCodeMapping.create({ data: { tenantId: t.tenant.id, key: 'REIMBURSEMENT', code: 'REI' } });
+    seen.length = 0;
+    const r = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-09', weeks: 1 });
+    expect(r.status).toBe(201);
+    expect(r.body.claims).toBe(1);
+    const lines = String(seen[0]!.body).split('\r\n');
+    expect(lines.find((l) => l.includes(',REI,'))).toMatch(/^E-Guard0,REI,,,42\.50,/);
+    const paid = await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } });
+    expect(paid).toMatchObject({ status: 'PAID', payrollSyncId: r.body.id });
+
+    // The next period leaves it out; sending this period again (after a refusal) puts it back in.
+    seen.length = 0;
+    await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-16', weeks: 1 });
+    expect(String(seen[0]?.body ?? '')).not.toContain(',REI,');
+    seen.length = 0;
+    const again = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-09', weeks: 1, resend: true });
+    expect(again.body.claims).toBe(1);
+    expect(String(seen[0]!.body)).toContain(',REI,');
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).payrollSyncId).toBe(again.body.id);
+  });
+
+  it('a downloaded file lists its claims, and they are marked reimbursed once uploaded', async () => {
+    const c = await claim(t.users[1]!.id, 18.25);
+    const file = await call(tok.hr).get('/api/payroll/export?periodStart=2026-03-23&weeks=1&format=wagepoint');
+    expect(file.status).toBe(200);
+    expect(file.text).toContain('18.25');
+    expect(file.headers['x-flexcity-claims']).toBe(c.id);
+    const m = await call(tok.hr).post('/api/payroll/provider/claims/reimbursed', { claimIds: [c.id] });
+    expect(m.body.marked).toBe(1);
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('PAID');
+    expect((await call(tok.hr).get('/api/payroll/export?periodStart=2026-03-30&weeks=1&format=wagepoint')).headers['x-flexcity-claims']).toBeUndefined();
+  });
+});

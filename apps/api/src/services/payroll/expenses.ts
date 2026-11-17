@@ -39,6 +39,32 @@ export function mileageAmount(before: number, km: number, p: MileagePolicy): { a
   return { amount, centsPerKm: km ? r2((amount * 100) / km) : p.centsPerKm };
 }
 
+/**
+ * Approved claims to pay back through a payroll provider for a period: approved by its last day and
+ * not paid yet. Sending the same period again (the provider refused the first file) includes the
+ * claims the earlier sends of that period paid, so they aren't lost.
+ */
+export async function claimsForProvider(tx: Tx, opts: { provider: string; periodStart: string; periodEnd: string; resend: boolean; userIds?: Set<string> | null }) {
+  const earlier = opts.resend
+    ? (await tx.payrollSync.findMany({ where: { provider: opts.provider, periodStart: new Date(`${opts.periodStart}T00:00:00Z`), status: 'SENT' }, select: { id: true } })).map((s) => s.id)
+    : [];
+  const claims = await tx.expenseClaim.findMany({
+    where: {
+      OR: [{ status: 'APPROVED', payRunId: null, decidedAt: { lt: new Date(`${opts.periodEnd}T23:59:59Z`) } }, ...(earlier.length ? [{ status: 'PAID' as const, payrollSyncId: { in: earlier } }] : [])],
+      ...(opts.userIds ? { userId: { in: [...opts.userIds] } } : {}),
+    },
+    select: { id: true, userId: true, total: true },
+  });
+  const byUser = new Map<string, { userId: string; amount: number; claimIds: string[] }>();
+  for (const c of claims) {
+    const row = byUser.get(c.userId) ?? { userId: c.userId, amount: 0, claimIds: [] };
+    row.amount = r2(row.amount + Number(c.total));
+    row.claimIds.push(c.id);
+    byUser.set(c.userId, row);
+  }
+  return [...byUser.values()];
+}
+
 /** Approved claims waiting to be paid, by person (for a pay run). */
 export async function claimsToPay(tx: Tx, runId: string | undefined, payDate: string, userIds: string[] | null) {
   const claims = await tx.expenseClaim.findMany({

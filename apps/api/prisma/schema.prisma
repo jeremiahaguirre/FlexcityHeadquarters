@@ -229,6 +229,8 @@ enum PayCodeKey {
   STANDBY_PAY
   /// Call-back minimum top-up when someone on call is called in.
   CALLBACK_PAY
+  /// Approved expense claims paid back (not taxed), when payroll runs through a provider.
+  REIMBURSEMENT
 }
 
 enum VacationPayMode {
@@ -3407,6 +3409,8 @@ model ExpenseClaim {
   decidedAt    DateTime?     @db.Timestamptz(3)
   decisionNote String?
   payRunId     String?       @db.Uuid
+  /// Paid through a payroll provider: the send (PayrollSync) that included it.
+  payrollSyncId String?       @db.Uuid
   items        ExpenseItem[]
 
   @@index([tenantId, status])

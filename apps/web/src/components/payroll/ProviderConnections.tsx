@@ -1,7 +1,7 @@
 'use client';
 
 import { CheckCircle2, CloudUpload, Download, Link2, PlugZap, Unplug } from 'lucide-react';
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
@@ -85,7 +85,7 @@ function UseButton({ mode, view, reload }: { mode: Mode; view: View; reload: () 
           toast(t('payroll.connect.switched', { what: t(`payroll.connect.tab.${mode}`) }), 'ok');
           await reload();
         } catch (e) {
-          toast(e instanceof ApiError ? e.message : t('common.error'), 'warn');
+          toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
         } finally {
           setBusy(false);
         }
@@ -122,6 +122,12 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
   const [start, setStart] = useState(lastPeriodStart);
   const [weeks, setWeeks] = useState<'1' | '2'>('2');
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  // The period was sent already: sending again needs a second, deliberate click (it could pay people twice).
+  const [confirmResend, setConfirmResend] = useState(false);
+  // Expense claims in a downloaded file, to mark reimbursed once it's uploaded to the provider.
+  const [fileClaims, setFileClaims] = useState<string[]>([]);
+  // Another period hasn't been confirmed.
+  useEffect(() => setConfirmResend(false), [start, weeks]);
   const name = t(`payroll.connect.tab.${provider}`);
   const run = async (key: string, fn: () => Promise<void>) => {
     if (DEMO) return toast(t('payroll.connect.demo'), 'warn');
@@ -129,7 +135,7 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
     try {
       await fn();
     } catch (e) {
-      toast(e instanceof ApiError ? e.message : t('common.error'), 'warn');
+      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
     } finally {
       setBusy(null);
     }
@@ -235,23 +241,42 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
             <div className="flex flex-wrap gap-2">
               <Button icon={<CloudUpload className="h-5 w-5" aria-hidden="true" />} loading={busy === 'send'} onClick={() => void run('send', async () => {
                 setResult(null);
+                const resend = confirmResend;
+                setConfirmResend(false);
                 try {
-                  const r = await api<{ rows: number; reference: string | null }>(`/api/payroll/provider/${provider}/send`, { method: 'POST', body: { periodStart: start, weeks: Number(weeks) } });
-                  setResult({ ok: true, text: t('payroll.connect.sent', { what: name, count: r.rows, ref: r.reference ?? '—' }) });
+                  const r = await api<{ rows: number; reference: string | null; claims?: number }>(`/api/payroll/provider/${provider}/send`, { method: 'POST', body: { periodStart: start, weeks: Number(weeks), resend } });
+                  setResult({ ok: true, text: [t('payroll.connect.sent', { what: name, count: r.rows, ref: r.reference ?? '—' }), r.claims ? t('payroll.connect.sentClaims', { count: r.claims }) : ''].filter(Boolean).join(' ') });
                 } catch (e) {
+                  if (e instanceof ApiError && e.code === 'ALREADY_SENT') {
+                    setConfirmResend(true);
+                    setResult({ ok: false, text: t('payroll.connect.alreadySent', { what: name }) });
+                    return;
+                  }
                   // Missing details (like the file download): list them, in the reader's language.
                   const problems = e instanceof ApiError ? ((e.details as { problems?: Array<Issue | string> } | undefined)?.problems ?? []) : [];
                   setResult({ ok: false, text: problems.length ? `${e instanceof ApiError ? e.message : ''} ${problems.map((p) => issueLabel(t, p)).join(' · ')}` : e instanceof ApiError ? e.message : t('common.error') });
                 }
                 await reload();
-              })}>{t('payroll.connect.send', { what: name })}</Button>
+              })}>{confirmResend ? t('payroll.connect.sendAgain', { what: name }) : t('payroll.connect.send', { what: name })}</Button>
               <Button variant="secondary" icon={<Download className="h-5 w-5" aria-hidden="true" />} loading={busy === 'file'} onClick={() => void run('file', async () => {
                 const r = await apiDownload(`/api/payroll/export?periodStart=${start}&weeks=${weeks}&format=${provider}`);
-                if (r.ok) saveBlob(r.blob, `payroll-${provider}-${start}.csv`);
-                else toast(String(r.error.message ?? t('common.error')), 'warn');
+                if (r.ok) {
+                  saveBlob(r.blob, `payroll-${provider}-${start}.csv`);
+                  setFileClaims((r.headers.get('x-flexcity-claims') ?? '').split(',').filter(Boolean));
+                } else toast(String(r.error.message ?? t('common.error')), 'warn');
               })}>{t('payroll.connect.download')}</Button>
             </div>
             {result ? <p role="status" className={`rounded-xl px-3 py-2 text-small ${result.ok ? 'bg-ok-bg text-ok' : 'bg-danger-bg text-danger'}`}>{result.text}</p> : null}
+            {fileClaims.length ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface px-3 py-2 text-small">
+                <span>{t('payroll.connect.fileClaims', { count: fileClaims.length, what: name })}</span>
+                <Button size="sm" variant="secondary" loading={busy === 'claims'} onClick={() => void run('claims', async () => {
+                  const r = await api<{ marked: number }>('/api/payroll/provider/claims/reimbursed', { method: 'POST', body: { claimIds: fileClaims } });
+                  setFileClaims([]);
+                  toast(t('payroll.connect.claimsMarked', { count: r.marked }), 'ok');
+                })}>{t('payroll.connect.markReimbursed')}</Button>
+              </div>
+            ) : null}
             {history.length ? (
               <div>
                 <h3 className="mb-2 text-small font-semibold">{t('payroll.connect.history')}</h3>

@@ -8,6 +8,7 @@ import { HttpError, forbidden } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
 import { type PayrollSettings, readSettings } from '../services/payroll/payRuns.js';
 import { runPayroll } from '../services/payroll/payrollRun.js';
+import { claimsForProvider } from '../services/payroll/expenses.js';
 import { DEFAULTS, PROVIDERS, type Provider, type ProviderSettings, checkProviderUrl, providerView, sealSecret, sendPeriod, testConnection } from '../services/payroll/providers.js';
 import { h } from './context.js';
 
@@ -188,7 +189,9 @@ payrollProviderRouter.post(
         throw new HttpError(409, 'ALREADY_SENT', 'This period was already sent to the provider. Sending it again could pay people twice; confirm to send it again.');
       }
       const options = provider === 'adp' ? { format: 'adp' as const, adpCompanyCode: p.adp!.companyCode, adpBatchId: p.adp!.batchId ?? null } : { format: provider };
-      return { settings: p, run: await runPayroll(tx, a.tenantId, b.periodStart, b.weeks, null, null, options) };
+      // Approved expense claims go with the hours, as an untaxed reimbursement (paid once the provider takes the file).
+      const claims = await claimsForProvider(tx, { provider, periodStart: b.periodStart, periodEnd, resend: b.resend });
+      return { settings: p, claims, run: await runPayroll(tx, a.tenantId, b.periodStart, b.weeks, null, null, options, claims) };
     }, { timeoutMs: 120_000 });
     if (!built.run.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', message: 'Some details are missing before this period can be sent.', details: { problems: built.run.csv.problems, warnings: built.run.warnings }, problems: built.run.csv.problems, warnings: built.run.warnings });
@@ -207,6 +210,12 @@ payrollProviderRouter.post(
     }
     const row = await withTenant(a.tenantId, async (tx) => {
       const r = await tx.payrollSync.create({ data: { tenantId: a.tenantId, provider, periodStart: new Date(`${b.periodStart}T00:00:00Z`), periodEnd: new Date(`${periodEnd}T00:00:00Z`), rows: built.run.csv.ok ? built.run.csv.rowCount : 0, fileSha256, sentById: a.userId, ...outcome } });
+      // The provider took the file: the claims in it are paid (and stay out of the next period's file).
+      const claimIds = built.claims.flatMap((c) => c.claimIds);
+      if (outcome.status === 'SENT' && claimIds.length) {
+        await tx.expenseClaim.updateMany({ where: { id: { in: claimIds } }, data: { status: 'PAID', payrollSyncId: r.id } });
+        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'expenses.paid_by_provider', entity: 'PayrollSync', entityId: r.id, after: { provider, claimIds } });
+      }
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: `payroll.provider.send`, entity: 'PayrollSync', entityId: r.id, after: { provider, periodStart: b.periodStart, status: outcome.status, rows: r.rows } });
       return r;
     });
@@ -214,6 +223,29 @@ payrollProviderRouter.post(
       res.status(502).json({ code: 'PROVIDER_SEND_FAILED', message: outcome.message, sync: { id: row.id }, warnings: built.run.warnings });
       return;
     }
-    res.status(201).json({ id: row.id, rows: row.rows, reference: row.reference, fileSha256, warnings: built.run.warnings });
+    res.status(201).json({ id: row.id, rows: row.rows, reference: row.reference, fileSha256, claims: built.claims.reduce((n, c) => n + c.claimIds.length, 0), warnings: built.run.warnings });
+  }),
+);
+
+/**
+ * The period's file was downloaded and uploaded to the provider by hand: the expense claims in it
+ * (the X-Flexcity-Claims header of the download) are marked reimbursed, so the next file leaves them out.
+ */
+payrollProviderRouter.post(
+  '/payroll/provider/claims/reimbursed',
+  requirePermission('payroll.export'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    wholeCity(a);
+    const { claimIds } = z.object({ claimIds: z.array(z.string().uuid()).min(1).max(500) }).parse(req.body);
+    const marked = await withTenant(a.tenantId, async (tx) => {
+      const s = await settingsOf(tx);
+      if ((s.payrollProvider?.mode ?? 'in_app') === 'in_app') throw new HttpError(409, 'PAYROLL_IN_APP', 'Payroll runs in the app: claims are paid on pay runs.');
+      const { count } = await tx.expenseClaim.updateMany({ where: { id: { in: claimIds }, status: 'APPROVED', payRunId: null }, data: { status: 'PAID' } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'expenses.marked_reimbursed', entity: 'Tenant', entityId: a.tenantId, after: { claimIds, marked: count, provider: s.payrollProvider?.mode } });
+      return count;
+    });
+    res.json({ marked });
   }),
 );

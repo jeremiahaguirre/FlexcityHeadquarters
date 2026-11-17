@@ -577,7 +577,8 @@
     "STAGE_CLOSED": "This stage is already done, undone or cancelled.",
     "NOTHING_TO_UNDO": "Nothing of this release is scheduled or applied.",
     "MAINTENANCE_PAST": "That window is already over.",
-    "MAINTENANCE_CLOSED": "That window is over or cancelled."
+    "MAINTENANCE_CLOSED": "That window is over or cancelled.",
+    "PAYROLL_IN_APP": "Payroll runs in the app, so expense claims are paid on pay runs."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1223,7 +1224,8 @@
       "CALLBACK_PAY": "Call-back minimum",
       "REPORTING_PAY": "Minimum call-in pay",
       "SCHEDULE_CHANGE_PREMIUM": "Late schedule change premium",
-      "STANDBY_PAY": "Standby (on-call) pay"
+      "STANDBY_PAY": "Standby (on-call) pay",
+      "REIMBURSEMENT": "Expense reimbursement (not taxed)"
     },
     "d": {
       "cpp": "CPP contributions",
@@ -1521,7 +1523,16 @@
         "FAILED": "Refused"
       },
       "demo": "Provider connections aren’t available in the demo.",
-      "privateKeyPlaceholder": "Paste the PEM private key"
+      "privateKeyPlaceholder": "Paste the PEM private key",
+      "sentClaims_one": "It included {{count}} expense claim, now marked paid.",
+      "sentClaims_other": "It included {{count}} expense claims, now marked paid.",
+      "alreadySent": "This period was already sent to {{what}}. Sending it again could pay people twice. If {{what}} refused the file, or the hours were corrected, select Send again.",
+      "sendAgain": "Send again to {{what}}",
+      "fileClaims_one": "This file includes {{count}} expense claim. Once you’ve uploaded it to {{what}}, mark it reimbursed so the next file leaves it out.",
+      "fileClaims_other": "This file includes {{count}} expense claims. Once you’ve uploaded it to {{what}}, mark them reimbursed so the next file leaves them out.",
+      "markReimbursed": "Mark reimbursed",
+      "claimsMarked_one": "{{count}} claim marked reimbursed.",
+      "claimsMarked_other": "{{count}} claims marked reimbursed."
     },
     "runKind": "Kind of run",
     "runKindHint": "Off-cycle: only the one-time payments you add (a bonus run, final pay, a correction), beside the regular run.",
@@ -1683,7 +1694,8 @@
       "CALLBACK_PAY": "Call-back minimum",
       "REPORTING_PAY": "Minimum call-in pay",
       "SCHEDULE_CHANGE_PREMIUM": "Late schedule change premium",
-      "STANDBY_PAY": "Standby (on-call) pay"
+      "STANDBY_PAY": "Standby (on-call) pay",
+      "REIMBURSEMENT": "Expense reimbursement (not taxed)"
     },
     "calendar": "School calendar",
     "calendarHelp": "Young workers can’t work during school hours on school days. Add terms and breaks so the rules know which days count.",
