@@ -18,6 +18,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { type LeaveKindBrief, chainSteps, leaveLabel } from '@/lib/leaveTypes';
+import { type ApprovalTab, approvalTabs } from '@/lib/approvals';
 import { formatDate, formatDuration, formatHours, formatSpan, formatTime, formatTimeRange } from '@/lib/format';
 import { LONG_PUNCH_HOURS } from '@/lib/punch';
 import { useSession } from '@/lib/session';
@@ -41,7 +42,7 @@ interface Punch {
   localClockOutReceivedAt?: string | null;
   clockSkewS?: number | null;
 }
-type Tab = 'claims' | 'trades' | 'timeoff' | 'punches';
+type Tab = ApprovalTab;
 const PROTECTED = new Set(['SICK', 'PROTECTED_LEAVE']);
 /** Protected like sick days: the built-in kinds, or the organization's own marked so. */
 const isProtected = (r: TimeOff) => r.leaveType?.protectedLeave ?? PROTECTED.has(r.type);
@@ -58,7 +59,7 @@ export default function ApprovalsPage() {
   const claims = useQuery<Claim[]>(ready && can('shiftboard.approve') ? `/api/offers/pending${tq}` : null);
   const timeOff = useQuery<TimeOff[]>(ready && can('timeoff.approve') ? `/api/time-off${tq}` : null);
   const punches = useQuery<Punch[]>(ready && can('timeclock.review') ? `/api/punches${tq}` : null);
-  const [tab, setTab] = useState<Tab>('claims');
+  const [picked, setTab] = useState<Tab>('claims');
   const { run, busy } = useAction();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejecting, setRejecting] = useState<{ kind: 'punch' | 'timeoff'; ids: string[]; protectedLeave?: boolean } | null>(null);
@@ -80,7 +81,8 @@ export default function ApprovalsPage() {
 
   // Open on the first tab that has something waiting, once every list has loaded, unless the person already chose one.
   const chosen = useRef(false);
-  const order: Tab[] = ['claims', 'timeoff', 'punches', ...(can('shiftboard.approve') ? (['trades'] as const) : [])];
+  const order = approvalTabs(can);
+  const tab: Tab = order.includes(picked) ? picked : (order[0] ?? picked);
   const allLoaded = ready && !claims.loading && !timeOff.loading && !punches.loading && !trades.loading;
   const firstWithItems = allLoaded ? order.find((k) => count[k] > 0) : undefined;
   useEffect(() => {
@@ -118,12 +120,7 @@ export default function ApprovalsPage() {
             label={t('approvals.title')}
             value={tab}
             onChange={choose}
-            options={[
-              { value: 'claims', label: label('claims') },
-              { value: 'timeoff', label: label('timeoff') },
-              { value: 'punches', label: label('punches') },
-              ...(can('shiftboard.approve') ? [{ value: 'trades' as const, label: label('trades') }] : []),
-            ]}
+            options={order.map((k) => ({ value: k, label: label(k) }))}
           />
         }
       />

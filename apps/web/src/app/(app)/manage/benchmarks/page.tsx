@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
@@ -38,7 +39,9 @@ export default function BenchmarksPage() {
   return (
     <div className="grid gap-6">
       <PageHeader title={t('benchmarks.title')} description={t('benchmarks.description')} />
-      {!d ? (
+      {data.error ? (
+        <ErrorNotice onRetry={() => void data.reload()} />
+      ) : !d ? (
         <Skeleton className="h-72" />
       ) : (
         <>
