@@ -11,6 +11,7 @@ Builds one environment of FlexcityHeadquarters in `ca-central-1` (Montreal), wit
 | `iam.tf` | Task roles: the API and worker may use and create KMS keys (KMS-generated, symmetric, for encryption only), never delete them or bypass the key-policy safety check |
 | `compute.tf` | ECS Fargate: API, worker and web services, migration and database-role tasks, autoscaling on CPU and requests |
 | `edge.tf` | Load balancer (HTTPS, `/api/*` to the API, health and metrics hidden), web firewalls (app and site: managed rules, rate limits, AI crawlers), the marketing site on S3 + CloudFront |
+| `union.tf` | With `union_hub_separate`: the Union Hub as its own service (role, secret, security group, `/api/union/*` rule); the API runs in separate mode and is denied the union locals' keys |
 | `alarms.tf` | CloudWatch alarms to an SNS topic encrypted under its own key (CloudWatch can publish to it), a server-error ratio per service; the API and web deployments roll back when their alarms go off |
 
 ## Checks
@@ -108,6 +109,16 @@ The email should arrive within a minute; the alarm returns to OK on its own at t
 | `<env>-kms-createkey-with-policy` (EventBridge rule) | the app role creates a KMS key with a custom key policy, which could hand the key to another account; needs CloudTrail management events in the account | no |
 
 ECS watches each service's alarms while a deployment runs and rolls back to the previous task definition if one goes off. The circuit breaker still rolls back tasks that never become healthy, and it is the worker's only automatic rollback.
+
+## Union Hub
+
+By default the Union Hub runs inside the API (`UNION_HUB_MODE=embedded`). With `union_hub_separate = true` it runs as its own service (`union.tf`):
+
+1. Before applying, give the union role a password (`union_role_password = true`, `FLEXCITY_UNION_PASSWORD` in the app secret) and run the db-roles task.
+2. Apply, then write `UNION_DATABASE_URL` (`postgresql://flexcity_union:<password>@<endpoint>:5432/flexcity?sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem`) into the `<env>/union` secret. Take `FLEXCITY_UNION_PASSWORD` back out of the app secret's keys the API reads (`app_secret_keys`).
+3. Create each local's KMS key with the tag `fh:union-local = true` (`aws kms create-key --tags TagKey=fh:union-local,TagValue=true …`), then `scripts/union-admin.mjs create-local`. The API's role is denied every key with that tag.
+
+What the two services still share is the access-token signing secret (`JWT_SECRET`, HS256), which the hub needs to check sign-ins. A flaw in the API could forge a steward's token. Asymmetric tokens would give the hub a public key only; that is not built yet (SECURITY-AUDIT SEC-61).
 
 ## What it does not create
 
