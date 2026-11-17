@@ -1,0 +1,185 @@
+name: Deploy
+
+# Ships a commit of main that passed CI: build the three images once, migrate and deploy staging,
+# smoke-test it, then (after a reviewer approves the "production" environment) migrate and deploy
+# production with the same images and watch it for 10 minutes, rolling back if it fails.
+# docs/DEPLOYING.md explains the set-up. AWS access is through GitHub's OIDC provider: no AWS keys
+# are stored anywhere. Every AWS-specific value is a repository variable; until they are all set,
+# the "config" job says which are missing and every other job is skipped.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: 1.9.8
+  TF_IN_AUTOMATION: '1'
+
+jobs:
+  config:
+    runs-on: ubuntu-latest
+    # Only commits that passed CI on main (or a manual run on main).
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    permissions:
+      contents: read
+      actions: read # a manual run checks that CI passed for the commit
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Variables set, CI passed for the commit, the GitHub environments protected (ops/deploy/preflight.sh).
+      - id: check
+        run: bash ops/deploy/preflight.sh
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          STAGING_AWS_ROLE_ARN: ${{ vars.STAGING_AWS_ROLE_ARN }}
+          STAGING_TF_BACKEND: ${{ vars.STAGING_TF_BACKEND }}
+          STAGING_TFVARS: ${{ vars.STAGING_TFVARS }}
+          STAGING_URL: ${{ vars.STAGING_URL }}
+          PRODUCTION_AWS_ROLE_ARN: ${{ vars.PRODUCTION_AWS_ROLE_ARN }}
+          PRODUCTION_TF_BACKEND: ${{ vars.PRODUCTION_TF_BACKEND }}
+          PRODUCTION_TFVARS: ${{ vars.PRODUCTION_TFVARS }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          STAGING_ECR_REGISTRY: ${{ vars.STAGING_ECR_REGISTRY }}
+
+  # The three images, built once from the commit and pushed to staging's registry, tagged with the
+  # commit. Production later pulls these same images (promote), never a rebuild.
+  build:
+    needs: config
+    if: needs.config.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      matrix:
+        target: [api, migrate, web]
+    env:
+      SHA: ${{ needs.config.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.config.outputs.sha }}
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: ${{ vars.STAGING_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ca-central-1' }}
+          role-duration-seconds: 7200
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
+      - name: Build and push
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TARGET: ${{ matrix.target }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          repo="$REGISTRY/fh-staging-$TARGET"
+          if aws ecr describe-images --repository-name "fh-staging-$TARGET" --image-ids imageTag="$SHA" >/dev/null 2>&1; then
+            echo "$repo:$SHA already pushed (tags are immutable)"; exit 0
+          fi
+          args=(--target "$TARGET" --tag "$repo:$SHA" --label "org.opencontainers.image.revision=$SHA")
+          # The web build bakes in its release, which must equal the API's RELEASE (image_tag).
+          [ "$TARGET" = web ] && args+=(--build-arg "NEXT_PUBLIC_RELEASE=$SHA" --build-arg "NEXT_PUBLIC_SITE_URL=$SITE_URL")
+          docker build "${args[@]}" .
+          docker push "$repo:$SHA"
+
+  staging:
+    needs: [config, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # One staging deployment at a time, never cancelled half-way (a migration may be running). Its
+    # own group, so a production run waiting for approval doesn't hold staging back.
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SHA: ${{ needs.config.outputs.sha }}
+      ENV_NAME: staging
+      APP_URL: ${{ vars.STAGING_URL }}
+      TF_BACKEND: ${{ vars.STAGING_TF_BACKEND }}
+      TFVARS: ${{ vars.STAGING_TFVARS }}
+      WATCH_MS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.config.outputs.sha }}
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: ${{ vars.STAGING_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ca-central-1' }}
+          role-duration-seconds: 7200
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: Migrate, deploy, smoke test
+        run: ops/deploy/deploy.sh
+
+  production:
+    needs: [config, staging]
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    # Required reviewers on this GitHub environment are the approval step (docs/DEPLOYING.md).
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SHA: ${{ needs.config.outputs.sha }}
+      ENV_NAME: production
+      APP_URL: ${{ vars.PRODUCTION_URL }}
+      TF_BACKEND: ${{ vars.PRODUCTION_TF_BACKEND }}
+      TFVARS: ${{ vars.PRODUCTION_TFVARS }}
+      # Watch /readyz?strict=1 for 10 minutes after the deployment; roll back on 3 failures in a row.
+      WATCH_MS: '600000'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.config.outputs.sha }}
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5.1.1
+        with:
+          role-to-assume: ${{ vars.PRODUCTION_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ca-central-1' }}
+          # Two hours (the role's max_session_duration): the rollback, last, must still be signed in.
+          role-duration-seconds: 7200
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      # Copy staging's tested images into production's registry (staging's repository policy lets
+      # this account pull: ecr_pull_account_ids). Same digests, no rebuild.
+      - name: Promote the images staging tested
+        env:
+          STAGING_REGISTRY: ${{ vars.STAGING_ECR_REGISTRY }}
+        run: ops/deploy/promote.sh
+      - name: Migrate, deploy, watch for 10 minutes (rolls back on failure)
+        run: ops/deploy/deploy.sh
