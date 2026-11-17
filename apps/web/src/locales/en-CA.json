@@ -1303,7 +1303,12 @@
       "remove": "Remove confirmation",
       "removed": "Confirmation removed.",
       "private": "Only HR sees this."
-    }
+    },
+    "email": "Email",
+    "phone": "Phone",
+    "emailHint": "Their sign-in. A new address signs them out everywhere, cancels unused links, and tells the old address. Resend the invitation if they haven’t signed in yet.",
+    "seniorityHours": "Seniority hours",
+    "seniorityHoursHint": "Used where seniority is counted in hours (bid rounds, overtime, call-outs)."
   },
   "payroll": {
     "title": "Payroll",
