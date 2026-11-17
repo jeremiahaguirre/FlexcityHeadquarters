@@ -776,7 +776,8 @@
     "PERIOD_PAID": "Ceci est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
     "RUN_SENT_TO_BANK": "Le fichier de dépôt de cette paie a été envoyé à la banque; elle ne peut donc pas être annulée. Corrigez-la à la prochaine paie.",
     "OWN_PAY_RATE": "Vous ne pouvez pas fixer ni modifier votre propre taux de rémunération. Un autre administrateur doit le faire.",
-    "RATE_AFTER_END": "Le début doit être au plus tard le dernier jour de ce taux."
+    "RATE_AFTER_END": "Le début doit être au plus tard le dernier jour de ce taux.",
+    "RATE_BELOW_MINIMUM": "Ce taux est inférieur à tout salaire minimum au Canada. Vérifiez le montant."
   },
   "timeclock": {
     "title": "Horodateur",

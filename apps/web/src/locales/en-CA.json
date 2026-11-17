@@ -776,7 +776,8 @@
     "RATE_AFTER_END": "The start must be on or before the day this rate ends.",
     "OWN_PAY_RATE": "You can’t set or change your own pay rate. Another administrator has to.",
     "RUN_CHANGED": "This pay run changed while you were voiding it. Open it again.",
-    "RATE_ORDER": "That start date would overlap another rate for this position."
+    "RATE_ORDER": "That start date would overlap another rate for this position.",
+    "RATE_BELOW_MINIMUM": "That rate is below any Canadian minimum wage. Check the amount."
   },
   "timeclock": {
     "title": "Timeclock",

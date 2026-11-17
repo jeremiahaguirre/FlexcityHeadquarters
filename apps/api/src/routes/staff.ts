@@ -572,7 +572,7 @@ staffRouter.patch(
     const rateId = uuid.parse(req.params.rateId);
     if (id === a.userId) throw new HttpError(403, 'OWN_PAY_RATE', 'You can’t set or change your own pay rate. Another administrator has to.');
     const body = z.object({ hourlyRate: hourlyRate.optional(), effectiveFrom: isoDate.optional(), reason: z.string().trim().min(3).max(500) }).parse(req.body);
-    if (body.hourlyRate !== undefined && Number(body.hourlyRate) < 10) throw badRequest('That rate is below any Canadian minimum wage. Check the amount.');
+    if (body.hourlyRate !== undefined && Number(body.hourlyRate) < 10) throw invalid('RATE_BELOW_MINIMUM', 'That rate is below any Canadian minimum wage. Check the amount.');
     await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, id);
       const { rate, previous } = await rateAndPrevious(tx, id, rateId);
