@@ -772,7 +772,9 @@
     "PROVIDER_SEND_FAILED": "Le fournisseur de paie n’a pas accepté les heures. Réessayez ou téléchargez le fichier.",
     "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard.",
     "AGE_RANGE": "L’âge maximum doit être supérieur à l’âge minimum.",
-    "CAMPAIGN_NOT_DRAFT": "Seule une campagne en brouillon peut être supprimée. Fermez plutôt une campagne publiée."
+    "CAMPAIGN_NOT_DRAFT": "Seule une campagne en brouillon peut être supprimée. Fermez plutôt une campagne publiée.",
+    "LEVEL_EXISTS": "Ce programme a déjà un niveau portant ce nom.",
+    "SCHEDULE_HAS_PEOPLE": "Des personnes sont inscrites à ce groupe : ses jours et ses dates ne peuvent pas changer. Ajoutez un nouveau groupe pour le nouvel horaire."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -4069,8 +4071,8 @@
     "campaignDeleted": "Brouillon supprimé",
     "editSet": "Modifier le groupe",
     "editSetOne": "Modifier {{name}}",
-    "editSetHelp_one": "{{count}} personne est inscrite : elle garde sa place, et sa liste de cours affiche le nouvel horaire.",
-    "editSetHelp_other": "{{count}} personnes sont inscrites : elles gardent leur place, et leurs listes de cours affichent le nouvel horaire.",
+    "editSetHelp_one": "{{count}} personne est inscrite : elle garde sa place. L’heure, le niveau, le lieu et les prix peuvent changer; les jours et les dates restent.",
+    "editSetHelp_other": "{{count}} personnes sont inscrites : elles gardent leur place. L’heure, le niveau, le lieu et les prix peuvent changer; les jours et les dates restent.",
     "setSaved": "Groupe enregistré",
     "removeSet": "Retirer",
     "removeSetOne": "Retirer {{name}}",
@@ -4100,7 +4102,8 @@
     "levelActiveHelp": "Décochez pour le retirer : les nouveaux groupes ne peuvent plus l’utiliser; ceux qui l’utilisent déjà le gardent.",
     "levelRetired": "Retiré",
     "levelSaved": "Niveau enregistré",
-    "levelAdded": "Niveau ajouté"
+    "levelAdded": "Niveau ajouté",
+    "scheduleLocked": "Des personnes sont inscrites : les jours et les dates restent tels quels, car leur présence et ce qu’elles ont payé en dépendent. Ajoutez un nouveau groupe pour un nouvel horaire."
   },
   "members": {
     "title": "Services aux membres",

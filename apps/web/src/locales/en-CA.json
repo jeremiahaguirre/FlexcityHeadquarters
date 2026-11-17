@@ -772,7 +772,9 @@
     "PROVIDER_SEND_FAILED": "The payroll provider didn’t take the hours. Try again, or download the file.",
     "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later.",
     "AGE_RANGE": "The oldest age must be above the youngest.",
-    "CAMPAIGN_NOT_DRAFT": "Only a draft campaign can be deleted. Close a published one instead."
+    "CAMPAIGN_NOT_DRAFT": "Only a draft campaign can be deleted. Close a published one instead.",
+    "LEVEL_EXISTS": "This program already has a level with that name.",
+    "SCHEDULE_HAS_PEOPLE": "People are registered in this set, so its days and dates can’t change. Add a new set for the new schedule."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -4069,8 +4071,8 @@
     "campaignDeleted": "Draft deleted",
     "editSet": "Edit set",
     "editSetOne": "Edit {{name}}",
-    "editSetHelp_one": "{{count}} person is registered: they keep their spot, and their class list shows the new times.",
-    "editSetHelp_other": "{{count}} people are registered: they keep their spots, and their class lists show the new times.",
+    "editSetHelp_one": "{{count}} person is registered: they keep their spot. Times, level, place and prices can change; the days and dates stay.",
+    "editSetHelp_other": "{{count}} people are registered: they keep their spots. Times, level, place and prices can change; the days and dates stay.",
     "setSaved": "Set saved",
     "removeSet": "Remove",
     "removeSetOne": "Remove {{name}}",
@@ -4100,7 +4102,8 @@
     "levelActiveHelp": "Untick to retire it: new sets can’t use it; sets that already do keep it.",
     "levelRetired": "Retired",
     "levelSaved": "Level saved",
-    "levelAdded": "Level added"
+    "levelAdded": "Level added",
+    "scheduleLocked": "People are registered, so the days and dates stay as they are: their attendance and what they paid for follow them. Add a new set for a new schedule."
   },
   "members": {
     "title": "Member services",

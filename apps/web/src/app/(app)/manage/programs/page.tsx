@@ -135,6 +135,8 @@ function CampaignDetail({ id }: { id: string }) {
   const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
   const label = (x: { name: string; nameFr: string | null }) => (lng === 'fr-CA' && x.nameFr ? x.nameFr : x.name);
   const editingSet = setForm && setForm !== 'new' ? setForm : null;
+  /** People are registered: the days and dates stay (the API refuses them too); a new schedule is a new set. */
+  const scheduleLocked = !!editingSet && editingSet.enrolled + editingSet.waitlisted > 0;
 
   async function saveSet(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -252,17 +254,17 @@ function CampaignDetail({ id }: { id: string }) {
             <Field label={t('programs.setName')} hint={t('programs.setNameHint')}>{(p) => <Input {...p} name="name" maxLength={80} defaultValue={editingSet?.name ?? ''} />}</Field>
             <fieldset className="grid gap-2">
               <legend className="text-small font-semibold">{t('programs.pattern')}</legend>
-              <div className="flex flex-wrap gap-2">{Object.keys(PATTERNS).map((pk) => <Button key={pk} size="sm" variant="secondary" onClick={() => pattern(pk)}>{t(`programs.patterns.${pk}`)}</Button>)}</div>
+              {scheduleLocked ? <p className="text-caption text-muted">{t('programs.scheduleLocked')}</p> : <div className="flex flex-wrap gap-2">{Object.keys(PATTERNS).map((pk) => <Button key={pk} size="sm" variant="secondary" onClick={() => pattern(pk)}>{t(`programs.patterns.${pk}`)}</Button>)}</div>}
               <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('programs.days')}>
                 {DOW.map((d) => (
-                  <button key={d} type="button" aria-pressed={days.includes(d)} onClick={() => setDays((x) => (x.includes(d) ? (x.length > 1 ? x.filter((y) => y !== d) : x) : [...x, d].sort()))} className={`h-10 min-w-[3rem] rounded-xl border px-2 text-small font-semibold ${days.includes(d) ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}`}>{dow(d)}</button>
+                  <button key={d} type="button" disabled={scheduleLocked} aria-pressed={days.includes(d)} onClick={() => setDays((x) => (x.includes(d) ? (x.length > 1 ? x.filter((y) => y !== d) : x) : [...x, d].sort()))} className={`h-10 min-w-[3rem] rounded-xl border px-2 text-small font-semibold disabled:opacity-60 ${days.includes(d) ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}`}>{dow(d)}</button>
                 ))}
               </div>
             </fieldset>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Field label={t('programs.firstDay')}>{(p) => <Input {...p} name="startsOn" type="date" required defaultValue={editingSet?.startsOn ?? k.startsOn} />}</Field>
+              <Field label={t('programs.firstDay')}>{(p) => <Input {...p} name="startsOn" type="date" required readOnly={scheduleLocked} defaultValue={editingSet?.startsOn ?? k.startsOn} />}</Field>
               {editingSet ? (
-                <Field label={t('programs.lastDay')}>{(p) => <Input {...p} name="endsOn" type="date" required defaultValue={editingSet.endsOn} />}</Field>
+                <Field label={t('programs.lastDay')}>{(p) => <Input {...p} name="endsOn" type="date" required readOnly={scheduleLocked} defaultValue={editingSet.endsOn} />}</Field>
               ) : (
                 <Field label={t('programs.weeks')}>{(p) => <Select {...p} name="weeks" defaultValue="8">{[1, 2, 3, 4, 5, 6, 8, 10, 12, 16].map((w) => <option key={w} value={w}>{t('programs.weeksN', { count: w })}</option>)}</Select>}</Field>
               )}

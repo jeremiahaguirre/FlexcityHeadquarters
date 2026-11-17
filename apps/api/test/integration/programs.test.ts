@@ -207,10 +207,36 @@ describe('correcting plans after they are made', () => {
     expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { startMinute: 1080 })).body.code).toBe('ENDS_BEFORE_START');
     expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { startMinute: 1080, endMinute: 1110, levelId: level.id, priceCents: 10500 })).status).toBe(200);
     const view = (await call(tok.head).get(`/api/campaigns/${c}`)).body.sets[0];
-    expect(view).toMatchObject({ startMinute: 1080, endMinute: 1110, levelId: level.id, level: level.name, priceCents: 10500 });
+    // A new level brings its name and its ages: registration checks the set's own ages.
+    expect(view).toMatchObject({ startMinute: 1080, endMinute: 1110, levelId: level.id, level: level.name, priceCents: 10500, minAgeMonths: level.minAgeMonths, maxAgeMonths: level.maxAgeMonths });
     expect((await call(tok.head).del(`/api/campaigns/${c}/sets/${set}`)).status).toBe(204);
     expect((await call(tok.head).get(`/api/campaigns/${c}`)).body.sets).toEqual([]);
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'set.delete', entityId: set } })).toBe(1);
+  });
+
+  it('a level’s name is unique in its program (409, not a 500), and renaming it renames the sets that use it', async () => {
+    const mk = (name: string) => call(tok.head).post('/api/swim-levels', { program: 'Learn to Play Hockey', name, minAgeMonths: 48, ratio: 10, durationMinutes: 50 });
+    const first = (await mk('Step 1')).body.id;
+    expect((await mk('Step 1')).body.code).toBe('LEVEL_EXISTS');
+    await mk('Step 2');
+    expect((await call(tok.head).patch(`/api/swim-levels/${first}`, { name: 'Step 2' })).body.code).toBe('LEVEL_EXISTS');
+    const c = (await call(tok.head).post('/api/campaigns', { name: 'Hockey', kind: 'OTHER', startsOn: monday, endsOn: plus(monday, 30) })).body.id;
+    const set = (await call(tok.head).post(`/api/campaigns/${c}/sets`, { facilityId: t.facility.id, positionId: t.position.id, levelId: first, daysOfWeek: [6], startMinute: 540, endMinute: 590, startsOn: plus(monday, 5), endsOn: plus(monday, 26), priceCents: 12000 })).body.id;
+    expect((await call(tok.head).patch(`/api/swim-levels/${first}`, { name: 'Step One' })).status).toBe(200);
+    expect((await call(tok.head).get(`/api/campaigns/${c}`)).body.sets.find((x: { id: string }) => x.id === set)).toMatchObject({ level: 'Step One' });
+  });
+
+  it('while people are registered, a set’s days and dates stay; its price and times can still change', async () => {
+    const c = (await call(tok.head).post('/api/campaigns', { name: 'Summer lessons', kind: 'LESSONS', startsOn: monday, endsOn: plus(monday, 30) })).body.id;
+    const set = (await call(tok.head).post(`/api/campaigns/${c}/sets`, { facilityId: t.facility.id, positionId: t.position.id, daysOfWeek: [1], startMinute: 960, endMinute: 990, startsOn: monday, endsOn: plus(monday, 28), priceCents: 9000 })).body.id;
+    await call(tok.head).post(`/api/campaigns/${c}/publish`);
+    const hh = (await call(tok.desk).post('/api/households', { name: 'Nguyen', members: [{ role: 'GUARDIAN', firstName: 'Linh', lastName: 'Nguyen' }, { role: 'CHILD', firstName: 'An', lastName: 'Nguyen', dateOfBirth: '2019-05-01' }] })).body.id;
+    const child = (await call(tok.desk).get(`/api/households/${hh}`)).body.members.find((m: { role: string }) => m.role === 'CHILD').id;
+    expect((await call(tok.desk).post('/api/registrations', { setId: set, memberId: child, paymentMethod: 'DEBIT' })).status).toBe(201);
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { daysOfWeek: [2] })).body.code).toBe('SCHEDULE_HAS_PEOPLE');
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { endsOn: plus(monday, 21) })).body.code).toBe('SCHEDULE_HAS_PEOPLE');
+    // The form sends the same days and dates back with other changes: that's fine.
+    expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { daysOfWeek: [1], startsOn: monday, endsOn: plus(monday, 28), startMinute: 975, endMinute: 1005, priceCents: 9500 })).status).toBe(200);
   });
 
   it('a draft made by mistake is deleted with its sets; a published campaign can’t be', async () => {
