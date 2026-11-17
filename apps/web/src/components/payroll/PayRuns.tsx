@@ -241,7 +241,12 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
               onSubmit={(e) => {
                 e.preventDefault();
                 const reason = String(new FormData(e.currentTarget).get('reason'));
-                void act('void', `/api/payroll/runs/${id}/void`, t('payroll.voided'), { reason }).then((r) => r !== undefined && setVoiding(false));
+                void act('void', `/api/payroll/runs/${id}/void`, t('payroll.voided'), { reason }).then((r) => {
+                  if (r === undefined) return;
+                  setVoiding(false);
+                  const kept = (r as { claimsKeptPaid?: number }).claimsKeptPaid ?? 0;
+                  if (kept) toast(t('payroll.voidClaimsKept', { count: kept }), 'warn');
+                });
               }}
               className="grid gap-3 rounded-2xl border border-line p-4"
             >

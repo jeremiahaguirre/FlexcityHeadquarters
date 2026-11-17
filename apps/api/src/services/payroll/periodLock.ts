@@ -7,7 +7,10 @@
 import type { Tx } from '../../lib/db.js';
 import { conflict } from '../../lib/errors.js';
 
-/** The approved or paid regular run (city-wide, or for one of the person's departments) covering any day from `first` to `last` (YYYY-MM-DD). */
+/**
+ * The approved or paid regular run covering any day from `first` to `last` (YYYY-MM-DD) that paid this
+ * person (a statement for them), or that covers them now (city-wide, or one of their departments).
+ */
 export async function paidRunCovering(tx: Tx, userId: string, first: string, last: string) {
   if (last < first) return null;
   const departments = (await tx.userPosition.findMany({ where: { userId }, select: { position: { select: { departmentId: true } } } })).map((p) => p.position.departmentId).filter((d): d is string => !!d);
@@ -17,7 +20,8 @@ export async function paidRunCovering(tx: Tx, userId: string, first: string, las
       status: { in: ['APPROVED', 'PAID'] },
       periodStart: { lte: new Date(`${last}T00:00:00Z`) },
       periodEnd: { gte: new Date(`${first}T00:00:00Z`) },
-      OR: [{ departmentId: null }, ...(departments.length ? [{ departmentId: { in: departments } }] : [])],
+      // A statement for them is the record of having paid them, even after they moved department.
+      OR: [{ statements: { some: { userId } } }, { departmentId: null }, ...(departments.length ? [{ departmentId: { in: departments } }] : [])],
     },
     select: { id: true, periodStart: true, periodEnd: true },
   });

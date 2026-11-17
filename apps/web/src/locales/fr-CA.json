@@ -579,7 +579,11 @@
     "MAINTENANCE_PAST": "Cette période est déjà terminée.",
     "MAINTENANCE_CLOSED": "Cette période est terminée ou annulée.",
     "PERIOD_PAID": "Ceci est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
-    "RATE_ORDER": "Cette date de début chevaucherait un autre taux pour ce poste."
+    "RATE_ORDER": "Cette date de début chevaucherait un autre taux pour ce poste.",
+    "RUN_SENT_TO_BANK": "Le fichier de dépôt de cette paie a été envoyé à la banque; elle ne peut donc pas être annulée. Corrigez-la à la prochaine paie.",
+    "RUN_CHANGED": "Cette paie a changé pendant que vous l’annuliez. Ouvrez-la de nouveau.",
+    "OWN_PAY_RATE": "Vous ne pouvez pas fixer ni modifier votre propre taux de rémunération. Un autre administrateur doit le faire.",
+    "RATE_AFTER_END": "Le début doit être au plus tard le dernier jour de ce taux."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1615,7 +1619,9 @@
       "INACTIVE": "mise à pied",
       "TERMINATED": "partie"
     },
-    "voidEffects": "Les demandes de remboursement payées par cette paie redeviennent approuvées, pour la prochaine paie. Les éléments ponctuels restent sur la paie annulée : ajoutez-les de nouveau à la nouvelle."
+    "voidEffects": "Les demandes de remboursement payées par cette paie redeviennent approuvées, pour la prochaine paie. Les éléments ponctuels restent sur la paie annulée : ajoutez-les de nouveau à la nouvelle.",
+    "voidClaimsKept_one": "Son fichier de dépôt a été téléchargé; {{count}} demande de remboursement reste donc payée. Si elle n’a pas été payée, ajoutez-la comme remboursement ponctuel à la prochaine paie.",
+    "voidClaimsKept_other": "Son fichier de dépôt a été téléchargé; {{count}} demandes de remboursement restent donc payées. Si elles n’ont pas été payées, ajoutez-les comme remboursements ponctuels à la prochaine paie."
   },
   "settings": {
     "title": "Paramètres",

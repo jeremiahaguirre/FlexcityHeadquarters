@@ -523,6 +523,7 @@ staffRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
+    if (id === a.userId) throw new HttpError(403, 'OWN_PAY_RATE', 'You can’t set or change your own pay rate. Another administrator has to.');
     const body = z.object({ positionId: uuid, hourlyRate: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/), effectiveFrom: isoDate }).parse(req.body);
     if (Number(body.hourlyRate) < 10) throw badRequest('That rate is below any Canadian minimum wage. Check the amount.');
     const rate = await withTenant(a.tenantId, async (tx) => {
@@ -566,6 +567,7 @@ staffRouter.patch(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const rateId = uuid.parse(req.params.rateId);
+    if (id === a.userId) throw new HttpError(403, 'OWN_PAY_RATE', 'You can’t set or change your own pay rate. Another administrator has to.');
     const body = z.object({ hourlyRate: hourlyRate.optional(), effectiveFrom: isoDate.optional(), reason: z.string().trim().min(3).max(500) }).parse(req.body);
     if (body.hourlyRate !== undefined && Number(body.hourlyRate) < 10) throw badRequest('That rate is below any Canadian minimum wage. Check the amount.');
     await withTenant(a.tenantId, async (tx) => {
@@ -573,7 +575,7 @@ staffRouter.patch(
       const { rate, previous } = await rateAndPrevious(tx, id, rateId);
       const from = body.effectiveFrom ?? iso(rate.effectiveFrom)!;
       const to = iso(rate.effectiveTo);
-      if (to && from > to) throw new HttpError(400, 'RATE_ORDER', 'The start must be on or before the day this rate ends.');
+      if (to && from > to) throw new HttpError(400, 'RATE_AFTER_END', 'The start must be on or before the day this rate ends.');
       if (previous && from <= iso(previous.effectiveFrom)!) throw new HttpError(400, 'RATE_ORDER', 'The start must be after the previous rate’s start.');
       // Every day whose rate this changes: the old and new start, up to the end (or today).
       const first = [from, iso(rate.effectiveFrom)!].sort()[0]!;
@@ -598,6 +600,7 @@ staffRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const rateId = uuid.parse(req.params.rateId);
+    if (id === a.userId) throw new HttpError(403, 'OWN_PAY_RATE', 'You can’t set or change your own pay rate. Another administrator has to.');
     const { reason } = z.object({ reason: z.string().trim().min(3).max(500) }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, id);

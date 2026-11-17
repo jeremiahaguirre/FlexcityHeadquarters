@@ -104,4 +104,23 @@ describe('expense and mileage claims', () => {
     const st = await owner.payStatement.findFirstOrThrow({ where: { payRunId: again.body.id, userId: guard } });
     expect((st.deductions as { expenses: Array<{ id: string }> }).expenses.map((e) => e.id)).toEqual([claimId]);
   });
+
+  it('a run sent to the bank can’t be voided; one whose file was downloaded keeps its claims paid', async () => {
+    const draft = await owner.payRun.findFirstOrThrow({ where: { tenantId: t.tenant.id, status: 'DRAFT' } });
+    expect((await as('approver').post(`/api/payroll/runs/${draft.id}/approve`)).status).toBe(200);
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: claimId } })).status).toBe('PAID');
+    const sent = await owner.payTransmission.create({ data: { tenantId: t.tenant.id, payRunId: draft.id, method: 'SFTP', fileName: 'deposit.txt', sha256: 'x', encrypted: false, status: 'SENT' } });
+    const refused = await as('approver').post(`/api/payroll/runs/${draft.id}/void`, { reason: 'Wrong pay date again' });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('RUN_SENT_TO_BANK');
+    expect((await owner.payRun.findUniqueOrThrow({ where: { id: draft.id } })).status).toBe('APPROVED');
+
+    // Only downloaded (it may be at the bank): voided, but the claim stays paid.
+    await owner.payTransmission.delete({ where: { id: sent.id } });
+    await owner.payRun.update({ where: { id: draft.id }, data: { depositFileSha256: 'abc' } });
+    const v = await as('approver').post(`/api/payroll/runs/${draft.id}/void`, { reason: 'Wrong pay date again' });
+    expect(v.status).toBe(200);
+    expect(v.body).toMatchObject({ releasedClaims: 0, claimsKeptPaid: 1 });
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: claimId } })).status).toBe('PAID');
+  });
 });
