@@ -1,5 +1,5 @@
 /** Availability, time-off requests and decisions, and punches (a person's own and the supervisor review). */
-import { type NextFunction, type Request, type Response, Router } from 'express';
+import { Router } from 'express';
 import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
@@ -106,16 +106,15 @@ attendanceRouter.post(
 );
 
 /** Approvers, and HR (leave.manage) for the HR steps of a leave type's approval chain. */
-const decidesTimeOff = (req: Request, _res: Response, next: NextFunction) => {
-  const p = authOf(req).permissions;
-  next(p.has('timeoff.approve') || p.has('leave.manage') ? undefined : forbidden());
+const decidesTimeOff = (a: { permissions: ReadonlySet<string> }) => {
+  if (!a.permissions.has('timeoff.approve') && !a.permissions.has('leave.manage')) throw forbidden();
 };
 
 attendanceRouter.get(
   '/time-off',
-  decidesTimeOff,
   h(async (req, res) => {
     const a = authOf(req);
+    decidesTimeOff(a);
     const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'DENIED', 'CANCELLED']).default('PENDING'), team: teamQuery }).parse(req.query);
     const rows = await withTenant(a.tenantId, async (tx) => {
       const team = q.team ? await teamOf(tx, a.userId) : null;
@@ -141,9 +140,9 @@ attendanceRouter.get(
 
 attendanceRouter.post(
   '/time-off/:id/decision',
-  decidesTimeOff,
   h(async (req, res) => {
     const a = authOf(req);
+    decidesTimeOff(a);
     const body = z.object({ decision: z.enum(['APPROVE', 'DENY']), note: z.string().max(500).nullable().optional() }).parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
       const r = await tx.timeOffRequest.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { userId: true } });

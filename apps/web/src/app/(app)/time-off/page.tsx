@@ -43,14 +43,14 @@ export default function TimeOffPage() {
   // Time in lieu shows only where the city uses it.
   const lieu = useQuery<{ policy: { enabled: boolean }; available: number }>('/api/me/lieu');
   const types = TYPES.filter((x) => x !== 'LIEU' || lieu.data?.policy.enabled);
-  // The organization's own kinds of leave (bereavement, jury duty…), after the built-in ones.
-  const kinds = useQuery<{ types: LeaveKind[] }>('/api/leave-types');
-  const own = (kinds.data?.types ?? []).filter((k) => !k.system && !k.archived);
-  const ownKind = own.find((k) => k.id === type);
   const { run, busy } = useAction();
   const [open, setOpen] = useState(false);
   // A built-in type's code, or the id of one of the organization's own kinds.
   const [type, setType] = useState<string>('VACATION');
+  // The organization's own kinds of leave (bereavement, jury duty…), after the built-in ones.
+  const kinds = useQuery<{ types: LeaveKind[] }>('/api/leave-types');
+  const own = (kinds.data?.types ?? []).filter((k) => !k.system && !k.archived);
+  const ownKind = own.find((k) => k.id === type);
   const [partial, setPartial] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
