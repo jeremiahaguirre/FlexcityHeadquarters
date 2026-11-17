@@ -283,7 +283,7 @@ staffRouter.post(
     const a = authOf(req);
     const { keys } = z.object({ keys: z.array(z.string().max(60)).min(1).max(STARTER_CERTS.length) }).parse(req.body);
     const picked = STARTER_CERTS.filter((c) => keys.includes(c.key));
-    if (picked.length !== new Set(keys).size) throw badRequest('Unknown starter certificate.');
+    if (picked.length !== new Set(keys).size) throw invalid('UNKNOWN_STARTER_CERT', 'Unknown starter certificate.');
     const added = await withTenant(a.tenantId, async (tx) => {
       const have = await catalogNames(tx);
       const fresh = picked.filter((c) => !have.has(c.name.toLowerCase()));

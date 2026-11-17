@@ -776,7 +776,8 @@
     "CERT_ORG_WIDE": "Corriger la liste des certificats la modifie pour tous les services. Demandez aux RH.",
     "CERT_CHANGED": "L’employé a modifié cette inscription depuis que vous l’avez ouverte. Vérifiez-la de nouveau.",
     "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
-    "CERT_EXISTS": "Un certificat porte déjà ce nom."
+    "CERT_EXISTS": "Un certificat porte déjà ce nom.",
+    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez."
   },
   "timeclock": {
     "title": "Horodateur",
