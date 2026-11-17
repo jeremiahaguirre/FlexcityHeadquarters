@@ -770,7 +770,11 @@
     "NOT_IN_DEMO": "Cette fonction n’est pas offerte dans la démo.",
     "EXPORT_INVALID": "Il manque des renseignements pour envoyer cette période.",
     "PROVIDER_SEND_FAILED": "Le fournisseur de paie n’a pas accepté les heures. Réessayez ou téléchargez le fichier.",
-    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard."
+    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard.",
+    "UNTIL_BEFORE_START": "La dernière année est avant la première date.",
+    "NTH_WEEKDAY_FIFTH": "Un cinquième jour de semaine du mois n’existe pas chaque année. Choisissez plutôt « dernier jour de semaine du mois ».",
+    "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture.",
+    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -872,7 +876,9 @@
     "holidayObserved": "observé le {{date}}",
     "holidayMovedIfOff": "le {{date}} si vous ne travaillez pas habituellement ce jour-là",
     "holidaysMore": "Afficher les {{count}}",
-    "holidaysLess": "Afficher moins"
+    "holidaysLess": "Afficher moins",
+    "holidayCity": "Congé de l’organisation",
+    "holidayClosure": "Fermé (non payé)"
   },
   "availability": {
     "title": "Disponibilités",
@@ -1803,7 +1809,7 @@
       "facilities": "Installations",
       "pools": "Bassins",
       "pay": "Codes de paie",
-      "calendar": "Calendrier scolaire",
+      "calendar": "Congés et calendrier",
       "rules": "Convention collective",
       "roles": "Rôles",
       "departments": "Services",
@@ -8678,5 +8684,45 @@
       "ended": "Terminée",
       "cancelled": "Annulée"
     }
+  },
+  "cityHolidays": {
+    "title": "Jours fériés et jours de fermeture de l’organisation",
+    "help": "Les jours que votre organisation ajoute aux jours fériés légaux de chaque province, comme le lendemain de Noël, le lundi de Pâques ou un congé civique. La paie paie un jour férié payé comme un jour férié légal (indemnité de jour férié et taux majoré pour les heures travaillées); un jour de fermeture ne paie rien de plus. Les congés ne comptent ni l’un ni l’autre, et les rotations et modèles de quarts n’y ajoutent aucun quart aux installations réglées pour fermer les jours fériés (paramètres de Remplir).",
+    "add": "Ajouter un jour",
+    "addTitle": "Ajouter un jour férié ou de fermeture",
+    "editTitle": "Modifier un jour férié ou de fermeture",
+    "edit": "Modifier {{name}}",
+    "remove": "Retirer {{name}}",
+    "saved": "Jour férié enregistré.",
+    "removed": "Jour férié retiré.",
+    "empty": "Aucun jour férié de l’organisation pour l’instant. Les jours fériés légaux s’appliquent automatiquement.",
+    "name": "Nom (anglais)",
+    "nameFr": "Nom (français)",
+    "kindLabel": "Type",
+    "kind": {
+      "PAID": "Jour férié payé",
+      "CLOSURE": "Jour de fermeture"
+    },
+    "kindHint": {
+      "PAID": "Payé comme un jour férié légal : indemnité de jour férié, et taux majoré pour les heures travaillées.",
+      "CLOSURE": "Aucune indemnité ni taux majoré. Le jour n’est pas compté dans les congés, et les installations réglées pour fermer les jours fériés n’y reçoivent aucun nouveau quart."
+    },
+    "date": "Date",
+    "dateFirst": "La première fois qu’il s’applique. Rien ne se répète avant.",
+    "recurrenceLabel": "Répétition",
+    "recurrence": {
+      "NONE": "Une fois",
+      "YEARLY_DATE": "Chaque année à la même date",
+      "YEARLY_NTH_WEEKDAY": "Chaque année le même jour de semaine du mois (p. ex. le premier lundi d’août)",
+      "YEARLY_LAST_WEEKDAY": "Chaque année le dernier de ces jours de semaine du mois",
+      "EASTER_OFFSET": "Chaque année, le même nombre de jours après Pâques (p. ex. le lundi de Pâques)"
+    },
+    "untilYear": "Dernière année (facultatif)",
+    "untilYearHint": "Laissez vide pour répéter sans fin.",
+    "until": "jusqu’en {{year}}",
+    "province": "S’applique à",
+    "allProvinces": "Toutes les installations",
+    "nextOn": "Prochain : {{date}}",
+    "noneComing": "Aucun dans l’année à venir."
   }
 }

@@ -31,6 +31,7 @@ import { SeniorityCard } from '@/components/settings/SeniorityCard';
 import { FillSettingsCard } from '@/components/settings/FillSettingsCard';
 import { ReliabilityCard } from '@/components/settings/ReliabilityCard';
 import { HolidayWeekendCard } from '@/components/settings/HolidayWeekendCard';
+import { CityHolidaysCard } from '@/components/settings/CityHolidaysCard';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
@@ -80,7 +81,7 @@ function Section({ title, description, action, children }: { title: string; desc
 /** Organization settings: the organization itself, its facilities, pools and pay rules. Sections show only to people allowed to change them. */
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const { can } = useSession();
+  const { can, me } = useSession();
   const org = can('tenant.configure');
   const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
@@ -125,6 +126,8 @@ export default function SettingsPage() {
           {tab === 'facilities' ? <KiosksCard /> : null}
           {tab === 'pay' ? <PayCodes s={settings.data} reload={settings.reload} /> : null}
           {tab === 'pay' ? <HolidayWeekendCard /> : null}
+          {/* Holidays change pay in every department: only for people who configure the whole organization. */}
+          {tab === 'calendar' && !me?.scoped ? <CityHolidaysCard /> : null}
           {tab === 'calendar' ? <SchoolCalendar s={settings.data} reload={settings.reload} /> : null}
           {tab === 'rules' ? <Rules s={settings.data} reload={settings.reload} /> : null}
         </div>
