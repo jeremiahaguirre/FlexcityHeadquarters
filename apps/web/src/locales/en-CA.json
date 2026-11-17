@@ -4032,7 +4032,34 @@
     "capacity": "At the same time",
     "capacityHint": "e.g. 2 party rooms",
     "party": "Most people",
-    "serviceAdded": "Bookable space added"
+    "serviceAdded": "Bookable space added",
+    "serviceSaved": "Service saved",
+    "editService": "Edit service",
+    "editServiceOne": "Edit {{name}}",
+    "editServiceHelp": "New prices and times apply to bookings made from now on.",
+    "descriptionFr": "Description in French",
+    "bookable": "Bookable online",
+    "bookableHelp": "Untick to take it off the public page, for example during renovations. Bookings already made stay.",
+    "offline": "Not bookable",
+    "cancelBooking": "Cancel booking",
+    "note": "Note to the person",
+    "noteHint": "Sent with the email: why, and what they can do instead.",
+    "noteHintConfirm": "Optional. Sent with the confirmation, e.g. arrive 10 minutes early.",
+    "decideTitle": {
+      "CONFIRMED": "Confirm {{service}}",
+      "DECLINED": "Decline {{service}}",
+      "CANCELLED": "Cancel {{service}}"
+    },
+    "decideAction": {
+      "CONFIRMED": "Confirm and email",
+      "DECLINED": "Decline and email",
+      "CANCELLED": "Cancel and email"
+    },
+    "done": {
+      "CONFIRMED": "Booking confirmed",
+      "DECLINED": "Booking declined",
+      "CANCELLED": "Booking cancelled; the time is free again"
+    }
   },
   "signup": {
     "title": "Sign up at {{org}}",

@@ -4032,7 +4032,34 @@
     "capacity": "En même temps",
     "capacityHint": "p. ex. 2 salles de fête",
     "party": "Nombre maximal de personnes",
-    "serviceAdded": "Espace réservable ajouté"
+    "serviceAdded": "Espace réservable ajouté",
+    "serviceSaved": "Service enregistré",
+    "editService": "Modifier le service",
+    "editServiceOne": "Modifier {{name}}",
+    "editServiceHelp": "Les nouveaux prix et horaires s’appliquent aux réservations faites à partir de maintenant.",
+    "descriptionFr": "Description en français",
+    "bookable": "Réservable en ligne",
+    "bookableHelp": "Décochez pour le retirer de la page publique, par exemple pendant des rénovations. Les réservations déjà faites restent.",
+    "offline": "Non réservable",
+    "cancelBooking": "Annuler la réservation",
+    "note": "Note à la personne",
+    "noteHint": "Envoyée avec le courriel : pourquoi, et ce qu’elle peut faire à la place.",
+    "noteHintConfirm": "Facultatif. Envoyée avec la confirmation, p. ex. arriver 10 minutes à l’avance.",
+    "decideTitle": {
+      "CONFIRMED": "Confirmer {{service}}",
+      "DECLINED": "Refuser {{service}}",
+      "CANCELLED": "Annuler {{service}}"
+    },
+    "decideAction": {
+      "CONFIRMED": "Confirmer et envoyer le courriel",
+      "DECLINED": "Refuser et envoyer le courriel",
+      "CANCELLED": "Annuler et envoyer le courriel"
+    },
+    "done": {
+      "CONFIRMED": "Réservation confirmée",
+      "DECLINED": "Réservation refusée",
+      "CANCELLED": "Réservation annulée; la plage est de nouveau libre"
+    }
   },
   "signup": {
     "title": "Inscriptions : {{org}}",

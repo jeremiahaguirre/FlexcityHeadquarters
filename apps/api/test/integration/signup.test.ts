@@ -18,6 +18,7 @@ const staff = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
   put: (p: string, b: object = {}) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  patch: (p: string, b: object = {}) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
 const yearsAgo = (y: number) => new Date(Date.now() - y * 365.25 * 86_400_000).toISOString().slice(0, 10);
@@ -132,5 +133,39 @@ describe('public sign-up portal', () => {
     expect(pending[0]).toMatchObject({ status: 'REQUESTED', service: 'Party room', name: 'Sam Lee' });
     expect((await staff(desk).post(`/api/bookings/${pending[0].id}/decide`, { decision: 'CONFIRMED', note: 'Please arrive 10 minutes early.' })).status).toBe(200);
     expect(await owner.emailOutbox.count({ where: { tenantId: t.tenant.id, template: 'booking_decided' } })).toBe(1);
+  });
+});
+
+describe('bookings after they are made', () => {
+  it('a service’s price, times and French text change, on record', async () => {
+    expect((await staff(desk).patch(`/api/bookable-services/${serviceId}`, { closeMinute: 500 })).body.code).toBe('BAD_TIMES');
+    expect((await staff(desk).patch(`/api/bookable-services/${serviceId}`, { priceCents: 17500, nameFr: 'Salle de fête', descriptionFr: 'Deux heures, jusqu’à 20 personnes.' })).status).toBe(200);
+    expect((await staff(desk).get('/api/bookable-services')).body.find((v: { id: string }) => v.id === serviceId)).toMatchObject({ priceCents: 17500, nameFr: 'Salle de fête', descriptionFr: 'Deux heures, jusqu’à 20 personnes.' });
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'bookable_service.update', entityId: serviceId } })).toBe(1);
+  });
+
+  it('a French request gets its decision in French; a confirmed booking can be cancelled with a note, freeing the time', async () => {
+    const day = inDays(12);
+    const dow = new Date(`${day}T12:00:00Z`).getUTCDay();
+    await staff(desk).patch(`/api/bookable-services/${serviceId}`, { daysOfWeek: [dow] });
+    const r = await pub.post('/api/public/bookings', { serviceId, date: day, startMinute: 600, partySize: 8, locale: 'fr-CA', startedAt: Date.now() - 30_000, contact: { name: 'Zoé Roy', email: 'zoe@example.ca', phone: '250-555-0123' }, consents: { terms: true, privacy: true, adult: true } });
+    expect(r.status).toBe(201);
+    const booking = (await staff(desk).get('/api/bookings')).body.find((b: { reference: string }) => b.reference === r.body.reference);
+    expect((await staff(desk).post(`/api/bookings/${booking.id}/decide`, { decision: 'CONFIRMED' })).status).toBe(200);
+    const confirmed = await owner.emailOutbox.findFirstOrThrow({ where: { tenantId: t.tenant.id, template: 'booking_decided', toEmail: 'zoe@example.ca' } });
+    expect(confirmed.locale).toBe('fr-CA');
+    expect(confirmed.params).toMatchObject({ service: 'Salle de fête', decision: 'CONFIRMED' });
+    expect((await pub.get(`/api/public/services/${serviceId}/slots?date=${day}`)).body.map((s: { startMinute: number }) => s.startMinute)).not.toContain(600);
+    expect((await staff(desk).post(`/api/bookings/${booking.id}/decide`, { decision: 'CANCELLED', note: 'Pool closed for repairs that day.' })).status).toBe(200);
+    const cancelled = await owner.emailOutbox.findFirstOrThrow({ where: { tenantId: t.tenant.id, template: 'booking_decided', toEmail: 'zoe@example.ca' }, orderBy: { createdAt: 'desc' } });
+    expect(cancelled.params).toMatchObject({ decision: 'CANCELLED', note: 'Pool closed for repairs that day.' });
+    expect((await pub.get(`/api/public/services/${serviceId}/slots?date=${day}`)).body.map((s: { startMinute: number }) => s.startMinute)).toContain(600);
+  });
+
+  it('a service taken offline leaves the public page', async () => {
+    const offered = async () => ((await pub.get('/api/public/signup')).body.services as Array<{ id: string }>).map((v) => v.id);
+    expect(await offered()).toContain(serviceId);
+    expect((await staff(desk).patch(`/api/bookable-services/${serviceId}`, { active: false })).status).toBe(200);
+    expect(await offered()).not.toContain(serviceId);
   });
 });
