@@ -1053,6 +1053,9 @@ model TimeOffRequest {
   /// (their shifts are released when it's approved); weekdays × 8 h when nothing was scheduled.
   chargedHours Decimal? @db.Decimal(8, 2)
   chargedBasis String?
+  /// Shifts approving it took them off and posted to the board; cancelling or shortening the leave
+  /// gives back the ones nobody has taken.
+  releasedShiftIds String[] @default([]) @db.Uuid
 
   @@index([userId, startsAt, endsAt])
 }

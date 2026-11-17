@@ -4,10 +4,11 @@ import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { badRequest, forbidden } from '../lib/errors.js';
+import { HttpError, badRequest, forbidden } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localIso } from '../lib/time.js';
-import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
+import { assertLeavePeriodOpen, cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff, reviseTimeOff } from '../services/people/timeOff.js';
+import type { AuthContext } from '../auth/middleware.js';
 import { decidePunches, punchVariance } from '../services/timeclock/review.js';
 import { teamOf, teamQuery } from '../services/people/reporting.js';
 import { confirmAvailability } from '../services/scheduling/fillRun.js';
@@ -94,20 +95,76 @@ attendanceRouter.post(
   '/me/time-off/:id/cancel',
   h(async (req, res) => {
     const a = authOf(req);
-    res.json(await withTenant(a.tenantId, (tx) => cancelTimeOff(tx, a.userId, uuid.parse(req.params.id))));
+    const out = await withTenant(a.tenantId, (tx) => withEvents(tx, cancelTimeOff(tx, a.userId, uuid.parse(req.params.id))));
+    if (out.events.length) dispatchSoon(a.tenantId);
+    res.json({ ...out.request, restoredShifts: out.restoredShifts, takenShifts: out.takenShifts });
+  }),
+);
+
+/** Supervisors approve time off; HR leave administrators manage it once approved. */
+const LEAVE_ADMIN = ['timeoff.approve', 'leave.manage'] as const;
+const canManageLeave = (a: AuthContext) => LEAVE_ADMIN.some((p) => a.permissions.has(p));
+// Two weeks back, counted from local midnight anywhere in Canada.
+const PAST_LIMIT_MS = 15 * 86_400_000;
+
+/** Approved time off changed after the fact: ended early or cancelled (reason required, audited, the person told). */
+attendanceRouter.post(
+  '/time-off/:id/revise',
+  h(async (req, res) => {
+    const a = authOf(req);
+    if (!canManageLeave(a)) throw forbidden();
+    const id = uuid.parse(req.params.id);
+    const body = z.object({ action: z.enum(['END_EARLY', 'CANCEL']), endsAt: z.coerce.date().optional(), reason: z.string().trim().min(3).max(500) }).parse(req.body);
+    const out = await withTenant(a.tenantId, async (tx) => {
+      const r = await tx.timeOffRequest.findUnique({ where: { id }, select: { userId: true } });
+      if (r) await assertUserInScope(tx, a, r.userId);
+      return withEvents(tx, reviseTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, id, body));
+    });
+    dispatchSoon(a.tenantId);
+    res.json({ status: out.status, endsAt: out.endsAt, restoredShifts: out.restoredShifts, takenShifts: out.takenShifts });
+  }),
+);
+
+/**
+ * A supervisor or HR records time off for someone (they called in sick, or HR enters a leave): saved
+ * as approved by the person recording it, with the usual effects (shifts released to the board, the
+ * person told). Up to two weeks in the past.
+ */
+attendanceRouter.post(
+  '/users/:id/time-off',
+  h(async (req, res) => {
+    const a = authOf(req);
+    if (!canManageLeave(a)) throw forbidden();
+    const userId = uuid.parse(req.params.id);
+    const body = z.object({ type: timeOffType, startsAt: z.coerce.date(), endsAt: z.coerce.date(), note: z.string().trim().max(500).nullable().optional() }).parse(req.body);
+    if (userId === a.userId) throw new HttpError(403, 'OWN_REQUEST', 'You can’t approve your own time off. Request it on your Time off page.');
+    if (body.startsAt.getTime() < Date.now() - PAST_LIMIT_MS) throw new HttpError(400, 'TIME_OFF_TOO_OLD', 'Time off more than two weeks ago can’t be recorded here.');
+    const out = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
+      const person = await tx.user.findUnique({ where: { id: userId }, select: { status: true } });
+      if (!person || person.status !== 'ACTIVE') throw badRequest('They aren’t an active member of staff.');
+      await assertLeavePeriodOpen(tx, userId, body.startsAt, body.endsAt);
+      // Recorded, not requested: no "request waiting" notices to approvers.
+      const made = await requestTimeOff(tx, a.tenantId, userId, { ...body, note: body.note ?? null });
+      const decided = await withEvents(tx, decideTimeOff(tx, { userId: a.userId, tenantId: a.tenantId }, made.request.id, 'APPROVE', body.note ?? null));
+      return { id: made.request.id, reopenedShifts: decided.reopenedShifts };
+    });
+    dispatchSoon(a.tenantId);
+    res.status(201).json({ id: out.id, status: 'APPROVED', reopenedShifts: out.reopenedShifts });
   }),
 );
 
 attendanceRouter.get(
   '/time-off',
-  requirePermission('timeoff.approve'),
   h(async (req, res) => {
     const a = authOf(req);
+    if (!canManageLeave(a)) throw forbidden();
     const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'DENIED', 'CANCELLED']).default('PENDING'), team: teamQuery }).parse(req.query);
     const rows = await withTenant(a.tenantId, async (tx) => {
       const team = q.team ? await teamOf(tx, a.userId) : null;
       const list = await tx.timeOffRequest.findMany({
-        where: { status: q.status, user: peopleWhere(a.scope), ...(team ? { userId: { in: team } } : {}) },
+        // Approved: what is still to come or under way (to end early or cancel).
+        where: { status: q.status, ...(q.status === 'APPROVED' ? { endsAt: { gt: new Date() } } : {}), user: peopleWhere(a.scope), ...(team ? { userId: { in: team } } : {}) },
         include: { user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { startsAt: 'asc' },
         take: 200,

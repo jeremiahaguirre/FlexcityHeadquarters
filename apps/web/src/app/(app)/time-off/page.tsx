@@ -15,7 +15,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
-import { useAction, useQuery, todayIso } from '@/lib/useQuery';
+import { plusDays, useAction, useQuery, todayIso } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
 
 type Status = 'PENDING' | 'APPROVED' | 'DENIED' | 'CANCELLED';
@@ -46,6 +46,8 @@ export default function TimeOffPage() {
   const [type, setType] = useState<(typeof TYPES)[number]>('VACATION');
   const [partial, setPartial] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A sick day or protected leave can be entered afterwards (called in sick, opened the app the next day), up to two weeks back.
+  const earliest = type === 'SICK' || type === 'PROTECTED_LEAVE' ? plusDays(todayIso(), -14) : todayIso();
 
   const fmt = (iso: string) => dateFormat(lng, { weekday: 'short', month: 'short', day: 'numeric', ...(partial ? {} : {}) }).format(new Date(iso));
   const fmtRange = (r: Request) => {
@@ -141,8 +143,8 @@ export default function TimeOffPage() {
             {t('timeOff.partOfDay')}
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={partial ? t('timeOff.date') : t('timeOff.from')}>{(p) => <Input {...p} type="date" name="startDate" min={todayIso()} required />}</Field>
-            {partial ? null : <Field label={t('timeOff.to')}>{(p) => <Input {...p} type="date" name="endDate" min={todayIso()} />}</Field>}
+            <Field label={partial ? t('timeOff.date') : t('timeOff.from')}>{(p) => <Input {...p} type="date" name="startDate" min={earliest} required />}</Field>
+            {partial ? null : <Field label={t('timeOff.to')}>{(p) => <Input {...p} type="date" name="endDate" min={earliest} />}</Field>}
             {partial ? (
               <>
                 <Field label={t('timeOff.startTime')}>{(p) => <Input {...p} type="time" name="startTime" required />}</Field>
