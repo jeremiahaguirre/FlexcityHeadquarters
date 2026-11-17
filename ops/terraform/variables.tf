@@ -170,6 +170,12 @@ variable "site_waf_rate_limit" {
   default     = 2000
 }
 
+variable "ecr_continuous_scanning" {
+  description = "Re-scan pushed container images whenever a new vulnerability is published (Amazon Inspector enhanced scanning, charged per image). false: the free scan on push only."
+  type        = bool
+  default     = true
+}
+
 variable "alarm_email" {
   description = "Where infrastructure alarms are emailed (confirmed by the recipient)."
   type        = string

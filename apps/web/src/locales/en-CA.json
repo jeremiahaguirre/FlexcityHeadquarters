@@ -3853,7 +3853,13 @@
       "SANDED": "Sanded",
       "BRINE": "Brine",
       "HAZARD_REPORTED": "Hazard reported"
-    }
+    },
+    "notInPlan": "Not in your plan: add {{option}} in Billing.",
+    "editRoute": "Edit {{name}}",
+    "editRouteTitle": "Edit route",
+    "routeSaved": "Route saved",
+    "routeActive": "Patrolled",
+    "routeActiveHelp": "Untick when the road is no longer the city’s to patrol: it stops showing as due and its reminders stop. Its patrol records are kept."
   },
   "callOuts": {
     "title": "Storm call-outs",
@@ -4485,7 +4491,19 @@
     "licenceHint": "Only drivers holding it can inspect and take it.",
     "noLicence": "None",
     "yard": "Yard or facility",
-    "foot": "A vehicle is ready for 24 hours after a passing or minor inspection. Licences are certifications; add them to driving positions so the schedule checks them too."
+    "foot": "A vehicle is ready for 24 hours after a passing or minor inspection. Licences are certifications; add them to driving positions so the schedule checks them too.",
+    "saved": "Vehicle saved",
+    "inactive": "Retired",
+    "editTitle": "Edit {{unit}}",
+    "editOne": "Edit {{unit}}",
+    "retire": "Retire",
+    "retireOne": "Retire {{unit}}",
+    "retireTitle": "Retire {{unit}}?",
+    "retireHelp": "Drivers no longer see it for pre-trip inspections. Its inspection history stays, and you can bring it back.",
+    "retired": "Vehicle retired",
+    "reactivate": "Bring back",
+    "reactivateOne": "Bring {{unit}} back",
+    "reactivated": "Vehicle back in the fleet"
   },
   "injuries": {
     "title": "Injury reports",
