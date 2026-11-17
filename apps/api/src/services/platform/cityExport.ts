@@ -260,6 +260,12 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
 }
 
 /** Recorded after the download, in the organization's audit log. */
-export async function recordExport(tenantId: string, userId: string, result: { tables: number; rows: number; files: number }) {
-  await withTenant(tenantId, (tx) => audit(tx, { tenantId, actorId: userId, action: 'data.export', entity: 'Tenant', entityId: tenantId, after: result }));
+export async function recordExport(tenantId: string, userId: string, result: { tables: number; rows: number; files: number }, by?: string) {
+  await withTenant(tenantId, async (tx) => {
+    await audit(tx, { tenantId, actorId: userId, action: 'data.export', entity: 'Tenant', entityId: tenantId, after: result });
+    // The other HR administrators hear of it: the export holds every SIN and bank account (SEC-07).
+    if (by === undefined) return;
+    const admins = await tx.user.findMany({ where: { status: 'ACTIVE', roles: { has: 'HR_ADMIN' }, id: { not: userId } }, select: { email: true, locale: true } });
+    for (const ad of admins) await tx.emailOutbox.create({ data: { tenantId, toEmail: ad.email, template: 'data_exported', locale: ad.locale, params: { name: by } } });
+  });
 }

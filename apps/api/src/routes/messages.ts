@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { sendFile } from '../lib/files.js';
 import { MAX_TEXT, MESSAGING_DEFAULTS, SHIFT_ARCHIVE_LIMITS, readMessagingSettings } from '../services/messaging/policy.js';
@@ -277,6 +277,7 @@ messagesRouter.get(
   '/messages-admin/settings',
   requireFeature('messaging'),
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const t = await inMessaging(a, (tx) => tx.tenant.findFirstOrThrow({ select: { messagingSettings: true } }));
@@ -288,6 +289,7 @@ messagesRouter.put(
   '/messages-admin/settings',
   requireFeature('messaging'),
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = z.object({ staffDirect: z.boolean(), minorDirect: z.boolean(), pushPreview: z.boolean(), shiftArchiveHours: z.number().int().min(SHIFT_ARCHIVE_LIMITS[0]).max(SHIFT_ARCHIVE_LIMITS[1]) }).parse(req.body);

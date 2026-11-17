@@ -1,7 +1,7 @@
 /** An organization's own roles for non-aquatic jobs (water works, maintenance…). */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { CUSTOM_PERMISSION_NEEDS, CUSTOM_ROLE_PERMISSIONS, covers, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../services/people/customRoles.js';
 import { actorOf, assertUserInScope } from '../services/people/scope.js';
@@ -25,7 +25,7 @@ rolesRouter.get(
       needs: CUSTOM_PERMISSION_NEEDS,
       // What this person may put in a role: only capabilities they hold, inside their department.
       // null = anything (the organization's own administrators).
-      grantable: !actor ? [] : !a.scope && a.permissions.has('tenant.configure') ? null : [...a.permissions],
+      grantable: !actor ? [] : holdsForWholeOrganization(a, 'tenant.configure') ? null : [...a.permissions],
       scope: a.scope,
     });
   }),

@@ -1,7 +1,8 @@
 /** Full payroll in the app: salaries, one-time payments and deductions on a run, and court or CRA orders. */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { type AuthContext, authOf, holdsForWholeOrganization, requirePermission } from '../auth/middleware.js';
+import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { banks as lieuBanks, regularRate } from '../services/payroll/lieu.js';
@@ -16,8 +17,9 @@ const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const money = (max: number) => z.number().positive().max(max).multipleOf(0.01);
 type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
-const wholeCity = (scope: unknown) => {
-  if (scope) throw forbidden('Salaries and payroll orders are set by HR for the whole organization.');
+/** For the whole organization only: the route's capability must not come only from a department-limited role. */
+const wholeCity = (a: AuthContext, perm: Permission) => {
+  if (!holdsForWholeOrganization(a, perm)) throw forbidden('Salaries and payroll orders are set by HR for the whole organization.');
 };
 const person = async (tx: Tx, userId: string) => {
   if (!(await tx.user.findUnique({ where: { id: userId }, select: { id: true } }))) throw notFound('Person');
@@ -34,7 +36,7 @@ payrollFullRouter.get(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.export');
     const userId = uuid.parse(req.params.id);
     res.json((await withTenant(a.tenantId, (tx) => tx.salary.findMany({ where: { userId }, orderBy: { effectiveFrom: 'desc' } }))).map(salaryView));
   }),
@@ -46,7 +48,7 @@ payrollFullRouter.post(
   requirePermission('payroll.approve'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.approve');
     const userId = uuid.parse(req.params.id);
     const b = z.object({ positionId: uuid, annualAmount: money(10_000_000), weeklyHours: z.number().min(1).max(80).default(37.5), overtimeEligible: z.boolean().default(false), effectiveFrom: isoDate }).parse(req.body);
     const row = await withTenant(a.tenantId, async (tx) => {
@@ -70,7 +72,7 @@ payrollFullRouter.post(
   requirePermission('payroll.approve'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.approve');
     const userId = uuid.parse(req.params.id);
     const { lastDay } = z.object({ lastDay: isoDate }).parse(req.body);
     const n = await withTenant(a.tenantId, async (tx) => {
@@ -95,7 +97,7 @@ payrollFullRouter.get(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.export');
     const payRunId = uuid.parse(req.params.id);
     const rows = await withTenant(a.tenantId, (tx) => tx.payAdjustment.findMany({ where: { payRunId }, orderBy: { createdAt: 'asc' } }));
     res.json(rows.map((x) => ({ id: x.id, userId: x.userId, kind: x.kind, description: x.description, amount: Number(x.amount), hours: x.hours == null ? null : Number(x.hours), positionId: x.positionId })));
@@ -107,7 +109,7 @@ payrollFullRouter.post(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.export');
     const payRunId = uuid.parse(req.params.id);
     const b = z
       .object({ userId: uuid, kind: z.enum(ADJUSTMENT_KINDS), description: z.string().trim().min(2).max(120), amount: money(1_000_000).optional(), hours: z.number().positive().max(2000).optional(), positionId: uuid.nullable().optional() })
@@ -138,7 +140,7 @@ payrollFullRouter.delete(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.export');
     const payRunId = uuid.parse(req.params.id);
     const id = uuid.parse(req.params.adjustmentId);
     await payrollTx(a.tenantId, async (tx) => {
@@ -166,7 +168,7 @@ payrollFullRouter.get(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.export');
     const userId = uuid.parse(req.params.id);
     const out = await withTenant(a.tenantId, async (tx) => {
       const orders = await tx.payDeductionOrder.findMany({ where: { userId }, orderBy: { startsOn: 'desc' } });
@@ -184,7 +186,7 @@ payrollFullRouter.post(
   requirePermission('payroll.approve'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.approve');
     const userId = uuid.parse(req.params.id);
     const b = z
       .object({
@@ -216,7 +218,7 @@ payrollFullRouter.post(
   requirePermission('payroll.approve'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a.scope);
+    wholeCity(a, 'payroll.approve');
     const userId = uuid.parse(req.params.id);
     const id = uuid.parse(req.params.orderId);
     const { endsOn } = z.object({ endsOn: isoDate }).parse(req.body);

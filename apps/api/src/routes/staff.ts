@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
@@ -246,6 +246,7 @@ staffRouter.get(
 staffRouter.post(
   '/positions',
   requirePermission('positions.manage'),
+  requireWholeOrganization('positions.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = positionBody.parse(req.body);
@@ -262,6 +263,7 @@ staffRouter.post(
 staffRouter.put(
   '/positions/:id',
   requirePermission('positions.manage'),
+  requireWholeOrganization('positions.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);

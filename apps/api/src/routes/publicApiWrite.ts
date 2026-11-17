@@ -18,7 +18,7 @@
 import { type NextFunction, type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import type { EmploymentStatus, TimeOffType } from '../generated/prisma/client.js';
-import type { AuthContext } from '../auth/middleware.js';
+import { type AuthContext, accessOf, holdsForWholeOrganization } from '../auth/middleware.js';
 import { databaseConsume } from '../auth/rateLimit.js';
 import { rateLimited } from '../lib/metrics.js';
 import { actAsApiKey, audit, type Tx, withTenant } from '../lib/db.js';
@@ -26,13 +26,12 @@ import { HttpError, notFound } from '../lib/errors.js';
 import { dispatchSoon, withEvents } from '../lib/events.js';
 import { type ApiScope, SCOPE_PERMISSIONS } from '../services/integrations/apiKeys.js';
 import { type StoredAnswer, claimIdempotency, finishIdempotency, idempotencyKeyOf, releaseIdempotency, requestHash } from '../services/integrations/idempotency.js';
-import { customAccess, stillActive } from '../services/people/customRoles.js';
+import { stillActive } from '../services/people/customRoles.js';
 import { saveDepartment } from '../services/people/departmentAdmin.js';
 import { savePosition } from '../services/people/positionAdmin.js';
 import { OFFBOARD_REASONS, createPerson, startOffboarding, updatePerson } from '../services/people/staffAdmin.js';
 import { cancelTimeOff, decideTimeOff, requestTimeOff } from '../services/people/timeOff.js';
-import { tenantSettings, withoutDisabled } from '../services/platform/features.js';
-import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
+import { tenantSettings } from '../services/platform/features.js';
 import { DEPARTMENT_SELECT, type FieldError, PERSON_SELECT, POSITION_SELECT, TIME_OFF_SELECT, checkIfMatch, department, etagOf, invalid, need, person, position, sendProblem, timeOff, toProblem } from './publicApiShared.js';
 
 export const publicApiWriteRouter = Router();
@@ -61,11 +60,14 @@ async function keyActor(req: Request, scopes: ApiScope[]): Promise<AuthContext> 
   const k = req.apiKey!;
   const creator = await withTenant(k.tenantId, (tx) => tx.user.findUnique({ where: { id: k.createdById }, select: { id: true, roles: true } }));
   if (!creator || !(await stillActive(k.tenantId, creator.id))) throw new HttpError(403, 'KEY_OWNER_INACTIVE', 'The person who made this key no longer has access, so it can’t change data. Ask an administrator to make a new key.');
-  const [settings, custom] = await Promise.all([tenantSettings(k.tenantId), customAccess(k.tenantId, creator.id)]);
-  const permissions = withoutDisabled(new Set([...permissionsWithOverrides(creator.roles, settings.overrides), ...custom.perms]), settings.features);
+  const access = await accessOf(k.tenantId, creator.id, creator.roles);
+  if (!access) throw new HttpError(403, 'KEY_OWNER_INACTIVE', 'The person who made this key no longer has access, so it can’t change data. Ask an administrator to make a new key.');
   const scope = scopes.find((s) => k.scopes.includes(s))!;
-  if (!SCOPE_PERMISSIONS[scope].some((p) => permissions.has(p))) throw new HttpError(403, 'KEY_OWNER_LACKS_PERMISSION', `The person who made this key no longer has the access ${scope} needs, so the key can’t make this change.`, { scope });
-  return { userId: creator.id, tenantId: k.tenantId, roles: creator.roles, permissions, authenticatedAt: new Date(), mfa: true, mfaPending: false, scope: null };
+  if (!SCOPE_PERMISSIONS[scope].some((p) => access.permissions.has(p))) throw new HttpError(403, 'KEY_OWNER_LACKS_PERMISSION', `The person who made this key no longer has the access ${scope} needs, so the key can’t make this change.`, { scope });
+  // Keys write across the whole organization, so the maker must still hold that access for the
+  // whole organization, as when the key was made (integrations.ts mayGrant), not only for a department.
+  if (!SCOPE_PERMISSIONS[scope].some((p) => holdsForWholeOrganization(access, p))) throw new HttpError(403, 'KEY_OWNER_LIMITED', `The person who made this key now has ${scope} access for a department only, so the key can’t make organization-wide changes. Ask an administrator to make a new key.`, { scope });
+  return { ...access, authenticatedAt: new Date(), mfa: true, mfaPending: false, scope: null };
 }
 
 function send(res: Response, a: StoredAnswer) {

@@ -6,7 +6,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { conflict, forbidden, notFound } from '../lib/errors.js';
 import { ACCOUNT_KEYS, journalCsv, labourCost, payrollJournal, readAccounts } from '../services/payroll/journal.js';
@@ -31,7 +31,7 @@ accountingRouter.put(
   requirePermission('accounting.manage'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('The chart of accounts is set by HR and finance.');
+    if (!holdsForWholeOrganization(a, 'accounting.manage')) throw forbidden('The chart of accounts is set by HR and finance.');
     // Quebec accounts only matter for cities with Quebec staff; left out, they keep the defaults.
     const OPTIONAL = new Set<string>(['employerQpip', 'quebecPayable', 'reimbursements', 'ordersPayable', 'recoveries']);
     const parsed = z.object(Object.fromEntries(ACCOUNT_KEYS.map((k) => [k, OPTIONAL.has(k) ? z.string().trim().min(1).max(40).optional() : z.string().trim().min(1).max(40)]))).parse(req.body);
@@ -50,7 +50,7 @@ accountingRouter.put(
   requirePermission('accounting.manage'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('GL codes and budgets are set by HR and finance.');
+    if (!holdsForWholeOrganization(a, 'accounting.manage')) throw forbidden('GL codes and budgets are set by HR and finance.');
     const id = uuid.parse(req.params.id);
     const b = z.object({ glCode: z.string().trim().max(40).nullable(), labourBudget: z.number().min(0).max(1_000_000_000).nullable() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
@@ -68,7 +68,7 @@ accountingRouter.get(
   requirePermission('accounting.manage'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Journal entries are for HR and finance.');
+    if (!holdsForWholeOrganization(a, 'accounting.manage')) throw forbidden('Journal entries are for HR and finance.');
     const runId = uuid.parse(String(req.params.runId).replace(/\.csv$/, ''));
     const j = await withTenant(a.tenantId, async (tx) => {
       const run = await tx.payRun.findUnique({ where: { id: runId } });

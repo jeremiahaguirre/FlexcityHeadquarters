@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission } from '../auth/middleware.js';
+import { authOf, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import type { Tx } from '../lib/db.js';
 import { audit, withTenant } from '../lib/db.js';
 import { conflict, notFound } from '../lib/errors.js';
@@ -69,6 +69,7 @@ policiesRouter.post(
 policiesRouter.get(
   '/policies',
   requirePermission('policies.manage'),
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     res.json(
@@ -97,6 +98,7 @@ async function publish(tx: Tx, tenantId: string, actorId: string, b: z.infer<typ
 policiesRouter.post(
   '/policies',
   requirePermission('policies.manage'),
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = draft.parse(req.body);
@@ -109,6 +111,7 @@ policiesRouter.post(
 policiesRouter.post(
   '/policies/:id/revise',
   requirePermission('policies.manage'),
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -125,6 +128,7 @@ policiesRouter.post(
 policiesRouter.post(
   '/policies/:id/retire',
   requirePermission('policies.manage'),
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -141,6 +145,7 @@ policiesRouter.post(
 policiesRouter.get(
   '/policies/:id/status',
   requirePermission('policies.manage'),
+  requireWholeOrganization('policies.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);

@@ -9,7 +9,7 @@ import type { Tx } from '../../lib/db.js';
 import { forbidden, notFound } from '../../lib/errors.js';
 import type { RoleActor, Scope } from './customRoles.js';
 
-export const actorOf = (a: AuthContext): RoleActor => ({ permissions: a.permissions, scope: a.scope });
+export const actorOf = (a: AuthContext): RoleActor => ({ permissions: a.permissions, scope: a.scope, wholeOrg: a.wholeOrg });
 
 /** No limit on people: unscoped, or a scope with neither positions nor facilities. */
 const everyone = (s: Scope) => !s || (!s.positionIds.length && !s.facilityIds.length);

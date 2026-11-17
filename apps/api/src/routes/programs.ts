@@ -7,9 +7,11 @@
 import type { LessonClass } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { type AuthContext, authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
+import type { NextFunction, Request, Response } from 'express';
+import { assertShiftInScope } from '../services/people/scope.js';
 import { audit, withTenant } from '../lib/db.js';
-import { conflict, invalid, notFound } from '../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../lib/errors.js';
 import { sessionDates } from '../services/lessons/lessons.js';
 import { PRESETS } from '../services/programs/levels.js';
 import { h } from './context.js';
@@ -21,6 +23,21 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const anyOf = (...perms: Parameters<typeof requirePermission>) => (req: Parameters<ReturnType<typeof requirePermission>>[0], _res: unknown, next: (e?: unknown) => void) =>
   perms.some((p) => req.auth?.permissions.has(p)) ? next() : next(notFound('Page'));
+/**
+ * A planner limited to a department or facility, outside member services (a head lifeguard in a
+ * city with departments): campaigns are the organization's, so they change only the sets at their
+ * own facilities and positions (SEC-29). Member services and whole-organization planners change all.
+ */
+const limitedPlanner = (a: AuthContext) => !a.permissions.has('members.manage') && !holdsForWholeOrganization(a, 'lessons.plan');
+/** Route guard for campaign and level changes, built like requireWholeOrganization. */
+const campaignPlanner = () => (req: Request, _res: Response, next: NextFunction) => {
+  if (!req.auth) return next(new HttpError(401, 'UNAUTHENTICATED', 'Not signed in'));
+  next(limitedPlanner(req.auth) ? new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'Campaigns are set for the whole organization; you can change the sets at your own facility.') : undefined);
+};
+const campaignWrite = campaignPlanner();
+const assertSetInScope = (a: AuthContext, set: { facilityId: string; positionId: string }) => {
+  if (limitedPlanner(a)) assertShiftInScope(a, set);
+};
 
 // -------------------------------------------------------------- Swim levels
 const levelBody = z.object({
@@ -49,6 +66,7 @@ programsRouter.get(
 programsRouter.post(
   '/swim-levels/presets',
   requirePermission('lessons.plan'),
+  campaignWrite,
   h(async (req, res) => {
     const a = authOf(req);
     const { preset, advanced } = z.object({ preset: z.enum(['LIFESAVING', 'YMCA', 'CANSKATE']), advanced: z.boolean().default(false) }).parse(req.body);
@@ -84,6 +102,7 @@ programsRouter.get(
 programsRouter.post(
   '/swim-levels',
   requirePermission('lessons.plan'),
+  campaignWrite,
   h(async (req, res) => {
     const a = authOf(req);
     const b = levelBody.parse(req.body);
@@ -95,6 +114,7 @@ programsRouter.post(
 programsRouter.patch(
   '/swim-levels/:id',
   requirePermission('lessons.plan'),
+  campaignWrite,
   h(async (req, res) => {
     const a = authOf(req);
     const b = levelBody.partial().parse(req.body);
@@ -199,6 +219,7 @@ programsRouter.get(
 programsRouter.post(
   '/campaigns',
   requirePermission('lessons.plan'),
+  campaignWrite,
   h(async (req, res) => {
     const a = authOf(req);
     const b = campaignBody.parse(req.body);
@@ -215,6 +236,7 @@ programsRouter.post(
 programsRouter.patch(
   '/campaigns/:id',
   requirePermission('lessons.plan'),
+  campaignWrite,
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -236,6 +258,7 @@ for (const action of ['publish', 'close', 'reopen'] as const)
 programsRouter.post(
   `/campaigns/:id/${action}`,
   requirePermission('lessons.plan'),
+  campaignWrite,
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -282,6 +305,7 @@ programsRouter.post(
     const b = setBody.parse(req.body);
     if (b.endMinute <= b.startMinute) throw invalid('ENDS_BEFORE_START', 'A set must end after it starts.');
     if (b.endsOn < b.startsOn) throw invalid('ENDS_BEFORE_START', 'The last day must be after the first.');
+    assertSetInScope(a, b);
     const s = await withTenant(a.tenantId, async (tx) => {
       const c = await tx.lessonCampaign.findUnique({ where: { id: campaignId } });
       if (!c) throw notFound('Campaign');
@@ -330,6 +354,8 @@ programsRouter.patch(
     await withTenant(a.tenantId, async (tx) => {
       const s = await tx.lessonClass.findFirst({ where: { id: setId, campaignId: uuid.parse(req.params.id) } });
       if (!s) throw notFound('Set');
+      assertSetInScope(a, s);
+      assertSetInScope(a, { facilityId: b.facilityId ?? s.facilityId, positionId: b.positionId ?? s.positionId });
       const { capacity, daysOfWeek, startsOn, endsOn, name, ...rest } = b;
       if (capacity !== undefined && capacity < (await tx.lessonEnrollment.count({ where: { classId: setId, status: 'ENROLLED' } }))) throw conflict('BELOW_ENROLLED', 'More people are already registered than that.');
       await tx.lessonClass.update({
@@ -351,6 +377,7 @@ programsRouter.delete(
     await withTenant(a.tenantId, async (tx) => {
       const s = await tx.lessonClass.findFirst({ where: { id: setId, campaignId: uuid.parse(req.params.id) } });
       if (!s) throw notFound('Set');
+      assertSetInScope(a, s);
       if (await tx.lessonEnrollment.count({ where: { classId: setId } })) throw conflict('HAS_REGISTRATIONS', 'People are registered in this set. Cancel their registrations first.');
       await tx.lessonClass.delete({ where: { id: setId } });
     });
