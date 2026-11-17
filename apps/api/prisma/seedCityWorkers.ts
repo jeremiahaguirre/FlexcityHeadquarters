@@ -18,7 +18,7 @@ export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, pa
       name: 'Water Works Operator',
       nameFr: 'Opérateur, aqueduc',
       description: 'Plant and distribution crew',
-      permissions: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'shiftboard.claim', 'shiftboard.post'],
+      permissions: ['schedule.read', 'shifts.self', 'timeclock.punch', 'pay.self', 'timeoff.self', 'availability.self', 'shiftboard.claim', 'shiftboard.post'],
     },
   });
   const lead = await prisma.customRole.create({
@@ -27,7 +27,7 @@ export async function seedCityWorkers(prisma: PrismaClient, tenantId: string, pa
       name: 'Maintenance Lead',
       nameFr: 'Chef d’équipe, entretien',
       description: 'Leads the facilities maintenance crew',
-      permissions: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'users.read', 'schedule.write', 'timeoff.approve', 'timeclock.review'],
+      permissions: ['schedule.read', 'shifts.self', 'timeclock.punch', 'pay.self', 'timeoff.self', 'availability.self', 'users.read', 'schedule.write', 'timeoff.approve', 'timeclock.review'],
     },
   });
   for (const p of [

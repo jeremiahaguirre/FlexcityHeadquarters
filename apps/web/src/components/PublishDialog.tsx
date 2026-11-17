@@ -14,6 +14,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ApiError, api } from '@/lib/api';
 import { formatDate, formatTimeRange } from '@/lib/format';
+import { errorText } from '@/lib/apiError';
 
 export interface PublishGroup { facilityId: string; from: string; to: string; shiftIds: string[]; timezone: string }
 interface Gap { ruleId: string; rule: string; date: string; from: string; to: string; have: number; need: number; localFrom?: string; localTo?: string }
@@ -66,7 +67,7 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
         }
         if (live) setCheck(all);
       } catch (e) {
-        if (live) setError(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'));
+        if (live) setError(errorText(t, e));
       }
     })();
     return () => {
@@ -92,7 +93,7 @@ export function PublishDialog({ open, groups, onClose, onPublished }: { open: bo
       }
       onPublished({ published, posted });
     } catch (e) {
-      setError(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'));
+      setError(errorText(t, e));
     } finally {
       setBusy(false);
     }

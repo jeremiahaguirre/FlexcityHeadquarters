@@ -38,4 +38,12 @@ describe('the app’s database pool (pg driver adapter)', () => {
   it('refuses a URL in Prisma’s TLS spelling (pg would read its sslcert as a client certificate)', () => {
     expect(() => poolConfig('postgresql://a:b@h/d?sslmode=require&sslcert=/x.pem&sslaccept=strict')).toThrow('libpq form');
   });
+
+  it('refuses Prisma 5 parameters pg would silently ignore, rather than dropping them', () => {
+    for (const k of ['connect_timeout=5', 'schema=other', 'pgbouncer=true', 'statement_cache_size=0', 'socket_timeout=30']) {
+      expect(() => poolConfig(`postgresql://a:b@h/d?${k}`), k).toThrow(`would ignore: ${k.split('=')[0]}`);
+    }
+    // connect_timeout no longer stands in for the pool wait: only pool_timeout or the configured value do.
+    expect(poolConfig('postgresql://a:b@h/d', { poolTimeoutS: 20 }).connectionTimeoutMillis).toBe(20_000);
+  });
 });
