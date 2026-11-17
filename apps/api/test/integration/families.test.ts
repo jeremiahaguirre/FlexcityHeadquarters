@@ -24,6 +24,7 @@ const monday = (() => {
 const plus = (iso: string, days: number) => new Date(new Date(`${iso}T12:00:00Z`).getTime() + days * 86_400_000).toISOString().slice(0, 10);
 let householdId: string;
 let setId: string;
+let campaign: string;
 
 beforeAll(async () => {
   t = await seedTenant(SUB, 0);
@@ -34,6 +35,7 @@ beforeAll(async () => {
   tok.head = await mk(['HEAD_LIFEGUARD'], 'head');
   tok.desk = await mk(['FRONT_DESK'], 'desk');
   const c = (await call(tok.head).post('/api/campaigns', { name: 'Fall lessons', kind: 'LESSONS', startsOn: monday, endsOn: plus(monday, 30) })).body.id;
+  campaign = c;
   setId = (await call(tok.head).post(`/api/campaigns/${c}/sets`, { facilityId: t.facility.id, positionId: t.position.id, daysOfWeek: [1], startMinute: 1020, endMinute: 1050, startsOn: monday, endsOn: plus(monday, 28), capacity: 1, priceCents: 9500 })).body.id;
   await call(tok.head).post(`/api/campaigns/${c}/publish`);
   householdId = (await call(tok.desk).post('/api/households', { name: 'Okafor', members: [{ role: 'GUARDIAN', firstName: 'Ada', lastName: 'Okafor', phone: '250-555-0101' }, { role: 'CHILD', firstName: 'Chidi', lastName: 'Okafor', dateOfBirth: '2019-03-01' }] })).body.id;
@@ -64,6 +66,19 @@ describe('a family’s file after it is made', () => {
     expect(roster).toEqual([expect.objectContaining({ swimmerName: 'Chidi Okafor', safetyNote: 'Peanut allergy: EpiPen in bag' })]);
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: { in: ['member.create', 'member.update'] } } })).toBe(2);
   });
+
+  it('the log names only what changed, though the form sends every field', async () => {
+    const ada = (await call(tok.desk).get(`/api/households/${householdId}`)).body.members.find((m: { firstName: string }) => m.firstName === 'Ada');
+    const form = { role: 'GUARDIAN', firstName: 'Ada', lastName: 'Okafor', dateOfBirth: ada.dateOfBirth, phone: '250-555-0199', email: ada.email, safetyNote: ada.safetyNote, photoConsent: ada.photoConsent };
+    expect((await call(tok.desk).patch(`/api/households/${householdId}/members/${ada.id}`, form)).status).toBe(200);
+    const last = await owner.auditLog.findFirstOrThrow({ where: { tenantId: t.tenant.id, action: 'member.update', entityId: ada.id }, orderBy: { at: 'desc' } });
+    expect(last.after).toEqual({ fields: ['phone'] });
+  });
+
+  it('a family keeps a parent, guardian or adult', async () => {
+    const ada = (await call(tok.desk).get(`/api/households/${householdId}`)).body.members.find((m: { firstName: string }) => m.firstName === 'Ada');
+    expect((await call(tok.desk).patch(`/api/households/${householdId}/members/${ada.id}`, { role: 'CHILD' })).body.code).toBe('NEEDS_GUARDIAN');
+  });
 });
 
 describe('spots with no payment on file', () => {
@@ -84,5 +99,36 @@ describe('spots with no payment on file', () => {
     // Paid desk registrations leave the list; it stays about what is owed.
     expect((await call(tok.desk).get('/api/online-registrations')).body.map((r: { id: string }) => r.id)).not.toContain(waiting.body.id);
     expect((await call(tok.desk).post(`/api/online-registrations/${waiting.body.id}/pay`, { paymentMethod: 'CASH' })).body.code).toBe('ALREADY_PAID');
+    // Its sale reads as a desk payment, not an online one.
+    expect((await owner.sale.findFirstOrThrow({ where: { enrollmentId: waiting.body.id } })).description).toBe('L: Fall lessons');
+  });
+
+  it('two desks paying the same spot at once charge it once', async () => {
+    const fam = (await call(tok.desk).post('/api/households', { name: 'Haddad', members: [{ role: 'GUARDIAN', firstName: 'Rami', lastName: 'Haddad' }, { role: 'CHILD', firstName: 'Lina', lastName: 'Haddad', dateOfBirth: '2018-01-01' }] })).body.id;
+    const lina = (await call(tok.desk).get(`/api/households/${fam}`)).body.members.find((m: { firstName: string }) => m.firstName === 'Lina').id;
+    const other = (await call(tok.head).post(`/api/campaigns/${campaign}/sets`, { facilityId: t.facility.id, positionId: t.position.id, daysOfWeek: [3], startMinute: 1020, endMinute: 1050, startsOn: plus(monday, 2), endsOn: plus(monday, 23), capacity: 1, priceCents: 9000 })).body.id;
+    // Moved off the waitlist: registered at the desk without payment.
+    const e = await owner.lessonEnrollment.create({ data: { tenantId: t.tenant.id, classId: other, memberId: lina, householdId: fam, swimmerName: 'Lina Haddad', status: 'ENROLLED', active: true, priceCents: 9000 } });
+    const both = await Promise.all([1, 2].map(() => call(tok.desk).post(`/api/online-registrations/${e.id}/pay`, { paymentMethod: 'DEBIT' })));
+    expect(both.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(await owner.sale.count({ where: { enrollmentId: e.id } })).toBe(1);
+  });
+
+  it('an old unpaid spot stays listed behind hundreds of paid ones', async () => {
+    const fam = (await call(tok.desk).post('/api/households', { name: 'Martin', members: [{ role: 'GUARDIAN', firstName: 'Paul', lastName: 'Martin' }, { role: 'CHILD', firstName: 'Lou', lastName: 'Martin', dateOfBirth: '2018-01-01' }] })).body.id;
+    const lou = (await call(tok.desk).get(`/api/households/${fam}`)).body.members.find((m: { firstName: string }) => m.firstName === 'Lou').id;
+    const old = await owner.lessonEnrollment.create({ data: { tenantId: t.tenant.id, classId: setId, memberId: lou, householdId: fam, swimmerName: 'Lou Martin', status: 'ENROLLED', active: true, priceCents: 9500, createdAt: new Date('2026-01-01') } });
+    const many = Array.from({ length: 520 }, (_, i) => ({ id: crypto.randomUUID(), tenantId: t.tenant.id, classId: setId, memberId: lou, householdId: fam, swimmerName: `Paid ${i}`, status: 'ENROLLED' as const, active: true, priceCents: 9500 }));
+    await owner.lessonEnrollment.createMany({ data: many });
+    const desk = await owner.user.findFirstOrThrow({ where: { tenantId: t.tenant.id, email: 'desk@families.test' } });
+    await owner.sale.createMany({ data: many.map((e) => ({ tenantId: t.tenant.id, householdId: fam, memberId: lou, enrollmentId: e.id, facilityId: t.facility.id, description: 'L: x', priceCents: 9500, paymentMethod: 'CASH', soldById: desk.id })) });
+    expect((await call(tok.desk).get('/api/online-registrations')).body.map((r: { id: string }) => r.id)).toContain(old.id);
+  });
+
+  it('an instructor’s class-list entry (no family, no price) is never owed and can’t be charged', async () => {
+    const entry = await owner.lessonEnrollment.create({ data: { tenantId: t.tenant.id, classId: setId, swimmerName: 'Walk-in Kid', status: 'ENROLLED', active: true } });
+    expect((await call(tok.desk).get('/api/online-registrations')).body.map((r: { id: string }) => r.id)).not.toContain(entry.id);
+    expect((await call(tok.desk).post(`/api/online-registrations/${entry.id}/pay`, { paymentMethod: 'CASH' })).body.code).toBe('NOT_PAYABLE');
+    expect(await owner.sale.count({ where: { enrollmentId: entry.id } })).toBe(0);
   });
 });

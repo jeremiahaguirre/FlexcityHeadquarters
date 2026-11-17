@@ -168,9 +168,20 @@ membersRouter.patch(
     await withTenant(a.tenantId, async (tx) => {
       const m = await tx.member.findFirst({ where: { id: uuid.parse(req.params.memberId), householdId: uuid.parse(req.params.id) } });
       if (!m) throw notFound('Member');
+      // A family always keeps a parent, guardian or adult.
+      if (b.role === 'CHILD' && m.role !== 'CHILD' && !(await tx.member.count({ where: { householdId: m.householdId, id: { not: m.id }, role: { not: 'CHILD' } } }))) {
+        throw new HttpError(400, 'NEEDS_GUARDIAN', 'Add at least one parent, guardian or adult.');
+      }
       await tx.member.update({ where: { id: m.id }, data: memberData(b) });
-      // Children's details and health notes: what changed is on record (not the values).
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'member.update', entity: 'Member', entityId: m.id, after: { fields: Object.keys(b) } });
+      // Children's details and health notes: which fields really changed is on record (not the values).
+      const now = { ...m, ...memberData(b) } as Record<string, unknown>;
+      const same = (k: string) => {
+        const was = (m as Record<string, unknown>)[k];
+        const is = now[k];
+        return (was instanceof Date ? was.toISOString().slice(0, 10) : was ?? null) === (is instanceof Date ? is.toISOString().slice(0, 10) : is ?? null);
+      };
+      const fields = Object.keys(b).filter((k) => !same(k));
+      if (fields.length) await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'member.update', entity: 'Member', entityId: m.id, after: { fields } });
       // The instructor's list shows the latest safety note.
       if (b.safetyNote !== undefined) await tx.lessonEnrollment.updateMany({ where: { memberId: m.id, active: true }, data: { safetyNote: b.safetyNote } });
     });
