@@ -49,8 +49,9 @@ output "private_subnets" {
   value = aws_subnet.private[*].id
 }
 
-output "app_security_group" {
-  value = aws_security_group.app.id
+# For one-off tasks (migrations, database roles, platform:admin, tenant:purge): the database and HTTPS only.
+output "jobs_security_group" {
+  value = aws_security_group.jobs.id
 }
 
 output "db_roles_task_definition" {

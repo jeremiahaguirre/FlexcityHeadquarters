@@ -2600,7 +2600,8 @@
       "policies.manage": "Publier des politiques à lire et à signer",
       "payroll.approve": "Verser les paies et les dépôts",
       "benefits.manage": "Régimes d’avantages sociaux et adhésions",
-      "leave.manage": "Droits et soldes de congés"
+      "leave.manage": "Droits et soldes de congés",
+      "pay.self": "Voir sa propre paie (Ma paie)"
     },
     "limits": "Vous pouvez seulement donner à un rôle ce que vous pouvez faire vous-même, dans votre propre service.",
     "anything": "Les capacités de supervision suivent le service du rôle : les personnes qui occupent ses postes et les quarts dans ses installations. L’espace syndical n’est pas offert; il suit l’adhésion syndicale.",
@@ -2616,7 +2617,8 @@
     "departmentHelp": "Laissez vide pour toute l’organisation. Sinon, les capacités de responsable et de gestionnaire de ce rôle ne s’appliquent qu’aux personnes de ces postes et aux quarts de ces installations.",
     "scopePositions": "Postes",
     "scopeFacilities": "Installations",
-    "scopeDepartments": "Services (comprend les postes ajoutés plus tard)"
+    "scopeDepartments": "Services (comprend les postes ajoutés plus tard)",
+    "neededBy": "Requis par : {{what}}"
   },
   "headcount": {
     "title": "Dénombrement",

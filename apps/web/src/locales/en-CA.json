@@ -2600,7 +2600,8 @@
       "policies.manage": "Publish policies to read and sign",
       "payroll.approve": "Release pay runs and deposits",
       "benefits.manage": "Benefit plans and enrolments",
-      "leave.manage": "Leave entitlements and balances"
+      "leave.manage": "Leave entitlements and balances",
+      "pay.self": "See their own pay (My pay)"
     },
     "limits": "You can give a role only what you can do yourself, within your own department.",
     "anything": "Supervisory capabilities follow a role’s department: people holding its positions, and shifts at its facilities. The union hub isn’t offered; it follows union membership.",
@@ -2616,7 +2617,8 @@
     "departmentHelp": "Leave empty for the whole organization. Otherwise, this role’s lead and manager capabilities reach only people in these positions, and shifts at these facilities.",
     "scopePositions": "Positions",
     "scopeFacilities": "Facilities",
-    "scopeDepartments": "Departments (includes positions added later)"
+    "scopeDepartments": "Departments (includes positions added later)",
+    "neededBy": "Needed by: {{what}}"
   },
   "headcount": {
     "title": "Headcount",
