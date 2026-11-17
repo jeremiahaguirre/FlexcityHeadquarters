@@ -13,7 +13,7 @@ import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import type { AuthContext } from '../../auth/middleware.js';
 import { permissionsFor } from '../../auth/permissions.js';
 import { audit, type Tx } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { forgetActive, setUserCustomRoles } from './customRoles.js';
 import { setManagers, setReportsOf } from './reporting.js';
 import { actorOf } from './scope.js';
@@ -134,7 +134,7 @@ export interface PersonChange {
 export async function updatePerson(tx: Tx, a: AuthContext, id: string, change: PersonChange) {
   const { customRoleIds, positionIds, managerId, ...body } = change;
   if (body.roles) {
-    if (id === a.userId && !body.roles.includes('HR_ADMIN') && a.roles.includes('HR_ADMIN')) throw badRequest('You cannot remove your own HR administrator role.');
+    if (id === a.userId && !body.roles.includes('HR_ADMIN') && a.roles.includes('HR_ADMIN')) throw invalid('OWN_HR_ROLE', 'You cannot remove your own HR administrator role.');
     // Keeping your own roles exactly as they are is fine; changing them isn't.
     if (!(id === a.userId && [...body.roles].sort().join() === [...a.roles].sort().join())) assertCanGrant(a, body.roles, id);
   }

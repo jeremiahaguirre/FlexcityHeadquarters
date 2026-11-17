@@ -8,10 +8,9 @@
 #
 # The marketing site (apps/site) is a static export served from S3, not a container.
 # Base image pinned by digest: Node 26 (the version package.json requires), Debian bookworm slim.
+# Written straight into FROM (not through an ARG) so Dependabot's docker updates can read and bump it.
 
-ARG NODE_IMAGE=node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6ac731d30470e7ea7f98f9bfc3a6e1034fe
-
-FROM ${NODE_IMAGE} AS base
+FROM node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6ac731d30470e7ea7f98f9bfc3a6e1034fe AS base
 # Prisma's schema engine (migrations, the migrate image) needs OpenSSL; ca-certificates for TLS to RDS,
 # Twilio and the rest. The API itself has no Prisma engine binary since Prisma 7 (queries go through pg).
 RUN dpkg -s openssl ca-certificates >/dev/null 2>&1 || (apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*)
@@ -71,7 +70,8 @@ COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/
 RUN npm ci --workspace apps/web --include-workspace-root
 COPY apps/web apps/web
-# The static demo's staff-import preview reuses the API's own parser (apps/web/src/lib/demoApi.ts).
+# Only for next build's type check of demoApi.ts (the demo's staff-import preview reuses the API's
+# parser). The live build replaces demoApi.ts with src/lib/stubs/demoApi.ts, so none of this is bundled.
 COPY apps/api/src/services/platform/staffImport.ts apps/api/src/services/platform/staffImport.ts
 RUN cd apps/web && npx next build
 

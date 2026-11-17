@@ -30,8 +30,9 @@ function answer(err: unknown) {
 describe('overload answers', () => {
   it('pool timeouts, transactions that could not start and an unreachable database are 503 BUSY with Retry-After', () => {
     for (const err of [known('P2024'), known('P2028', 'Transaction API error: Unable to start a transaction in the given time.'), known('P1001'), known('P1017'), new Prisma.PrismaClientInitializationError("Can't reach database server at `db:5432`", '5.22.0'),
-      // Prisma 7 (pg driver adapter): pg-pool's wait timeout, and a raw query to an unreachable server.
-      new Error('timeout exceeded when trying to connect'), known('P2010', "Raw query failed. Code: `N/A`. Message: `Can't reach database server at 127.0.0.1:5432`")]) {
+      // Prisma 7 (pg driver adapter): pg-pool's wait timeout, a new connection that hangs while opening,
+      // and a raw query to an unreachable server.
+      new Error('timeout exceeded when trying to connect'), new Error('Connection terminated due to connection timeout'), known('P2010', "Raw query failed. Code: `N/A`. Message: `Can't reach database server at 127.0.0.1:5432`")]) {
       expect(isOverload(err)).toBe(true);
       const a = answer(err);
       expect(a.status).toBe(503);
@@ -43,7 +44,7 @@ describe('overload answers', () => {
 
   it('other database errors and bugs stay 500 INTERNAL', () => {
     for (const err of [known('P2002'), known('P2028', 'Transaction already closed'), new Prisma.PrismaClientInitializationError('Authentication failed against database server, the provided database credentials for `flexcity_app` are not valid.', '5.22.0', 'P1000'), new Error('bug'),
-      known('P1000'), known('P2010', 'Raw query failed. Code: `28P01`. Message: `password authentication failed for user "flexcity_app"`'), new Error('timeout exceeded')]) {
+      known('P1000'), known('P2010', 'Raw query failed. Code: `28P01`. Message: `password authentication failed for user "flexcity_app"`'), new Error('timeout exceeded'), new Error('Connection terminated unexpectedly')]) {
       expect(isOverload(err)).toBe(false);
       const a = answer(err);
       expect(a.status).toBe(500);

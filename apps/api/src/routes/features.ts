@@ -11,7 +11,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, forbidden, invalid, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localDate, localIso } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
@@ -296,7 +296,7 @@ api.post(
       .refine((b) => b.facilityId || b.facilityIds?.length, { message: 'Choose at least one facility.' })
       .parse(req.body);
     const facilityIds = [...new Set([...(body.facilityIds ?? []), ...(body.facilityId ? [body.facilityId] : [])])];
-    if (body.to <= body.from) throw badRequest('`to` must be after `from`');
+    if (body.to <= body.from) throw invalid('ENDS_BEFORE_START', '`to` must be after `from`');
 
     const out = await withTenant(a.tenantId, async (tx) => {
       const facilities = await tx.facility.findMany({ where: { id: { in: facilityIds } }, include: { tenant: true } });

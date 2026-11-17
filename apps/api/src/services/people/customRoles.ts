@@ -17,7 +17,7 @@ import { sharedForget } from '../../lib/cacheBus.js';
 import { singleFlight } from '../../lib/singleFlight.js';
 
 export const CUSTOM_ROLE_PERMISSIONS = {
-  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'timeoff.self', 'availability.self', 'preferences.self', 'bidding.bid', 'lonework.self', 'expenses.self', 'logbook.write'],
+  everyday: ['schedule.read', 'shifts.self', 'timeclock.punch', 'pay.self', 'timeoff.self', 'availability.self', 'preferences.self', 'bidding.bid', 'lonework.self', 'expenses.self', 'logbook.write'],
   shiftBoard: ['shiftboard.claim', 'shiftboard.post'],
   safety: ['incidents.create', 'ops.headcount.record'],
   memberServices: ['members.manage', 'lessons.plan', 'fees.manage', 'bookings.manage'],
@@ -30,6 +30,20 @@ export const CUSTOM_ROLE_PERMISSIONS = {
 } as const satisfies Record<string, readonly Permission[]>;
 
 export const ALLOWED_CUSTOM_PERMISSIONS: ReadonlySet<Permission> = new Set(Object.values(CUSTOM_ROLE_PERMISSIONS).flat());
+
+/**
+ * Capabilities whose screen can't work without another (each picks people from the
+ * staff list): a role is saved with both, so its menu item never opens on a page
+ * that can't load, and the role shows everything it grants. The editor ticks them
+ * together; a migration brought roles saved before this rule into line.
+ */
+export const CUSTOM_PERMISSION_NEEDS: Partial<Record<Permission, Permission[]>> = {
+  'roles.manage': ['users.read'],
+  'performance.manage': ['users.read'],
+  'grievances.manage': ['users.read'],
+  'users.write': ['users.read'],
+};
+export const withNeeds = (perms: readonly Permission[]): Permission[] => [...new Set(perms.flatMap((p) => [p, ...(CUSTOM_PERMISSION_NEEDS[p] ?? [])]))];
 export const isAllowedCustomPermission = (p: string): p is Permission => ALLOWED_CUSTOM_PERMISSIONS.has(p as Permission);
 
 /** Capabilities that act on other people or their shifts: these follow a role's department. */
@@ -180,6 +194,8 @@ export function effective(role: StoredRole, departments: Map<string, string[]>) 
 export async function saveCustomRole(tx: Tx, tenantId: string, id: string | null, body: CustomRoleInput, actor: RoleActor | null = null) {
   const bad = body.permissions.filter((p) => !isAllowedCustomPermission(p));
   if (bad.length) throw new HttpError(400, 'PERMISSION_NOT_ALLOWED', `A custom role can't include: ${bad.join(', ')}.`, { permissions: bad });
+  // Saved with what each capability needs, and checked as saved: the giver must hold those too.
+  body = { ...body, permissions: withNeeds(body.permissions as Permission[]) };
   const scopePositionIds = [...new Set(body.scopePositionIds ?? [])];
   const scopeFacilityIds = [...new Set(body.scopeFacilityIds ?? [])];
   const scopeDepartmentIds = [...new Set(body.scopeDepartmentIds ?? [])];
