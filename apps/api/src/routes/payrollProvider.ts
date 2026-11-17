@@ -2,7 +2,8 @@
 import { createHash } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { type AuthContext, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { type AuthContext, authOf, holdsForWholeOrganization, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, forbidden } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
@@ -15,8 +16,9 @@ export const payrollProviderRouter = Router();
 type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
 const settingsOf = async (tx: Tx) => readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings);
 const save = (tx: Tx, tenantId: string, s: PayrollSettings) => tx.tenant.update({ where: { id: tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify(s)) } });
-const wholeCity = (a: AuthContext) => {
-  if (a.scope) throw forbidden('The payroll provider is set for the whole organization, by HR.');
+/** For the whole organization only: the route's capability must not come only from a department-limited role. */
+const wholeCity = (a: AuthContext, perm: Permission) => {
+  if (!holdsForWholeOrganization(a, perm)) throw forbidden('The payroll provider is set for the whole organization, by HR.');
 };
 const passkey = (a: AuthContext, s: PayrollSettings) => {
   if (s.requirePasskey !== false && !a.mfa) throw new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey to change how pay is sent.');
@@ -28,7 +30,7 @@ payrollProviderRouter.get(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const out = await withTenant(a.tenantId, async (tx) => ({
       settings: await settingsOf(tx),
       history: await tx.payrollSync.findMany({ orderBy: { createdAt: 'desc' }, take: 30 }),
@@ -46,7 +48,7 @@ payrollProviderRouter.put(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.approve');
     const { mode } = z.object({ mode: z.enum(['in_app', ...PROVIDERS]) }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
       const s = await settingsOf(tx);
@@ -74,7 +76,7 @@ payrollProviderRouter.put(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.approve');
     const provider = providerParam.parse(req.params.provider);
     const out = await withTenant(a.tenantId, async (tx) => {
       const s = await settingsOf(tx);
@@ -129,7 +131,7 @@ payrollProviderRouter.delete(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.approve');
     const provider = providerParam.parse(req.params.provider);
     const out = await withTenant(a.tenantId, async (tx) => {
       const s = await settingsOf(tx);
@@ -151,7 +153,7 @@ payrollProviderRouter.post(
   requirePermission('payroll.approve'),
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.approve');
     const provider = providerParam.parse(req.params.provider);
     const s = await withTenant(a.tenantId, settingsOf);
     await testConnection(a.tenantId, provider, s.payrollProvider ?? { mode: 'in_app' });
@@ -173,7 +175,7 @@ payrollProviderRouter.post(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const provider: Provider = providerParam.parse(req.params.provider);
     const b = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.number().int().min(1).max(5), resend: z.boolean().default(false) }).parse(req.body);
     const periodEnd = addDays(b.periodStart, b.weeks * 7 - 1);

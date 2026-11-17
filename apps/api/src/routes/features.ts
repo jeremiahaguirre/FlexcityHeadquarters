@@ -9,7 +9,7 @@ import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, forbidden, invalid, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
@@ -531,7 +531,7 @@ api.put(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('The export layout is set by HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('The export layout is set by HR.');
     const b = z
       .object({
         format: z.enum(EXPORT_FORMATS),

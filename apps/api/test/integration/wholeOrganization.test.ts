@@ -204,6 +204,10 @@ describe('more organization-wide settings a department-limited role can’t chan
       ['survey settings', () => call(limited).put('/api/surveys-admin/settings', { minGroup: 5, managersCreate: true })],
       ['sign-in rules', () => call(limited).put('/api/settings/mfa', { roles: [], codes: true })],
       ['remove SSO', () => call(limited).delete('/api/sso')],
+      ['billing', () => call(limited).get('/api/billing')],
+      ['cancel the bank debit agreement', () => call(limited).post('/api/billing/pad/cancel', { reason: 'test' })],
+      ['onboarding item for everyone', () => call(limited).post('/api/onboarding/items', { name: 'Sign this', owner: 'HR', kind: 'ACKNOWLEDGEMENT', allStaff: true, blocksScheduling: true })],
+      ['another department’s onboarding checklist', () => call(limited).put(`/api/onboarding/positions/${pos.guard}`, { itemIds: [] })],
     ];
     for (const [what, send] of writes) refused(await send(), what);
     const after = await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id }, select: { overtimePolicy: true, winterSettings: true, signupSettings: true, features: true } });
@@ -286,6 +290,25 @@ describe('a city without departments: whole-organization access is per capabilit
   it('a facility-limited admin role alone is refused', async () => check(['EMPLOYEE'], null, 'alone'));
   it('…and still refused with a built-in head lifeguard role on top', async () => check(['HEAD_LIFEGUARD', 'STAFF'], null, 'withhead'));
   it('…and still refused with an unlimited custom role on top', async () => check(['EMPLOYEE'], unlimited, 'withannouncer'));
+
+  it('payroll, tax, accounting and training routes decide per capability too (review of cbd2034)', async () => {
+    const hrTok = await signAccessToken({ sub: (await owner.user.findFirstOrThrow({ where: { tenantId: n.tenant.id, roles: { has: 'HR_ADMIN' } } })).id, tid: n.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
+    const role = await ncall(hrTok).post('/api/roles', { name: 'Pool payroll', permissions: ['payroll.export', 'payroll.approve', 'accounting.manage', 'tenant.configure', 'training.manage'], scopeFacilityIds: [n.facility.id] });
+    expect(role.status).toBe(201);
+    const who = await person(['HEAD_LIFEGUARD', 'STAFF'], 'poolpayroll');
+    await owner.userCustomRole.create({ data: { tenantId: n.tenant.id, userId: who, customRoleId: role.body.id } });
+    forgetCustomPermissions(n.tenant.id);
+    const token = await signAccessToken({ sub: who, tid: n.tenant.id, roles: ['HEAD_LIFEGUARD', 'STAFF'], aat: now(), mfa: true });
+    const put = (p: string, b: object) => request(server).put(p).set('x-tenant-subdomain', NSUB).auth(token, { type: 'bearer' }).send(b);
+    const before = await owner.tenant.findUniqueOrThrow({ where: { id: n.tenant.id }, select: { payrollSettings: true } });
+    for (const p of ['/api/payroll/t4?year=2025', '/api/payroll/t4.xml?year=2025', '/api/payroll/remittance?month=2025-01', '/api/payroll/provider', '/api/payees']) refused(await ncall(token).get(p), p);
+    refused(await put('/api/payroll/export-settings', { format: 'GENERIC_CSV' }), 'export settings');
+    refused(await put('/api/accounting/accounts', { accounts: [] }), 'chart of accounts');
+    refused(await ncall(token).post('/api/training/courses', { name: 'Course', validityMonths: 12 }), 'training course');
+    expect((await owner.tenant.findUniqueOrThrow({ where: { id: n.tenant.id }, select: { payrollSettings: true } })).payrollSettings).toEqual(before.payrollSettings);
+    // HR, for the whole organization, still reaches them.
+    expect((await ncall(hrTok).get('/api/payees')).status).toBe(200);
+  });
 
   it('an unlimited custom role with organization settings, not HR, sees the export but can’t download it (HR_ONLY)', async () => {
     const hrTok = await signAccessToken({ sub: (await owner.user.findFirstOrThrow({ where: { tenantId: n.tenant.id, roles: { has: 'HR_ADMIN' } } })).id, tid: n.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
