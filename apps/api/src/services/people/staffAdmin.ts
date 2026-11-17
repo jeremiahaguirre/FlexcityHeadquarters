@@ -16,7 +16,7 @@ import { audit, type Tx } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { forgetActive, setUserCustomRoles } from './customRoles.js';
 import { setManagers, setReportsOf } from './reporting.js';
-import { actorOf } from './scope.js';
+import { actorOf, assertUserInScope } from './scope.js';
 
 /**
  * Nobody gives out more than they hold: outside HR for the whole organization, every permission of
@@ -133,6 +133,8 @@ export interface PersonChange {
 /** Changes a person's record. Only what's given changes. */
 export async function updatePerson(tx: Tx, a: AuthContext, id: string, change: PersonChange) {
   const { customRoleIds, positionIds, managerId, ...body } = change;
+  // Department limits hold here too, not only in the route guard (SEC-04): the public API reaches this.
+  if (id !== a.userId) await assertUserInScope(tx, a, id);
   if (body.roles) {
     if (id === a.userId && !body.roles.includes('HR_ADMIN') && a.roles.includes('HR_ADMIN')) throw invalid('OWN_HR_ROLE', 'You cannot remove your own HR administrator role.');
     // Keeping your own roles exactly as they are is fine; changing them isn't.

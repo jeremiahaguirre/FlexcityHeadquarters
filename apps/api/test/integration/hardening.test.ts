@@ -1,7 +1,10 @@
 /**
  * Regression tests for the security review: each attack it described, tried and refused.
  */
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+import { type AddressInfo, connect } from 'node:net';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -123,6 +126,118 @@ describe('FH support visits never open individual records', () => {
       expect([403], `${path} → ${r.status} ${r.body.code}`).toContain(r.status);
     }
     expect((await call(visit).get('/api/settings')).status).toBe(200);
+  });
+
+  it('changing letter case, percent-encoding, extra slashes or a trailing slash doesn’t get past the block (SEC-08/14/24)', async () => {
+    const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
+    const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
+    const session = await owner.supportSession.create({ data: { tenantId: t.tenant.id, grantId: grant.id, adminId: admin.id, codeHash: randomBytes(16).toString('hex'), codeExpiresAt: new Date(Date.now() + 60_000), usedAt: new Date(), endsAt: new Date(Date.now() + 1_800_000) } });
+    const visit = await signAccessToken({ sub: ids.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], mfa: true, sup: session.id });
+    const who = t.users[0]!.id;
+    const incident = '00000000-0000-4000-8000-000000000000';
+    const job = randomUUID();
+    // Each of these answered 200 to a FULL visit on main: the records reached FH staff.
+    const leaked = [
+      `/api/Users/${who}/documents`,
+      `/api/USERS/${who}/Discipline`,
+      '/api/Grievances',
+      '/api/Payroll/people',
+      // HR routes that weren't on the list at all.
+      `/api/users/${who}/salary`,
+      `/api/users/${who}/payroll-orders`,
+      `/api/users/${who}/emergency-contacts`,
+      `/api/jobs/${job}/applications`,
+      '/api/notifications',
+      '/api/messages/conversations',
+      '/api/messages-admin/reports',
+      '/api/offboarding',
+      '/api/leave/balances',
+      '/api/lieu',
+      '/api/surveys-admin/offboardings',
+      '/api/payees',
+      '/api/benefits',
+      '/api/training',
+    ];
+    // Records paths that didn't leak in this test's city on main (no such record or route, the
+    // feature off, a 400 from the handler, or another check's 403), refused now by the block list
+    // itself, whatever the data: they show the canonical path blocks the case, encoding, trailing
+    // slash and repeated-slash forms of records paths rather than letting any through.
+    const blockedRegardless = [
+      `/api/users/${who}/%64ocuments`,
+      `/api/%75sers/${who}/documents`,
+      `/api/users//${who}/documents`,
+      `/api/users/${who}/pay-rates`,
+      `/api/Documents/${randomBytes(16).toString('hex')}`,
+      '/api/Me/pay-statements',
+      '/api/Households',
+      '/api/Data-Export',
+      '/api/Union/locals',
+      '/api/UNION/locals',
+      `/api/Incidents/${incident}`,
+      `/api/incidents/${incident}/`,
+      '/api/incidents',
+      `/api/applications/${randomBytes(16).toString('hex')}/resume`,
+      '/api/time-off',
+    ];
+    for (const path of [...leaked, ...blockedRegardless]) {
+      const r = await call(visit).get(path);
+      expect(r.status, `${path} → ${r.status} ${r.body.code}`).toBe(403);
+    }
+    expect((await call(visit).get('/api/Settings')).status).toBe(200);
+  });
+
+  it('reports that list named people (sick leave, reliability, expenses, lone work, hours) aren’t open to a visit; aggregates are', async () => {
+    const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
+    const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
+    const session = await owner.supportSession.create({ data: { tenantId: t.tenant.id, grantId: grant.id, adminId: admin.id, codeHash: randomBytes(16).toString('hex'), codeExpiresAt: new Date(Date.now() + 60_000), usedAt: new Date(), endsAt: new Date(Date.now() + 1_800_000) } });
+    const visit = await signAccessToken({ sub: ids.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], mfa: true, sup: session.id });
+    await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: t.users[0]!.id, startsAt: new Date(Date.now() - 4 * 86_400_000), endsAt: new Date(Date.now() - 3 * 86_400_000), type: 'SICK', status: 'APPROVED' } });
+    const personal = ['time_off', 'reliability', 'expenses', 'lone_work', 'overtime', 'hours_worked', 'certs_expiring'];
+    for (const key of personal) {
+      for (const path of ['/api/reports/run', '/api/reports/run.csv']) {
+        const r = await call(visit).get(`${path}?key=${key}`);
+        expect(r.status, `${path} ${key} → ${r.status} ${r.text.slice(0, 120)}`).toBe(403);
+      }
+    }
+    const list = (await call(visit).get('/api/reports')).body as Array<{ key: string }>;
+    expect(list.map((x) => x.key)).not.toEqual(expect.arrayContaining(['time_off']));
+    expect(list.map((x) => x.key)).toContain('labour_cost');
+    expect((await call(visit).get('/api/reports/run?key=labour_cost')).status).toBe(200);
+    // HR itself still runs them.
+    expect((await call(tok.hr).get('/api/reports/run?key=time_off')).status).toBe(200);
+  });
+
+  it('an absolute-form request line (GET http://host/api/… HTTP/1.1) doesn’t get past the block either', async () => {
+    const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
+    const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
+    const session = await owner.supportSession.create({ data: { tenantId: t.tenant.id, grantId: grant.id, adminId: admin.id, codeHash: randomBytes(16).toString('hex'), codeExpiresAt: new Date(Date.now() + 60_000), usedAt: new Date(), endsAt: new Date(Date.now() + 1_800_000) } });
+    const visit = await signAccessToken({ sub: ids.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], mfa: true, sup: session.id });
+    const who = t.users[0]!.id;
+    const listening = createServer(server).listen(0);
+    await once(listening, 'listening');
+    const port = (listening.address() as AddressInfo).port;
+    // Supertest always sends origin form, so the request line is written by hand.
+    const raw = (target: string) =>
+      new Promise<number>((resolve, reject) => {
+        const s = connect(port, '127.0.0.1');
+        let out = '';
+        s.on('data', (c) => (out += c.toString('latin1')));
+        s.on('end', () => resolve(Number(/^HTTP\/1\.1 (\d{3})/.exec(out)?.[1] ?? 0)));
+        s.on('error', reject);
+        s.write(`GET ${target} HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nX-Tenant-Subdomain: ${SUB}\r\nAuthorization: Bearer ${visit}\r\nConnection: close\r\n\r\n`);
+      });
+    try {
+      for (const scheme of ['http', 'HTTP']) {
+        for (const path of [`/api/users/${who}/documents`, `/api/users/${who}/discipline`, '/api/payroll/people', '/api/union/locals', '/api/offboarding']) {
+          const status = await raw(`${scheme}://${SUB}.example.test${path}`);
+          expect([400, 403], `${scheme}:// ${path} → ${status}`).toContain(status);
+        }
+      }
+      // The same request in origin form is the ordinary 403.
+      expect(await raw(`/api/users/${who}/documents`)).toBe(403);
+    } finally {
+      listening.close();
+    }
   });
 });
 
