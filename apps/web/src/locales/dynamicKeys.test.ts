@@ -9,18 +9,26 @@ import fr from './fr-CA.json';
 const api = (f: string) => readFileSync(join(__dirname, '../../../api/src', f), 'utf8');
 const features = [...api('services/platform/features.ts').split('export const FEATURES = {')[1]!.split('\n};')[0]!.matchAll(/^\s{2}(\w+): \{/gm)].map((m) => m[1]!);
 const accounts = [...api('services/payroll/journal.ts').match(/ACCOUNT_KEYS = \[([^\]]+)\]/)![1]!.matchAll(/'(\w+)'/g)].map((m) => m[1]!);
+const blockCodes = [...api('services/scheduling/eligibility.ts').split('export type BlockCode =')[1]!.split(';')[0]!.matchAll(/'(\w+)'/g)].map((m) => m[1]!);
+const rolePerms = [...api('services/people/customRoles.ts').split('export const CUSTOM_ROLE_PERMISSIONS = {')[1]!.split('} as const')[0]!.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]!);
 const get = (o: unknown, path: string) => path.split('.').reduce<unknown>((a, k) => (a as Record<string, unknown> | undefined)?.[k], o);
 
 describe('keys built from server lists', () => {
   it('found the lists', () => {
     expect(features.length).toBeGreaterThan(20);
     expect(accounts).toContain('ordersPayable');
+    expect(blockCodes).toContain('HOS_DAILY');
+    expect(rolePerms).toContain('leave.manage');
   });
   for (const [name, dict] of [['en-CA', en], ['fr-CA', fr]] as const) {
-    it(`${name}: every feature switch and journal account has a label`, () => {
+    it(`${name}: every feature switch, journal account and not-eligible reason has a label`, () => {
       const missing = [
         ...features.flatMap((k) => [`platform.features.${k}.name`, `platform.features.${k}.help`]),
         ...accounts.map((k) => `accounting.keys.${k}`),
+        // Why someone can't take a shift (board, planner): every reason the server gives.
+        ...blockCodes.map((k) => `blocks.${k}`),
+        // Each capability a city can put in its own role (the role editor shows these).
+        ...rolePerms.filter((p) => typeof (get(dict, 'customRoles.perms') as Record<string, unknown>)[p] !== 'string').map((p) => `customRoles.perms["${p}"]`),
         'platform.featureGroups.other',
       ].filter((k) => typeof get(dict, k) !== 'string');
       expect(missing).toEqual([]);
