@@ -158,6 +158,18 @@ variable "waf_bot_control" {
   default     = false
 }
 
+variable "waf_sqli_block" {
+  description = "Block requests matching AWS's SQL injection rules on the app's firewall. false: count and log them only (check the WAF log for false positives first)."
+  type        = bool
+  default     = false
+}
+
+variable "waf_log_retention_days" {
+  description = "Days the app firewall's log of blocked and counted requests is kept."
+  type        = number
+  default     = 90
+}
+
 variable "site_waf_rate_limit" {
   description = "Marketing site: requests per 5 minutes from one address before it is blocked."
   type        = number

@@ -39,6 +39,17 @@ These AWS behaviours couldn't be checked against AWS's documentation or a real a
 
 ## Runbooks
 
+### Backups in a separate account
+
+Within the production account, a daily database snapshot goes to an AWS Backup vault under a **compliance lock** (`ops/terraform/backup.tf`). Once the lock's grace period (`backup_vault_lock_grace_days`, 3) has passed, no one, the root user included, can delete a snapshot before its 35 days are up, or remove the lock. The backups bucket's object lock is in compliance mode in production too.
+
+For a copy that survives losing the whole account (SECURITY-AUDIT SEC-71), once, by hand:
+1. In a separate AWS account (same AWS Organization, `ca-central-1`), create an AWS Backup vault with a customer-managed KMS key and a compliance vault lock (minimum retention 35 days).
+2. In its access policy, allow `backup:CopyIntoBackupVault` from the production account. Turn on cross-account backup in the Organization's AWS Backup settings.
+3. Attach an SCP to the production account that denies `backup:DeleteRecoveryPoint`, `backup:DeleteBackupVault*` and `backup:PutBackupVaultLockConfiguration` on that vault.
+4. Set `backup_copy_vault_arn` to the vault's ARN and apply: every daily snapshot is then copied there.
+5. Add a restore from that vault to the monthly restore test.
+
 ### A. A zone fails
 
 Nothing to do by hand. Confirm on the dashboard and in the RDS events that:

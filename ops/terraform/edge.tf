@@ -128,6 +128,8 @@ locals {
     ai_crawlers      = 5
     no_user_agent    = 6
     bot_control      = 7
+    common_api       = 8
+    sqli             = 9
   }
 }
 
@@ -180,6 +182,8 @@ resource "aws_wafv2_web_acl" "app" {
     }
   }
 
+  # The common rule set, in full, for everything but the API: pages take no large bodies, so a body
+  # past the 8 KB AWS inspects is blocked here (SizeRestrictions_BODY), not let through uninspected.
   rule {
     name     = "common"
     priority = local.app_waf_priority.common
@@ -190,12 +194,21 @@ resource "aws_wafv2_web_acl" "app" {
       managed_rule_group_statement {
         vendor_name = "AWS"
         name        = "AWSManagedRulesCommonRuleSet"
-        # Document uploads (up to 10 MB) and drawn signatures are larger than this rule's 8 KB
-        # limit; the API sets its own body limits per route (apps/api/src/app.ts).
-        rule_action_override {
-          name = "SizeRestrictions_BODY"
-          action_to_use {
-            count {}
+        scope_down_statement {
+          not_statement {
+            statement {
+              byte_match_statement {
+                search_string         = "/api/"
+                positional_constraint = "STARTS_WITH"
+                field_to_match {
+                  uri_path {}
+                }
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
           }
         }
       }
@@ -203,6 +216,77 @@ resource "aws_wafv2_web_acl" "app" {
     visibility_config {
       cloudwatch_metrics_enabled = true
       metric_name                = "common"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # The same rules for the API, except the body size rule, which only counts: document uploads (up
+  # to 10 MB), message attachments and drawn signatures are larger than 8 KB. The API sets its own
+  # limit per route and reads a large body only for a valid access token (apps/api/src/app.ts).
+  # Before, the size rule only counted for every route (SECURITY-AUDIT SEC-72).
+  rule {
+    name     = "common-api"
+    priority = local.app_waf_priority.common_api
+    override_action {
+      none {}
+    }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesCommonRuleSet"
+        rule_action_override {
+          name = "SizeRestrictions_BODY"
+          action_to_use {
+            count {}
+          }
+        }
+        scope_down_statement {
+          byte_match_statement {
+            search_string         = "/api/"
+            positional_constraint = "STARTS_WITH"
+            field_to_match {
+              uri_path {}
+            }
+            text_transformation {
+              priority = 0
+              type     = "NONE"
+            }
+          }
+        }
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "common-api"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # SQL injection signatures. The API never builds SQL from input (apps/api/src/lib/sqlIdent.ts and
+  # its test), so this is defence in depth: counted (and logged) until waf_sqli_block is true, so
+  # its false positives (policy text, messages) can be checked first.
+  rule {
+    name     = "sql-injection"
+    priority = local.app_waf_priority.sqli
+    override_action {
+      dynamic "none" {
+        for_each = var.waf_sqli_block ? [1] : []
+        content {}
+      }
+      dynamic "count" {
+        for_each = var.waf_sqli_block ? [] : [1]
+        content {}
+      }
+    }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesSQLiRuleSet"
+      }
+    }
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "sql-injection"
       sampled_requests_enabled   = true
     }
   }
@@ -372,6 +456,52 @@ resource "aws_wafv2_web_acl" "app" {
         cloudwatch_metrics_enabled = true
         metric_name                = "bot-control"
         sampled_requests_enabled   = true
+      }
+    }
+  }
+}
+
+# The firewall's log of the requests it blocked or counted (operators review it weekly:
+# docs/SECURITY-OPERATIONS.md). Allowed requests are not logged. Credentials never are: the
+# Authorization header and cookies are redacted (SECURITY-AUDIT SEC-72).
+resource "aws_cloudwatch_log_group" "waf" {
+  # AWS requires the "aws-waf-logs-" prefix.
+  name              = "aws-waf-logs-${local.name}"
+  retention_in_days = var.waf_log_retention_days
+}
+
+resource "aws_wafv2_web_acl_logging_configuration" "app" {
+  resource_arn            = aws_wafv2_web_acl.app.arn
+  log_destination_configs = [aws_cloudwatch_log_group.waf.arn]
+  redacted_fields {
+    single_header {
+      name = "authorization"
+    }
+  }
+  redacted_fields {
+    single_header {
+      name = "cookie"
+    }
+  }
+  redacted_fields {
+    single_header {
+      name = "x-kiosk-token"
+    }
+  }
+  logging_filter {
+    default_behavior = "DROP"
+    filter {
+      behavior    = "KEEP"
+      requirement = "MEETS_ANY"
+      condition {
+        action_condition {
+          action = "BLOCK"
+        }
+      }
+      condition {
+        action_condition {
+          action = "COUNT"
+        }
       }
     }
   }

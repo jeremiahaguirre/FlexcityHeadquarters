@@ -11,6 +11,7 @@ Builds one environment of FlexcityHeadquarters in `ca-central-1` (Montreal), wit
 | `iam.tf` | Task roles: the API and worker may use and create KMS keys, never delete them |
 | `compute.tf` | ECS Fargate: API, worker and web services, migration and database-role tasks, autoscaling on CPU and requests |
 | `edge.tf` | Load balancer (HTTPS, `/api/*` to the API, health and metrics hidden), web firewalls (app and site: managed rules, rate limits, AI crawlers), the marketing site on S3 + CloudFront |
+| `backup.tf` | Daily database snapshots in an AWS Backup vault under a compliance lock (no one, root included, deletes them early), optionally copied to a vault in a separate account; the backups bucket's object lock in compliance mode in production |
 | `alarms.tf` | CloudWatch alarms to an SNS topic encrypted under its own key (CloudWatch can publish to it), a server-error ratio per service; the API and web deployments roll back when their alarms go off |
 
 ## Checks
@@ -38,6 +39,8 @@ Both firewalls block AI crawlers by `User-Agent` (case-insensitive), from the sa
 | --- | --- | --- |
 | `waf_block_ai_assistants` | `true` | Also blocks AI search and assistants (ChatGPT-User, OAI-SearchBot, PerplexityBot, Claude-User…). Set to `false` together with `ALLOW_AI_ASSISTANTS` in `apps/site/src/lib/crawlers.ts` to let them read and cite the site. Training crawlers stay blocked either way. |
 | `waf_bot_control` | `false` | Adds AWS's managed Bot Control rule group (common inspection level) on pages, not `/api/*` (calendar apps, kiosks, the public API and webhooks are legitimate non-browser clients). Verified search engines are let through. It is charged per request inspected, on top of the firewall itself: see AWS WAF pricing before turning it on. |
+
+The app's firewall logs every request it **blocks or counts** (allowed ones are not logged) to the CloudWatch log group `aws-waf-logs-<env>`, kept `waf_log_retention_days` (90); the `Authorization`, `Cookie` and `X-Kiosk-Token` headers are redacted. Outside `/api/*`, bodies over the 8 KB AWS inspects are blocked; the API counts them only (uploads), since it limits bodies per route itself. AWS's SQL-injection rules are counted and logged until `waf_sqli_block = true`: check the log for false positives (policy text, messages) before turning blocking on.
 
 A user agent can be faked, so this stops honest and lazy crawlers, not a determined scraper; the rate limits and Bot Control cover more. Blocked requests are counted in CloudWatch (docs/MONITORING.md).
 
