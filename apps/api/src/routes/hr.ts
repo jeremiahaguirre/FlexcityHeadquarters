@@ -56,7 +56,10 @@ async function balances(tx: Tx, userIds: string[], year: number) {
   const [zoneOf, provinceOf] = await Promise.all([leaveTimeZones(tx, requests), leaveProvinces(tx, requests)]);
   // Holidays (statutory and the organization's own) for each province requests are counted in, once each.
   const daysOffIn = new Map<string | null, Set<string>>();
-  for (const p of new Set(requests.map(provinceOf))) daysOffIn.set(p, await leaveDaysOff(tx, p, start, end));
+  // Over every day the requests cover, not just this year: a request across New Year counts the same in both years.
+  const from = new Date(Math.min(start.getTime(), ...requests.map((r) => r.startsAt.getTime())));
+  const to = new Date(Math.max(end.getTime(), ...requests.map((r) => r.endsAt.getTime())));
+  for (const p of new Set(requests.map(provinceOf))) daysOffIn.set(p, await leaveDaysOff(tx, p, from, to));
   // Approved: what was charged at approval (older requests: the weekday count). Pending: their schedule as it stands.
   const hoursOf = (r: (typeof requests)[number]) =>
     r.status === 'APPROVED'

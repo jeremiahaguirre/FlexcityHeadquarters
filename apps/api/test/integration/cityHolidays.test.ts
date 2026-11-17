@@ -12,6 +12,7 @@ import { signAccessToken } from '../../src/auth/tokens.js';
 import { withTenant } from '../../src/lib/db.js';
 import { addDays, startOfLocalDay } from '../../src/lib/time.js';
 import { runPayroll } from '../../src/services/payroll/payrollRun.js';
+import { lieuAvailable } from '../../src/services/payroll/lieu.js';
 import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { decideTimeOff, requestTimeOff } from '../../src/services/people/timeOff.js';
 import { weekdayRecount } from '../../src/services/people/leaveHours.js';
@@ -200,6 +201,27 @@ describe('leave and calendars', () => {
     expect(charged.chargedBasis).toBe('WEEKDAYS');
     // Payroll's recount report counts it the same way: nothing to review.
     expect((await withTenant(a.tenant.id, (tx) => weekdayRecount(tx), { readOnly: true })).map((r) => r.id)).not.toContain(charged.id);
+  });
+
+  it('the time-in-lieu bank counts a pending request the way approval will: without the holiday and the closure day', async () => {
+    const tz = a.facility.timezone;
+    const who = a.users[2]!.id;
+    await owner.lieuAdjustment.create({ data: { tenantId: a.tenant.id, userId: who, hours: 40, note: 'Banked overtime', createdById: hrId } });
+    // Monday to Friday, nothing scheduled: 40 weekday hours less the holiday (Tue) and the closure day (Thu).
+    await owner.timeOffRequest.create({ data: { tenantId: a.tenant.id, userId: who, type: 'LIEU', status: 'PENDING', startsAt: startOfLocalDay(PERIOD, tz), endsAt: startOfLocalDay('2030-03-16', tz) } });
+    expect(await withTenant(a.tenant.id, (tx) => lieuAvailable(tx, who))).toBe(40 - 24);
+  });
+
+  it('a pending request across New Year counts the same in both years’ balances (the closure day before it too)', async () => {
+    const tz = a.facility.timezone;
+    const who = a.users[1]!.id;
+    const closure = await owner.tenantHoliday.create({ data: { tenantId: a.tenant.id, name: 'Year-end closure', nameFr: 'Fermeture de fin d’année', kind: 'CLOSURE', date: new Date('2030-12-27') } });
+    await owner.timeOffRequest.create({ data: { tenantId: a.tenant.id, userId: who, type: 'VACATION', status: 'PENDING', startsAt: startOfLocalDay('2030-12-23', tz), endsAt: startOfLocalDay('2031-01-04', tz) } });
+    const tok = await signAccessToken({ sub: who, tid: a.tenant.id, roles: ['STAFF'], aat: now() });
+    const pending = async (year: number) => ((await call(tok).get(`/api/me/leave?year=${year}`)).body.types as Array<{ type: string; pending: number }>).find((x) => x.type === 'VACATION')!.pending;
+    // Ten weekdays from Dec 23 to Jan 3, less the closure on Friday Dec 27.
+    expect([await pending(2030), await pending(2031)]).toEqual([72, 72]);
+    await owner.tenantHoliday.delete({ where: { id: closure.id } });
   });
 
   it('lists the city’s days with the statutory ones, for staff and through the public API', async () => {
