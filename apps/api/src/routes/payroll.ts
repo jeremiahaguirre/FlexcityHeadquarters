@@ -11,7 +11,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
-import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
+import { type AuthContext, authOf, holdsForWholeOrganization, requireFeature, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
@@ -31,6 +31,8 @@ const payrollTx = <T>(tenantId: string, fn: (tx: Parameters<Parameters<typeof wi
 
 export const payrollRouter = Router();
 payrollRouter.use(['/payroll', '/me/pay', '/me/pay-statements', '/me/bank-accounts', '/me/pay-profile'], requireFeature('payroll'));
+// Someone's own pay: whoever the menu shows My pay to (pay.self), nobody else. Not on /payroll: HR's statement view shares a handler.
+payrollRouter.use(['/me/pay', '/me/pay-statements', '/me/bank-accounts', '/me/pay-profile'], requirePermission('pay.self'));
 
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -257,7 +259,7 @@ payrollRouter.put(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.approve')) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     const b = bankLinkBody.parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
@@ -278,7 +280,7 @@ payrollRouter.delete(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.approve')) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     await withTenant(a.tenantId, async (tx) => {
       const { bank: _gone, ...rest } = await settingsOf(tx);
       await tx.tenant.update({ where: { id: a.tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify(rest)) } });
@@ -295,7 +297,7 @@ payrollRouter.post(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.approve')) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     const settings = await withTenant(a.tenantId, settingsOf);
     if (!settings.bank) throw conflict('BANK_NOT_CONNECTED', 'Connect your bank first.');
     res.json(await testBankLink(a.tenantId, settings.bank));
@@ -512,7 +514,7 @@ payrollRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const month = z.string().regex(/^\d{4}-\d{2}$/).parse(req.query.month);
-    if (a.scope) throw forbidden('Remittances cover the whole city and are for HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('Remittances cover the whole city and are for HR.');
     res.json(await withTenant(a.tenantId, (tx) => remittance(tx, month)));
   }),
 );
@@ -523,7 +525,7 @@ payrollRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
-    if (a.scope) throw forbidden('T4s cover the whole city and are for HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('T4s cover the whole city and are for HR.');
     const out = await withTenant(a.tenantId, async (tx) => {
       const r = await t4s(tx, year);
       const settings = await settingsOf(tx);
@@ -541,7 +543,7 @@ payrollRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
-    if (a.scope) throw forbidden('RL-1 slips cover the whole city and are for HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('RL-1 slips cover the whole city and are for HR.');
     const out = await withTenant(a.tenantId, async (tx) => {
       const r = await rl1s(tx, year);
       const settings = await settingsOf(tx);
@@ -561,7 +563,7 @@ payrollRouter.get(
     const a = authOf(req);
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
     const kind = z.enum(['R', 'A', 'D']).default('R').parse(req.query.type);
-    if (a.scope) throw forbidden('RL-1 slips cover the whole city and are for HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('RL-1 slips cover the whole city and are for HR.');
     const out = await withTenant(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
       requirePasskey(a, settings);
@@ -595,7 +597,7 @@ payrollRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
-    if (a.scope) throw forbidden('Workforce skills figures cover the whole city.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('Workforce skills figures cover the whole city.');
     const rows = await withTenant(a.tenantId, (tx) => tx.trainingSpend.findMany({ where: { year }, orderBy: { spentOn: 'desc' } }));
     res.json(rows.map(spendView));
   }),
@@ -606,7 +608,7 @@ payrollRouter.post(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Workforce skills figures cover the whole city.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('Workforce skills figures cover the whole city.');
     const b = z
       .object({
         spentOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -630,7 +632,7 @@ payrollRouter.delete(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Workforce skills figures cover the whole city.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('Workforce skills figures cover the whole city.');
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
       const row = await tx.trainingSpend.findUnique({ where: { id } });
@@ -666,7 +668,7 @@ payrollRouter.get(
     const a = authOf(req);
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
     const reportType = z.enum(['O', 'A']).default('O').parse(req.query.type);
-    if (a.scope) throw forbidden('T4s cover the whole city and are for HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('T4s cover the whole city and are for HR.');
     const out = await withTenant(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
       requirePasskey(a, settings);
@@ -696,7 +698,7 @@ payrollRouter.get(
     const a = authOf(req);
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
     const reportType = z.enum(['O', 'A']).default('O').parse(req.query.type);
-    if (a.scope) throw forbidden('T4As cover the whole organization and are for HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('T4As cover the whole organization and are for HR.');
     const out = await withTenant(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
       requirePasskey(a, settings);
@@ -725,7 +727,7 @@ payrollRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const userId = uuid.parse(req.params.userId);
-    if (a.scope) throw forbidden('Records of Employment are for HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.export')) throw forbidden('Records of Employment are for HR.');
     const b = z
       .object({
         reason: z.enum(Object.keys(ROE_REASONS) as [RoeReason, ...RoeReason[]]),
@@ -813,7 +815,7 @@ payrollRouter.put(
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
+    if (!holdsForWholeOrganization(a, 'payroll.approve')) throw forbidden('Payroll settings and the bank connection are for the whole organization, set by HR.');
     const b = z
       .object({
         businessNumber: z.string().trim().regex(/^\d{9}RP\d{4}$/, 'A payroll account number looks like 123456789RP0001.').nullable().optional(),

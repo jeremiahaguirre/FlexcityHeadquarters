@@ -11,7 +11,7 @@ import { type AuthContext, authOf, holdsForWholeOrganization, requireFeature, re
 import type { NextFunction, Request, Response } from 'express';
 import { assertShiftInScope } from '../services/people/scope.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, conflict, notFound } from '../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../lib/errors.js';
 import { sessionDates } from '../services/lessons/lessons.js';
 import { PRESETS } from '../services/programs/levels.js';
 import { h } from './context.js';
@@ -223,7 +223,7 @@ programsRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const b = campaignBody.parse(req.body);
-    if (b.endsOn < b.startsOn) throw badRequest('The campaign must end after it starts.');
+    if (b.endsOn < b.startsOn) throw invalid('ENDS_BEFORE_START', 'The campaign must end after it starts.');
     const c = await withTenant(a.tenantId, async (tx) => {
       const created = await tx.lessonCampaign.create({ data: { ...campaignData(b), name: b.name, kind: b.kind, startsOn: new Date(b.startsOn), endsOn: new Date(b.endsOn), tenantId: a.tenantId, createdById: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'campaign.create', entity: 'LessonCampaign', entityId: created.id, after: b });
@@ -303,8 +303,8 @@ programsRouter.post(
     const a = authOf(req);
     const campaignId = uuid.parse(req.params.id);
     const b = setBody.parse(req.body);
-    if (b.endMinute <= b.startMinute) throw badRequest('A set must end after it starts.');
-    if (b.endsOn < b.startsOn) throw badRequest('The last day must be after the first.');
+    if (b.endMinute <= b.startMinute) throw invalid('ENDS_BEFORE_START', 'A set must end after it starts.');
+    if (b.endsOn < b.startsOn) throw invalid('ENDS_BEFORE_START', 'The last day must be after the first.');
     assertSetInScope(a, b);
     const s = await withTenant(a.tenantId, async (tx) => {
       const c = await tx.lessonCampaign.findUnique({ where: { id: campaignId } });

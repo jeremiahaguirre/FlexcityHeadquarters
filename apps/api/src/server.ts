@@ -23,6 +23,8 @@ installProcessHandlers();
 // live notifications and cache invalidation through pg_notify, rate limits through Postgres, and
 // scheduled jobs run in the worker under advisory locks. See docs/ARCHITECTURE.md, "Process model".
 const workers = cfg.WEB_CONCURRENCY;
+/** A worker's exit code when it couldn't bind the port: another worker would fail the same way. */
+const LISTEN_FAILED = 78;
 
 if (workers > 1 && cluster.isPrimary) {
   await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
@@ -32,6 +34,10 @@ if (workers > 1 && cluster.isPrimary) {
     if (stopping) {
       if (!Object.keys(cluster.workers ?? {}).length) process.exit(0);
       return;
+    }
+    if (code === LISTEN_FAILED) {
+      console.error(`FlexcityHeadquarters API stopping: worker ${w.process.pid} could not listen on :${cfg.PORT}`);
+      process.exit(1);
     }
     logError(`API worker ${w.process.pid} stopped (${code}); starting another`, new Error('worker exit'));
     cluster.fork();
@@ -66,7 +72,12 @@ if (workers > 1 && cluster.isPrimary) {
   attachCacheBus(sharedListener(listenUrl));
   await startLiveHub(listenUrl);
 
-  const server = createApp().listen(cfg.PORT, () => {
+  // Express 5 hands a failure to bind (e.g. EADDRINUSE) to this callback instead of throwing it.
+  const server = createApp().listen(cfg.PORT, (err?: Error) => {
+    if (err) {
+      console.error(`FlexcityHeadquarters API could not listen on :${cfg.PORT}: ${err.message}`);
+      process.exit(cluster.isWorker ? LISTEN_FAILED : 1);
+    }
     console.log(`FlexcityHeadquarters API listening on :${cfg.PORT}${cluster.isWorker ? ` (worker ${process.pid})` : ''}`);
   });
   // ECS sends SIGTERM when it replaces this task: finish what's in flight, then exit (lib/shutdown.ts).

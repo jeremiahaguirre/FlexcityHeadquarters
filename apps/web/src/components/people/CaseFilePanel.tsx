@@ -18,6 +18,7 @@ import { useAction, useQuery } from '@/lib/useQuery';
 import { emptySections } from '@/lib/recordSections';
 import { RecordText } from './RecordText';
 import { EventStanding, ScoreExplain, eventNote } from './ScoreExplain';
+import { errorText } from '@/lib/apiError';
 
 type Item = { at: string; key: string; node: ReactNode };
 const toLocalInput = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -370,7 +371,7 @@ function RecordDialog({ file, userId, name, unionMember, onClose, onSaved }: { f
     } catch (e) {
       const m = e instanceof ApiError ? (e.details as { missing?: string[] } | undefined)?.missing : undefined;
       if (m) setMissing(m);
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
     } finally {
       setSaving(false);
     }

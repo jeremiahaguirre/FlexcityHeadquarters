@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, notFound } from '../lib/errors.js';
+import { HttpError, invalid, notFound } from '../lib/errors.js';
 import { ALLOWED_OVERRIDE_KEYS } from '../services/compliance/provincialRules.js';
 import { h } from './context.js';
 import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
@@ -162,7 +162,7 @@ settingsRouter.put(
       .max(200)
       .parse(req.body);
     const seen = new Set(rows.map((r) => `${r.key}|${r.positionId}`));
-    if (seen.size !== rows.length) throw badRequest('Each pay type can be mapped once per position.');
+    if (seen.size !== rows.length) throw invalid('PAY_TYPE_TWICE', 'Each pay type can be mapped once per position.');
     await withTenant(a.tenantId, async (tx) => {
       await tx.payCodeMapping.deleteMany({});
       if (rows.length) await tx.payCodeMapping.createMany({ data: rows.map((r) => ({ ...r, tenantId: a.tenantId })) });
@@ -180,8 +180,8 @@ settingsRouter.post(
     const body = z
       .object({ province: province.nullable(), ruleKey: z.string(), value: z.unknown(), effectiveFrom: isoDate, effectiveTo: isoDate.nullable(), source: z.string().min(3).max(200) })
       .parse(req.body);
-    if (!ALLOWED_OVERRIDE_KEYS.has(body.ruleKey)) throw badRequest(`Rules that can be overridden: ${[...ALLOWED_OVERRIDE_KEYS].join(', ')}.`);
-    if (body.effectiveTo && body.effectiveTo < body.effectiveFrom) throw badRequest('The end date must be after the start date.');
+    if (!ALLOWED_OVERRIDE_KEYS.has(body.ruleKey)) throw invalid('RULE_NOT_OVERRIDABLE', `Rules that can be overridden: ${[...ALLOWED_OVERRIDE_KEYS].join(', ')}.`);
+    if (body.effectiveTo && body.effectiveTo < body.effectiveFrom) throw invalid('ENDS_BEFORE_START', 'The end date must be after the start date.');
     const v = body.value;
     const okValue =
       body.ruleKey === 'overtime.method'
@@ -189,7 +189,7 @@ settingsRouter.post(
         : body.ruleKey === 'vacation.tiers'
           ? Array.isArray(v) && v.every((t) => typeof t?.minYears === 'number' && typeof t?.percent === 'number' && t.percent > 0 && t.percent <= 20)
           : v === null || (typeof v === 'number' && v > 0 && v <= 80);
-    if (!okValue) throw badRequest('That value is not valid for this rule.');
+    if (!okValue) throw invalid('RULE_VALUE_INVALID', 'That value is not valid for this rule.');
     const o = await withTenant(a.tenantId, async (tx) => {
       const created = await tx.ruleOverride.create({
         data: { tenantId: a.tenantId, province: body.province, ruleKey: body.ruleKey, value: body.value as Prisma.InputJsonValue, effectiveFrom: day(body.effectiveFrom)!, effectiveTo: day(body.effectiveTo), source: body.source },
@@ -222,7 +222,7 @@ settingsRouter.put(
       .array(z.object({ kind: z.enum(['TERM', 'BREAK']), name: z.string().min(2).max(80), startsOn: isoDate, endsOn: isoDate }))
       .max(60)
       .parse(req.body);
-    for (const p of periods) if (p.endsOn < p.startsOn) throw badRequest(`"${p.name}" ends before it starts.`);
+    for (const p of periods) if (p.endsOn < p.startsOn) throw invalid('ENDS_BEFORE_START', `"${p.name}" ends before it starts.`, { name: p.name });
     await withTenant(a.tenantId, async (tx) => {
       await tx.schoolCalendarPeriod.deleteMany({});
       if (periods.length) {

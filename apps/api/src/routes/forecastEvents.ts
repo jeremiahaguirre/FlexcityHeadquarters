@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, forbidden, notFound } from '../lib/errors.js';
+import { forbidden, invalid, notFound } from '../lib/errors.js';
 import { facilitiesOf } from '../services/people/scope.js';
 import { h } from './context.js';
 
@@ -34,11 +34,11 @@ const body = z
   .strict();
 
 function check(b: Partial<z.infer<typeof body>> & { startsOn: string; endsOn: string }) {
-  if (b.endsOn < b.startsOn) throw badRequest('The event ends before it starts.');
-  if (Date.parse(b.endsOn) - Date.parse(b.startsOn) > 31 * 86_400_000) throw badRequest('An event lasts a month at most.');
-  if ((b.startMinute === null) !== (b.endMinute === null)) throw badRequest('Give both times, or neither for all day.');
-  if (b.startMinute !== null && b.endMinute !== null && b.endMinute! <= b.startMinute!) throw badRequest('The event ends before it starts.');
-  if (!b.extraPeople && !b.percent) throw badRequest('Give the extra people expected or a percentage.');
+  if (b.endsOn < b.startsOn) throw invalid('ENDS_BEFORE_START', 'The event ends before it starts.');
+  if (Date.parse(b.endsOn) - Date.parse(b.startsOn) > 31 * 86_400_000) throw invalid('RANGE_TOO_LONG', 'An event lasts a month at most.', { maxDays: 31 });
+  if ((b.startMinute === null) !== (b.endMinute === null)) throw invalid('TIMES_BOTH_OR_NEITHER', 'Give both times, or neither for all day.');
+  if (b.startMinute !== null && b.endMinute !== null && b.endMinute! <= b.startMinute!) throw invalid('ENDS_BEFORE_START', 'The event ends before it starts.');
+  if (!b.extraPeople && !b.percent) throw invalid('EXTRA_REQUIRED', 'Give the extra people expected or a percentage.');
 }
 
 const out = (e: { id: string; facilityId: string | null; name: string; startsOn: Date; endsOn: Date; startMinute: number | null; endMinute: number | null; extraPeople: number | null; percent: number | null; recursYearly: boolean; notes: string | null }) => ({

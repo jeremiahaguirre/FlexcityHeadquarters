@@ -4,7 +4,7 @@
  */
 import express, { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import { billingContact, config } from '../config.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { catalog, itemStates } from '../services/billing/catalog.js';
@@ -30,6 +30,7 @@ async function invoiceOf(tenantId: string, id: string) {
 billingRouter.get(
   '/billing',
   requirePermission('billing.manage'),
+  requireWholeOrganization('billing.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const [acct, invoices, settings] = await Promise.all([
@@ -69,6 +70,7 @@ billingRouter.get(
 billingRouter.get(
   '/billing/invoices/:id',
   requirePermission('billing.manage'),
+  requireWholeOrganization('billing.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const inv = await invoiceOf(a.tenantId, uuid.parse(req.params.id));
@@ -98,6 +100,7 @@ billingRouter.get(
 billingRouter.post(
   '/billing/invoices/:id/checkout',
   requirePermission('billing.manage'),
+  requireWholeOrganization('billing.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const { method } = z.object({ method: z.enum(['card', 'pad']) }).parse(req.body);
@@ -134,7 +137,7 @@ stripeWebhookRouter.post(
   h(async (req, res) => {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) throw new HttpError(404, 'NOT_FOUND', 'Not configured');
-    const event = verifyWebhook(req.body as Buffer, req.header('stripe-signature'), secret) as StripeEvent;
+    const event = verifyWebhook(req.body as Buffer | undefined,req.header('stripe-signature'), secret) as StripeEvent;
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
       const s = event.data.object;
       const invoiceId = s.metadata?.invoiceId;
@@ -162,6 +165,7 @@ stripeWebhookRouter.post(
 billingRouter.post(
   '/billing/pad',
   requirePermission('billing.manage'),
+  requireWholeOrganization('billing.manage'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
@@ -175,6 +179,7 @@ billingRouter.post(
 billingRouter.post(
   '/billing/pad/cancel',
   requirePermission('billing.manage'),
+  requireWholeOrganization('billing.manage'),
   requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);

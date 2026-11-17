@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { workAge } from '../services/legal/ages.js';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { invalid, notFound } from '../lib/errors.js';
 import { h } from './context.js';
 
 const today = () => new Date(new Date().toISOString().slice(0, 10));
@@ -97,10 +97,10 @@ jobsRouter.get(
 );
 
 function check(b: Partial<z.infer<typeof body>>, existing?: { applyUrl: string | null; applyInApp: boolean }) {
-  if (b.payMin && b.payMax && Number(b.payMin) > Number(b.payMax)) throw badRequest('The pay range minimum is above the maximum.');
+  if (b.payMin && b.payMax && Number(b.payMin) > Number(b.payMax)) throw invalid('PAY_RANGE', 'The pay range minimum is above the maximum.');
   const inApp = b.applyInApp ?? existing?.applyInApp ?? false;
   const url = b.applyUrl !== undefined ? b.applyUrl : (existing?.applyUrl ?? null);
-  if (!inApp && !url) throw badRequest('Take applications in the app, or give a link or email address to apply.');
+  if (!inApp && !url) throw invalid('APPLY_ROUTE_REQUIRED', 'Take applications in the app, or give a link or email address to apply.');
 }
 
 jobsRouter.post(

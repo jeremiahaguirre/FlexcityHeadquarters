@@ -10,7 +10,7 @@ import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
 import { audit, withTenant } from '../lib/db.js';
 import { db as rootDb } from '../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
 import { checkPersonalPassword, passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
@@ -63,9 +63,12 @@ staffRouter.get(
     // For whoever handles billing: screens their roles would have if the plan included them.
     const lockedMenu = a.permissions.has('billing.manage')
       ? MENU.flatMap((m) => {
-          if (m.permissions.some((p) => a.permissions.has(p))) return []; // already open to them
-          const addOn = (Object.keys(billing.locked) as FeatureKey[]).find((f) =>
-            (FEATURES[f].permissions as readonly string[]).some((p) => m.permissions.includes(p as never) && permissionsWithOverrides(me.roles, parseOverrides(tenant.roleOverrides)).has(p as never)),
+          if (m.permissions.some((p) => a.permissions.has(p)) && (!m.feature || features[m.feature])) return []; // already open to them
+          const theirs = permissionsWithOverrides(me.roles, parseOverrides(tenant.roleOverrides));
+          const addOn = (Object.keys(billing.locked) as FeatureKey[]).find(
+            (f) =>
+              (f === m.feature && m.permissions.some((p) => theirs.has(p))) ||
+              (FEATURES[f].permissions as readonly string[]).some((p) => m.permissions.includes(p as never) && theirs.has(p as never)),
           );
           return addOn ? [{ href: m.href, key: m.key, group: m.group, addOn: billing.locked[addOn]! }] : [];
         })
@@ -497,7 +500,7 @@ staffRouter.patch(
       .object({ shadowTier: z.enum(['A_SQUAD', 'B_SQUAD', 'C_SQUAD', 'UNASSIGNED']), weeklyMinHours: hours, weeklyMaxHours: hours, positionIds: z.array(uuid).max(10) })
       .partial()
       .parse(req.body);
-    if (body.weeklyMinHours && body.weeklyMaxHours && Number(body.weeklyMinHours) > Number(body.weeklyMaxHours)) throw badRequest('Weekly minimum cannot exceed the maximum.');
+    if (body.weeklyMinHours && body.weeklyMaxHours && Number(body.weeklyMinHours) > Number(body.weeklyMaxHours)) throw invalid('WEEKLY_MIN_ABOVE_MAX', 'Weekly minimum cannot exceed the maximum.');
     await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, id);
       const { positionIds, ...rest } = body;

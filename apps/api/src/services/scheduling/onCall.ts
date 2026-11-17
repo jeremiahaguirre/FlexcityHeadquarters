@@ -11,7 +11,7 @@
  */
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { addDays, localIso } from '../../lib/time.js';
 import type { NotificationDraft } from '../notifications/notifier.js';
 import { shiftInScope, userInScope } from '../people/scope.js';
@@ -24,7 +24,7 @@ import { createShift } from './shifts.js';
 const MAX_PERIOD_MS = 31 * 86_400_000;
 
 async function assertDepartment(tx: Tx, a: AuthContext, departmentId: string) {
-  if (departmentId === NO_DEPARTMENT) throw badRequest('Choose a department.');
+  if (departmentId === NO_DEPARTMENT) throw invalid('DEPARTMENT_REQUIRED', 'Choose a department.');
   const d = (await schedulableDepartments(tx, a)).find((x) => x.id === departmentId);
   if (!d) throw notFound('Department');
   return d;
@@ -33,7 +33,7 @@ async function assertDepartment(tx: Tx, a: AuthContext, departmentId: string) {
 async function assertPerson(tx: Tx, a: AuthContext, positionIds: string[], userId: string) {
   if (!(await userInScope(tx, a.scope, userId))) throw forbidden('This person isn’t in your department.');
   const holds = await tx.userPosition.count({ where: { userId, positionId: { in: positionIds } } });
-  if (!holds) throw badRequest('This person doesn’t hold a position in this department.');
+  if (!holds) throw invalid('NOT_IN_DEPARTMENT', 'This person doesn’t hold a position in this department.');
 }
 
 const nameOf = async (tx: Tx, userId: string) => {
@@ -62,8 +62,8 @@ export async function onCallRoster(tx: Tx, a: AuthContext, q: { departmentId?: s
 export interface PeriodInput { departmentId: string; userId: string; startsAt: Date; endsAt: Date; note?: string | null }
 
 async function checkPeriod(tx: Tx, a: AuthContext, p: PeriodInput, exceptId?: string) {
-  if (p.endsAt <= p.startsAt) throw badRequest('On call must end after it starts.');
-  if (p.endsAt.getTime() - p.startsAt.getTime() > MAX_PERIOD_MS) throw badRequest('An on-call period can be at most 31 days.');
+  if (p.endsAt <= p.startsAt) throw invalid('ENDS_BEFORE_START', 'On call must end after it starts.');
+  if (p.endsAt.getTime() - p.startsAt.getTime() > MAX_PERIOD_MS) throw invalid('RANGE_TOO_LONG', 'An on-call period can be at most 31 days.', { maxDays: 31 });
   const d = await assertDepartment(tx, a, p.departmentId);
   await assertPerson(tx, a, d.positionIds, p.userId);
   const clash = await tx.onCallPeriod.findFirst({ where: { departmentId: p.departmentId, userId: p.userId, startsAt: { lt: p.endsAt }, endsAt: { gt: p.startsAt }, ...(exceptId ? { id: { not: exceptId } } : {}) } });
@@ -83,7 +83,7 @@ export async function createOnCall(tx: Tx, a: AuthContext, p: PeriodInput) {
 
 /** A weekly rotation: each person in turn takes a week (or `days`), starting `startDate` at `startHour`. */
 export async function rotateOnCall(tx: Tx, a: AuthContext, q: { departmentId: string; userIds: string[]; startDate: string; periods: number; days: number; startHour: number; timezone: string }) {
-  if (!q.userIds.length) throw badRequest('Choose who rotates.');
+  if (!q.userIds.length) throw invalid('PERSON_REQUIRED', 'Choose who rotates.');
   const out = [];
   const drafts: NotificationDraft[] = [];
   for (let i = 0; i < q.periods; i++) {
@@ -106,7 +106,7 @@ export async function swapOnCall(tx: Tx, a: AuthContext, id: string, q: { withId
   if (q.withId) {
     const o = await tx.onCallPeriod.findUnique({ where: { id: q.withId } });
     if (!o || o.departmentId !== p.departmentId) throw notFound('On-call period');
-    if (o.userId === p.userId) throw badRequest('Both periods are the same person’s.');
+    if (o.userId === p.userId) throw invalid('SAME_PERSON', 'Both periods are the same person’s.');
     // Move both aside first so the overlap check sees the result.
     await tx.onCallPeriod.update({ where: { id: p.id }, data: { userId: o.userId } });
     await tx.onCallPeriod.update({ where: { id: o.id }, data: { userId: p.userId } });
@@ -116,7 +116,7 @@ export async function swapOnCall(tx: Tx, a: AuthContext, id: string, q: { withId
     for (const [u, period] of [[p.userId, o], [o.userId, p]] as const) drafts.push({ userId: u, type: 'oncall_changed', params: { from: period.startsAt.toISOString() }, link: '/schedule' });
     return { drafts };
   }
-  if (!q.userId) throw badRequest('Choose who takes it.');
+  if (!q.userId) throw invalid('PERSON_REQUIRED', 'Choose who takes it.');
   await checkPeriod(tx, a, { departmentId: p.departmentId, userId: q.userId, startsAt: p.startsAt, endsAt: p.endsAt }, p.id);
   await tx.onCallPeriod.update({ where: { id: p.id }, data: { userId: q.userId } });
   await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'oncall.reassign', entity: 'OnCallPeriod', entityId: p.id, before: { userId: p.userId }, after: { userId: q.userId } });
@@ -160,8 +160,8 @@ export interface CallBackInput { departmentId: string; userId?: string; facility
  */
 export async function recordCallBack(tx: Tx, a: AuthContext, input: CallBackInput) {
   const d = await assertDepartment(tx, a, input.departmentId);
-  if (!d.positionIds.includes(input.positionId)) throw badRequest('The position isn’t in this department.');
-  if (input.endsAt <= input.startsAt) throw badRequest('The call-back must end after it starts.');
+  if (!d.positionIds.includes(input.positionId)) throw invalid('POSITION_NOT_IN_DEPARTMENT', 'The position isn’t in this department.');
+  if (input.endsAt <= input.startsAt) throw invalid('ENDS_BEFORE_START', 'The call-back must end after it starts.');
   if (!shiftInScope(a.scope, input) || !(await tx.facility.findUnique({ where: { id: input.facilityId }, select: { id: true } }))) throw notFound('Facility');
   const userId = input.userId ?? (await onCallAt(tx, input.startsAt, { departmentIds: [input.departmentId] }))[0];
   if (!userId) throw conflict('NOBODY_ON_CALL', 'Nobody is on call then. Choose who to call back.');

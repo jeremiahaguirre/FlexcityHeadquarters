@@ -13,7 +13,7 @@ import type { ApiKey, WebhookDelivery, WebhookEndpoint } from '../generated/pris
 import { type AuthContext, authOf, holdsForWholeOrganization, requireModule, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, notFound } from '../lib/errors.js';
+import { HttpError, invalid, notFound } from '../lib/errors.js';
 import { hasModule } from '../services/billing/entitlements.js';
 import { type ApiScope, SCOPES, SCOPE_PERMISSIONS, isWriteScope, newKey, parseIpEntry } from '../services/integrations/apiKeys.js';
 import { WEBHOOK_EVENT_TYPES, attemptDelivery, checkWebhookUrl, newSigningSecret, redeliver, sealSecret, sendTestEvent } from '../services/integrations/webhooks.js';
@@ -127,7 +127,7 @@ integrationsRouter.post(
     const refused = scopes.filter((s) => !mayGrant(a, s));
     if (refused.length) throw new HttpError(403, 'SCOPE_NOT_YOURS', 'You can only give a key access to data you can see yourself.', { scopes: refused });
     const expiresAt = b.expiresAt ? new Date(b.expiresAt) : null;
-    if (expiresAt && expiresAt <= new Date()) throw badRequest('Choose an expiry date in the future.');
+    if (expiresAt && expiresAt <= new Date()) throw invalid('EXPIRY_IN_PAST', 'Choose an expiry date in the future.');
     const k = newKey();
     const row = await withTenant(a.tenantId, async (tx) => {
       if ((await tx.apiKey.count({ where: { revokedAt: null } })) >= MAX_KEYS) throw new HttpError(409, 'TOO_MANY_KEYS', `An organization can have ${MAX_KEYS} keys. Revoke one you no longer use.`);
