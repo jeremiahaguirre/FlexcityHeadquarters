@@ -255,8 +255,13 @@ async function addPerson(w: WriteCtx, req: Request, b: z.infer<typeof personCrea
 
 async function changePerson(w: WriteCtx, req: Request, tx: Tx, id: string, b: z.infer<typeof personPatch>) {
   await checkIfMatch(tx, req, 'User', id);
-  const u = await tx.user.findUnique({ where: { id }, select: { anonymizedAt: true, processingRestrictedAt: true } });
+  const u = await tx.user.findUnique({ where: { id }, select: { anonymizedAt: true, processingRestrictedAt: true, email: true, roles: true } });
   if (!u || u.anonymizedAt) throw notFound('Person');
+  // An integration key never redirects the sign-in of someone with more than everyday access (SEC-17):
+  // a leaked key would otherwise be an administrator takeover. HR changes those in the app.
+  if (b.email && b.email !== u.email && (u.roles.some((r) => r !== 'EMPLOYEE' && r !== 'STAFF') || (await tx.userCustomRole.count({ where: { userId: id } })) > 0)) {
+    throw new HttpError(403, 'KEY_CANNOT_CHANGE_EMAIL', 'An API key can’t change the sign-in email of someone with supervisory or administrator access. Change it in the app.');
+  }
   if (u.processingRestrictedAt) throw new HttpError(409, 'PROCESSING_RESTRICTED', 'This person asked for their information to be erased; their record can’t be changed.');
   await updatePerson(tx, w.actor, id, personChange(b));
   return personAnswer(200, await loadPerson(tx, id));

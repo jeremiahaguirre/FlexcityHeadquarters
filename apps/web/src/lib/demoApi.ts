@@ -146,6 +146,8 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
     saveSession(null);
     return undefined as T;
   }
+  // Confirming a new sign-in email: the demo has no mailbox, so any link is accepted.
+  if (path === '/api/auth/email-change/confirm' && method === 'POST') return { ok: true } as T;
   if (path.startsWith('/api/auth/')) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
 
   if (!state.signedIn || !state.account) throw new ApiError(401, 'UNAUTHENTICATED', 'Not signed in');
