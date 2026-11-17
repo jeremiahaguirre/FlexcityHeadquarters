@@ -47,7 +47,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
   useEffect(() => {
     if (me?.closed) window.location.replace('/export');
   }, [me?.closed]);
-  const items = visibleNav(can, me?.hiddenMenu ?? []);
+  const items = visibleNav(can, me?.hiddenMenu ?? [], me?.features);
   // A menu screen opened by its address without access: say so, instead of an empty or broken page.
   const path = pathname.replace(/\/$/, '') || '/';
   const noAccess = !!me && NAV.some((n) => n.href === path) && !items.some((n) => n.href === path) && !(me.lockedMenu ?? []).some((l) => l.href === path);

@@ -10,7 +10,7 @@
  */
 import type { OnboardingKind, OnboardingOwner } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
-import { badRequest, forbidden, notFound } from '../../lib/errors.js';
+import { forbidden, invalid, notFound } from '../../lib/errors.js';
 
 interface DefaultItem { key: string; name: string; nameFr: string; description: string; descriptionFr: string; owner: OnboardingOwner; kind: OnboardingKind; allStaff?: boolean; blocksScheduling?: boolean; validityMonths?: number; policyText?: string }
 
@@ -130,9 +130,9 @@ export async function recordItem(
   const selfAck = perms.self && item.owner === 'EMPLOYEE' && item.kind === 'ACKNOWLEDGEMENT' && input.action === 'complete';
   if (!selfAck && !canComplete(item.owner, perms)) throw forbidden('This item is completed by someone else.');
   if (input.action === 'waive' && !perms.hr) throw forbidden('Only HR can waive an item.');
-  if (input.action === 'waive' && !input.reason) throw badRequest('Say why the item is waived.');
+  if (input.action === 'waive' && !input.reason) throw invalid('REASON_REQUIRED', 'Say why the item is waived.');
   const completedOn = new Date(`${input.completedOn}T00:00:00Z`);
-  if (completedOn.getTime() > Date.now() + 86_400_000) throw badRequest('That date is in the future.');
+  if (completedOn.getTime() > Date.now() + 86_400_000) throw invalid('FUTURE_DATE', 'That date is in the future.');
   return tx.onboardingRecord.create({
     data: {
       tenantId,
