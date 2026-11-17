@@ -11,6 +11,7 @@ import { DEMO } from '@/lib/demo';
 import { formatDate } from '@/lib/format';
 import { cancelled, passkeysSupported } from '@/lib/passkeys';
 import { PasskeyIcon } from './PasskeyIcon';
+import { errorText } from '@/lib/apiError';
 
 interface Passkey { id: string; name: string; createdAt: string; lastUsedAt: string | null }
 
@@ -34,7 +35,7 @@ export function PasskeysCard({ list, add, remove }: { list: () => Promise<Passke
       await reload();
     } catch (e) {
       if (cancelled(e)) return;
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('passkeys.failed'), 'warn');
+      toast(errorText(t, e, t('passkeys.failed')), 'warn');
     } finally {
       setBusy(null);
     }

@@ -44,7 +44,7 @@ import { z } from 'zod';
 import type { AuthContext } from '../../auth/middleware.js';
 import { announceChange } from '../../lib/changes.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { type NotificationDraft, notify, usersWithPermission } from '../notifications/notifier.js';
 import { peopleWhere, shiftInScope } from '../people/scope.js';
@@ -251,7 +251,7 @@ async function assertPositions(tx: Tx, a: AuthContext, positionIds: string[], de
   if (positionIds.some((p) => !allowed.has(p))) throw new HttpError(403, 'FORBIDDEN', 'A position isn’t in your department.');
   const rows = await tx.position.findMany({ where: { id: { in: positionIds } }, select: { departmentId: true } });
   if (rows.length !== new Set(positionIds).size) throw notFound('Position');
-  if (departmentId && rows.some((r) => r.departmentId !== departmentId)) throw badRequest('Every position must be in the round’s department.');
+  if (departmentId && rows.some((r) => r.departmentId !== departmentId)) throw invalid('POSITION_NOT_IN_DEPARTMENT', 'Every position must be in the round’s department.');
   const tenant = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true, features: true } });
   const settings = parseSolverSettings(tenant.overtimePolicy);
   for (const d of new Set(rows.map((r) => r.departmentId))) {
@@ -262,7 +262,7 @@ async function assertPositions(tx: Tx, a: AuthContext, positionIds: string[], de
 
 /** Opens a round (it accepts rankings from opensAt). Items must start after the close. */
 export async function createRound(tx: Tx, a: AuthContext, b: RoundInput) {
-  if (b.closesAt <= new Date()) throw badRequest('The close must be in the future.');
+  if (b.closesAt <= new Date()) throw invalid('CLOSES_IN_PAST', 'The close must be in the future.');
   const departmentId = await assertPositions(tx, a, b.positionIds, b.departmentId);
   const busy = await shiftsInActiveRounds(tx);
   const basis = b.seniorityBasis ?? (await defaultBasis(tx));
@@ -274,7 +274,7 @@ export async function createRound(tx: Tx, a: AuthContext, b: RoundInput) {
       where: { status: 'DRAFT', userId: null, positionId: { in: b.positionIds }, ...(b.shiftIds?.length ? { id: { in: b.shiftIds } } : { startsAt: { gte: new Date(`${b.from}T00:00:00Z`), lt: new Date(`${b.to}T23:59:59Z`) } }) },
       orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
     });
-    if (b.shiftIds?.length && shifts.length !== new Set(b.shiftIds).size) throw badRequest('Only open draft shifts of the round’s positions can be bid on.');
+    if (b.shiftIds?.length && shifts.length !== new Set(b.shiftIds).size) throw invalid('BID_SHIFTS_INVALID', 'Only open draft shifts of the round’s positions can be bid on.');
     items = shifts.filter((s) => shiftInScope(a.scope, s) && !busy.has(s.id)).map((s) => ({ shiftIds: [s.id], positionId: s.positionId, facilityId: s.facilityId, first: s.startsAt, last: s.endsAt, meta: {} }));
   } else {
     await applyTemplate(tx, a, a.tenantId, b.templateId!, b.from!, b.to!);
@@ -284,8 +284,8 @@ export async function createRound(tx: Tx, a: AuthContext, b: RoundInput) {
     const free = shifts.filter((s) => !busy.has(s.id));
     items = buildLines(slots, free).map((l) => ({ shiftIds: l.shiftIds, positionId: l.positionId, facilityId: l.facilityId, first: l.first, last: l.last, meta: l.meta }));
   }
-  if (!items.length) throw badRequest('There are no open draft shifts to bid on.');
-  if (items.some((i) => i.first <= b.closesAt)) throw badRequest('Every shift must start after the round closes.');
+  if (!items.length) throw invalid('BID_NO_SHIFTS', 'There are no open draft shifts to bid on.');
+  if (items.some((i) => i.first <= b.closesAt)) throw invalid('BID_SHIFT_TOO_EARLY', 'Every shift must start after the round closes.');
   const round = await tx.bidRound.create({
     data: {
       tenantId: a.tenantId,
@@ -331,12 +331,12 @@ export async function saveChoices(tx: Tx, a: AuthContext, roundId: string, itemI
   if (!round.positionIds.some((p) => holds.has(p))) throw notFound('Bid round');
   const now = new Date();
   if (round.status !== 'OPEN' || now < round.opensAt || now >= round.closesAt) throw conflict('BID_CLOSED', 'This round isn’t taking choices now.');
-  if (new Set(itemIds).size !== itemIds.length || itemIds.length > MAX_CHOICES) throw badRequest('Rank each choice once.');
+  if (new Set(itemIds).size !== itemIds.length || itemIds.length > MAX_CHOICES) throw invalid('BID_RANK_ONCE', 'Rank each choice once.');
   const byId = new Map(round.items.map((i) => [i.id, i]));
   for (const id of itemIds) {
     const it = byId.get(id);
-    if (!it) throw badRequest('That isn’t part of this round.');
-    if (!holds.has(it.positionId)) throw badRequest('You can only rank shifts in positions you hold.');
+    if (!it) throw invalid('BID_NOT_IN_ROUND', 'That isn’t part of this round.');
+    if (!holds.has(it.positionId)) throw invalid('BID_POSITION_NOT_HELD', 'You can only rank shifts in positions you hold.');
   }
   await tx.bidChoice.deleteMany({ where: { roundId, userId: a.userId } });
   if (itemIds.length) await tx.bidChoice.createMany({ data: itemIds.map((itemId, i) => ({ tenantId: a.tenantId, roundId, userId: a.userId, itemId, rank: i + 1 })) });
