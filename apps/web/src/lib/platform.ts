@@ -113,7 +113,9 @@ export async function pdownload(path: string, fallbackName: string): Promise<voi
   // (and its console cookies) anywhere else, or climb out of /api/platform.
   const target = new URL(`/api/platform${path}`, window.location.origin);
   if (target.origin !== window.location.origin || !target.pathname.startsWith('/api/platform/') || /\.\.|\\/.test(path)) throw new ApiError(400, 'BAD_REQUEST', 'Not a Dev console download.');
-  const res = await fetch(`${target.pathname}${target.search}`, { credentials: 'include', headers: { ...CLIENT_HEADERS, ...platformHeaders() } });
+  // Rebuilt from fixed text and encoded segments: each segment can only ever be one path segment.
+  const segments = target.pathname.slice('/api/platform/'.length).split('/').map((s) => encodeURIComponent(decodeURIComponent(s)));
+  const res = await fetch(`/api/platform/${segments.join('/')}${target.search}`, { credentials: 'include', headers: { ...CLIENT_HEADERS, ...platformHeaders() } });
   if (!res.ok) {
     const b = (await res.json().catch(() => ({}))) as { code?: string; message?: string };
     throw new ApiError(res.status, b.code ?? 'ERROR', b.message ?? res.statusText);
