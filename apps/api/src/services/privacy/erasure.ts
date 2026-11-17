@@ -20,6 +20,7 @@ import { forgetPreferences } from '../scheduling/preferences.js';
 import { forgetMessages } from '../messaging/records.js';
 import { forgetSurveys } from '../surveys/surveys.js';
 import { forgetActive } from '../people/customRoles.js';
+import { forgetFieldValues } from '../people/customFields.js';
 import { type Tx, audit } from '../../lib/db.js';
 
 export function erasureDueDate(lastPayrollActivity: Date | null, retentionYears: number, requestedAt: Date): Date {
@@ -82,6 +83,8 @@ export async function anonymizeUser(tx: Tx, tenantId: string, actorId: string | 
   await forgetMessages(tx, userId);
   // Survey invitations and named (exit) answers; anonymous answers were never linked to them.
   await forgetSurveys(tx, userId);
+  // Custom fields (badge numbers, cost centres…) are details about the person: they go too.
+  await forgetFieldValues(tx, userId);
   await audit(tx, { tenantId, actorId, action: 'privacy.anonymized', entity: 'User', entityId: userId });
   // Object storage (certification documents) is purged by the documents worker on this audit event.
 }

@@ -35,7 +35,7 @@ const as = (who: string, sub = A) => ({
   del: (p: string) => request(server).delete(p).set('x-tenant-subdomain', sub).auth(tok[who]!, { type: 'bearer' }),
 });
 const v1 = (key: string, p: string) => request(server).get(`/api/v1${p}`).auth(key, { type: 'bearer' });
-const ALL = ['people:read', 'departments:read', 'positions:read', 'facilities:read', 'schedule:read', 'timesheets:read', 'timeoff:read', 'payroll:read'];
+const ALL = ['people:read', 'departments:read', 'positions:read', 'facilities:read', 'schedule:read', 'timesheets:read', 'timeoff:read', 'payroll:read', 'customfields:read'];
 
 /* ---------- A receiver for webhooks ---------- */
 let receiver: Server;

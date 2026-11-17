@@ -15,6 +15,8 @@ import { FILE_CSP } from '../../lib/files.js';
 import { FEATURE_KEYS, FEATURE_REQUIRES, FEATURES, forgetFeatures, resolveFeatures } from '../../services/platform/features.js';
 import { logoUrlFor, parseLogo } from '../../services/platform/logo.js';
 import { previewImport } from '../../services/platform/staffImport.js';
+import { fieldDefs } from '../../services/people/customFields.js';
+import { normalizeValue } from '../../services/people/customFieldValues.js';
 import { setManagers } from '../../services/people/reporting.js';
 import { createPool, poolDetailsBody, poolDetailsView, updatePool } from '../../services/ops/pools.js';
 import { CUSTOM_ROLE_PERMISSIONS, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../../services/people/customRoles.js';
@@ -447,12 +449,15 @@ citiesRouter.get(
 const importBody = z.object({ csv: z.string().min(1).max(1_500_000), sendInvites: z.boolean().default(false) });
 
 async function preview(tx: Tx, csv: string) {
-  const [users, positions, customRoles] = await Promise.all([
+  const [users, positions, customRoles, fields] = await Promise.all([
     tx.user.findMany({ select: { email: true } }),
     tx.position.findMany({ select: { id: true, name: true, nameFr: true } }),
     tx.customRole.findMany({ select: { id: true, name: true, nameFr: true } }),
+    fieldDefs(tx),
   ]);
-  return previewImport(csv, { existingEmails: new Set(users.map((u) => u.email.toLowerCase())), positions, customRoles, today: new Date().toISOString().slice(0, 10) });
+  // Custom fields: manager-level ones are imported; HR-only columns are refused unread (they never reach FH).
+  const customFields = fields.map((f) => ({ id: f.id, key: f.key, label: f.label, labelFr: f.labelFr, type: f.type, choices: f.choices, required: f.required, viewAccess: f.viewAccess }));
+  return previewImport(csv, { existingEmails: new Set(users.map((u) => u.email.toLowerCase())), positions, customRoles, customFields, normalize: normalizeValue, today: new Date().toISOString().slice(0, 10) });
 }
 
 citiesRouter.post(
@@ -503,6 +508,8 @@ citiesRouter.post(
             },
           });
           if (r.customRoleIds.length) await setUserCustomRoles(tx, id, u.id, r.customRoleIds);
+          const values = Object.entries(r.customFields);
+          if (values.length) await tx.customFieldValue.createMany({ data: values.map(([fieldId, value]) => ({ tenantId: id, fieldId, userId: u.id, value })) });
           if (r.positionIds.length) await tx.userPosition.createMany({ data: [...new Set(r.positionIds)].map((positionId) => ({ tenantId: id, userId: u.id, positionId })) });
           if (sendInvites) {
             const token = await issueAuthToken(tx, id, u.id, 'INVITE');

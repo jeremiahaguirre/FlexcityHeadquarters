@@ -159,6 +159,20 @@ export function openApiSpec() {
         }),
         Department: obj({ id: uuid, external_id: nullable(str()), name: str(), name_fr: nullable(str()), gl_code: nullable(str()), manager_ids: { type: 'array', items: uuid }, created_at: ts, updated_at: ts }),
         Position: obj({ id: uuid, external_id: nullable(str()), name: str(), name_fr: nullable(str()), department_id: nullable(uuid), updated_at: ts }),
+        CustomField: obj({
+          key: str({ description: 'Stable name, used as the key in values.' }),
+          label: str(),
+          label_fr: str(),
+          type: str({ enum: ['text', 'number', 'date', 'choice', 'boolean'] }),
+          choices: { type: 'array', items: obj({ value: str(), label: str(), label_fr: str() }) },
+          required: { type: 'boolean' },
+          visible_to: str({ enum: ['hr', 'managers'] }),
+          editable_by: str({ enum: ['hr', 'managers'] }),
+        }),
+        CustomFieldList: obj({ data: { type: 'array', items: ref('CustomField') } }),
+        CustomFieldValues: obj({ data: { type: 'object', additionalProperties: { type: ['string', 'number', 'boolean', 'null'] }, description: 'Each field’s value by key: text, a number, a YYYY-MM-DD date, a choice’s value or true/false; null when empty.' } }),
+        CustomFieldChange: { type: 'object', additionalProperties: { type: ['string', 'number', 'boolean', 'null'] }, description: 'Values by field key; null clears. Only the keys you send change.' },
+        CustomFieldResult: obj({ changed: { type: 'array', items: str() }, data: { type: 'object', additionalProperties: { type: ['string', 'number', 'boolean', 'null'] } } }),
         Facility: obj({ id: uuid, name: str(), province: str(), timezone: str(), cost_center: nullable(str()), created_at: ts, updated_at: ts }),
         Shift: obj({ id: uuid, facility_id: uuid, position_id: uuid, person_id: nullable(uuid), starts_at: ts, ends_at: ts, type: str(), title: nullable(str()), status: str({ enum: ['published', 'cancelled'] }), updated_at: ts }),
         Timesheet: obj({ id: uuid, person_id: uuid, facility_id: uuid, position_id: uuid, shift_id: nullable(uuid), clock_in: ts, clock_out: ts, hours: decimal, approved_at: nullable(ts), updated_at: ts }),
@@ -218,6 +232,11 @@ export function openApiSpec() {
       '/people/{id}/terminate': {
         post: writeOp('End someone’s employment', 'people:write', 'Starts their offboarding with the last day and reason; HR finishes its checklist in the app, which ends their access. Never deletes anything.', { body: 'Terminate', response: 'Termination', parameters: [idPath, idempotencyHeader, ifMatchHeader] }),
       },
+      '/people/{id}/custom-fields': {
+        get: getOp('Get one person’s custom field values', 'customfields:read', 'CustomFieldValues', [idPath]),
+        patch: writeOp('Change some of a person’s custom fields', 'customfields:write', 'Values are checked against each field’s type, choices and whether it’s required (422).', { body: 'CustomFieldChange', response: 'CustomFieldResult', parameters: [idPath] }),
+      },
+      '/custom-fields': op('List the organization’s custom fields on people', 'customfields:read', 'CustomFieldList', []),
       '/people/by-external-id/{externalId}': {
         put: writeOp('Add or change a person by your own id', 'people:write', 'Creates the person (201) when no one has this external id, else changes the fields you send (200).', { body: 'PersonUpsert', response: 'Person', upsert: true, parameters: [externalPath, ifMatchHeader, optionalIdempotency] }),
       },

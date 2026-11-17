@@ -770,7 +770,15 @@
     "NOT_IN_DEMO": "Cette fonction n’est pas offerte dans la démo.",
     "EXPORT_INVALID": "Il manque des renseignements pour envoyer cette période.",
     "PROVIDER_SEND_FAILED": "Le fournisseur de paie n’a pas accepté les heures. Réessayez ou téléchargez le fichier.",
-    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard."
+    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard.",
+    "CUSTOM_FIELD_INVALID": "Cette valeur ne convient pas à ce champ.",
+    "CUSTOM_FIELD_REQUIRED": "Ce champ est obligatoire.",
+    "CUSTOM_FIELD_UNKNOWN": "Ce champ n’existe pas.",
+    "CUSTOM_FIELD_READ_ONLY": "Vous ne pouvez pas modifier ce champ.",
+    "CUSTOM_FIELD_KEY_TAKEN": "Un autre champ utilise déjà cette clé.",
+    "CUSTOM_FIELD_CHOICES": "Un champ à choix demande au moins deux choix, chacun avec sa propre valeur.",
+    "CUSTOM_FIELD_ACCESS": "Les gestionnaires ne peuvent modifier qu’un champ qu’ils voient.",
+    "TOO_MANY_FIELDS": "Une organisation peut garder jusqu’à 50 champs du dossier."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1807,7 +1815,8 @@
       "rules": "Convention collective",
       "roles": "Rôles",
       "departments": "Services",
-      "integrations": "Intégrations"
+      "integrations": "Intégrations",
+      "fields": "Champs du dossier"
     },
     "org": "Organisation",
     "orgHelp": "Votre personnel se connecte à {{host}}.",
@@ -2415,10 +2424,12 @@
         "TOO_MANY_ROWS": "Plus de 2 000 lignes; importez le reste séparément.",
         "MANAGER_SELF": "Une personne ne peut pas relever d’elle-même.",
         "MANAGER_UNKNOWN": "Personne avec le courriel {{value}} dans le personnel ou le fichier.",
-        "MANAGER_CYCLE": "Les gestionnaires du fichier tournent en rond (en passant par {{value}})."
+        "MANAGER_CYCLE": "Les gestionnaires du fichier tournent en rond (en passant par {{value}}).",
+        "CUSTOM_FIELD_INVALID": "« {{value}} » n’est pas une valeur valide pour {{field}}."
       },
       "help_one": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} poste reconnu.",
-      "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus."
+      "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus.",
+      "hrOnly": "Non importés : {{list}}. Ces champs du dossier sont réservés aux RH; les RH de la ville les remplissent dans l’application."
     },
     "account": "Votre compte",
     "accountHelp": "Clés d’accès pour la console Dev. Ajouter ou retirer une clé exige une connexion des 10 dernières minutes.",
@@ -6278,7 +6289,9 @@
       "departments_write": "Services : ajouter et modifier",
       "positions_write": "Postes : ajouter et modifier",
       "timeoff_write": "Congés : demander et annuler pour le personnel",
-      "timeoff_approve": "Congés : envoyer déjà approuvés"
+      "timeoff_approve": "Congés : envoyer déjà approuvés",
+      "customfields_read": "Champs du dossier (y compris ceux réservés aux RH)",
+      "customfields_write": "Champs du dossier : modifier les valeurs"
     },
     "allowedIps": "Seulement depuis ces adresses (facultatif)",
     "allowedIpsHint": "Adresses ou plages IP, séparées par des virgules. Laissez vide pour permettre toute adresse.",
@@ -8660,5 +8673,52 @@
       "ended": "Terminée",
       "cancelled": "Annulée"
     }
+  },
+  "customFields": {
+    "title": "Champs du dossier",
+    "help": "Les champs propres à votre organisation dans le dossier de chaque personne, comme un numéro d’insigne, un deuxième numéro d’employé ou un centre de coûts. Chacun a un libellé en anglais et en français. Les champs réservés aux RH ne sont jamais montrés aux gestionnaires ni au soutien de FlexcityHeadquarters.",
+    "add": "Ajouter un champ",
+    "addTitle": "Ajouter un champ du dossier",
+    "editTitle": "Modifier un champ du dossier",
+    "edit": "Modifier {{name}}",
+    "saved": "Champ enregistré.",
+    "empty": "Aucun champ du dossier pour l’instant.",
+    "label": "Libellé (anglais)",
+    "labelFr": "Libellé (français)",
+    "key": "Clé",
+    "keyHint": "Utilisée par les importations et l’API publique. Lettres minuscules, chiffres et _.",
+    "keyFixed": "La clé ne change plus une fois le champ créé.",
+    "type": "Type",
+    "typeFixed": "Le type ne change plus une fois le champ créé.",
+    "types": {
+      "TEXT": "Texte",
+      "NUMBER": "Nombre",
+      "DATE": "Date",
+      "CHOICE": "Choix",
+      "BOOLEAN": "Oui ou non"
+    },
+    "choices": "Choix",
+    "choiceValue": "Valeur",
+    "addChoice": "Ajouter un choix",
+    "accessLabel": "Qui le voit et le modifie",
+    "accessHint": "Les gestionnaires sont les superviseurs et gestionnaires dont le service comprend la personne.",
+    "access": {
+      "HR_HR": "RH seulement",
+      "MANAGER_HR": "Les gestionnaires le voient; les RH le modifient",
+      "MANAGER_MANAGER": "Les gestionnaires le voient et le modifient"
+    },
+    "required": "Obligatoire",
+    "requiredLabel": "Obligatoire : il ne peut pas rester vide",
+    "archived": "Archivé",
+    "archiveLabel": "Archivé : masqué des dossiers et de l’API; les valeurs sont conservées",
+    "hrOnly": "RH seulement",
+    "cardTitle": "Champs du dossier",
+    "cardHelp": "Les renseignements propres à votre organisation sur cette personne.",
+    "valuesSaved": "Champs du dossier enregistrés.",
+    "empty_value": "Non indiqué",
+    "missing": "Manquant",
+    "none": "Non indiqué",
+    "yes": "Oui",
+    "no": "Non"
   }
 }

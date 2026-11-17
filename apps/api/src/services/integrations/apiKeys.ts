@@ -16,9 +16,9 @@ import { BlockList, isIP } from 'node:net';
 import type { Permission } from '../../auth/permissions.js';
 import type { FeatureKey } from '../platform/features.js';
 
-export const READ_SCOPES = ['people:read', 'departments:read', 'positions:read', 'facilities:read', 'schedule:read', 'timesheets:read', 'timeoff:read', 'payroll:read'] as const;
+export const READ_SCOPES = ['people:read', 'departments:read', 'positions:read', 'facilities:read', 'schedule:read', 'timesheets:read', 'timeoff:read', 'payroll:read', 'customfields:read'] as const;
 /** Scopes that change data: never given unless asked for. */
-export const WRITE_SCOPES = ['people:write', 'departments:write', 'positions:write', 'timeoff:write', 'timeoff:approve'] as const;
+export const WRITE_SCOPES = ['people:write', 'departments:write', 'positions:write', 'timeoff:write', 'timeoff:approve', 'customfields:write'] as const;
 export const SCOPES = [...READ_SCOPES, ...WRITE_SCOPES] as const;
 export type ApiScope = (typeof SCOPES)[number];
 export const isWriteScope = (s: string) => (WRITE_SCOPES as readonly string[]).includes(s);
@@ -39,6 +39,9 @@ export const SCOPE_PERMISSIONS: Record<ApiScope, Permission[]> = {
   'timeoff:write': ['leave.manage', 'timeoff.approve'],
   // Time off sent in already approved (an HRIS that approves leave itself).
   'timeoff:approve': ['timeoff.approve'],
+  // Custom fields include HR-only ones: only HR can give a key access to them.
+  'customfields:read': ['users.write'],
+  'customfields:write': ['users.write'],
 };
 
 /** A scope's data is unavailable while its feature is switched off for the organization. */

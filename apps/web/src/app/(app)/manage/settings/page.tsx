@@ -31,6 +31,7 @@ import { SeniorityCard } from '@/components/settings/SeniorityCard';
 import { FillSettingsCard } from '@/components/settings/FillSettingsCard';
 import { ReliabilityCard } from '@/components/settings/ReliabilityCard';
 import { HolidayWeekendCard } from '@/components/settings/HolidayWeekendCard';
+import { CustomFieldsSettings } from '@/components/settings/CustomFieldsSettings';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
@@ -64,7 +65,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
+type Tab = 'org' | 'departments' | 'fields' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -82,7 +83,7 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const { can } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
+  const tabs: Tab[] = [...(org ? (['org', 'departments', 'fields', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
   // A link can open a tab (the email about a webhook that was turned off opens Integrations).
   useEffect(() => {
@@ -104,6 +105,10 @@ export default function SettingsPage() {
         <IntegrationsSettings />
       ) : tab === 'pools' ? (
         <Pools />
+      ) : tab === 'fields' ? (
+        <div className="grid max-w-4xl gap-6">
+          <CustomFieldsSettings />
+        </div>
       ) : tab === 'departments' ? (
         <DepartmentsSettings />
       ) : settings.error ? (
