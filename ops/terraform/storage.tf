@@ -12,11 +12,12 @@ resource "aws_s3_bucket_versioning" "backups" {
   }
 }
 
+# COMPLIANCE in production: no one, root included, deletes a locked backup early (SEC-71; backup.tf).
 resource "aws_s3_bucket_object_lock_configuration" "backups" {
   bucket = aws_s3_bucket.backups.id
   rule {
     default_retention {
-      mode = "GOVERNANCE"
+      mode = local.backup_object_lock_mode
       days = 35
     }
   }
