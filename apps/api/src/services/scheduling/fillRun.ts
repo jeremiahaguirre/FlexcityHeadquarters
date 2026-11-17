@@ -14,7 +14,7 @@ import type { Prisma, Province } from '../../generated/prisma/client.js';
 import { DateTime } from 'luxon';
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../../lib/db.js';
-import { badRequest, forbidden, notFound } from '../../lib/errors.js';
+import { forbidden, invalid, notFound } from '../../lib/errors.js';
 import { addDays, dayOfWeek, localDate, localIso, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
@@ -563,7 +563,7 @@ export async function undoFill(tx: Tx, a: AuthContext, undoId: string) {
   const row = await tx.auditLog.findUnique({ where: { id: undoId } });
   if (!row || row.action !== 'schedule.fill.accept' || row.actorId !== a.userId) throw notFound('Accepted proposals');
   const done = await tx.auditLog.findFirst({ where: { action: 'schedule.fill.undo', entityId: undoId } });
-  if (done) throw badRequest('These proposals were already undone.');
+  if (done) throw invalid('ALREADY_UNDONE', 'These proposals were already undone.');
   const applied = ((row.after as { applied?: Array<Partial<AppliedItem> & { shiftId: string; version: number; userId: string | null; previousUserId: string | null }> } | null)?.applied ?? []);
   await lockForAssignment(tx, { shiftIds: applied.map((x) => x.shiftId), userIds: applied.flatMap((x) => [x.userId, x.previousUserId]) });
   let restored = 0;

@@ -7,7 +7,7 @@ import type { Prisma, ShiftType } from '../../generated/prisma/client.js';
 import { chargeOvertime, fairnessCheck, reverseOvertime } from './overtime.js';
 import { lockForAssignment } from './locks.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import type { DomainEvent } from '../../lib/events.js';
 import { dec } from '../../lib/money.js';
 import { type Evaluation, evaluateCandidate } from './eligibility.js';
@@ -29,8 +29,8 @@ export interface Actor {
 const MAX_SHIFT_HOURS = 16;
 
 function validateTimes(startsAt: Date, endsAt: Date) {
-  if (endsAt <= startsAt) throw badRequest('A shift must end after it starts.');
-  if (endsAt.getTime() - startsAt.getTime() > MAX_SHIFT_HOURS * 3_600_000) throw badRequest(`A shift can be at most ${MAX_SHIFT_HOURS} hours.`);
+  if (endsAt <= startsAt) throw invalid('ENDS_BEFORE_START', 'A shift must end after it starts.');
+  if (endsAt.getTime() - startsAt.getTime() > MAX_SHIFT_HOURS * 3_600_000) throw invalid('SHIFT_TOO_LONG', `A shift can be at most ${MAX_SHIFT_HOURS} hours.`, { maxHours: MAX_SHIFT_HOURS });
 }
 
 export interface ShiftInput {
@@ -56,7 +56,7 @@ export async function createShift(tx: Tx, actor: Actor, input: ShiftInput) {
   ]);
   if (!facility) throw notFound('Facility');
   if (!position) throw notFound('Position');
-  if (input.shiftType === 'CUSTOM' && !input.customTitle?.trim()) throw badRequest('Custom shifts need a title.');
+  if (input.shiftType === 'CUSTOM' && !input.customTitle?.trim()) throw invalid('TITLE_REQUIRED', 'Custom shifts need a title.');
   const shift = await tx.shift.create({
     data: {
       tenantId: actor.tenantId,

@@ -18,6 +18,7 @@ import { ApiError } from '@/lib/apiError';
 import { formatDate } from '@/lib/format';
 import { type CitySummary, papi, usePlatformQuery } from '@/lib/platform';
 import { PROVINCES, TIMEZONES } from '@/lib/regions';
+import { errorText } from '@/lib/apiError';
 
 /** Dev console home: every organization (city or company), with search and a form to create one. */
 export default function CitiesPage() {
@@ -52,7 +53,7 @@ export default function CitiesPage() {
       toast(t('platform.created'), 'ok');
       router.push(`/platform/city?id=${r.id}`);
     } catch (err) {
-      toast(err instanceof ApiError ? t(`platform.errors.${err.code}`, { defaultValue: err.message }) : t('common.error'), 'warn');
+      toast(err instanceof ApiError ? t(`platform.errors.${err.code}`, { defaultValue: errorText(t, err) }) : t('common.error'), 'warn');
     } finally {
       setBusy(false);
     }

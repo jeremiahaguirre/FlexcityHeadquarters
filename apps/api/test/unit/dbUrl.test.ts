@@ -32,6 +32,8 @@ describe('database URLs', () => {
     expect(verifiesServer('postgresql://a:b@h/d?sslmode=require')).toBe(false);
     expect(verifiesServer('postgresql://a:b@h/d?sslmode=verify-full')).toBe(false);
     expect(verifiesServer('postgresql://a:b@h/d?sslmode=require&sslcert=/x&sslaccept=strict')).toBe(false);
+    // verify-ca stops checking the host name once pg follows libpq (pg 9).
+    expect(verifiesServer('postgresql://a:b@h/d?sslmode=verify-ca&sslrootcert=/x.pem')).toBe(false);
   });
 });
 
