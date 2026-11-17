@@ -118,6 +118,12 @@ variable "db_read_replica" {
   type        = bool
   default     = false
 }
+variable "db_log_retention_days" {
+  description = "Days the database's exported log (slow statements, errors; never their values) is kept in CloudWatch."
+  type        = number
+  default     = 30
+}
+
 variable "db_backup_retention_days" {
   type    = number
   default = 35

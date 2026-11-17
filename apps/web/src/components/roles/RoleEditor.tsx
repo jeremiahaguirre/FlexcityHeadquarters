@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input } from '@/components/ui/Field';
 import { StatusPill } from '@/components/ui/StatusPill';
-import { type CustomRole, ROLE_TEMPLATES, type RoleCatalog, type RoleInput, roleName } from '@/lib/customRoles';
+import { type CustomRole, ROLE_TEMPLATES, type RoleCatalog, type RoleInput, neededBy, roleName, toggleCapability } from '@/lib/customRoles';
 import { useAction } from '@/lib/useQuery';
 
 type Named = { id: string; name: string; nameFr?: string | null };
@@ -23,6 +23,7 @@ type Named = { id: string; name: string; nameFr?: string | null };
 export function RoleEditor({
   roles,
   catalog,
+  needs = {},
   save,
   remove,
   reload,
@@ -33,6 +34,8 @@ export function RoleEditor({
 }: {
   roles: CustomRole[];
   catalog: RoleCatalog;
+  /** Capabilities that come with another (managing roles needs the staff list). */
+  needs?: Record<string, string[]>;
   save: (body: RoleInput, id?: string) => Promise<unknown>;
   remove: (id: string) => Promise<unknown>;
   reload: () => Promise<void>;
@@ -56,13 +59,7 @@ export function RoleEditor({
     setEditing(r);
   };
   const template = (k: keyof typeof ROLE_TEMPLATES) => setChecked(new Set(ROLE_TEMPLATES[k].flatMap((g) => catalog[g] ?? []).filter(can)));
-  const toggle = (p: string) =>
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(p)) next.delete(p);
-      else next.add(p);
-      return next;
-    });
+  const toggle = (p: string) => setChecked((prev) => toggleCapability(prev, p, needs, can));
   const label = (x: Named) => (lng === 'fr-CA' && x.nameFr ? x.nameFr : x.name);
   const scopeText = (r: CustomRole) => {
     const ps = (r.scopePositionIds ?? []).map((id) => positions.find((p) => p.id === id)).filter(Boolean).map((p) => label(p!));
@@ -181,12 +178,18 @@ export function RoleEditor({
               <legend className="px-1 text-small font-semibold">{t(`customRoles.groups.${group}`)}</legend>
               <p className="text-caption text-muted">{t(`customRoles.groupHelp.${group}`)}</p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {perms.map((p) => (
-                  <label key={p} className="flex items-center gap-2 text-small">
-                    <input type="checkbox" name="perm" value={p} checked={checked.has(p)} disabled={readOnly || !can(p)} onChange={() => toggle(p)} className="h-5 w-5 accent-[rgb(var(--brand))] disabled:opacity-40" />
-                    {t(`customRoles.perms.${p}`, { defaultValue: p })}
-                  </label>
-                ))}
+                {perms.map((p) => {
+                  const by = neededBy(checked, p, needs);
+                  return (
+                    <label key={p} className="flex items-start gap-2 text-small">
+                      <input type="checkbox" name="perm" value={p} checked={checked.has(p)} disabled={readOnly || !can(p) || by.length > 0} onChange={() => toggle(p)} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))] disabled:opacity-40" />
+                      <span>
+                        {t(`customRoles.perms.${p}`, { defaultValue: p })}
+                        {by.length ? <span className="block text-caption text-muted">{t('customRoles.neededBy', { what: by.map((q) => t(`customRoles.perms.${q}`, { defaultValue: q })).join(', ') })}</span> : null}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
           ))}
