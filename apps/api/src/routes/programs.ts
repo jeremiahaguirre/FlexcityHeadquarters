@@ -29,10 +29,12 @@ const anyOf = (...perms: Parameters<typeof requirePermission>) => (req: Paramete
  * own facilities and positions (SEC-29). Member services and whole-organization planners change all.
  */
 const limitedPlanner = (a: AuthContext) => !a.permissions.has('members.manage') && !holdsForWholeOrganization(a, 'lessons.plan');
-const campaignWrite = (req: Request, _res: Response, next: NextFunction) => {
-  const a = authOf(req);
-  next(limitedPlanner(a) ? new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'Campaigns are set for the whole organization; you can change the sets at your own facility.') : undefined);
+/** Route guard for campaign and level changes, built like requireWholeOrganization. */
+const campaignPlanner = () => (req: Request, _res: Response, next: NextFunction) => {
+  if (!req.auth) return next(new HttpError(401, 'UNAUTHENTICATED', 'Not signed in'));
+  next(limitedPlanner(req.auth) ? new HttpError(403, 'WHOLE_ORGANIZATION_ONLY', 'Campaigns are set for the whole organization; you can change the sets at your own facility.') : undefined);
 };
+const campaignWrite = campaignPlanner();
 const assertSetInScope = (a: AuthContext, set: { facilityId: string; positionId: string }) => {
   if (limitedPlanner(a)) assertShiftInScope(a, set);
 };
