@@ -32,7 +32,7 @@ import { type StatedPreferences, loadPreferences } from './preferences.js';
 import { type CoverageNeed, type SolverPerson, type SolverSlot, orderKey, solve } from './solver.js';
 import { breakAfterHoursFor, breakMinutesOf, effectiveWorkRules, paidIntervals, parseWorkRules, premiumPieces } from './workRules.js';
 import { isNeverAlone } from './twoPerson.js';
-import { type EffectiveSettings, type HorizonWeeks, type SolverToggles, type SolverWeights, effectiveSettings, parseSolverSettings, withSolverSettings } from './solverSettings.js';
+import { type EffectiveSettings, type HorizonWeeks, type SolverToggles, type SolverWeights, effectiveSettings, parseSolverSettings, updateSolverSettings } from './solverSettings.js';
 
 /** Pseudo-departments: positions that belong to none, and everything the person may schedule. */
 export const NO_DEPARTMENT = 'none';
@@ -344,7 +344,9 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
   });
 
   if (req.weekIndex === 0 && stored.lastHorizonWeeks !== req.horizonWeeks) {
-    await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: withSolverSettings(tenant.overtimePolicy, { ...stored, lastHorizonWeeks: req.horizonWeeks }) as Prisma.InputJsonValue } });
+    // Only the one key, on what is stored now: the run's own copy (read before solving) would
+    // undo any settings change made meanwhile (ARCHITECTURE-REVIEW A11).
+    await updateSolverSettings(tx, a.tenantId, (s) => ({ ...s, lastHorizonWeeks: req.horizonWeeks }));
   }
   await audit(tx, {
     tenantId: a.tenantId,

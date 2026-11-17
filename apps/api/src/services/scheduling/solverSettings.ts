@@ -25,6 +25,8 @@
  * department can turn seniority off (its agreement doesn't use it), never on when the
  * organization has it off.
  */
+import type { Tx } from '../../lib/db.js';
+import { updateTenantJson } from '../../lib/tenantSettings.js';
 import { z } from 'zod';
 
 export const HORIZONS = [1, 2, 4, 13] as const;
@@ -218,7 +220,61 @@ export function effectiveSettings(s: SolverSettings, departmentId: string | null
   };
 }
 
-/** Writes the solver settings back without touching the overtime policy's own keys. */
+/**
+ * Writes the solver settings back without touching the overtime policy's own keys, or solver keys
+ * this version doesn't know (a newer release may have added them while it rolls out).
+ */
 export function withSolverSettings(overtimePolicy: unknown, solver: SolverSettings): Record<string, unknown> {
-  return { ...obj(overtimePolicy), solver };
+  const op = obj(overtimePolicy);
+  const stored = obj(op.solver);
+  const out = keepUnknown(stored, solver as unknown as Record<string, unknown>, TOP_KEYS);
+  out.weights = keepUnknown(obj(stored.weights), { ...solver.weights }, WEIGHT_KEYS);
+  out.toggles = keepUnknown(obj(stored.toggles), { ...solver.toggles }, TOGGLE_KEYS);
+  out.limits = keepUnknown(obj(stored.limits), { ...solver.limits }, LIMIT_KEYS);
+  const storedDepartments = obj(stored.departments);
+  out.departments = Object.fromEntries(
+    Object.entries(solver.departments).map(([id, d]) => {
+      const was = obj(storedDepartments[id]);
+      const dep = keepUnknown(was, { ...d }, DEPARTMENT_KEYS);
+      for (const [k, known] of [['weights', WEIGHT_KEYS], ['toggles', TOGGLE_KEYS], ['limits', LIMIT_KEYS]] as const) {
+        const keep = keepUnknown(obj(was[k]), { ...obj(d[k]) }, known);
+        if (Object.keys(keep).length) dep[k] = keep;
+      }
+      return [id, dep];
+    }),
+  );
+  return { ...op, solver: out };
+}
+
+/**
+ * The parsed value, plus the stored keys this version doesn't know (`known` are the keys it does:
+ * those come from `parsed` only, so a setting removed on purpose stays removed).
+ */
+function keepUnknown(stored: Record<string, unknown>, parsed: Record<string, unknown>, known: ReadonlySet<string>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(stored)) if (!known.has(k)) out[k] = v;
+  for (const [k, v] of Object.entries(parsed)) if (v !== undefined) out[k] = v;
+  return out;
+}
+
+const WEIGHT_KEYS: ReadonlySet<string> = new Set(Object.keys(weightsBody.shape));
+const TOGGLE_KEYS: ReadonlySet<string> = new Set(Object.keys(togglesBody.shape));
+const LIMIT_KEYS: ReadonlySet<string> = new Set(Object.keys(limitsBody.shape));
+const DEPARTMENT_KEYS: ReadonlySet<string> = new Set(Object.keys(departmentBody.shape));
+const TOP_KEYS: ReadonlySet<string> = new Set(Object.keys(parseSolverSettings({})));
+
+/**
+ * Changes the solver settings under the organization's row lock (lib/tenantSettings.ts), starting
+ * from what is stored now: a schedule fill and a settings change at the same time both keep their
+ * change. Returns the settings before and after.
+ */
+export async function updateSolverSettings(tx: Tx, tenantId: string, change: (current: SolverSettings) => SolverSettings): Promise<{ before: SolverSettings; after: SolverSettings }> {
+  let before!: SolverSettings;
+  let after!: SolverSettings;
+  await updateTenantJson(tx, tenantId, 'overtimePolicy', (op) => {
+    before = parseSolverSettings(op);
+    after = change(structuredClone(before));
+    return withSolverSettings(op, after);
+  });
+  return { before, after };
 }
