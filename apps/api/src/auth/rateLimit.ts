@@ -68,7 +68,7 @@ export async function purgeRateLimitHits(now = new Date(), batch = 5_000): Promi
   const before = new Date(now.getTime() - HIT_RETENTION_MS);
   let total = 0;
   for (;;) {
-    const n = await db().$executeRaw(purgeBatchSql(before, batch));
+    const n = await db().$executeRaw`${purgeBatchSql(before, batch)}`;
     total += n;
     if (n < batch) return total;
   }
