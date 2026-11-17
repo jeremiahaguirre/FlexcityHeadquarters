@@ -1,15 +1,15 @@
 'use client';
 
 import { OvertimeOrder } from '@/components/OvertimeOrder';
-import { Check, ClipboardCheck, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Check, ClipboardCheck, Clock3, Pencil, Plus, X } from 'lucide-react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShiftCard, type ShiftLike } from '@/components/ShiftCard';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Field, Textarea } from '@/components/ui/Field';
+import { Field, Input, Select, Textarea } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { TradeApprovals } from '@/components/shiftboard/Trades';
@@ -17,6 +17,7 @@ import { TeamScopeSwitch, useTeamScope } from '@/components/people/Reporting';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
+import { ApiError } from '@/lib/apiError';
 import { formatDate, formatDuration, formatHours, formatSpan, formatTime, formatTimeRange } from '@/lib/format';
 import { LONG_PUNCH_HOURS } from '@/lib/punch';
 import { useSession } from '@/lib/session';
@@ -26,8 +27,9 @@ interface Claim { id: string; claimant: { id: string; name: string } | null; com
 interface TimeOff { id: string; type: string; startsAt: string; endsAt: string; note: string | null; user: { name: string }; affectedShifts: number }
 interface Punch {
   id: string;
-  user: { name: string };
-  facility: { name: string };
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  user: { id?: string; name: string };
+  facility: { id?: string; name: string };
   localClockIn: string;
   localClockOut: string | null;
   localShiftStart: string | null;
@@ -39,6 +41,8 @@ interface Punch {
   localClockInReceivedAt?: string | null;
   localClockOutReceivedAt?: string | null;
   clockSkewS?: number | null;
+  /** This supervisor added or changed the time, so someone else approves it. */
+  correctedByYou?: boolean;
 }
 type Tab = 'claims' | 'trades' | 'timeoff' | 'punches';
 const PROTECTED = new Set(['SICK', 'PROTECTED_LEAVE']);
@@ -55,7 +59,13 @@ export default function ApprovalsPage() {
   const claims = useQuery<Claim[]>(ready && can('shiftboard.approve') ? `/api/offers/pending${tq}` : null);
   const timeOff = useQuery<TimeOff[]>(ready && can('timeoff.approve') ? `/api/time-off${tq}` : null);
   const punches = useQuery<Punch[]>(ready && can('timeclock.review') ? `/api/punches${tq}` : null);
-  const [tab, setTab] = useState<Tab>('claims');
+  const allowed: Record<Tab, boolean> = { claims: can('shiftboard.approve'), trades: can('shiftboard.approve'), timeoff: can('timeoff.approve'), punches: can('timeclock.review') };
+  const [tab, setTab] = useState<Tab>(() => (['claims', 'timeoff', 'punches', 'trades'] as const).find((k) => allowed[k]) ?? 'claims');
+  // Punches: the queue waiting for review, or ones already approved (to correct a time; it then goes back for review).
+  const [punchView, setPunchView] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const approvedPunches = useQuery<Punch[]>(ready && can('timeclock.review') && punchView !== 'PENDING' ? `/api/punches?status=${punchView}${scope.query ? `&${scope.query}` : ''}` : null);
+  const [editing, setEditing] = useState<Punch | null>(null);
+  const [adding, setAdding] = useState(false);
   const { run, busy } = useAction();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rejecting, setRejecting] = useState<{ kind: 'punch' | 'timeoff'; ids: string[]; protectedLeave?: boolean } | null>(null);
@@ -77,7 +87,7 @@ export default function ApprovalsPage() {
 
   // Open on the first tab that has something waiting, once every list has loaded, unless the person already chose one.
   const chosen = useRef(false);
-  const order: Tab[] = ['claims', 'timeoff', 'punches', ...(can('shiftboard.approve') ? (['trades'] as const) : [])];
+  const order: Tab[] = (['claims', 'timeoff', 'punches', 'trades'] as const).filter((k) => allowed[k]);
   const allLoaded = ready && !claims.loading && !timeOff.loading && !punches.loading && !trades.loading;
   const firstWithItems = allLoaded ? order.find((k) => count[k] > 0) : undefined;
   useEffect(() => {
@@ -103,7 +113,7 @@ export default function ApprovalsPage() {
   });
 
   const label = (k: Tab) => `${t(`approvals.tabs.${k}`)}${count[k] ? ` · ${count[k]}` : ''}`;
-  const reviewable = punches.data?.filter((p) => p.localClockOut) ?? [];
+  const reviewable = punches.data?.filter((p) => p.localClockOut && !p.correctedByYou) ?? [];
 
   return (
     <>
@@ -115,12 +125,7 @@ export default function ApprovalsPage() {
             label={t('approvals.title')}
             value={tab}
             onChange={choose}
-            options={[
-              { value: 'claims', label: label('claims') },
-              { value: 'timeoff', label: label('timeoff') },
-              { value: 'punches', label: label('punches') },
-              ...(can('shiftboard.approve') ? [{ value: 'trades' as const, label: label('trades') }] : []),
-            ]}
+            options={order.map((k) => ({ value: k, label: label(k) }))}
           />
         }
       />
@@ -205,6 +210,57 @@ export default function ApprovalsPage() {
       {tab === 'trades' ? <TradeApprovals key={tq} team={team} /> : null}
 
       {tab === 'punches' ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <Segmented
+            label={t('approvals.punchView')}
+            value={punchView}
+            onChange={setPunchView}
+            options={[
+              { value: 'PENDING', label: t('approvals.punchViews.PENDING') },
+              { value: 'APPROVED', label: t('approvals.punchViews.APPROVED') },
+              { value: 'REJECTED', label: t('approvals.punchViews.REJECTED') },
+            ]}
+          />
+          {can('users.read') ? (
+            <Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAdding(true)}>
+              {t('approvals.addPunch')}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab === 'punches' && punchView !== 'PENDING' ? (
+        approvedPunches.loading || !approvedPunches.data ? (
+          <ListSkeleton />
+        ) : !approvedPunches.data.length ? (
+          <EmptyState icon={ClipboardCheck} title={t(punchView === 'APPROVED' ? 'approvals.noApprovedPunches' : 'approvals.noRejectedPunches')}>
+            {t('approvals.noApprovedPunchesHelp')}
+          </EmptyState>
+        ) : (
+          <Card className="overflow-hidden">
+            <ul className="divide-y divide-line">
+              {approvedPunches.data.map((p) => (
+                <li key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-small font-semibold">
+                      {p.user.name} · <span className="font-normal text-muted">{formatDate(p.localClockIn, lng)}</span>
+                    </p>
+                    <p className="text-caption tabular-nums text-muted">
+                      {t('approvals.punched')}: {p.localClockOut ? formatSpan(p.localClockIn, p.localClockOut, lng, { startDate: false }) : `${formatTime(p.localClockIn, lng)} – …`}
+                    </p>
+                  </div>
+                  {p.hours != null ? <span className="whitespace-nowrap text-small font-semibold tabular-nums">{formatDuration(p.hours, lng)}</span> : null}
+                  <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('approvals.editTimesFor', { name: p.user.name })} onClick={() => setEditing(p)}>
+                    {t('approvals.editTimes')}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )
+      ) : null}
+
+      {tab === 'punches' && punchView === 'PENDING' ? (
         punches.loading ? (
           <ListSkeleton />
         ) : !punches.data?.length ? (
@@ -238,7 +294,7 @@ export default function ApprovalsPage() {
                   <input
                     type="checkbox"
                     aria-label={t('approvals.selectPunch', { name: p.user.name })}
-                    disabled={!p.localClockOut}
+                    disabled={!p.localClockOut || p.correctedByYou}
                     className="h-5 w-5 accent-[rgb(var(--brand))]"
                     checked={selected.has(p.id)}
                     onChange={(e) => {
@@ -266,12 +322,41 @@ export default function ApprovalsPage() {
                     ))}
                     {p.hours != null && p.hours > LONG_PUNCH_HOURS ? <StatusPill tone="warn">{t('timeclock.longPunch')}</StatusPill> : null}
                     {p.hours != null ? <span className="ml-1 whitespace-nowrap text-small font-semibold tabular-nums" title={formatHours(p.hours, lng, 'payroll')}>{formatDuration(p.hours, lng)}</span> : null}
+                    {p.correctedByYou ? <StatusPill tone="neutral">{t('approvals.correctedByYou')}</StatusPill> : null}
+                    {!p.localClockOut ? (
+                      <StatusPill tone="warn" icon={<Clock3 className="h-3.5 w-3.5" aria-hidden="true" />}>
+                        {t('approvals.stillOpen')}
+                      </StatusPill>
+                    ) : null}
+                    <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('approvals.editTimesFor', { name: p.user.name })} onClick={() => setEditing(p)}>
+                      {p.localClockOut ? t('approvals.editTimes') : t('approvals.addClockOut')}
+                    </Button>
                   </div>
                 </li>
               ))}
             </ul>
           </Card>
         )
+      ) : null}
+
+      {editing ? (
+        <EditPunchDialog
+          punch={editing}
+          onClose={() => setEditing(null)}
+          onSaved={async () => {
+            setEditing(null);
+            await Promise.all([punches.reload(), punchView !== 'PENDING' ? approvedPunches.reload() : Promise.resolve()]);
+          }}
+        />
+      ) : null}
+      {adding ? (
+        <AddPunchDialog
+          onClose={() => setAdding(false)}
+          onSaved={async () => {
+            setAdding(false);
+            await punches.reload();
+          }}
+        />
       ) : null}
 
       <Dialog
@@ -326,5 +411,176 @@ function OfflineNote({ p, lng }: { p: Punch; lng: string }) {
       {parts.length ? ` · ${parts.join(' · ')}` : ''}
       {skewMin >= 1 ? ` · ${t('approvals.offline.clockOff', { count: skewMin })}` : ''}
     </p>
+  );
+}
+
+/** A facility-local "2026-11-14T06:30:00.000-08:00" as the value of a date-time input ("2026-11-14T06:30"). */
+const pickerValue = (local: string | null | undefined) => (local ? local.slice(0, 16) : '');
+
+/**
+ * The night clocks go back, 1:30 happens twice: the server says so (AMBIGUOUS_TIME, with the two
+ * offsets) and the dialog asks which one, then sends the time with that offset.
+ */
+function useTwiceTime() {
+  const [twice, setTwice] = useState<{ field: string; offsets: string[] } | null>(null);
+  const [offset, setOffset] = useState('');
+  const send = <R,>(fn: () => Promise<R>) => async () => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'AMBIGUOUS_TIME') {
+        const d = e.details as { field: string; offsets: string[] };
+        setTwice(d);
+        setOffset(d.offsets[0] ?? '');
+      }
+      throw e;
+    }
+  };
+  const value = (field: string, local: string) => (twice?.field === field && offset ? `${local}${offset}` : local);
+  return { twice, offset, setOffset, send, value };
+}
+
+function TwiceChoice({ twice, offset, setOffset }: Pick<ReturnType<typeof useTwiceTime>, 'twice' | 'offset' | 'setOffset'>) {
+  const { t } = useTranslation();
+  if (!twice) return null;
+  return (
+    <Field label={t(twice.field === 'localClockIn' ? 'approvals.whichClockIn' : 'approvals.whichClockOut')} hint={t('approvals.twiceHint')}>
+      {(p) => (
+        <Select {...p} value={offset} onChange={(e) => setOffset(e.target.value)}>
+          {twice.offsets.map((o, i) => (
+            <option key={o} value={o}>
+              {t(i === 0 ? 'approvals.firstOccurrence' : 'approvals.secondOccurrence', { offset: `UTC${o}` })}
+            </option>
+          ))}
+        </Select>
+      )}
+    </Field>
+  );
+}
+
+/** Correct a punch's times (or add the missing clock-out), with a reason the person sees. */
+function EditPunchDialog({ punch, onClose, onSaved }: { punch: Punch; onClose: () => void; onSaved: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const { run, busy } = useAction();
+  const twice = useTwiceTime();
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const localIn = String(f.get('in') ?? '');
+    const localOut = String(f.get('out') ?? '');
+    const body = {
+      ...(localIn && localIn !== pickerValue(punch.localClockIn) ? { localClockIn: twice.value('localClockIn', localIn) } : {}),
+      ...(localOut && localOut !== pickerValue(punch.localClockOut) ? { localClockOut: twice.value('localClockOut', localOut) } : {}),
+      reason: String(f.get('reason') ?? '').trim(),
+    };
+    const ok = await run('editPunch', twice.send(() => api(`/api/punches/${punch.id}`, { method: 'PATCH', body })), t('approvals.punchCorrected', { name: punch.user.name }));
+    if (ok !== undefined) await onSaved();
+  }
+  return (
+    <Dialog open onClose={onClose} title={t('approvals.editTimesFor', { name: punch.user.name })} description={`${punch.facility.name} · ${t('approvals.facilityTime')}`} closeLabel={t('common.close')}>
+      <form onSubmit={(e) => void save(e)} className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('approvals.clockIn')}>{(p) => <Input {...p} name="in" type="datetime-local" required defaultValue={pickerValue(punch.localClockIn)} />}</Field>
+          <Field label={t('approvals.clockOut')}>{(p) => <Input {...p} name="out" type="datetime-local" required={!punch.localClockOut} defaultValue={pickerValue(punch.localClockOut)} />}</Field>
+        </div>
+        <Field label={t('approvals.reason')} hint={t('approvals.correctionHint')}>{(p) => <Textarea {...p} name="reason" required minLength={3} maxLength={500} rows={2} />}</Field>
+        <TwiceChoice twice={twice.twice} offset={twice.offset} setOffset={twice.setOffset} />
+        {punch.status === 'APPROVED' || punch.status === 'REJECTED' ? <p className="rounded-xl bg-surface px-3 py-2 text-caption text-muted">{t('approvals.reapprovalNote')}</p> : null}
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" loading={busy === 'editPunch'}>
+            {t('common.save')}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+/** A row of GET /api/users (it sends the full name as `name`). */
+interface PersonOption { id: string; name: string; positions: Array<{ id: string; name: string; nameFr: string | null }> }
+
+/** Add time someone worked but couldn't punch. It goes to the review queue like any punch. */
+function AddPunchDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => Promise<void> }) {
+  const { t, i18n } = useTranslation();
+  const { me } = useSession();
+  const people = useQuery<PersonOption[]>('/api/users?status=ACTIVE');
+  const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
+  const { run, busy } = useAction();
+  const twice = useTwiceTime();
+  const [userId, setUserId] = useState('');
+  const person = people.data?.find((p) => p.id === userId);
+  const posName = (p: { name: string; nameFr: string | null }) => (i18n.language === 'fr-CA' && p.nameFr ? p.nameFr : p.name);
+
+  async function save(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const body = { userId, facilityId: String(f.get('facility')), positionId: String(f.get('position')), localClockIn: twice.value('localClockIn', String(f.get('in'))), localClockOut: twice.value('localClockOut', String(f.get('out'))), reason: String(f.get('reason') ?? '').trim() };
+    const ok = await run('addPunch', twice.send(() => api('/api/punches', { method: 'POST', body })), t('approvals.punchAdded'));
+    if (ok !== undefined) await onSaved();
+  }
+
+  return (
+    <Dialog open onClose={onClose} title={t('approvals.addPunch')} description={t('approvals.addPunchHelp')} closeLabel={t('common.close')}>
+      <form onSubmit={(e) => void save(e)} className="grid gap-4">
+        <Field label={t('approvals.person')}>
+          {(p) => (
+            <Select {...p} required value={userId} onChange={(e) => setUserId(e.target.value)}>
+              <option value="">{t('common.choose')}</option>
+              {(people.data ?? [])
+                .filter((x) => x.id !== me?.id)
+                .map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+            </Select>
+          )}
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('approvals.facility')}>
+            {(p) => (
+              <Select {...p} name="facility" required defaultValue="">
+                <option value="">{t('common.choose')}</option>
+                {(facilities.data ?? []).map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field label={t('approvals.position')}>
+            {(p) => (
+              <Select {...p} key={userId} name="position" required defaultValue={person?.positions.length === 1 ? person.positions[0]!.id : ''}>
+                <option value="">{t('common.choose')}</option>
+                {(person?.positions ?? []).map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {posName(x)}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t('approvals.clockIn')}>{(p) => <Input {...p} name="in" type="datetime-local" required />}</Field>
+          <Field label={t('approvals.clockOut')}>{(p) => <Input {...p} name="out" type="datetime-local" required />}</Field>
+        </div>
+        <p className="text-caption text-muted">{t('approvals.facilityTime')}</p>
+        <TwiceChoice twice={twice.twice} offset={twice.offset} setOffset={twice.setOffset} />
+        <Field label={t('approvals.reason')} hint={t('approvals.correctionHint')}>{(p) => <Textarea {...p} name="reason" required minLength={3} maxLength={500} rows={2} />}</Field>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" loading={busy === 'addPunch'}>
+            {t('approvals.addPunch')}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

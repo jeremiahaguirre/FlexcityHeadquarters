@@ -1,14 +1,15 @@
 /** Availability, time-off requests and decisions, and punches (a person's own and the supervisor review). */
 import { Router } from 'express';
-import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
+import { assertUserInScope, peopleWhere, shiftInScope, userInScope } from '../services/people/scope.js';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { badRequest, forbidden } from '../lib/errors.js';
+import { badRequest, forbidden, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
-import { localIso } from '../lib/time.js';
+import { atLocal, localIso, localTime } from '../lib/time.js';
 import { cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff } from '../services/people/timeOff.js';
-import { decidePunches, punchVariance } from '../services/timeclock/review.js';
+import { correctedBy, decidePunches, punchVariance } from '../services/timeclock/review.js';
+import { addPunch } from '../services/timeclock/punches.js';
 import { teamOf, teamQuery } from '../services/people/reporting.js';
 import { confirmAvailability } from '../services/scheduling/fillRun.js';
 import { h } from './context.js';
@@ -107,7 +108,8 @@ attendanceRouter.get(
     const rows = await withTenant(a.tenantId, async (tx) => {
       const team = q.team ? await teamOf(tx, a.userId) : null;
       const list = await tx.timeOffRequest.findMany({
-        where: { status: q.status, user: peopleWhere(a.scope), ...(team ? { userId: { in: team } } : {}) },
+        // Never their own request: someone else decides it.
+        where: { status: q.status, user: peopleWhere(a.scope), userId: team ? { in: team, not: a.userId } : { not: a.userId } },
         include: { user: { select: { id: true, firstName: true, lastName: true } } },
         orderBy: { startsAt: 'asc' },
         take: 200,
@@ -185,22 +187,29 @@ attendanceRouter.get(
   requirePermission('timeclock.review'),
   h(async (req, res) => {
     const a = authOf(req);
-    const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'), facilityId: uuid.optional(), team: teamQuery }).parse(req.query);
+    const q = z.object({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).default('PENDING'), facilityId: uuid.optional(), team: teamQuery, from: z.coerce.date().optional(), to: z.coerce.date().optional() }).parse(req.query);
+    // Decided punches: the recent ones, newest first (the last two weeks unless asked for a range).
+    const decided = q.status !== 'PENDING';
+    const from = q.from ?? (decided ? new Date(Date.now() - 14 * 86_400_000) : undefined);
     const rows = await withTenant(a.tenantId, async (tx) =>
       tx.timePunch.findMany({
         where: {
           status: q.status,
+          ...(from || q.to ? { clockIn: { ...(from ? { gte: from } : {}), ...(q.to ? { lt: q.to } : {}) } } : {}),
           ...(q.facilityId ? { facilityId: q.facilityId } : {}),
           user: peopleWhere(a.scope),
           ...(a.scope?.facilityIds.length ? { facilityId: { in: a.scope.facilityIds } } : {}),
           // "My team" only narrows what the permission already shows.
-          ...(q.team ? { userId: { in: await teamOf(tx, a.userId) } } : {}),
+          // Never their own punches: someone else reviews them.
+          userId: q.team ? { in: await teamOf(tx, a.userId), not: a.userId } : { not: a.userId },
         },
         include: { ...punchInclude, user: { select: { id: true, firstName: true, lastName: true } } },
-        orderBy: { clockIn: 'asc' },
+        orderBy: { clockIn: decided ? 'desc' : 'asc' },
         take: 300,
       }),
     );
+    // Time this supervisor added or changed: someone else approves it.
+    const mine = await withTenant(a.tenantId, (tx) => correctedBy(tx, a.userId, rows));
     const view = rows.map((p) => {
       const v = punchVariance(p);
       return {
@@ -220,12 +229,48 @@ attendanceRouter.get(
         localClockInReceivedAt: p.clockInReceivedAt ? localIso(p.clockInReceivedAt, p.facility.timezone) : null,
         localClockOutReceivedAt: p.clockOutReceivedAt ? localIso(p.clockOutReceivedAt, p.facility.timezone) : null,
         clockSkewS: p.clockSkewS,
+        correctedByYou: mine.has(p.id),
         ...v,
       };
     });
     // Punches that need a look come first.
-    view.sort((x, y) => y.attention.length - x.attention.length);
+    if (!decided) view.sort((x, y) => y.attention.length - x.attention.length);
     res.json(view);
+  }),
+);
+
+/**
+ * A supervisor adds a punch for someone (forgot to punch, or an offline punch refused as too old).
+ * Times are the facility's local wall clock. It waits for review like any other punch.
+ */
+attendanceRouter.post(
+  '/punches',
+  requirePermission('timeclock.review'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const body = z.object({ userId: uuid, facilityId: uuid, shiftId: uuid.nullable().optional(), positionId: uuid.nullable().optional(), localClockIn: localTime, localClockOut: localTime, reason: z.string().trim().min(3).max(500) }).parse(req.body);
+    if (a.scope?.facilityIds.length && !a.scope.facilityIds.includes(body.facilityId)) throw forbidden('This facility isn’t in your department.');
+    const p = await withTenant(a.tenantId, async (tx) => {
+      const facility = await tx.facility.findUnique({ where: { id: body.facilityId }, select: { timezone: true } });
+      if (!facility) throw notFound('Facility');
+      const punch = await addPunch(tx, {
+        tenantId: a.tenantId,
+        actorId: a.userId,
+        userId: body.userId,
+        facilityId: body.facilityId,
+        shiftId: body.shiftId ?? null,
+        positionId: body.positionId ?? null,
+        clockIn: atLocal(body.localClockIn, facility.timezone, 'localClockIn'),
+        clockOut: atLocal(body.localClockOut, facility.timezone, 'localClockOut'),
+        reason: body.reason,
+        inScope: (userId) => userInScope(tx, a.scope, userId),
+        placeInScope: (place) => shiftInScope(a.scope, place),
+      });
+      await recordEvents(tx, { type: 'notify', tenantId: a.tenantId, drafts: [{ userId: body.userId, type: 'punch_added', params: { reason: body.reason }, link: '/timeclock' }] });
+      return punch;
+    });
+    dispatchSoon(a.tenantId);
+    res.status(201).json({ id: p.id, status: p.status });
   }),
 );
 
