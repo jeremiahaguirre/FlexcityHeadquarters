@@ -71,7 +71,8 @@ COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/
 RUN npm ci --workspace apps/web --include-workspace-root
 COPY apps/web apps/web
-# The static demo's staff-import preview reuses the API's own parser (apps/web/src/lib/demoApi.ts).
+# Only for next build's type check of demoApi.ts (the demo's staff-import preview reuses the API's
+# parser). The live build replaces demoApi.ts with src/lib/stubs/demoApi.ts, so none of this is bundled.
 COPY apps/api/src/services/platform/staffImport.ts apps/api/src/services/platform/staffImport.ts
 RUN cd apps/web && npx next build
 

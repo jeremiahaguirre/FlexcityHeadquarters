@@ -63,9 +63,12 @@ staffRouter.get(
     // For whoever handles billing: screens their roles would have if the plan included them.
     const lockedMenu = a.permissions.has('billing.manage')
       ? MENU.flatMap((m) => {
-          if (m.permissions.some((p) => a.permissions.has(p))) return []; // already open to them
-          const addOn = (Object.keys(billing.locked) as FeatureKey[]).find((f) =>
-            (FEATURES[f].permissions as readonly string[]).some((p) => m.permissions.includes(p as never) && permissionsWithOverrides(me.roles, parseOverrides(tenant.roleOverrides)).has(p as never)),
+          if (m.permissions.some((p) => a.permissions.has(p)) && (!m.feature || features[m.feature])) return []; // already open to them
+          const theirs = permissionsWithOverrides(me.roles, parseOverrides(tenant.roleOverrides));
+          const addOn = (Object.keys(billing.locked) as FeatureKey[]).find(
+            (f) =>
+              (f === m.feature && m.permissions.some((p) => theirs.has(p))) ||
+              (FEATURES[f].permissions as readonly string[]).some((p) => m.permissions.includes(p as never) && theirs.has(p as never)),
           );
           return addOn ? [{ href: m.href, key: m.key, group: m.group, addOn: billing.locked[addOn]! }] : [];
         })

@@ -18,11 +18,12 @@ const ppm = z.string().regex(/^\d{1,2}(\.\d{1,2})?$/).nullable();
 /** Pools with their thresholds, status, latest reading and lifeguards needed for the latest bather count. */
 opsRouter.get(
   '/ops/pools',
-  requirePermission('ops.status.read'),
   h(async (req, res) => {
     const a = authOf(req);
     // Retired pools stay out of deck screens; Settings asks for ?all=1 to list them too.
     const all = req.query.all === '1' && a.permissions.has('ops.configure');
+    // Settings → Pools is for whoever configures pools, even where the live status board is switched off.
+    if (!all && !a.permissions.has('ops.status.read')) throw forbidden();
     const pools = await withTenant(a.tenantId, (tx) =>
       tx.poolBody.findMany({
         where: all ? {} : { archivedAt: null },
