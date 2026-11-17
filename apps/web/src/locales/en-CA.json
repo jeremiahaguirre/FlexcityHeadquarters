@@ -774,7 +774,8 @@
     "AGE_RANGE": "The oldest age must be above the youngest.",
     "CAMPAIGN_NOT_DRAFT": "Only a draft campaign can be deleted. Close a published one instead.",
     "LEVEL_EXISTS": "This program already has a level with that name.",
-    "SCHEDULE_HAS_PEOPLE": "People are registered in this set, so its days and dates can’t change. Add a new set for the new schedule."
+    "SCHEDULE_HAS_PEOPLE": "People are registered in this set, so its days and dates can’t change. Add a new set for the new schedule.",
+    "SKIP_HAS_ATTENDANCE": "Attendance is already recorded on that date, so it can’t be skipped."
   },
   "timeclock": {
     "title": "Timeclock",

@@ -245,6 +245,12 @@ programsRouter.patch(
       const c = await tx.lessonCampaign.findUnique({ where: { id } });
       if (!c) throw notFound('Campaign');
       if ((b.endsOn ?? iso(c.endsOn)) < (b.startsOn ?? iso(c.startsOn))) throw invalid('ENDS_BEFORE_START', 'The campaign must end after it starts.');
+      // Class lists leave out skipped dates: a date that already has attendance can't become one (its record would vanish).
+      const added = (b.skipDates ?? []).filter((d) => !c.skipDates.map(iso).includes(d));
+      if (added.length) {
+        const taken = await tx.lessonAttendance.findMany({ where: { lessonClass: { campaignId: id }, sessionDate: { in: added.map((d) => new Date(d)) } }, select: { sessionDate: true }, distinct: ['sessionDate'] });
+        if (taken.length) throw conflict('SKIP_HAS_ATTENDANCE', 'Attendance is already recorded on that date, so it can’t be skipped.', { dates: taken.map((t) => iso(t.sessionDate)) });
+      }
       await tx.lessonCampaign.update({ where: { id }, data: campaignData(b) });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'campaign.update', entity: 'LessonCampaign', entityId: id, after: b });
     });

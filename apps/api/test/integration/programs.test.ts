@@ -237,6 +237,14 @@ describe('correcting plans after they are made', () => {
     expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { endsOn: plus(monday, 21) })).body.code).toBe('SCHEDULE_HAS_PEOPLE');
     // The form sends the same days and dates back with other changes: that's fine.
     expect((await call(tok.head).patch(`/api/campaigns/${c}/sets/${set}`, { daysOfWeek: [1], startsOn: monday, endsOn: plus(monday, 28), startMinute: 975, endMinute: 1005, priceCents: 9500 })).status).toBe(200);
+
+    // A date with attendance can't become a skip date (class lists leave skipped dates out); a later, empty one can.
+    const enrollment = await owner.lessonEnrollment.findFirstOrThrow({ where: { classId: set, memberId: child } });
+    await owner.lessonAttendance.create({ data: { tenantId: t.tenant.id, classId: set, enrollmentId: enrollment.id, sessionDate: new Date(monday), status: 'PRESENT', recordedById: t.users[0]!.id, recordedAt: new Date(), clientId: `skip-${set}` } });
+    const skip = await call(tok.head).patch(`/api/campaigns/${c}`, { skipDates: [monday] });
+    expect(skip.body).toMatchObject({ code: 'SKIP_HAS_ATTENDANCE', details: { dates: [monday] } });
+    expect((await withTenant(t.tenant.id, (tx) => listSessions(tx, monday, monday))).find((x) => x.classId === set)?.roster).toEqual([expect.objectContaining({ swimmerName: 'An Nguyen' })]);
+    expect((await call(tok.head).patch(`/api/campaigns/${c}`, { skipDates: [plus(monday, 14)] })).status).toBe(200);
   });
 
   it('a draft made by mistake is deleted with its sets; a published campaign can’t be', async () => {

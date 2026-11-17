@@ -774,7 +774,8 @@
     "AGE_RANGE": "L’âge maximum doit être supérieur à l’âge minimum.",
     "CAMPAIGN_NOT_DRAFT": "Seule une campagne en brouillon peut être supprimée. Fermez plutôt une campagne publiée.",
     "LEVEL_EXISTS": "Ce programme a déjà un niveau portant ce nom.",
-    "SCHEDULE_HAS_PEOPLE": "Des personnes sont inscrites à ce groupe : ses jours et ses dates ne peuvent pas changer. Ajoutez un nouveau groupe pour le nouvel horaire."
+    "SCHEDULE_HAS_PEOPLE": "Des personnes sont inscrites à ce groupe : ses jours et ses dates ne peuvent pas changer. Ajoutez un nouveau groupe pour le nouvel horaire.",
+    "SKIP_HAS_ATTENDANCE": "Des présences sont déjà consignées à cette date : elle ne peut pas être sautée."
   },
   "timeclock": {
     "title": "Horodateur",
