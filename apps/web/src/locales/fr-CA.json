@@ -771,7 +771,8 @@
     "EXPORT_INVALID": "Il manque des renseignements pour envoyer cette période.",
     "PROVIDER_SEND_FAILED": "Le fournisseur de paie n’a pas accepté les heures. Réessayez ou téléchargez le fichier.",
     "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard.",
-    "PAYROLL_IN_APP": "La paie se fait dans l’application : les demandes de remboursement sont payées par les paies."
+    "PAYROLL_IN_APP": "La paie se fait dans l’application : les demandes de remboursement sont payées par les paies.",
+    "CLAIMS_BUSY": "Un autre envoi de paie utilise ces demandes de remboursement. Réessayez dans une minute."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1713,7 +1714,8 @@
       "history": "Périodes envoyées",
       "status": {
         "SENT": "Envoyée",
-        "FAILED": "Refusée"
+        "FAILED": "Refusée",
+        "DOWNLOADED": "Téléchargé"
       },
       "demo": "Les connexions aux fournisseurs ne sont pas offertes dans la démo.",
       "privateKeyPlaceholder": "Collez la clé privée PEM",
@@ -1725,7 +1727,12 @@
       "fileClaims_other": "Ce fichier comprend {{count}} demandes de remboursement. Une fois le fichier téléversé dans {{what}}, marquez-les remboursées pour que le prochain fichier les exclue.",
       "markReimbursed": "Marquer remboursé",
       "claimsMarked_one": "{{count}} demande marquée remboursée.",
-      "claimsMarked_other": "{{count}} demandes marquées remboursées."
+      "claimsMarked_other": "{{count}} demandes marquées remboursées.",
+      "putBack": "Non téléversé : remettre",
+      "claimsReleased_one": "{{count}} demande remise pour le prochain fichier.",
+      "claimsReleased_other": "{{count}} demandes remises pour le prochain fichier.",
+      "fileHolds_one": "Retient {{count}} demande de remboursement jusqu’à ce qu’elle soit marquée remboursée ou remise.",
+      "fileHolds_other": "Retient {{count}} demandes de remboursement jusqu’à ce qu’elles soient marquées remboursées ou remises."
     },
     "runKind": "Type de paie",
     "runKindHint": "Hors cycle : seulement les paiements ponctuels que vous ajoutez (une paie de primes, la paie finale, une correction), à côté de la paie régulière.",

@@ -771,7 +771,8 @@
     "EXPORT_INVALID": "Some details are missing before this period can be sent.",
     "PROVIDER_SEND_FAILED": "The payroll provider didn’t take the hours. Try again, or download the file.",
     "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later.",
-    "PAYROLL_IN_APP": "Payroll runs in the app, so expense claims are paid on pay runs."
+    "PAYROLL_IN_APP": "Payroll runs in the app, so expense claims are paid on pay runs.",
+    "CLAIMS_BUSY": "Another payroll send is using these expense claims. Try again in a minute."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1713,7 +1714,8 @@
       "history": "Sent periods",
       "status": {
         "SENT": "Sent",
-        "FAILED": "Refused"
+        "FAILED": "Refused",
+        "DOWNLOADED": "Downloaded"
       },
       "demo": "Provider connections aren’t available in the demo.",
       "privateKeyPlaceholder": "Paste the PEM private key",
@@ -1725,7 +1727,12 @@
       "fileClaims_other": "This file includes {{count}} expense claims. Once you’ve uploaded it to {{what}}, mark them reimbursed so the next file leaves them out.",
       "markReimbursed": "Mark reimbursed",
       "claimsMarked_one": "{{count}} claim marked reimbursed.",
-      "claimsMarked_other": "{{count}} claims marked reimbursed."
+      "claimsMarked_other": "{{count}} claims marked reimbursed.",
+      "putBack": "Not uploaded: put back",
+      "claimsReleased_one": "{{count}} claim put back for the next file.",
+      "claimsReleased_other": "{{count}} claims put back for the next file.",
+      "fileHolds_one": "Holds {{count}} expense claim until it’s marked reimbursed or put back.",
+      "fileHolds_other": "Holds {{count}} expense claims until they’re marked reimbursed or put back."
     },
     "runKind": "Kind of run",
     "runKindHint": "Off-cycle: only the one-time payments you add (a bonus run, final pay, a correction), beside the regular run.",

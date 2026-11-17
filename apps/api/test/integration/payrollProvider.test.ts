@@ -140,48 +140,104 @@ describe('payroll provider connections', () => {
 });
 
 describe('expense claims when payroll runs through a provider', () => {
-  const claim = (userId: string, total: number) =>
-    owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId, title: 'Mileage', status: 'APPROVED', total, decidedAt: new Date('2026-03-01T12:00:00Z') } });
+  const claim = (userId: string, total: number, decidedAt = new Date('2026-03-01T12:00:00Z')) =>
+    owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId, title: 'Mileage', status: 'APPROVED', total, decidedAt } });
+  const sentBodies = () => seen.filter((x) => !x.url.includes('token')).map((x) => String(x.body));
+  const ok = () => {
+    answer = (r) => (r.url.includes('token') ? { status: 200, body: '{"access_token":"wp"}' } : { status: 200, body: '{}' });
+  };
 
   it('sends approved claims as an untaxed reimbursement and marks them paid by that send', async () => {
+    ok();
     expect((await call(tok.hr).put('/api/payroll/provider/mode', { mode: 'wagepoint' })).status).toBe(200);
     const c = await claim(t.users[0]!.id, 42.5);
-    // Without a pay code for reimbursements, the file can't be sent (and nothing is marked paid).
+    // Without a pay code for reimbursements, the file can't be sent, and nothing stays held.
     const missing = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-09', weeks: 1 });
     expect(missing.status).toBe(422);
     expect(JSON.stringify(missing.body.problems)).toContain('REIMBURSEMENT');
-    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('APPROVED');
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'APPROVED', payrollSyncId: null });
 
     await owner.payCodeMapping.create({ data: { tenantId: t.tenant.id, key: 'REIMBURSEMENT', code: 'REI' } });
     seen.length = 0;
     const r = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-09', weeks: 1 });
     expect(r.status).toBe(201);
     expect(r.body.claims).toBe(1);
-    const lines = String(seen[0]!.body).split('\r\n');
-    expect(lines.find((l) => l.includes(',REI,'))).toMatch(/^E-Guard0,REI,,,42\.50,/);
-    const paid = await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } });
-    expect(paid).toMatchObject({ status: 'PAID', payrollSyncId: r.body.id });
-
-    // The next period leaves it out; sending this period again (after a refusal) puts it back in.
-    seen.length = 0;
-    await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-16', weeks: 1 });
-    expect(String(seen[0]?.body ?? '')).not.toContain(',REI,');
-    seen.length = 0;
-    const again = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-09', weeks: 1, resend: true });
-    expect(again.body.claims).toBe(1);
-    expect(String(seen[0]!.body)).toContain(',REI,');
-    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).payrollSyncId).toBe(again.body.id);
+    expect(sentBodies()[0]!.split('\r\n').find((l) => l.includes(',REI,'))).toMatch(/^E-Guard0,REI,,,42\.50,/);
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'PAID', payrollSyncId: r.body.id, providerReservedAt: null });
   });
 
-  it('a downloaded file lists its claims, and they are marked reimbursed once uploaded', async () => {
+  it('a confirmed resend carries the hours again, never the reimbursements already paid; the audit says it was a resend', async () => {
+    const first = await owner.payrollSync.findFirstOrThrow({ where: { tenantId: t.tenant.id, provider: 'wagepoint', periodStart: new Date('2026-03-09T00:00:00Z'), status: 'SENT' }, orderBy: { createdAt: 'desc' } });
+    seen.length = 0;
+    const again = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-09', weeks: 1, resend: true });
+    expect(again.status).toBe(201);
+    expect(again.body.claims).toBe(0);
+    expect(sentBodies()[0]).not.toContain(',REI,');
+    const log = await owner.auditLog.findFirstOrThrow({ where: { action: 'payroll.provider.send', entityId: again.body.id } });
+    expect(log.after).toMatchObject({ resend: true, previousSyncIds: expect.arrayContaining([first.id]), periodEnd: '2026-03-15', weeks: 1, fileSha256: again.body.fileSha256 });
+  });
+
+  it('a refused send lets go of its claims, so the next send pays them', async () => {
+    const c = await claim(t.users[1]!.id, 12);
+    answer = (r) => (r.url.includes('token') ? { status: 200, body: '{"access_token":"wp"}' } : { status: 400, body: '{"message":"bad file"}' });
+    expect((await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-16', weeks: 1 })).status).toBe(502);
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'APPROVED', payrollSyncId: null });
+    ok();
+    const r = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-16', weeks: 1, resend: true });
+    expect(r.body.claims).toBe(1);
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('PAID');
+  });
+
+  it('two sends at the same moment never both pay a claim', async () => {
+    ok();
+    const c = await claim(t.users[0]!.id, 7.25);
+    seen.length = 0;
+    const [x, y] = await Promise.all([
+      call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-23', weeks: 1 }),
+      call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-03-30', weeks: 1 }),
+    ]);
+    expect([x.status, y.status]).toEqual([201, 201]);
+    expect(x.body.claims + y.body.claims).toBe(1);
+    expect(sentBodies().filter((b) => b.includes('7.25'))).toHaveLength(1);
+    const paidBy = (await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).payrollSyncId;
+    expect(paidBy).toBe(x.body.claims ? x.body.id : y.body.id);
+  });
+
+  it('a downloaded file holds its claims until they are marked reimbursed or put back; department files never carry claims', async () => {
     const c = await claim(t.users[1]!.id, 18.25);
-    const file = await call(tok.hr).get('/api/payroll/export?periodStart=2026-03-23&weeks=1&format=wagepoint');
+    // The plain export (no claims=1) leaves claims out.
+    const plain = await call(tok.hr).get('/api/payroll/export?periodStart=2026-04-06&weeks=1&format=wagepoint');
+    expect(plain.text).not.toContain('18.25');
+    expect(plain.headers['x-flexcity-download']).toBeUndefined();
+
+    const file = await call(tok.hr).get('/api/payroll/export?periodStart=2026-04-06&weeks=1&format=wagepoint&claims=1');
     expect(file.status).toBe(200);
     expect(file.text).toContain('18.25');
-    expect(file.headers['x-flexcity-claims']).toBe(c.id);
-    const m = await call(tok.hr).post('/api/payroll/provider/claims/reimbursed', { claimIds: [c.id] });
-    expect(m.body.marked).toBe(1);
-    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('PAID');
-    expect((await call(tok.hr).get('/api/payroll/export?periodStart=2026-03-30&weeks=1&format=wagepoint')).headers['x-flexcity-claims']).toBeUndefined();
+    const downloadId = file.headers['x-flexcity-download'] as string;
+    expect(file.headers['x-flexcity-claims']).toBe('1');
+    expect(await owner.payrollSync.findUniqueOrThrow({ where: { id: downloadId } })).toMatchObject({ status: 'DOWNLOADED' });
+    // Held for that file: neither another download nor a send includes it.
+    expect((await call(tok.hr).get('/api/payroll/export?periodStart=2026-04-06&weeks=1&format=wagepoint&claims=1')).text).not.toContain('18.25');
+    expect((await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-04-13', weeks: 1 })).body.claims).toBe(0);
+    expect((await call(tok.hr).get('/api/payroll/provider')).body.history.find((h: { id: string }) => h.id === downloadId).heldClaims).toBe(1);
+
+    // Not uploaded after all: put back, and the next file has it again.
+    expect((await call(tok.hr).post(`/api/payroll/provider/downloads/${downloadId}/release`)).body.released).toBe(1);
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'APPROVED', payrollSyncId: null });
+    const second = await call(tok.hr).get('/api/payroll/export?periodStart=2026-04-06&weeks=1&format=wagepoint&claims=1');
+    const secondId = second.headers['x-flexcity-download'] as string;
+    // Only the claims that file listed are marked, and they stay tied to it.
+    expect((await call(tok.hr).post(`/api/payroll/provider/downloads/${downloadId}/reimbursed`)).body.marked).toBe(0);
+    expect((await call(tok.hr).post(`/api/payroll/provider/downloads/${secondId}/reimbursed`)).body.marked).toBe(1);
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'PAID', payrollSyncId: secondId });
+    expect(await owner.auditLog.count({ where: { action: 'expenses.marked_reimbursed', entityId: secondId } })).toBe(1);
+  });
+
+  it('a claim approved late on the period’s last day (local time) goes in that period', async () => {
+    // 22:30 in Vancouver on Sunday 2026-04-26, the last day of the week from 2026-04-20 (05:30 UTC on the 27th).
+    const c = await claim(t.users[0]!.id, 3.5, new Date('2026-04-27T05:30:00Z'));
+    const r = await call(tok.hr).post('/api/payroll/provider/wagepoint/send', { periodStart: '2026-04-20', weeks: 1 });
+    expect(r.body.claims).toBe(1);
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).payrollSyncId).toBe(r.body.id);
   });
 });

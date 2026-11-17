@@ -1,14 +1,14 @@
 /** Payroll in the app, or with ADP, Dayforce or Wagepoint over their API: connect, test, send a period. */
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { type AuthContext, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
-import { audit, withTenant } from '../lib/db.js';
+import { advisoryLock, audit, withTenant } from '../lib/db.js';
 import { HttpError, forbidden } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
 import { type PayrollSettings, readSettings } from '../services/payroll/payRuns.js';
 import { runPayroll } from '../services/payroll/payrollRun.js';
-import { claimsForProvider } from '../services/payroll/expenses.js';
+import { holdClaimsForProvider, settleHeldClaims } from '../services/payroll/expenses.js';
 import { DEFAULTS, PROVIDERS, type Provider, type ProviderSettings, checkProviderUrl, providerView, sealSecret, sendPeriod, testConnection } from '../services/payroll/providers.js';
 import { h } from './context.js';
 
@@ -33,10 +33,12 @@ payrollProviderRouter.get(
     const out = await withTenant(a.tenantId, async (tx) => ({
       settings: await settingsOf(tx),
       history: await tx.payrollSync.findMany({ orderBy: { createdAt: 'desc' }, take: 30 }),
+      // Claims a downloaded file still holds (not yet marked reimbursed or put back).
+      held: new Map((await tx.expenseClaim.groupBy({ by: ['payrollSyncId'], where: { status: 'APPROVED', payrollSyncId: { not: null }, providerReservedAt: null }, _count: true })).map((g) => [g.payrollSyncId!, g._count])),
     }));
     res.json({
       ...providerView(out.settings.payrollProvider),
-      history: out.history.map((x) => ({ ...x, periodStart: x.periodStart.toISOString().slice(0, 10), periodEnd: x.periodEnd.toISOString().slice(0, 10) })),
+      history: out.history.map((x) => ({ ...x, periodStart: x.periodStart.toISOString().slice(0, 10), periodEnd: x.periodEnd.toISOString().slice(0, 10), heldClaims: out.held.get(x.id) ?? 0 })),
     });
   }),
 );
@@ -178,20 +180,28 @@ payrollProviderRouter.post(
     const provider: Provider = providerParam.parse(req.params.provider);
     const b = z.object({ periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), weeks: z.number().int().min(1).max(5), resend: z.boolean().default(false) }).parse(req.body);
     const periodEnd = addDays(b.periodStart, b.weeks * 7 - 1);
+    // The record of this send; claims are held under its id while the file is with the provider.
+    const syncId = randomUUID();
     const built = await withTenant(a.tenantId, async (tx) => {
+      // One payroll-provider send or download at a time per organization: they read and hold the same claims.
+      await advisoryLock(tx, `payroll-provider:${a.tenantId}`);
       const s = await settingsOf(tx);
       passkey(a, s);
       const p = s.payrollProvider ?? { mode: 'in_app' as const };
       if (!p[provider]) throw new HttpError(400, 'PROVIDER_NOT_SET', 'Connect that provider first.');
       if (p.mode !== provider) throw new HttpError(409, 'PROVIDER_NOT_IN_USE', `Payroll doesn’t run with ${provider} for this organization: choose it first, so the same hours aren’t also paid in the app.`);
       // The same period once, unless someone deliberately sends it again (the provider rejected it, or it was corrected).
-      if (!b.resend && (await tx.payrollSync.findFirst({ where: { provider, periodStart: new Date(`${b.periodStart}T00:00:00Z`), status: 'SENT' } }))) {
+      const earlier = await tx.payrollSync.findMany({ where: { provider, periodStart: new Date(`${b.periodStart}T00:00:00Z`), status: 'SENT' }, select: { id: true } });
+      if (!b.resend && earlier.length) {
         throw new HttpError(409, 'ALREADY_SENT', 'This period was already sent to the provider. Sending it again could pay people twice; confirm to send it again.');
       }
       const options = provider === 'adp' ? { format: 'adp' as const, adpCompanyCode: p.adp!.companyCode, adpBatchId: p.adp!.batchId ?? null } : { format: provider };
-      // Approved expense claims go with the hours, as an untaxed reimbursement (paid once the provider takes the file).
-      const claims = await claimsForProvider(tx, { provider, periodStart: b.periodStart, periodEnd, resend: b.resend });
-      return { settings: p, claims, run: await runPayroll(tx, a.tenantId, b.periodStart, b.weeks, null, null, options, claims) };
+      // Approved expense claims go with the hours, as an untaxed reimbursement, held for this send until the provider answers.
+      const claims = await holdClaimsForProvider(tx, { syncId, periodEnd, download: false });
+      const run = await runPayroll(tx, a.tenantId, b.periodStart, b.weeks, null, null, options, claims);
+      // Nothing to send: don't hold the claims (this transaction is the only one that saw the hold).
+      if (!run.csv.ok) await settleHeldClaims(tx, syncId, false);
+      return { settings: p, claims, run, previousSyncIds: earlier.map((x) => x.id) };
     }, { timeoutMs: 120_000 });
     if (!built.run.csv.ok) {
       res.status(422).json({ code: 'EXPORT_INVALID', message: 'Some details are missing before this period can be sent.', details: { problems: built.run.csv.problems, warnings: built.run.warnings }, problems: built.run.csv.problems, warnings: built.run.warnings });
@@ -209,14 +219,21 @@ payrollProviderRouter.post(
       outcome = { status: 'FAILED', httpStatus: (err.details as { status?: number } | undefined)?.status ?? null, reference: null, message: err.message.slice(0, 500) };
     }
     const row = await withTenant(a.tenantId, async (tx) => {
-      const r = await tx.payrollSync.create({ data: { tenantId: a.tenantId, provider, periodStart: new Date(`${b.periodStart}T00:00:00Z`), periodEnd: new Date(`${periodEnd}T00:00:00Z`), rows: built.run.csv.ok ? built.run.csv.rowCount : 0, fileSha256, sentById: a.userId, ...outcome } });
-      // The provider took the file: the claims in it are paid (and stay out of the next period's file).
+      const r = await tx.payrollSync.create({ data: { id: syncId, tenantId: a.tenantId, provider, periodStart: new Date(`${b.periodStart}T00:00:00Z`), periodEnd: new Date(`${periodEnd}T00:00:00Z`), rows: built.run.csv.ok ? built.run.csv.rowCount : 0, fileSha256, sentById: a.userId, ...outcome } });
+      // The provider took the file: the claims it held are paid by it. Refused: they're free for the next send.
       const claimIds = built.claims.flatMap((c) => c.claimIds);
+      const settled = await settleHeldClaims(tx, syncId, outcome.status === 'SENT');
       if (outcome.status === 'SENT' && claimIds.length) {
-        await tx.expenseClaim.updateMany({ where: { id: { in: claimIds } }, data: { status: 'PAID', payrollSyncId: r.id } });
-        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'expenses.paid_by_provider', entity: 'PayrollSync', entityId: r.id, after: { provider, claimIds } });
+        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'expenses.paid_by_provider', entity: 'PayrollSync', entityId: r.id, after: { provider, claimIds, settled } });
       }
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: `payroll.provider.send`, entity: 'PayrollSync', entityId: r.id, after: { provider, periodStart: b.periodStart, status: outcome.status, rows: r.rows } });
+      await audit(tx, {
+        tenantId: a.tenantId,
+        actorId: a.userId,
+        action: `payroll.provider.send`,
+        entity: 'PayrollSync',
+        entityId: r.id,
+        after: { provider, periodStart: b.periodStart, periodEnd, weeks: b.weeks, status: outcome.status, rows: r.rows, fileSha256, resend: b.resend, previousSyncIds: built.previousSyncIds, claimIds },
+      });
       return r;
     });
     if (outcome.status === 'FAILED') {
@@ -227,25 +244,26 @@ payrollProviderRouter.post(
   }),
 );
 
-/**
- * The period's file was downloaded and uploaded to the provider by hand: the expense claims in it
- * (the X-Flexcity-Claims header of the download) are marked reimbursed, so the next file leaves them out.
- */
-payrollProviderRouter.post(
-  '/payroll/provider/claims/reimbursed',
-  requirePermission('payroll.export'),
-  requireRecentAuth,
-  h(async (req, res) => {
-    const a = authOf(req);
-    wholeCity(a);
-    const { claimIds } = z.object({ claimIds: z.array(z.string().uuid()).min(1).max(500) }).parse(req.body);
-    const marked = await withTenant(a.tenantId, async (tx) => {
-      const s = await settingsOf(tx);
-      if ((s.payrollProvider?.mode ?? 'in_app') === 'in_app') throw new HttpError(409, 'PAYROLL_IN_APP', 'Payroll runs in the app: claims are paid on pay runs.');
-      const { count } = await tx.expenseClaim.updateMany({ where: { id: { in: claimIds }, status: 'APPROVED', payRunId: null }, data: { status: 'PAID' } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'expenses.marked_reimbursed', entity: 'Tenant', entityId: a.tenantId, after: { claimIds, marked: count, provider: s.payrollProvider?.mode } });
-      return count;
-    });
-    res.json({ marked });
-  }),
-);
+/** The expense claims a downloaded file holds: marked reimbursed once it's uploaded, or put back if it isn't. */
+for (const [action, paid] of [['reimbursed', true], ['release', false]] as const) {
+  payrollProviderRouter.post(
+    `/payroll/provider/downloads/:id/${action}`,
+    requirePermission('payroll.export'),
+    requireRecentAuth,
+    h(async (req, res) => {
+      const a = authOf(req);
+      wholeCity(a);
+      const id = z.string().uuid().parse(req.params.id);
+      const n = await withTenant(a.tenantId, async (tx) => {
+        await advisoryLock(tx, `payroll-provider:${a.tenantId}`);
+        const sync = await tx.payrollSync.findUnique({ where: { id } });
+        if (!sync || sync.status !== 'DOWNLOADED') throw new HttpError(404, 'NOT_FOUND', 'Downloaded file not found');
+        const held = await tx.expenseClaim.findMany({ where: { status: 'APPROVED', payrollSyncId: id }, select: { id: true } });
+        const count = await settleHeldClaims(tx, id, paid);
+        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: paid ? 'expenses.marked_reimbursed' : 'expenses.released_from_file', entity: 'PayrollSync', entityId: id, after: { provider: sync.provider, periodStart: sync.periodStart, fileSha256: sync.fileSha256, claimIds: held.map((c) => c.id) } });
+        return count;
+      });
+      res.json({ [paid ? 'marked' : 'released']: n });
+    }),
+  );
+}

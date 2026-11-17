@@ -20,7 +20,7 @@ import { errorText } from '@/lib/apiError';
 
 type Provider = 'adp' | 'dayforce' | 'wagepoint';
 type Mode = 'in_app' | Provider;
-interface Sync { id: string; provider: Provider; periodStart: string; periodEnd: string; status: 'SENT' | 'FAILED'; rows: number; reference: string | null; message: string | null; httpStatus: number | null; createdAt: string }
+interface Sync { id: string; provider: Provider; periodStart: string; periodEnd: string; status: 'SENT' | 'FAILED' | 'DOWNLOADED'; rows: number; heldClaims?: number; reference: string | null; message: string | null; httpStatus: number | null; createdAt: string }
 interface View {
   mode: Mode;
   tested: Partial<Record<Provider, string>>;
@@ -125,8 +125,21 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   // The period was sent already: sending again needs a second, deliberate click (it could pay people twice).
   const [confirmResend, setConfirmResend] = useState(false);
-  // Expense claims in a downloaded file, to mark reimbursed once it's uploaded to the provider.
-  const [fileClaims, setFileClaims] = useState<string[]>([]);
+  // A downloaded file that holds expense claims: mark them reimbursed once it's uploaded, or put them back.
+  const [file, setFile] = useState<{ id: string; claims: number } | null>(null);
+  const settle = (id: string, paid: boolean) =>
+    run(`claims-${id}`, async () => {
+      const r = await api<{ marked?: number; released?: number }>(`/api/payroll/provider/downloads/${id}/${paid ? 'reimbursed' : 'release'}`, { method: 'POST' });
+      if (file?.id === id) setFile(null);
+      toast(paid ? t('payroll.connect.claimsMarked', { count: r.marked ?? 0 }) : t('payroll.connect.claimsReleased', { count: r.released ?? 0 }), 'ok');
+      await reload();
+    });
+  const settleButtons = (id: string) => (
+    <span className="flex flex-wrap gap-2">
+      <Button size="sm" variant="secondary" loading={busy === `claims-${id}`} onClick={() => void settle(id, true)}>{t('payroll.connect.markReimbursed')}</Button>
+      <Button size="sm" variant="ghost" onClick={() => void settle(id, false)}>{t('payroll.connect.putBack')}</Button>
+    </span>
+  );
   // Another period hasn't been confirmed.
   useEffect(() => setConfirmResend(false), [start, weeks]);
   const name = t(`payroll.connect.tab.${provider}`);
@@ -260,22 +273,21 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
                 await reload();
               })}>{confirmResend ? t('payroll.connect.sendAgain', { what: name }) : t('payroll.connect.send', { what: name })}</Button>
               <Button variant="secondary" icon={<Download className="h-5 w-5" aria-hidden="true" />} loading={busy === 'file'} onClick={() => void run('file', async () => {
-                const r = await apiDownload(`/api/payroll/export?periodStart=${start}&weeks=${weeks}&format=${provider}`);
+                // claims=1: this whole-organization file also pays back approved expense claims.
+                const r = await apiDownload(`/api/payroll/export?periodStart=${start}&weeks=${weeks}&format=${provider}&claims=1`);
                 if (r.ok) {
                   saveBlob(r.blob, `payroll-${provider}-${start}.csv`);
-                  setFileClaims((r.headers.get('x-flexcity-claims') ?? '').split(',').filter(Boolean));
-                } else toast(String(r.error.message ?? t('common.error')), 'warn');
+                  const id = r.headers.get('x-flexcity-download');
+                  setFile(id ? { id, claims: Number(r.headers.get('x-flexcity-claims') ?? 0) } : null);
+                  await reload();
+                } else toast(t(`errors.${String(r.error.code ?? '')}`, { defaultValue: String(r.error.message ?? t('common.error')) }), 'warn');
               })}>{t('payroll.connect.download')}</Button>
             </div>
             {result ? <p role="status" className={`rounded-xl px-3 py-2 text-small ${result.ok ? 'bg-ok-bg text-ok' : 'bg-danger-bg text-danger'}`}>{result.text}</p> : null}
-            {fileClaims.length ? (
+            {file ? (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface px-3 py-2 text-small">
-                <span>{t('payroll.connect.fileClaims', { count: fileClaims.length, what: name })}</span>
-                <Button size="sm" variant="secondary" loading={busy === 'claims'} onClick={() => void run('claims', async () => {
-                  const r = await api<{ marked: number }>('/api/payroll/provider/claims/reimbursed', { method: 'POST', body: { claimIds: fileClaims } });
-                  setFileClaims([]);
-                  toast(t('payroll.connect.claimsMarked', { count: r.marked }), 'ok');
-                })}>{t('payroll.connect.markReimbursed')}</Button>
+                <span>{t('payroll.connect.fileClaims', { count: file.claims, what: name })}</span>
+                {settleButtons(file.id)}
               </div>
             ) : null}
             {history.length ? (
@@ -284,10 +296,16 @@ function ProviderPanel({ provider, view, reload }: { provider: Provider; view: V
                 <ul className="divide-y divide-line">
                   {history.map((h) => (
                     <li key={h.id} className="flex flex-wrap items-center gap-2 py-2 text-small">
-                      <StatusPill tone={h.status === 'SENT' ? 'ok' : 'danger'}>{t(`payroll.connect.status.${h.status}`)}</StatusPill>
+                      <StatusPill tone={h.status === 'SENT' ? 'ok' : h.status === 'DOWNLOADED' ? 'neutral' : 'danger'}>{t(`payroll.connect.status.${h.status}`)}</StatusPill>
                       <span className="font-semibold">{formatDate(`${h.periodStart}T12:00:00`, lng, 'dated')} – {formatDate(`${h.periodEnd}T12:00:00`, lng, 'dated')}</span>
                       <span className="text-muted">{t('payroll.rows', { count: h.rows })}{h.reference ? ` · ${h.reference}` : ''}</span>
                       {h.message ? <span className="w-full text-caption text-danger">{h.message}</span> : null}
+                      {h.status === 'DOWNLOADED' && h.heldClaims ? (
+                        <span className="flex w-full flex-wrap items-center justify-between gap-2 text-caption text-muted">
+                          {t('payroll.connect.fileHolds', { count: h.heldClaims })}
+                          {settleButtons(h.id)}
+                        </span>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
