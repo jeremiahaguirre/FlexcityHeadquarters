@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { databaseAllow, databaseConsume, HIT_RETENTION_MS, purgeRateLimitHits } from '../../src/auth/rateLimit.js';
+import { databaseAllow, databaseConsume, HIT_RETENTION_MS, purgeBatchSql, purgeRateLimitHits } from '../../src/auth/rateLimit.js';
+import { Prisma } from '../../src/generated/prisma/client.js';
 import { db } from '../../src/lib/db.js';
 import { owner } from './fixtures.js';
 
@@ -54,14 +55,16 @@ describe('rate-limit hit purge (ARCHITECTURE-REVIEW A25)', () => {
     await owner.$executeRawUnsafe(`INSERT INTO "RateLimitHit" (key, at) SELECT '${tag}', now() - interval '36 hours' + g * interval '1 second' FROM generate_series(1, 60000) g`);
     await owner.$executeRawUnsafe('ANALYZE "RateLimitHit"');
     try {
-      const plan = await owner.$queryRawUnsafe<Array<{ 'QUERY PLAN': string }>>(
-        `EXPLAIN DELETE FROM "RateLimitHit" WHERE id = ANY(ARRAY(SELECT id FROM "RateLimitHit" WHERE at < now() - interval '1 day' ORDER BY at LIMIT 5000))`,
-      );
+      // The statement purgeRateLimitHits sends, planned with its parameters as a generic plan (the
+      // way a prepared statement may run), so the test fails if the purge's SQL changes for the worse.
+      const plan = await owner.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe(`SET LOCAL plan_cache_mode = force_generic_plan`);
+        return tx.$queryRaw<Array<{ 'QUERY PLAN': string }>>(Prisma.sql`EXPLAIN ${purgeBatchSql(new Date(Date.now() - HIT_RETENTION_MS), 5000)}`);
+      });
       const text = plan.map((r) => r['QUERY PLAN']).join('\n');
       expect(text).not.toMatch(/Seq Scan/);
       expect(text).toMatch(/RateLimitHit_at_idx/);
       expect(text).toMatch(/RateLimitHit_pkey/);
-      // purgeRateLimitHits sends exactly this statement.
       expect(await purgeRateLimitHits(new Date(), 5000)).toBeGreaterThanOrEqual(43_000);
     } finally {
       await owner.rateLimitHit.deleteMany({ where: { key: tag } });

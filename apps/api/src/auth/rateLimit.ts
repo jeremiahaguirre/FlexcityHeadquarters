@@ -10,6 +10,7 @@
  */
 import cluster from 'node:cluster';
 import { config } from '../config.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { db } from '../lib/db.js';
 
 const hits = new Map<string, number[]>();
@@ -55,14 +56,19 @@ export const HIT_RETENTION_MS = 86_400_000;
  * locks for long. Run by the worker (hourly); requests used to do this inline, scanning the whole
  * table inside a sign-in (ARCHITECTURE-REVIEW A25). Uses the index on "at". Returns rows deleted.
  */
+/**
+ * One purge batch. ARRAY(...) runs the batch query once (an InitPlan on the "at" index); the delete
+ * then finds rows by primary key. "id IN (subquery)" was planned as a semi-join over a scan of the
+ * whole table, once per batch. Exported so the test plans the very statement the purge sends.
+ */
+export const purgeBatchSql = (before: Date, batch: number) =>
+  Prisma.sql`DELETE FROM "RateLimitHit" WHERE id = ANY(ARRAY(SELECT id FROM "RateLimitHit" WHERE at < ${before} ORDER BY at LIMIT ${batch}))`;
+
 export async function purgeRateLimitHits(now = new Date(), batch = 5_000): Promise<number> {
   const before = new Date(now.getTime() - HIT_RETENTION_MS);
   let total = 0;
   for (;;) {
-    // ARRAY(...) runs the batch query once (an InitPlan on the "at" index); the delete then finds
-    // rows by primary key. "id IN (subquery)" was planned as a semi-join over a scan of the whole
-    // table, once per batch.
-    const n = await db().$executeRaw`DELETE FROM "RateLimitHit" WHERE id = ANY(ARRAY(SELECT id FROM "RateLimitHit" WHERE at < ${before} ORDER BY at LIMIT ${batch}))`;
+    const n = await db().$executeRaw(purgeBatchSql(before, batch));
     total += n;
     if (n < batch) return total;
   }
