@@ -412,6 +412,91 @@ CREATE POLICY city_or_fh ON "ReleaseChange" TO flexcity_app
 -- Ring membership changes as organizations move between rings; a cancelled or undone stage makes way for a new one.
 GRANT DELETE ON "ReleaseRingMember", "ReleaseStage", "ReleaseChange" TO flexcity_app;
 
+-- Every table is classified (SECURITY-AUDIT SEC-35, ARCHITECTURE-REVIEW A3): a city's own rows
+-- (tenant_isolation, city_or_fh, cert_*, tenant_self), FH-only (fh_only), FH's published notices
+-- (fh_published_*) or global reference data that cities may only read (global_read). The coverage
+-- test (test/integration/rls-coverage.test.ts) fails on any table without one of these.
+--
+-- FH's platform tables: the Dev console's accounts, sign-in sessions and passkeys, FH's books and
+-- invoice numbers, pre-authorized debit batches, marketing enquiries, and the shared rate limiter.
+-- Used only with no city chosen (the Dev console, the worker, sign-in before a city is known), so
+-- inside any city's transaction they show nothing and accept nothing. Defence in depth: SQL that
+-- runs inside a city's transaction, through some other bug, can't read console password hashes
+-- or plant a console session. (SQL able to clear app.tenant_id is beyond this; the long-term fix is
+-- a separate database role for the console.)
+DO $$
+DECLARE
+  t text;
+  platform_tables text[] := ARRAY['PlatformAdmin', 'PlatformSession', 'PlatformPasskey', 'FhBooks', 'FhJournalEntry', 'InvoiceCounter', 'Lead', 'PadBatch', 'RateLimitHit'];
+BEGIN
+  FOREACH t IN ARRAY platform_tables LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS fh_only ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY fh_only ON %I TO flexcity_app
+         USING (app_current_tenant() IS NULL) WITH CHECK (app_current_tenant() IS NULL)', t);
+  END LOOP;
+END
+$$;
+
+-- Global reference data: statutory holidays, certification prerequisites, payroll tax tables,
+-- weather, cross-city benchmarks. Every city reads them; only FH's side (no city chosen: the
+-- worker, the Dev console, seeding) writes them. Before, PayrollTaxTable could be rewritten from
+-- inside any city's transaction.
+DO $$
+DECLARE
+  t text;
+  global_tables text[] := ARRAY['StatutoryHoliday', 'CertificationPrerequisite', 'PayrollTaxTable', 'WeatherSite', 'WeatherForecastDay', 'WeatherObservation', 'BenchmarkSnapshot'];
+BEGIN
+  FOREACH t IN ARRAY global_tables LOOP
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS global_read ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS fh_write ON %I', t);
+    EXECUTE format('CREATE POLICY global_read ON %I FOR SELECT TO flexcity_app USING (true)', t);
+    EXECUTE format(
+      'CREATE POLICY fh_write ON %I TO flexcity_app
+         USING (app_current_tenant() IS NULL) WITH CHECK (app_current_tenant() IS NULL)', t);
+  END LOOP;
+END
+$$;
+
+-- Generated from the catalogue, so a new table can never be left open: a table with a "tenantId"
+-- column that no block above covered gets the strict city policy; any other unclassified table is
+-- locked (row-level security on, no policy for the app: it sees and changes nothing) until it is
+-- classified above. The coverage test fails on both, so CI catches them before a deployment does.
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOR t IN
+    SELECT c.relname FROM pg_class c
+     WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'r' AND NOT c.relrowsecurity
+       AND c.relname <> '_prisma_migrations'
+       AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenantId' AND NOT a.attisdropped)
+  LOOP
+    RAISE WARNING 'rls.sql: % has a tenantId column but is in no list; applying tenant_isolation', t;
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+    EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I', t);
+    EXECUTE format(
+      'CREATE POLICY tenant_isolation ON %I TO flexcity_app
+         USING ("tenantId" = app_current_tenant())
+         WITH CHECK ("tenantId" = app_current_tenant())', t);
+  END LOOP;
+  FOR t IN
+    SELECT c.relname FROM pg_class c
+     WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'r' AND NOT c.relrowsecurity
+       AND c.relname <> '_prisma_migrations'
+  LOOP
+    RAISE WARNING 'rls.sql: % is not classified; locked for the app until it is', t;
+    EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
+  END LOOP;
+END
+$$;
+
 -- The owner (the role that runs migrations and this file: fh_owner on RDS, a superuser in
 -- development) sees every row. On RDS it is not a superuser, so FORCE ROW LEVEL SECURITY binds it
 -- too, and without this policy the SECURITY DEFINER functions above, which run as the owner (the
