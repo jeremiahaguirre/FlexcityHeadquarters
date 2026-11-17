@@ -1,10 +1,10 @@
 import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { TokenBuckets, enabled, hasCredential, ipRateLimit } from '../../src/lib/ipRateLimit.js';
+import { TokenBuckets, defaultOptions, enabled, hasCredential, ipRateLimit } from '../../src/lib/ipRateLimit.js';
 import { rateLimited } from '../../src/lib/metrics.js';
 
-function app(opts = { authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2 }) {
+function app(opts: Parameters<typeof ipRateLimit>[0] = { authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2, calendarMissesPerMinute: 2 }) {
   const a = express();
   a.set('trust proxy', 1);
   a.use(ipRateLimit({ ...opts, force: true }));
@@ -16,6 +16,12 @@ function app(opts = { authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2 
     r.status(401).json({ code: 'UNAUTHENTICATED' });
   });
   a.post('/api/auth/forgot', (_q, r) => r.status(202).json({ ok: true }));
+  // As routes/calendar.ts does: a link that doesn't work is marked as a calendar miss.
+  a.get('/api/calendar/:t/:f', (q, r) => {
+    if (q.params.f === 'good.ics') return r.send('BEGIN:VCALENDAR');
+    r.locals.calendarMiss = true;
+    r.status(404).json({ code: 'NOT_FOUND' });
+  });
   return a;
 }
 
@@ -96,6 +102,30 @@ describe('global per-address limit', () => {
     const a = app();
     for (let i = 0; i < 6; i++) expect((await request(a).get('/expired').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer old')).status).toBe(401);
     expect((await request(a).get('/me').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer good')).status).toBe(200);
+  });
+
+  it('calendar links that don’t work use up a calendar-only budget, so made-up links stop at the edge (SEC-46)', async () => {
+    const a = app();
+    const ip = '203.0.113.46';
+    const get = (f: string) => request(a).get(`/api/calendar/00000000-0000-0000-0000-000000000000/${f}`).set('X-Forwarded-For', ip);
+    expect((await get('nope1.ics')).status).toBe(404);
+    expect((await get('nope2.ics')).status).toBe(404);
+    // calendarMissesPerMinute is 2: the address's calendar requests are now limited, before any database work.
+    expect((await get('nope3.ics')).status).toBe(429);
+    // Its other credentialed traffic is not (review of #67): calendar misses never touch the failure budget.
+    expect((await request(a).get('/me').set('X-Forwarded-For', ip).set('Authorization', 'Bearer good')).status).toBe(200);
+    expect((await request(a).get('/me').set('X-Forwarded-For', ip).set('Authorization', 'Bearer made-up')).status).toBe(401);
+    // Another address is unaffected, and working links from it are served.
+    expect((await request(a).get('/api/calendar/00000000-0000-0000-0000-000000000000/good.ics').set('X-Forwarded-For', '203.0.113.47')).status).toBe(200);
+  });
+
+  it('with the production defaults, a shared calendar service’s 300 stale links an hour block nothing (review of #67)', async () => {
+    const a = app(defaultOptions());
+    const ip = '66.249.0.1';
+    // routes/calendar.ts answers 429 itself past 300 misses an hour (CALENDAR_MISSES_PER_HOUR).
+    for (let i = 0; i < 300; i++) expect((await request(a).get(`/api/calendar/00000000-0000-0000-0000-000000000000/stale${i}.ics`).set('X-Forwarded-For', ip)).status).toBe(404);
+    expect((await request(a).get('/api/calendar/00000000-0000-0000-0000-000000000000/good.ics').set('X-Forwarded-For', ip)).status).toBe(200);
+    expect((await request(a).get('/me').set('X-Forwarded-For', ip).set('Authorization', 'Bearer good')).status).toBe(200);
   });
 
   it('IPv6: one /64 shares a bucket', async () => {

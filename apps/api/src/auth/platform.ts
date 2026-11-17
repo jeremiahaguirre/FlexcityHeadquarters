@@ -62,6 +62,18 @@ export async function endPlatformSession(raw: string | undefined): Promise<void>
   if (raw) await db().platformSession.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
+/**
+ * Whether a console cookie names a live session (not revoked or expired, its admin not disabled).
+ * The console reads bodies over 100 kB only then: the cookie's presence alone proves nothing, and
+ * an anonymous sender must not make the process parse megabytes first (SECURITY-AUDIT SEC-47).
+ * One indexed lookup, only for requests that carry the console header and a session cookie.
+ */
+export async function isLivePlatformSession(raw: string | undefined): Promise<boolean> {
+  if (!raw) return false;
+  const s = await db().platformSession.findUnique({ where: { tokenHash: sha256(raw) }, select: { revokedAt: true, expiresAt: true, admin: { select: { disabledAt: true } } } });
+  return !!s && !s.revokedAt && s.expiresAt >= new Date() && !s.admin.disabledAt;
+}
+
 /** CSRF guard for every Dev console request, signed in or not. */
 export function requirePlatformHeader(req: Request, _res: Response, next: NextFunction) {
   if (req.header(PLATFORM_HEADER) !== '1') return next(new HttpError(403, 'FORBIDDEN', 'Missing Dev console header'));
