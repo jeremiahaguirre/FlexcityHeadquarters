@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ApiError } from '@/lib/apiError';
 import { papi, usePlatformQuery } from '@/lib/platform';
 import { AudiencePicker, type Ring, fromLocalInput, toLocalInput, useAudienceText, whenText } from './shared';
+import { errorText } from '@/lib/apiError';
 
 type Status = 'upcoming' | 'active' | 'ended' | 'cancelled';
 interface Win { id: string; startsAt: string; endsAt: string; messageEn: string; messageFr: string; tenantIds: string[]; ringIds: string[]; noticeSentAt: string | null; reminderSentAt: string | null; status: Status }
@@ -38,7 +39,7 @@ export function MaintenancePanel({ rings }: { rings: Ring[] }) {
       await list.reload();
       return true;
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
       return false;
     } finally {
       setBusy(null);

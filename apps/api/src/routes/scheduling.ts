@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Tx } from '../lib/db.js';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { badRequest, forbidden } from '../lib/errors.js';
+import { forbidden, invalid } from '../lib/errors.js';
 import { dispatchSoon, withEvents } from '../lib/events.js';
 import { assignShift, cancelShift, createShift, publishCheck, publishShifts, rankCandidates, updateShift } from '../services/scheduling/shifts.js';
 import { audit } from '../lib/db.js';
@@ -73,7 +73,7 @@ schedulingRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const q = range.parse(req.query);
-    if (q.to <= q.from || q.to.getTime() - q.from.getTime() > 62 * 86_400_000) throw badRequest('Choose a range of up to 62 days.');
+    if (q.to <= q.from || q.to.getTime() - q.from.getTime() > 62 * 86_400_000) throw invalid('RANGE_TOO_LONG', 'Choose a range of up to 62 days.', { maxDays: 62 });
     const manager = a.permissions.has('schedule.write');
     const shifts = await withTenant(a.tenantId, async (tx) => {
       const where: Prisma.ShiftWhereInput = {
