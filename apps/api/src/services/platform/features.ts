@@ -35,7 +35,7 @@ export const FEATURES = {
   /** Leave balances, performance reviews, training records and grievances. */
   hrSuite: { default: true, permissions: ['leave.manage', 'performance.manage', 'training.manage', 'grievances.manage', 'policies.manage'] },
   reliability: { default: true, permissions: ['reliability.read', 'reliability.write'] },
-  payroll: { default: true, permissions: ['payroll.export', 'payroll.approve', 'benefits.manage', 'accounting.manage'] },
+  payroll: { default: true, permissions: ['pay.self', 'payroll.export', 'payroll.approve', 'benefits.manage', 'accounting.manage'] },
   jobs: { default: true, permissions: ['jobs.manage'] },
   union: { default: false, permissions: ['union.hub', 'seniority.read'] },
   /** Seniority dates and hours break ties in the overtime order, call-outs and the scheduling assistant. Each organization chooses (Settings), and so can the Dev console. */

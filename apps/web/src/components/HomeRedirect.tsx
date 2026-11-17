@@ -10,8 +10,8 @@ import { homePath } from '@/lib/nav';
 export function HomeRedirect() {
   const router = useRouter();
   useEffect(() => {
-    api<{ permissions: string[]; hiddenMenu?: string[] }>('/api/me')
-      .then((me) => router.replace(homePath((p) => me.permissions.includes(p), me.hiddenMenu ?? [])))
+    api<{ permissions: string[]; hiddenMenu?: string[]; features?: Record<string, boolean> }>('/api/me')
+      .then((me) => router.replace(homePath((p) => me.permissions.includes(p), me.hiddenMenu ?? [], me.features)))
       .catch(() => router.replace('/login'));
   }, [router]);
   return <ShellLoading />;

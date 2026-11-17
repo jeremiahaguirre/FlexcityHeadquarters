@@ -25,8 +25,12 @@ export function prismaUrl(url: string): string {
   return u.toString();
 }
 
-/** Production: the URL must verify the server (verify-full or verify-ca) against a named CA file. */
+/**
+ * Production: the URL must verify the server, chain and host name (verify-full), against a named CA
+ * file. Not verify-ca: pg 8 treats it as verify-full today, but pg 9 moves to libpq's meaning, which
+ * skips the host-name check.
+ */
 export function verifiesServer(url: string): boolean {
   const u = new URL(url);
-  return ['verify-full', 'verify-ca'].includes(u.searchParams.get('sslmode') ?? '') && !!u.searchParams.get('sslrootcert');
+  return u.searchParams.get('sslmode') === 'verify-full' && !!u.searchParams.get('sslrootcert');
 }

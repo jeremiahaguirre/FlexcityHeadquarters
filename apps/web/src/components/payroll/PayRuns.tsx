@@ -20,6 +20,7 @@ import { type Run, STATUS_TONE, type Statement } from '@/lib/payroll';
 import { useSession } from '@/lib/session';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 import { issueKey, issueLabel } from '@/lib/payrollIssues';
+import { errorText } from '@/lib/apiError';
 
 interface RunDetail {
   run: Run;
@@ -164,7 +165,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
       const r = await api<{ status: string; late?: boolean }>(`/api/payroll/runs/${id}/send`, { method: 'POST' });
       toast(r.late ? t('payroll.bank.sentLate') : t('payroll.bank.sent'), r.late ? 'warn' : 'ok');
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
     }
     await refresh();
   }

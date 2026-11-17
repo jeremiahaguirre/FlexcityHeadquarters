@@ -23,7 +23,7 @@ import type { Prisma, Province } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { badRequest, forbidden, notFound } from '../../lib/errors.js';
+import { forbidden, invalid, notFound } from '../../lib/errors.js';
 import { addDays, dayOfWeek, localDate } from '../../lib/time.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { shiftInScope } from '../people/scope.js';
@@ -123,7 +123,7 @@ export async function assertTemplateInScope(tx: Tx, a: AuthContext, t: { departm
   const facilityIds = [...new Set(t.slots.map((s) => s.facilityId))];
   if ((await tx.facility.count({ where: { id: { in: facilityIds } } })) !== facilityIds.length) throw notFound('Facility');
   const depts = new Set(positions.map((p) => p.departmentId));
-  if (t.departmentId && [...depts].some((d) => d !== t.departmentId)) throw badRequest('Every line’s position must be in the template’s department.');
+  if (t.departmentId && [...depts].some((d) => d !== t.departmentId)) throw invalid('POSITION_NOT_IN_DEPARTMENT', 'Every line’s position must be in the template’s department.');
   // A template whose positions are all in one department belongs to it.
   return t.departmentId ?? (depts.size === 1 ? ([...depts][0] ?? null) : null);
 }
@@ -213,8 +213,8 @@ export interface ApplyResult {
  */
 export async function applyTemplate(tx: Tx, a: AuthContext | null, tenantId: string, templateId: string, from: string, to: string, opts: { dryRun?: boolean; automatic?: boolean } = {}): Promise<ApplyResult> {
   const days = daysBetween(from, to);
-  if (days <= 0) throw badRequest('The range must end after it starts.');
-  if (days > MAX_APPLY_DAYS) throw badRequest(`Choose a range of up to ${MAX_APPLY_DAYS} days.`);
+  if (days <= 0) throw invalid('ENDS_BEFORE_START', 'The range must end after it starts.');
+  if (days > MAX_APPLY_DAYS) throw invalid('RANGE_TOO_LONG', `Choose a range of up to ${MAX_APPLY_DAYS} days.`, { maxDays: MAX_APPLY_DAYS });
   const t = await tx.shiftTemplate.findUnique({ where: { id: templateId }, include: { slots: { orderBy: { sortOrder: 'asc' } } } });
   if (!t) throw notFound('Template');
   if (a) await assertTemplateInScope(tx, a, t);
@@ -309,7 +309,7 @@ export async function undoApplication(tx: Tx, a: AuthContext, applicationId: str
   const app = await tx.shiftTemplateApplication.findUnique({ where: { id: applicationId }, include: { template: { include: { slots: true } } } });
   if (!app) throw notFound('Application');
   await assertTemplateInScope(tx, a, app.template);
-  if (app.undoneAt) throw badRequest('This was already undone.');
+  if (app.undoneAt) throw invalid('ALREADY_UNDONE', 'This was already undone.');
   const shifts = await tx.shift.findMany({ where: { templateApplicationId: applicationId, status: { not: 'CANCELLED' } }, select: { id: true, status: true, userId: true } });
   let cancelled = 0;
   for (const s of shifts.filter((x) => x.status === 'DRAFT')) {
