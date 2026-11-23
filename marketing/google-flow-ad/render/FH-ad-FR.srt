@@ -15,9 +15,9 @@
 « Les heures approuvées passent directement à la paie. »
 
 5
-00:00:15,600 --> 00:00:16,900
+00:00:15,330 --> 00:00:17,100
 « En français et en anglais. »
 
 6
-00:00:17,300 --> 00:00:19,600
+00:00:17,120 --> 00:00:19,900
 « FlexcityHeadquarters. Un seul QG. »
