@@ -386,7 +386,8 @@
     "kiosk_tablet_locked": "The kiosk “{{kiosk}}” paused for {{minutes}} minutes after many wrong PINs.",
     "release_scheduled": "Coming {{whenEn}}: {{titleEn}}. See what changes for your organization.",
     "maintenance_scheduled": "Planned maintenance {{whenEn}}: {{messageEn}}",
-    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}"
+    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}",
+    "cert_rejected": "Your {{name}} certification wasn’t accepted: {{reason}}. Check it and add it again."
   },
   "today": {
     "morning": "Good morning",
@@ -468,6 +469,7 @@
     "NO_PASSKEY": "No passkey on this account.",
     "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
+    "CSRF_REFUSED": "This request didn’t come from the Dev console. Reload the page and try again.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
     "ALREADY_ENDED": "This session has already ended.",
     "ACCOUNT_SUSPENDED": "Your organization’s account is read-only until the overdue balance is paid.",
@@ -771,9 +773,15 @@
     "EXPORT_INVALID": "Some details are missing before this period can be sent.",
     "PROVIDER_SEND_FAILED": "The payroll provider didn’t take the hours. Try again, or download the file.",
     "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later.",
+    "CERT_CHANGED": "The employee changed this entry since you opened it. Check it again.",
+    "CERT_VERIFIED": "This certificate was already verified. Ask your supervisor to change it.",
+    "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
+    "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
+    "CERT_EXISTS": "There’s already a certificate with that name.",
+    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again.",
+    "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days.",
     "UNTIL_BEFORE_START": "The last year is before the first date.",
     "NTH_WEEKDAY_FIFTH": "A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.",
-    "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days.",
     "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month."
   },
   "timeclock": {
@@ -1077,7 +1085,12 @@
     "languageHint": "Used for the app, emails and notifications.",
     "password": "Password",
     "currentPassword": "Current password",
-    "changePassword": "Change password"
+    "changePassword": "Change password",
+    "editCert": "Correct a certification",
+    "editCertFor": "Correct {{name}}",
+    "certUpdated": "Saved. A supervisor will verify it before it counts for shifts.",
+    "removeCert": "Remove it",
+    "certRemoved": "Removed."
   },
   "builder": {
     "title": "Schedule builder",
@@ -1201,7 +1214,12 @@
     "noneExpiring": "None in this window.",
     "expiredBlocks": "Expired: can’t work",
     "daysLeft_one": "{{count}} day left",
-    "daysLeft_other": "{{count}} days left"
+    "daysLeft_other": "{{count}} days left",
+    "reject": "Turn down",
+    "rejectTitle": "Turn down this certificate",
+    "rejectReason": "Reason",
+    "rejectHint": "The employee sees this and can add the certificate again with the right details.",
+    "rejected": "Turned down. {{name}} was told why."
   },
   "staff": {
     "title": "Staff",
@@ -1813,7 +1831,8 @@
       "rules": "Agreement rules",
       "roles": "Roles",
       "departments": "Departments",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "positions": "Positions"
     },
     "org": "Organization",
     "orgHelp": "Your staff sign in at {{host}}.",
@@ -1960,7 +1979,16 @@
     "weatherSite": "Weather forecast site (optional)",
     "weatherSiteHint": "Leave empty to use the nearest Environment Canada forecast to the coordinates, or enter a site code such as bc-48.",
     "weatherSiteFound": "Using the nearest forecast: {{name}}. Enter a site code to choose another.",
-    "weatherSiteSet": "Forecast for {{name}}. Leave empty to use the nearest one instead."
+    "weatherSiteSet": "Forecast for {{name}}. Leave empty to use the nearest one instead.",
+    "positionsHelp": "The jobs people are hired for, with their department, minimum age, required certificates and driving limits. Schedules and the shift board check them.",
+    "noPositionsHelp": "Add a position for each job your staff do, then give people their positions on their staff page.",
+    "positionDepartment": "Department",
+    "noDepartment": "No department",
+    "addCertsFirst": "Add certificates to the catalog above first.",
+    "unpaidBreak": "Unpaid meal break (minutes)",
+    "unpaidBreakHint": "Taken off each shift’s paid time. A shift can set its own.",
+    "neverAlone": "Never alone: at least two qualified people must overlap on its shifts",
+    "departmentsUnavailable": "Departments couldn’t be loaded, so a position’s department stays as it is."
   },
   "jobs": {
     "title": "Job postings",
@@ -4156,7 +4184,28 @@
     "online_other": "{{count}} online sign-ups to collect",
     "onlineHelp": "Families who signed up on your public page. Take payment as they pay at the desk or by phone.",
     "onlineNone": "All online sign-ups are paid.",
-    "takePayment": "Paid {{price}}"
+    "takePayment": "Paid {{price}}",
+    "toPay_one": "{{count}} registration to pay",
+    "toPay_other": "{{count}} registrations to pay",
+    "toPayHelp": "Online sign-ups, and spots with no payment yet, such as families moved off a waitlist. Take payment as they pay at the desk or by phone.",
+    "toPayNone": "Every registration is paid.",
+    "fromDesk": "Registered at the desk",
+    "editFamily": "Edit family",
+    "familySaved": "Family saved",
+    "addMember": "Add family member",
+    "memberAdded": "Family member added",
+    "editMember": "Edit {{name}}",
+    "editMemberOne": "Edit {{name}}",
+    "editMemberHelp": "A new safety note also goes on this person’s class lists.",
+    "memberSaved": "Family member saved",
+    "roleLabel": "In the family",
+    "photoConsent": "Photos allowed",
+    "takePaymentFor": "Take payment · {{price}}",
+    "takePaymentTitle": "Take payment for {{name}}",
+    "opensOn": "Registration opens {{date}}",
+    "earlyTitle": "Register early?",
+    "earlyHelp": "Registration opens {{date}}. Register for {{set}} now, before the public, for example a returning swimmer’s priority week.",
+    "registerEarly": "Register early"
   },
   "fees": {
     "title": "Prices",
@@ -8685,44 +8734,74 @@
       "cancelled": "Cancelled"
     }
   },
+  "catalog": {
+    "title": "Certificates and licences",
+    "help": "What your positions, coverage rules and vehicles can require, and what staff add to their profiles.",
+    "add": "Add a certificate",
+    "starter": "Add from the starter list",
+    "starterHelp": "Common certificates for arenas, water and wastewater plants and driving. Pick the ones your organization uses. You can correct any of them afterwards.",
+    "addPicked_one": "Add {{count}} certificate",
+    "addPicked_other": "Add {{count}} certificates",
+    "alreadyAdded": "Already in your catalog",
+    "empty": "No certificates yet",
+    "emptyHelp": "Add the certificates and licences your positions require, or start from the starter list.",
+    "formHelp": "Enter it as it appears on the card.",
+    "name": "Name",
+    "nameFr": "Name in French",
+    "issuingBody": "Issued by",
+    "validity": "Valid for (months)",
+    "validityHint": "Leave empty if it doesn’t expire, or if the expiry differs for each person.",
+    "validFor_one": "Valid {{count}} month",
+    "validFor_other": "Valid {{count}} months",
+    "noExpiry": "No set expiry",
+    "shared": "Shared list",
+    "saved": "Certificate saved.",
+    "groups": {
+      "aquatics": "Aquatics",
+      "arena": "Arenas and ice plants",
+      "water": "Drinking water",
+      "wastewater": "Wastewater",
+      "licence": "Driver’s licences"
+    }
+  },
   "cityHolidays": {
-    "title": "City holidays and closure days",
-    "help": "Days your organization adds on top of each province’s statutory holidays, such as Boxing Day, Easter Monday or a civic holiday. Payroll pays a paid holiday like a statutory one (holiday pay and the holiday rate for hours worked); a closure day pays nothing extra. Leave doesn’t count either day, and rotations and shift templates add no shifts on them at facilities set to close on holidays (Fill settings).",
-    "add": "Add a day",
-    "addTitle": "Add a holiday or closure day",
-    "editTitle": "Change a holiday or closure day",
-    "edit": "Change {{name}}",
-    "remove": "Remove {{name}}",
-    "saved": "Holiday saved.",
-    "removed": "Holiday removed.",
-    "empty": "No city holidays yet. Statutory holidays apply automatically.",
-    "name": "Name (English)",
-    "nameFr": "Name (French)",
-    "kindLabel": "Type",
-    "kind": {
-      "PAID": "Paid holiday",
-      "CLOSURE": "Closure day"
-    },
-    "kindHint": {
-      "PAID": "Paid like a statutory holiday: holiday pay, and the holiday rate for hours worked.",
-      "CLOSURE": "No holiday pay or holiday rate. Leave doesn’t count the day, and facilities set to close on holidays get no new shifts on it."
-    },
-    "date": "Date",
     "dateFirst": "The first time it applies. Nothing repeats before it.",
-    "recurrenceLabel": "Repeats",
+    "kindHint": {
+      "CLOSURE": "No holiday pay or holiday rate. Leave doesn’t count the day, and facilities set to close on holidays get no new shifts on it.",
+      "PAID": "Paid like a statutory holiday: holiday pay, and the holiday rate for hours worked."
+    },
+    "kindLabel": "Type",
+    "date": "Date",
+    "help": "Days your organization adds on top of each province’s statutory holidays, such as Boxing Day, Easter Monday or a civic holiday. Payroll pays a paid holiday like a statutory one (holiday pay and the holiday rate for hours worked); a closure day pays nothing extra. Leave doesn’t count either day, and rotations and shift templates add no shifts on them at facilities set to close on holidays (Fill settings).",
+    "removed": "Holiday removed.",
     "recurrence": {
       "NONE": "Once",
-      "YEARLY_DATE": "Every year on the same date",
       "YEARLY_NTH_WEEKDAY": "Every year on the same weekday of the month (e.g. the first Monday of August)",
+      "EASTER_OFFSET": "Every year, the same number of days from Easter (e.g. Easter Monday)",
       "YEARLY_LAST_WEEKDAY": "Every year on the last such weekday of the month",
-      "EASTER_OFFSET": "Every year, the same number of days from Easter (e.g. Easter Monday)"
+      "YEARLY_DATE": "Every year on the same date"
     },
-    "untilYear": "Last year (optional)",
-    "untilYearHint": "Leave empty to keep repeating.",
-    "until": "until {{year}}",
-    "province": "Applies to",
+    "edit": "Change {{name}}",
+    "remove": "Remove {{name}}",
+    "recurrenceLabel": "Repeats",
     "allProvinces": "Every facility",
+    "untilYearHint": "Leave empty to keep repeating.",
+    "kind": {
+      "CLOSURE": "Closure day",
+      "PAID": "Paid holiday"
+    },
     "nextOn": "Next: {{date}}",
-    "noneComing": "None in the coming year."
+    "province": "Applies to",
+    "saved": "Holiday saved.",
+    "empty": "No city holidays yet. Statutory holidays apply automatically.",
+    "nameFr": "Name (French)",
+    "untilYear": "Last year (optional)",
+    "noneComing": "None in the coming year.",
+    "editTitle": "Change a holiday or closure day",
+    "title": "City holidays and closure days",
+    "add": "Add a day",
+    "until": "until {{year}}",
+    "name": "Name (English)",
+    "addTitle": "Add a holiday or closure day"
   }
 }
