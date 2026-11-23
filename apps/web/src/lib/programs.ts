@@ -77,3 +77,26 @@ export function levelBody(f: FormData) {
     active: f.get('active') === 'on',
   };
 }
+/** The family form as the API takes it: blanks clear the address or emergency contact. */
+export function householdBody(f: FormData) {
+  const s = (k: string) => String(f.get(k) ?? '').trim();
+  return { name: s('name'), address: s('address') || null, emergencyName: s('emName') || null, emergencyPhone: s('emPhone') || null };
+}
+
+/** One family member's form as the API takes it: blanks clear what they stand for. */
+export function memberBody(f: FormData) {
+  const s = (k: string) => String(f.get(k) ?? '').trim();
+  return {
+    role: s('role') as 'GUARDIAN' | 'CHILD' | 'ADULT',
+    firstName: s('first'),
+    lastName: s('last'),
+    dateOfBirth: s('dob') || null,
+    phone: s('phone') || null,
+    email: s('email') || null,
+    safetyNote: s('note') || null,
+    photoConsent: f.get('photoConsent') === 'on',
+  };
+}
+
+/** Not open yet but opening later: member services may register early (returning swimmers' priority week). */
+export const earlyOnly = (c: { registrationOpen: boolean; registrationOpensAt: string | null }, now = Date.now()) => !c.registrationOpen && !!c.registrationOpensAt && Date.parse(c.registrationOpensAt) > now;
