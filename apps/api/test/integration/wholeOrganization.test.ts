@@ -196,7 +196,6 @@ describe('more organization-wide settings a department-limited role can’t chan
       ['overtime policy', () => call(limited).put('/api/overtime/policy', { countRefusals: true, clause: 'Article 99', periodStartMonth: 4 })],
       ['sign-up settings', () => call(limited).put('/api/signup/settings', { enabled: true, terms: 'x', payment: 'y' })],
       ['new position', () => call(limited).post('/api/positions', { name: 'Shadow position', requiredCertificationIds: [], departmentId: dept.aquatics })],
-      ['move a position', () => call(limited).put(`/api/positions/${pos.guard}`, { name: 'Pool Lifeguard', requiredCertificationIds: [], departmentId: dept.parks })],
       ['scheduling assistant (organization)', () => call(limited).put('/api/schedule/fill/settings', { departmentId: null, planAheadWeeks: 4 })],
       ['shift templates', () => call(limited).put('/api/schedule/templates/settings', { autoCreate: true })],
       ['bidding defaults', () => call(limited).put('/api/bids/settings', { seniorityBasis: 'HOURS' })],
@@ -210,6 +209,9 @@ describe('more organization-wide settings a department-limited role can’t chan
       ['another department’s onboarding checklist', () => call(limited).put(`/api/onboarding/positions/${pos.guard}`, { itemIds: [] })],
     ];
     for (const [what, send] of writes) refused(await send(), what);
+    // Another department's position reads as not found to a department-limited lead (staff.ts).
+    const move = await call(limited).put(`/api/positions/${pos.guard}`, { name: 'Pool Lifeguard', requiredCertificationIds: [], departmentId: dept.parks });
+    expect([403, 404], `move a position → ${move.status}`).toContain(move.status);
     const after = await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id }, select: { overtimePolicy: true, winterSettings: true, signupSettings: true, features: true } });
     expect(after).toEqual(before);
     expect(await owner.position.count({ where: { tenantId: t.tenant.id, name: 'Shadow position' } })).toBe(0);

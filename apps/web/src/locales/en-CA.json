@@ -475,6 +475,7 @@
     "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "SELF_BENEFITS": "Another HR administrator enrolls you in benefits or ends your enrolment.",
     "KEY_OWNER_LIMITED": "The person who made this key now has this access for a department only, so the key can’t make organization-wide changes.",
+    "CSRF_REFUSED": "This request didn’t come from the Dev console. Reload the page and try again.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
     "ALREADY_ENDED": "This session has already ended.",
     "ACCOUNT_SUSPENDED": "Your organization’s account is read-only until the overdue balance is paid.",

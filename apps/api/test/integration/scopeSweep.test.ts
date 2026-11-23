@@ -24,6 +24,7 @@ import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { FEATURE_KEYS, forgetFeatures } from '../../src/services/platform/features.js';
+import { STARTER_CERTS } from '../../src/services/people/certCatalog.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
@@ -70,6 +71,8 @@ const ALLOWED: Array<{ route: string; why: string }> = [
   // Member services (members.manage, lessons.plan, fees.manage, bookings.manage) is not a supervisory
   // capability and isn't department-limited by design: front desk serves every family.
   { route: 'POST /api/households', why: 'member services: a new family record' },
+  { route: 'POST /api/certifications', why: 'adds a certificate to the shared catalogue, as leads may; correcting one is whole-organization only (CERT_ORG_WIDE, staff.test.ts)' },
+  { route: 'POST /api/certifications/starter', why: 'adds standard certificates to the shared catalogue, as leads may' },
   { route: 'POST /api/fees', why: 'member services: the price list (fees.manage), shared by design' },
   { route: 'POST /api/campaigns', why: 'member services: a program campaign; set changes follow department limits (SEC-29)' },
   { route: 'POST /api/swim-levels', why: 'member services: the program levels catalogue' },
@@ -92,6 +95,8 @@ const BODIES: Record<string, () => Record<string, unknown>> = {
   'POST /api/roles': () => ({ name: 'Swept role', permissions: ['schedule.read', 'users.read'] }),
   'POST /api/notifications/read': () => ({ ids: [] }),
   'PUT /api/users/:id/roles': () => ({ customRoleIds: [] }),
+  'PUT /api/positions/:id': () => ({ name: 'Water Operator', requiredCertificationIds: [] }),
+  'POST /api/certifications/starter': () => ({ keys: [STARTER_CERTS[0]!.key] }),
   'PUT /api/roles/:id': () => ({ name: 'Water Works lead', permissions: ['schedule.read', 'users.read', 'users.write'] }),
   // Query parameters read one by one (zod reports no field name for them).
   'GET /api/payroll/t4': () => ({ year: 2025 }),
@@ -173,7 +178,6 @@ const UNREACHED: Array<{ route: string; why: string }> = [
   { route: 'POST /api/lessons/attendance', why: 'needs a member-services record the sweep doesn’t seed (programs.test.ts, signup.test.ts, lessons.test.ts)' },
   { route: 'POST /api/messages/:id/report', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
   { route: 'POST /api/messages/conversations/:id/members', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
-  { route: 'POST /api/messages/conversations/:id/messages', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
   { route: 'POST /api/messages/conversations/:id/mute', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
   { route: 'POST /api/messages/conversations/:id/read', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
   { route: 'POST /api/offboarding/:id/complete', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
@@ -445,6 +449,8 @@ beforeAll(async () => {
     accommodation: [accommodation.id],
     role: [waterRole.body.id as string],
     item: [item.id],
+    // The city's own certificate in the shared catalogue: correcting it is whole-organization only.
+    catalog: [t.nls.id],
     expense: [expense.id],
     lonework: [alone.id],
     certification: [cert.id],
