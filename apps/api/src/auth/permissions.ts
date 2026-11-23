@@ -27,6 +27,7 @@ export const PERMISSIONS = [
   'timeoff.approve',
   'timeclock.punch',
   'timeclock.review',
+  'pay.self', // My pay: own pay statements, direct deposit and tax forms (follows the payroll switch, not the timeclock)
   'payroll.export', // prepare pay runs, payroll records, direct deposit details
   'payroll.approve', // release pay runs and bank deposit files; payroll settings
   'benefits.manage', // benefit plans and who is enrolled
@@ -107,6 +108,7 @@ const STAFF_BASE: Permission[] = [
   'availability.self',
   'timeoff.self',
   'timeclock.punch',
+  'pay.self',
   'ops.chemical.record',
   'ops.headcount.record',
   'incidents.create',
@@ -126,6 +128,7 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
     'certs.verify',
     'schedule.read',
     'timeclock.review',
+    'pay.self',
     'payroll.export',
     'payroll.approve',
     'benefits.manage',
@@ -229,10 +232,10 @@ export const ROLE_PERMISSIONS: Record<AccessRole, Permission[]> = {
   ],
   STAFF: STAFF_BASE,
   // Front desk is member services: families, registrations, memberships and drop-ins.
-  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'members.manage', 'bookings.manage', 'logbook.write', 'messages.use', 'surveys.respond'],
+  FRONT_DESK: ['schedule.read', 'shifts.self', 'ops.status.read', 'ops.page_head_guard', 'timeclock.punch', 'pay.self', 'members.manage', 'bookings.manage', 'logbook.write', 'messages.use', 'surveys.respond'],
   UNION_STEWARD: ['union.hub', 'seniority.read', 'bidding.observe', 'schedule.read'],
   // Water works, maintenance, parks…: their own shifts and time, nothing aquatic.
-  EMPLOYEE: ['schedule.read', 'shifts.self', 'preferences.self', 'bidding.bid', 'timeclock.punch', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write', 'messages.use', 'surveys.respond'],
+  EMPLOYEE: ['schedule.read', 'shifts.self', 'preferences.self', 'bidding.bid', 'timeclock.punch', 'pay.self', 'timeoff.self', 'availability.self', 'lonework.self', 'winter.patrol', 'fleet.inspect', 'expenses.self', 'logbook.write', 'messages.use', 'surveys.respond'],
 };
 
 export function permissionsFor(roles: readonly AccessRole[]): Set<Permission> {

@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Every job runs all dependency code (npm ci, builds, tests): read-only token, never kept on disk.
+permissions:
+  contents: read
+
 jobs:
   api:
     runs-on: ubuntu-latest
@@ -27,8 +31,10 @@ jobs:
       APP_DATABASE_URL: postgresql://flexcity_app:change-me@localhost:5432/flexcity_test
       JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -58,8 +64,10 @@ jobs:
       run:
         working-directory: apps/site
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -79,8 +87,10 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -92,6 +102,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       # Phone tests (iPhone 13 screen) against the static demo: sample data, no API or database.
+      # The live build (what production serves) carries none of the demo (ARCHITECTURE-REVIEW A15).
+      - name: Live build has no demo code or data
+        run: NEXT_DIST_DIR=.next-live npx next build && node scripts/check-live-build.mjs .next-live
       - name: Build static demo
         run: npm run build:demo
       - name: Fonts in the build are our own
@@ -100,6 +113,50 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Phone tests
         run: npx playwright test --trace off
+
+  # What production runs (ARCHITECTURE-REVIEW A12): the three images built from this commit (the
+  # web image is the live `next build`, not the demo), then booted the way ECS runs them, with a
+  # TLS-only database whose owner is not a superuser (ops/ci/image-smoke.sh).
+  images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the api, migrate and web images
+        env:
+          DOCKER_BUILDKIT: '1'
+        run: |
+          docker build --target api -t fh-api:ci .
+          docker build --target migrate -t fh-migrate:ci .
+          docker build --target web --build-arg NEXT_PUBLIC_RELEASE=ci --build-arg NEXT_PUBLIC_SITE_URL=https://www.example.ca -t fh-web:ci .
+      - name: Boot them as in production (migrations and owner scripts as a non-superuser)
+        run: TAG=ci bash ops/ci/image-smoke.sh
+
+  # ops/terraform: formatted, valid, and its tests (mocked AWS, no account) pass.
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ops/terraform
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: 1.9.8
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive
+      # The committed lock file, when there is one, pins the provider's checksums.
+      - run: if [ -f .terraform.lock.hcl ]; then terraform init -backend=false -input=false -lockfile=readonly; else terraform init -backend=false -input=false; fi
+      - run: terraform validate
+      - run: terraform test
 
   # The deployment scripts (.github/workflows/deploy.yml): syntax, and the post-deploy check that
   # decides whether a release stays or is rolled back. No dependencies.
