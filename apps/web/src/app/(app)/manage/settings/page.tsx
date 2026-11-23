@@ -35,6 +35,7 @@ import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
 import { IntegrationsSettings } from '@/components/settings/IntegrationsSettings';
+import { PositionsSettings } from '@/components/settings/PositionsSettings';
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY', 'REPORTING_PAY', 'SCHEDULE_CHANGE_PREMIUM', 'STANDBY_PAY', 'CALLBACK_PAY'] as const;
 
@@ -64,7 +65,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
+type Tab = 'org' | 'departments' | 'positions' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -82,7 +83,14 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const { can } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
+  const tabs: Tab[] = [
+    ...(org ? (['org', 'departments'] as const) : []),
+    // Positions and the certificate catalog: HR, and supervisors who define their own positions.
+    ...(can('positions.manage') ? (['positions'] as const) : []),
+    ...(org ? (['facilities'] as const) : []),
+    ...(can('ops.configure') ? (['pools'] as const) : []),
+    ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : []),
+  ];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
   // A link can open a tab (the email about a webhook that was turned off opens Integrations).
   useEffect(() => {
@@ -102,6 +110,8 @@ export default function SettingsPage() {
       ) : null}
       {tab === 'integrations' ? (
         <IntegrationsSettings />
+      ) : tab === 'positions' ? (
+        <PositionsSettings />
       ) : tab === 'pools' ? (
         <Pools />
       ) : tab === 'departments' ? (
