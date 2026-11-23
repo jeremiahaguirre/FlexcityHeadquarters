@@ -179,6 +179,7 @@ staffRouter.get(
 staffRouter.post(
   '/certifications',
   requirePermission('positions.manage'),
+  requireWholeOrganization('positions.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ name: z.string().min(2).max(120), nameFr: z.string().max(120).nullable().optional(), issuingBody: z.string().min(2).max(120), validityMonths: z.number().int().min(1).max(120).nullable() }).parse(req.body);

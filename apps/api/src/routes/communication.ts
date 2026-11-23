@@ -142,6 +142,8 @@ communicationRouter.post(
     const a = authOf(req);
     const b = z.object({ title: z.string().trim().min(3).max(140), body: z.string().trim().min(3).max(4000), positionIds: z.array(uuid).max(100).default([]), facilityIds: z.array(uuid).max(100).default([]), pinned: z.boolean().default(false), expiresAt: z.coerce.date().nullable().optional() }).parse(req.body);
     if (a.scope?.facilityIds.length && (!b.facilityIds.length || b.facilityIds.some((f) => !a.scope!.facilityIds.includes(f)))) throw forbidden('Choose facilities in your department.');
+    // A department's poster writes to their department's positions, not to everyone (an empty list).
+    if (a.scope?.positionIds.length && (!b.positionIds.length || b.positionIds.some((p) => !a.scope!.positionIds.includes(p)))) throw forbidden('Choose positions in your department.');
     const x = await withTenant(a.tenantId, async (tx) => {
       const x = await tx.announcement.create({ data: { tenantId: a.tenantId, title: b.title, body: b.body, positionIds: b.positionIds, facilityIds: b.facilityIds, pinned: b.pinned, expiresAt: b.expiresAt ?? null, authorId: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'announcement.post', entity: 'Announcement', entityId: x.id, after: { title: b.title, positions: b.positionIds.length, facilities: b.facilityIds.length } });

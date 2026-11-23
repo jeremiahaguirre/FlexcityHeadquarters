@@ -51,6 +51,36 @@ const ALLOWED: Array<{ route: string; why: string }> = [
   { route: 'POST /api/auth/passkey/options', why: 'a sign-in challenge for the caller; stores only the challenge' },
   { route: 'POST /api/auth/step-up/options', why: 'a step-up challenge for the caller' },
   { route: 'POST /api/auth/refresh', why: 'the caller’s own session' },
+  { route: 'POST /api/auth/forgot', why: 'anonymous: asks for a reset link to the address given; answers the same whether or not it exists' },
+  { route: 'POST /api/client-errors', why: 'the browser’s own error report; stores nothing about anyone' },
+  { route: 'POST /api/notifications/read', why: 'marks the caller’s own notifications read' },
+  { route: 'POST /api/reports/saved', why: 'the caller’s own saved report; running it still follows their limits' },
+  { route: 'POST /api/logbook', why: 'the caller’s own logbook entry at a facility' },
+  { route: 'POST /api/incidents', why: 'anyone on duty reports an incident; reading reports follows department limits' },
+  // Facilities are shared by every department (an empty facility list on a role means every facility,
+  // customRoles.ts), so a department's leads set up the facilities they work at.
+  { route: 'POST /api/coverage/rules', why: 'a facility’s staffing rule; facilities are shared across departments by design' },
+  { route: 'POST /api/deck/stations', why: 'a pool’s guard stations; facilities are shared across departments by design' },
+  { route: 'POST /api/deck/rotate', why: 'rotates the guards on duty at a facility; acts on that facility’s deck only' },
+  { route: 'POST /api/deck/close', why: 'closes a deck rotation at a facility' },
+  { route: 'POST /api/ops/pools', why: 'a facility’s pool; facilities are shared across departments by design' },
+  { route: 'POST /api/ops/page-head-guard', why: 'pages the head guard on duty; changes nothing' },
+  { route: 'POST /api/kiosks', why: 'pairs a facility kiosk; facilities are shared across departments by design (audit: rejected candidate)' },
+  { route: 'POST /api/bookable-services', why: 'a facility’s bookable service, member services' },
+  // Member services (members.manage, lessons.plan, fees.manage, bookings.manage) is not a supervisory
+  // capability and isn't department-limited by design: front desk serves every family.
+  { route: 'POST /api/households', why: 'member services: a new family record' },
+  { route: 'POST /api/fees', why: 'member services: the price list (fees.manage), shared by design' },
+  { route: 'POST /api/campaigns', why: 'member services: a program campaign; set changes follow department limits (SEC-29)' },
+  { route: 'POST /api/swim-levels', why: 'member services: the program levels catalogue' },
+  { route: 'POST /api/swim-levels/presets', why: 'member services: adds a standard set of levels' },
+  // Adds a record of the caller's own area; changing someone else's is an aimed write, checked above.
+  { route: 'POST /api/vehicles', why: 'adds a vehicle to the fleet; nothing of another department changes' },
+  { route: 'POST /api/winter/routes', why: 'adds a winter route; nothing of another department changes' },
+  { route: 'POST /api/announcements', why: 'refused unless addressed to the caller’s own positions or facilities (communication.ts)' },
+  { route: 'POST /api/shifts/publish', why: 'publishes only the caller’s own department’s draft shifts (shiftsWhere)' },
+  { route: 'POST /api/shifts/publish/check', why: 'a dry run of publishing the caller’s own shifts' },
+  { route: 'POST /api/schedule/rotations/generate', why: 'generates shifts from the caller’s own rotations' },
 ];
 const allowed = (method: string, path: string) => ALLOWED.some((x) => x.route === `${method} ${path}`);
 /** The caller's own pages: a write there changes only the caller. Their answers are still checked for others' data. */
@@ -61,6 +91,21 @@ const BODIES: Record<string, () => Record<string, unknown>> = {
   'POST /api/punches/decision': () => ({ ids: kinds.punch, decision: 'APPROVE' }),
   'POST /api/roles': () => ({ name: 'Swept role', permissions: ['schedule.read', 'users.read'] }),
   'POST /api/notifications/read': () => ({ ids: [] }),
+  'PUT /api/users/:id/roles': () => ({ customRoleIds: [] }),
+  'PUT /api/roles/:id': () => ({ name: 'Water Works lead', permissions: ['schedule.read', 'users.read', 'users.write'] }),
+  // Query parameters read one by one (zod reports no field name for them).
+  'GET /api/payroll/t4': () => ({ year: 2025 }),
+  'GET /api/payroll/t4.xml': () => ({ year: 2025 }),
+  'GET /api/payroll/t4a.xml': () => ({ year: 2025 }),
+  'GET /api/payroll/rl1': () => ({ year: 2025 }),
+  'GET /api/payroll/rl1.xml': () => ({ year: 2025 }),
+  'GET /api/payroll/quebec/training': () => ({ year: 2025 }),
+  'GET /api/payroll/remittance': () => ({ month: '2025-01' }),
+  'GET /api/overtime/standings': () => ({ positionId: kinds.position![0] }),
+  'PUT /api/users/:id/manager': () => ({ managerId: null }),
+  'POST /api/users/:id/pay-rates': () => ({ positionId: kinds.position![0], hourlyRate: '25.00', effectiveFrom: '2026-01-05' }),
+  'POST /api/users/:id/bank-accounts': () => ({ holderName: 'Sweep Holder', institution: '001', transit: '12345', account: '1234567', agree: true }),
+  'POST /api/users/:id/documents': () => ({ kind: 'OTHER', title: 'Sweep document', fileName: 'sweep.pdf', data: `data:application/pdf;base64,${Buffer.from('%PDF-1.4\n%%EOF\n').toString('base64')}` }),
 };
 
 /**
@@ -69,138 +114,89 @@ const BODIES: Record<string, () => Record<string, unknown>> = {
  * needs (BODIES, a seeded id) instead. A listed route the sweep reaches fails until it's removed.
  */
 const UNREACHED: Array<{ route: string; why: string }> = [
-  { route: 'DELETE /api/coverage/rules/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'DELETE /api/kiosks/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'DELETE /api/me/passkeys/:id', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'DELETE /api/messages/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'DELETE /api/messages/conversations/:id/members/:userId', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'DELETE /api/reports/saved/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'DELETE /api/roles/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/applications/:id/resume', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/bids/rounds/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/billing/invoices/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/calendar/:tenantId/:file', why: 'a signed link, webhook, kiosk or calendar token, not a sign-in' },
-  { route: 'GET /api/campaigns/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/documents/:id/file', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/email/unsubscribe', why: 'a signed link, webhook, kiosk or calendar token, not a sign-in' },
-  { route: 'GET /api/incidents/:id', why: 'needs a id record the sweep doesn’t seed (answers VALIDATION)' },
-  { route: 'GET /api/lone-work/:id/emergency-contacts', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/me/pay-statements/:id', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'GET /api/messages/:id/file', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/messages/conversations/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/overtime/standings', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'GET /api/payroll/quebec/training', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'GET /api/payroll/remittance', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'GET /api/payroll/rl1', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'GET /api/payroll/rl1.xml', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'GET /api/payroll/runs/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/payroll/runs/:id/deposit-file', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/payroll/runs/:id/register.csv', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/payroll/statements/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'GET /api/payroll/t4', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'GET /api/payroll/t4.xml', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'GET /api/payroll/t4a.xml', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
+  { route: 'DELETE /api/coverage/rules/:id', why: 'needs a coverage rule or kiosk the sweep doesn’t seed (coverage.test.ts, kiosk.test.ts)' },
+  { route: 'DELETE /api/kiosks/:id', why: 'needs a coverage rule or kiosk the sweep doesn’t seed (coverage.test.ts, kiosk.test.ts)' },
+  { route: 'DELETE /api/messages/:id', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'DELETE /api/messages/conversations/:id/members/:userId', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'DELETE /api/reports/saved/:id', why: 'needs a saved report the sweep doesn’t seed; the caller’s own (reports.test.ts)' },
+  { route: 'GET /api/applications/:id/resume', why: 'needs a job posting or application the sweep doesn’t seed (applications.test.ts, jobs.test.ts)' },
+  { route: 'GET /api/bids/rounds/:id', why: 'needs a bid round the sweep doesn’t seed (bidding.test.ts)' },
+  { route: 'GET /api/calendar/:tenantId/:file', why: 'a signed link, webhook or calendar token, not a sign-in' },
+  { route: 'GET /api/campaigns/:id', why: 'needs a member-services record the sweep doesn’t seed (programs.test.ts, signup.test.ts, lessons.test.ts)' },
+  { route: 'GET /api/documents/:id/file', why: 'needs an uploaded document the sweep doesn’t seed (documents.test.ts)' },
+  { route: 'GET /api/email/unsubscribe', why: 'a signed link, webhook or calendar token, not a sign-in' },
+  { route: 'GET /api/incidents/:id', why: 'needs an incident report the sweep doesn’t seed (features.test.ts)' },
+  { route: 'GET /api/messages/:id/file', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'GET /api/messages/conversations/:id', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'GET /api/payroll/runs/:id', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'GET /api/payroll/runs/:id/deposit-file', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'GET /api/payroll/runs/:id/register.csv', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'GET /api/payroll/statements/:id', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
   { route: 'GET /api/union/locals', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
   { route: 'GET /api/union/locals/:local/directory', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
   { route: 'GET /api/union/locals/:local/seniority', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
   { route: 'GET /api/union/locals/:local/threads', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
   { route: 'GET /api/union/locals/:local/threads/:thread', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
-  { route: 'GET /api/users/:id/sin', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/applications/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/bookable-services/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/coverage/rules/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/fees/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/grievances/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/injury-claims/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/jobs/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/messages/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/offboarding/:id/items/:key', why: 'needs a id record the sweep doesn’t seed (answers VALIDATION)' },
-  { route: 'PATCH /api/onboarding/items/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/reports/saved/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/vehicles/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PATCH /api/winter/routes/:id', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/announcements/:id/end', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/applications/:id/hire', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
+  { route: 'GET /api/users/:id/sin', why: 'needs a pay profile with a sealed SIN, which the sweep doesn’t seed (payroll.test.ts)' },
+  { route: 'PATCH /api/applications/:id', why: 'needs a job posting or application the sweep doesn’t seed (applications.test.ts, jobs.test.ts)' },
+  { route: 'PATCH /api/bookable-services/:id', why: 'needs a member-services record the sweep doesn’t seed (programs.test.ts, signup.test.ts, lessons.test.ts)' },
+  { route: 'PATCH /api/coverage/rules/:id', why: 'needs a coverage rule or kiosk the sweep doesn’t seed (coverage.test.ts, kiosk.test.ts)' },
+  { route: 'PATCH /api/fees/:id', why: 'needs a member-services record the sweep doesn’t seed (programs.test.ts, signup.test.ts, lessons.test.ts)' },
+  { route: 'PATCH /api/grievances/:id', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
+  { route: 'PATCH /api/injury-claims/:id', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
+  { route: 'PATCH /api/jobs/:id', why: 'needs a job posting or application the sweep doesn’t seed (applications.test.ts, jobs.test.ts)' },
+  { route: 'PATCH /api/messages/:id', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'PATCH /api/offboarding/:id/items/:key', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
+  { route: 'PATCH /api/reports/saved/:id', why: 'needs a saved report the sweep doesn’t seed; the caller’s own (reports.test.ts)' },
+  { route: 'PATCH /api/vehicles/:id', why: 'needs a vehicle or winter route the sweep doesn’t seed (fleet.test.ts, winter.test.ts)' },
+  { route: 'PATCH /api/winter/routes/:id', why: 'needs a vehicle or winter route the sweep doesn’t seed (fleet.test.ts, winter.test.ts)' },
+  { route: 'POST /api/announcements/:id/end', why: 'needs an announcement the sweep doesn’t seed (communication.test.ts)' },
+  { route: 'POST /api/applications/:id/hire', why: 'needs a job posting or application the sweep doesn’t seed (applications.test.ts, jobs.test.ts)' },
   { route: 'POST /api/auth/passkey', why: 'a sign-in step: needs a live challenge, code or emailed token' },
   { route: 'POST /api/auth/passkeys', why: 'a sign-in step: needs a live challenge, code or emailed token' },
   { route: 'POST /api/auth/reset', why: 'a sign-in step: needs a live challenge, code or emailed token' },
   { route: 'POST /api/auth/sso/exchange', why: 'a sign-in step: needs a live challenge, code or emailed token' },
   { route: 'POST /api/auth/step-up', why: 'a sign-in step: needs a live challenge, code or emailed token' },
   { route: 'POST /api/auth/step-up/options', why: 'a sign-in step: needs a live challenge, code or emailed token' },
-  { route: 'POST /api/bank-accounts/:id/verify', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/bids/rounds', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'POST /api/bids/rounds/:id/cancel', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/bids/rounds/:id/confirm', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/billing/invoices/:id/checkout', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/billing/pad', why: 'a business rule after validation the fuzzer doesn’t meet (answers BAD_REQUEST)' },
-  { route: 'POST /api/billing/pad/cancel', why: 'a business rule after validation the fuzzer doesn’t meet (answers NOT_FOUND)' },
-  { route: 'POST /api/billing/stripe/webhook', why: 'a signed link, webhook, kiosk or calendar token, not a sign-in' },
-  { route: 'POST /api/bookings/:id/decide', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/call-outs/:id/cancel', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/call-outs/:id/contacts/:contactId', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/care/checkins/:id/done', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/email/unsubscribe', why: 'a signed link, webhook, kiosk or calendar token, not a sign-in' },
-  { route: 'POST /api/expenses/:id/decision', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/injury-claims/:id/filed', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/jobs', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'POST /api/lessons/attendance', why: 'a business rule after validation the fuzzer doesn’t meet (answers VALIDATION)' },
-  { route: 'POST /api/lone-work/:id/close', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/lone-work/:id/respond', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/me/announcements/:id/read', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/bank-accounts', why: 'the caller’s own records: BAD_REQUEST' },
-  { route: 'POST /api/me/call-outs/:id', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/care/:id/break', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/care/:id/decline', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/consent', why: 'the caller’s own records: VALIDATION' },
-  { route: 'POST /api/me/discipline/:id/acknowledge', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/discipline/:id/response', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/documents', why: 'the caller’s own records: VALIDATION' },
-  { route: 'POST /api/me/onboarding/:itemId/acknowledge', why: 'the caller’s own records (needs one of their own itemIds)' },
-  { route: 'POST /api/me/passkeys', why: 'the caller’s own records: PASSKEY_EXPIRED' },
-  { route: 'POST /api/me/password', why: 'the caller’s own records: WRONG_PASSWORD' },
-  { route: 'POST /api/me/policies/:id/sign', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/sms', why: 'the caller’s own records: BAD_REQUEST' },
-  { route: 'POST /api/me/sms/verify', why: 'the caller’s own records: BAD_REQUEST' },
-  { route: 'POST /api/me/surveys/:id/answers', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/time-off/:id/cancel', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/trades/:id/accept', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/trades/:id/cancel', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/me/trades/:id/decline', why: 'the caller’s own records (needs one of their own ids)' },
-  { route: 'POST /api/messages/:id/report', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/messages/conversations/:id/members', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/messages/conversations/:id/messages', why: 'needs a id record the sweep doesn’t seed (answers BAD_REQUEST)' },
-  { route: 'POST /api/messages/conversations/:id/mute', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/messages/conversations/:id/read', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/offboarding/:id/complete', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/onboarding/people/:userId/items/:itemId', why: 'needs a user record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/payroll/runs', why: 'a business rule after validation the fuzzer doesn’t meet (answers NOT_FOUND)' },
-  { route: 'POST /api/payroll/runs/:id/approve', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/payroll/runs/:id/paid', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/payroll/runs/:id/recalculate', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/payroll/runs/:id/send', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/payroll/runs/:id/void', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/reviews', why: 'a business rule after validation the fuzzer doesn’t meet (answers NOT_FOUND)' },
-  { route: 'POST /api/reviews/:id/acknowledge', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/schedule/changes/:id/waive', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/training/records', why: 'a business rule after validation the fuzzer doesn’t meet (answers NOT_FOUND)' },
+  { route: 'POST /api/bank-accounts/:id/verify', why: 'needs a pending bank account the sweep doesn’t seed (payroll.test.ts)' },
+  { route: 'POST /api/bids/rounds', why: 'needs a bid round the sweep doesn’t seed (bidding.test.ts)' },
+  { route: 'POST /api/bids/rounds/:id/cancel', why: 'needs a bid round the sweep doesn’t seed (bidding.test.ts)' },
+  { route: 'POST /api/bids/rounds/:id/confirm', why: 'needs a bid round the sweep doesn’t seed (bidding.test.ts)' },
+  { route: 'POST /api/billing/stripe/webhook', why: 'a signed link, webhook or calendar token, not a sign-in' },
+  { route: 'POST /api/bookings/:id/decide', why: 'needs a member-services record the sweep doesn’t seed (programs.test.ts, signup.test.ts, lessons.test.ts)' },
+  { route: 'POST /api/call-outs/:id/cancel', why: 'needs a call-out the sweep doesn’t seed (winter.test.ts)' },
+  { route: 'POST /api/call-outs/:id/contacts/:contactId', why: 'needs a call-out the sweep doesn’t seed (winter.test.ts)' },
+  { route: 'POST /api/care/checkins/:id/done', why: 'needs a care check-in the sweep doesn’t seed (care.test.ts)' },
+  { route: 'POST /api/email/unsubscribe', why: 'a signed link, webhook or calendar token, not a sign-in' },
+  { route: 'POST /api/injury-claims/:id/filed', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
+  { route: 'POST /api/jobs', why: 'needs a job posting or application the sweep doesn’t seed (applications.test.ts, jobs.test.ts)' },
+  { route: 'POST /api/lessons/attendance', why: 'needs a member-services record the sweep doesn’t seed (programs.test.ts, signup.test.ts, lessons.test.ts)' },
+  { route: 'POST /api/messages/:id/report', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'POST /api/messages/conversations/:id/members', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'POST /api/messages/conversations/:id/messages', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'POST /api/messages/conversations/:id/mute', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'POST /api/messages/conversations/:id/read', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'POST /api/offboarding/:id/complete', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
+  { route: 'POST /api/payroll/runs', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/payroll/runs/:id/approve', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/payroll/runs/:id/paid', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/payroll/runs/:id/recalculate', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/payroll/runs/:id/send', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/payroll/runs/:id/void', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/reviews', why: 'needs a review cycle the sweep doesn’t seed (hr.test.ts)' },
+  { route: 'POST /api/reviews/:id/acknowledge', why: 'needs a review cycle the sweep doesn’t seed (hr.test.ts)' },
+  { route: 'POST /api/schedule/changes/:id/waive', why: 'needs a late schedule change the sweep doesn’t seed (workRules.test.ts)' },
+  { route: 'POST /api/training/records', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
   { route: 'POST /api/union/locals/:local/members', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
   { route: 'POST /api/union/locals/:local/threads', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
   { route: 'POST /api/union/locals/:local/threads/:thread/messages', why: 'the Union Hub isn’t configured in tests (no UNION_DATABASE_URL); membership, not employer roles, decides access' },
-  { route: 'POST /api/user-certifications/:id/verify', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/users/:id/bank-accounts', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/users/:id/documents', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/users/:id/pay-rates', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/users/:id/payroll-orders', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/users/:id/payroll-orders/:orderId/end', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'POST /api/vehicles/:id/return', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PUT /api/bids/rounds/:id/awards/:itemId', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PUT /api/me/emergency-contacts', why: 'the caller’s own records: VALIDATION' },
-  { route: 'PUT /api/reviews/:id/manager', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PUT /api/reviews/:id/self', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PUT /api/roles/:id', why: 'needs a id record the sweep doesn’t seed (answers PERMISSION_NOT_ALLOWED)' },
-  { route: 'PUT /api/users/:id/emergency-contacts', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PUT /api/users/:id/manager', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
-  { route: 'PUT /api/users/:id/roles', why: 'needs a id record the sweep doesn’t seed (answers NOT_FOUND)' },
+  { route: 'POST /api/users/:id/payroll-orders', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/users/:id/payroll-orders/:orderId/end', why: 'needs a pay run, statement or payroll order the sweep doesn’t seed (payroll.test.ts, fullPayroll.test.ts)' },
+  { route: 'POST /api/vehicles/:id/return', why: 'needs a vehicle or winter route the sweep doesn’t seed (fleet.test.ts, winter.test.ts)' },
+  { route: 'PUT /api/bids/rounds/:id/awards/:itemId', why: 'needs a bid round the sweep doesn’t seed (bidding.test.ts)' },
+  { route: 'PUT /api/reviews/:id/manager', why: 'needs a review cycle the sweep doesn’t seed (hr.test.ts)' },
+  { route: 'PUT /api/reviews/:id/self', why: 'needs a review cycle the sweep doesn’t seed (hr.test.ts)' },
+  { route: 'PUT /api/users/:id/emergency-contacts', why: 'the body is a list, which the fuzzer doesn’t build (emergencyContacts.test.ts)' },
 ];
 
 /** Every route as [method, path], as crossCity.test.ts finds them. */
@@ -349,6 +345,8 @@ function valueFor(issue: { code: string; path: Array<string | number>; expected?
 }
 
 type Answer = { status: number; code?: string; text: string };
+/** An answer that shows the route ran its checks: not validation (400), a missing id (404), a crash (5xx) or no answer. */
+const tested = (status: number) => status !== 0 && status !== 400 && status !== 404 && status < 500;
 const slow: string[] = [];
 
 /** Sends a request; on 400 VALIDATION, fills what zod asked for and tries again (a few rounds). */
@@ -426,6 +424,13 @@ beforeAll(async () => {
   const event = await owner.reliabilityEvent.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, type: 'NO_SHOW', occurredAt: new Date(Date.now() - 86_400_000), note: 'Waterworks-only no-show', recordedById: ids.hr } });
   const discipline = await owner.disciplinaryRecord.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, issuedById: ids.hr, issuedAt: new Date(), summary: 'Waterworks-only written warning text.' } });
   const accommodation = await owner.accommodationCase.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, label: 'Waterworks-only accommodation', startsOn: new Date('2026-01-01'), createdById: ids.hr } });
+  // Water Works' own custom role, and an onboarding item (the checklist routes take its id).
+  const waterRole = await hr('post', '/api/roles', { name: 'Water Works lead', permissions: ['schedule.read', 'users.read'], scopeDepartmentIds: [waterWorks] });
+  if (waterRole.status !== 201) throw new Error(`water role: ${waterRole.status}`);
+  const expense = await owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, title: 'Waterworks-only mileage', total: 42.5 } });
+  const alone = await owner.loneWorkSession.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, location: 'Waterworks-only pump station', intervalMinutes: 30, nextDueAt: new Date(Date.now() + 1_800_000) } });
+  const cert = await owner.userCertification.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, certificationId: t.nls.id, issueDate: new Date('2026-01-01'), expiryDate: new Date('2028-01-01') } });
+  const item = await owner.onboardingItem.create({ data: { tenantId: t.tenant.id, name: 'Sweep orientation (organization catalogue)', owner: 'SUPERVISOR', kind: 'TASK' } });
   await owner.payRate.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, positionId: water, hourlyRate: 47.13, effectiveFrom: new Date('2025-01-01') } });
   Object.assign(kinds, {
     user: [ids.theirs],
@@ -438,8 +443,13 @@ beforeAll(async () => {
     event: [event.id],
     record: [discipline.id],
     accommodation: [accommodation.id],
+    role: [waterRole.body.id as string],
+    item: [item.id],
+    expense: [expense.id],
+    lonework: [alone.id],
+    certification: [cert.id],
   });
-  markers.push(ids.theirs, shift.id, punch.id, timeOff.id, note.id, event.id, discipline.id, accommodation.id, 'Waterworksonly', `wendell.waterworksonly@${SUB}.test`, 'Waterworks-only');
+  markers.push(ids.theirs, shift.id, punch.id, timeOff.id, note.id, event.id, discipline.id, accommodation.id, expense.id, alone.id, cert.id, 'Waterworksonly', `wendell.waterworksonly@${SUB}.test`, 'Waterworks-only');
 });
 afterAll(async () => {
   await appDb.$disconnect();
@@ -501,7 +511,9 @@ describe('department limits hold on every route', () => {
       const hit = markers.find((m) => a.text.includes(m));
       if (hit) problems.push(`${j.method} ${j.url} → ${a.status} holds ${hit}`);
       else if (j.method !== 'GET' && j.aimed) problems.push(`${j.method} ${j.url} → ${a.status} (a write aimed at another department)`);
-      else if (changedOrg.has(n) && !ownPage(j.path)) problems.push(`${j.method} ${j.url} → ${a.status} (changed an organization-wide setting)`);
+      // Any other write that succeeds without parameters must be listed in ALLOWED with its reason:
+      // a write that changes something organization-wide isn't always in the four tables compared.
+      else if (j.method !== 'GET' && !ownPage(j.path)) problems.push(`${j.method} ${j.url} → ${a.status} (${changedOrg.has(n) ? 'changed an organization-wide setting' : 'a write without parameters: list it in ALLOWED with the reason, or refuse it'})`);
     }
     console.log(`department sweep: ${jobs.length} requests over ${all.length} routes`);
     expect(slow, 'no answer within 15 s').toEqual([]);
@@ -515,7 +527,8 @@ describe('department limits hold on every route', () => {
     const pending: Array<{ j: (typeof jobs)[number]; a: Answer & { body: Record<string, unknown> } }> = [];
     for (const [n, a] of answers) {
       const j = jobs[n]!;
-      if (a.status !== 400 && a.status !== 404) reachedRoutes.add(`${j.method} ${j.path}`);
+      // A crash (5xx) or no answer isn't a test of the route's limits: it counts as not reached.
+      if (tested(a.status)) reachedRoutes.add(`${j.method} ${j.path}`);
       else pending.push({ j, a });
     }
     for (const { j } of pending) {
@@ -525,11 +538,13 @@ describe('department limits hold on every route', () => {
       // limited role's 400/404 came from its limits, so the route was tested. GETs only, and writes
       // through the fuzzer (HR may change things now; the snapshot above is already taken).
       const hrAnswer = await send(tok.hr, j.method, j.url, false, j.path);
-      if (hrAnswer.status !== 400 && hrAnswer.status !== 404 && hrAnswer.status !== 0) reachedRoutes.add(key);
+      if (tested(hrAnswer.status)) reachedRoutes.add(key);
     }
-    const unreached = [...new Set(all.map(([m, p]) => `${m} ${p}`))].filter((r) => !reachedRoutes.has(r) && !UNREACHED.some((u) => u.route === r)).sort();
+    // The caller's own pages (/api/me) can't reach anyone else: they're not held to coverage.
+    const covered = [...new Set(all.filter(([, p]) => !ownPage(p)).map(([m, p]) => `${m} ${p}`))];
+    const unreached = covered.filter((r) => !reachedRoutes.has(r) && !UNREACHED.some((u) => u.route === r)).sort();
     if (process.env.SWEEP_DEBUG) {
-      for (const r of unreached) {
+      for (const r of covered.filter((x) => !reachedRoutes.has(x)).sort()) {
         const n = jobs.findIndex((j) => `${j.method} ${j.path}` === r);
         const a = answers.get(n);
         console.log('UNREACHED', r, a?.status, a?.text.slice(0, 160), JSON.stringify(a?.body).slice(0, 200));
