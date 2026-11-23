@@ -44,7 +44,9 @@ describe('large bodies before authentication', () => {
     const anon = await request(server).post('/api/platform/auth/login').set('x-fh-platform', '1').set('content-type', 'application/json').send(junk(200_000));
     expect(anon.status).toBe(413);
     const noHeader = await request(server).post('/api/platform/auth/login').set('content-type', 'application/json').send(junk(200_000));
-    expect(noHeader.status).toBe(413);
+    // Without the console header the CSRF check (#60) refuses it before the body is read at all.
+    expect(noHeader.status).toBe(403);
+    expect(noHeader.body.code).toBe('CSRF_REFUSED');
     // A small request without the header is still refused by the header check.
     const small = await request(server).post('/api/platform/auth/login').set('content-type', 'application/json').send({ email: 'x@example.ca', password: 'x' });
     expect(small.status).toBe(403);

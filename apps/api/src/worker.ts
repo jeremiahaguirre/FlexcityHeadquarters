@@ -30,6 +30,8 @@ import { deliverSms, smsSender } from './services/notifications/sms.js';
 import { sendScheduledReports } from './services/reports/scheduled.js';
 import { captureError, installProcessHandlers } from './lib/errorReporter.js';
 import { WORKER_APP_NAME, workerBeatName } from './lib/health.js';
+import { startSchedule } from './lib/workerSchedule.js';
+import { purgeRateLimitHits } from './auth/rateLimit.js';
 import { applyRetention } from './services/privacy/retention.js';
 import { surveyReminders } from './services/surveys/surveys.js';
 import { autoDraftTemplates } from './services/scheduling/shiftTemplates.js';
@@ -202,6 +204,8 @@ const hourly = async () => {
   await exclusive('shift-templates', () => perTenant((tx) => autoDraftTemplates(tx)));
   await exclusive('renewal-reminders', () => sendRenewalReminders(db()));
   await exclusive('enquiry-retention', () => purgeOldEnquiries());
+  // Sign-in and API rate-limit hits older than a day, in batches (requests no longer purge inline).
+  await exclusive('rate-limit-purge', () => purgeRateLimitHits());
   await exclusive('benchmarks', () => computeBenchmarks(db()));
   await exclusive('trust-reminders', () => runReminders(db()));
   await exclusive('trust-prune', () => pruneTrustHistory(db()));
@@ -257,17 +261,8 @@ const trust = async () => {
 };
 
 await ensureTrustSeeded(db()).catch((err) => captureError(err, { source: 'job', tags: { job: 'trust-seed' } }));
-await events();
-await minutely();
-await heartbeat();
-await hourly();
-// Safety nets only: new events and urgent texts arrive by LISTEN (above). These catch retries that
-// come due (backoff) and anything announced while the LISTEN connection was reconnecting.
-setInterval(() => void events(), 30_000);
-setInterval(() => void urgentSweep(), 30_000);
-setInterval(() => void minutely().then(heartbeat), 60_000);
-setInterval(() => void hourly(), 60 * 60_000);
-// Trust tests check every few minutes; the first round waits a minute so readiness sees this worker's heartbeat.
-setTimeout(() => void trust(), 60_000);
-setInterval(() => void trust(), 5 * 60_000);
+// Timers first, then the first minute round, then the first hourly round in the background: the
+// lone-work checks never wait for a full hourly round after a deploy (lib/workerSchedule.ts).
+const { firstHourly } = await startSchedule({ events, urgentSweep, minutely, heartbeat, hourly, trust });
+firstHourly.catch((err) => captureError(err, { source: 'job', tags: { job: 'hourly' } }));
 console.log('FlexcityHeadquarters worker running');
