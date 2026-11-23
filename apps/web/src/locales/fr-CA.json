@@ -3859,7 +3859,13 @@
       "SANDED": "Sablée",
       "BRINE": "Saumure",
       "HAZARD_REPORTED": "Danger signalé"
-    }
+    },
+    "notInPlan": "Pas dans votre forfait : ajoutez {{option}} dans Facturation.",
+    "editRoute": "Modifier {{name}}",
+    "editRouteTitle": "Modifier le parcours",
+    "routeSaved": "Parcours enregistré",
+    "routeActive": "Patrouillé",
+    "routeActiveHelp": "Décochez quand la route n’est plus à patrouiller par la ville : elle n’est plus indiquée comme due et ses rappels cessent. Ses registres de patrouille sont conservés."
   },
   "callOuts": {
     "title": "Rappels en cas de tempête",
@@ -4449,7 +4455,19 @@
     "licenceHint": "Seuls les conducteurs qui le détiennent peuvent l’inspecter et le prendre.",
     "noLicence": "Aucun",
     "yard": "Garage ou installation",
-    "foot": "Un véhicule est prêt pendant 24 heures après une inspection conforme ou mineure. Les permis sont des certifications; ajoutez-les aux postes de conduite pour que l’horaire les vérifie aussi."
+    "foot": "Un véhicule est prêt pendant 24 heures après une inspection conforme ou mineure. Les permis sont des certifications; ajoutez-les aux postes de conduite pour que l’horaire les vérifie aussi.",
+    "saved": "Véhicule enregistré",
+    "inactive": "Retiré",
+    "editTitle": "Modifier {{unit}}",
+    "editOne": "Modifier {{unit}}",
+    "retire": "Retirer",
+    "retireOne": "Retirer {{unit}}",
+    "retireTitle": "Retirer {{unit}}?",
+    "retireHelp": "Les conducteurs ne le voient plus pour les inspections avant départ. Son historique d’inspections est conservé, et vous pouvez le remettre en service.",
+    "retired": "Véhicule retiré",
+    "reactivate": "Remettre en service",
+    "reactivateOne": "Remettre {{unit}} en service",
+    "reactivated": "Véhicule de retour dans le parc"
   },
   "injuries": {
     "title": "Déclarations de lésion",
