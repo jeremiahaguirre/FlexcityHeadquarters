@@ -9,10 +9,12 @@
 #   task's definition references;
 # - the app role is denied the union locals' keys (KMS keys tagged fh:union-local), so a flaw or a
 #   stolen credential in the main API can't open union data. Tag each local's key when creating it
-#   (ops/terraform/README.md, "Union Hub").
-# Still shared with the main API (an owner decision, SEC-61): the access-token signing secret
-# (JWT_SECRET; HS256), which the hub needs to check sign-ins. Moving to asymmetric tokens would
-# give the hub a public key only.
+#   (ops/terraform/README.md, "Union Hub"). The hub's role, the other way round, may use only those keys;
+# - the hub holds neither the main database's app role nor the access-token signing secret: it asks
+#   the main API, at its private address (API_URL), to check each request's sign-in
+#   (apps/api/src/lib/unionAccess.ts), and refuses to start in production if handed either;
+# - its own execution role, which can read the union secret and nothing else; no other task's can;
+# - its own alarms (no healthy task, share of server errors), which also roll back a deployment.
 
 variable "union_hub_separate" {
   description = "Run the Union Hub as its own service (its own role, secret, network and /api/union/* rule) and keep the API away from union data."
@@ -49,32 +51,58 @@ data "aws_secretsmanager_secret" "union" {
 
 locals {
   union_secret_arn = !local.union_enabled ? "" : (var.recovery_mode ? data.aws_secretsmanager_secret.union[0].arn : aws_secretsmanager_secret.union[0].arn)
-  # The hub checks sign-ins through the main database's app role, with the same token secret.
-  union_secrets = !local.union_enabled ? [] : concat(
-    [for k in ["JWT_SECRET", "APP_DATABASE_URL"] : { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }],
-    [{ name = "UNION_DATABASE_URL", valueFrom = "${local.union_secret_arn}:UNION_DATABASE_URL::" }],
-  )
+  # The union role only. No APP_DATABASE_URL and no JWT_SECRET: the main API checks sign-ins.
+  union_secrets = !local.union_enabled ? [] : [{ name = "UNION_DATABASE_URL", valueFrom = "${local.union_secret_arn}:UNION_DATABASE_URL::" }]
+  # The API's private address (compute.tf), and the service's own settings. Not the API's
+  # environment: nothing in it is the hub's business.
+  union_env = merge({
+    NODE_ENV         = "production"
+    AWS_REGION       = var.region
+    FLEXCITY_SERVICE = "union"
+    UNION_PORT       = "4100"
+    UNION_HUB_MODE   = "separate"
+    API_URL          = local.web_env["API_URL"]
+    KMS_KEY_ARN      = local.app_env["KMS_KEY_ARN"]
+  }, { for k in ["KMS_REPLICA_REGION"] : k => local.app_env[k] if contains(keys(local.app_env), k) })
 }
 
-# ECS reads the union secret into the union task only (the execution role is shared by every task;
-# no other task definition names this secret).
-data "aws_iam_policy_document" "execution_union_secret" {
+# The union task's own execution role: it pulls the image, writes its log and reads the union
+# secret. The shared execution role (API, worker, web, migrations) can't read that secret, so no
+# other task definition can be given UNION_DATABASE_URL; this role can't read the app secret.
+resource "aws_iam_role" "union_execution" {
+  count              = local.union_enabled ? 1 : 0
+  name               = "${local.gname}-union-execution"
+  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "union_execution" {
+  count      = local.union_enabled ? 1 : 0
+  role       = aws_iam_role.union_execution[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+data "aws_iam_policy_document" "union_execution_secret" {
   count = local.union_enabled ? 1 : 0
   statement {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [local.union_secret_arn]
   }
+  statement {
+    actions   = ["kms:Decrypt"]
+    resources = local.secret_key_arns
+  }
 }
 
-resource "aws_iam_role_policy" "execution_union_secret" {
+resource "aws_iam_role_policy" "union_execution_secret" {
   count  = local.union_enabled ? 1 : 0
   name   = "union-secret"
-  role   = aws_iam_role.execution.id
-  policy = data.aws_iam_policy_document.execution_union_secret[0].json
+  role   = aws_iam_role.union_execution[0].id
+  policy = data.aws_iam_policy_document.union_execution_secret[0].json
 }
 
-# The hub's own task role: it may use KMS keys (a union local's key, to seal and open its records),
-# never create, delete or re-point one.
+# The hub's own task role: it may use a union local's key (tagged fh:union-local), to seal and open
+# its records; no other key (not the platform's, not a city's), and it never creates, deletes or
+# re-points one.
 resource "aws_iam_role" "union" {
   count              = local.union_enabled ? 1 : 0
   name               = "${local.gname}-union"
@@ -83,9 +111,14 @@ resource "aws_iam_role" "union" {
 
 data "aws_iam_policy_document" "union" {
   statement {
-    sid       = "UseKeys"
+    sid       = "UseUnionLocalKeys"
     actions   = ["kms:GenerateDataKey", "kms:Decrypt", "kms:DescribeKey"]
     resources = local.key_arns
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/fh:union-local"
+      values   = ["true"]
+    }
   }
 }
 
@@ -130,7 +163,7 @@ resource "aws_ecs_task_definition" "union" {
   network_mode             = "awsvpc"
   cpu                      = 512
   memory                   = 1024
-  execution_role_arn       = aws_iam_role.execution.arn
+  execution_role_arn       = aws_iam_role.union_execution[0].arn
   task_role_arn            = aws_iam_role.union[0].arn
   runtime_platform {
     operating_system_family = "LINUX"
@@ -142,7 +175,7 @@ resource "aws_ecs_task_definition" "union" {
     essential    = true
     command      = local.union_command
     portMappings = [{ containerPort = 4100, protocol = "tcp" }]
-    environment  = [for k, v in merge(local.app_env, { UNION_PORT = "4100", UNION_HUB_MODE = "separate" }) : { name = k, value = v }]
+    environment  = [for k, v in local.union_env : { name = k, value = v }]
     secrets      = local.union_secrets
     logConfiguration = {
       logDriver = "awslogs"
@@ -178,6 +211,17 @@ resource "aws_vpc_security_group_egress_rule" "union_out" {
   security_group_id = aws_security_group.union[0].id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
+}
+
+# The hub asks the main API to check each sign-in (API_URL, port 4000).
+resource "aws_vpc_security_group_ingress_rule" "api_union" {
+  count                        = local.union_enabled ? 1 : 0
+  description                  = "Union Hub to API (sign-in checks)"
+  security_group_id            = aws_security_group.api.id
+  referenced_security_group_id = aws_security_group.union[0].id
+  from_port                    = 4000
+  to_port                      = 4000
+  ip_protocol                  = "tcp"
 }
 
 resource "aws_vpc_security_group_ingress_rule" "db_union" {
@@ -243,6 +287,12 @@ resource "aws_ecs_service" "union" {
   deployment_circuit_breaker {
     enable   = true
     rollback = true
+  }
+  # Tasks that pass /healthz but answer with server errors, or none healthy: stop and roll back.
+  alarms {
+    enable      = true
+    rollback    = true
+    alarm_names = [aws_cloudwatch_metric_alarm.error_ratio["union"].alarm_name, aws_cloudwatch_metric_alarm.main["union-unhealthy"].alarm_name]
   }
   load_balancer {
     target_group_arn = aws_lb_target_group.union[0].arn

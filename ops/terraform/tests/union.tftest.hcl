@@ -40,6 +40,10 @@ run "embedded_by_default" {
     condition     = length(aws_ecs_service.union) == 0 && length(aws_lb_listener_rule.union) == 0 && !contains(keys(local.app_env), "UNION_HUB_MODE")
     error_message = "Without union_hub_separate, nothing changes."
   }
+  assert {
+    condition     = !contains(keys(aws_cloudwatch_metric_alarm.main), "union-unhealthy") && !contains(keys(aws_cloudwatch_metric_alarm.error_ratio), "union") && length(aws_iam_role.union_execution) == 0
+    error_message = "No union alarms or roles without the separate hub."
+  }
 }
 
 run "union_hub_as_its_own_service" {
@@ -72,7 +76,28 @@ run "union_hub_as_its_own_service" {
     error_message = "The app role can't open a union local's key."
   }
   assert {
-    condition     = aws_vpc_security_group_ingress_rule.union_alb[0].from_port == 4100 && aws_vpc_security_group_ingress_rule.db_union[0].to_port == 5432
-    error_message = "The Union Hub takes the load balancer only, and reaches the database."
+    condition     = aws_vpc_security_group_ingress_rule.union_alb[0].from_port == 4100 && aws_vpc_security_group_ingress_rule.db_union[0].to_port == 5432 && aws_vpc_security_group_ingress_rule.api_union[0].from_port == 4000
+    error_message = "The Union Hub takes the load balancer only, and reaches the database and the API."
+  }
+  # Review of #75.
+  assert {
+    condition     = [for s in local.union_secrets : s.name] == ["UNION_DATABASE_URL"] && !contains(keys(local.union_env), "APP_DATABASE_URL") && !contains(keys(local.union_env), "JWT_SECRET")
+    error_message = "The hub gets the union role only: neither the app role nor the token secret (high finding)."
+  }
+  assert {
+    condition     = local.union_env["API_URL"] == "http://api.fh-production.internal:4000" && local.union_env["FLEXCITY_SERVICE"] == "union"
+    error_message = "The hub asks the main API, at its private address, to check sign-ins."
+  }
+  assert {
+    condition     = alltrue([for st in data.aws_iam_policy_document.union.statement : anytrue([for c in st.condition : c.variable == "aws:ResourceTag/fh:union-local" && c.test == "StringEquals" && toset(c.values) == toset(["true"])])])
+    error_message = "The hub's role may use union locals' keys only (medium finding)."
+  }
+  assert {
+    condition     = contains(keys(aws_cloudwatch_metric_alarm.main), "union-unhealthy") && contains(keys(aws_cloudwatch_metric_alarm.error_ratio), "union") && one(aws_ecs_service.union[0].alarms).rollback && length(one(aws_ecs_service.union[0].alarms).alarm_names) == 2
+    error_message = "The hub has its own alarms, which roll back a deployment (medium finding)."
+  }
+  assert {
+    condition     = aws_iam_role.union_execution[0].name == "fh-production-ca-central-1-union-execution" && length(data.aws_iam_policy_document.union_execution_secret[0].statement) == 2
+    error_message = "The union task has its own execution role (low finding)."
   }
 }

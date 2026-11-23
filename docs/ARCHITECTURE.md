@@ -320,17 +320,23 @@ By default the API serves `/api/union/*` itself. For stronger separation, run it
 1. Deploy the API with `UNION_HUB_MODE=separate` and **without** `UNION_DATABASE_URL` (the API refuses
    to start if it's given both). It then answers `/api/union/*` with `404 UNION_ELSEWHERE` and holds no
    way into the `union_hub` schema, so a flaw or a leaked secret in the main API can't reach union data.
+   It still answers one thing there: the hub's sign-in check (`x-fh-union-check: 1`, below).
 2. Deploy the same build a second time as the Union Hub service: `npm run start:union --workspace apps/api`
-   (`src/unionServer.ts`, port `UNION_PORT`, default 4100) with `UNION_DATABASE_URL` (the
-   `flexcity_union` role), `APP_DATABASE_URL`, `JWT_SECRET` and the KMS settings. It answers only
-   `/api/union/*` and `/healthz`; every other path is a 404.
+   (`src/unionServer.ts`, port `UNION_PORT`, default 4100, `FLEXCITY_SERVICE=union`) with
+   `UNION_DATABASE_URL` (the `flexcity_union` role), `API_URL` (the main API's private address) and the
+   KMS settings, and **without** `APP_DATABASE_URL` or `JWT_SECRET`: in production it refuses to start
+   if given either. It answers only `/api/union/*` and `/healthz`; every other path is a 404.
 3. Route `/api/union/*` to it at the load balancer (path rule above the general `/api/*` rule), or,
    for single-host set-ups, set `UNION_URL` for the web app so its rewrite sends those paths there.
    Same origin either way: no CORS, and the browser keeps one session.
 
-The hub service checks sign-ins exactly like the API (same tokens, account still active, organization
-open, signed agreement, support visits refused), reading those through the app role, which can't read
-the union schema. Give the two services separate secrets stores so each holds only its own credentials.
+The hub service has the main API check each request's sign-in (`src/lib/unionAccess.ts`): it sends the
+request's method, path, token and organization host to `API_URL` with `x-fh-union-check: 1` and no body,
+and the API runs the same chain as every route (genuine and current token, account still active,
+organization open, signed agreement, support visits refused, the union feature on). The API answers who
+and which organization, or the refusal, which the hub passes on unchanged; if the API can't be reached,
+the hub answers `503 BUSY`. So each service holds only its own credentials: the hub can't read the main
+app's data or mint a token, and the API can't read union data.
 Locally: `npm run dev:union --workspace apps/api` beside `npm run dev`.
 
 ## Feature switches

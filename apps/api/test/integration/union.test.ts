@@ -1,10 +1,14 @@
 import { randomBytes } from 'node:crypto';
+import type { Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import express from 'express';
 import pg from 'pg';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { closeUnionHub } from '../../src/routes/union.js';
+import { forgetFeatures } from '../../src/services/platform/features.js';
 import { createUnionApp } from '../../src/unionApp.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
@@ -96,32 +100,93 @@ describe('union hub', () => {
 });
 
 describe('Union Hub as its own service', () => {
-  const unionServer = createUnionApp();
+  // The main API, listening, in separate mode: the hub checks every sign-in there (lib/unionAccess.ts).
+  let api: Server;
+  let apiUrl = '';
+  const checks: string[] = [];
+  let unionServer: ReturnType<typeof createUnionApp>;
   const viaService = (token: string) => request(unionServer).get(`/api/union/locals/${localId}/threads`).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' });
 
-  it('answers the hub with the same sign-in, and nothing else', async () => {
+  beforeAll(async () => {
+    const main = createApp();
+    const counted = express();
+    counted.use((req, _res, next) => {
+      if (req.header('x-fh-union-check')) checks.push(`${req.method} ${req.originalUrl}`);
+      next();
+    });
+    counted.use(main);
+    api = counted.listen(0);
+    apiUrl = `http://127.0.0.1:${(api.address() as AddressInfo).port}`;
+    unionServer = createUnionApp({ apiUrl });
+    process.env.UNION_HUB_MODE = 'separate';
+  });
+  afterAll(() => {
+    delete process.env.UNION_HUB_MODE;
+    api.close();
+  });
+
+  it('answers the hub with the same sign-in, checked by the main API, and nothing else', async () => {
+    checks.length = 0;
     const r = await viaService(steward);
     expect(r.status).toBe(200);
     expect(r.body.length).toBeGreaterThan(0);
+    // The API was asked, with the request's own method and path (review of #75).
+    expect(checks).toEqual([`GET /api/union/locals/${localId}/threads`]);
     expect((await request(unionServer).get('/api/union/locals').set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' })).body[0]).toMatchObject({ id: localId, isSteward: true });
     // Membership still decides, here too.
     expect((await viaService(hr)).status).toBe(403);
-    expect((await request(unionServer).get(`/api/union/locals/${localId}/threads`).set('x-tenant-subdomain', SUB)).status).toBe(401);
+    const anon = await request(unionServer).get(`/api/union/locals/${localId}/threads`).set('x-tenant-subdomain', SUB);
+    expect(anon.status).toBe(401);
+    expect(anon.body.code).toBe('UNAUTHENTICATED');
     // Not a second door into the main API.
     expect((await request(unionServer).get('/api/me').set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' })).status).toBe(404);
     expect((await request(unionServer).get('/healthz')).body).toMatchObject({ service: 'union-hub' });
   });
 
-  it('the main API stops answering for the hub once it runs separately', async () => {
-    process.env.UNION_HUB_MODE = 'separate';
+  it('the main API’s checks apply: a deactivated person, another organization’s token, the feature off', async () => {
+    const gone = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'FULL_TIME', status: 'TERMINATED', firstName: 'Gone', lastName: 'Away', email: `gone-${randomBytes(3).toString('hex')}@xi.test` } });
+    const goneToken = await signAccessToken({ sub: gone.id, tid: t.tenant.id, roles: ['STAFF'] });
+    const r = await viaService(goneToken);
+    expect(r.status).toBe(401);
+    expect(r.body.code).toBe('ACCOUNT_INACTIVE');
+    // A token from another organization, on this organization's host.
+    const elsewhere = await signAccessToken({ sub: other.users[0]!.id, tid: other.tenant.id, roles: ['STAFF'] });
+    expect((await viaService(elsewhere)).status).toBe(403);
+    // The union feature switched off for the organization.
+    await owner.tenant.update({ where: { id: other.tenant.id }, data: { features: { union: false } } });
+    await forgetFeatures(other.tenant.id);
     try {
-      const r = await call(steward).get('/api/union/locals');
-      expect(r.status).toBe(404);
-      expect(r.body.code).toBe('UNION_ELSEWHERE');
+      const off = await request(unionServer).get('/api/union/locals').set('x-tenant-subdomain', 'omicron').auth(elsewhere, { type: 'bearer' });
+      expect(off.status).toBe(404);
+      expect(off.body.code).toBe('FEATURE_OFF');
     } finally {
-      delete process.env.UNION_HUB_MODE;
+      await owner.tenant.update({ where: { id: other.tenant.id }, data: { features: { union: true } } });
+      await forgetFeatures(other.tenant.id);
     }
-    expect((await call(steward).get('/api/union/locals')).status).toBe(200);
+  });
+
+  it('without the main API the hub refuses, rather than deciding on its own', async () => {
+    const down = createUnionApp({ apiUrl: 'http://127.0.0.1:9', timeoutMs: 1000 });
+    const r = await request(down).get(`/api/union/locals/${localId}/threads`).set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' });
+    expect(r.status).toBe(503);
+    expect(r.body.code).toBe('BUSY');
+  });
+
+  it('the main API stops answering for the hub once it runs separately, except the hub’s check', async () => {
+    const r = await call(steward).get('/api/union/locals');
+    expect(r.status).toBe(404);
+    expect(r.body.code).toBe('UNION_ELSEWHERE');
+    // The check answers who and which organization, nothing more.
+    const c = await call(steward).get('/api/union/locals').set('x-fh-union-check', '1');
+    expect(c.status).toBe(200);
+    expect(Object.keys(c.body).sort()).toEqual(['authenticatedAt', 'mfa', 'permissions', 'roles', 'tenantId', 'userId']);
+    expect(c.body).toMatchObject({ userId: t.users[0]!.id, tenantId: t.tenant.id });
+    delete process.env.UNION_HUB_MODE;
+    try {
+      expect((await call(steward).get('/api/union/locals')).status).toBe(200);
+    } finally {
+      process.env.UNION_HUB_MODE = 'separate';
+    }
   });
 });
 

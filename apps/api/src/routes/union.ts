@@ -10,9 +10,14 @@ import { h, keys } from './context.js';
  * Union Hub. Access is decided by membership of the union local (stewards manage
  * it), not by employer roles: an HR administrator with no membership is refused.
  * Mounted only when UNION_DATABASE_URL is configured.
+ *
+ * unionHubRoutes: the routes alone, for the separate service (unionApp.ts), where the main API has
+ * already checked the feature (lib/unionAccess.ts). unionRouter: with the feature check, in the API.
  */
+export const unionHubRoutes = Router();
 export const unionRouter = Router();
 unionRouter.use('/union', requireFeature('union'));
+unionRouter.use(unionHubRoutes);
 const uuid = z.string().uuid();
 let hub: UnionHub | undefined;
 const getHub = () => {
@@ -22,7 +27,7 @@ const getHub = () => {
   return hub;
 };
 
-unionRouter.get(
+unionHubRoutes.get(
   '/union/locals',
   h(async (req, res) => {
     const a = authOf(req);
@@ -30,7 +35,7 @@ unionRouter.get(
   }),
 );
 
-unionRouter.get(
+unionHubRoutes.get(
   '/union/locals/:local/threads',
   h(async (req, res) => {
     const a = authOf(req);
@@ -38,7 +43,7 @@ unionRouter.get(
   }),
 );
 
-unionRouter.post(
+unionHubRoutes.post(
   '/union/locals/:local/threads',
   h(async (req, res) => {
     const a = authOf(req);
@@ -48,7 +53,7 @@ unionRouter.post(
   }),
 );
 
-unionRouter.get(
+unionHubRoutes.get(
   '/union/locals/:local/threads/:thread',
   h(async (req, res) => {
     const a = authOf(req);
@@ -56,7 +61,7 @@ unionRouter.get(
   }),
 );
 
-unionRouter.post(
+unionHubRoutes.post(
   '/union/locals/:local/threads/:thread/messages',
   h(async (req, res) => {
     const a = authOf(req);
@@ -66,7 +71,7 @@ unionRouter.post(
   }),
 );
 
-unionRouter.get(
+unionHubRoutes.get(
   '/union/locals/:local/seniority',
   h(async (req, res) => {
     const a = authOf(req);
@@ -74,7 +79,7 @@ unionRouter.get(
   }),
 );
 
-unionRouter.get(
+unionHubRoutes.get(
   '/union/locals/:local/directory',
   h(async (req, res) => {
     const a = authOf(req);
@@ -82,7 +87,7 @@ unionRouter.get(
   }),
 );
 
-unionRouter.post(
+unionHubRoutes.post(
   '/union/locals/:local/members',
   h(async (req, res) => {
     const a = authOf(req);
