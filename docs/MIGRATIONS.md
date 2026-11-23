@@ -2,7 +2,7 @@
 
 A deployment runs the migration task first, then replaces the API, worker and web tasks a few at a time. For several minutes **the previous release runs on the new schema**, and a rollback (the circuit breaker, a deployment alarm, or applying the previous `image_tag`) runs it again on that schema. So every migration must leave a database that **both the new and the previous release can use**.
 
-`npm run lint:migrations` (in `apps/api`, also in CI) enforces this for every migration after the pre-launch baseline.
+`npm run lint:migrations` (in `apps/api`, also in CI) enforces this for every migration. The migrations already applied when the check arrived that fail it (most from before launch, with no real data) are listed by name and SHA-256 in `apps/api/scripts/migration-lint-grandfathered.json`: Prisma checksums applied migrations, so they can't be edited to add a marker, and if one of them changes the check fails. Never add a new migration to that list; give it a marker instead.
 
 ## The rule: expand, then contract
 
@@ -36,9 +36,15 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS "Table_col_idx" ON "Table"("col");
 
 as the **only statement in its own migration**: it cannot run inside a transaction, and Prisma sends a migration file as one script. Keep the index name Prisma would generate (`<Table>_<columns>_idx`), so `prisma migrate diff` stays clean.
 
+## Constraints on a large table
+
+On a table in `LARGE_TABLES` (not one the same migration creates, which is empty):
+- `ADD CONSTRAINT … UNIQUE` or `PRIMARY KEY` builds its index under a lock that blocks **reads** as well as writes. Build the index first, `CREATE UNIQUE INDEX CONCURRENTLY` alone in its own migration, then `ALTER TABLE … ADD CONSTRAINT … UNIQUE USING INDEX "…"` in the next.
+- `ADD CONSTRAINT … FOREIGN KEY` or `CHECK` blocks writes while it checks every row. Add it `NOT VALID` (new and changed rows are checked at once), then `ALTER TABLE … VALIDATE CONSTRAINT "…"` in a later migration, which doesn't block writes. Prisma writes foreign keys without `NOT VALID`: edit the generated SQL.
+
 ## When a destructive statement is right
 
-The lint fails on `DROP` (except `DROP DEFAULT` / `DROP NOT NULL`), `RENAME`, a column `TYPE` change, `SET NOT NULL`, `ADD COLUMN … NOT NULL` without a default, `UPDATE`, `DELETE` and `TRUNCATE` (also inside a `WITH`), any `DO` block or `CALL`, or a `SELECT` of a function the same migration creates (a function body is not checked, so either can hide any of these), and a plain `CREATE INDEX` on a large table. The marker counts only in a comment, never inside a string. When the statement is the contract step of an earlier expand, or the table is known to be small, say so in a marker comment just above it (or after its semicolon, on the same line), so the reviewer sees why:
+The lint fails on `DROP` (except `DROP DEFAULT` / `DROP NOT NULL`), `RENAME`, a column `TYPE` change, `SET NOT NULL`, `ADD COLUMN … NOT NULL` without a default, `UPDATE`, `DELETE`, `MERGE` and `TRUNCATE` anywhere in a statement (inside a `WITH`, `EXPLAIN ANALYZE` or `PREPARE` too), any `DO` block, `CALL` or `EXECUTE`, any use of a function the same migration creates (in a `SELECT`, an `INSERT … SELECT`, `CREATE TABLE AS`, a column `DEFAULT`…: a function body is not checked, so any of these can hide the rest; creating it, or a trigger that executes it, is fine), and on a large table a plain `CREATE INDEX` or the constraints above. `E'…'` strings are read with their backslash escapes. The marker counts only in a comment, never inside a string. When the statement is the contract step of an earlier expand, or the table is known to be small, say so in a marker comment just above it (or after its semicolon, on the same line), so the reviewer sees why:
 
 ```sql
 -- migration-safety: contract step; nothing reads "Shift"."legacyNote" since 2027.02 (PR #123)
