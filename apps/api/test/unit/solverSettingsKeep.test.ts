@@ -47,3 +47,40 @@ describe('withSolverSettings keeps keys it does not know', () => {
     expect(out.solver.weights.skills).toBe(9);
   });
 });
+
+describe('withSolverSettings and prototype pollution (ASVS 15.3.6; CodeQL on #63)', () => {
+  // As the database and a request hand it over: JSON.parse makes "__proto__" an own key.
+  const hostile = JSON.parse(`{
+    "__proto__": { "pollutedTop": true },
+    "solver": {
+      "__proto__": { "polluted": true },
+      "constructor": { "prototype": { "polluted": true } },
+      "prototype": { "polluted": true },
+      "weights": { "__proto__": { "polluted": true }, "fairness": 2 },
+      "departments": { "__proto__": { "__proto__": { "polluted": true } }, "d1": { "__proto__": { "polluted": true }, "planAheadWeeks": 2 } }
+    }
+  }`);
+
+  it('a stored or submitted "__proto__" changes no prototype and does not survive as a key', () => {
+    const s = parseSolverSettings(hostile);
+    // Reading the stored departments sets no prototype either.
+    expect(Object.getPrototypeOf(s.departments)).toBe(Object.prototype);
+    expect(Object.keys(s.departments)).toEqual(['d1']);
+    // A submitted department keyed "__proto__", and nested keys, as a client could send them.
+    const submitted = JSON.parse('{"__proto__": {"planAheadWeeks": 1}, "d1": {"planAheadWeeks": 3}}');
+    const out = withSolverSettings(hostile, { ...s, departments: { ...s.departments, ...submitted } }) as Record<string, any>;
+    const solver = out.solver;
+    for (const o of [out, solver, solver.weights, solver.toggles, solver.limits, solver.departments, solver.departments.d1]) {
+      expect(Object.getPrototypeOf(o) === Object.prototype || Object.getPrototypeOf(o) === null).toBe(true);
+      expect(Object.keys(o)).not.toContain('__proto__');
+      expect(Object.keys(o)).not.toContain('constructor');
+      expect(Object.keys(o)).not.toContain('prototype');
+      expect((o as Record<string, unknown>).polluted).toBeUndefined();
+    }
+    expect(solver.weights.fairness).toBe(2);
+    expect(solver.departments.d1.planAheadWeeks).toBe(3);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    // Stored again, nothing hostile comes back.
+    expect(JSON.stringify(out)).not.toMatch(/__proto__|polluted/);
+  });
+});

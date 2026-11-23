@@ -120,6 +120,14 @@ export const departmentBody = z.object({
 });
 
 const isHorizon = (n: unknown): n is HorizonWeeks => HORIZONS.includes(n as HorizonWeeks);
+/**
+ * Keys that would reach an object's prototype when assigned (ASVS 15.3.6). JSON.parse makes
+ * "__proto__" an ordinary own key of stored or submitted settings, and `out[k] = v` on a plain
+ * object would then replace out's prototype. These are never settings: they are dropped.
+ */
+const UNSAFE_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
+const withoutUnsafeKeys = (o: Record<string, unknown>): Record<string, unknown> => Object.fromEntries(Object.entries(o).filter(([k]) => !UNSAFE_KEYS.has(k)));
+
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
 
 function readWeights(v: unknown): Partial<SolverWeights> {
@@ -136,6 +144,7 @@ export function parseSolverSettings(overtimePolicy: unknown): SolverSettings {
   const s = obj(obj(overtimePolicy).solver);
   const departments: Record<string, DepartmentSolverSettings> = {};
   for (const [id, raw] of Object.entries(obj(s.departments))) {
+    if (UNSAFE_KEYS.has(id)) continue;
     const d = obj(raw);
     departments[id] = {
       ...(isHorizon(d.planAheadWeeks) ? { planAheadWeeks: d.planAheadWeeks } : {}),
@@ -232,28 +241,33 @@ export function withSolverSettings(overtimePolicy: unknown, solver: SolverSettin
   out.toggles = keepUnknown(obj(stored.toggles), { ...solver.toggles }, TOGGLE_KEYS);
   out.limits = keepUnknown(obj(stored.limits), { ...solver.limits }, LIMIT_KEYS);
   const storedDepartments = obj(stored.departments);
-  out.departments = Object.fromEntries(
-    Object.entries(solver.departments).map(([id, d]) => {
-      const was = obj(storedDepartments[id]);
+  const departments: Record<string, unknown> = Object.create(null);
+  for (const [id, d] of Object.entries(solver.departments)) {
+    if (UNSAFE_KEYS.has(id)) continue;
+    departments[id] = (() => {
+      const was = obj(Object.hasOwn(storedDepartments, id) ? storedDepartments[id] : undefined);
       const dep = keepUnknown(was, { ...d }, DEPARTMENT_KEYS);
       for (const [k, known] of [['weights', WEIGHT_KEYS], ['toggles', TOGGLE_KEYS], ['limits', LIMIT_KEYS]] as const) {
         const keep = keepUnknown(obj(was[k]), { ...obj(d[k]) }, known);
         if (Object.keys(keep).length) dep[k] = keep;
       }
-      return [id, dep];
-    }),
-  );
-  return { ...op, solver: out };
+      return dep;
+    })();
+  }
+  out.departments = departments;
+  return { ...withoutUnsafeKeys(op), solver: out };
 }
+
 
 /**
  * The parsed value, plus the stored keys this version doesn't know (`known` are the keys it does:
  * those come from `parsed` only, so a setting removed on purpose stays removed).
  */
 function keepUnknown(stored: Record<string, unknown>, parsed: Record<string, unknown>, known: ReadonlySet<string>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(stored)) if (!known.has(k)) out[k] = v;
-  for (const [k, v] of Object.entries(parsed)) if (v !== undefined) out[k] = v;
+  // No prototype, and the keys that reach one skipped, so no stored or submitted key can change one.
+  const out: Record<string, unknown> = Object.create(null);
+  for (const [k, v] of Object.entries(stored)) if (!known.has(k) && !UNSAFE_KEYS.has(k)) out[k] = v;
+  for (const [k, v] of Object.entries(parsed)) if (v !== undefined && !UNSAFE_KEYS.has(k)) out[k] = v;
   return out;
 }
 
