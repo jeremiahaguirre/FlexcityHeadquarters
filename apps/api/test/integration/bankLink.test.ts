@@ -27,6 +27,9 @@ const hostKey = utils.generateKeyPairSync('ed25519');
 const parsed = utils.parseKey(hostKey.public);
 const fingerprint = createHash('sha256').update((Array.isArray(parsed) ? parsed[0] : parsed)!.getPublicSSH()).digest('base64').replace(/=+$/, '');
 const received = new Map<string, Buffer>();
+// Holds uploads while set, so a test can act while a file is on its way to the bank.
+let gate: Promise<void> | null = null;
+let uploading = false;
 let sftpServer: Server;
 let port = 0;
 let bankPgp: { publicKey: string; privateKey: string };
@@ -55,8 +58,13 @@ beforeAll(async () => {
             sftp.handle(id, h);
           });
           sftp.on('WRITE', (id, h, _offset, data) => {
-            handles.get(h.toString('hex'))!.chunks.push(Buffer.from(data));
-            sftp.status(id, STATUS_CODE.OK);
+            uploading = true;
+            const write = () => {
+              handles.get(h.toString('hex'))!.chunks.push(Buffer.from(data));
+              sftp.status(id, STATUS_CODE.OK);
+            };
+            if (gate) void gate.then(write);
+            else write();
           });
           sftp.on('CLOSE', (id, h) => {
             const e = handles.get(h.toString('hex'));
@@ -162,5 +170,30 @@ describe('sending payroll straight to the bank', () => {
     expect(detail.transmissions).toHaveLength(1);
     expect(detail.transmissions[0].status).toBe('SENT');
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.bank.sent' } })).toBe(1);
+  });
+
+  it('a run can’t be voided while its deposit file is on its way to the bank', async () => {
+    const u = t.users[0]!;
+    for (const d of [16, 17]) {
+      const start = new Date(Date.UTC(2026, 2, d, 16));
+      await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: u.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 8 * 3_600_000), status: 'APPROVED' } });
+    }
+    const run = await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: '2026-03-16', weeks: 2, payDate: '2026-04-03' });
+    expect(run.status).toBe(201);
+    let release!: () => void;
+    gate = new Promise((r) => (release = r));
+    uploading = false;
+    // Approving sends the file straight away (autoSend); the bank is slow to take it.
+    const approving = call(tok.approver).post(`/api/payroll/runs/${run.body.id}/approve`).then((r) => r);
+    await expect.poll(() => uploading, { timeout: 10_000 }).toBe(true);
+    const v = await call(tok.approver).post(`/api/payroll/runs/${run.body.id}/void`, { reason: 'Wrong pay date, rebuilding' });
+    release();
+    gate = null;
+    expect(v.status).toBe(409);
+    expect(v.body.code).toBe('RUN_SENT_TO_BANK');
+    const a = await approving;
+    expect(a.body.transmission.status).toBe('SENT');
+    expect((await owner.payRun.findUniqueOrThrow({ where: { id: run.body.id } })).status).toBe('APPROVED');
+    expect((await owner.payTransmission.findMany({ where: { payRunId: run.body.id } })).map((x) => x.status)).toEqual(['SENT']);
   });
 });

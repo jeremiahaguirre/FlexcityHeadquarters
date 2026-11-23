@@ -454,9 +454,23 @@ export function runInput(run: { departmentId: string | null; periodStart: Date; 
   return { departmentId: run.departmentId, periodStart: start, weeks: Math.round(days / 7), payDate: run.payDate.toISOString().slice(0, 10), kind: run.kind === 'OFF_CYCLE' ? 'OFF_CYCLE' : 'REGULAR', note: run.note ?? null };
 }
 
+/**
+ * The run, locked for the rest of the transaction. Every change of a run's state (recalculate,
+ * approve, void, deposit file, send) takes this lock first and checks the state it finds, so two of
+ * them can't both act on the same run (an approve and a void of the same draft, a void while the
+ * deposit file is being made or sent).
+ */
+export async function lockRun(tx: Tx, runId: string) {
+  await tx.$queryRaw`SELECT id FROM "PayRun" WHERE id = ${runId}::uuid FOR UPDATE`;
+  return tx.payRun.findUnique({ where: { id: runId } });
+}
+
+/** A transmission to the bank that may have reached it (sent, or being sent). */
+export const bankHasIt = (tx: Tx, runId: string) => tx.payTransmission.findFirst({ where: { payRunId: runId, status: { in: ['SENT', 'SENDING'] } }, select: { id: true, status: true } });
+
 /** A second person checks and releases the run. It's recalculated first so year-to-date figures are current. */
 export async function approveRun(tx: Tx, tenantId: string, runId: string, approverId: string, settings: PayrollSettings) {
-  const run = await tx.payRun.findUnique({ where: { id: runId } });
+  const run = await lockRun(tx, runId);
   if (!run) throw notFound('Pay run');
   if (run.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be approved.');
   if (settings.twoPersonApproval !== false) {
@@ -485,7 +499,7 @@ export async function approveRun(tx: Tx, tenantId: string, runId: string, approv
 
 /** The bank file for an approved run. The same run always gets the same file creation number. */
 export async function depositFile(tx: Tx, tenantId: string, runId: string, settings: PayrollSettings) {
-  const run = await tx.payRun.findUnique({ where: { id: runId } });
+  const run = await lockRun(tx, runId);
   if (!run) throw notFound('Pay run');
   if (run.status !== 'APPROVED' && run.status !== 'PAID') throw conflict('NOT_APPROVED', 'Approve the pay run before creating its deposit file.');
   const missing = (['originatorId', 'originatorShortName', 'originatorLongName', 'destinationDataCentre', 'returnsInstitution', 'returnsTransit', 'returnsAccount'] as const).filter((k) => !settings[k]);
@@ -544,13 +558,17 @@ export function businessDaysUntil(payDate: string, today = new Date().toISOStrin
 /** Builds (and if the bank asks, encrypts) the file to send. Inside a transaction; sends nothing. */
 export async function prepareBankFile(tx: Tx, tenantId: string, runId: string, settings: PayrollSettings) {
   if (!settings.bank) throw conflict('BANK_NOT_CONNECTED', 'Connect your bank in payroll settings first, or download the deposit file.');
-  if (await tx.payTransmission.findFirst({ where: { payRunId: runId, status: 'SENT' } })) throw conflict('ALREADY_SENT', 'This pay run’s deposit file was already sent to the bank. Sending it again could pay people twice.');
+  // Under the run's lock: the file, and the record that it's on its way, before anything is uploaded.
   const f = await depositFile(tx, tenantId, runId, settings);
+  const out = await bankHasIt(tx, runId);
+  if (out) throw conflict('ALREADY_SENT', 'This pay run’s deposit file was already sent to the bank. Sending it again could pay people twice.');
   const run = await tx.payRun.findUniqueOrThrow({ where: { id: runId }, select: { payDate: true } });
   const encrypted = !!settings.bank.pgpPublicKey;
   const base = `FH-PAY-${String(f.fileCreationNumber).padStart(4, '0')}-${run.payDate.toISOString().slice(0, 10).replace(/-/g, '')}.txt`;
   const content = encrypted ? await encryptForBank(f.file, settings.bank.pgpPublicKey!) : Buffer.from(f.file, 'latin1');
-  return { ...f, fileName: encrypted ? `${base}.pgp` : base, content, encrypted, payDate: run.payDate.toISOString().slice(0, 10) };
+  const fileName = encrypted ? `${base}.pgp` : base;
+  const sending = await tx.payTransmission.create({ data: { tenantId, payRunId: runId, sentById: null, method: 'SFTP', fileName, sha256: f.sha256, encrypted, status: 'SENDING', error: null } });
+  return { ...f, fileName, content, encrypted, payDate: run.payDate.toISOString().slice(0, 10), transmissionId: sending.id };
 }
 
 /** Sends a prepared file and records the attempt, sent or failed. */

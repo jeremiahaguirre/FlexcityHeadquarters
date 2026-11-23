@@ -17,7 +17,7 @@ import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/err
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
 import { linkView, testBankLink } from '../services/payroll/bankLink.js';
 import { bankLinkBody, buildBankLink } from '../services/payroll/setup.js';
-import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
+import { type PayrollSettings, approveRun, bankHasIt, buildRun, depositFile, lockRun, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
 import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, assignRl1Numbers, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
@@ -164,7 +164,7 @@ payrollRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const run = await payrollTx(a.tenantId, async (tx) => {
-      const r = await tx.payRun.findUnique({ where: { id } });
+      const r = await lockRun(tx, id);
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be recalculated.');
@@ -224,7 +224,8 @@ async function send(a: AuthContext, runId: string, settings: PayrollSettings) {
   const prepared = await withTenant(a.tenantId, (tx) => prepareBankFile(tx, a.tenantId, runId, settings));
   const result = await sendToBank(a.tenantId, runId, a.userId, settings, prepared, (data) =>
     withTenant(a.tenantId, async (tx) => {
-      await tx.payTransmission.create({ data });
+      // The attempt was recorded (SENDING) before the upload; now its outcome.
+      await tx.payTransmission.update({ where: { id: prepared.transmissionId }, data: { status: data.status, error: data.error, sentById: data.sentById } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: data.status === 'SENT' ? 'payroll.bank.sent' : 'payroll.bank.failed', entity: 'PayRun', entityId: runId, after: { fileName: data.fileName, sha256: data.sha256, encrypted: data.encrypted, error: data.error } });
     }),
   );
@@ -330,13 +331,14 @@ payrollRouter.post(
     const id = uuid.parse(req.params.id);
     const reason = z.object({ reason: z.string().trim().min(5).max(500) }).parse(req.body).reason;
     const out = await withTenant(a.tenantId, async (tx) => {
-      const r = await tx.payRun.findUnique({ where: { id } });
+      // Under the run's lock: an approval, a deposit file or a send of this run waits for the void, or the void for it.
+      const r = await lockRun(tx, id);
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status === 'PAID' || r.status === 'VOID') throw conflict('CANNOT_VOID', 'A paid pay run can’t be voided; correct it in the next run.');
       if (r.status === 'APPROVED' && !a.permissions.has('payroll.approve')) throw forbidden('Only someone who approves pay runs can void an approved one.');
       // Money already sent to the bank can't be taken back by voiding: correct it in the next run.
-      if (await tx.payTransmission.findFirst({ where: { payRunId: id, status: 'SENT' }, select: { id: true } })) {
+      if (await bankHasIt(tx, id)) {
         throw conflict('RUN_SENT_TO_BANK', 'This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.');
       }
       // Only from the status just read: a run approved (or voided) meanwhile isn't voided on stale information.

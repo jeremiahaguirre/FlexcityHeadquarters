@@ -1544,7 +1544,8 @@
       "pgpShort": "chiffré PGP",
       "status": {
         "SENT": "Envoyé",
-        "FAILED": "Échec"
+        "FAILED": "Échec",
+        "SENDING": "Envoi en cours"
       }
     },
     "employerPaid": "Payé par votre employeur : {{list}}",

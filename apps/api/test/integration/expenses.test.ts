@@ -123,4 +123,59 @@ describe('expense and mileage claims', () => {
     expect(v.body).toMatchObject({ releasedClaims: 0, claimsKeptPaid: 1 });
     expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: claimId } })).status).toBe('PAID');
   });
+
+  /** Holds the run's row locked (as another request part-way through would), runs `meanwhile`, then lets go. */
+  const holdingRun = (runId: string, change: string | null, meanwhile: () => Promise<void>) =>
+    owner.$transaction(
+      async (tx) => {
+        if (change) await tx.$executeRawUnsafe(`UPDATE "PayRun" SET ${change} WHERE id = '${runId}'`);
+        else await tx.$queryRawUnsafe(`SELECT id FROM "PayRun" WHERE id = '${runId}' FOR UPDATE`);
+        await meanwhile();
+      },
+      { timeout: 20_000 },
+    );
+  const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const newRun = async () => {
+    const prior = await owner.payRun.findFirstOrThrow({ where: { tenantId: t.tenant.id }, orderBy: { createdAt: 'asc' } });
+    const r = await as('prep').post('/api/payroll/runs', { departmentId: null, periodStart: prior.periodStart.toISOString().slice(0, 10), weeks: 2, payDate: prior.payDate.toISOString().slice(0, 10) });
+    expect(r.status).toBe(201);
+    return r.body.id as string;
+  };
+
+  it('an approve and a void of the same draft: only the first one counts', async () => {
+    // A claim to pay, on a fresh draft.
+    const c = await owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId: guard, title: 'Parking', status: 'APPROVED', total: 9, decidedAt: new Date(Date.now() - 86_400_000) } });
+    const runId = await newRun();
+    let voiding!: Promise<request.Response>;
+    let approving!: Promise<request.Response>;
+    await holdingRun(runId, null, async () => {
+      voiding = as('approver').post(`/api/payroll/runs/${runId}/void`, { reason: 'Built for the wrong period' }).then((r) => r);
+      await pause(400);
+      approving = as('approver').post(`/api/payroll/runs/${runId}/approve`).then((r) => r);
+      await pause(400);
+    });
+    const [v, a] = await Promise.all([voiding, approving]);
+    expect(v.status).toBe(200);
+    expect(a.status).toBe(409);
+    expect((await owner.payRun.findUniqueOrThrow({ where: { id: runId } })).status).toBe('VOID');
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'APPROVED', payRunId: null });
+  });
+
+  it('a deposit file made while a void waits keeps the claims paid', async () => {
+    await owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId: guard, title: 'Mileage', status: 'APPROVED', total: 14, decidedAt: new Date(Date.now() - 86_400_000) } });
+    const runId = await newRun();
+    expect((await as('approver').post(`/api/payroll/runs/${runId}/approve`)).status).toBe(200);
+    const paid = await owner.expenseClaim.findMany({ where: { payRunId: runId, status: 'PAID' } });
+    expect(paid.length).toBeGreaterThan(0);
+    let voiding!: Promise<request.Response>;
+    // The deposit file is being written (its hash saved) when the void arrives.
+    await holdingRun(runId, `"depositFileSha256" = 'file-out'`, async () => {
+      voiding = as('approver').post(`/api/payroll/runs/${runId}/void`, { reason: 'Wrong pay date again' }).then((r) => r);
+      await pause(400);
+    });
+    const v = await voiding;
+    expect(v.status).toBe(200);
+    expect(v.body).toMatchObject({ releasedClaims: 0, claimsKeptPaid: paid.length });
+    for (const c of paid) expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('PAID');
+  });
 });
