@@ -42,7 +42,19 @@ Both firewalls block AI crawlers by `User-Agent` (case-insensitive), from the sa
 | `waf_block_ai_assistants` | `true` | Also blocks AI search and assistants (ChatGPT-User, OAI-SearchBot, PerplexityBot, Claude-User…). Set to `false` together with `ALLOW_AI_ASSISTANTS` in `apps/site/src/lib/crawlers.ts` to let them read and cite the site. Training crawlers stay blocked either way. |
 | `waf_bot_control` | `false` | Adds AWS's managed Bot Control rule group (common inspection level) on pages, not `/api/*` (calendar apps, kiosks, the public API and webhooks are legitimate non-browser clients). Verified search engines are let through. It is charged per request inspected, on top of the firewall itself: see AWS WAF pricing before turning it on. |
 
-The app's firewall logs every request it **blocks or counts** (allowed ones are not logged) to the CloudWatch log group `aws-waf-logs-<env>`, kept `waf_log_retention_days` (90); the `Authorization`, `Cookie` and `X-Kiosk-Token` headers are redacted. Outside `/api/*`, bodies over the 8 KB AWS inspects are blocked; the API counts them only (uploads), since it limits bodies per route itself. AWS's SQL-injection rules are counted and logged until `waf_sqli_block = true`: check the log for false positives (policy text, messages) before turning blocking on.
+The app's firewall logs every request it **blocks or counts** (allowed ones are not logged) to the CloudWatch log group `aws-waf-logs-<env>`, kept `waf_log_retention_days` (90). The `Authorization`, `Cookie` and `X-Kiosk-Token` headers, every query string (unsubscribe tokens, sign-in codes, the SSO email hint) and every path (calendar feeds carry their secret in it) are redacted: a record names the rule that matched, its labels, the host, method, address and country. Outside `/api/*`, bodies over the 8 KB AWS inspects are blocked; the API counts them only (uploads), since it limits bodies per route itself. AWS's SQL-injection rules are counted and logged until `waf_sqli_block = true`: check the log for false positives (policy text, messages) before turning blocking on.
+
+## Backups that survive a compromised account (`backup.tf`)
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `backup_vault_lock` | `null`: on in production only | Puts the AWS Backup vault under a **compliance lock**. **Irreversible** once `backup_vault_lock_grace_days` have passed: no one, the root user included, can delete a recovery point early, change the lock or delete the vault while it holds recovery points. Leave it off for staging and short-lived stacks, which must be torn down. |
+| `backup_vault_lock_grace_days` | `3` | Days after the first apply during which the lock can still be removed (at least 3). Check the plan and the vault in that window. |
+| `backup_retention_days` | `35` | Days each daily snapshot (and its cross-account copy) is kept, between 35 and 420. The lock's own bounds are fixed at 35 and 420 days: AWS refuses any change to them once the lock is permanent, so they don't follow this variable. |
+| `backup_copy_vault_arn` | `""` | A vault in a separate account, in `ca-central-1` or `ca-west-1`, that receives a copy of every snapshot (`docs/DISASTER-RECOVERY.md`, "Backups in a separate account"). The data key's policy then lets that account use the key, or the copies fail. |
+| `backup_object_lock_mode` | `""`: COMPLIANCE in production, GOVERNANCE elsewhere | The backups bucket's object lock mode. |
+
+Failed backup and copy jobs are sent to the alarms topic (`BACKUP_JOB_FAILED`, `COPY_JOB_FAILED`).
 
 A user agent can be faked, so this stops honest and lazy crawlers, not a determined scraper; the rate limits and Bot Control cover more. Blocked requests are counted in CloudWatch (docs/MONITORING.md).
 

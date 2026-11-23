@@ -47,7 +47,8 @@ For a copy that survives losing the whole account (SECURITY-AUDIT SEC-71), once,
 1. In a separate AWS account (same AWS Organization, `ca-central-1`), create an AWS Backup vault with a customer-managed KMS key and a compliance vault lock (minimum retention 35 days).
 2. In its access policy, allow `backup:CopyIntoBackupVault` from the production account. Turn on cross-account backup in the Organization's AWS Backup settings.
 3. Attach an SCP to the production account that denies `backup:DeleteRecoveryPoint`, `backup:DeleteBackupVault*` and `backup:PutBackupVaultLockConfiguration` on that vault.
-4. Set `backup_copy_vault_arn` to the vault's ARN and apply: every daily snapshot is then copied there.
+4. Set `backup_copy_vault_arn` to the vault's ARN and apply: every daily snapshot is then copied there. The snapshots stay encrypted under the production account's data key, so the apply also adds that account to the key's policy (`kms:Decrypt`, `kms:DescribeKey`, and `kms:CreateGrant` for AWS resources only); without it every copy job fails. Check that the destination vault's own key policy lets AWS Backup in that account use it.
+   Then watch the first copy job (AWS Backup console, Jobs, Copy jobs): a failed one is also sent to the alarms topic.
 5. Add a restore from that vault to the monthly restore test.
 
 ### A. A zone fails

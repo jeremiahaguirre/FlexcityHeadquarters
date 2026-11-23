@@ -12,9 +12,10 @@
 # (docs/DISASTER-RECOVERY.md, "Backups in a separate account").
 
 variable "backup_vault_lock" {
-  description = "Lock the AWS Backup vault in compliance mode. Irreversible once the grace period ends; false only for throwaway environments."
+  description = "Lock the AWS Backup vault in compliance mode. IRREVERSIBLE once the grace period ends: the vault can then never be deleted while it holds recovery points. Null (the default): on in production only."
   type        = bool
-  default     = true
+  default     = null
+  nullable    = true
 }
 
 variable "backup_vault_lock_grace_days" {
@@ -28,15 +29,23 @@ variable "backup_vault_lock_grace_days" {
 }
 
 variable "backup_retention_days" {
-  description = "Days each daily snapshot in the locked vault is kept (and the lock's minimum)."
+  description = "Days each daily snapshot in the locked vault (and its cross-account copy) is kept. Must stay within the lock's permanent bounds (local.backup_lock_min_days to local.backup_lock_max_days)."
   type        = number
   default     = 35
+  validation {
+    condition     = var.backup_retention_days >= 35 && var.backup_retention_days <= 420
+    error_message = "backup_retention_days must be between 35 and 420, the vault lock's permanent bounds."
+  }
 }
 
 variable "backup_copy_vault_arn" {
-  description = "ARN of an AWS Backup vault in a separate account (locked in compliance mode) that receives a copy of every daily snapshot. Empty: no cross-account copy."
+  description = "ARN of an AWS Backup vault in a separate account (locked in compliance mode), in Montreal or Calgary, that receives a copy of every daily snapshot. Empty: no cross-account copy."
   type        = string
   default     = ""
+  validation {
+    condition     = var.backup_copy_vault_arn == "" || can(regex("^arn:aws:backup:ca-(central|west)-1:[0-9]{12}:backup-vault:[A-Za-z0-9_.-]+$", var.backup_copy_vault_arn))
+    error_message = "backup_copy_vault_arn must be an AWS Backup vault in ca-central-1 or ca-west-1: the copies stay in Canada."
+  }
 }
 
 variable "backup_object_lock_mode" {
@@ -52,6 +61,14 @@ variable "backup_object_lock_mode" {
 locals {
   backup_object_lock_mode = var.backup_object_lock_mode != "" ? var.backup_object_lock_mode : (var.environment == "production" ? "COMPLIANCE" : "GOVERNANCE")
   backup_enabled          = !var.recovery_mode
+  backup_vault_lock       = var.backup_vault_lock == null ? var.environment == "production" : var.backup_vault_lock
+  # The lock's bounds. PERMANENT once the grace period ends: AWS refuses any change to a compliance
+  # lock after that, so they are constants, not tied to backup_retention_days (which may change
+  # within them).
+  backup_lock_min_days = 35
+  backup_lock_max_days = 420
+  # The account that holds the copy vault, which must be allowed to use the snapshots' key.
+  backup_copy_account = var.backup_copy_vault_arn == "" ? "" : split(":", var.backup_copy_vault_arn)[4]
 }
 
 resource "aws_backup_vault" "locked" {
@@ -61,10 +78,10 @@ resource "aws_backup_vault" "locked" {
 }
 
 resource "aws_backup_vault_lock_configuration" "locked" {
-  count               = local.backup_enabled && var.backup_vault_lock ? 1 : 0
+  count               = local.backup_enabled && local.backup_vault_lock ? 1 : 0
   backup_vault_name   = aws_backup_vault.locked[0].name
-  min_retention_days  = var.backup_retention_days
-  max_retention_days  = var.backup_retention_days * 12
+  min_retention_days  = local.backup_lock_min_days
+  max_retention_days  = local.backup_lock_max_days
   changeable_for_days = var.backup_vault_lock_grace_days
 }
 
@@ -121,4 +138,13 @@ resource "aws_backup_selection" "database" {
   plan_id      = aws_backup_plan.daily[0].id
   iam_role_arn = aws_iam_role.backup[0].arn
   resources    = [aws_db_instance.main.arn]
+}
+
+# Failed backup and copy jobs page the on-call address like any alarm (alarms.tf allows
+# backup.amazonaws.com to publish).
+resource "aws_backup_vault_notifications" "locked" {
+  count               = local.backup_enabled ? 1 : 0
+  backup_vault_name   = aws_backup_vault.locked[0].name
+  sns_topic_arn       = aws_sns_topic.alarms.arn
+  backup_vault_events = ["BACKUP_JOB_FAILED", "COPY_JOB_FAILED"]
 }

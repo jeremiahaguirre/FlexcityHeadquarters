@@ -20,7 +20,7 @@ data "aws_iam_policy_document" "alarms_key" {
     resources = ["*"]
     principals {
       type        = "Service"
-      identifiers = ["cloudwatch.amazonaws.com", "events.amazonaws.com"]
+      identifiers = ["cloudwatch.amazonaws.com", "events.amazonaws.com", "backup.amazonaws.com"]
     }
     condition {
       test     = "StringEquals"
@@ -79,6 +79,21 @@ data "aws_iam_policy_document" "alarms_topic" {
       test     = "ArnEquals"
       variable = "aws:SourceArn"
       values   = [aws_cloudwatch_event_rule.kms_create_key_with_policy.arn]
+    }
+  }
+  # Failed backup and copy jobs (backup.tf).
+  statement {
+    sid       = "BackupJobs"
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.alarms.arn]
+    principals {
+      type        = "Service"
+      identifiers = ["backup.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
     }
   }
   statement {

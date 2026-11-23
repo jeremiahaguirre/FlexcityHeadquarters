@@ -53,8 +53,16 @@ run "firewall_inspects_and_logs" {
     error_message = "The firewall logs to a log group AWS accepts, kept 90 days."
   }
   assert {
-    condition     = toset([for f in aws_wafv2_web_acl_logging_configuration.app.redacted_fields : one(f.single_header).name]) == toset(["authorization", "cookie", "x-kiosk-token"])
+    condition     = toset([for f in aws_wafv2_web_acl_logging_configuration.app.redacted_fields : one(f.single_header).name if length(f.single_header) > 0]) == toset(["authorization", "cookie", "x-kiosk-token"])
     error_message = "Credentials never reach the firewall log."
+  }
+  assert {
+    condition     = length([for f in aws_wafv2_web_acl_logging_configuration.app.redacted_fields : f if length(f.query_string) == 1]) == 1
+    error_message = "Query strings (unsubscribe tokens, sign-in codes, the SSO email hint) are redacted (review of #72)."
+  }
+  assert {
+    condition     = length([for f in aws_wafv2_web_acl_logging_configuration.app.redacted_fields : f if length(f.uri_path) == 1]) == 1
+    error_message = "Paths are redacted: calendar feeds carry their secret in the path (review of #72)."
   }
   assert {
     condition     = one(aws_wafv2_web_acl_logging_configuration.app.logging_filter).default_behavior == "DROP"
@@ -76,8 +84,16 @@ run "sqli_can_block" {
 run "backups_survive_a_compromised_account" {
   command = plan
   assert {
-    condition     = aws_backup_vault_lock_configuration.locked[0].min_retention_days == 35 && aws_backup_vault_lock_configuration.locked[0].changeable_for_days == 3
-    error_message = "Daily snapshots go to a vault under a compliance lock (SEC-71)."
+    condition     = aws_backup_vault_lock_configuration.locked[0].min_retention_days == 35 && aws_backup_vault_lock_configuration.locked[0].max_retention_days == 420 && aws_backup_vault_lock_configuration.locked[0].changeable_for_days == 3
+    error_message = "Daily snapshots go to a vault under a compliance lock with fixed bounds (SEC-71)."
+  }
+  assert {
+    condition     = toset(aws_backup_vault_notifications.locked[0].backup_vault_events) == toset(["BACKUP_JOB_FAILED", "COPY_JOB_FAILED"])
+    error_message = "Failed backup and copy jobs notify the alarms topic (review of #72)."
+  }
+  assert {
+    condition     = [for st in data.aws_iam_policy_document.data_key.statement : st.sid] == ["AccountAdministers"]
+    error_message = "Without a copy vault, the data key keeps the default policy only."
   }
   assert {
     condition     = one(aws_backup_plan.daily[0].rule).target_vault_name == "fh-production-locked" && length(one(aws_backup_plan.daily[0].rule).copy_action) == 0
@@ -100,7 +116,43 @@ run "staging_and_cross_account_copy" {
     error_message = "Staging keeps governance mode so it can be torn down."
   }
   assert {
+    condition     = length(aws_backup_vault_lock_configuration.locked) == 0
+    error_message = "Staging's vault has no (irreversible) compliance lock unless asked (review of #72)."
+  }
+  assert {
+    condition     = [for st in data.aws_iam_policy_document.data_key.statement : st.sid] == ["AccountAdministers", "BackupCopyAccountUses", "BackupCopyAccountGrants"] && alltrue([for st in data.aws_iam_policy_document.data_key.statement : contains(flatten([for p in st.principals : p.identifiers]), "arn:aws:iam::444455556666:root") if st.sid != "AccountAdministers"])
+    error_message = "The copy account may use the snapshots' key, or every copy job fails (review of #72)."
+  }
+  assert {
     condition     = one(one(aws_backup_plan.daily[0].rule).copy_action).destination_vault_arn == "arn:aws:backup:ca-central-1:444455556666:backup-vault:fh-copies"
     error_message = "Every daily snapshot is copied to the other account's vault."
   }
+}
+
+run "lock_can_be_chosen" {
+  command = plan
+  variables {
+    environment       = "staging"
+    backup_vault_lock = true
+  }
+  assert {
+    condition     = length(aws_backup_vault_lock_configuration.locked) == 1
+    error_message = "backup_vault_lock = true locks a non-production vault."
+  }
+}
+
+run "copy_vault_stays_in_canada" {
+  command = plan
+  variables {
+    backup_copy_vault_arn = "arn:aws:backup:us-east-1:444455556666:backup-vault:fh-copies"
+  }
+  expect_failures = [var.backup_copy_vault_arn]
+}
+
+run "retention_within_the_lock" {
+  command = plan
+  variables {
+    backup_retention_days = 30
+  }
+  expect_failures = [var.backup_retention_days]
 }

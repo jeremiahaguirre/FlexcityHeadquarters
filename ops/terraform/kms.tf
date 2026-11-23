@@ -50,9 +50,54 @@ resource "aws_kms_alias" "trust_dr" {
 }
 
 # Infrastructure keys: database, backups bucket, secrets, container images.
+# The policy is the default one (the account administers the key through IAM), plus, when daily
+# snapshots are copied to another account (backup.tf), what that account needs to copy them:
+# AWS Backup's snapshots stay encrypted under this key, so without it every copy job fails.
+data "aws_iam_policy_document" "data_key" {
+  statement {
+    sid       = "AccountAdministers"
+    actions   = ["kms:*"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+  }
+  dynamic "statement" {
+    for_each = local.backup_copy_account == "" ? [] : [local.backup_copy_account]
+    content {
+      sid       = "BackupCopyAccountUses"
+      actions   = ["kms:Decrypt", "kms:DescribeKey"]
+      resources = ["*"]
+      principals {
+        type        = "AWS"
+        identifiers = ["arn:aws:iam::${statement.value}:root"]
+      }
+    }
+  }
+  dynamic "statement" {
+    for_each = local.backup_copy_account == "" ? [] : [local.backup_copy_account]
+    content {
+      sid       = "BackupCopyAccountGrants"
+      actions   = ["kms:CreateGrant"]
+      resources = ["*"]
+      principals {
+        type        = "AWS"
+        identifiers = ["arn:aws:iam::${statement.value}:root"]
+      }
+      condition {
+        test     = "Bool"
+        variable = "kms:GrantIsForAWSResource"
+        values   = ["true"]
+      }
+    }
+  }
+}
+
 resource "aws_kms_key" "data" {
   description         = "FlexcityHeadquarters database, backups and secrets (${var.environment})"
   enable_key_rotation = true
+  policy              = data.aws_iam_policy_document.data_key.json
 }
 
 resource "aws_kms_alias" "data" {

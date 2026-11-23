@@ -462,8 +462,13 @@ resource "aws_wafv2_web_acl" "app" {
 }
 
 # The firewall's log of the requests it blocked or counted (operators review it weekly:
-# docs/SECURITY-OPERATIONS.md). Allowed requests are not logged. Credentials never are: the
-# Authorization header and cookies are redacted (SECURITY-AUDIT SEC-72).
+# docs/SECURITY-OPERATIONS.md). Allowed requests are not logged. Credentials and the personal data
+# that travel in URLs are kept out (SECURITY-AUDIT SEC-72): the Authorization, Cookie and
+# X-Kiosk-Token headers, every query string (unsubscribe tokens, which carry the address; sign-in
+# codes and state; the SSO email hint) and every path (calendar feeds carry their secret in it:
+# /api/calendar/<org>/<secret>.ics) are redacted. A log record still names the rule that matched,
+# its labels, the host, method, address and country. (Dropping only the calendar records would need
+# ordered logging filters, which the AWS provider keeps as an unordered set.)
 resource "aws_cloudwatch_log_group" "waf" {
   # AWS requires the "aws-waf-logs-" prefix.
   name              = "aws-waf-logs-${local.name}"
@@ -487,6 +492,12 @@ resource "aws_wafv2_web_acl_logging_configuration" "app" {
     single_header {
       name = "x-kiosk-token"
     }
+  }
+  redacted_fields {
+    query_string {}
+  }
+  redacted_fields {
+    uri_path {}
   }
   logging_filter {
     default_behavior = "DROP"
