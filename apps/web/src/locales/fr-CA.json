@@ -386,7 +386,8 @@
     "kiosk_tablet_locked": "La tablette « {{kiosk}} » est en pause {{minutes}} minutes après de nombreux NIP erronés.",
     "release_scheduled": "À venir le {{whenFr}} : {{titleFr}}. Voyez ce qui change pour votre organisation.",
     "maintenance_scheduled": "Maintenance prévue le {{whenFr}} : {{messageFr}}",
-    "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}"
+    "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}",
+    "cert_rejected": "Votre certification {{nameFr}} n’a pas été acceptée : {{reason}}. Vérifiez-la et ajoutez-la de nouveau."
   },
   "today": {
     "morning": "Bonjour",
@@ -770,7 +771,13 @@
     "NOT_IN_DEMO": "Cette fonction n’est pas offerte dans la démo.",
     "EXPORT_INVALID": "Il manque des renseignements pour envoyer cette période.",
     "PROVIDER_SEND_FAILED": "Le fournisseur de paie n’a pas accepté les heures. Réessayez ou téléchargez le fichier.",
-    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard."
+    "BANK_SEND_FAILED": "La banque n’a pas accepté le fichier. Réessayez plus tard.",
+    "CERT_VERIFIED": "Ce certificat a déjà été vérifié. Demandez à votre superviseur de le modifier.",
+    "CERT_ORG_WIDE": "Corriger la liste des certificats la modifie pour tous les services. Demandez aux RH.",
+    "CERT_CHANGED": "L’employé a modifié cette inscription depuis que vous l’avez ouverte. Vérifiez-la de nouveau.",
+    "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
+    "CERT_EXISTS": "Un certificat porte déjà ce nom.",
+    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1071,7 +1078,12 @@
     "languageHint": "Utilisée pour l’application, les courriels et les notifications.",
     "password": "Mot de passe",
     "currentPassword": "Mot de passe actuel",
-    "changePassword": "Changer le mot de passe"
+    "changePassword": "Changer le mot de passe",
+    "editCert": "Corriger une certification",
+    "editCertFor": "Corriger {{name}}",
+    "certUpdated": "Enregistré. Un superviseur la vérifiera avant qu’elle compte pour les quarts.",
+    "removeCert": "La retirer",
+    "certRemoved": "Retirée."
   },
   "builder": {
     "title": "Création d’horaires",
@@ -1195,7 +1207,12 @@
     "noneExpiring": "Aucune dans cette période.",
     "expiredBlocks": "Expirée : ne peut travailler",
     "daysLeft_one": "{{count}} jour restant",
-    "daysLeft_other": "{{count}} jours restants"
+    "daysLeft_other": "{{count}} jours restants",
+    "reject": "Refuser",
+    "rejectTitle": "Refuser ce certificat",
+    "rejectReason": "Raison",
+    "rejectHint": "L’employé voit cette raison et peut ajouter le certificat de nouveau avec les bons renseignements.",
+    "rejected": "Refusé. {{name}} a été informé de la raison."
   },
   "staff": {
     "title": "Employés",
@@ -1812,7 +1829,8 @@
       "rules": "Convention collective",
       "roles": "Rôles",
       "departments": "Services",
-      "integrations": "Intégrations"
+      "integrations": "Intégrations",
+      "positions": "Postes"
     },
     "org": "Organisation",
     "orgHelp": "Votre personnel se connecte à {{host}}.",
@@ -1959,7 +1977,16 @@
     "weatherSite": "Lieu des prévisions météo (facultatif)",
     "weatherSiteHint": "Laissez vide pour utiliser les prévisions d’Environnement Canada les plus proches des coordonnées, ou entrez un code de lieu comme bc-48.",
     "weatherSiteFound": "Prévisions les plus proches utilisées : {{name}}. Entrez un code de lieu pour en choisir un autre.",
-    "weatherSiteSet": "Prévisions pour {{name}}. Laissez vide pour utiliser les plus proches."
+    "weatherSiteSet": "Prévisions pour {{name}}. Laissez vide pour utiliser les plus proches.",
+    "positionsHelp": "Les emplois pour lesquels on embauche, avec leur service, l’âge minimum, les certificats exigés et les limites de conduite. Les horaires et le tableau des quarts en tiennent compte.",
+    "noPositionsHelp": "Ajoutez un poste pour chaque emploi de votre personnel, puis attribuez les postes sur la page de chaque employé.",
+    "positionDepartment": "Service",
+    "noDepartment": "Aucun service",
+    "addCertsFirst": "Ajoutez d’abord des certificats au catalogue ci-dessus.",
+    "unpaidBreak": "Pause-repas non payée (minutes)",
+    "unpaidBreakHint": "Retirée du temps payé de chaque quart. Un quart peut avoir sa propre valeur.",
+    "neverAlone": "Jamais seul : au moins deux personnes qualifiées doivent se chevaucher sur ses quarts",
+    "departmentsUnavailable": "Les services n’ont pas pu être chargés; le service du poste reste tel quel."
   },
   "jobs": {
     "title": "Offres d’emploi",
@@ -3853,7 +3880,13 @@
       "SANDED": "Sablée",
       "BRINE": "Saumure",
       "HAZARD_REPORTED": "Danger signalé"
-    }
+    },
+    "notInPlan": "Pas dans votre forfait : ajoutez {{option}} dans Facturation.",
+    "editRoute": "Modifier {{name}}",
+    "editRouteTitle": "Modifier le parcours",
+    "routeSaved": "Parcours enregistré",
+    "routeActive": "Patrouillé",
+    "routeActiveHelp": "Décochez quand la route n’est plus à patrouiller par la ville : elle n’est plus indiquée comme due et ses rappels cessent. Ses registres de patrouille sont conservés."
   },
   "callOuts": {
     "title": "Rappels en cas de tempête",
@@ -4149,7 +4182,28 @@
     "online_other": "{{count}} inscriptions en ligne à encaisser",
     "onlineHelp": "Les familles inscrites sur votre page publique. Encaissez au comptoir ou par téléphone.",
     "onlineNone": "Toutes les inscriptions en ligne sont payées.",
-    "takePayment": "Payé {{price}}"
+    "takePayment": "Payé {{price}}",
+    "toPay_one": "{{count}} inscription à payer",
+    "toPay_other": "{{count}} inscriptions à payer",
+    "toPayHelp": "Inscriptions en ligne et places pas encore payées, par exemple celles de familles sorties d’une liste d’attente. Encaissez le paiement au comptoir ou par téléphone.",
+    "toPayNone": "Toutes les inscriptions sont payées.",
+    "fromDesk": "Inscrit au comptoir",
+    "editFamily": "Modifier la famille",
+    "familySaved": "Famille enregistrée",
+    "addMember": "Ajouter un membre de la famille",
+    "memberAdded": "Membre de la famille ajouté",
+    "editMember": "Modifier {{name}}",
+    "editMemberOne": "Modifier {{name}}",
+    "editMemberHelp": "Une nouvelle note de sécurité s’ajoute aussi aux listes de cours de cette personne.",
+    "memberSaved": "Membre de la famille enregistré",
+    "roleLabel": "Dans la famille",
+    "photoConsent": "Photos permises",
+    "takePaymentFor": "Encaisser · {{price}}",
+    "takePaymentTitle": "Encaisser le paiement de {{name}}",
+    "opensOn": "Inscription à partir du {{date}}",
+    "earlyTitle": "Inscrire en avance?",
+    "earlyHelp": "L’inscription ouvre le {{date}}. Inscrire maintenant à {{set}}, avant le public, par exemple pendant la semaine prioritaire des nageurs de retour.",
+    "registerEarly": "Inscrire en avance"
   },
   "fees": {
     "title": "Tarifs",
@@ -4443,7 +4497,19 @@
     "licenceHint": "Seuls les conducteurs qui le détiennent peuvent l’inspecter et le prendre.",
     "noLicence": "Aucun",
     "yard": "Garage ou installation",
-    "foot": "Un véhicule est prêt pendant 24 heures après une inspection conforme ou mineure. Les permis sont des certifications; ajoutez-les aux postes de conduite pour que l’horaire les vérifie aussi."
+    "foot": "Un véhicule est prêt pendant 24 heures après une inspection conforme ou mineure. Les permis sont des certifications; ajoutez-les aux postes de conduite pour que l’horaire les vérifie aussi.",
+    "saved": "Véhicule enregistré",
+    "inactive": "Retiré",
+    "editTitle": "Modifier {{unit}}",
+    "editOne": "Modifier {{unit}}",
+    "retire": "Retirer",
+    "retireOne": "Retirer {{unit}}",
+    "retireTitle": "Retirer {{unit}}?",
+    "retireHelp": "Les conducteurs ne le voient plus pour les inspections avant départ. Son historique d’inspections est conservé, et vous pouvez le remettre en service.",
+    "retired": "Véhicule retiré",
+    "reactivate": "Remettre en service",
+    "reactivateOne": "Remettre {{unit}} en service",
+    "reactivated": "Véhicule de retour dans le parc"
   },
   "injuries": {
     "title": "Déclarations de lésion",
@@ -8664,6 +8730,36 @@
       "active": "En cours",
       "ended": "Terminée",
       "cancelled": "Annulée"
+    }
+  },
+  "catalog": {
+    "title": "Certificats et permis",
+    "help": "Ce que vos postes, vos règles de couverture et vos véhicules peuvent exiger, et ce que le personnel ajoute à son profil.",
+    "add": "Ajouter un certificat",
+    "starter": "Ajouter à partir de la liste de départ",
+    "starterHelp": "Certificats courants pour les arénas, les usines d’eau potable et d’eaux usées et la conduite. Choisissez ceux qu’utilise votre organisation. Vous pourrez les corriger ensuite.",
+    "addPicked_one": "Ajouter {{count}} certificat",
+    "addPicked_other": "Ajouter {{count}} certificats",
+    "alreadyAdded": "Déjà dans votre catalogue",
+    "empty": "Aucun certificat pour l’instant",
+    "emptyHelp": "Ajoutez les certificats et permis exigés par vos postes, ou partez de la liste de départ.",
+    "formHelp": "Inscrivez-le tel qu’il figure sur la carte.",
+    "name": "Nom",
+    "nameFr": "Nom en français",
+    "issuingBody": "Délivré par",
+    "validity": "Valide pendant (mois)",
+    "validityHint": "Laissez vide s’il n’expire pas, ou si l’échéance varie selon la personne.",
+    "validFor_one": "Valide {{count}} mois",
+    "validFor_other": "Valide {{count}} mois",
+    "noExpiry": "Aucune échéance fixe",
+    "shared": "Liste commune",
+    "saved": "Certificat enregistré.",
+    "groups": {
+      "aquatics": "Aquatique",
+      "arena": "Arénas et usines à glace",
+      "water": "Eau potable",
+      "wastewater": "Eaux usées",
+      "licence": "Permis de conduire"
     }
   }
 }

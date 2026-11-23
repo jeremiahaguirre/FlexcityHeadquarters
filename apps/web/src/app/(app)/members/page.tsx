@@ -1,8 +1,8 @@
 'use client';
 
-import { BadgeCheck, ChevronLeft, CreditCard, Plus, Search, ShieldAlert, Ticket, UserPlus, Users } from 'lucide-react';
+import { BadgeCheck, ChevronLeft, CreditCard, Pencil, Plus, Search, ShieldAlert, Ticket, UserPlus, Users } from 'lucide-react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -14,17 +14,17 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { ApiError, api } from '@/lib/api';
-import { type Fee, type LessonSet, PAYMENT_METHODS, ageLabel, ageRange, hhmm, money } from '@/lib/programs';
+import { type Fee, type LessonSet, PAYMENT_METHODS, ageLabel, ageRange, earlyOnly, hhmm, householdBody, memberBody, money } from '@/lib/programs';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { useToast } from '@/components/ui/Toast';
 import { dateFormat, formatInstant } from '@/lib/format';
 import { errorText } from '@/lib/apiError';
 
-interface Member { id: string; role: 'GUARDIAN' | 'CHILD' | 'ADULT'; firstName: string; lastName: string; dateOfBirth: string | null; ageMonths: number | null; email: string | null; phone: string | null; safetyNote: string | null }
+interface Member { id: string; role: 'GUARDIAN' | 'CHILD' | 'ADULT'; firstName: string; lastName: string; dateOfBirth: string | null; ageMonths: number | null; email: string | null; phone: string | null; safetyNote: string | null; photoConsent?: boolean }
 interface Family {
   id: string; name: string; address: string | null; emergencyName: string | null; emergencyPhone: string | null; memberUntil: string | null;
   members: Member[];
-  enrollments: Array<{ id: string; memberId: string | null; swimmerName: string; status: 'ENROLLED' | 'WAITLISTED' | 'CANCELLED'; priceCents: number | null; set: { name: string; startsOn: string; endsOn: string; daysOfWeek: number[]; startMinute: number } }>;
+  enrollments: Array<{ id: string; memberId: string | null; swimmerName: string; status: 'ENROLLED' | 'WAITLISTED' | 'CANCELLED'; priceCents: number | null; paid?: boolean; set: { name: string; startsOn: string; endsOn: string; daysOfWeek: number[]; startMinute: number } }>;
   sales: Array<{ id: string; description: string; priceCents: number; validFrom: string | null; validTo: string | null; paymentMethod: string; refundedAt: string | null; createdAt: string; feeId: string | null }>;
 }
 interface Offering { id: string; name: string; kind: string; registrationOpen: boolean; registrationOpensAt: string | null; sets: LessonSet[] }
@@ -45,6 +45,7 @@ function Members() {
 
 function FamilySearch() {
   const { t, i18n } = useTranslation();
+  const router = useRouter();
   const [q, setQ] = useState('');
   const list = useQuery<Array<{ id: string; name: string; members: Array<{ id: string; role: string; name: string; ageMonths: number | null; phone: string | null }> }>>(`/api/households?q=${encodeURIComponent(q)}`);
   const fees = useQuery<Fee[]>('/api/fees');
@@ -60,7 +61,7 @@ function FamilySearch() {
     const s = (k: string) => String(f.get(k) ?? '').trim() || null;
     const members = rows.map((r, i) => ({ role: r.role, firstName: s(`first${i}`), lastName: s(`last${i}`) ?? s('name'), dateOfBirth: s(`dob${i}`), phone: s(`phone${i}`), email: s(`email${i}`), safetyNote: s(`note${i}`) })).filter((m) => m.firstName);
     const r = await run('family', () => api<{ id: string }>('/api/households', { method: 'POST', body: { name: s('name'), address: s('address'), emergencyName: s('emName'), emergencyPhone: s('emPhone'), members } }), t('members.familyAdded'));
-    if (r) window.location.assign(`/members?id=${r.id}`);
+    if (r) router.push(`/members?id=${r.id}`);
   }
   async function sellDropIn(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -169,20 +170,20 @@ function FamilySearch() {
 /** Families who signed up on the public page: take payment for confirmed spots. */
 function OnlineSignups() {
   const { t, i18n } = useTranslation();
-  const q = useQuery<Array<{ id: string; reference: string; swimmerName: string; householdId: string; status: string; priceCents: number | null; set: string; createdAt: string; paid: boolean }>>('/api/online-registrations');
+  const q = useQuery<Array<{ id: string; reference: string | null; source?: string; swimmerName: string; householdId: string; status: string; priceCents: number | null; set: string; createdAt: string; paid: boolean }>>('/api/online-registrations');
   const { run, busy } = useAction();
   const [pay, setPay] = useState<string>('DEBIT');
   const due = (q.data ?? []).filter((r) => !r.paid && r.status === 'ENROLLED');
   if (!q.data || !q.data.length) return null;
   return (
     <Card>
-      <CardHeader title={t('members.online', { count: due.length })} description={t('members.onlineHelp')} action={<div className="w-40"><Select aria-label={t('members.payment')} value={pay} onChange={(e) => setPay(e.target.value)}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{t(`members.pay.${m}`)}</option>)}</Select></div>} />
+      <CardHeader title={t('members.toPay', { count: due.length })} description={t('members.toPayHelp')} action={<div className="w-40"><Select aria-label={t('members.payment')} value={pay} onChange={(e) => setPay(e.target.value)}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{t(`members.pay.${m}`)}</option>)}</Select></div>} />
       <CardBody className="pt-2">
-        {!due.length ? <p className="text-small text-muted">{t('members.onlineNone')}</p> : (
+        {!due.length ? <p className="text-small text-muted">{t('members.toPayNone')}</p> : (
           <ul className="divide-y divide-line text-small">
             {due.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                <Link href={`/members?id=${r.householdId}`} className="min-w-0 hover:underline"><span className="font-semibold">{r.swimmerName}</span><span className="block text-caption text-muted">{r.set} · {r.reference} · {dateFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(r.createdAt))}</span></Link>
+                <Link href={`/members?id=${r.householdId}`} className="min-w-0 hover:underline"><span className="font-semibold">{r.swimmerName}</span><span className="block text-caption text-muted">{r.set} · {r.source === 'ONLINE' ? r.reference : t('members.fromDesk')} · {dateFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(r.createdAt))}</span></Link>
                 <Button size="sm" loading={busy === r.id} icon={<CreditCard className="h-4 w-4" aria-hidden="true" />} onClick={() => void run(r.id, () => api(`/api/online-registrations/${r.id}/pay`, { method: 'POST', body: { paymentMethod: pay } }), t('members.sold')).then(() => q.reload())}>{t('members.takePayment', { price: money(r.priceCents, i18n.language) })}</Button>
               </li>
             ))}
@@ -203,21 +204,54 @@ function FamilyView({ id }: { id: string }) {
   const [registering, setRegistering] = useState<Member | null>(null);
   const offers = useQuery<Offering[]>(registering ? `/api/offerings?memberId=${registering.id}` : null);
   const [selling, setSelling] = useState(false);
-  const [override, setOverride] = useState<{ set: LessonSet; pay: string } | null>(null);
+  const [override, setOverride] = useState<{ set: LessonSet; pay: string; early?: boolean } | null>(null);
   const [pay, setPay] = useState<string>('DEBIT');
+  const [editingFamily, setEditingFamily] = useState(false);
+  /** The member being edited, or a role to add someone new. */
+  const [memberForm, setMemberForm] = useState<Member | { role: Member['role'] } | null>(null);
+  const [paying, setPaying] = useState<Family['enrollments'][number] | null>(null);
+  const [early, setEarly] = useState<{ set: LessonSet; opensAt: string } | null>(null);
   const date = (d: string | null) => (d ? formatInstant(d, lng) : '—');
   const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
 
-  async function register(set: LessonSet, ageOverride?: string) {
+  async function register(set: LessonSet, ageOverride?: string, isEarly = false) {
     try {
-      const r = await api<{ status: string; priceCents: number }>('/api/registrations', { method: 'POST', body: { setId: set.id, memberId: registering!.id, paymentMethod: pay, ...(ageOverride ? { ageOverride } : {}) } });
+      const r = await api<{ status: string; priceCents: number }>('/api/registrations', { method: 'POST', body: { setId: set.id, memberId: registering!.id, paymentMethod: pay, ...(ageOverride ? { ageOverride } : {}), ...(isEarly ? { early: true } : {}) } });
       toast(r.status === 'WAITLISTED' ? t('members.waitlisted') : t('members.registered', { price: money(r.priceCents, lng) }), 'ok');
       setRegistering(null);
       setOverride(null);
+      setEarly(null);
       await fam.reload();
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'AGE_OUTSIDE_LEVEL') setOverride({ set, pay });
+      if (e instanceof ApiError && e.code === 'AGE_OUTSIDE_LEVEL') { setEarly(null); setOverride({ set, pay, early: isEarly }); }
       else toast(errorText(t, e), 'warn');
+    }
+  }
+  async function saveFamily(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if ((await run('family', () => api(`/api/households/${id}`, { method: 'PATCH', body: householdBody(new FormData(e.currentTarget)) }), t('members.familySaved'))) !== undefined) {
+      setEditingFamily(false);
+      await fam.reload();
+    }
+  }
+  async function saveMember(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const existing = memberForm && 'id' in memberForm ? memberForm : null;
+    const body = memberBody(new FormData(e.currentTarget));
+    const done = existing
+      ? await run('member', () => api(`/api/households/${id}/members/${existing.id}`, { method: 'PATCH', body }), t('members.memberSaved'))
+      : await run('member', () => api(`/api/households/${id}/members`, { method: 'POST', body }), t('members.memberAdded'));
+    if (done !== undefined) {
+      setMemberForm(null);
+      await fam.reload();
+    }
+  }
+  async function takePayment(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const paymentMethod = String(new FormData(e.currentTarget).get('pay'));
+    if ((await run('pay', () => api(`/api/online-registrations/${paying!.id}/pay`, { method: 'POST', body: { paymentMethod } }), t('members.sold'))) !== undefined) {
+      setPaying(null);
+      await fam.reload();
     }
   }
   async function sell(e: FormEvent<HTMLFormElement>) {
@@ -241,6 +275,8 @@ function FamilyView({ id }: { id: string }) {
         description={h.emergencyName ? t('members.emergency', { name: h.emergencyName, phone: h.emergencyPhone ?? '' }) : undefined}
         actions={
           <>
+            <Button variant="secondary" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} onClick={() => setEditingFamily(true)}>{t('members.editFamily')}</Button>
+            <Button variant="secondary" icon={<UserPlus className="h-4 w-4" aria-hidden="true" />} onClick={() => setMemberForm({ role: 'CHILD' })}>{t('members.addMember')}</Button>
             {h.memberUntil ? <StatusPill tone="ok" icon={<BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />}>{t('members.memberUntil', { date: date(h.memberUntil) })}</StatusPill> : <StatusPill tone="neutral">{t('members.notMember')}</StatusPill>}
             <Button variant="secondary" icon={<CreditCard className="h-4 w-4" aria-hidden="true" />} onClick={() => setSelling(true)}>{t('members.sell')}</Button>
           </>
@@ -255,7 +291,10 @@ function FamilyView({ id }: { id: string }) {
                   <p className="font-semibold">{m.firstName} {m.lastName}</p>
                   <p className="text-caption text-muted">{t(`members.role.${m.role}`)}{m.ageMonths !== null ? ` · ${ageLabel(m.ageMonths, t)}` : ''}{m.phone ? ` · ${m.phone}` : ''}</p>
                 </div>
-                {m.role !== 'GUARDIAN' || m.ageMonths !== null ? <Button size="sm" onClick={() => setRegistering(m)}>{t('members.register')}</Button> : null}
+                <div className="flex shrink-0 gap-1">
+                  <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('members.editMemberOne', { name: m.firstName })} onClick={() => setMemberForm(m)}>{t('common.edit')}</Button>
+                  {m.role !== 'GUARDIAN' || m.ageMonths !== null ? <Button size="sm" onClick={() => setRegistering(m)}>{t('members.register')}</Button> : null}
+                </div>
               </div>
               {m.safetyNote ? <p className="flex items-center gap-1.5 rounded-lg bg-warn-bg px-2 py-1 text-caption text-warn"><ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />{m.safetyNote}</p> : null}
               {h.enrollments.filter((e) => e.memberId === m.id && e.status !== 'CANCELLED').map((e) => (
@@ -263,6 +302,7 @@ function FamilyView({ id }: { id: string }) {
                   <span><span className="font-semibold">{e.set.name}</span> · {e.set.daysOfWeek.map(dow).join(' ')} {hhmm(e.set.startMinute)} · {date(e.set.startsOn)}</span>
                   <span className="flex items-center gap-2">
                     {e.status === 'WAITLISTED' ? <StatusPill tone="warn">{t('programs.waitlisted')}</StatusPill> : null}
+                    {e.status === 'ENROLLED' && e.paid === false ? <button type="button" className="font-semibold text-brand-text hover:underline" onClick={() => setPaying(e)}>{t('members.takePaymentFor', { price: money(e.priceCents, lng) })}</button> : null}
                     <button type="button" className="font-semibold text-danger hover:underline" onClick={() => void run(`c${e.id}`, () => api<{ promoted: { swimmerName: string } | null }>(`/api/registrations/${e.id}/cancel`, { method: 'POST', body: { refund: true } }), t('members.cancelled')).then(async (r) => { if (r?.promoted) toast(t('members.promoted', { name: r.promoted.swimmerName }), 'ok'); await fam.reload(); })}>{t('members.cancel')}</button>
                   </span>
                 </div>
@@ -291,7 +331,7 @@ function FamilyView({ id }: { id: string }) {
         <div className="grid gap-4">
           <Field label={t('members.payment')}>{(p) => <Select {...p} value={pay} onChange={(e) => setPay(e.target.value)}>{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{t(`members.pay.${m}`)}</option>)}</Select>}</Field>
           {override ? (
-            <form className="grid gap-3 rounded-xl bg-warn-bg p-4" onSubmit={(e) => { e.preventDefault(); void register(override.set, String(new FormData(e.currentTarget).get('why'))); }}>
+            <form className="grid gap-3 rounded-xl bg-warn-bg p-4" onSubmit={(e) => { e.preventDefault(); void register(override.set, String(new FormData(e.currentTarget).get('why')), override.early); }}>
               <p className="text-small font-semibold text-warn">{t('members.ageOutside', { range: ageRange(override.set.minAgeMonths, override.set.maxAgeMonths, t) })}</p>
               <Field label={t('members.overrideWhy')}>{(p) => <Input {...p} name="why" required minLength={3} maxLength={200} />}</Field>
               <Button type="submit" size="sm" className="justify-self-start">{t('members.registerAnyway')}</Button>
@@ -299,9 +339,9 @@ function FamilyView({ id }: { id: string }) {
           ) : null}
           {!offers.data ? <Skeleton className="h-32" /> : !offers.data.length ? <p className="text-small text-muted">{t('members.nothingOpen')}</p> : offers.data.map((c) => (
             <div key={c.id} className="grid gap-2">
-              <p className="text-small font-semibold">{c.name}{!c.registrationOpen ? <span className="ml-2 text-caption text-warn">{t('members.notOpenYet')}</span> : null}</p>
+              <p className="text-small font-semibold">{c.name}{!c.registrationOpen ? <span className="ml-2 text-caption text-warn">{earlyOnly(c) ? t('members.opensOn', { date: date(c.registrationOpensAt!.slice(0, 10)) }) : t('members.notOpenYet')}</span> : null}</p>
               {[...c.sets].sort((a, b) => Number(b.ageFits) - Number(a.ageFits)).map((s) => (
-                <button key={s.id} type="button" disabled={!c.registrationOpen} onClick={() => void register(s)} className={`grid gap-0.5 rounded-xl border p-3 text-left text-small transition-colors disabled:opacity-50 ${s.ageFits ? 'border-brand/50 hover:bg-brand/5' : 'border-line opacity-70 hover:bg-surface'}`}>
+                <button key={s.id} type="button" disabled={!c.registrationOpen && !earlyOnly(c)} onClick={() => (c.registrationOpen ? void register(s) : setEarly({ set: s, opensAt: c.registrationOpensAt! }))} className={`grid gap-0.5 rounded-xl border p-3 text-left text-small transition-colors disabled:opacity-50 ${s.ageFits ? 'border-brand/50 hover:bg-brand/5' : 'border-line opacity-70 hover:bg-surface'}`}>
                   <span className="flex flex-wrap items-center justify-between gap-2"><span className="font-semibold">{s.name}</span><span className="tabular-nums">{money(h.memberUntil && s.memberPriceCents != null ? s.memberPriceCents : s.priceCents, lng)}</span></span>
                   <span className="text-caption text-muted">{s.daysOfWeek.map(dow).join(' ')} {hhmm(s.startMinute)}–{hhmm(s.endMinute)} · {date(s.startsOn)} – {date(s.endsOn)} · {s.facility} · {ageRange(s.minAgeMonths, s.maxAgeMonths, t)}</span>
                   <span className="text-caption">{s.ageFits === false ? <span className="text-warn">{t('members.ageNoFit')}</span> : null} {s.spotsLeft ? t('members.spots', { count: s.spotsLeft }) : <span className="text-warn">{t('members.fullWaitlist')}</span>}</span>
@@ -310,6 +350,38 @@ function FamilyView({ id }: { id: string }) {
             </div>
           ))}
         </div>
+      </Dialog>
+
+      <Dialog open={!!early} onClose={() => setEarly(null)} title={t('members.earlyTitle')} description={early ? t('members.earlyHelp', { date: date(early.opensAt.slice(0, 10)), set: early.set.name }) : undefined} closeLabel={t('common.cancel')}>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => early && void register(early.set, undefined, true)}>{t('members.registerEarly')}</Button>
+          <Button variant="secondary" onClick={() => setEarly(null)}>{t('common.cancel')}</Button>
+        </div>
+      </Dialog>
+
+      <Dialog open={editingFamily} onClose={() => setEditingFamily(false)} title={t('members.editFamily')} closeLabel={t('common.cancel')}>
+        <form className="grid gap-4" onSubmit={(e) => void saveFamily(e)}>
+          <Field label={t('members.familyName')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={80} defaultValue={h.name} />}</Field>
+          <Field label={t('members.address')} hint={t('common.optional')}>{(p) => <Input {...p} name="address" maxLength={200} defaultValue={h.address ?? ''} />}</Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label={t('members.emergencyName')}>{(p) => <Input {...p} name="emName" maxLength={80} defaultValue={h.emergencyName ?? ''} />}</Field>
+            <Field label={t('members.emergencyPhone')}>{(p) => <Input {...p} name="emPhone" type="tel" maxLength={30} defaultValue={h.emergencyPhone ?? ''} />}</Field>
+          </div>
+          <Button type="submit" loading={busy === 'family'} className="justify-self-start">{t('common.save')}</Button>
+        </form>
+      </Dialog>
+
+      <Dialog open={!!memberForm} onClose={() => setMemberForm(null)} title={memberForm && 'id' in memberForm ? t('members.editMember', { name: memberForm.firstName }) : t('members.addMember')} description={memberForm && 'id' in memberForm ? t('members.editMemberHelp') : undefined} closeLabel={t('common.cancel')}>
+        {memberForm ? (
+          <MemberForm key={'id' in memberForm ? memberForm.id : 'new'} m={'id' in memberForm ? memberForm : undefined} role={memberForm.role} lastName={h.name} busy={busy === 'member'} onSubmit={(e) => void saveMember(e)} />
+        ) : null}
+      </Dialog>
+
+      <Dialog open={!!paying} onClose={() => setPaying(null)} title={t('members.takePaymentTitle', { name: paying?.swimmerName ?? '' })} description={paying ? `${paying.set.name} · ${money(paying.priceCents, lng)}` : undefined} closeLabel={t('common.cancel')}>
+        <form className="grid gap-4" onSubmit={(e) => void takePayment(e)}>
+          <Field label={t('members.payment')}>{(p) => <Select {...p} name="pay" defaultValue="DEBIT">{PAYMENT_METHODS.map((m) => <option key={m} value={m}>{t(`members.pay.${m}`)}</option>)}</Select>}</Field>
+          <Button type="submit" loading={busy === 'pay'} icon={<CreditCard className="h-4 w-4" aria-hidden="true" />} className="justify-self-start">{t('members.charge')}</Button>
+        </form>
       </Dialog>
 
       <Dialog open={selling} onClose={() => setSelling(false)} title={t('members.sell')} description={t('members.sellHelp')} closeLabel={t('common.cancel')}>
@@ -327,5 +399,29 @@ function FamilyView({ id }: { id: string }) {
       </Dialog>
       {guardians.length === 0 ? <p className="text-caption text-warn"><Users className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" />{t('members.noGuardian')}</p> : null}
     </div>
+  );
+}
+
+/** One family member's details, for adding someone or correcting them (a new allergy, a new phone number). */
+function MemberForm({ m, role: initial, lastName, busy, onSubmit }: { m?: Member; role: Member['role']; lastName: string; busy: boolean; onSubmit: (e: FormEvent<HTMLFormElement>) => void }) {
+  const { t } = useTranslation();
+  const [role, setRole] = useState<Member['role']>(m?.role ?? initial);
+  return (
+    <form className="grid gap-4" onSubmit={onSubmit}>
+      <Field label={t('members.roleLabel')}>{(p) => <Select {...p} name="role" value={role} onChange={(e) => setRole(e.target.value as Member['role'])}>{(['GUARDIAN', 'CHILD', 'ADULT'] as const).map((r) => <option key={r} value={r}>{t(`members.role.${r}`)}</option>)}</Select>}</Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t('members.first')}>{(p) => <Input {...p} name="first" required maxLength={60} defaultValue={m?.firstName} />}</Field>
+        <Field label={t('members.last')}>{(p) => <Input {...p} name="last" required maxLength={60} defaultValue={m?.lastName ?? lastName} />}</Field>
+        <Field label={t('members.dob')} hint={role === 'CHILD' ? undefined : t('common.optional')}>{(p) => <Input {...p} name="dob" type="date" required={role === 'CHILD'} defaultValue={m?.dateOfBirth ?? ''} />}</Field>
+        <Field label={t('members.phone')} hint={t('common.optional')}>{(p) => <Input {...p} name="phone" type="tel" maxLength={30} defaultValue={m?.phone ?? ''} />}</Field>
+        <Field label={t('members.email')} hint={t('common.optional')}>{(p) => <Input {...p} name="email" type="email" maxLength={160} defaultValue={m?.email ?? ''} />}</Field>
+        <Field label={t('members.safetyNote')} hint={t('members.safetyHint')}>{(p) => <Input {...p} name="note" maxLength={200} defaultValue={m?.safetyNote ?? ''} />}</Field>
+      </div>
+      <label className="flex items-start gap-2 text-small">
+        <input type="checkbox" name="photoConsent" defaultChecked={m?.photoConsent ?? false} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />
+        <span className="font-semibold">{t('members.photoConsent')}</span>
+      </label>
+      <Button type="submit" loading={busy} className="justify-self-start">{m ? t('common.save') : t('members.addMember')}</Button>
+    </form>
   );
 }
