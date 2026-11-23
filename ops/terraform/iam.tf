@@ -57,6 +57,13 @@ data "aws_iam_policy_document" "app" {
     actions   = ["kms:GenerateDataKey", "kms:Decrypt", "kms:DescribeKey"]
     resources = local.key_arns
   }
+  # Only keys like the ones services/crypto/awsKms.ts creates: KMS-generated material, symmetric,
+  # for encryption, in Canada (SECURITY-AUDIT SEC-52). An attacker running code as the app can't
+  # import key material or make a signing or HMAC key, and can never skip the lockout safety
+  # check. The conditions are IfExists: ReplicateKey needs kms:CreateKey in the recovery region and
+  # sends no KeySpec or KeyUsage; when omitted, KMS uses SYMMETRIC_DEFAULT and ENCRYPT_DECRYPT, the
+  # only values allowed here anyway. A custom key policy can't be refused by a condition, so CreateKey calls that carry one
+  # raise an alarm instead (kms_create_key_with_policy below).
   statement {
     sid       = "CreateOrganizationKeys"
     actions   = ["kms:CreateKey"]
@@ -66,6 +73,32 @@ data "aws_iam_policy_document" "app" {
       test     = "StringEquals"
       variable = "aws:RequestedRegion"
       values   = [var.region, var.dr_region]
+    }
+    condition {
+      test     = "StringEqualsIfExists"
+      variable = "kms:KeyOrigin"
+      values   = ["AWS_KMS"]
+    }
+    condition {
+      test     = "StringEqualsIfExists"
+      variable = "kms:KeySpec"
+      values   = ["SYMMETRIC_DEFAULT"]
+    }
+    condition {
+      test     = "StringEqualsIfExists"
+      variable = "kms:KeyUsage"
+      values   = ["ENCRYPT_DECRYPT"]
+    }
+  }
+  statement {
+    sid       = "NeverBypassKeyPolicyLockoutCheck"
+    effect    = "Deny"
+    actions   = ["kms:CreateKey", "kms:PutKeyPolicy", "kms:ReplicateKey"]
+    resources = ["*"]
+    condition {
+      test     = "Bool"
+      variable = "kms:BypassPolicyLockoutSafetyCheck"
+      values   = ["true"]
     }
   }
   statement {

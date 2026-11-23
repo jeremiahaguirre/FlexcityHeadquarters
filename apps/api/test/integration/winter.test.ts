@@ -19,6 +19,7 @@ const call = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
   put: (p: string, b: object = {}) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
+  patch: (p: string, b: object = {}) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 const SETTINGS = { season: { start: '11-01', end: '04-15' }, callOuts: { responseMinutes: 10, minRestHours: 8 }, patrols: { graceMinutes: 30 } };
 const storm = (dayOffset: number) => {
@@ -143,10 +144,49 @@ describe('patrol records', () => {
     expect(csv.text).toContain(`"'=cmd() should not run"`);
   });
 
+  it('a route is renamed, re-timed or retired, on record; a retired route is never overdue', async () => {
+    expect((await call(tok.a).patch(`/api/winter/routes/${routeId}`, { intervalHours: 12 })).status).toBe(403);
+    await call(tok.hr).post('/api/winter/routes', { name: 'Route 9: Lakeshore', intervalHours: 48 });
+    expect((await call(tok.hr).patch(`/api/winter/routes/${routeId}`, { name: 'route 9: lakeshore' })).body.code).toBe('ROUTE_EXISTS');
+    expect((await call(tok.hr).patch(`/api/winter/routes/${routeId}`, { name: 'Route 7: Hillside Drive', roadClass: '2', intervalHours: 12 })).status).toBe(200);
+    expect((await call(tok.hr).patch(`/api/winter/routes/${routeId}`, { active: false })).status).toBe(200);
+    const winter = await withTenant(t.tenant.id, (tx) => routeStatus(tx, new Date('2026-12-15T15:00:00Z')));
+    expect(winter.find((r) => r.id === routeId)).toMatchObject({ name: 'Route 7: Hillside Drive', roadClass: '2', intervalHours: 12, active: false, overdue: false });
+    const log = await owner.auditLog.findMany({ where: { tenantId: t.tenant.id, action: 'winter.route.update', entityId: routeId }, orderBy: { at: 'asc' } });
+    expect(log.map((l) => l.before)).toEqual([expect.objectContaining({ name: 'Route 7: Hillside Dr', intervalHours: 24 }), expect.objectContaining({ active: true })]);
+    // The patrol done before the rename still reads, and exports, as the route it was done on.
+    const patrols = (await call(tok.hr).get('/api/patrols?from=2020-01-01&to=2030-01-01')).body;
+    expect(patrols.find((p: { routeId: string }) => p.routeId === routeId)).toMatchObject({ route: 'Route 7: Hillside Dr', roadClass: '3' });
+    const csv = (await call(tok.hr).get('/api/patrols/export?from=2020-01-01&to=2030-01-01')).text;
+    expect(csv).toContain('"Route 7: Hillside Dr","3"');
+    expect(csv).not.toContain('Hillside Drive');
+  });
+
   it('switching patrols off hides them from everyone', async () => {
     await call(tok.hr).put('/api/winter/settings', { ...SETTINGS, callOutsOn: true, patrolsOn: false });
     forgetFeatures(t.tenant.id);
     expect((await call(tok.a).get('/api/me/patrols')).status).toBe(404);
     expect((await call(tok.a).get('/api/me')).body.permissions).not.toContain('winter.patrol');
+  });
+});
+
+describe('winter options the plan doesn’t include', () => {
+  it('show as off with the option that adds them, and can’t be switched on', async () => {
+    await owner.billingAccount.upsert({
+      where: { tenantId: t.tenant.id },
+      create: { tenantId: t.tenant.id, legalName: 'City of Winter', email: 'ap@winter.test', province: 'BC', plan: 'MUNICIPAL', level: 'SMALL', items: {}, trialEndsAt: null },
+      update: { plan: 'MUNICIPAL', level: 'SMALL', items: {}, trialEndsAt: null },
+    });
+    forgetFeatures(t.tenant.id);
+    const s = (await call(tok.hr).get('/api/winter/settings')).body;
+    expect(s).toMatchObject({ callOutsOn: false, patrolsOn: false, locked: { callOuts: 'winter', patrols: 'winter' } });
+    const on = await call(tok.hr).put('/api/winter/settings', { ...SETTINGS, callOutsOn: true, patrolsOn: false });
+    expect(on.status).toBe(403);
+    expect(on.body).toMatchObject({ code: 'PLAN_REQUIRED', details: { module: 'winter' } });
+    // Saving the time frames with both off (the locked boxes can't be ticked) still works, and keeps the city's own choice.
+    expect((await call(tok.hr).put('/api/winter/settings', { ...SETTINGS, callOutsOn: false, patrolsOn: false })).status).toBe(200);
+    await owner.billingAccount.update({ where: { tenantId: t.tenant.id }, data: { level: 'ENTERPRISE' } });
+    forgetFeatures(t.tenant.id);
+    expect((await call(tok.hr).get('/api/winter/settings')).body).toMatchObject({ callOutsOn: true, patrolsOn: false, locked: { callOuts: null, patrols: null } });
   });
 });

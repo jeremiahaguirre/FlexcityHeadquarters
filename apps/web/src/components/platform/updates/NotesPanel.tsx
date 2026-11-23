@@ -15,6 +15,7 @@ import { NoteBody } from '@/components/updates/NoteBody';
 import { ApiError } from '@/lib/apiError';
 import { papi, usePlatformQuery } from '@/lib/platform';
 import { AudiencePicker, ROLES, type Ring, type Role, box, chip, fromLocalInput, toLocalInput, useAudienceText, whenText } from './shared';
+import { errorText } from '@/lib/apiError';
 
 type Status = 'draft' | 'scheduled' | 'published' | 'withdrawn';
 export interface ConsoleNote { id: string; titleEn: string; titleFr: string; bodyEn: string; bodyFr: string; roles: Role[]; tenantIds: string[]; ringIds: string[]; publishAt: string; publishedAt: string | null; withdrawnAt: string | null; status: Status }
@@ -33,7 +34,7 @@ export function NotesPanel({ rings = [] }: { rings?: Ring[] }) {
   const [error, setError] = useState<string | null>(null);
 
   const fail = (e: unknown) => {
-    const msg = e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error');
+    const msg = errorText(t, e);
     setError(msg);
     toast(msg, 'warn');
   };

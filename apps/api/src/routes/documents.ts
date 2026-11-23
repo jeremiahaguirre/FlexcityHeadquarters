@@ -14,7 +14,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { type AuthContext, authOf, requirePermission } from '../auth/middleware.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, forbidden, invalid, notFound } from '../lib/errors.js';
 import { type FileType, sendFile, sniff, storedName } from '../lib/files.js';
 import { open, seal } from '../services/crypto/envelope.js';
 import { sha256 } from '../services/people/fingerprint.js';
@@ -45,7 +45,7 @@ const isHr = (a: AuthContext) => a.permissions.has('documents.manage') && a.role
 
 export async function store(tx: Tx, a: AuthContext, userId: string, b: Omit<z.infer<typeof body>, 'kind'> & { kind: DocumentKind }) {
   const file = Buffer.from(b.data.slice(b.data.indexOf(',') + 1), 'base64');
-  if (!file.length) throw badRequest('The file is empty.');
+  if (!file.length) throw invalid('FILE_EMPTY', 'The file is empty.');
   if (file.length > MAX_BYTES) throw new HttpError(413, 'TOO_LARGE', 'Files can be up to 10 MB.');
   const type = sniff(file);
   if (!type) throw new HttpError(415, 'UNSUPPORTED_TYPE', 'Upload a PDF, PNG, JPEG or WebP file.');
