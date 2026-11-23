@@ -63,7 +63,7 @@ export default function TimeclockPage() {
           {punch && !punch.open ? (
             <div className="grid gap-2">
               {others.map((s) => (
-                <Button key={s.id} variant="secondary" block icon={<LogIn className="h-4 w-4" aria-hidden="true" />} loading={punch.busy === 'in'} onClick={() => void punch.clockInFor({ facilityId: s.facilityId, shiftId: s.id })}>
+                <Button key={s.id} variant="secondary" block className="h-auto min-h-11 whitespace-normal py-2 text-left" icon={<LogIn className="h-4 w-4" aria-hidden="true" />} loading={punch.busy === 'in'} onClick={() => void punch.clockInFor({ facilityId: s.facilityId, shiftId: s.id })}>
                   {t('timeclock.clockInFor', { time: formatTimeRange(s.localStartsAt, s.localEndsAt, lng), place: s.facility.name })}
                 </Button>
               ))}

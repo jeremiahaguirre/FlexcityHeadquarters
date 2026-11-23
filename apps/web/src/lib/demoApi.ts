@@ -16,6 +16,8 @@ import { loadSession, saveSession, sessionRead, sessionWrite } from './demoSessi
 import type { Board } from './planner';
 import type { FillWeek } from './fill';
 import type { TemplatesView } from './shiftTemplates';
+import { inFrench, screenIsFrench } from './demoFrench';
+import { liveTimes } from './demoLive';
 
 const FACILITY = { name: 'Lakeview Aquatic Centre', timezone: 'America/Vancouver' };
 const OFFSET = '-07:00';
@@ -220,7 +222,9 @@ export async function demoApi<T>(path: string, init: { method?: string; body?: u
   if (method === 'GET') {
     const body = data.get(path);
     if (body === undefined) throw new ApiError(404, 'NOT_IN_DEMO', 'This feature is not available in the demo.');
-    return sessionRead(session, path, body) as T;
+    // An open punch or a running lone-work session runs up to now; sample text follows the screen's language.
+    const answer = liveTimes(path, sessionRead(session, path, body));
+    return (screenIsFrench() ? inFrench(answer) : answer) as T;
   }
 
   // Changes look like they worked, but nothing is kept (the banner says so).
