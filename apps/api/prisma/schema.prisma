@@ -2180,6 +2180,9 @@ model PatrolRecord {
   id             String    @id @default(uuid()) @db.Uuid
   tenantId       String    @db.Uuid
   routeId        String    @db.Uuid
+  /// The route's name and road class when the patrol was done: a route renamed or reclassified later doesn't rewrite the record.
+  routeName      String?
+  routeClass     String?
   userId         String    @db.Uuid
   startedAt      DateTime  @default(now()) @db.Timestamptz(3)
   endedAt        DateTime? @db.Timestamptz(3)
