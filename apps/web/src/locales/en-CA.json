@@ -469,6 +469,7 @@
     "NO_PASSKEY": "No passkey on this account.",
     "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
+    "CSRF_REFUSED": "This request didn’t come from the Dev console. Reload the page and try again.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
     "ALREADY_ENDED": "This session has already ended.",
     "ACCOUNT_SUSPENDED": "Your organization’s account is read-only until the overdue balance is paid.",
