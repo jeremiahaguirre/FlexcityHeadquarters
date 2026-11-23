@@ -6,6 +6,8 @@ import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { tenantIds, withTenant } from '../../lib/db.js';
 import { maskEmail } from '../../lib/log.js';
 import { emailHtml } from './emailHtml.js';
+import { appUrl } from '../../auth/authTokens.js';
+import { config } from '../../config.js';
 
 export interface Mail {
   to: string;
@@ -41,32 +43,38 @@ export class ConsoleMailer implements Mailer {
 type Params = Record<string, unknown>;
 type Template = (p: Params) => { subject: string; text: string };
 
-const APP_URL = () => process.env.PUBLIC_APP_URL ?? 'http://localhost:3000';
+/**
+ * The organization's own app address for links (`https://<subdomain>.…`): set from its subdomain when
+ * the email is sent (deliverEmailTenant). PUBLIC_APP_URL is a template with {subdomain} in it, so
+ * it is never put in an email as it is.
+ */
+const APP_URL_PARAM = '_appUrl';
+const base = (p: Params) => String(p[APP_URL_PARAM] ?? config().PUBLIC_APP_URL.replace('{subdomain}.', '').replace('{subdomain}', ''));
 
 const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   maintenance_scheduled: {
-    'en-CA': (p) => ({ subject: `Planned maintenance: ${p.whenEn}`, text: `FlexcityHeadquarters has planned maintenance for ${p.whenEn}.\n\n${p.messageEn}\n\nEveryone in your organization will see a notice in the app the day before and while it lasts.\n${APP_URL()}/whats-new` }),
-    'fr-CA': (p) => ({ subject: `Maintenance prévue : ${p.whenFr}`, text: `FlexcityHeadquarters a prévu une maintenance le ${p.whenFr}.\n\n${p.messageFr}\n\nToutes les personnes de votre organisation verront un avis dans l’application la veille et pendant la maintenance.\n${APP_URL()}/whats-new` }),
+    'en-CA': (p) => ({ subject: `Planned maintenance: ${p.whenEn}`, text: `FlexcityHeadquarters has planned maintenance for ${p.whenEn}.\n\n${p.messageEn}\n\nEveryone in your organization will see a notice in the app the day before and while it lasts.\n${base(p)}/whats-new` }),
+    'fr-CA': (p) => ({ subject: `Maintenance prévue : ${p.whenFr}`, text: `FlexcityHeadquarters a prévu une maintenance le ${p.whenFr}.\n\n${p.messageFr}\n\nToutes les personnes de votre organisation verront un avis dans l’application la veille et pendant la maintenance.\n${base(p)}/whats-new` }),
   },
   maintenance_soon: {
-    'en-CA': (p) => ({ subject: `Maintenance tomorrow: ${p.whenEn}`, text: `A reminder: FlexcityHeadquarters maintenance is planned for ${p.whenEn}.\n\n${p.messageEn}\n${APP_URL()}/whats-new` }),
-    'fr-CA': (p) => ({ subject: `Maintenance demain : ${p.whenFr}`, text: `Un rappel : une maintenance de FlexcityHeadquarters est prévue le ${p.whenFr}.\n\n${p.messageFr}\n${APP_URL()}/whats-new` }),
+    'en-CA': (p) => ({ subject: `Maintenance tomorrow: ${p.whenEn}`, text: `A reminder: FlexcityHeadquarters maintenance is planned for ${p.whenEn}.\n\n${p.messageEn}\n${base(p)}/whats-new` }),
+    'fr-CA': (p) => ({ subject: `Maintenance demain : ${p.whenFr}`, text: `Un rappel : une maintenance de FlexcityHeadquarters est prévue le ${p.whenFr}.\n\n${p.messageFr}\n${base(p)}/whats-new` }),
   },
   release_scheduled: {
-    'en-CA': (p) => ({ subject: `Coming ${p.whenEn}: ${p.titleEn}`, text: `FlexcityHeadquarters will change some features for your organization on ${p.whenEn}.\n\n${p.summaryEn}\n\nWhat changes, and anything your organization chose itself that stays as it is:\n${APP_URL()}/whats-new` }),
-    'fr-CA': (p) => ({ subject: `À venir le ${p.whenFr} : ${p.titleFr}`, text: `FlexcityHeadquarters modifiera certaines fonctions pour votre organisation le ${p.whenFr}.\n\n${p.summaryFr}\n\nCe qui change, et ce que votre organisation a choisi elle-même et qui reste tel quel :\n${APP_URL()}/whats-new` }),
+    'en-CA': (p) => ({ subject: `Coming ${p.whenEn}: ${p.titleEn}`, text: `FlexcityHeadquarters will change some features for your organization on ${p.whenEn}.\n\n${p.summaryEn}\n\nWhat changes, and anything your organization chose itself that stays as it is:\n${base(p)}/whats-new` }),
+    'fr-CA': (p) => ({ subject: `À venir le ${p.whenFr} : ${p.titleFr}`, text: `FlexcityHeadquarters modifiera certaines fonctions pour votre organisation le ${p.whenFr}.\n\n${p.summaryFr}\n\nCe qui change, et ce que votre organisation a choisi elle-même et qui reste tel quel :\n${base(p)}/whats-new` }),
   },
   injury_report_due: {
-    'en-CA': (p) => ({ subject: `Injury report to ${p.board} due`, text: `An employee injury report to ${p.board} is due by ${p.due} and isn't recorded as filed yet.\n${APP_URL()}/manage/injuries` }),
-    'fr-CA': (p) => ({ subject: `Déclaration de lésion à ${p.board} à remettre`, text: `Une déclaration de lésion professionnelle à ${p.board} doit être faite d’ici le ${p.due} et n’est pas encore inscrite comme envoyée.\n${APP_URL()}/manage/injuries` }),
+    'en-CA': (p) => ({ subject: `Injury report to ${p.board} due`, text: `An employee injury report to ${p.board} is due by ${p.due} and isn't recorded as filed yet.\n${base(p)}/manage/injuries` }),
+    'fr-CA': (p) => ({ subject: `Déclaration de lésion à ${p.board} à remettre`, text: `Une déclaration de lésion professionnelle à ${p.board} doit être faite d’ici le ${p.due} et n’est pas encore inscrite comme envoyée.\n${base(p)}/manage/injuries` }),
   },
   vehicle_out_of_service: {
-    'en-CA': (p) => ({ subject: `Vehicle ${p.unit} out of service`, text: `A pre-trip inspection found a major defect on unit ${p.unit}: ${p.reason}.\nIt's out of service until a repair is recorded:\n${APP_URL()}/manage/fleet` }),
-    'fr-CA': (p) => ({ subject: `Véhicule ${p.unit} hors service`, text: `Une inspection avant départ a relevé une défectuosité majeure sur l’unité ${p.unit} : ${p.reason}.\nIl est hors service jusqu’à ce qu’une réparation soit consignée :\n${APP_URL()}/manage/fleet` }),
+    'en-CA': (p) => ({ subject: `Vehicle ${p.unit} out of service`, text: `A pre-trip inspection found a major defect on unit ${p.unit}: ${p.reason}.\nIt's out of service until a repair is recorded:\n${base(p)}/manage/fleet` }),
+    'fr-CA': (p) => ({ subject: `Véhicule ${p.unit} hors service`, text: `Une inspection avant départ a relevé une défectuosité majeure sur l’unité ${p.unit} : ${p.reason}.\nIl est hors service jusqu’à ce qu’une réparation soit consignée :\n${base(p)}/manage/fleet` }),
   },
   coverage_gap: {
-    'en-CA': (p) => ({ subject: `Coverage gap: ${p.rule}`, text: `The schedule doesn't cover "${p.rule}" in the next two days (${p.count} gap${Number(p.count) === 1 ? '' : 's'}). Assign someone who holds the certificate:\n${APP_URL()}/manage/coverage` }),
-    'fr-CA': (p) => ({ subject: `Couverture manquante : ${p.rule}`, text: `L’horaire ne couvre pas « ${p.rule} » dans les deux prochains jours (${p.count} période(s) non couverte(s)). Affectez une personne qui détient le certificat :\n${APP_URL()}/manage/coverage` }),
+    'en-CA': (p) => ({ subject: `Coverage gap: ${p.rule}`, text: `The schedule doesn't cover "${p.rule}" in the next two days (${p.count} gap${Number(p.count) === 1 ? '' : 's'}). Assign someone who holds the certificate:\n${base(p)}/manage/coverage` }),
+    'fr-CA': (p) => ({ subject: `Couverture manquante : ${p.rule}`, text: `L’horaire ne couvre pas « ${p.rule} » dans les deux prochains jours (${p.count} période(s) non couverte(s)). Affectez une personne qui détient le certificat :\n${base(p)}/manage/coverage` }),
   },
   signup_confirmation: {
     'en-CA': (p) => ({
@@ -105,45 +113,45 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     'fr-CA': (p) => ({ subject: 'Dépôt direct en place', text: `Votre paie sera maintenant déposée dans le compte se terminant par ${p.last4}.\n\nSi vous n’avez pas demandé ce changement, avisez immédiatement la paie ou les RH.` }),
   },
   bank_rejected: {
-    'en-CA': (p) => ({ subject: 'Direct deposit details not accepted', text: `Payroll couldn't verify the account ending in ${p.last4}. Your pay continues to go where it did before. Check the details in the app or contact payroll:\n${APP_URL()}/pay` }),
-    'fr-CA': (p) => ({ subject: 'Renseignements de dépôt direct refusés', text: `La paie n’a pas pu vérifier le compte se terminant par ${p.last4}. Votre paie continue d’être versée comme avant. Vérifiez les renseignements dans l’application ou communiquez avec la paie :\n${APP_URL()}/pay` }),
+    'en-CA': (p) => ({ subject: 'Direct deposit details not accepted', text: `Payroll couldn't verify the account ending in ${p.last4}. Your pay continues to go where it did before. Check the details in the app or contact payroll:\n${base(p)}/pay` }),
+    'fr-CA': (p) => ({ subject: 'Renseignements de dépôt direct refusés', text: `La paie n’a pas pu vérifier le compte se terminant par ${p.last4}. Votre paie continue d’être versée comme avant. Vérifiez les renseignements dans l’application ou communiquez avec la paie :\n${base(p)}/pay` }),
   },
   pay_statement_ready: {
-    'en-CA': (p) => ({ subject: `Your pay statement for ${p.payDate}`, text: `Your pay statement for ${p.payDate} is ready in the app:\n${APP_URL()}/pay` }),
-    'fr-CA': (p) => ({ subject: `Votre relevé de paie du ${p.payDate}`, text: `Votre relevé de paie du ${p.payDate} est prêt dans l’application :\n${APP_URL()}/pay` }),
+    'en-CA': (p) => ({ subject: `Your pay statement for ${p.payDate}`, text: `Your pay statement for ${p.payDate} is ready in the app:\n${base(p)}/pay` }),
+    'fr-CA': (p) => ({ subject: `Votre relevé de paie du ${p.payDate}`, text: `Votre relevé de paie du ${p.payDate} est prêt dans l’application :\n${base(p)}/pay` }),
   },
   report_ready: {
-    'en-CA': (p) => ({ subject: `Report: ${p.name} (${p.from} to ${p.to})`, text: `${p.name}, ${p.from} to ${p.to}: ${p.count} row(s).\n\n${p.preview}\n\nOpen the full report and download it as a spreadsheet:\n${APP_URL()}/manage/reports` }),
-    'fr-CA': (p) => ({ subject: `Rapport : ${p.name} (du ${p.from} au ${p.to})`, text: `${p.name}, du ${p.from} au ${p.to} : ${p.count} ligne(s).\n\n${p.preview}\n\nOuvrez le rapport complet et téléchargez-le en tableur :\n${APP_URL()}/manage/reports` }),
+    'en-CA': (p) => ({ subject: `Report: ${p.name} (${p.from} to ${p.to})`, text: `${p.name}, ${p.from} to ${p.to}: ${p.count} row(s).\n\n${p.preview}\n\nOpen the full report and download it as a spreadsheet:\n${base(p)}/manage/reports` }),
+    'fr-CA': (p) => ({ subject: `Rapport : ${p.name} (du ${p.from} au ${p.to})`, text: `${p.name}, du ${p.from} au ${p.to} : ${p.count} ligne(s).\n\n${p.preview}\n\nOuvrez le rapport complet et téléchargez-le en tableur :\n${base(p)}/manage/reports` }),
   },
   callout_offer: {
     'en-CA': (p) => ({
       subject: `Call-out: can you work? Answer within ${p.minutes} minutes`,
-      text: `${p.reason} at ${p.facility}. You're next in line for this overtime. Answer in the app within ${p.minutes} minutes, or it goes to the next person:\n${APP_URL()}/call-outs`,
+      text: `${p.reason} at ${p.facility}. You're next in line for this overtime. Answer in the app within ${p.minutes} minutes, or it goes to the next person:\n${base(p)}/call-outs`,
     }),
     'fr-CA': (p) => ({
       subject: `Rappel au travail : êtes-vous disponible? Répondez d’ici ${p.minutes} minutes`,
-      text: `${p.reason} à ${p.facility}. Vous êtes la prochaine personne sur la liste pour ces heures supplémentaires. Répondez dans l’application d’ici ${p.minutes} minutes, sinon l’offre passe à la personne suivante :\n${APP_URL()}/call-outs`,
+      text: `${p.reason} à ${p.facility}. Vous êtes la prochaine personne sur la liste pour ces heures supplémentaires. Répondez dans l’application d’ici ${p.minutes} minutes, sinon l’offre passe à la personne suivante :\n${base(p)}/call-outs`,
     }),
   },
   lonework_escalated: {
     'en-CA': (p) => ({
       subject: `URGENT: ${p.name} hasn't checked in while working alone`,
-      text: `${p.name} missed a check-in at ${p.location} and still hasn't answered. Call them now, and send someone if you can't reach them.\n${APP_URL()}/manage/lone-work`,
+      text: `${p.name} missed a check-in at ${p.location} and still hasn't answered. Call them now, and send someone if you can't reach them.\n${base(p)}/manage/lone-work`,
     }),
     'fr-CA': (p) => ({
       subject: `URGENT : aucune vérification de ${p.name} (travail seul)`,
-      text: `${p.name} a manqué une vérification à ${p.location} et ne répond toujours pas. Appelez cette personne maintenant et envoyez quelqu’un si vous ne la joignez pas.\n${APP_URL()}/manage/lone-work`,
+      text: `${p.name} a manqué une vérification à ${p.location} et ne répond toujours pas. Appelez cette personne maintenant et envoyez quelqu’un si vous ne la joignez pas.\n${base(p)}/manage/lone-work`,
     }),
   },
   lonework_help: {
     'en-CA': (p) => ({
       subject: `URGENT: ${p.name} asked for help while working alone`,
-      text: `${p.name} pressed "I need help" at ${p.location}.${p.note ? ` Note: ${p.note}` : ''} Respond now; call 911 if anyone may be hurt.\n${APP_URL()}/manage/lone-work`,
+      text: `${p.name} pressed "I need help" at ${p.location}.${p.note ? ` Note: ${p.note}` : ''} Respond now; call 911 if anyone may be hurt.\n${base(p)}/manage/lone-work`,
     }),
     'fr-CA': (p) => ({
       subject: `URGENT : ${p.name} demande de l’aide (travail seul)`,
-      text: `${p.name} a appuyé sur « J’ai besoin d’aide » à ${p.location}.${p.note ? ` Note : ${p.note}` : ''} Intervenez maintenant; composez le 911 si quelqu’un pourrait être blessé.\n${APP_URL()}/manage/lone-work`,
+      text: `${p.name} a appuyé sur « J’ai besoin d’aide » à ${p.location}.${p.note ? ` Note : ${p.note}` : ''} Intervenez maintenant; composez le 911 si quelqu’un pourrait être blessé.\n${base(p)}/manage/lone-work`,
     }),
   },
   data_export_ready: {
@@ -159,11 +167,11 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   webhook_disabled: {
     'en-CA': (p) => ({
       subject: 'A webhook was turned off after repeated failures',
-      text: `FlexcityHeadquarters couldn't deliver events to ${p.host} (${p.failures} tries in a row failed), so the webhook was turned off. Check the receiving system, then turn it back on in Settings › Integrations. Missed events can be sent again from the deliveries list.\n${APP_URL()}/manage/settings?tab=integrations`,
+      text: `FlexcityHeadquarters couldn't deliver events to ${p.host} (${p.failures} tries in a row failed), so the webhook was turned off. Check the receiving system, then turn it back on in Settings › Integrations. Missed events can be sent again from the deliveries list.\n${base(p)}/manage/settings?tab=integrations`,
     }),
     'fr-CA': (p) => ({
       subject: 'Un webhook a été désactivé après des échecs répétés',
-      text: `FlexcityHeadquarters n’a pas pu livrer d’événements à ${p.host} (${p.failures} essais de suite ont échoué); le webhook a donc été désactivé. Vérifiez le système qui les reçoit, puis réactivez-le dans Paramètres › Intégrations. Les événements manqués peuvent être renvoyés depuis la liste des livraisons.\n${APP_URL()}/manage/settings?tab=integrations`,
+      text: `FlexcityHeadquarters n’a pas pu livrer d’événements à ${p.host} (${p.failures} essais de suite ont échoué); le webhook a donc été désactivé. Vérifiez le système qui les reçoit, puis réactivez-le dans Paramètres › Intégrations. Les événements manqués peuvent être renvoyés depuis la liste des livraisons.\n${base(p)}/manage/settings?tab=integrations`,
     }),
   },
   sso_changed: {
@@ -235,37 +243,37 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     }),
   },
   shift_assigned: {
-    'en-CA': () => ({ subject: 'A shift was added to your schedule', text: `See your schedule: ${APP_URL()}/schedule` }),
-    'fr-CA': () => ({ subject: 'Un quart a été ajouté à votre horaire', text: `Consultez votre horaire : ${APP_URL()}/schedule` }),
+    'en-CA': (p) => ({ subject: 'A shift was added to your schedule', text: `See your schedule: ${base(p)}/schedule` }),
+    'fr-CA': (p) => ({ subject: 'Un quart a été ajouté à votre horaire', text: `Consultez votre horaire : ${base(p)}/schedule` }),
   },
   claim_needs_approval: {
     'en-CA': (p) => ({
       subject: 'A shift claim needs your approval',
-      text: `A claim would add ${p.overtimeHours} h of overtime. Review it: ${APP_URL()}/manage/approvals`,
+      text: `A claim would add ${p.overtimeHours} h of overtime. Review it: ${base(p)}/manage/approvals`,
     }),
     'fr-CA': (p) => ({
       subject: 'Une demande de quart attend votre approbation',
-      text: `Cette demande ajouterait ${p.overtimeHours} h supplémentaires. À examiner : ${APP_URL()}/manage/approvals`,
+      text: `Cette demande ajouterait ${p.overtimeHours} h supplémentaires. À examiner : ${base(p)}/manage/approvals`,
     }),
   },
   time_off_decided: {
     'en-CA': (p) => ({
       subject: `Your time-off request was ${p.status === 'APPROVED' ? 'approved' : 'declined'}`,
-      text: `Details: ${APP_URL()}/time-off`,
+      text: `Details: ${base(p)}/time-off`,
     }),
     'fr-CA': (p) => ({
       subject: `Votre demande de congé a été ${p.status === 'APPROVED' ? 'approuvée' : 'refusée'}`,
-      text: `Détails : ${APP_URL()}/time-off`,
+      text: `Détails : ${base(p)}/time-off`,
     }),
   },
   cert_expiring: {
     'en-CA': (p) => ({
       subject: `${p.certification} expires in ${p.days} days`,
-      text: `Renew it before ${p.expiryDate} to stay eligible for shifts. ${APP_URL()}/profile`,
+      text: `Renew it before ${p.expiryDate} to stay eligible for shifts. ${base(p)}/profile`,
     }),
     'fr-CA': (p) => ({
       subject: `${p.certification} expire dans ${p.days} jours`,
-      text: `Renouvelez-la avant le ${p.expiryDate} pour rester admissible aux quarts. ${APP_URL()}/profile`,
+      text: `Renouvelez-la avant le ${p.expiryDate} pour rester admissible aux quarts. ${base(p)}/profile`,
     }),
   },
   invoice: {
@@ -305,10 +313,11 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
   },
 };
 
-export function renderEmail(template: string, locale: string, params: Params): { subject: string; text: string } {
+/** `orgUrl`: the organization's app address (appUrl(subdomain, '')), for the links in the message. */
+export function renderEmail(template: string, locale: string, params: Params, orgUrl?: string): { subject: string; text: string } {
   const t = TEMPLATES[template];
   if (!t) throw new Error(`Unknown email template: ${template}`);
-  const m = (locale.startsWith('fr') ? t['fr-CA'] : t['en-CA'])(params);
+  const m = (locale.startsWith('fr') ? t['fr-CA'] : t['en-CA'])(orgUrl ? { ...params, [APP_URL_PARAM]: orgUrl } : params);
   return { subject: m.subject, text: `${m.text}\n\n${transactionalFooter(template, locale)}` };
 }
 
@@ -353,6 +362,9 @@ export async function deliverEmailTenant(tenantId: string, mailer: Mailer, opts:
   let sent = 0;
   let failed = 0;
   const safety = Prisma.join(SAFETY_EMAILS);
+  // Links go to this organization's own address.
+  const sub = await withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { subdomain: true } }), { prisma: opts.prisma });
+  const orgUrl = sub ? appUrl(sub.subdomain, '') : undefined;
   for (let i = 0; i < (opts.limit ?? 50); i++) {
     const r = await withTenant(
       tenantId,
@@ -367,7 +379,7 @@ export async function deliverEmailTenant(tenantId: string, mailer: Mailer, opts:
         if (!m) return null;
         let error: string | null = null;
         try {
-          const { subject, text } = renderEmail(m.template, m.locale, m.params);
+          const { subject, text } = renderEmail(m.template, m.locale, m.params, orgUrl);
           await mailer.send({ to: m.toEmail, subject, text, html: emailHtml(subject, text, m.locale) });
         } catch (err) {
           error = String(err instanceof Error ? err.message : err).slice(0, 500);
