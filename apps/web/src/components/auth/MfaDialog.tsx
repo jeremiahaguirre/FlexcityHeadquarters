@@ -11,6 +11,7 @@ import { ApiError } from '@/lib/apiError';
 import { CODE_LENGTH, type CodeChannel, type CodeOptions, RESEND_SECONDS, codeOptions, normalizeCode, sendCode, verifyCode } from '@/lib/mfaCodes';
 import { addPasskey, cancelled, passkeysSupported, stepUpWithPasskey } from '@/lib/passkeys';
 import { PasskeyIcon } from './PasskeyIcon';
+import { errorText } from '@/lib/apiError';
 
 type Step = 'start' | 'channel' | 'code';
 type Sent = { channel: CodeChannel; destination: string };
@@ -89,7 +90,7 @@ export function MfaDialog() {
       const left = (e.details as { attemptsLeft?: number } | undefined)?.attemptsLeft;
       return left ? t('mfa.codeErrors.MFA_CODE_WRONG_left', { count: left }) : t('mfa.codeErrors.MFA_CODE_WRONG');
     }
-    return t(`mfa.codeErrors.${e.code}`, { defaultValue: t(`errors.${e.code}`, { defaultValue: e.message }) });
+    return t(`mfa.codeErrors.${e.code}`, { defaultValue: errorText(t, e) });
   };
 
   async function withPasskey() {
@@ -100,7 +101,7 @@ export function MfaDialog() {
       else await addPasskey();
       finish(true);
     } catch (e) {
-      if (!cancelled(e)) setError(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('passkeys.failed'));
+      if (!cancelled(e)) setError(errorText(t, e, t('passkeys.failed')));
     } finally {
       setBusy(null);
     }

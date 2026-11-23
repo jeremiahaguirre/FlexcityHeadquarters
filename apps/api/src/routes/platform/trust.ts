@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { config } from '../../config.js';
 import { db } from '../../lib/db.js';
-import { badRequest, forbidden, HttpError, notFound } from '../../lib/errors.js';
+import { HttpError, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { open, seal } from '../../services/crypto/envelope.js';
 import { auditorBundle, postureSummary, postureSummaryCsv, postureSummaryPdf } from '../../services/trust/exports.js';
 import { CONTROLS, FRAMEWORKS, FRAMEWORK_KEYS, LIBRARY_VERSION, controlByKey, type FrameworkKey } from '../../services/trust/library.js';
@@ -208,7 +208,7 @@ trustRouter.patch(
     const b = z.object({ ownerId, manualStatus: z.enum(['PASSING', 'FAILING', 'NEEDS_EVIDENCE', 'NOT_APPLICABLE']).nullable().optional(), justification: optText(1000), notes: optText(2000) }).parse(req.body);
     const before = await db().trustControlState.findUnique({ where: { key } });
     const just = b.justification !== undefined ? b.justification : before?.justification;
-    if (b.manualStatus && !just) throw badRequest('Say why: a manual status needs a justification.');
+    if (b.manualStatus && !just) throw invalid('REASON_REQUIRED', 'Say why: a manual status needs a justification.');
     const p = platformOf(req);
     const out = await db().trustControlState.upsert({ where: { key }, create: { key, ...b, updatedById: p.adminId }, update: { ...b, updatedById: p.adminId } });
     await audit(p.adminId, 'control.update', { key, ...b });
@@ -318,16 +318,16 @@ trustRouter.post(
     const id = randomUUID();
     let file: Record<string, unknown> = {};
     if (b.kind === 'FILE') {
-      if (!b.data || !b.fileName) throw badRequest('Attach a file.');
+      if (!b.data || !b.fileName) throw invalid('FILE_REQUIRED', 'Attach a file.');
       const buf = Buffer.from(b.data.slice(b.data.indexOf(',') + 1), 'base64');
-      if (!buf.length) throw badRequest('The file is empty.');
+      if (!buf.length) throw invalid('FILE_EMPTY', 'The file is empty.');
       if (buf.length > MAX_BYTES) throw new HttpError(413, 'TOO_LARGE', 'Files can be up to 10 MB.');
       const type = sniff(buf);
       if (!type) throw new HttpError(415, 'UNSUPPORTED_TYPE', 'Upload a PDF, PNG, JPEG or WebP file.');
       const sealed = await seal(keys(), kekId(), buf.toString('base64'), aad(id));
       file = { fileName: storedName(b.fileName, type), contentType: type, size: buf.length, sha256: createHash('sha256').update(buf).digest('hex'), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId };
-    } else if (b.kind === 'LINK' && !b.url) throw badRequest('Add the link.');
-    else if (b.kind === 'CI' && !b.result) throw badRequest('Say whether the run passed.');
+    } else if (b.kind === 'LINK' && !b.url) throw invalid('LINK_REQUIRED', 'Add the link.');
+    else if (b.kind === 'CI' && !b.result) throw invalid('RESULT_REQUIRED', 'Say whether the run passed.');
     const e = await db().trustEvidence.create({ data: { id, controlKey: b.controlKey, kind: b.kind, title: b.title, url: b.url ?? null, note: b.note ?? null, result: b.kind === 'CI' ? b.result : null, validUntil: b.validUntil ?? null, addedById: p.adminId, ...file }, select: EVIDENCE_LIST });
     if (b.requestId) await db().trustEvidenceRequest.updateMany({ where: { id: b.requestId, status: 'OPEN' }, data: { status: 'DONE', evidenceId: id, closedAt: new Date() } });
     await audit(p.adminId, 'evidence.add', { id, controlKey: b.controlKey, kind: b.kind, size: e.size, sha256: e.sha256 });
@@ -472,10 +472,10 @@ trustRouter.post(
     if (!v) throw notFound('Policy version');
     const now = new Date();
     if (step === 'approve') {
-      if (v.status !== 'DRAFT') throw badRequest('Only a draft can be approved.');
+      if (v.status !== 'DRAFT') throw invalid('NOT_DRAFT', 'Only a draft can be approved.');
       await db().trustPolicyVersion.update({ where: { id: vid }, data: { status: 'APPROVED', approvedById: p.adminId, approvedAt: now } });
     } else {
-      if (v.status !== 'APPROVED') throw badRequest('Approve the version before publishing it.');
+      if (v.status !== 'APPROVED') throw invalid('NOT_APPROVED', 'Approve the version before publishing it.');
       await db().$transaction([
         db().trustPolicyVersion.updateMany({ where: { policyId: id, status: 'PUBLISHED' }, data: { status: 'RETIRED' } }),
         db().trustPolicyVersion.update({ where: { id: vid }, data: { status: 'PUBLISHED', publishedAt: now } }),
@@ -494,7 +494,7 @@ trustRouter.post(
     const id = uuid.parse(req.params.id);
     const p = platformOf(req);
     const v = await db().trustPolicyVersion.findFirst({ where: { policyId: id, status: 'PUBLISHED' } });
-    if (!v) throw badRequest('This policy isn’t published yet.');
+    if (!v) throw invalid('NOT_PUBLISHED', 'This policy isn’t published yet.');
     await db().trustPolicyAck.createMany({ data: [{ versionId: v.id, adminId: p.adminId }], skipDuplicates: true });
     await audit(p.adminId, 'policy.ack', { id, version: v.version });
     res.status(201).json({ version: v.version });
@@ -668,7 +668,7 @@ trustRouter.get(
 async function checkTenant(tenantId: string | null | undefined) {
   if (!tenantId) return;
   const ids = await db().$queryRaw<Array<{ id: string }>>`SELECT all_tenant_ids() AS id`;
-  if (!ids.some((x) => x.id === tenantId)) throw badRequest('Unknown organization.');
+  if (!ids.some((x) => x.id === tenantId)) throw invalid('UNKNOWN_ORGANIZATION', 'Unknown organization.');
 }
 
 trustRouter.post(
@@ -710,7 +710,7 @@ trustRouter.post(
     const p = platformOf(req);
     const c = await db().trustCommitment.findUnique({ where: { id } });
     if (!c) throw notFound('Commitment');
-    if (c.status !== 'OPEN') throw badRequest('This commitment is already closed.');
+    if (c.status !== 'OPEN') throw invalid('ALREADY_CLOSED', 'This commitment is already closed.');
     const next = c.dueAt ? nextDue(c.dueAt, c.recurrence as 'NONE') : null;
     const [, out] = await db().$transaction([
       db().trustCommitmentFulfilment.create({ data: { commitmentId: id, dueAt: c.dueAt, note: b.note ?? null, evidenceId: b.evidenceId ?? null, byId: p.adminId } }),

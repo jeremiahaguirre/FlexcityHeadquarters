@@ -14,6 +14,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { dateFormat } from '@/lib/format';
 import { formatLocal } from '@/lib/localTime';
+import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { type DepartmentRules, type LateChange, type OrgRules, PREMIUM_PRESETS, type PremiumKind, type PremiumRule, type WorkRulesView, clock, numOrNull, windowMinutes } from '@/lib/workRules';
 
@@ -425,6 +426,7 @@ function LateChangesCard({ canWaive }: { canWaive: boolean }) {
 /** Work rules: what the law asks, the organization's rules, departments' agreements, positions, late changes. */
 export default function WorkRulesPage() {
   const { t } = useTranslation();
+  const { can } = useSession();
   const q = useQuery<WorkRulesView>('/api/schedule/work-rules');
   const { run, busy } = useAction();
   const [org, setOrg] = useState<OrgRules | null>(null);
@@ -452,7 +454,7 @@ export default function WorkRulesPage() {
       <PremiumsCard data={data} reload={q.reload} />
       <DepartmentCard data={data} reload={q.reload} />
       <PositionsCard data={data} reload={q.reload} />
-      <LateChangesCard canWaive={data.canConfigure} />
+      {can('schedule.write') || can('payroll.export') ? <LateChangesCard canWaive={data.canConfigure} /> : null}
     </div>
   );
 }

@@ -51,6 +51,7 @@ import { formatDate, formatHours, formatMoney, formatTimeRange } from '@/lib/for
 import { useSession } from '@/lib/session';
 import { plusDays, useQuery } from '@/lib/useQuery';
 import { zonedToInstant } from '@/lib/tz';
+import { errorText } from '@/lib/apiError';
 
 type Step = 'setup' | 'priorities' | 'running' | 'review';
 
@@ -161,7 +162,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
       setReview(emptyReview());
       setStep('review');
     } catch (e) {
-      setError(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'));
+      setError(errorText(t, e));
       setStep('priorities');
     }
   }
@@ -189,7 +190,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
       toast(r.skipped.length ? t('fill.acceptedSome', { count: r.applied, skipped: r.skipped.length }) : t('fill.accepted', { count: r.applied }), r.skipped.length ? 'warn' : 'ok');
       onChanged();
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
     } finally {
       setBusy(null);
     }
@@ -257,7 +258,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
         const tz = o?.facilities.find((f) => f.id === it.slot.facilityId)?.timezone ?? 'America/Toronto';
         setPublishGroups({ key: `post-${it.slot.id}`, slotIds: [it.slot.id], groups: [{ facilityId: it.slot.facilityId, timezone: tz, shiftIds: [id], from: zonedToInstant(weekStart, '00:00', tz).toISOString(), to: zonedToInstant(plusDays(weekStart, horizon * 7), '00:00', tz).toISOString() }] });
       } catch (e) {
-        toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+        toast(errorText(t, e), 'warn');
       } finally {
         setBusy(null);
       }
@@ -274,7 +275,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
       toast(t('fill.createdOpen'), 'ok');
       onChanged();
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
     } finally {
       setBusy(null);
     }
@@ -293,7 +294,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
       toast(t('builder.assigned'), 'ok');
       onChanged();
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
     } finally {
       setBusy(null);
     }
@@ -316,7 +317,7 @@ export function FillSchedule({ open, onClose, weekStart, onChanged }: { open: bo
       await api('/api/schedule/fill/settings', { method: 'PUT', body: { departmentId: departmentId === 'none' ? null : departmentId, weights, toggles } });
       toast(t('fill.savedDefaults'), 'ok');
     } catch (e) {
-      toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      toast(errorText(t, e), 'warn');
     } finally {
       setBusy(null);
     }

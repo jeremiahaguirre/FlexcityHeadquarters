@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import type { Tx } from '../lib/db.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { approversFor, teamOf, teamQuery } from '../services/people/reporting.js';
 import { kmThisYear, mileageAmount, mileagePolicy } from '../services/payroll/expenses.js';
@@ -73,17 +73,17 @@ expensesRouter.post(
       const rows = [];
       for (const [n, i] of b.items.entries()) {
         const at = `Line ${n + 1}`;
-        if (i.date > new Date().toISOString().slice(0, 10)) throw badRequest(`${at}: the date is in the future.`);
+        if (i.date > new Date().toISOString().slice(0, 10)) throw invalid('EXPENSE_DATE_FUTURE', `${at}: the date is in the future.`, { line: n + 1 });
         if (i.category === 'MILEAGE') {
-          if (!i.km) throw badRequest(`${at}: enter the kilometres driven.`);
+          if (!i.km) throw invalid('KM_REQUIRED', `${at}: enter the kilometres driven.`, { line: n + 1 });
           const year = Number(i.date.slice(0, 4));
           const before = kmBefore.get(year) ?? (await kmThisYear(tx, a.userId, year));
           const m = mileageAmount(before, i.km, policy);
           kmBefore.set(year, before + i.km);
           rows.push({ ...i, amount: m.amount, centsPerKm: m.centsPerKm, receipt: null });
         } else {
-          if (!i.amount) throw badRequest(`${at}: enter the amount.`);
-          if (i.amount > policy.receiptOver && !i.receipt) throw new HttpError(400, 'RECEIPT_NEEDED', `${at}: attach the receipt (needed above $${policy.receiptOver}).`, { line: n + 1 });
+          if (!i.amount) throw invalid('AMOUNT_REQUIRED', `${at}: enter the amount.`, { line: n + 1 });
+          if (i.amount > policy.receiptOver && !i.receipt) throw new HttpError(400, 'RECEIPT_NEEDED', `${at}: attach the receipt (needed above $${policy.receiptOver}).`, { line: n + 1, over: policy.receiptOver });
           rows.push({ ...i, amount: r2(i.amount), centsPerKm: null });
         }
       }

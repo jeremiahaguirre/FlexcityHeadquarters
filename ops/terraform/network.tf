@@ -131,14 +131,41 @@ resource "aws_vpc_security_group_egress_rule" "alb_out" {
   ip_protocol       = "-1"
 }
 
-resource "aws_security_group" "app" {
-  name        = "${local.name}-app"
-  description = "API, worker, web and migration tasks"
+# One security group per kind of task, each allowed only what it needs (SECURITY-AUDIT SEC-53).
+# Before, one group covered every task, so the internet-facing web tasks could reach PostgreSQL and
+# call the API directly (past the firewall and the load balancer's ops-path block).
+#
+# Fargate pulls images, writes logs and reads secrets through the task's own network interface, so
+# every group keeps HTTPS out to AWS's public endpoints (through the NAT; S3 through its gateway
+# endpoint). Amazon's VPC DNS resolver is not filtered by security groups.
+resource "aws_security_group" "web" {
+  name        = "${local.name}-web"
+  description = "Web tasks: from the load balancer; out to the API and HTTPS only, never the database"
   vpc_id      = aws_vpc.main.id
 }
 
-resource "aws_vpc_security_group_ingress_rule" "app_api" {
-  security_group_id            = aws_security_group.app.id
+resource "aws_security_group" "api" {
+  name        = "${local.name}-api"
+  description = "API tasks: from the load balancer and the web tasks"
+  vpc_id      = aws_vpc.main.id
+}
+
+resource "aws_security_group" "worker" {
+  name        = "${local.name}-worker"
+  description = "Worker tasks: nothing in"
+  vpc_id      = aws_vpc.main.id
+}
+
+resource "aws_security_group" "jobs" {
+  name        = "${local.name}-jobs"
+  description = "One-off tasks (migrations, database roles, operator scripts): nothing in; the database and HTTPS out"
+  vpc_id      = aws_vpc.main.id
+}
+
+# ---- In ---------------------------------------------------------------------------------------
+resource "aws_vpc_security_group_ingress_rule" "api_alb" {
+  description                  = "Load balancer to API"
+  security_group_id            = aws_security_group.api.id
   referenced_security_group_id = aws_security_group.alb.id
   from_port                    = 4000
   to_port                      = 4000
@@ -146,50 +173,99 @@ resource "aws_vpc_security_group_ingress_rule" "app_api" {
 }
 
 # The web tasks' server-side calls to the API (api.<name>.internal:4000, compute.tf).
-resource "aws_vpc_security_group_ingress_rule" "app_internal_api" {
+resource "aws_vpc_security_group_ingress_rule" "api_web" {
   description                  = "Web app server to API"
-  security_group_id            = aws_security_group.app.id
-  referenced_security_group_id = aws_security_group.app.id
+  security_group_id            = aws_security_group.api.id
+  referenced_security_group_id = aws_security_group.web.id
   from_port                    = 4000
   to_port                      = 4000
   ip_protocol                  = "tcp"
 }
 
-resource "aws_vpc_security_group_ingress_rule" "app_metrics" {
+resource "aws_vpc_security_group_ingress_rule" "api_metrics" {
   count                        = var.metrics_collector_security_group == "" ? 0 : 1
   description                  = "Prometheus scrape of /metrics"
-  security_group_id            = aws_security_group.app.id
+  security_group_id            = aws_security_group.api.id
   referenced_security_group_id = var.metrics_collector_security_group
   from_port                    = 4000
   to_port                      = 4000
   ip_protocol                  = "tcp"
 }
 
-resource "aws_vpc_security_group_ingress_rule" "app_web" {
-  security_group_id            = aws_security_group.app.id
+resource "aws_vpc_security_group_ingress_rule" "web_alb" {
+  description                  = "Load balancer to web"
+  security_group_id            = aws_security_group.web.id
   referenced_security_group_id = aws_security_group.alb.id
   from_port                    = 3000
   to_port                      = 3000
   ip_protocol                  = "tcp"
 }
 
-# Outbound: the database, AWS services, and the providers the API calls (Twilio, push services,
-# Environment Canada weather, customers' webhooks), so HTTPS anywhere.
-resource "aws_vpc_security_group_egress_rule" "app_out" {
-  security_group_id = aws_security_group.app.id
+# ---- Out --------------------------------------------------------------------------------------
+# The API and worker call the database, AWS services and the providers (Twilio, push services,
+# Environment Canada weather, customers' webhooks, banks' SFTP for payroll files), on ports the
+# customers choose: everything out.
+resource "aws_vpc_security_group_egress_rule" "api_out" {
+  security_group_id = aws_security_group.api.id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
 }
 
+resource "aws_vpc_security_group_egress_rule" "worker_out" {
+  security_group_id = aws_security_group.worker.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
+
+# The web tasks: the API, and HTTPS for their image, logs and secrets. No database, no other ports.
+resource "aws_vpc_security_group_egress_rule" "web_api" {
+  description                  = "Web app server to API"
+  security_group_id            = aws_security_group.web.id
+  referenced_security_group_id = aws_security_group.api.id
+  from_port                    = 4000
+  to_port                      = 4000
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "web_https" {
+  description       = "HTTPS: image pull, logs, secrets"
+  security_group_id = aws_security_group.web.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "jobs_db" {
+  description                  = "Migrations and set-up scripts to PostgreSQL"
+  security_group_id            = aws_security_group.jobs.id
+  referenced_security_group_id = aws_security_group.db.id
+  from_port                    = 5432
+  to_port                      = 5432
+  ip_protocol                  = "tcp"
+}
+
+resource "aws_vpc_security_group_egress_rule" "jobs_https" {
+  description       = "HTTPS: image pull, logs, secrets, KMS"
+  security_group_id = aws_security_group.jobs.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 443
+  to_port           = 443
+  ip_protocol       = "tcp"
+}
+
 resource "aws_security_group" "db" {
   name        = "${local.name}-db"
-  description = "PostgreSQL from the app tasks only"
+  description = "PostgreSQL from the API, worker and one-off tasks only"
   vpc_id      = aws_vpc.main.id
 }
 
-resource "aws_vpc_security_group_ingress_rule" "db_app" {
+# The database: from the API, the worker and the one-off tasks. Never from the web tasks.
+resource "aws_vpc_security_group_ingress_rule" "db_from" {
+  for_each                     = { api = aws_security_group.api.id, worker = aws_security_group.worker.id, jobs = aws_security_group.jobs.id }
+  description                  = "PostgreSQL from ${each.key} tasks"
   security_group_id            = aws_security_group.db.id
-  referenced_security_group_id = aws_security_group.app.id
+  referenced_security_group_id = each.value
   from_port                    = 5432
   to_port                      = 5432
   ip_protocol                  = "tcp"
