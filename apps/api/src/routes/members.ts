@@ -78,6 +78,31 @@ membersRouter.post(
   }),
 );
 
+const householdBody = z.object({
+  name: z.string().trim().min(2).max(80),
+  address: z.string().trim().max(200).nullable().optional(),
+  emergencyName: z.string().trim().max(80).nullable().optional(),
+  emergencyPhone: z.string().trim().max(30).nullable().optional(),
+});
+
+/** A family's own details: a new address or emergency contact, a corrected name. */
+membersRouter.patch(
+  '/households/:id',
+  requirePermission('members.manage'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const b = householdBody.partial().parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.household.findUnique({ where: { id } });
+      if (!before) throw notFound('Family');
+      await tx.household.update({ where: { id }, data: b });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'household.update', entity: 'Household', entityId: id, before: { name: before.name, address: before.address, emergencyName: before.emergencyName, emergencyPhone: before.emergencyPhone }, after: b });
+    });
+    res.json({ ok: true });
+  }),
+);
+
 membersRouter.get(
   '/households/:id',
   requirePermission('members.manage'),
@@ -89,10 +114,12 @@ membersRouter.get(
       if (!hh) throw notFound('Family');
       // Children's details and health notes: every opening of a family's file is on record.
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'household.view', entity: 'Household', entityId: id });
-      const [enrollments, sales] = await Promise.all([
+      const [enrollments, sales, paid] = await Promise.all([
         tx.lessonEnrollment.findMany({ where: { householdId: id }, include: { lessonClass: true }, orderBy: { createdAt: 'desc' } }),
         tx.sale.findMany({ where: { householdId: id }, orderBy: { createdAt: 'desc' }, take: 100 }),
+        tx.sale.findMany({ where: { householdId: id, enrollmentId: { not: null }, refundedAt: null }, select: { enrollmentId: true } }),
       ]);
+      const paidFor = new Set(paid.map((s) => s.enrollmentId));
       const t = today();
       return {
         ...hh,
@@ -103,6 +130,8 @@ membersRouter.get(
           swimmerName: e.swimmerName,
           status: e.status,
           priceCents: e.priceCents,
+          // A confirmed spot with no payment on file (moved off the waitlist, or signed up online): front desk takes it.
+          paid: paidFor.has(e.id),
           set: { id: e.lessonClass.id, name: e.lessonClass.name, startsOn: iso(e.lessonClass.startsOn), endsOn: iso(e.lessonClass.endsOn), daysOfWeek: e.lessonClass.daysOfWeek.length ? e.lessonClass.daysOfWeek : [e.lessonClass.dayOfWeek], startMinute: e.lessonClass.startMinute },
         })),
         sales: sales.map((s) => ({ ...s, validFrom: iso(s.validFrom), validTo: iso(s.validTo) })),
@@ -123,7 +152,9 @@ membersRouter.post(
     const b = memberBody.parse(req.body);
     const m = await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.household.findUnique({ where: { id: householdId } }))) throw notFound('Family');
-      return tx.member.create({ data: { ...memberData(b), role: b.role, firstName: b.firstName, lastName: b.lastName, tenantId: a.tenantId, householdId } });
+      const created = await tx.member.create({ data: { ...memberData(b), role: b.role, firstName: b.firstName, lastName: b.lastName, tenantId: a.tenantId, householdId } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'member.create', entity: 'Member', entityId: created.id, after: { householdId, role: b.role } });
+      return created;
     });
     res.status(201).json({ id: m.id });
   }),
@@ -138,7 +169,20 @@ membersRouter.patch(
     await withTenant(a.tenantId, async (tx) => {
       const m = await tx.member.findFirst({ where: { id: uuid.parse(req.params.memberId), householdId: uuid.parse(req.params.id) } });
       if (!m) throw notFound('Member');
+      // A family always keeps a parent, guardian or adult.
+      if (b.role === 'CHILD' && m.role !== 'CHILD' && !(await tx.member.count({ where: { householdId: m.householdId, id: { not: m.id }, role: { not: 'CHILD' } } }))) {
+        throw new HttpError(400, 'NEEDS_GUARDIAN', 'Add at least one parent, guardian or adult.');
+      }
       await tx.member.update({ where: { id: m.id }, data: memberData(b) });
+      // Children's details and health notes: which fields really changed is on record (not the values).
+      const now = { ...m, ...memberData(b) } as Record<string, unknown>;
+      const same = (k: string) => {
+        const was = (m as Record<string, unknown>)[k];
+        const is = now[k];
+        return (was instanceof Date ? was.toISOString().slice(0, 10) : was ?? null) === (is instanceof Date ? is.toISOString().slice(0, 10) : is ?? null);
+      };
+      const fields = Object.keys(b).filter((k) => !same(k));
+      if (fields.length) await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'member.update', entity: 'Member', entityId: m.id, after: { fields } });
       // The instructor's list shows the latest safety note.
       if (b.safetyNote !== undefined) await tx.lessonEnrollment.updateMany({ where: { memberId: m.id, active: true }, data: { safetyNote: b.safetyNote } });
     });
