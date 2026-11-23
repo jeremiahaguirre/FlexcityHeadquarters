@@ -4492,7 +4492,12 @@
     "reportableHelp": "Les premiers soins seulement, sans perte de temps, restent au dossier sans déclaration. Si l’un ou l’autre change, mettez à jour et la déclaration devient due.",
     "save": "Enregistrer",
     "claimNumber": "Numéro de dossier de l’organisme",
-    "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu’une déclaration est en retard."
+    "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu’une déclaration est en retard.",
+    "update": "Mettre à jour",
+    "updateFor": "Mettre à jour la déclaration de lésion de {{name}}",
+    "updateHelp": "Indiquez une perte de temps ou des soins de santé constatés après l’enregistrement. Si l’un ou l’autre s’applique, la déclaration à l’organisme devient due.",
+    "updated": "Enregistré.",
+    "nowDue": "Enregistré. La déclaration à {{board}} est maintenant due : elle figure dans la liste à envoyer."
   },
   "departments": {
     "tabs": "Service",
