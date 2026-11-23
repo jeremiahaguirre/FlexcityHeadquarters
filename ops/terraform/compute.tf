@@ -33,6 +33,7 @@ locals {
   var.app_environment)
 
   app_secrets = [for k in var.app_secret_keys : { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }]
+  web_secrets = [for x in local.app_secrets : x if x.name == "INTERNAL_API_TOKEN"]
 
   # The owner connection for migrations and set-up (apps/api/scripts/owner-url.mjs): the password
   # comes straight from the RDS-managed secret, which RDS rotates, so it never goes stale.
@@ -170,8 +171,10 @@ resource "aws_ecs_task_definition" "web" {
     essential    = true
     portMappings = [{ containerPort = 3000, protocol = "tcp" }]
     environment  = [for k, v in local.web_env : { name = k, value = v }]
-    # Marks the web server's own calls to the API, which gives them their own rate-limit budget (SEC-48).
-    secrets          = [{ name = "INTERNAL_API_TOKEN", valueFrom = "${local.app_secret_arn}:INTERNAL_API_TOKEN::" }]
+    # Marks the web server's own calls to the API, which gives them their own rate-limit budget
+    # (SEC-48). Opt-in, like every key added after the first deployment: only once INTERNAL_API_TOKEN
+    # is in the app secret and in var.app_secret_keys (a task doesn't start if a key it names is missing).
+    secrets          = local.web_secrets
     logConfiguration = local.log["web"]
   }])
 }

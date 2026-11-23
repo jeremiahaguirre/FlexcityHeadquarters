@@ -137,7 +137,7 @@ variable "app_secret_keys" {
     only once they are in the secret.
   EOT
   type        = list(string)
-  default     = ["JWT_SECRET", "APP_DATABASE_URL", "LISTEN_DATABASE_URL", "METRICS_TOKEN", "INTERNAL_API_TOKEN"]
+  default     = ["JWT_SECRET", "APP_DATABASE_URL", "LISTEN_DATABASE_URL", "METRICS_TOKEN"]
 }
 
 variable "app_environment" {

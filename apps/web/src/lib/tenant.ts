@@ -39,15 +39,38 @@ export function subdomainFromHost(host: string | null): string | null {
   return sub && !sub.includes('.') ? sub : null;
 }
 
+/**
+ * Subdomains the API said have no organization, remembered for a minute in this process (at most
+ * UNKNOWN_MAX), so a visitor reloading or repeating made-up subdomains doesn't cost an API call each
+ * time: Next caches only good answers. Made-up subdomains that are all different are still bounded
+ * by the firewall's per-address limit and the API's internal budget (review of #77).
+ */
+export const UNKNOWN_TTL_MS = 60_000;
+export const UNKNOWN_MAX = 10_000;
+const unknown = new Map<string, number>();
+export function rememberUnknown(sub: string, now = Date.now()) {
+  unknown.delete(sub);
+  unknown.set(sub, now + UNKNOWN_TTL_MS);
+  if (unknown.size > UNKNOWN_MAX) unknown.delete(unknown.keys().next().value!);
+}
+export function knownUnknown(sub: string, now = Date.now()): boolean {
+  const until = unknown.get(sub);
+  if (until === undefined) return false;
+  if (until > now) return true;
+  unknown.delete(sub);
+  return false;
+}
+
 /** Server-side: branding for the current request's subdomain. */
 export async function currentTenant(): Promise<PublicTenant | null> {
   const sub = subdomainFromHost((await headers()).get('host'));
-  if (!sub) return null;
+  if (!sub || knownUnknown(sub)) return null;
   try {
     const res = await fetch(`${API_URL}/api/public/tenant`, {
       headers: tenantApiHeaders(sub),
       next: { revalidate: 60 },
     });
+    if (res.status === 404) rememberUnknown(sub);
     return res.ok ? ((await res.json()) as PublicTenant) : null;
   } catch {
     return null;

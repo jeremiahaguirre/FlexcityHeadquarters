@@ -67,13 +67,12 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    | `LISTEN_DATABASE_URL` | The same as `APP_DATABASE_URL` (direct to the database, never through a transaction pooler) |
    | `JWT_SECRET` | 64 random bytes, base64 |
    | `METRICS_TOKEN` | 32 random characters; also given to the metrics collector |
-   | `INTERNAL_API_TOKEN` | 48 random characters. The web tasks send it on their server-side calls to the API, which then rate-limits them on their own budget instead of the anonymous one every sign-in page shares |
 
    Database URLs are always written in this standard form. `pg` verifies the certificate and host name from it; the app connects only through `pg` (Prisma 7's driver adapter). Only the Prisma CLI used for migrations doesn't understand `verify-full`, so `prisma.config.ts` translates the URL to Prisma's own settings for it (`apps/api/src/lib/dbUrl.ts`). In production the API refuses to start without `sslmode=verify-full` and an `sslrootcert`, and refuses Prisma 5 URL parameters that `pg` would ignore (`connect_timeout`, `schema`, `pgbouncer`, `statement_cache_size`, `socket_timeout`).
 
    The owner (`fh_owner`) password is **not** copied into this secret: RDS manages and rotates it. The migration and database-role tasks read it from the RDS secret and build the connection themselves (`apps/api/scripts/owner-url.mjs`).
 
-   Optional keys can be added later: `TWILIO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `READ_REPLICA_URL`, `FLEXCITY_UNION_PASSWORD`. Add each one to `app_secret_keys` (or set `union_role_password`) and apply. A task won't start if a key it names is missing.
+   Optional keys can be added later: `INTERNAL_API_TOKEN` (48 random characters: the web tasks send it on their server-side calls, so the API rate-limits those on their own budget instead of the anonymous one every sign-in page shares; the web task gets it too once it is in `app_secret_keys`), `TWILIO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `READ_REPLICA_URL`, `FLEXCITY_UNION_PASSWORD`. Add each one to `app_secret_keys` (or set `union_role_password`) and apply. A task won't start if a key it names is missing.
 6. **Database roles, then migrations.** Run as one-off tasks in the private subnets with the jobs security group (all values are Terraform outputs):
    ```bash
    aws ecs run-task --cluster <cluster> --launch-type FARGATE --task-definition <db_roles_task_definition> \

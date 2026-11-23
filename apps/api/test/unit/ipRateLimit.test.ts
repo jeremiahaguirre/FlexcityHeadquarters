@@ -1,7 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { TokenBuckets, enabled, hasCredential, ipRateLimit, isInternal } from '../../src/lib/ipRateLimit.js';
+import { TokenBuckets, enabled, hasCredential, ipRateLimit, isInternal, warnUnusableInternalToken } from '../../src/lib/ipRateLimit.js';
 import { rateLimited } from '../../src/lib/metrics.js';
 
 function app(opts = { authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2 }) {
@@ -114,6 +114,17 @@ describe('global per-address limit', () => {
     // A wrong or short token is just anonymous.
     expect((await get({ 'x-fh-internal': 'nope' })).status).toBe(429);
     expect(isInternal({ headers: { 'x-fh-internal': token } } as never, 'short')).toBe(false);
+  });
+
+  it('a configured internal token too short to be used is reported, not silently ignored (review of #77)', () => {
+    const got: string[] = [];
+    expect(warnUnusableInternalToken('short-token', (m) => got.push(m))).toBe(true);
+    expect(got).toHaveLength(1);
+    expect(got[0]).toContain('INTERNAL_API_TOKEN');
+    expect(got[0]).not.toContain('short-token');
+    expect(warnUnusableInternalToken('t'.repeat(32), (m) => got.push(m))).toBe(false);
+    expect(warnUnusableInternalToken(undefined, (m) => got.push(m))).toBe(false);
+    expect(got).toHaveLength(1);
   });
 
   it('IPv6: one /64 shares a bucket', async () => {

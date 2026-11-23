@@ -37,7 +37,13 @@ export interface LimiterOptions {
   failuresPerMinute: number;
   /** Most addresses tracked per process before idle (full) buckets are forgotten. */
   maxAddresses?: number;
-  /** The web app's server-side calls, which all come from the web tasks' addresses (SEC-48). */
+  /**
+   * The web app's server-side calls, which all come from the web tasks' addresses (SEC-48). Only
+   * Next cache misses reach the API (each organization's branding at most once a minute per web
+   * task, its postings every 5 minutes), so the default 6000 a minute leaves room for thousands of
+   * organizations. A visitor making up subdomains is bounded by the firewall's per-address limit;
+   * the web app remembers unknown subdomains for a minute (apps/web lib/tenant.ts).
+   */
   internalPerMinute?: number;
   /** INTERNAL_API_TOKEN: a request carrying it in x-fh-internal is the web app's server. */
   internalToken?: string;
@@ -145,8 +151,19 @@ export const defaultOptions = (): LimiterOptions => ({
   internalToken: process.env.INTERNAL_API_TOKEN,
 });
 
+/**
+ * A token that is set but too short is ignored (isInternal): say so at boot, or the web server's
+ * renders would quietly fall back to the shared anonymous budget, the SEC-48 failure again.
+ */
+export function warnUnusableInternalToken(token: string | undefined, warn: (msg: string) => void = (m) => console.warn(m)): boolean {
+  if (!token || token.length >= 32) return false;
+  warn(`[warn] INTERNAL_API_TOKEN is set but shorter than 32 characters, so it is ignored: the web server's own calls get the shared anonymous rate limit. Use 48 random characters.`);
+  return true;
+}
+
 /** The middleware. `opts` fixed for tests; otherwise read from the environment once. */
 export function ipRateLimit(opts?: LimiterOptions & { force?: boolean }) {
+  if (!opts) warnUnusableInternalToken(process.env.INTERNAL_API_TOKEN);
   let state: { auth: TokenBuckets; anon: TokenBuckets; failures: TokenBuckets; internal: TokenBuckets; token?: string } | null = null;
   const buckets = () => {
     if (!state) {
