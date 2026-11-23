@@ -64,7 +64,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
+type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'kiosks' | 'pay' | 'calendar' | 'rules' | 'integrations';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -82,7 +82,7 @@ export default function SettingsPage() {
   const { t } = useTranslation();
   const { can } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
+  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(can('timeclock.review') ? (['kiosks'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
   // A link can open a tab (the email about a webhook that was turned off opens Integrations).
   useEffect(() => {
@@ -104,6 +104,8 @@ export default function SettingsPage() {
         <IntegrationsSettings />
       ) : tab === 'pools' ? (
         <Pools />
+      ) : tab === 'kiosks' ? (
+        <div className="grid max-w-4xl gap-6"><KiosksCard /></div>
       ) : tab === 'departments' ? (
         <DepartmentsSettings />
       ) : settings.error ? (
@@ -122,7 +124,6 @@ export default function SettingsPage() {
           {tab === 'org' ? <RetentionCard /> : null}
           {tab === 'org' ? <DataExportCard /> : null}
           {tab === 'facilities' ? <Facilities s={settings.data} reload={settings.reload} /> : null}
-          {tab === 'facilities' ? <KiosksCard /> : null}
           {tab === 'pay' ? <PayCodes s={settings.data} reload={settings.reload} /> : null}
           {tab === 'pay' ? <HolidayWeekendCard /> : null}
           {tab === 'calendar' ? <SchoolCalendar s={settings.data} reload={settings.reload} /> : null}

@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/Toast';
 import { ApiError, api, apiDownload, saveBlob } from '@/lib/api';
 import type { Departments } from '@/lib/departments';
 import { formatDate, formatMoney } from '@/lib/format';
-import { type Run, STATUS_TONE, type Statement } from '@/lib/payroll';
+import { type Run, STATUS_TONE, type Statement, canVoid } from '@/lib/payroll';
 import { useSession } from '@/lib/session';
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 import { issueKey, issueLabel } from '@/lib/payrollIssues';
@@ -222,7 +222,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
             {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') ? <Button size="sm" variant={settings.data?.bank.configured ? 'secondary' : 'primary'} icon={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/deposit-file`, 'deposit.txt', 'deposit')}>{t('payroll.depositFile')}</Button> : null}
             <Button size="sm" variant="secondary" icon={<FileSpreadsheet className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/register.csv`, 'payroll-register.csv', 'register')}>{t('payroll.register')}</Button>
             {d.run.status === 'APPROVED' && can('payroll.approve') ? <Button size="sm" variant="secondary" icon={<CheckCircle2 className="h-4 w-4" aria-hidden="true" />} loading={busy === 'paid'} onClick={() => void act('paid', `/api/payroll/runs/${id}/paid`, t('payroll.markedPaid'))}>{t('payroll.markPaid')}</Button> : null}
-            {(d.run.status === 'DRAFT' || d.run.status === 'APPROVED') && can('payroll.approve') ? <Button size="sm" variant="ghost" onClick={() => setVoiding(true)}>{t('payroll.void')}</Button> : null}
+            {canVoid(d.run.status, can) ? <Button size="sm" variant="ghost" onClick={() => setVoiding(true)}>{t('payroll.void')}</Button> : null}
           </div>
           {d.run.status === 'DRAFT' && d.run.preparedById === me?.id && settings.data?.twoPersonApproval !== false ? <p className="text-caption text-muted">{t('payroll.secondPerson')}</p> : null}
           {d.transmissions.length ? (

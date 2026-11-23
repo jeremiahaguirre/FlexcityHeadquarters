@@ -86,7 +86,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/surveys', key: 'manageSurveys', icon: ClipboardPen, group: 'manage', section: 'people', permission: ['surveys.manage', 'surveys.department'], ready: true },
   { href: '/manage/roles', key: 'roles', icon: UserCog, group: 'manage', section: 'organization', permission: 'roles.manage', ready: true },
   { href: '/manage/billing', key: 'billing', icon: Receipt, group: 'manage', section: 'organization', permission: 'billing.manage', ready: true },
-  { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', section: 'organization', permission: ['tenant.configure', 'ops.configure'], ready: true },
+  { href: '/manage/settings', key: 'settings', icon: Settings, group: 'manage', section: 'organization', permission: ['tenant.configure', 'ops.configure', 'timeclock.review'], ready: true },
   { href: '/union', key: 'union', icon: Megaphone, group: 'union', permission: 'union.hub', ready: true },
   { href: '/union/bids', key: 'bidAwards', icon: ListOrdered, group: 'union', permission: 'bidding.observe', ready: true },
   { href: '/surveys', key: 'surveys', icon: ClipboardPen, group: 'mine', permission: 'surveys.respond', home: false, ready: true },
