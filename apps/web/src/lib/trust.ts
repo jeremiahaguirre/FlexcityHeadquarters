@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Tone } from '@/components/ui/StatusPill';
 import { ApiError } from './apiError';
 import { DEMO } from './demo';
-import { papi } from './platform';
+import { papi, platformHeaders } from './platform';
 
 /** Dev console › Trust: types, live polling and the small pure helpers the charts use. */
 
@@ -77,7 +77,7 @@ export function useLiveTrust<T>(path: string, intervalMs = 20_000) {
         setError(null);
         return;
       }
-      const res = await fetch(`/api/platform${p}`, { credentials: 'include', headers: { 'x-fh-platform': '1', ...(etag.current && !fresh ? { 'if-none-match': etag.current } : {}) } });
+      const res = await fetch(`/api/platform${p}`, { credentials: 'include', headers: { ...platformHeaders(), ...(etag.current && !fresh ? { 'if-none-match': etag.current } : {}) } });
       if (current.current !== p) return;
       setCheckedAt(Date.now());
       if (res.status === 304) return;
