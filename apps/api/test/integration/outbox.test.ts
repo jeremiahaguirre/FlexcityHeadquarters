@@ -89,6 +89,8 @@ describe('event outbox', () => {
     expect(rows.every((r) => JSON.stringify(r.payload) === '{}')).toBe(true);
     // One notification per event, for the one head guard.
     expect(await owner.notification.count({ where: { tenantId: t.tenant.id, type: 'front_desk_page' } })).toBe(n);
+    // Each opens the status board (there is no /notifications page).
+    expect(await owner.notification.count({ where: { tenantId: t.tenant.id, type: 'front_desk_page', NOT: { link: '/status' } } })).toBe(0);
     // Nothing left: running again delivers nothing.
     expect((await dispatchTenant(t.tenant.id, { prisma: app })).delivered).toBe(0);
   });

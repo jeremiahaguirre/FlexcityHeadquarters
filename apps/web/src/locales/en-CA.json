@@ -6122,7 +6122,9 @@
     "untilHint": "Leave empty to show it until you end it.",
     "pin": "Pin it to the top",
     "post": "Post",
-    "posted": "Announcement posted; staff were notified"
+    "posted": "Announcement posted; staff were notified",
+    "nothingYet": "No announcements yet.",
+    "pageHelp": "Notices from your organization, newest first. Ones you’ve read stay here to read again."
   },
   "t4a": {
     "title": "T4A slips for {{year}}",

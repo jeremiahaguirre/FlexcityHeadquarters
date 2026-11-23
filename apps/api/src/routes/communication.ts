@@ -146,7 +146,7 @@ communicationRouter.post(
       const x = await tx.announcement.create({ data: { tenantId: a.tenantId, title: b.title, body: b.body, positionIds: b.positionIds, facilityIds: b.facilityIds, pinned: b.pinned, expiresAt: b.expiresAt ?? null, authorId: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'announcement.post', entity: 'Announcement', entityId: x.id, after: { title: b.title, positions: b.positionIds.length, facilities: b.facilityIds.length } });
       const to = (await audienceIds(tx, b)).filter((u) => u !== a.userId);
-      await notify(tx, a.tenantId, to.map((userId) => ({ userId, type: 'announcement', params: { title: b.title }, link: '/today' })));
+      await notify(tx, a.tenantId, to.map((userId) => ({ userId, type: 'announcement', params: { title: b.title }, link: '/announcements' })));
       return x;
     });
     res.status(201).json({ id: x.id });

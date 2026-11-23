@@ -72,12 +72,13 @@ export function Logbook() {
 
 interface Notice { id: string; title: string; body: string; pinned: boolean; publishedAt: string; read: boolean }
 
-/** Today: unread and pinned announcements. */
-export function MyAnnouncements() {
+/** Today: unread and pinned announcements. With `all` (the Announcements page), earlier ones too, to read again. */
+export function MyAnnouncements({ all = false }: { all?: boolean }) {
   const { t, i18n } = useTranslation();
   const q = useQuery<Notice[]>('/api/me/announcements');
   const { run, busy } = useAction();
-  const shown = (q.data ?? []).filter((n) => !n.read || n.pinned);
+  const shown = (q.data ?? []).filter((n) => all || !n.read || n.pinned);
+  if (all && q.data && !shown.length) return <p className="text-small text-muted">{t('announcements.nothingYet')}</p>;
   if (!shown.length) return null;
   return (
     <section aria-label={t('announcements.title')} className="grid gap-3">
