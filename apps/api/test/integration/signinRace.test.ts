@@ -1,9 +1,10 @@
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
-import { count, resetLimits } from '../../src/auth/rateLimit.js';
+import * as rateLimit from '../../src/auth/rateLimit.js';
+import { resetLimits } from '../../src/auth/rateLimit.js';
 import { hashPassword } from '../../src/auth/tokens.js';
-import { POLICIES, failKey, networkId, networkLockedUntil } from '../../src/auth/bruteForce.js';
+import { type Attempt, POLICIES, beginAttempt, failedAttempt } from '../../src/auth/bruteForce.js';
 import { LOGIN_FAILURES_PER_ADDRESS } from '../../src/routes/auth.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
@@ -25,7 +26,7 @@ const row = (email: string) => owner.user.findFirstOrThrow({ where: { tenantId: 
 
 beforeAll(async () => {
   resetLimits();
-  t = await seedTenant(SUB, 6);
+  t = await seedTenant(SUB, 7);
   closed = await seedTenant(CLOSED, 1);
   const hash = await hashPassword(PASSWORD);
   await owner.user.updateMany({ where: { tenantId: { in: [t.tenant.id, closed.tenant.id] } }, data: { passwordHash: hash } });
@@ -37,26 +38,68 @@ afterAll(async () => {
 });
 
 describe('parallel guesses', () => {
-  it('29 wrong and the right password in one burst from one network: the right one is refused, the network locks once', async () => {
-    const email = 'guard0@srace.test';
-    // Requests arrive in no set order, so the right password is sent once the wrong guesses hold the
-    // network's 5 places, or have already locked it (they may still be in flight): it must be refused.
-    const account = `${t.tenant.id}:${email}`;
-    const a = { surface: 'org' as const, account, network: networkId('org', account, '198.51.100.200') };
-    const taken = async () => (await count(failKey(a), POLICIES.org.windowMs)) >= POLICIES.org.failures || !!(await networkLockedUntil(a));
-    const wrong = [];
-    for (let i = 0; i < 29; i++) wrong.push(login(email, `wrong-pass-${i}`, `198.51.100.${i + 1}`).then((r) => r));
-    for (let waited = 0; !(await taken()); waited += 10) {
-      expect(waited, 'the wrong guesses never took the 5 places').toBeLessThan(15_000);
-      await new Promise((r) => setTimeout(r, 10));
+  // Production uses the database store; CI's default is memory. The race only opens where the store
+  // yields (I/O) between steps, so the burst runs on both, each on its own account.
+  it.each([
+    ['memory', 'guard0@srace.test', '198.51.100'],
+    ['database', 'guard6@srace.test', '198.51.101'],
+  ] as const)('30 wrong in one burst from one network (%s store): only 5 are let through to a password check, the network locks once, the right password is then refused', async (store, email, net) => {
+    const before = process.env.RATE_LIMIT_STORE;
+    process.env.RATE_LIMIT_STORE = store;
+    try {
+      const wrong = [];
+      for (let i = 0; i < 30; i++) wrong.push(login(email, `wrong-pass-${i}`, `${net}.${i + 1}`));
+      for (const r of await Promise.all(wrong)) expect(r.status).toBe(401);
+      // Whatever order they arrive in: only an attempt holding one of the network's 5 places counts
+      // against the account (a refused one doesn't), so exactly 5 did. A check-then-record limiter
+      // lets most of the burst past the check before any failure is recorded, and this is then > 5.
+      expect((await row(email)).failedLoginCount).toBe(POLICIES.org.failures);
+      expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.network_locked', entityId: (await row(email)).id } })).toBe(1);
+      // The right password from that network is refused while it is locked.
+      const right = await login(email, PASSWORD, `${net}.200`);
+      expect(right.status).toBe(401);
+      expect(right.body.code).toBe('INVALID_CREDENTIALS');
+    } finally {
+      if (before === undefined) delete process.env.RATE_LIMIT_STORE;
+      else process.env.RATE_LIMIT_STORE = before;
     }
-    const right = await login(email, PASSWORD, '198.51.100.200');
-    await Promise.all(wrong);
-    expect(right.status).toBe(401);
-    expect(right.body.code).toBe('INVALID_CREDENTIALS');
-    // Still locked out from that network afterwards; one lock recorded.
-    expect((await login(email, PASSWORD, '198.51.100.201')).status).toBe(401);
-    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.network_locked', entityId: (await row(email)).id } })).toBe(1);
+  });
+
+  // The failure that locks a network also empties its counter, so an attempt that passed the lock
+  // check just before and reserves just after would get a fresh place. Force that order exactly.
+  it.each(['memory', 'database'] as const)('a place reserved just after the network locked is given back and refused (%s store)', async (store) => {
+    const before = process.env.RATE_LIMIT_STORE;
+    process.env.RATE_LIMIT_STORE = store;
+    const real = rateLimit.reserve;
+    try {
+      const account = `${t.tenant.id}:recheck-${store}@srace.test`;
+      const state = { lockedUntil: null, knownNetworks: [] };
+      const ip = '203.0.113.7';
+      const held: Attempt[] = [];
+      for (let i = 0; i < POLICIES.org.failures; i++) held.push(await beginAttempt('org', account, ip, state));
+      expect(held.every((a) => a.slot && !a.refused)).toBe(true);
+      // The next attempt passes the lock check; then the 5th failure locks the network and empties
+      // the counter; only then does it reserve, and gets a place.
+      let key = '';
+      const spy = vi.spyOn(rateLimit, 'reserve').mockImplementationOnce(async (k, limit, windowMs) => {
+        key = k;
+        expect(await failedAttempt(held.at(-1)!)).not.toBeNull();
+        return real(k, limit, windowMs);
+      });
+      let late: Awaited<ReturnType<typeof beginAttempt>>;
+      try {
+        late = await beginAttempt('org', account, ip, state);
+      } finally {
+        spy.mockRestore();
+      }
+      expect(key).not.toBe('');
+      expect(late.refused).toBe('network');
+      expect(late.slot).toBeNull();
+      expect(await rateLimit.count(key, POLICIES.org.windowMs)).toBe(0); // its place was given back
+    } finally {
+      if (before === undefined) delete process.env.RATE_LIMIT_STORE;
+      else process.env.RATE_LIMIT_STORE = before;
+    }
   });
 
   it('60 wrong in parallel from 60 networks: every failure counts (no lost updates), the account locks once, one email', async () => {

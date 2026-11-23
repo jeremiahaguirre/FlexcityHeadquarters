@@ -2,7 +2,7 @@
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import { Router } from 'express';
 import { z } from 'zod';
-import { PLATFORM_COOKIE, markPlatformMfa, platformCookieOpts, platformMfaRequired, platformOf, requirePlatform, requirePlatformSession, startPlatformSession } from '../../auth/platform.js';
+import { markPlatformMfa, platformMfaRequired, platformOf, requirePlatform, requirePlatformSession, setPlatformCookies, startPlatformSession } from '../../auth/platform.js';
 import { allow } from '../../auth/rateLimit.js';
 import { signedInFrom } from '../../auth/bruteForce.js';
 import { addressKey } from '../../lib/address.js';
@@ -38,7 +38,7 @@ platformPasskeyRouter.post(
     const knownNetworks = await signedInFrom('platform', admin.email.toLowerCase(), req.ip, admin.knownNetworks);
     const stillLocked = !!admin.lockedUntil && admin.lockedUntil > new Date();
     await db().platformAdmin.update({ where: { id: admin.id }, data: { knownNetworks, lastLoginAt: new Date(), ...(stillLocked ? {} : { failedLogins: 0, lockedUntil: null, lockoutLevel: 0 }) } });
-    res.cookie(PLATFORM_COOKIE, await startPlatformSession(admin.id, true), platformCookieOpts());
+    setPlatformCookies(res, await startPlatformSession(admin.id, true));
     res.json({ admin: { id: admin.id, email: admin.email, name: admin.name } });
   }),
 );

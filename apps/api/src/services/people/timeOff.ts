@@ -10,7 +10,7 @@
  */
 import type { TimeOffType } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { lieuAvailable, lieuPolicy } from '../payroll/lieu.js';
 import { readSettings } from '../payroll/payRuns.js';
 import type { DomainEvent } from '../../lib/events.js';
@@ -184,10 +184,10 @@ export async function reviseTimeOff(
   if (r.userId === actor.userId) throw new HttpError(403, 'OWN_REQUEST', 'You can’t change your own time off. Another supervisor has to.');
   if (r.status !== 'APPROVED') throw conflict('LEAVE_NOT_APPROVED', 'Only approved time off can be changed this way.');
   const reason = change.reason.trim();
-  if (reason.length < 3) throw badRequest('Say why the time off is changing; the person will see it.');
+  if (reason.length < 3) throw invalid('REASON_REQUIRED', 'Say why the time off is changing; the person will see it.');
   let endsAt = r.endsAt;
   if (change.action === 'END_EARLY') {
-    if (!change.endsAt) throw badRequest('Choose the new last day.');
+    if (!change.endsAt) throw invalid('END_REQUIRED', 'Choose the new last day.');
     if (change.endsAt <= r.startsAt || change.endsAt >= r.endsAt) throw new HttpError(400, 'BAD_END', 'The new end must be after the start and before the current end.');
     endsAt = change.endsAt;
   }

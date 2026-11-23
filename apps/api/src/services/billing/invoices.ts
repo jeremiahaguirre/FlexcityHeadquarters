@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { appUrl } from '../../auth/authTokens.js';
 import { billingContact, config } from '../../config.js';
 import { db, withTenant } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import { type Line, lineLabel, monthlyLines, staffUsage } from './pricing.js';
 import { type Terms, invoiceLinesFor, termSummary } from './terms.js';
 import { ITEM_KEYS, type ItemKey, PUBLIC_PLANS, readChoices, standardCents, standardItems } from './catalog.js';
@@ -62,7 +62,7 @@ export type AccountInput = z.infer<typeof accountBody>;
 const day = (iso: string) => new Date(`${iso}T00:00:00Z`);
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 export function monthBounds(month: string) {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw badRequest('Use a month like 2026-11.');
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw invalid('MONTH_FORMAT', 'Use a month like 2026-11.');
   const start = day(`${month}-01`);
   const next = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
   return { start, end: new Date(next.getTime() - 86_400_000), next };
@@ -132,8 +132,8 @@ export async function saveAccount(tenantId: string, body: AccountInput) {
   const { facilities, trialEndsOn, suspensionHoldUntil, termStart, ...rest } = body;
   // A term starts on the first of its month; yearly or whole-term billing needs a start.
   const start = termStart === undefined ? undefined : termStart === null ? null : day(`${termStart.slice(0, 7)}-01`);
-  if (rest.billingCycle === 'TERM' && !rest.termMonths) throw badRequest('Choose the term length to invoice the whole term.');
-  if (rest.billingCycle && rest.billingCycle !== 'MONTHLY' && start === null) throw badRequest('Choose when the term starts.');
+  if (rest.billingCycle === 'TERM' && !rest.termMonths) throw invalid('TERM_LENGTH_REQUIRED', 'Choose the term length to invoice the whole term.');
+  if (rest.billingCycle && rest.billingCycle !== 'MONTHLY' && start === null) throw invalid('TERM_START_REQUIRED', 'Choose when the term starts.');
   // A quoted rate only for plans priced after a quote; public-sector extras only where the plan lacks them.
   if (!PUBLIC_PLANS[rest.level].quoted) rest.quotedRateCents = null;
   if (!PUBLIC_PLANS[rest.level].quoted || PUBLIC_PLANS[rest.level].staffPerFacility === null) rest.includedStaff = null;
@@ -231,7 +231,7 @@ export async function sendInvoice(id: string) {
   if (!inv) throw notFound('Invoice');
   if (inv.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'This invoice was already sent.');
   const account = await db().billingAccount.findUnique({ where: { tenantId: inv.tenantId } });
-  if (!account) throw badRequest('Set up the billing account first.');
+  if (!account) throw invalid('BILLING_ACCOUNT_REQUIRED', 'Set up the billing account first.');
   const today = new Date();
   const year = today.getUTCFullYear();
   const sent = await db().$transaction(async (tx) => {

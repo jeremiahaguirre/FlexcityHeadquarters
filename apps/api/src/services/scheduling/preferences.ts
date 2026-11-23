@@ -12,7 +12,7 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import type { Tx } from '../../lib/db.js';
-import { badRequest } from '../../lib/errors.js';
+import { invalid } from '../../lib/errors.js';
 
 export const MAX_PREFERENCES = 20;
 /** People who left (terminated): their preferences go this long after the last change to them or their record. */
@@ -101,9 +101,9 @@ export async function readPreferences(tx: Tx, userId: string) {
 /** Replaces the person's preferences as a whole (positions they hold, facilities that exist). */
 export async function replacePreferences(tx: Tx, tenantId: string, userId: string, body: z.infer<typeof preferencesBody>) {
   const positionIds = [...new Set(body.preferences.map((p) => p.positionId).filter((x): x is string => !!x))];
-  if (positionIds.length && (await tx.userPosition.count({ where: { userId, positionId: { in: positionIds } } })) !== positionIds.length) throw badRequest('Choose one of your own positions.');
+  if (positionIds.length && (await tx.userPosition.count({ where: { userId, positionId: { in: positionIds } } })) !== positionIds.length) throw invalid('NOT_YOUR_POSITION', 'Choose one of your own positions.');
   const facilityIds = [...new Set(body.preferences.map((p) => p.facilityId).filter((x): x is string => !!x))];
-  if (facilityIds.length && (await tx.facility.count({ where: { id: { in: facilityIds } } })) !== facilityIds.length) throw badRequest('Choose a facility from the list.');
+  if (facilityIds.length && (await tx.facility.count({ where: { id: { in: facilityIds } } })) !== facilityIds.length) throw invalid('UNKNOWN_FACILITY', 'Choose a facility from the list.');
   await tx.shiftPreference.deleteMany({ where: { userId } });
   if (body.preferences.length) {
     await tx.shiftPreference.createMany({ data: body.preferences.map((p) => ({ tenantId, userId, kind: p.kind, daysOfWeek: [...new Set(p.daysOfWeek)].sort(), startMinute: p.startMinute, endMinute: p.endMinute, positionId: p.positionId, facilityId: p.facilityId, note: p.note || null })) });

@@ -18,7 +18,7 @@ import { DateTime } from 'luxon';
 import type { AuthContext } from '../../auth/middleware.js';
 import { type Tx, audit } from '../../lib/db.js';
 import type { DomainEvent } from '../../lib/events.js';
-import { badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { addDays, dayOfWeek, localDate, localIso, overlaps, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
@@ -48,9 +48,9 @@ export interface PlannerRange {
 }
 
 async function plannerContext(tx: Tx, a: AuthContext, q: PlannerRange) {
-  if (q.to <= q.from) throw badRequest('The range must end after it starts.');
+  if (q.to <= q.from) throw invalid('ENDS_BEFORE_START', 'The range must end after it starts.');
   const days = Math.round((Date.parse(`${q.to}T12:00:00Z`) - Date.parse(`${q.from}T12:00:00Z`)) / 86_400_000);
-  if (days > MAX_PLANNER_DAYS) throw badRequest(`Choose a range of up to ${MAX_PLANNER_DAYS} days.`);
+  if (days > MAX_PLANNER_DAYS) throw invalid('RANGE_TOO_LONG', `Choose a range of up to ${MAX_PLANNER_DAYS} days.`, { maxDays: MAX_PLANNER_DAYS });
   const departments = await schedulableDepartments(tx, a);
   const run = q.departmentId === ALL_DEPARTMENTS ? departments : departments.filter((d) => d.id === q.departmentId);
   if (!run.length) throw notFound('Department');
@@ -616,7 +616,7 @@ export interface CopyInput {
  * target (same place, position, times) aren't copied twice.
  */
 export async function plannerCopy(tx: Tx, a: AuthContext, q: CopyInput) {
-  if (q.from === q.to) throw badRequest('Choose a different day to copy to.');
+  if (q.from === q.to) throw invalid('SAME_DAY', 'Choose a different day to copy to.');
   const c = await plannerContext(tx, a, { departmentId: q.departmentId, facilityIds: q.facilityIds, from: q.from, to: addDays(q.from, q.days) });
   const offset = Math.round((Date.parse(`${q.to}T12:00:00Z`) - Date.parse(`${q.from}T12:00:00Z`)) / 86_400_000);
   const facilityIds = c.facilities.map((f) => f.id);

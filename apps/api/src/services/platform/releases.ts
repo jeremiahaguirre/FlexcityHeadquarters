@@ -17,7 +17,7 @@
 import type { Prisma, PrismaClient, ReleaseChange } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { type Tx, db, withTenant } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import { notify, usersWithRoles } from '../notifications/notifier.js';
 import { FEATURE_KEYS, type FeatureKey, forgetFeatures, resolveFeatures } from './features.js';
 import { setRingResolver } from './releaseNotes.js';
@@ -114,7 +114,7 @@ export async function scheduleStage(prisma: PrismaClient, releaseId: string, inp
     if (input.scheduledAt < s.scheduledAt) throw conflict('RING_ORDER', `Not before ${r.name}.`, { ring: r.name, after: s.scheduledAt });
   }
   const members = await ringTenantIds(prisma, [ring.id]);
-  if (!members.length) throw badRequest('This ring has no organizations yet.');
+  if (!members.length) throw invalid('RING_EMPTY', 'This ring has no organizations yet.');
   const stage = await prisma.$transaction(async (tx) => {
     // A cancelled or undone stage for this ring makes way for the new one.
     await tx.releaseStage.deleteMany({ where: { releaseId, ringId: ring.id, status: { notIn: LIVE } } });

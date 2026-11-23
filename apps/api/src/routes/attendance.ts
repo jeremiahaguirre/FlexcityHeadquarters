@@ -4,7 +4,7 @@ import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { withTenant } from '../lib/db.js';
-import { HttpError, badRequest, forbidden } from '../lib/errors.js';
+import { HttpError, badRequest, forbidden, invalid } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
 import { localIso } from '../lib/time.js';
 import { assertLeavePeriodOpen, cancelTimeOff, decideTimeOff, replaceAvailability, requestTimeOff, reviseTimeOff } from '../services/people/timeOff.js';
@@ -142,7 +142,7 @@ attendanceRouter.post(
     const out = await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, userId);
       const person = await tx.user.findUnique({ where: { id: userId }, select: { status: true } });
-      if (!person || person.status !== 'ACTIVE') throw badRequest('They aren’t an active member of staff.');
+      if (!person || person.status !== 'ACTIVE') throw invalid('PERSON_NOT_ACTIVE', 'They aren’t an active member of staff.');
       await assertLeavePeriodOpen(tx, userId, body.startsAt, body.endsAt);
       // Recorded, not requested: no "request waiting" notices to approvers.
       const made = await requestTimeOff(tx, a.tenantId, userId, { ...body, note: body.note ?? null });

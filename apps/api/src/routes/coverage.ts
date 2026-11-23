@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { invalid, notFound } from '../lib/errors.js';
 import { coverageGaps } from '../services/coverage/gaps.js';
 import { facilitiesOf } from '../services/people/scope.js';
 import { h } from './context.js';
@@ -43,7 +43,7 @@ coverageRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const b = ruleBody.parse(req.body);
-    if (b.endMinute <= b.startMinute) throw badRequest('The window must end after it starts.');
+    if (b.endMinute <= b.startMinute) throw invalid('ENDS_BEFORE_START', 'The window must end after it starts.');
     const r = await withTenant(a.tenantId, async (tx) => {
       if (!(await tx.certification.findFirst({ where: { id: b.certificationId } }))) throw notFound('Certification');
       const created = await tx.coverageRule.create({ data: { ...b, note: b.note ?? null, tenantId: a.tenantId } });

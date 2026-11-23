@@ -69,8 +69,10 @@ export async function createCheckout(i: CheckoutInput): Promise<{ id: string; ur
  * Checks Stripe's webhook signature (`t=…,v1=…`, HMAC-SHA256 of "t.payload")
  * and refuses events older than 5 minutes.
  */
-export function verifyWebhook(payload: Buffer, header: string | undefined, secret: string, now = Date.now()): unknown {
+export function verifyWebhook(payload: Buffer | undefined, header: string | undefined, secret: string, now = Date.now()): unknown {
   if (!header) throw new HttpError(400, 'BAD_SIGNATURE', 'Missing signature');
+  // express.raw (body-parser 2) leaves the body undefined when there is none or it isn't JSON.
+  if (!Buffer.isBuffer(payload)) throw new HttpError(400, 'BAD_SIGNATURE', 'Missing body');
   const parts = Object.fromEntries(header.split(',').map((kv) => kv.split('=') as [string, string]));
   const t = Number(parts.t);
   const sigs = header.split(',').filter((kv) => kv.startsWith('v1=')).map((kv) => kv.slice(3));
