@@ -1,0 +1,414 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>FH ad stage</title>
+<!--
+  The 20.0 s FlexcityHeadquarters ad as one deterministic HTML stage.
+  Open with ?lang=en|fr&ar=16x9|9x16. render.cjs calls window.setTime(t) for every frame and screenshots it.
+  All copy comes from ../PROMPT.md (supers, end card). Role titles on the cards name the people in clips A-D.
+-->
+<style>
+  @font-face {
+    font-family: 'PJS';
+    src: url('../../../apps/web/src/fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2');
+    font-weight: 200 800;
+  }
+  :root {
+    --ink: #0B1F22; --teal: #0F766E; --teal-light: #5EEAD4; --night: #0B1416;
+    --mist: #E1F1EE; --neutral: #F3F7F6; --chartreuse: #C5F23A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  body { font-family: 'PJS', 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+  #stage { position: relative; overflow: hidden; background: var(--neutral); }
+  .h #stage { width: 1920px; height: 1080px; }
+  .v #stage { width: 1080px; height: 1920px; }
+  .scene { position: absolute; inset: 0; overflow: hidden; opacity: 0; }
+  .abs { position: absolute; }
+
+  /* ---------- motion-graphics cards (replace live-action clips A-D) ---------- */
+  .card { background: linear-gradient(135deg, #0B1416 0%, #0D2B2C 45%, #0F766E 100%); color: #fff; }
+  .blob { position: absolute; border-radius: 50%; }
+  .card svg.motif { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .card .txt { position: absolute; }
+  .h .card .txt { left: 140px; top: 0; bottom: 0; width: 1300px; display: flex; flex-direction: column; justify-content: center; }
+  .v .card .txt { left: 90px; top: 250px; bottom: 400px; width: 900px; display: flex; flex-direction: column; justify-content: center; }
+  .eyebrow { font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--teal-light); }
+  .h .eyebrow { font-size: 30px; }
+  .v .eyebrow { font-size: 34px; }
+  .role { font-weight: 800; letter-spacing: -0.02em; line-height: 1.02; }
+  .h .role { font-size: 140px; margin-top: 18px; }
+  .v .role { font-size: 132px; margin-top: 22px; }
+  .rule { height: 6px; border-radius: 3px; background: var(--chartreuse); }
+  .h .rule { width: 120px; margin: 40px 0 34px; }
+  .v .rule { width: 110px; margin: 44px 0 38px; }
+  .super { font-weight: 800; letter-spacing: -0.015em; line-height: 1.08; }
+  .card .super { color: var(--chartreuse); }
+  .h .card .super { font-size: 76px; }
+  .v .card .super { font-size: 78px; }
+  .sub { font-weight: 600; }
+  .card .sub { color: #fff; }
+  .h .card .sub { font-size: 44px; margin-top: 16px; }
+  .v .card .sub { font-size: 50px; margin-top: 18px; }
+  .fine { font-weight: 500; line-height: 1.35; }
+  .card .fine { color: rgba(255,255,255,0.88); }
+  .h .card .fine { font-size: 30px; margin-top: 28px; max-width: 1150px; }
+  .v .card .fine { font-size: 34px; margin-top: 30px; }
+  .v .card.long .super { font-size: 70px; }
+
+  /* ---------- screen inserts ---------- */
+  .insert { background: linear-gradient(160deg, #FFFFFF 0%, #F3F7F6 45%, #E1F1EE 100%); color: var(--ink); }
+  .insert .super { color: var(--ink); }
+  .insert .sub { color: var(--teal); }
+  .insert .fine { color: #33494C; }
+  .ins-txt { position: absolute; }
+  .h .ins-txt.side { left: 140px; width: 840px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; }
+  .h .ins-txt.side .super { font-size: 76px; }
+  .h .ins-txt.side .sub { font-size: 46px; margin-top: 18px; }
+  .h .ins-txt.side .fine { font-size: 30px; margin-top: 28px; }
+  .h .ins-txt.top { left: 322px; top: 66px; width: 1276px; }
+  .h .ins-txt.top .super { font-size: 64px; }
+  .v .ins-txt { left: 90px; top: 250px; width: 900px; }
+  .v .ins-txt .super { font-size: 74px; }
+  .v .ins-txt .sub { font-size: 50px; margin-top: 14px; }
+  .v .ins-txt .fine { font-size: 32px; margin-top: 18px; }
+  .v .ins-txt.long .super { font-size: 64px; }
+  .note { position: absolute; font-weight: 600; color: #3E5457; display: flex; align-items: center; gap: 12px; }
+  .note i { display: inline-block; border-radius: 50%; background: var(--teal); }
+  .h .note { font-size: 26px; }
+  .h .note i { width: 12px; height: 12px; }
+  .v .note { font-size: 30px; left: 90px; top: 588px; }
+  .v .note i { width: 14px; height: 14px; }
+
+  .device { position: absolute; }
+  .phone { background: #0B1416; border-radius: 64px; padding: 14px; box-shadow: 0 40px 90px rgba(11,31,34,0.28), 0 8px 24px rgba(11,31,34,0.18); }
+  .phone .screen { border-radius: 50px; }
+  .laptop .lid { background: #0B1416; border-radius: 22px 22px 6px 6px; padding: 18px; box-shadow: 0 40px 90px rgba(11,31,34,0.26); }
+  .laptop .screen { border-radius: 6px; }
+  .laptop .base { position: absolute; height: 26px; border-radius: 2px 2px 18px 18px; background: linear-gradient(#D9E2E1, #A9B6B5); box-shadow: 0 18px 40px rgba(11,31,34,0.25); }
+  .laptop .notch { position: absolute; height: 8px; border-radius: 0 0 8px 8px; background: #98A6A5; }
+  .screen { position: relative; overflow: hidden; background: #fff; }
+  .shotwrap { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .shot { position: absolute; left: 0; top: 0; }
+  .shot img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+  .wipebar { position: absolute; top: 0; bottom: 0; width: 10px; margin-left: -5px; background: var(--teal); opacity: 0; }
+  .hidot { position: absolute; width: 90px; height: 90px; margin: -45px 0 0 -45px; border-radius: 50%;
+           background: radial-gradient(circle, rgba(197,242,58,0.85) 0%, rgba(197,242,58,0.35) 45%, rgba(197,242,58,0) 70%); }
+
+  /* ---------- end card ---------- */
+  .end { background: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 55%, #E1F1EE 100%); color: var(--ink); text-align: center; }
+  .end .wrap { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+  .h .end .wrap { top: 92px; }
+  .v .end .wrap { top: 300px; }
+  .lockup { position: relative; overflow: hidden; }
+  .lockup img { position: absolute; }
+  .tagline { font-weight: 800; letter-spacing: -0.015em; line-height: 1.12; }
+  .tagline b { color: var(--teal); font-weight: 800; }
+  .h .tagline { font-size: 68px; margin-top: 36px; }
+  .v .tagline { font-size: 88px; margin-top: 56px; }
+  .url { font-weight: 600; color: var(--teal); }
+  .h .url { font-size: 40px; margin-top: 22px; }
+  .v .url { font-size: 42px; margin-top: 40px; }
+  .cta { font-weight: 700; color: #fff; background: var(--teal); border-radius: 999px; }
+  .h .cta { font-size: 30px; padding: 16px 40px; margin-top: 30px; }
+  .v .cta { font-size: 36px; padding: 20px 48px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const LANG = q.get('lang') === 'fr' ? 'fr' : 'en';
+const AR = q.get('ar') === '9x16' ? 'v' : 'h';
+document.documentElement.className = AR;
+const W = AR === 'h' ? 1920 : 1080, H = AR === 'h' ? 1080 : 1920;
+const SS = '../screenshots/';
+
+// ---- Copy. Supers, fine print, corner note and end card are verbatim from PROMPT.md section 4. ----
+const T = {
+  en: {
+    s1: 'Every shift.', s3: 'Every site.', s3sub: 'Slide to clock in',
+    s5: 'Nobody works alone unnoticed.',
+    s5fine: 'Check-ins support your working-alone procedure. In an emergency, call 911.',
+    s7: 'Approved hours → payroll', s8: 'English · Français',
+    note: 'Demo screens, sample data',
+    tag: ['Every shift.', 'Every site.', 'One HQ.'], cta: 'Try the live demo',
+    A: ['Pool deck · Opening', 'Lifeguard'], B: ['Rink · Before dawn', 'Arena operator'],
+    C: ['Pump station · Dusk', 'Parks crew'], D: ['HR office · Afternoon', 'HR manager'],
+  },
+  fr: {
+    s1: 'Chaque quart.', s3: 'Chaque site.', s3sub: 'Glisser pour pointer',
+    s5: "Personne ne travaille seul sans qu'on le sache.",
+    s5fine: "Les vérifications appuient votre procédure de travail seul. En cas d'urgence, composez le 911.",
+    s7: 'Heures approuvées → paie', s8: 'Français · English',
+    note: 'Écrans de démo, données fictives',
+    tag: ['Chaque quart.', 'Chaque site.', 'Un seul QG.'], cta: 'Essayer la démo',
+    A: ['Bord du bassin · Ouverture', 'Sauveteur'], B: ["Patinoire · Avant l'aube", "Opérateur d'aréna"],
+    C: ['Station de pompage · Crépuscule', 'Équipe des parcs'], D: ['Bureau RH · Après-midi', 'Gestionnaire RH'],
+  },
+}[LANG];
+const URL_TEXT = 'flexcity-headquarters-iota.vercel.app';
+const fr = LANG === 'fr';
+const sfx = fr ? '-fr' : '';
+
+// ---- Shot list (PROMPT.md section 3): in/out times in seconds. ----
+const shot7 = AR === 'h'
+  ? (fr
+      ? [{ type: 'laptop', start: 13.2, end: 15.5, img: '02-schedule-builder-16x9-fr.png', kb: [1.0, 1.10, 30, 45] }]
+      : [{ type: 'laptop', start: 13.2, end: 14.0, img: '04-approvals-16x9.png', kb: [1.0, 1.05, 35, 25] },
+         { type: 'laptop', start: 14.0, end: 15.5, img: '05-payroll-16x9.png', kb: [1.0, 1.07, 70, 30] }])
+  : (fr
+      ? [{ type: 'laptop', start: 13.2, end: 15.5, img: '02-schedule-builder-16x9-fr.png', kb: [1.7, 2.0, 22, 45] }]
+      : [{ type: 'phone', start: 13.2, end: 15.0, img: '04-approvals-9x16.png', kb: [1.0, 1.12, 50, 30] },
+         { type: 'phone', start: 15.0, end: 15.5, img: '05-pay-statement-9x16.png', kb: [1.0, 1.04, 50, 30] }]);
+shot7.forEach(s => { s.sup = T.s7; });
+
+const SCENES = [
+  { type: 'card', start: 0.0, end: 2.5, motif: 'pool', eb: T.A[0], role: T.A[1], sup: T.s1 },
+  { type: 'phone', start: 2.5, end: 4.5, img: '02-schedule-9x16' + sfx + '.png', kb: [1.0, 1.10, 50, 18], sup: T.s1 },
+  { type: 'card', start: 4.5, end: 7.0, motif: 'rink', eb: T.B[0], role: T.B[1], sup: T.s3, sub: T.s3sub },
+  { type: 'phone', start: 7.0, end: 8.5, img: '01-punch-in-9x16' + sfx + '.png', kb: [1.0, 1.12, 50, 10], sup: T.s3, sub: T.s3sub, dot: true },
+  { type: 'card', start: 8.5, end: 11.0, motif: 'alone', eb: T.C[0], role: T.C[1], sup: T.s5, fine: T.s5fine, long: true },
+  { type: 'phone', start: 11.0, end: 12.5, img: '03-working-alone-9x16' + sfx + '.png', kb: [1.0, 1.1, 50, 52], sup: T.s5, fine: T.s5fine, long: true },
+  { type: 'card', start: 12.5, end: 13.2, motif: 'hr', eb: T.D[0], role: T.D[1], sup: T.s7 },
+  ...shot7,
+  // Shot 8: the sign-in screen wipes EN -> FR at 16.2 s (FR cut: reversed, FR -> EN).
+  AR === 'h'
+    ? { type: 'laptop', start: 15.5, end: 17.0, img: fr ? '06-bilingual-sign-in-16x9-fr.png' : '06-bilingual-sign-in-16x9.png',
+        img2: fr ? '06-bilingual-sign-in-16x9.png' : '06-bilingual-sign-in-16x9-fr.png', wipe: 16.2, kb: [1.0, 1.05, 50, 40], sup: T.s8 }
+    : { type: 'phone', start: 15.5, end: 17.0, img: fr ? '06-bilingual-sign-in-9x16-fr.png' : '06-bilingual-sign-in-9x16.png',
+        img2: fr ? '06-bilingual-sign-in-9x16.png' : '06-bilingual-sign-in-9x16-fr.png', wipe: 16.2, kb: [1.0, 1.06, 50, 20], sup: T.s8 },
+  { type: 'end', start: 17.0, end: 20.0 },
+];
+
+const XF = 0.2;          // half cross-fade: each cut dissolves over 0.4 s centred on the cut
+const WIPE = 0.36;       // shot 8 wipe duration
+const stage = document.getElementById('stage');
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = x => { x = clamp(x); return x * x * (3 - 2 * x); };
+const lerp = (a, b, p) => a + (b - a) * p;
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function textBlock(s, cls) {
+  const b = el('div', cls);
+  b.appendChild(el('div', 'super', esc(s.sup)));
+  if (s.sub) b.appendChild(el('div', 'sub', esc(s.sub)));
+  if (s.fine) b.appendChild(el('div', 'fine', esc(s.fine)));
+  return b;
+}
+
+// ---------- card motifs: abstract SVG shapes only, no people ----------
+function buildMotif(s, svg) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const mk = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); svg.appendChild(n); return n; };
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  s.parts = [];
+  if (s.motif === 'pool') {          // water surface lines and lane ropes
+    for (let i = 0; i < 9; i++) s.parts.push(mk('path', { fill: 'none', stroke: i % 3 === 0 ? '#5EEAD4' : '#2DD4BF', 'stroke-width': i % 3 === 0 ? 3 : 2, opacity: 0.10 + 0.03 * (i % 3) }));
+  } else if (s.motif === 'rink') {   // ice sheen streaks and a slide track
+    for (let i = 0; i < 7; i++) s.parts.push(mk('rect', { rx: 4, fill: '#E1F1EE', opacity: 0.06 }));
+    s.track = mk('rect', { rx: 40, fill: 'rgba(255,255,255,0.10)', stroke: 'rgba(94,234,212,0.45)', 'stroke-width': 2 });
+    s.knob = mk('circle', { fill: '#C5F23A' });
+  } else if (s.motif === 'alone') {  // check-in pulse rings
+    for (let i = 0; i < 4; i++) s.parts.push(mk('circle', { fill: 'none', stroke: '#5EEAD4', 'stroke-width': 3 }));
+    s.core = mk('circle', { fill: '#C5F23A' });
+  } else if (s.motif === 'hr') {     // a grid of tiles ticking to approved
+    for (let i = 0; i < 12; i++) {
+      const g = { r: mk('rect', { rx: 14, fill: 'rgba(255,255,255,0.08)', stroke: 'rgba(94,234,212,0.35)', 'stroke-width': 2 }),
+                  c: mk('path', { fill: 'none', stroke: '#C5F23A', 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }) };
+      s.parts.push(g);
+    }
+  }
+}
+
+function drawMotif(s, t, p) {
+  const lt = t - s.start;
+  if (s.motif === 'pool') {
+    const y0 = AR === 'h' ? 640 : 1300, gap = AR === 'h' ? 48 : 60;
+    s.parts.forEach((path, i) => {
+      const y = y0 + i * gap, amp = 10 + 4 * (i % 3), ph = lt * 1.6 + i * 0.7;
+      let d = `M -20 ${y}`;
+      for (let x = -20; x <= W + 40; x += 40) d += ` L ${x} ${(y + Math.sin(x / 140 + ph) * amp).toFixed(1)}`;
+      path.setAttribute('d', d);
+    });
+  } else if (s.motif === 'rink') {
+    s.parts.forEach((r, i) => {
+      const w = 300 + 90 * (i % 4), y = (AR === 'h' ? 120 : 300) + i * (AR === 'h' ? 130 : 210);
+      const x = ((i * 380 + lt * (160 + 30 * i)) % (W + w)) - w;
+      r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', w); r.setAttribute('height', 8);
+    });
+    const tw = AR === 'h' ? 560 : 700, th = 80;
+    const tx = AR === 'h' ? W - tw - 160 : (W - tw) / 2, ty = AR === 'h' ? 820 : 1430;
+    s.track.setAttribute('x', tx); s.track.setAttribute('y', ty); s.track.setAttribute('width', tw); s.track.setAttribute('height', th);
+    const kp = ease((lt - 0.5) / 1.6);
+    s.knob.setAttribute('cx', tx + th / 2 + kp * (tw - th)); s.knob.setAttribute('cy', ty + th / 2); s.knob.setAttribute('r', th / 2 - 8);
+  } else if (s.motif === 'alone') {
+    const cx = AR === 'h' ? 1540 : 820, cy = AR === 'h' ? 300 : 1480;
+    s.parts.forEach((c, i) => {
+      const ph = ((lt * 0.55 + i / 4) % 1);
+      c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', 30 + ph * (AR === 'h' ? 340 : 300));
+      c.setAttribute('opacity', (0.55 * (1 - ph)).toFixed(3));
+    });
+    s.core.setAttribute('cx', cx); s.core.setAttribute('cy', cy); s.core.setAttribute('r', 22 + 3 * Math.sin(lt * 5));
+  } else if (s.motif === 'hr') {
+    const cols = 4, size = AR === 'h' ? 110 : 120, gap = 26;
+    const ox = AR === 'h' ? W - 160 - cols * (size + gap) : (W - cols * (size + gap) + gap) / 2;
+    const oy = AR === 'h' ? 300 : 1250;
+    s.parts.forEach((g, i) => {
+      const x = ox + (i % cols) * (size + gap), y = oy + Math.floor(i / cols) * (size + gap);
+      g.r.setAttribute('x', x); g.r.setAttribute('y', y); g.r.setAttribute('width', size); g.r.setAttribute('height', size);
+      const k = clamp((lt + 0.2) * 9 - i * 0.6);  // ticks appear in sequence
+      const len = 90;
+      g.c.setAttribute('d', `M ${x + size * 0.27} ${y + size * 0.52} L ${x + size * 0.44} ${y + size * 0.68} L ${x + size * 0.74} ${y + size * 0.36}`);
+      g.c.setAttribute('stroke-dasharray', len); g.c.setAttribute('stroke-dashoffset', (len * (1 - k)).toFixed(1));
+    });
+  }
+}
+
+// ---------- device geometry ----------
+const GEO = {
+  h: { phone: { sh: 900, left: 1083, top: 76 }, laptop: { sw: 1240, left: 322, top: 182 } },
+  v: { phone: { sh: 1124, left: 211, top: 650 }, laptop: { sw: 944, left: 50, top: 760 } },
+}[AR];
+
+function buildDevice(s, sc) {
+  const isPhone = s.type === 'phone';
+  const nw = isPhone ? 1080 : 1920, nh = isPhone ? 1920 : 1080;
+  let sw, sh, dev, scr = el('div', 'screen');
+  if (isPhone) {
+    sh = GEO.phone.sh; sw = sh * 9 / 16;
+    dev = el('div', 'device phone');
+    dev.style.left = GEO.phone.left + 'px'; dev.style.top = GEO.phone.top + 'px';
+    scr.style.width = sw + 'px'; scr.style.height = sh + 'px';
+    dev.appendChild(scr);
+  } else {
+    sw = GEO.laptop.sw; sh = sw * 9 / 16;
+    dev = el('div', 'device laptop');
+    dev.style.left = GEO.laptop.left + 'px'; dev.style.top = GEO.laptop.top + 'px';
+    const lid = el('div', 'lid'); scr.style.width = sw + 'px'; scr.style.height = sh + 'px';
+    lid.appendChild(scr); dev.appendChild(lid);
+    const bw = sw + 36 + 140, base = el('div', 'base'); base.style.width = bw + 'px'; base.style.left = (-70) + 'px'; base.style.top = (sh + 36) + 'px';
+    const notch = el('div', 'notch'); notch.style.width = '180px'; notch.style.left = ((sw + 36) / 2 - 90) + 'px'; notch.style.top = (sh + 36) + 'px';
+    dev.appendChild(base); dev.appendChild(notch);
+  }
+  const wrap = el('div', 'shotwrap'); wrap.style.transform = `scale(${sw / nw})`;
+  const shot = el('div', 'shot'); shot.style.width = nw + 'px'; shot.style.height = nh + 'px';
+  shot.style.transformOrigin = `${s.kb[2]}% ${s.kb[3]}%`;
+  const im = el('img'); im.src = SS + s.img; shot.appendChild(im);
+  if (s.img2) {
+    const im2 = el('img'); im2.src = SS + s.img2; shot.appendChild(im2); s.im2 = im2;
+    const bar = el('div', 'wipebar'); shot.appendChild(bar); s.bar = bar;
+  }
+  if (s.dot) { const d = el('div', 'hidot'); shot.appendChild(d); s.dotEl = d; }
+  wrap.appendChild(shot); scr.appendChild(wrap);
+  sc.appendChild(dev);
+  s.shot = shot; s.dev = dev;
+}
+
+function build() {
+  for (const s of SCENES) {
+    const sc = el('div', 'scene ' + (s.type === 'card' ? 'card' : s.type === 'end' ? 'end' : 'insert'));
+    if (s.long) sc.classList.add('long');
+    s.el = sc;
+    if (s.type === 'card') {
+      s.blobs = [0, 1, 2].map(i => {
+        const b = el('div', 'blob');
+        const size = [900, 700, 520][i] * (AR === 'h' ? 1 : 1.15);
+        b.style.width = b.style.height = size + 'px';
+        b.style.background = ['radial-gradient(circle, rgba(20,184,166,0.45), rgba(20,184,166,0) 65%)',
+                              'radial-gradient(circle, rgba(197,242,58,0.20), rgba(197,242,58,0) 65%)',
+                              'radial-gradient(circle, rgba(94,234,212,0.30), rgba(94,234,212,0) 65%)'][i];
+        b.dataset.size = size; sc.appendChild(b); return b;
+      });
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('class', 'motif');
+      sc.appendChild(svg); buildMotif(s, svg);
+      const tx = el('div', 'txt');
+      tx.appendChild(el('div', 'eyebrow', esc(s.eb)));
+      tx.appendChild(el('div', 'role', esc(s.role)));
+      tx.appendChild(el('div', 'rule'));
+      tx.appendChild(textBlock(s, ''));
+      sc.appendChild(tx); s.txt = tx;
+    } else if (s.type === 'phone' || s.type === 'laptop') {
+      buildDevice(s, sc);
+      const pos = AR === 'h' ? (s.type === 'phone' ? 'side' : 'top') : '';
+      const tb = textBlock(s, 'ins-txt ' + pos + (s.long ? ' long' : '')); sc.appendChild(tb); s.txt = tb;
+      const note = el('div', 'note', '<i></i>' + esc(T.note));
+      if (AR === 'h') {
+        if (s.type === 'phone') { note.style.left = '140px'; note.style.top = '986px'; }
+        else { note.style.left = '322px'; note.style.top = '982px'; }
+      }
+      sc.appendChild(note);
+    } else if (s.type === 'end') {
+      const wrap = el('div', 'wrap');
+      const crop = { x: 92, y: 1333, w: 318, h: 359 };       // stacked light lockup in brand/fh-lockups.png
+      const k = AR === 'h' ? 1.32 : 1.75;
+      const lk = el('div', 'lockup'); lk.style.width = crop.w * k + 'px'; lk.style.height = crop.h * k + 'px';
+      const im = el('img'); im.src = '../../../brand/fh-lockups.png';
+      im.style.width = 1800 * k + 'px'; im.style.left = -crop.x * k + 'px'; im.style.top = -crop.y * k + 'px';
+      lk.appendChild(im); wrap.appendChild(lk);
+      const tg = T.tag;
+      const sep = AR === 'h' ? ' ' : '<br>';
+      wrap.appendChild(el('div', 'tagline', `${esc(tg[0])}${sep}${esc(tg[1])}${sep}<b>${esc(tg[2])}</b>`));
+      wrap.appendChild(el('div', 'url', URL_TEXT));
+      wrap.appendChild(el('div', 'cta', esc(T.cta)));
+      sc.appendChild(wrap); s.wrap = wrap; s.parts = [...wrap.children];
+    }
+    stage.appendChild(sc);
+  }
+}
+
+window.setTime = function (t) {
+  for (const s of SCENES) {
+    const a = s.start === 0 ? -1 : s.start - XF, b = s.end + XF;
+    if (t < a || t > b) { s.el.style.opacity = 0; s.el.style.display = 'none'; continue; }
+    s.el.style.display = 'block';
+    s.el.style.opacity = s.start === 0 ? 1 : ease((t - a) / (2 * XF));
+    const p = clamp((t - (s.start - XF)) / (s.end - s.start + 2 * XF));
+    if (s.type === 'card') {
+      s.blobs.forEach((bl, i) => {
+        const sz = +bl.dataset.size, ang = (t - s.start) * (0.35 + 0.15 * i) + i * 2.1;
+        const cx = W * [0.78, 0.25, 0.6][i] + Math.cos(ang) * 120, cy = H * [0.3, 0.8, 0.65][i] + Math.sin(ang) * 90;
+        bl.style.transform = `translate(${cx - sz / 2}px, ${cy - sz / 2}px)`;
+      });
+      drawMotif(s, t, p);
+      const lt = t - s.start + (s.start === 0 ? 0.6 : 0);  // the first card opens with its super already on screen
+      s.txt.style.transform = `translateY(${(1 - ease(lt / 0.6)) * 24}px)`;
+    } else if (s.type === 'phone' || s.type === 'laptop') {
+      const kp = ease(p) * 0.85 + p * 0.15;
+      s.shot.style.transform = `scale(${lerp(s.kb[0], s.kb[1], kp)})`;
+      const dp = ease((t - (s.start - XF)) / 0.6);
+      s.dev.style.transform = `translateY(${(1 - dp) * 26}px)`;
+      if (s.im2) {
+        const wp = ease((t - s.wipe) / WIPE);
+        const nw = s.type === 'phone' ? 1080 : 1920;
+        s.im2.style.clipPath = `inset(0 ${(100 - wp * 100).toFixed(2)}% 0 0)`;
+        s.bar.style.left = (wp * nw) + 'px';
+        s.bar.style.opacity = wp > 0 && wp < 1 ? 1 : 0;
+      }
+      if (s.dotEl) {   // soft highlight dot travelling along the slider track (the button itself is not redrawn)
+        const dp2 = ease((t - s.start - 0.1) / 1.1);
+        s.dotEl.style.left = lerp(186, 900, dp2) + 'px'; s.dotEl.style.top = '526px';
+        s.dotEl.style.opacity = (t < s.start - 0.1 || t > s.end + 0.1) ? 0 : 0.9;
+      }
+    } else if (s.type === 'end') {
+      s.parts.forEach((n, i) => {
+        const k = ease((t - s.start - i * 0.12) / 0.5);
+        n.style.opacity = s.start === 0 ? 1 : Math.max(0, k);
+        n.style.transform = `translateY(${(1 - k) * 22}px)`;
+      });
+      const lk = s.parts[0]; const z = lerp(0.96, 1.0, ease((t - s.start) / 2.2));
+      lk.style.transform += ` scale(${z})`;
+    }
+  }
+};
+
+build();
+window.ready = Promise.all([
+  document.fonts.load('800 80px PJS'), document.fonts.load('600 40px PJS'), document.fonts.load('500 30px PJS'), document.fonts.load('700 30px PJS'),
+  ...[...document.images].map(i => i.decode()),
+]).then(() => document.fonts.ready).then(() => { setTime(0); return true; });
+</script>
+</body>
+</html>
