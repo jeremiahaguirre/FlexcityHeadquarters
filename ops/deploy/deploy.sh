@@ -68,13 +68,27 @@ start_task() {
   esac
 }
 
-# Waits (at most $1 seconds) until every service has one deployment, fully running.
+# Waits (at most $1 seconds) until every service has one deployment, fully running, completed,
+# and on the task definition the last apply registered (Terraform output). A service ECS rolled
+# back (its circuit breaker, or an alarm) also ends with one completed deployment, but on the
+# previous task definition: that is a failure at once, not a success.
 wait_stable() {
-  local deadline=$(($(date +%s) + $1)) settled
+  local deadline=$(($(date +%s) + $1)) want state verdict
+  want=$(terraform output -json service_task_definitions) || return 1
   while :; do
-    settled=$(aws ecs describe-services --cluster "$cluster" --services api web worker \
-      --query 'length(services[?length(deployments) == `1` && runningCount == desiredCount])' --output text) || return 1
-    [ "$settled" = "3" ] && return 0
+    state=$(aws ecs describe-services --cluster "$cluster" --services api web worker --output json \
+      --query 'services[].{name: serviceName, deployments: length(deployments), rollout: deployments[0].rolloutState, td: deployments[0].taskDefinition, running: runningCount, desired: desiredCount}') || return 1
+    verdict=$(jq -r --argjson want "$want" '
+      if length != 3 then "waiting"
+      elif any(.[]; .deployments == 1 and (.rollout == "FAILED" or (.rollout == "COMPLETED" and .td != $want[.name]))) then "rolled-back"
+      elif all(.[]; .deployments == 1 and .rollout == "COMPLETED" and .td == $want[.name] and .running == .desired) then "stable"
+      else "waiting" end' <<<"$state") || return 1
+    case "$verdict" in
+      stable) return 0 ;;
+      rolled-back)
+        echo "::error::ECS rolled back: $(jq -r --argjson want "$want" '[.[] | select(.td != $want[.name] or .rollout == "FAILED") | "\(.name) runs \(.td) (\(.rollout)), expected \($want[.name])"] | join("; ")' <<<"$state")"
+        return 1 ;;
+    esac
     [ "$(date +%s)" -ge "$deadline" ] && { echo "::error::services not stable after $1 s"; return 1; }
     sleep "$POLL_S"
   done

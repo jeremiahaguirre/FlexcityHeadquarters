@@ -1,13 +1,19 @@
 # Continuous deployment from GitHub Actions (.github/workflows/deploy.yml), with no stored AWS keys:
 # the workflow gets short-lived credentials through GitHub's OpenID Connect provider, and only a
-# job running in this environment's GitHub environment ("staging" or "production") of
-# var.github_repository may assume the role. Empty github_repository: nothing is created.
+# job of the deploy workflow on main, running in this environment's GitHub environment ("staging"
+# or "production") of var.github_repository, may assume the role. Empty github_repository:
+# nothing is created.
 #
 # The role runs `terraform apply`, which manages IAM, KMS, the network and the database, so it
 # needs administrator rights in this account (one account per environment, README.md). What
-# protects it: the trust policy below (this repository, this GitHub environment, GitHub's
-# audience), required reviewers on the production environment in GitHub, and explicit denials
-# of the irreversible actions a deployment never needs.
+# protects it:
+# - the trust policy below: this repository, this GitHub environment, the deploy workflow file on
+#   refs/heads/main (the job_workflow_ref claim, in the repository's customized OIDC subject, which
+#   the owner sets once: docs/DEPLOYING.md), GitHub's audience;
+# - required reviewers on the production environment in GitHub;
+# - explicit denials of the irreversible actions a deployment never needs, in a permissions
+#   boundary that every role this module creates carries, and that any role the deploy role
+#   creates or changes must carry too: a new role can't be used to get around them.
 variable "github_repository" {
   description = "owner/name of the GitHub repository allowed to deploy this environment (OIDC). Empty: no deploy role."
   type        = string
@@ -34,6 +40,23 @@ locals {
   deploy_enabled      = var.github_repository != ""
   github_oidc_url     = "token.actions.githubusercontent.com"
   github_provider_arn = var.github_oidc_provider_arn != "" ? var.github_oidc_provider_arn : try(aws_iam_openid_connect_provider.github[0].arn, "")
+  # The OIDC subject with the repository's customized claims (repo, context, job_workflow_ref):
+  # only the deploy workflow, from main, in this environment.
+  deploy_subject = "repo:${var.github_repository}:environment:${var.environment}:job_workflow_ref:${var.github_repository}/.github/workflows/deploy.yml@refs/heads/main"
+  # Every role in this module carries it when deployments are on (null otherwise).
+  deploy_boundary_name = "${local.gname}-deploy-boundary"
+  deploy_boundary_arn  = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${local.deploy_boundary_name}"
+  # Built from the policy's name (known when planning), which also orders every role after it.
+  role_boundary = local.deploy_enabled ? "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${aws_iam_policy.deploy_boundary[0].name}" : null
+  # Irreversible or out-of-scope actions a deployment never needs.
+  never_actions = [
+    "kms:ScheduleKeyDeletion", "kms:DisableKey",
+    "rds:DeleteDBInstance", "rds:DeleteDBCluster", "rds:DeleteDBSnapshot", "rds:DeleteDBInstanceAutomatedBackup",
+    "s3:DeleteBucket", "s3:BypassGovernanceRetention", "s3:DeleteObjectVersion",
+    "secretsmanager:DeleteSecret", "ecr:DeleteRepository",
+    "iam:CreateUser", "iam:CreateAccessKey", "iam:CreateLoginProfile",
+    "organizations:*", "account:*", "cloudtrail:StopLogging", "cloudtrail:DeleteTrail",
+  ]
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -56,12 +79,13 @@ data "aws_iam_policy_document" "deploy_trust" {
       variable = "${local.github_oidc_url}:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # Only a job that runs in this GitHub environment of this repository: production's required
-    # reviewers therefore stand between a merge and production.
+    # Only the deploy workflow, from main, in this GitHub environment of this repository: a
+    # workflow pushed on another branch that names the environment gets another subject, and
+    # production's required reviewers stand between a merge and production.
     condition {
       test     = "StringEquals"
       variable = "${local.github_oidc_url}:sub"
-      values   = ["repo:${var.github_repository}:environment:${var.environment}"]
+      values   = [local.deploy_subject]
     }
   }
 }
@@ -74,6 +98,64 @@ resource "aws_iam_role" "deploy" {
   # Two hours: a production run (promote, migrate, apply, a 10-minute watch, then possibly a
   # rollback apply) must still hold valid credentials for its rollback.
   max_session_duration = 7200
+  permissions_boundary = local.role_boundary
+}
+
+# The permissions boundary: everything, except the irreversible actions, and except making or
+# changing a role that doesn't carry this same boundary. With AdministratorAccess the deploy role
+# could otherwise create a role without any of these denials (or loosen an existing one, such as a
+# task role) and act through it. Roles this module creates carry it (local.role_boundary), so the
+# deploy role can still manage them.
+data "aws_iam_policy_document" "deploy_boundary" {
+  statement {
+    sid       = "Everything"
+    actions   = ["*"]
+    resources = ["*"]
+  }
+  statement {
+    sid       = "NeverDestroyDataOrKeys"
+    effect    = "Deny"
+    actions   = local.never_actions
+    resources = ["*"]
+  }
+  statement {
+    sid       = "RolesKeepTheBoundary"
+    effect    = "Deny"
+    actions   = ["iam:CreateRole", "iam:PutRolePermissionsBoundary", "iam:AttachRolePolicy", "iam:PutRolePolicy"]
+    resources = ["*"]
+    condition {
+      test     = "StringNotEquals"
+      variable = "iam:PermissionsBoundary"
+      values   = [local.deploy_boundary_arn]
+    }
+  }
+  statement {
+    sid       = "NoRoleLosesTheBoundary"
+    effect    = "Deny"
+    actions   = ["iam:DeleteRolePermissionsBoundary"]
+    resources = ["*"]
+  }
+  # Trust policies: only of this environment's own roles, which carry the boundary (an existing
+  # role without it, such as an organization's access role, can't be made to trust the deploy role).
+  statement {
+    sid           = "TrustOnlyOwnRoles"
+    effect        = "Deny"
+    actions       = ["iam:UpdateAssumeRolePolicy"]
+    not_resources = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.gname}-*"]
+  }
+  statement {
+    sid       = "BoundaryStaysAsIs"
+    effect    = "Deny"
+    actions   = ["iam:CreatePolicyVersion", "iam:DeletePolicy", "iam:DeletePolicyVersion", "iam:SetDefaultPolicyVersion"]
+    resources = [local.deploy_boundary_arn]
+  }
+}
+
+resource "aws_iam_policy" "deploy_boundary" {
+  count       = local.deploy_enabled ? 1 : 0
+  name        = local.deploy_boundary_name
+  description = "Permissions boundary of every role in this environment: no irreversible actions, no role without this boundary (deploy.tf)."
+  policy      = data.aws_iam_policy_document.deploy_boundary.json
 }
 
 resource "aws_iam_role_policy_attachment" "deploy_admin" {
@@ -87,16 +169,9 @@ resource "aws_iam_role_policy_attachment" "deploy_admin" {
 # delete a key, bucket or secret fails instead of running: that change is made by hand.
 data "aws_iam_policy_document" "deploy_guardrails" {
   statement {
-    sid    = "NeverDestroyDataOrKeys"
-    effect = "Deny"
-    actions = [
-      "kms:ScheduleKeyDeletion", "kms:DisableKey",
-      "rds:DeleteDBInstance", "rds:DeleteDBCluster", "rds:DeleteDBSnapshot", "rds:DeleteDBInstanceAutomatedBackup",
-      "s3:DeleteBucket", "s3:BypassGovernanceRetention", "s3:DeleteObjectVersion",
-      "secretsmanager:DeleteSecret", "ecr:DeleteRepository",
-      "iam:CreateUser", "iam:CreateAccessKey", "iam:CreateLoginProfile",
-      "organizations:*", "account:*", "cloudtrail:StopLogging", "cloudtrail:DeleteTrail",
-    ]
+    sid       = "NeverDestroyDataOrKeys"
+    effect    = "Deny"
+    actions   = local.never_actions
     resources = ["*"]
   }
   # The role can't loosen itself: not its policies, its trust, its boundary, or the GitHub provider
@@ -153,6 +228,11 @@ output "deploy_role_arn" {
 output "deployment_alarm_names" {
   description = "The alarms that roll a deployment back (alarms.tf); the deploy workflow keeps watching them after the services are stable."
   value       = flatten(values(local.deployment_alarms))
+}
+
+output "service_task_definitions" {
+  description = "The task definition each service should run after this apply: the deploy workflow treats any other (an ECS rollback) as a failed release."
+  value       = { for k, s in local.services : k => s.task }
 }
 
 output "image_tag" {

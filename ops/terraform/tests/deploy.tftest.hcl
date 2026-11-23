@@ -55,8 +55,8 @@ run "deploy_role_only_for_this_repository_and_environment" {
     error_message = "The deploy role and GitHub's OIDC provider are created."
   }
   assert {
-    condition     = contains(flatten([for s in data.aws_iam_policy_document.deploy_trust.statement : [for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"]]), "StringEquals token.actions.githubusercontent.com:sub repo:example-org/example-repo:environment:production") && contains(flatten([for s in data.aws_iam_policy_document.deploy_trust.statement : [for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"]]), "StringEquals token.actions.githubusercontent.com:aud sts.amazonaws.com")
-    error_message = "Only jobs in this repository's production environment, for STS, may assume it: no branch, pull request or fork."
+    condition     = contains(flatten([for s in data.aws_iam_policy_document.deploy_trust.statement : [for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"]]), "StringEquals token.actions.githubusercontent.com:sub repo:example-org/example-repo:environment:production:job_workflow_ref:example-org/example-repo/.github/workflows/deploy.yml@refs/heads/main") && contains(flatten([for s in data.aws_iam_policy_document.deploy_trust.statement : [for c in s.condition : "${c.test} ${c.variable} ${join(",", c.values)}"]]), "StringEquals token.actions.githubusercontent.com:aud sts.amazonaws.com")
+    error_message = "Only the deploy workflow on main, in this repository's production environment, for STS, may assume it: no other branch, workflow, pull request or fork (review of #58)."
   }
   assert {
     condition     = alltrue([for a in ["kms:ScheduleKeyDeletion", "rds:DeleteDBInstance", "s3:DeleteBucket", "iam:CreateAccessKey", "cloudtrail:StopLogging"] : contains(flatten([for s in data.aws_iam_policy_document.deploy_guardrails.statement : s.actions if s.effect == "Deny"]), a)])
@@ -81,6 +81,48 @@ run "deploy_role_only_for_this_repository_and_environment" {
   assert {
     condition     = toset(output.deployment_alarm_names) == toset(["fh-production-api-5xx-ratio", "fh-production-api-unhealthy", "fh-production-web-5xx-ratio", "fh-production-web-unhealthy"])
     error_message = "The deploy workflow knows the alarms to keep watching after the services are stable."
+  }
+}
+
+# Review of #58: the denials can't be got around through another role.
+run "every_role_carries_the_boundary" {
+  command = plan
+  variables {
+    github_repository = "example-org/example-repo"
+  }
+  assert {
+    condition     = alltrue([for b in [aws_iam_role.deploy[0].permissions_boundary, aws_iam_role.app.permissions_boundary, aws_iam_role.execution.permissions_boundary, aws_iam_role.web.permissions_boundary] : b == "arn:aws:iam::111122223333:policy/fh-production-ca-central-1-deploy-boundary"])
+    error_message = "The deploy role and the task roles carry the boundary."
+  }
+  assert {
+    condition     = local.deploy_boundary_arn == "arn:aws:iam::111122223333:policy/fh-production-ca-central-1-deploy-boundary" && aws_iam_policy.deploy_boundary[0].name == "fh-production-ca-central-1-deploy-boundary"
+    error_message = "The boundary's own name and the ARN its conditions use agree."
+  }
+  assert {
+    condition     = alltrue([for a in ["kms:ScheduleKeyDeletion", "rds:DeleteDBInstance", "s3:DeleteBucket", "iam:CreateAccessKey"] : contains(flatten([for st in data.aws_iam_policy_document.deploy_boundary.statement : st.actions if st.effect == "Deny"]), a)])
+    error_message = "The boundary carries the irreversible-action denials."
+  }
+  assert {
+    condition = anytrue([for st in data.aws_iam_policy_document.deploy_boundary.statement : st.effect == "Deny" && toset(st.actions) == toset(["iam:CreateRole", "iam:PutRolePermissionsBoundary", "iam:AttachRolePolicy", "iam:PutRolePolicy"]) && anytrue([
+      for c in st.condition : c.test == "StringNotEquals" && c.variable == "iam:PermissionsBoundary" && toset(c.values) == toset([local.deploy_boundary_arn])
+    ])])
+    error_message = "No role can be created or given policies without the same boundary."
+  }
+  assert {
+    condition     = anytrue([for st in data.aws_iam_policy_document.deploy_boundary.statement : st.effect == "Deny" && contains(st.actions, "iam:DeleteRolePermissionsBoundary")]) && anytrue([for st in data.aws_iam_policy_document.deploy_boundary.statement : st.effect == "Deny" && contains(st.actions, "iam:CreatePolicyVersion") && try(contains(st.resources, local.deploy_boundary_arn), false)])
+    error_message = "The boundary can't be removed from a role or changed."
+  }
+  assert {
+    condition     = anytrue([for st in data.aws_iam_policy_document.deploy_boundary.statement : st.effect == "Deny" && contains(st.actions, "iam:UpdateAssumeRolePolicy") && try(contains(st.not_resources, "arn:aws:iam::111122223333:role/fh-production-ca-central-1-*"), false)])
+    error_message = "Only this environment's own roles' trust can change."
+  }
+}
+
+run "no_boundary_without_deployments" {
+  command = plan
+  assert {
+    condition     = length(aws_iam_policy.deploy_boundary) == 0 && aws_iam_role.app.permissions_boundary == null
+    error_message = "Without github_repository, no boundary is created or set."
   }
 }
 

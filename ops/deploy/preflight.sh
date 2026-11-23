@@ -9,10 +9,12 @@
 #   - every repository variable the pipeline needs is set (docs/DEPLOYING.md);
 #   - a manual run deploys only a commit whose CI run on main succeeded (a workflow_run run only
 #     starts after a successful one);
+#   - the repository's OIDC subject includes repo, context and job_workflow_ref: the AWS roles
+#     trust only the deploy workflow on main in each environment (ops/terraform/deploy.tf), and
+#     with the default subject no job could assume them;
 #   - the GitHub environments protect what the AWS roles trust: both "staging" and "production"
-#     accept deployments from the main branch only, and "production" has required reviewers. The
-#     AWS roles trust any job in those environments (ops/terraform/deploy.tf), so these settings
-#     are the gate; GitHub creates a missing environment with no protection at all.
+#     accept deployments from the main branch only, and "production" has required reviewers.
+#     GitHub creates a missing environment with no protection at all.
 set -uo pipefail
 : "${SHA:?}" "${REPO:?}" "${EVENT:?}"
 echo "sha=$SHA" >> "$GITHUB_OUTPUT"
@@ -27,6 +29,8 @@ if [ ${#problems[@]} -eq 0 ]; then
     ok=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=push&status=success" --jq '.total_count' 2>/dev/null || echo error)
     [ "$ok" != "error" ] && [ "${ok:-0}" -gt 0 ] || problems+=("CI has not succeeded for $SHA on main")
   fi
+  claims=$(gh api "repos/$REPO/actions/oidc/customization/sub" --jq 'if .use_default then "default" else (.include_claim_keys | join(",")) end' 2>/dev/null || echo error)
+  [ "$claims" = "repo,context,job_workflow_ref" ] || problems+=("the repository's OIDC subject must be customized to include repo, context and job_workflow_ref (it is: $claims)")
   for env in staging production; do
     if ! info=$(gh api "repos/$REPO/environments/$env" 2>/dev/null); then
       problems+=("the GitHub environment \"$env\" does not exist or can't be read")

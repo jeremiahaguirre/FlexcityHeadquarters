@@ -26,6 +26,7 @@ case "$1" in
       *jobs_security_group*) echo -n sg-jobs ;;
       *migrate_task_definition*) echo -n td-migrate ;;
       *deployment_alarm_names*) echo '["fh-api-5xx-ratio"]' ;;
+      *service_task_definitions*) echo '{"api":"td-api:2","web":"td-web:2","worker":"td-worker:2"}' ;;
     esac ;;
 esac
 `;
@@ -37,13 +38,16 @@ case "$*" in
   *"tasks[0].lastStatus"*) echo STOPPED ;;
   *"containers[0].exitCode"*) echo "\${EXIT_CODE:-0}" ;;
   *"stoppedReason"*) echo "Essential container exited" ;;
-  *"length(services"*) echo 3 ;;
+  *"rolloutState"*) echo "\${SERVICES_JSON:-$STABLE}" ;;
   *"taskDefinition"*) echo td-web ;;
   *"securityGroups[0]"*) echo sg-web ;;
   *"describe-alarms"*) echo "\${FIRING:-None}" ;;
   *) exit 0 ;;
 esac
 `;
+
+// describe-services after the apply: every service on the task definition the apply registered.
+const STABLE = JSON.stringify(['api', 'web', 'worker'].map((name) => ({ name, deployments: 1, rollout: 'COMPLETED', td: `td-${name}:2`, running: 2, desired: 2 })));
 
 const CURL = `#!/usr/bin/env bash
 printf 'HTTP/2 200\\r\\nX-FH-Version: %s\\r\\n\\r\\n' "\${VERSION_SEEN:-$SHA}"
@@ -60,7 +64,7 @@ function run(env) {
   const calls = join(dir, 'calls');
   writeFileSync(calls, '');
   const r = spawnSync('bash', [script], {
-    env: { PATH: `${bin}:${process.env.PATH}`, CALLS: calls, RUNNER_TEMP: dir, SHA: 'new123', PREV: 'old456', ENV_NAME: 'production', APP_URL: 'https://x.example.ca', TF_BACKEND: 'bucket = "b"', TFVARS: 'environment = "production"', WATCH_MS: '0', POLL_S: '0', ...env },
+    env: { PATH: `${bin}:${process.env.PATH}`, CALLS: calls, STABLE, RUNNER_TEMP: dir, SHA: 'new123', PREV: 'old456', ENV_NAME: 'production', APP_URL: 'https://x.example.ca', TF_BACKEND: 'bucket = "b"', TFVARS: 'environment = "production"', WATCH_MS: '0', POLL_S: '0', ...env },
     encoding: 'utf8',
   });
   const log = readFileSync(calls, 'utf8');
@@ -110,4 +114,20 @@ test('a first deployment has nothing to roll back to, and says so by failing', (
   const r = run({ PREV: '', FAIL_APPLY_TAG: 'new123' });
   assert.equal(r.status, 1);
   assert.deepEqual(r.applies, ['new123 (migrate only)', 'new123']);
+});
+
+test('ECS rolls a service back by itself (circuit breaker): a failed release, rolled back, not "runs $SHA" (review of #58)', () => {
+  const rolledBack = JSON.parse(STABLE).map((x) => (x.name === 'worker' ? { ...x, td: 'td-worker:1' } : x));
+  const r = run({ SERVICES_JSON: JSON.stringify(rolledBack) });
+  assert.equal(r.status, 1, r.out);
+  assert.deepEqual(r.applies, ['new123 (migrate only)', 'new123', 'old456']);
+  assert.match(r.out, /ECS rolled back: worker runs td-worker:1 \(COMPLETED\), expected td-worker:2/);
+  assert.doesNotMatch(r.out, /production runs new123/);
+});
+
+test('a deployment ECS marks FAILED is a failed release too', () => {
+  const failed = JSON.parse(STABLE).map((x) => (x.name === 'web' ? { ...x, rollout: 'FAILED' } : x));
+  const r = run({ SERVICES_JSON: JSON.stringify(failed) });
+  assert.equal(r.status, 1, r.out);
+  assert.deepEqual(r.applies.at(-1), 'old456');
 });
