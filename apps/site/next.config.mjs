@@ -20,6 +20,9 @@ const SITE_URL = (
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
+  // Type-check like Next 15 (TypeScript API, *.test.* files skipped), not Next 16's default TypeScript CLI,
+  // which also checks tests (the same choice as apps/web/next.config.mjs).
+  experimental: { useTypeScriptCli: false },
   reactStrictMode: true,
   poweredByHeader: false,
   images: { unoptimized: true },
