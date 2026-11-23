@@ -45,7 +45,7 @@ const editable = z.object({
   sortOrder: z.number().int().min(0).max(1000).default(100),
   archived: z.boolean().default(false),
 });
-const codeOf = (name: string) => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'LEAVE';
+const codeOf = (name: string) => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean).join('_').slice(0, 30) || 'LEAVE';
 
 /**
  * Kinds of leave apply to the whole organization and change pay: never set by a role limited to
