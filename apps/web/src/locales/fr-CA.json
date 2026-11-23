@@ -1321,9 +1321,7 @@
       "removed": "Confirmation retirée.",
       "private": "Seules les RH voient ceci."
     },
-    "email": "Courriel",
     "phone": "Téléphone",
-    "emailHint": "Son identifiant de connexion. Une nouvelle adresse ferme toutes ses sessions, annule les liens inutilisés et avise l’ancienne adresse. Renvoyez l’invitation si la personne ne s’est pas encore connectée.",
     "seniorityHours": "Heures d’ancienneté",
     "seniorityHoursHint": "Utilisées là où l’ancienneté se compte en heures (rondes de soumissions, heures supplémentaires, rappels)."
   },

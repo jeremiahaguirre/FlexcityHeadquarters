@@ -8,9 +8,19 @@ const form = (o: Record<string, string | string[]>) => {
 };
 
 describe('HR record form', () => {
-  it('sends a corrected name, email, phone and seniority hours', () => {
-    const b = hrBody(form({ firstName: ' Jordan ', lastName: 'Singh', email: 'jordan.singh@example.ca', phone: '', roles: 'STAFF', status: 'ACTIVE', employment: 'PART_TIME', hireDate: '2025-05-01', seniorityDate: '2025-05-01', seniorityHours: '1240.5', vsc: '', dob: '', employeeNumber: '' }));
-    expect(b).toMatchObject({ firstName: 'Jordan', lastName: 'Singh', email: 'jordan.singh@example.ca', phone: null, seniorityHours: '1240.5', seniorityDate: '2025-05-01', roles: ['STAFF'] });
+  it('sends a corrected name, phone and seniority hours', () => {
+    const b = hrBody(form({ firstName: ' Jordan ', lastName: 'Singh', phone: '', roles: 'STAFF', status: 'ACTIVE', employment: 'PART_TIME', hireDate: '2025-05-01', seniorityDate: '2025-05-01', seniorityHours: '1240.5', vsc: '', dob: '', employeeNumber: '' }), { seniorityHours: '1500.00' });
+    expect(b).toMatchObject({ firstName: 'Jordan', lastName: 'Singh', phone: null, seniorityHours: '1240.5', seniorityDate: '2025-05-01', roles: ['STAFF'] });
+    // The sign-in email changes through its own confirmed flow, not this form.
+    expect(b).not.toHaveProperty('email');
+  });
+
+  it('never turns a blank, unreadable or unchanged seniority hours field into a change (a blank used to save 0)', () => {
+    const base = { firstName: 'A', lastName: 'B', roles: 'STAFF', status: 'ACTIVE', employment: 'CASUAL', seniorityDate: '' };
+    expect(hrBody(form({ ...base, seniorityHours: '' }), { seniorityHours: '1500.00' })).not.toHaveProperty('seniorityHours');
+    expect(hrBody(form({ ...base, seniorityHours: '12e' }), { seniorityHours: '1500.00' })).not.toHaveProperty('seniorityHours');
+    expect(hrBody(form({ ...base, seniorityHours: '1500' }), { seniorityHours: '1500.00' })).not.toHaveProperty('seniorityHours');
+    expect(hrBody(form({ ...base, seniorityHours: '0' }), { seniorityHours: '1500.00' })).toMatchObject({ seniorityHours: '0' });
   });
 
   it('leaves seniority alone where the organization doesn’t use it (the fields aren’t shown)', () => {

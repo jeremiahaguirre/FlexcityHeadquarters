@@ -92,7 +92,7 @@ function Person() {
   async function saveHr(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    await run('hr', () => api(`/api/users/${id}`, { method: 'PATCH', body: hrBody(f) }), t('profile.saved'));
+    await run('hr', () => api(`/api/users/${id}`, { method: 'PATCH', body: hrBody(f, { seniorityHours: p?.seniorityHours }) }), t('profile.saved'));
     await person.reload();
   }
 
@@ -197,7 +197,6 @@ function Person() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={t('staff.firstName')}>{(f) => <Input {...f} name="firstName" required maxLength={60} defaultValue={p.firstName} />}</Field>
                 <Field label={t('staff.lastName')}>{(f) => <Input {...f} name="lastName" required maxLength={60} defaultValue={p.lastName} />}</Field>
-                <Field label={t('staff.email')} hint={t('staff.emailHint')}>{(f) => <Input {...f} name="email" type="email" required maxLength={160} autoCapitalize="off" autoCorrect="off" spellCheck={false} defaultValue={p.email} />}</Field>
                 <Field label={t('staff.phone')} hint={t('common.optional')}>{(f) => <Input {...f} name="phone" type="tel" maxLength={30} defaultValue={p.phone ?? ''} />}</Field>
                 <Field label={t('staff.status')}>
                   {(f) => (
