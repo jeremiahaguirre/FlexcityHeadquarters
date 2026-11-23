@@ -1,7 +1,7 @@
 /** Dates and times in an organization's own time zone (shifts, pay weeks, local days). */
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import { HttpError, badRequest } from './errors.js';
+import { HttpError, invalid } from './errors.js';
 
 /**
  * Time-zone conversions are the slowest part of checking a shift (each one formats a date
@@ -145,7 +145,7 @@ export function atLocal(local: string, timezone: string, field = 'time'): Date {
     return at.toJSDate();
   }
   const at = DateTime.fromISO(wall, { zone: timezone });
-  if (!at.isValid) throw badRequest('That date and time aren’t valid.');
+  if (!at.isValid) throw invalid('BAD_TIME', 'That date and time aren’t valid.', { field });
   if (at.toFormat(WALL) !== wall) throw new HttpError(400, 'TIME_NOT_EXIST', 'That time doesn’t exist: the clocks went forward then.', { field });
   // The same wall time an hour either side of the change: two different instants means it happened twice.
   const offsets = new Set<string>();

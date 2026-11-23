@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { hhmm, toMinutes } from '@/lib/programs';
@@ -65,7 +66,7 @@ export default function CoveragePage() {
       <Card>
         <CardHeader title={t('coverage.gaps')} description={t('coverage.gapsHelp')} />
         <CardBody className="pt-2">
-          {!gaps.data || !facilities.data ? <Skeleton className="h-24" /> : !rules.data?.length ? (
+          {gaps.error ? <ErrorNotice onRetry={() => void gaps.reload()} /> : !gaps.data || !facilities.data ? <Skeleton className="h-24" /> : !rules.data?.length ? (
             <p className="text-small text-muted">{t('coverage.noRulesYet')}</p>
           ) : !gaps.data.length ? (
             <p className="flex items-center gap-2 text-small font-semibold text-ok"><CheckCircle2 className="h-5 w-5" aria-hidden="true" />{t('coverage.allCovered')}</p>
@@ -84,7 +85,7 @@ export default function CoveragePage() {
       <Card>
         <CardHeader title={t('coverage.rules')} />
         <CardBody className="pt-2">
-          {!rules.data ? <Skeleton className="h-24" /> : !rules.data.length ? <EmptyState icon={ShieldCheck} title={t('coverage.none')}>{t('coverage.noneHelp')}</EmptyState> : (
+          {rules.error ? <ErrorNotice onRetry={() => void rules.reload()} /> : !rules.data ? <Skeleton className="h-24" /> : !rules.data.length ? <EmptyState icon={ShieldCheck} title={t('coverage.none')}>{t('coverage.noneHelp')}</EmptyState> : (
             <ul className="divide-y divide-line text-small">
               {rules.data.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">

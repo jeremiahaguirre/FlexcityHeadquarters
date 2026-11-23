@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { CUSTOM_ROLE_PERMISSIONS, covers, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../services/people/customRoles.js';
+import { CUSTOM_PERMISSION_NEEDS, CUSTOM_ROLE_PERMISSIONS, covers, customRoleBody, deleteCustomRole, listCustomRoles, saveCustomRole, setUserCustomRoles } from '../services/people/customRoles.js';
 import { actorOf, assertUserInScope } from '../services/people/scope.js';
 import { h } from './context.js';
 
@@ -21,6 +21,8 @@ rolesRouter.get(
       // Each role says whether this person may change it or give it to someone.
       roles: roles.map((r) => ({ ...r, canManage: !!actor && covers(actor, r.reach) })),
       catalog: CUSTOM_ROLE_PERMISSIONS,
+      // Ticking one of these also gives the others its screen needs.
+      needs: CUSTOM_PERMISSION_NEEDS,
       // What this person may put in a role: only capabilities they hold, inside their department.
       // null = anything (the organization's own administrators).
       grantable: !actor ? [] : !a.scope && a.permissions.has('tenant.configure') ? null : [...a.permissions],

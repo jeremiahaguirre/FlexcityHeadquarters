@@ -19,13 +19,13 @@ import { Hero } from '@/components/ui/Hero';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
-import type { HrOverview } from '@/lib/hr';
+import { ErrorNotice } from '@/components/ui/ErrorNotice';
+import { type HrOverview, type HrTab, hrTabs } from '@/lib/hr';
 import { useSession } from '@/lib/session';
 import { useQuery } from '@/lib/useQuery';
 import { CountUp } from '@/components/ui/CountUp';
 
-const TABS = ['overview', 'leave', 'reviews', 'policies', 'labour', 'offboarding'] as const;
-type Tab = (typeof TABS)[number];
+type Tab = HrTab;
 
 /** HR home: every HR area with what needs attention, plus tabs (leave, reviews, policies, labour, offboarding) kept in the address (?tab=). */
 export default function HrPage() {
@@ -40,10 +40,12 @@ function HrInner() {
   const { t } = useTranslation();
   const params = useSearchParams();
   const router = useRouter();
+  const { can } = useSession();
+  const mine = hrTabs(can);
   const raw = params.get('tab');
-  const tab: Tab = TABS.includes(raw as Tab) ? (raw as Tab) : 'overview';
+  const tab: Tab = mine.includes(raw as Tab) ? (raw as Tab) : 'overview';
   const setTab = (v: Tab) => router.replace(v === 'overview' ? '/manage/hr' : `/manage/hr?tab=${v}`, { scroll: false });
-  const tabs = <div className="overflow-x-auto"><Segmented label={t('hr.title')} value={tab} onChange={setTab} options={TABS.map((v) => ({ value: v, label: t(`hr.tabs.${v}`) }))} /></div>;
+  const tabs = <div className="overflow-x-auto"><Segmented label={t('hr.title')} value={tab} onChange={setTab} options={mine.map((v) => ({ value: v, label: t(`hr.tabs.${v}`) }))} /></div>;
   return (
     <div className="grid gap-6">
       {tab !== 'overview' ? <PageHeader title={t('hr.title')} description={t('hr.description')} /> : null}
@@ -62,6 +64,7 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
   const lng = i18n.language;
   const { can, me } = useSession();
   const o = useQuery<HrOverview>('/api/hr/overview');
+  if (o.error) return <div className="grid gap-4">{tabs}<ErrorNotice onRetry={() => void o.reload()} /></div>;
   if (!o.data) return <Skeleton className="h-64" />;
   const d = o.data;
   type Area = { key: string; icon: LucideIcon; href?: string; tab?: Tab; show: boolean; todo?: string | null };
@@ -86,11 +89,11 @@ function Overview({ onTab, tabs }: { onTab: (t: Tab) => void; tabs: ReactNode })
   const go = (a: Area, children: ReactNode, className: string) =>
     a.href ? <Link href={a.href} className={className}>{children}</Link> : <button type="button" onClick={() => onTab(a.tab!)} className={`${className} w-full text-left`}>{children}</button>;
   const numbers = [
-    { label: t('hr.num.staff'), value: d.staff, icon: Users },
-    { label: t('hr.num.enrolled'), value: d.enrolled, icon: HeartPulse },
-    { label: t('hr.num.reviews'), value: d.reviewsOpen, icon: ClipboardCheck },
-    { label: t('hr.num.jobs'), value: d.openJobs, icon: Briefcase },
-  ];
+    { label: t('hr.num.staff'), value: d.staff, icon: Users, show: true },
+    { label: t('hr.num.enrolled'), value: d.enrolled, icon: HeartPulse, show: can('benefits.manage') },
+    { label: t('hr.num.reviews'), value: d.reviewsOpen, icon: ClipboardCheck, show: can('performance.manage') },
+    { label: t('hr.num.jobs'), value: d.openJobs, icon: Briefcase, show: can('jobs.manage') },
+  ].filter((n) => n.show);
   // A gentle colour per area so the directory isn't a wall of grey icons.
   const TINTS = ['bg-brand/10 text-brand-text', 'bg-new-bg text-new', 'bg-ok-bg text-ok', 'bg-surface text-ink'];
   return (

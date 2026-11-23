@@ -1,7 +1,7 @@
 /** Clocking in and out (including punches sent late from a phone that was offline), and supervisor corrections. */
 import { announceChange } from '../../lib/changes.js';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { localDate } from '../../lib/time.js';
 import { classifyPunchLocation } from './geofence.js';
 
@@ -218,7 +218,7 @@ export async function editPunch(
   if (input.inScope && !(await input.inScope(punch.userId))) throw forbidden('This person isn’t in your department.');
   if (input.placeInScope && !input.placeInScope(punch)) throw forbidden('This punch isn’t in your department.');
   const next = { clockIn: input.clockIn ?? punch.clockIn, clockOut: input.clockOut ?? punch.clockOut };
-  if (next.clockOut && next.clockOut.getTime() - next.clockIn.getTime() > MAX_PUNCH_MS) throw badRequest('A punch can’t be longer than 24 hours.');
+  if (next.clockOut && next.clockOut.getTime() - next.clockIn.getTime() > MAX_PUNCH_MS) throw invalid('PUNCH_TOO_LONG', 'A punch can’t be longer than 24 hours.');
   if (next.clockOut && next.clockOut <= next.clockIn) throw punchError('PUNCH_OUT_BEFORE_IN', 'Clock-out must be after clock-in.');
   if (next.clockIn.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs || (next.clockOut && next.clockOut.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs)) {
     throw punchError('PUNCH_IN_FUTURE', 'A punch can’t be in the future.');
@@ -299,12 +299,12 @@ export async function addPunch(
   input: { tenantId: string; actorId: string; userId: string; facilityId: string; shiftId?: string | null; positionId?: string | null; clockIn: Date; clockOut: Date; reason: string; inScope?: (userId: string) => Promise<boolean>; placeInScope?: (place: Place) => boolean },
 ) {
   const reason = input.reason.trim();
-  if (reason.length < 3) throw badRequest('A reason is required to add a punch.');
+  if (reason.length < 3) throw invalid('REASON_REQUIRED', 'A reason is required to add a punch.');
   if (input.userId === input.actorId) throw new HttpError(403, 'OWN_PUNCH', 'You can’t add time for yourself. Ask another supervisor.');
   if (input.inScope && !(await input.inScope(input.userId))) throw forbidden('This person isn’t in your department.');
   if (input.clockOut <= input.clockIn) throw punchError('PUNCH_OUT_BEFORE_IN', 'Clock-out must be after clock-in.');
   if (input.clockOut.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs) throw punchError('PUNCH_IN_FUTURE', 'A punch can’t be in the future.');
-  if (input.clockOut.getTime() - input.clockIn.getTime() > MAX_PUNCH_MS) throw badRequest('A punch can’t be longer than 24 hours.');
+  if (input.clockOut.getTime() - input.clockIn.getTime() > MAX_PUNCH_MS) throw invalid('PUNCH_TOO_LONG', 'A punch can’t be longer than 24 hours.');
   await advisoryLock(tx, `punch:${input.userId}`);
   const person = await tx.user.findUnique({ where: { id: input.userId }, select: { id: true, status: true } });
   if (!person) throw notFound('Person');
@@ -313,14 +313,14 @@ export async function addPunch(
   if (input.shiftId) {
     const shift = await tx.shift.findUnique({ where: { id: input.shiftId } });
     if (!shift) throw notFound('Shift');
-    if (shift.userId !== input.userId) throw badRequest('This shift isn’t theirs.');
-    if (shift.facilityId !== input.facilityId) throw badRequest('This shift is at another facility.');
+    if (shift.userId !== input.userId) throw invalid('SHIFT_NOT_THEIRS', 'This shift isn’t theirs.');
+    if (shift.facilityId !== input.facilityId) throw invalid('SHIFT_ELSEWHERE', 'This shift is at another facility.');
     positionId = shift.positionId;
   }
-  if (!positionId) throw badRequest('Choose the position they worked.');
+  if (!positionId) throw invalid('POSITION_REQUIRED', 'Choose the position they worked.');
   // The position decides the pay rate and the department charged: it must be one the lead manages.
   if (input.placeInScope && !input.placeInScope({ positionId, facilityId: input.facilityId })) throw forbidden('This position or facility isn’t in your department.');
-  if (!(await tx.userPosition.findFirst({ where: { userId: input.userId, positionId }, select: { userId: true } }))) throw badRequest('They don’t hold this position.');
+  if (!(await tx.userPosition.findFirst({ where: { userId: input.userId, positionId }, select: { userId: true } }))) throw invalid('POSITION_NOT_HELD', 'They don’t hold this position.');
   await assertNoOverlap(tx, input.userId, input.clockIn, input.clockOut);
   await assertPeriodOpen(tx, { positionId, facilityId: input.facilityId, clockIn: input.clockIn });
 

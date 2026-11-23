@@ -18,6 +18,7 @@ import { ListSkeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { ApiError } from '@/lib/apiError';
+import { type ApprovalTab, approvalTabs } from '@/lib/approvals';
 import { formatDate, formatDuration, formatHours, formatSpan, formatTime, formatTimeRange } from '@/lib/format';
 import { LONG_PUNCH_HOURS } from '@/lib/punch';
 import { useSession } from '@/lib/session';
@@ -44,7 +45,7 @@ interface Punch {
   /** This supervisor added or changed the time, so someone else approves it. */
   correctedByYou?: boolean;
 }
-type Tab = 'claims' | 'trades' | 'timeoff' | 'punches';
+type Tab = ApprovalTab;
 const PROTECTED = new Set(['SICK', 'PROTECTED_LEAVE']);
 
 /** Everything waiting for a supervisor in one place: shift claims, time off, punches and trades, each tab shown only with the permission to decide it. */
@@ -59,8 +60,7 @@ export default function ApprovalsPage() {
   const claims = useQuery<Claim[]>(ready && can('shiftboard.approve') ? `/api/offers/pending${tq}` : null);
   const timeOff = useQuery<TimeOff[]>(ready && can('timeoff.approve') ? `/api/time-off${tq}` : null);
   const punches = useQuery<Punch[]>(ready && can('timeclock.review') ? `/api/punches${tq}` : null);
-  const allowed: Record<Tab, boolean> = { claims: can('shiftboard.approve'), trades: can('shiftboard.approve'), timeoff: can('timeoff.approve'), punches: can('timeclock.review') };
-  const [tab, setTab] = useState<Tab>(() => (['claims', 'timeoff', 'punches', 'trades'] as const).find((k) => allowed[k]) ?? 'claims');
+  const [picked, setTab] = useState<Tab>('claims');
   // Punches: the queue waiting for review, or ones already approved (to correct a time; it then goes back for review).
   const [punchView, setPunchView] = useState<'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
   const approvedPunches = useQuery<Punch[]>(ready && can('timeclock.review') && punchView !== 'PENDING' ? `/api/punches?status=${punchView}${scope.query ? `&${scope.query}` : ''}` : null);
@@ -87,7 +87,8 @@ export default function ApprovalsPage() {
 
   // Open on the first tab that has something waiting, once every list has loaded, unless the person already chose one.
   const chosen = useRef(false);
-  const order: Tab[] = (['claims', 'timeoff', 'punches', 'trades'] as const).filter((k) => allowed[k]);
+  const order = approvalTabs(can);
+  const tab: Tab = order.includes(picked) ? picked : (order[0] ?? picked);
   const allLoaded = ready && !claims.loading && !timeOff.loading && !punches.loading && !trades.loading;
   const firstWithItems = allLoaded ? order.find((k) => count[k] > 0) : undefined;
   useEffect(() => {
