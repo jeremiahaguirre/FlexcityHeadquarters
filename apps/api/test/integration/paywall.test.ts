@@ -30,8 +30,15 @@ const account = (data: object = {}) =>
   });
 async function invoice(dueOffsetDays: number, totalCents = 113_000) {
   const n = Math.floor(Math.random() * 1e9);
+  // A complete invoice (a line plus 13% HST adding up to the total), so FH's books stay balanced
+  // whichever test file reads them next.
+  const subtotalCents = Math.round(totalCents / 1.13);
   return owner.invoice.create({
-    data: { tenantId: t.tenant.id, number: `T-${n}`, status: 'SENT', periodStart: day(-60), periodEnd: day(-31), issueDate: day(dueOffsetDays - 30), dueDate: day(dueOffsetDays), subtotalCents: 100_000, totalCents, billTo: {}, createdById: hr },
+    data: {
+      tenantId: t.tenant.id, number: `T-${n}`, status: 'SENT', periodStart: day(-60), periodEnd: day(-31), issueDate: day(dueOffsetDays - 30), dueDate: day(dueOffsetDays),
+      subtotalCents, taxLines: [{ name: 'HST', amountCents: totalCents - subtotalCents }], totalCents, billTo: {}, createdById: hr,
+      lines: { create: [{ position: 1, kind: 'facility', description: 'Facility licence', quantity: 1, unitCents: subtotalCents, amountCents: subtotalCents }] },
+    },
   });
 }
 
