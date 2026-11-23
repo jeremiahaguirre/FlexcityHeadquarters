@@ -136,26 +136,16 @@ describe('FH support visits never open individual records', () => {
     const who = t.users[0]!.id;
     const incident = '00000000-0000-4000-8000-000000000000';
     const job = randomUUID();
-    // Each of these reached its handler before (200), whatever the visit's level allowed.
+    // Each of these answered 200 to a FULL visit on main: the records reached FH staff.
     const leaked = [
       `/api/Users/${who}/documents`,
       `/api/USERS/${who}/Discipline`,
-      `/api/users/${who}/%64ocuments`,
-      `/api/Documents/${randomBytes(16).toString('hex')}`,
       '/api/Grievances',
       '/api/Payroll/people',
-      '/api/Me/pay-statements',
-      '/api/Households',
-      '/api/Data-Export',
-      '/api/Union/locals',
-      '/api/UNION/locals',
-      `/api/incidents/${incident}/`,
-      `/api/Incidents/${incident}`,
       // HR routes that weren't on the list at all.
       `/api/users/${who}/salary`,
       `/api/users/${who}/payroll-orders`,
       `/api/users/${who}/emergency-contacts`,
-      `/api/applications/${randomBytes(16).toString('hex')}/resume`,
       `/api/jobs/${job}/applications`,
       '/api/notifications',
       '/api/messages/conversations',
@@ -167,17 +157,77 @@ describe('FH support visits never open individual records', () => {
       '/api/payees',
       '/api/benefits',
       '/api/training',
-      '/api/time-off',
-      '/api/incidents',
     ];
-    // These don't route in Express 5 (404 before the fix too): kept to show the canonical path
-    // blocks rather than lets through anything that reads like a records path.
-    const overBlocked = [`/api/%75sers/${who}/documents`, `/api/users//${who}/documents`, `/api/users/${who}/pay-rates`];
-    for (const path of [...leaked, ...overBlocked]) {
+    // Records paths that didn't leak in this test's city on main (no such record or route, the
+    // feature off, a 400 from the handler, or another check's 403), refused now by the block list
+    // itself, whatever the data: they show the canonical path blocks the case, encoding, trailing
+    // slash and repeated-slash forms of records paths rather than letting any through.
+    const blockedRegardless = [
+      `/api/users/${who}/%64ocuments`,
+      `/api/%75sers/${who}/documents`,
+      `/api/users//${who}/documents`,
+      `/api/users/${who}/pay-rates`,
+      `/api/Documents/${randomBytes(16).toString('hex')}`,
+      '/api/Me/pay-statements',
+      '/api/Households',
+      '/api/Data-Export',
+      '/api/Union/locals',
+      '/api/UNION/locals',
+      `/api/Incidents/${incident}`,
+      `/api/incidents/${incident}/`,
+      '/api/incidents',
+      `/api/applications/${randomBytes(16).toString('hex')}/resume`,
+      '/api/time-off',
+    ];
+    for (const path of [...leaked, ...blockedRegardless]) {
       const r = await call(visit).get(path);
       expect(r.status, `${path} → ${r.status} ${r.body.code}`).toBe(403);
     }
     expect((await call(visit).get('/api/Settings')).status).toBe(200);
+  });
+
+  it('reports that list named people (sick leave, reliability, expenses, lone work, hours) aren’t open to a visit; aggregates are', async () => {
+    const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
+    const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
+    const session = await owner.supportSession.create({ data: { tenantId: t.tenant.id, grantId: grant.id, adminId: admin.id, codeHash: randomBytes(16).toString('hex'), codeExpiresAt: new Date(Date.now() + 60_000), usedAt: new Date(), endsAt: new Date(Date.now() + 1_800_000) } });
+    const visit = await signAccessToken({ sub: ids.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], mfa: true, sup: session.id });
+    await owner.timeOffRequest.create({ data: { tenantId: t.tenant.id, userId: t.users[0]!.id, startsAt: new Date(Date.now() - 4 * 86_400_000), endsAt: new Date(Date.now() - 3 * 86_400_000), type: 'SICK', status: 'APPROVED' } });
+    const personal = ['time_off', 'reliability', 'expenses', 'lone_work', 'overtime', 'hours_worked', 'certs_expiring'];
+    for (const key of personal) {
+      for (const path of ['/api/reports/run', '/api/reports/run.csv']) {
+        const r = await call(visit).get(`${path}?key=${key}`);
+        expect(r.status, `${path} ${key} → ${r.status} ${r.text.slice(0, 120)}`).toBe(403);
+      }
+    }
+    const list = (await call(visit).get('/api/reports')).body as Array<{ key: string }>;
+    expect(list.map((x) => x.key)).not.toEqual(expect.arrayContaining(['time_off']));
+    expect(list.map((x) => x.key)).toContain('labour_cost');
+    expect((await call(visit).get('/api/reports/run?key=labour_cost')).status).toBe(200);
+    // HR itself still runs them.
+    expect((await call(tok.hr).get('/api/reports/run?key=time_off')).status).toBe(200);
+  });
+
+  it('named exit-survey answers aren’t open to a visit; anonymous pulse results still are', async () => {
+    const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
+    const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
+    const session = await owner.supportSession.create({ data: { tenantId: t.tenant.id, grantId: grant.id, adminId: admin.id, codeHash: randomBytes(16).toString('hex'), codeExpiresAt: new Date(Date.now() + 60_000), usedAt: new Date(), endsAt: new Date(Date.now() + 1_800_000) } });
+    const visit = await signAccessToken({ sub: ids.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], mfa: true, sup: session.id });
+    const questions = [{ id: 'q1', type: 'TEXT', text: 'Why are you leaving?' }];
+    const base = { tenantId: t.tenant.id, questions, seriesId: randomUUID(), opensAt: new Date(Date.now() - 86_400_000), closesAt: new Date(Date.now() - 3_600_000), publishedAt: new Date(Date.now() - 86_400_000), closedAt: new Date(), createdById: ids.hr };
+    const exit = await owner.survey.create({ data: { ...base, kind: 'EXIT', title: 'Before you go', anonymous: false, subjectUserId: t.users[0]!.id } });
+    await owner.surveyResponse.create({ data: { tenantId: t.tenant.id, surveyId: exit.id, userId: t.users[0]!.id, answers: { q1: 'Private reason for leaving' } } });
+    const pulse = await owner.survey.create({ data: { ...base, kind: 'PULSE', title: 'Weekly check-in', anonymous: true, minGroup: 5 } });
+    for (const path of [`/api/surveys/${exit.id}/results`, `/api/surveys/${exit.id}/results.csv`]) {
+      const r = await call(visit).get(path);
+      expect(r.status, `${path} → ${r.status} ${r.text.slice(0, 100)}`).toBe(403);
+      expect(r.text).not.toContain('Private reason');
+    }
+    const list = await call(visit).get('/api/surveys');
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(list.body)).not.toContain(exit.id);
+    expect((await call(visit).get(`/api/surveys/${pulse.id}/results`)).status).toBe(200);
+    // HR itself still reads the exit survey.
+    expect((await call(tok.hr).get(`/api/surveys/${exit.id}/results`)).text).toContain('Private reason');
   });
 
   it('an absolute-form request line (GET http://host/api/… HTTP/1.1) doesn’t get past the block either', async () => {

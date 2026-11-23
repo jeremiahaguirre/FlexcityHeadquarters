@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { badRequest, notFound } from '../lib/errors.js';
+import { invalid, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { h } from './context.js';
 import { assertUserInScope, hrRecordsBy } from '../services/people/scope.js';
@@ -65,7 +65,7 @@ accommodationRouter.post(
     const a = authOf(req);
     const userId = uuid.parse(req.params.id);
     const b = body.parse(req.body);
-    if (b.endsOn && b.endsOn < b.startsOn) throw badRequest('The end date is before the start date.');
+    if (b.endsOn && b.endsOn < b.startsOn) throw invalid('ENDS_BEFORE_START', 'The end date is before the start date.');
     const c = await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, userId);
       if (!(await tx.user.findUnique({ where: { id: userId } }))) throw notFound('Staff member');

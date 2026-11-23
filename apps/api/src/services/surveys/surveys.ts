@@ -25,7 +25,7 @@ import type { Prisma, Survey } from '../../generated/prisma/client.js';
 import type { AuthContext } from '../../auth/middleware.js';
 import { announceChange, announceChangeTo } from '../../lib/changes.js';
 import { type Tx, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { notify } from '../notifications/notifier.js';
 import { type Answers, type Breakdown, MIN_GROUP_CEILING, MIN_GROUP_DEFAULT, MIN_GROUP_FLOOR, type Question, type Results, anonymousResults, validateAnswers } from './results.js';
 
@@ -123,7 +123,7 @@ export async function saveDraft(tx: Tx, a: AuthContext, d: Draft, id?: string) {
   if (!scope.hr && d.audience.departmentIds.some((x) => !scope.departments.includes(x))) throw forbidden('Choose departments you manage.');
   let subjectUserId: string | null = null;
   if (d.kind === 'EXIT') {
-    if (!d.offboardingId) throw badRequest('Choose the person leaving.');
+    if (!d.offboardingId) throw invalid('LEAVER_REQUIRED', 'Choose the person leaving.');
     const o = await tx.offboarding.findUnique({ where: { id: d.offboardingId } });
     if (!o || o.completedAt) throw notFound('Offboarding');
     subjectUserId = o.userId;
@@ -131,7 +131,7 @@ export async function saveDraft(tx: Tx, a: AuthContext, d: Draft, id?: string) {
   let seriesId: string = randomUUID();
   if (d.repeatOf) {
     const prev = await ownSurvey(tx, a, d.repeatOf);
-    if (prev.kind !== 'PULSE' || d.kind !== 'PULSE') throw badRequest('Only pulse surveys repeat.');
+    if (prev.kind !== 'PULSE' || d.kind !== 'PULSE') throw invalid('ONLY_PULSE_REPEATS', 'Only pulse surveys repeat.');
     seriesId = prev.seriesId;
   }
   const data = {
@@ -162,7 +162,7 @@ export async function saveDraft(tx: Tx, a: AuthContext, d: Draft, id?: string) {
 export async function publish(tx: Tx, a: AuthContext, id: string, now = new Date()) {
   const s = await ownSurvey(tx, a, id);
   if (s.publishedAt) throw conflict('SURVEY_SENT', 'This survey was already sent.');
-  if (s.closesAt <= new Date(now.getTime() + 3_600_000)) throw badRequest('Choose a closing date at least an hour from now.');
+  if (s.closesAt <= new Date(now.getTime() + 3_600_000)) throw invalid('CLOSES_TOO_SOON', 'Choose a closing date at least an hour from now.');
   const settings = await surveySettings(tx);
   let people: Array<{ id: string; departmentId: string | null; positionId: string | null }>;
   if (s.kind === 'EXIT') {
@@ -212,7 +212,7 @@ export async function respond(tx: Tx, a: AuthContext, id: string, raw: Record<st
   if (!invite) throw notFound('Survey');
   if (isClosed(s, now)) throw conflict('SURVEY_CLOSED', 'This survey has closed.');
   const v = validateAnswers(questionsOf(s), raw);
-  if (!v.ok) throw badRequest(v.message, { questionId: v.questionId });
+  if (!v.ok) throw invalid('ANSWER_INVALID', v.message, { questionId: v.questionId });
   const claimed = await tx.surveyInvite.updateMany({ where: { id: invite.id, responded: false }, data: { responded: true } });
   if (!claimed.count) throw conflict('ALREADY_ANSWERED', 'You’ve already answered this survey.');
   let departmentId: string | null = null;
@@ -243,7 +243,11 @@ export async function respond(tx: Tx, a: AuthContext, id: string, raw: Record<st
 
 /** For HR and the manager who made it: counts only, never who. */
 export async function listSurveys(tx: Tx, a: AuthContext) {
-  const where: Prisma.SurveyWhereInput = a.permissions.has('surveys.manage') ? {} : { createdById: a.userId };
+  const where: Prisma.SurveyWhereInput = {
+    ...(a.permissions.has('surveys.manage') ? {} : { createdById: a.userId }),
+    // An FH support visit never sees exit surveys: they name who is leaving, and they answer by name.
+    ...(a.support ? { kind: 'PULSE' as const } : {}),
+  };
   const rows = await tx.survey.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 });
   const ids = rows.map((r) => r.id);
   const [invited, answered] = await Promise.all([
@@ -318,6 +322,8 @@ export async function surveyResults(tx: Tx, a: AuthContext, id: string, now = ne
   const responses = await tx.surveyResponse.findMany({ where: { surveyId: id }, orderBy: { id: 'asc' } });
   if (!s.anonymous) {
     if (!a.permissions.has('surveys.manage')) throw notFound('Survey');
+    // Named answers (exit surveys) are an individual record: never for an FH support visit.
+    if (a.support) throw new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.');
     const people = await tx.user.findMany({ where: { id: { in: responses.map((r) => r.userId).filter((x): x is string => !!x) } }, select: { id: true, firstName: true, lastName: true } });
     await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'survey.read_named', entity: 'Survey', entityId: id });
     return { ...base, total: responses.length, minGroup: s.minGroup, shown: true, named: responses.map((r) => ({ name: (() => { const p = people.find((x) => x.id === r.userId); return p ? `${p.firstName} ${p.lastName}` : ''; })(), answers: r.answers as Answers })) };

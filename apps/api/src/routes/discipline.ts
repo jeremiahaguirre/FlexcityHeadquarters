@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { RECENT_AUTH_MS, authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { sniff } from '../lib/files.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
+import { HttpError, conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { POINTS } from '../services/reliability/score.js';
 import { LEVELS, SERIOUS_LEVELS, requiredChecks } from '../services/people/review.js';
@@ -93,17 +93,17 @@ disciplineRouter.post(
       const subject = await tx.user.findUnique({ where: { id: userId } });
       if (!subject || subject.anonymizedAt) throw notFound('Staff member');
       const missing = requiredChecks(level, subject.unionMember).filter((c) => body.fairProcess[c] !== true);
-      if (missing.length) throw badRequest('Confirm each fair-process step before saving.', { missing });
+      if (missing.length) throw invalid('FAIR_PROCESS_INCOMPLETE', 'Confirm each fair-process step before saving.', { missing });
       if (level && SERIOUS_LEVELS.has(level) && body.evidence.events.length + body.evidence.notes.length === 0) {
-        throw badRequest('Attach the facts this decision relies on.');
+        throw invalid('EVIDENCE_REQUIRED', 'Attach the facts this decision relies on.');
       }
 
       const [events, notes] = await Promise.all([
         body.evidence.events.length ? tx.reliabilityEvent.findMany({ where: { id: { in: body.evidence.events }, userId } }) : [],
         body.evidence.notes.length ? tx.conductNote.findMany({ where: { id: { in: body.evidence.notes }, userId } }) : [],
       ]);
-      if (events.length !== body.evidence.events.length || notes.length !== body.evidence.notes.length) throw badRequest('Some facts belong to someone else or no longer exist.');
-      if (notes.some((n) => n.retractedAt) || events.some((e) => e.excludedReason)) throw badRequest('Excused events and retracted notes cannot be relied on.');
+      if (events.length !== body.evidence.events.length || notes.length !== body.evidence.notes.length) throw invalid('EVIDENCE_NOT_FOUND', 'Some facts belong to someone else or no longer exist.');
+      if (notes.some((n) => n.retractedAt) || events.some((e) => e.excludedReason)) throw invalid('EVIDENCE_EXCLUDED', 'Excused events and retracted notes cannot be relied on.');
       const evidence = [
         ...events.map((e) => ({ kind: 'EVENT', id: e.id, type: e.type, points: POINTS[e.type], occurredAt: e.occurredAt.toISOString(), note: e.note })),
         ...notes.map((n) => ({ kind: 'NOTE', id: n.id, category: n.category, occurredAt: n.occurredAt.toISOString(), summary: n.summary, incidentId: n.incidentId })),
@@ -149,7 +149,7 @@ disciplineRouter.post(
     const id = uuid.parse(req.params.id);
     const { signature } = z.object({ signature: z.string().startsWith('data:image/png;base64,').max(300_000) }).parse(req.body);
     const png = Buffer.from(signature.slice('data:image/png;base64,'.length), 'base64');
-    if (png.length > MAX_SIGNATURE_BYTES || sniff(png) !== 'image/png') throw badRequest('The signature image could not be read. Sign again.');
+    if (png.length > MAX_SIGNATURE_BYTES || sniff(png) !== 'image/png') throw invalid('SIGNATURE_UNREADABLE', 'The signature image could not be read. Sign again.');
     await withTenant(a.tenantId, async (tx) => {
       const r = await tx.disciplinaryRecord.findUnique({ where: { id } });
       if (!r || r.userId !== a.userId) throw notFound('Record');

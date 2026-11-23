@@ -1,6 +1,6 @@
 import cookieParser from 'cookie-parser';
 import { Router } from 'express';
-import { requirePlatform, requirePlatformHeader } from '../../auth/platform.js';
+import { platformCsrfProtection, requirePlatform } from '../../auth/platform.js';
 import { platformAuthRouter } from './auth.js';
 import { billingRouter } from './billing.js';
 import { booksRouter } from './books.js';
@@ -21,6 +21,7 @@ export const platformRouter = Router();
 // Trust evidence files go up to 10 MB (sent as base64); everything else stays at 2 MB.
 const json = jsonBody({ limit: '2mb' });
 const evidenceJson = jsonBody({ limit: '14mb' });
-platformRouter.use((req, res, next) => (req.method === 'POST' && req.path === '/trust/evidence' ? evidenceJson : json)(req, res, next), cookieParser(), requirePlatformHeader);
+// CSRF protection first, so nothing from another site is even parsed (auth/platform.ts).
+platformRouter.use(cookieParser(), platformCsrfProtection, (req, res, next) => (req.method === 'POST' && req.path === '/trust/evidence' ? evidenceJson : json)(req, res, next));
 platformRouter.use(platformAuthRouter, platformPasskeyRouter);
 platformRouter.use(requirePlatform, citiesRouter, lifecycleRouter, billingRouter, booksRouter, leadsRouter, payrollTaxRouter, consentsRouter, platformPayrollRouter, platformIntegrationsRouter, trustRouter, updatesRouter);
