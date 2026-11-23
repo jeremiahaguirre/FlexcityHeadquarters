@@ -1,6 +1,6 @@
 'use client';
 
-import { BadgeCheck, Clock3, FileSignature, Plus } from 'lucide-react';
+import { BadgeCheck, Clock3, FileSignature, Pencil, Plus } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SignaturePad } from '@/components/SignaturePad';
@@ -33,6 +33,8 @@ import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
 import { MyPolicies } from '@/components/hr/Policies';
 import { ReportingCard } from '@/components/people/Reporting';
 
+type MyCert = NonNullable<ReturnType<typeof useSession>['me']>['certifications'][number];
+
 interface Record { id: string; summary: string; issuedAt: string; acknowledgedAt: string | null; stewardPresent: boolean }
 
 /** The signed-in person's own profile: contact details and language, password and passkeys, certifications, and records waiting for their signature. */
@@ -43,7 +45,8 @@ export default function ProfilePage() {
   const { run, busy } = useAction();
   const catalog = useQuery<Array<{ id: string; name: string; nameFr: string | null; issuingBody: string }>>('/api/certifications');
   const records = useQuery<Record[]>('/api/me/discipline');
-  const [adding, setAdding] = useState(false);
+  // 'new', or one of my own certificates still awaiting verification (those can still be corrected or removed).
+  const [adding, setAdding] = useState<MyCert | 'new' | null>(null);
   const [signing, setSigning] = useState<Record | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [pwError, setPwError] = useState<string | null>(null);
@@ -78,9 +81,19 @@ export default function ProfilePage() {
   async function addCert(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const ok = await run('cert', () => api('/api/me/certifications', { method: 'POST', body: { certificationId: f.get('cert'), issueDate: f.get('issue'), expiryDate: f.get('expiry') || null } }), t('profile.certAdded'));
+    const editing = adding !== 'new' ? adding : null;
+    const body = { certificationId: f.get('cert'), issueDate: f.get('issue'), expiryDate: f.get('expiry') || null };
+    const ok = await run('cert', () => api(editing ? `/api/me/certifications/${editing.id}` : '/api/me/certifications', { method: editing ? 'PATCH' : 'POST', body }), t(editing ? 'profile.certUpdated' : 'profile.certAdded'));
     if (ok !== undefined) {
-      setAdding(false);
+      setAdding(null);
+      await reload();
+    }
+  }
+
+  async function removeCert(c: MyCert) {
+    const ok = await run('certRemove', () => api(`/api/me/certifications/${c.id}`, { method: 'DELETE' }), t('profile.certRemoved'));
+    if (ok !== undefined) {
+      setAdding(null);
       await reload();
     }
   }
@@ -138,7 +151,7 @@ export default function ProfilePage() {
           remove={(id) => api(`/api/me/passkeys/${id}`, { method: 'DELETE' })}
         />
         <Card>
-          <CardHeader title={t('profile.certifications')} action={<Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAdding(true)}>{t('profile.addCert')}</Button>} />
+          <CardHeader title={t('profile.certifications')} action={<Button size="sm" variant="secondary" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAdding('new')}>{t('profile.addCert')}</Button>} />
           <CardBody className="pt-3">
             {!me.certifications.length ? (
               <p className="text-small text-muted">{t('profile.noCerts')}</p>
@@ -157,7 +170,12 @@ export default function ProfilePage() {
                       ) : c.verified ? (
                         <StatusPill tone="ok" icon={<BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />}>{t('profile.verified')}</StatusPill>
                       ) : (
-                        <StatusPill tone="neutral" icon={<Clock3 className="h-3.5 w-3.5" aria-hidden="true" />}>{t('profile.awaiting')}</StatusPill>
+                        <span className="flex flex-wrap items-center gap-2">
+                          <StatusPill tone="neutral" icon={<Clock3 className="h-3.5 w-3.5" aria-hidden="true" />}>{t('profile.awaiting')}</StatusPill>
+                          <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('profile.editCertFor', { name: certName(c.certification) })} onClick={() => setAdding(c)}>
+                            {t('common.edit')}
+                          </Button>
+                        </span>
                       )}
                     </li>
                   );
@@ -211,11 +229,11 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      <Dialog open={adding} onClose={() => setAdding(false)} title={t('profile.addCert')} description={t('profile.addCertHelp')} closeLabel={t('common.close')}>
-        <form onSubmit={(e) => void addCert(e)} className="grid gap-4">
+      <Dialog open={adding !== null} onClose={() => setAdding(null)} title={t(adding && adding !== 'new' ? 'profile.editCert' : 'profile.addCert')} description={t('profile.addCertHelp')} closeLabel={t('common.close')}>
+        <form key={adding && adding !== 'new' ? adding.id : 'new'} onSubmit={(e) => void addCert(e)} className="grid gap-4">
           <Field label={t('profile.certification')}>
             {(p) => (
-              <Select {...p} name="cert" required>
+              <Select {...p} name="cert" required defaultValue={adding && adding !== 'new' ? adding.certification.id : ''}>
                 <option value="">{t('common.choose')}</option>
                 {catalog.data?.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -226,15 +244,20 @@ export default function ProfilePage() {
             )}
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('profile.issued')}>{(p) => <Input {...p} name="issue" type="date" required />}</Field>
-            <Field label={t('profile.expiry')} hint={t('profile.expiryHint')}>{(p) => <Input {...p} name="expiry" type="date" />}</Field>
+            <Field label={t('profile.issued')}>{(p) => <Input {...p} name="issue" type="date" required defaultValue={adding && adding !== 'new' ? adding.issueDate : undefined} />}</Field>
+            <Field label={t('profile.expiry')} hint={t('profile.expiryHint')}>{(p) => <Input {...p} name="expiry" type="date" defaultValue={adding && adding !== 'new' ? (adding.expiryDate ?? '') : undefined} />}</Field>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setAdding(false)}>
+          <div className="flex flex-wrap justify-end gap-2">
+            {adding && adding !== 'new' ? (
+              <Button variant="ghost" className="mr-auto text-danger" loading={busy === 'certRemove'} onClick={() => void removeCert(adding)}>
+                {t('profile.removeCert')}
+              </Button>
+            ) : null}
+            <Button variant="ghost" onClick={() => setAdding(null)}>
               {t('common.cancel')}
             </Button>
             <Button type="submit" loading={busy === 'cert'}>
-              {t('profile.addCert')}
+              {t(adding && adding !== 'new' ? 'common.save' : 'profile.addCert')}
             </Button>
           </div>
         </form>
