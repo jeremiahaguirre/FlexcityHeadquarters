@@ -260,6 +260,22 @@ locals {
   repo_urls = merge({ for k, r in aws_ecr_repository.repo : k => r.repository_url }, { for k, r in data.aws_ecr_repository.replicated : k => r.repository_url })
 }
 
+# Continuous scanning (Amazon Inspector): images already pushed are re-checked when a new CVE is
+# published, not only once on push, so a base-image vulnerability found after release is reported
+# (SECURITY-AUDIT SEC-55). Inspector charges per image scanned; set ecr_continuous_scanning = false
+# to fall back to the free scan on push.
+resource "aws_ecr_registry_scanning_configuration" "main" {
+  count     = var.ecr_continuous_scanning && !var.recovery_mode ? 1 : 0
+  scan_type = "ENHANCED"
+  rule {
+    scan_frequency = "CONTINUOUS_SCAN"
+    repository_filter {
+      filter      = "${local.name}-*"
+      filter_type = "WILDCARD"
+    }
+  }
+}
+
 resource "aws_ecr_lifecycle_policy" "repo" {
   for_each   = aws_ecr_repository.repo
   repository = each.value.name

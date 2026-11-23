@@ -118,6 +118,12 @@ variable "db_read_replica" {
   type        = bool
   default     = false
 }
+variable "db_log_retention_days" {
+  description = "Days the database's exported log (slow statements, errors; never their values) is kept in CloudWatch."
+  type        = number
+  default     = 30
+}
+
 variable "db_backup_retention_days" {
   type    = number
   default = 35
@@ -174,6 +180,12 @@ variable "site_waf_rate_limit" {
   description = "Marketing site: requests per 5 minutes from one address before it is blocked."
   type        = number
   default     = 2000
+}
+
+variable "ecr_continuous_scanning" {
+  description = "Re-scan pushed container images whenever a new vulnerability is published (Amazon Inspector enhanced scanning, charged per image). false: the free scan on push only."
+  type        = bool
+  default     = true
 }
 
 variable "alarm_email" {

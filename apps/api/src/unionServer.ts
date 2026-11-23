@@ -11,6 +11,11 @@ if (!cfg.UNION_DATABASE_URL) throw new Error('The Union Hub service needs UNION_
 await assertLeastPrivilege('APP_DATABASE_URL', cfg.APP_DATABASE_URL, cfg.NODE_ENV === 'production');
 await assertLeastPrivilege('UNION_DATABASE_URL', cfg.UNION_DATABASE_URL, cfg.NODE_ENV === 'production');
 const port = Number(process.env.UNION_PORT ?? 4100);
-createUnionApp().listen(port, () => {
+// Express 5 hands a failure to bind (e.g. EADDRINUSE) to this callback instead of throwing it.
+createUnionApp().listen(port, (err?: Error) => {
+  if (err) {
+    console.error(`FlexcityHeadquarters Union Hub could not listen on :${port}: ${err.message}`);
+    process.exit(1);
+  }
   console.log(`FlexcityHeadquarters Union Hub listening on :${port}`);
 });

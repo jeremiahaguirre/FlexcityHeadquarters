@@ -171,6 +171,13 @@ describe('paying online', () => {
     const payload = JSON.stringify({ id: 'evt_1', type: 'checkout.session.completed', data: { object: { id: 'cs_1', payment_status: 'paid', amount_total: 113_000, payment_intent: 'pi_1', payment_method_types: ['card'], metadata: { invoiceId: inv.id } } } });
     const hook = (sig: string) => request(server).post('/api/billing/stripe/webhook').set('content-type', 'application/json').set('stripe-signature', sig).send(payload);
     expect((await hook('t=1,v1=00')).status).toBe(400);
+    // No body, or not JSON (so express.raw leaves req.body undefined): a refused signature, not a 500.
+    for (const junk of [request(server).post('/api/billing/stripe/webhook').set('stripe-signature', signForTest(payload, 'whsec_test')),
+      request(server).post('/api/billing/stripe/webhook').set('content-type', 'text/plain').set('stripe-signature', signForTest(payload, 'whsec_test')).send(payload)]) {
+      const r = await junk;
+      expect(r.status).toBe(400);
+      expect(r.body.code).toBe('BAD_SIGNATURE');
+    }
     expect((await hook(signForTest(payload, 'whsec_test'))).status).toBe(200);
     expect((await hook(signForTest(payload, 'whsec_test'))).status).toBe(200); // Stripe retries: no double count
     const paid = await owner.invoice.findUniqueOrThrow({ where: { id: inv.id }, include: { payments: true } });

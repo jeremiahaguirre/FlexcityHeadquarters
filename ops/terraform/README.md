@@ -4,11 +4,11 @@ Builds one environment of FlexcityHeadquarters in `ca-central-1` (Montreal), wit
 
 | File | What it builds |
 | --- | --- |
-| `network.tf` | VPC across three zones: public subnets (load balancer, NAT), private subnets (containers), isolated database subnets (no route out); security groups; S3 gateway endpoint |
+| `network.tf` | VPC across three zones: public subnets (load balancer, NAT), private subnets (containers), isolated database subnets (no route out); one security group per kind of task (web, API, worker, one-off jobs; only the API, worker and jobs reach the database); S3 gateway endpoint |
 | `kms.tf` | Platform key (multi-region, copied to Calgary), infrastructure keys in both regions |
-| `database.tf` | RDS PostgreSQL 16, Multi-AZ, encrypted, TLS only, 35 days of point-in-time recovery, optional read replica, automated backups copied to Calgary |
+| `database.tf` | RDS PostgreSQL 16, Multi-AZ, encrypted, TLS only, 35 days of point-in-time recovery, optional read replica, automated backups copied to Calgary; its exported log keeps statements, never their values, for `db_log_retention_days` (30), encrypted |
 | `storage.tf` | Backups bucket (versioned, object-locked, replicated to Calgary), load balancer logs, container registries, the app secret |
-| `iam.tf` | Task roles: the API and worker may use and create KMS keys, never delete them |
+| `iam.tf` | Task roles: the API and worker may use and create KMS keys (KMS-generated, symmetric, for encryption only), never delete them or bypass the key-policy safety check |
 | `compute.tf` | ECS Fargate: API, worker and web services, migration and database-role tasks, autoscaling on CPU and requests |
 | `edge.tf` | Load balancer (HTTPS, `/api/*` to the API, health and metrics hidden), web firewalls (app and site: managed rules, rate limits, AI crawlers), the marketing site on S3 + CloudFront |
 | `backup.tf` | Daily database snapshots in an AWS Backup vault under a compliance lock (no one, root included, deletes them early), optionally copied to a vault in a separate account; the backups bucket's object lock in compliance mode in production |
@@ -29,7 +29,9 @@ terraform test
 - that regions outside Canada are refused.
 - the firewalls: unique rule priorities, the AI-crawler patterns within AWS limits (and never an ordinary search engine), the site's AI-training opt-out headers.
 
-Commit a lock file generated with registry access: `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64`.
+`.terraform.lock.hcl` is committed and pins the AWS provider's checksums; `terraform init` refuses a provider package that doesn't match. It holds the `linux_amd64` checksum (what CI and the deploy workflow use). Working on another platform, add its checksums once with registry access and commit the result: `terraform providers lock -platform=linux_amd64 -platform=darwin_arm64 -platform=darwin_amd64`. Dependabot proposes provider updates together with the new lock file.
+
+Container images are scanned on push and, with `ecr_continuous_scanning` (default `true`), re-scanned by Amazon Inspector whenever a new vulnerability is published. Inspector charges per image scanned; `false` keeps only the free scan on push.
 
 ## Crawlers and AI bots
 
@@ -69,17 +71,17 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    | `JWT_SECRET` | 64 random bytes, base64 |
    | `METRICS_TOKEN` | 32 random characters; also given to the metrics collector |
 
-   Database URLs are always written in this standard form. `pg` verifies the certificate and host name from it. For Prisma, which doesn't understand `verify-full`, the app translates it to Prisma's own settings (`apps/api/src/lib/dbUrl.ts`). In production the API refuses to start without `sslmode=verify-full` (or `verify-ca`) and an `sslrootcert`.
+   Database URLs are always written in this standard form. `pg` verifies the certificate and host name from it; the app connects only through `pg` (Prisma 7's driver adapter). Only the Prisma CLI used for migrations doesn't understand `verify-full`, so `prisma.config.ts` translates the URL to Prisma's own settings for it (`apps/api/src/lib/dbUrl.ts`). In production the API refuses to start without `sslmode=verify-full` and an `sslrootcert`, and refuses Prisma 5 URL parameters that `pg` would ignore (`connect_timeout`, `schema`, `pgbouncer`, `statement_cache_size`, `socket_timeout`).
 
    The owner (`fh_owner`) password is **not** copied into this secret: RDS manages and rotates it. The migration and database-role tasks read it from the RDS secret and build the connection themselves (`apps/api/scripts/owner-url.mjs`).
 
    Optional keys can be added later: `TWILIO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `READ_REPLICA_URL`, `FLEXCITY_UNION_PASSWORD`. Add each one to `app_secret_keys` (or set `union_role_password`) and apply. A task won't start if a key it names is missing.
-6. **Database roles, then migrations.** Run as one-off tasks in the private subnets with the app security group (all values are Terraform outputs):
+6. **Database roles, then migrations.** Run as one-off tasks in the private subnets with the jobs security group (all values are Terraform outputs):
    ```bash
    aws ecs run-task --cluster <cluster> --launch-type FARGATE --task-definition <db_roles_task_definition> \
-     --network-configuration 'awsvpcConfiguration={subnets=[<private_subnets>],securityGroups=[<app_security_group>]}'
+     --network-configuration 'awsvpcConfiguration={subnets=[<private_subnets>],securityGroups=[<jobs_security_group>]}'
    aws ecs run-task --cluster <cluster> --launch-type FARGATE --task-definition <migrate_task_definition> \
-     --network-configuration 'awsvpcConfiguration={subnets=[<private_subnets>],securityGroups=[<app_security_group>]}'
+     --network-configuration 'awsvpcConfiguration={subnets=[<private_subnets>],securityGroups=[<jobs_security_group>]}'
    ```
 7. **DNS.** Point `<root_domain>` and `*.<root_domain>` at the load balancer, and the site's host name at the CloudFront distribution (Route 53 alias records).
 8. **Marketing site.** Run `npm run build -w apps/site` with `NEXT_PUBLIC_SITE_URL` set, then `aws s3 sync apps/site/out s3://<site_bucket> --delete` and invalidate the distribution.
@@ -106,6 +108,7 @@ The email should arrive within a minute; the alarm returns to OK on its own at t
 | `<env>-api-unhealthy`, `<env>-web-unhealthy` | no healthy task behind the load balancer for 2 minutes | yes, that service's |
 | `<env>-alb-5xx` | more than 50 server errors a minute (an empty minute is healthy: the load balancer only publishes minutes that had one) | no |
 | `<env>-db-cpu`, `<env>-db-storage`, `<env>-replica-lag` | database CPU, free storage, replica lag | no |
+| `<env>-kms-createkey-with-policy` (EventBridge rule) | the app role creates a KMS key with a custom key policy, which could hand the key to another account; needs CloudTrail management events in the account | no |
 
 ECS watches each service's alarms while a deployment runs and rolls back to the previous task definition if one goes off. The circuit breaker still rolls back tasks that never become healthy, and it is the worker's only automatic rollback.
 

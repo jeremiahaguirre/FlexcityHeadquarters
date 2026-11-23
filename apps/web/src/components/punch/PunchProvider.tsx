@@ -30,6 +30,7 @@ import { useQuery } from '@/lib/useQuery';
 /** `pending`: saved on this phone, not sent yet. */
 export interface OpenPunch { id: string; clockIn: string; localClockIn: string; facility: { name: string }; pending?: boolean }
 import { type MyShift, currentShift } from '@/lib/punch';
+import { errorText } from '@/lib/apiError';
 
 export type { MyShift };
 interface Facility { id: string; name: string }
@@ -215,7 +216,7 @@ export function PunchProvider({ children }: { children: ReactNode }) {
           // Same id: if the first try did reach the server, the re-send is recognised.
           keep({ clientId, kind: 'in', occurredAt, body: full, place });
           setAsking(false);
-        } else toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+        } else toast(errorText(t, e), 'warn');
       } finally {
         setBusy(null);
       }
@@ -246,7 +247,7 @@ export function PunchProvider({ children }: { children: ReactNode }) {
       await open.reload();
     } catch (e) {
       if (unreachable(e)) keep({ clientId, kind: 'out', occurredAt });
-      else toast(e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message }) : t('common.error'), 'warn');
+      else toast(errorText(t, e), 'warn');
     } finally {
       setBusy(null);
     }
