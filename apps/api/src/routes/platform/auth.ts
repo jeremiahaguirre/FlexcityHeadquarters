@@ -1,7 +1,7 @@
 /** Signing in to the FH Dev console (FH staff only, separate from organization sign-in). */
 import { Router } from 'express';
 import { z } from 'zod';
-import { PLATFORM_COOKIE, endPlatformSession, platformCookieOpts, platformMfaRequired, platformOf, requirePlatformSession, startPlatformSession } from '../../auth/platform.js';
+import { PLATFORM_COOKIE, clearPlatformCookies, endPlatformSession, platformMfaRequired, platformOf, requirePlatformSession, setPlatformCookies, startPlatformSession } from '../../auth/platform.js';
 import { allow } from '../../auth/rateLimit.js';
 import { POLICIES, abandonAttempt, accountRule, afterFailure, beginAttempt, failedAttempt, ipBlocked, noteFailure, rememberNetwork, succeededAttempt } from '../../auth/bruteForce.js';
 import { addressKey } from '../../lib/address.js';
@@ -79,7 +79,7 @@ platformAuthRouter.post(
       throw invalid();
     }
     const admin = outcome.signedIn;
-    res.cookie(PLATFORM_COOKIE, await startPlatformSession(admin.id), platformCookieOpts());
+    setPlatformCookies(res, await startPlatformSession(admin.id));
     const hasPasskey = (await db().platformPasskey.count({ where: { adminId: admin.id } })) > 0;
     // A password alone isn't enough: the console asks for a passkey next (or to set one up).
     res.json({ admin: { id: admin.id, email: admin.email, name: admin.name }, mfaRequired: platformMfaRequired(), hasPasskey });
@@ -90,7 +90,7 @@ platformAuthRouter.post(
   '/auth/logout',
   h(async (req, res) => {
     await endPlatformSession(req.cookies?.[PLATFORM_COOKIE] as string | undefined);
-    res.clearCookie(PLATFORM_COOKIE, { path: '/api/platform' });
+    clearPlatformCookies(res);
     res.status(204).end();
   }),
 );
