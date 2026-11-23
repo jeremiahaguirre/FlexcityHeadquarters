@@ -778,7 +778,15 @@
     "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
     "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
     "CERT_EXISTS": "There’s already a certificate with that name.",
-    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again."
+    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again.",
+    "CUSTOM_FIELD_READ_ONLY": "You can’t change this field.",
+    "CUSTOM_FIELD_UNKNOWN": "There’s no such field.",
+    "CUSTOM_FIELD_ACCESS": "Managers can only change a field they can see.",
+    "CUSTOM_FIELD_KEY_TAKEN": "Another field already uses this key.",
+    "TOO_MANY_FIELDS": "An organization can keep up to 50 staff fields.",
+    "CUSTOM_FIELD_CHOICES": "A choice field needs at least two choices, each with its own value.",
+    "CUSTOM_FIELD_REQUIRED": "This field is required.",
+    "CUSTOM_FIELD_INVALID": "That value doesn’t fit this field."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1826,7 +1834,8 @@
       "roles": "Roles",
       "departments": "Departments",
       "integrations": "Integrations",
-      "positions": "Positions"
+      "positions": "Positions",
+      "fields": "Staff fields"
     },
     "org": "Organization",
     "orgHelp": "Your staff sign in at {{host}}.",
@@ -2443,10 +2452,12 @@
         "TOO_MANY_ROWS": "Over 2,000 rows; import the rest separately.",
         "MANAGER_SELF": "Someone can’t report to themselves.",
         "MANAGER_UNKNOWN": "No one with the email {{value}} on staff or in the file.",
-        "MANAGER_CYCLE": "The managers in the file go in a circle (through {{value}})."
+        "MANAGER_CYCLE": "The managers in the file go in a circle (through {{value}}).",
+        "CUSTOM_FIELD_INVALID": "“{{value}}” isn’t a valid {{field}}."
       },
       "help_one": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} position to match against.",
-      "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} positions to match against."
+      "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} positions to match against.",
+      "hrOnly": "Not imported: {{list}}. These staff fields are HR only, so the city’s HR fills them in the app."
     },
     "account": "Your account",
     "accountHelp": "Passkeys for signing in to the Dev console. Adding or removing one needs a sign-in from the last 10 minutes.",
@@ -6345,7 +6356,9 @@
       "departments_write": "Departments: add and change",
       "positions_write": "Positions: add and change",
       "timeoff_write": "Time off: request and cancel for people",
-      "timeoff_approve": "Time off: send in already approved"
+      "timeoff_approve": "Time off: send in already approved",
+      "customfields_write": "Staff fields: change values",
+      "customfields_read": "Staff fields (HR-only ones included)"
     },
     "allowedIps": "Only from these addresses (optional)",
     "allowedIpsHint": "IP addresses or ranges, separated by commas. Leave empty to allow any address.",
@@ -8757,5 +8770,52 @@
       "wastewater": "Wastewater",
       "licence": "Driver’s licences"
     }
+  },
+  "customFields": {
+    "none": "Not set",
+    "editTitle": "Change a staff field",
+    "accessHint": "Managers means supervisors and managers whose department includes the person.",
+    "access": {
+      "MANAGER_HR": "Managers see it; HR changes it",
+      "HR_HR": "HR only",
+      "MANAGER_MANAGER": "Managers see and change it"
+    },
+    "typeFixed": "The type can’t change once the field exists.",
+    "cardHelp": "Your organization’s own details about this person.",
+    "addTitle": "Add a staff field",
+    "key": "Key",
+    "valuesSaved": "Staff fields saved.",
+    "types": {
+      "BOOLEAN": "Yes or no",
+      "TEXT": "Text",
+      "CHOICE": "Choice",
+      "DATE": "Date",
+      "NUMBER": "Number"
+    },
+    "missing": "Missing",
+    "type": "Type",
+    "accessLabel": "Who sees and changes it",
+    "archiveLabel": "Archived: hidden from files and the API; values are kept",
+    "title": "Staff fields",
+    "keyFixed": "The key can’t change once the field exists.",
+    "saved": "Field saved.",
+    "cardTitle": "Staff fields",
+    "empty": "No staff fields yet.",
+    "empty_value": "Not set",
+    "archived": "Archived",
+    "add": "Add a field",
+    "yes": "Yes",
+    "edit": "Change {{name}}",
+    "addChoice": "Add a choice",
+    "hrOnly": "HR only",
+    "label": "Label (English)",
+    "keyHint": "Used by imports and the public API. Lowercase letters, digits and _.",
+    "help": "Your organization’s own fields on each person’s file, such as a badge number, a second employee number or a cost centre. Each has an English and a French label. HR-only fields are never shown to managers or to FlexcityHeadquarters support.",
+    "choiceValue": "Value",
+    "required": "Required",
+    "requiredLabel": "Required: it can’t be left empty",
+    "choices": "Choices",
+    "labelFr": "Label (French)",
+    "no": "No"
   }
 }

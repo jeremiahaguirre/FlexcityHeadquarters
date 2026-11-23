@@ -31,6 +31,7 @@ import { SeniorityCard } from '@/components/settings/SeniorityCard';
 import { FillSettingsCard } from '@/components/settings/FillSettingsCard';
 import { ReliabilityCard } from '@/components/settings/ReliabilityCard';
 import { HolidayWeekendCard } from '@/components/settings/HolidayWeekendCard';
+import { CustomFieldsSettings } from '@/components/settings/CustomFieldsSettings';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
@@ -65,7 +66,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'departments' | 'positions' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
+type Tab = 'org' | 'departments' | 'fields' | 'positions' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -81,10 +82,12 @@ function Section({ title, description, action, children }: { title: string; desc
 /** Organization settings: the organization itself, its facilities, pools and pay rules. Sections show only to people allowed to change them. */
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const { can } = useSession();
+  const { can, me } = useSession();
   const org = can('tenant.configure');
   const tabs: Tab[] = [
     ...(org ? (['org', 'departments'] as const) : []),
+    // Staff fields are on every person: set by the organization's administrators, not a role limited to departments.
+    ...(org && !me?.scoped ? (['fields'] as const) : []),
     // Positions and the certificate catalog: HR, and supervisors who define their own positions.
     ...(can('positions.manage') ? (['positions'] as const) : []),
     ...(org ? (['facilities'] as const) : []),
@@ -114,6 +117,10 @@ export default function SettingsPage() {
         <PositionsSettings />
       ) : tab === 'pools' ? (
         <Pools />
+      ) : tab === 'fields' ? (
+        <div className="grid max-w-4xl gap-6">
+          <CustomFieldsSettings />
+        </div>
       ) : tab === 'departments' ? (
         <DepartmentsSettings />
       ) : settings.error ? (

@@ -610,6 +610,7 @@ model User {
   directReports       User[]               @relation("ReportsTo")
   positions           UserPosition[]
   payRates            PayRate[]
+  customFieldValues   CustomFieldValue[]
   certifications      UserCertification[]
   availability        Availability[]
   timeOffRequests     TimeOffRequest[]
@@ -3285,6 +3286,68 @@ model EmergencyContact {
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
+  @@index([tenantId, userId])
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  CHOICE
+  BOOLEAN
+}
+
+/// Who may see (or change) a custom field: HR only, or also a manager whose department includes the person.
+enum CustomFieldAccess {
+  HR
+  MANAGER
+}
+
+/// A field an organization keeps on people that the app has no column for (badge number, cost centre…).
+model CustomFieldDefinition {
+  id         String            @id @default(uuid()) @db.Uuid
+  tenantId   String            @db.Uuid
+  /// Stable machine name (snake_case), used by imports and the public API.
+  key        String
+  label      String
+  labelFr    String
+  type       CustomFieldType
+  /// CHOICE: [{ value, label, labelFr }].
+  choices    Json              @default("[]")
+  required   Boolean           @default(false)
+  viewAccess CustomFieldAccess @default(HR)
+  editAccess CustomFieldAccess @default(HR)
+  sortOrder  Int               @default(0)
+  /// Hidden from screens and the API; values are kept.
+  archivedAt DateTime?         @db.Timestamptz(3)
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime          @updatedAt @db.Timestamptz(3)
+  values     CustomFieldValue[]
+
+  @@unique([tenantId, key])
+}
+
+/// One person's value for one custom field, stored as canonical text (see services/people/customFields.ts).
+model CustomFieldValue {
+  id              String                @id @default(uuid()) @db.Uuid
+  tenantId        String                @db.Uuid
+  fieldId         String                @db.Uuid
+  userId          String                @db.Uuid
+  /// A manager-level field's value, as text. Null when sealed (an HR-only field): exactly one of the two is set.
+  value           String?
+  /// An HR-only field's value, sealed with the organization's key (services/people/customFields.ts).
+  valueCiphertext Bytes?
+  valueIv         Bytes?
+  valueAuthTag    Bytes?
+  valueWrappedKey Bytes?
+  valueKekId      String?
+  updatedById     String?               @db.Uuid
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
+  field           CustomFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Restrict)
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([fieldId, userId])
   @@index([tenantId, userId])
 }
 

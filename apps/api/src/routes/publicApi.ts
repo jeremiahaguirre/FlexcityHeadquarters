@@ -26,9 +26,11 @@ import { apiKeyAuthFailures, publicApiRequests, rateLimited, routePattern, statu
 import { hasModule } from '../services/billing/entitlements.js';
 import { hashKey, ipAllowed, looksLikeKey } from '../services/integrations/apiKeys.js';
 import { openApiSpec } from '../services/integrations/openapi.js';
+import { type FieldDef, fieldDefs, fieldValues } from '../services/people/customFields.js';
+import { typedValue } from '../services/people/customFieldValues.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
-import { DEPARTMENT_SELECT, PERSON_SELECT, POSITION_SELECT, TIME_OFF_SELECT, day, department, etagOf, iso, money, need, person, position, read, sendProblem, timeOff, toProblem } from './publicApiShared.js';
+import { DEPARTMENT_SELECT, PERSON_SELECT, assertKeyOwnerSeesEveryone, POSITION_SELECT, TIME_OFF_SELECT, day, department, etagOf, iso, money, need, person, position, read, sendProblem, timeOff, toProblem } from './publicApiShared.js';
 import { publicApiWriteRouter } from './publicApiWrite.js';
 import { jsonBody } from '../lib/bodyParsers.js';
 
@@ -185,6 +187,41 @@ publicApiRouter.get(
     if (!u) throw notFound('Person');
     res.setHeader('ETag', etagOf(u.updatedAt));
     res.json(person(u));
+  }),
+);
+
+/* ---------- Custom fields ---------- */
+
+const fieldOut = (d: FieldDef) => ({ key: d.key, label: d.label, label_fr: d.labelFr, type: d.type.toLowerCase(), choices: d.choices.map((c) => ({ value: c.value, label: c.label, label_fr: c.labelFr })), required: d.required, visible_to: d.viewAccess === 'HR' ? 'hr' : 'managers', editable_by: d.editAccess === 'HR' ? 'hr' : 'managers' });
+
+/** The organization's custom fields on people (HR-only ones included: the scope is HR's to give). */
+publicApiRouter.get(
+  '/custom-fields',
+  need('customfields:read'),
+  h(async (req, res) => {
+    const defs = await read(req, (tx) => fieldDefs(tx));
+    res.json({ data: defs.map(fieldOut) });
+  }),
+);
+
+/** One person's custom field values by key (null when empty). A restricted or anonymized person has none. */
+publicApiRouter.get(
+  '/people/:id/custom-fields',
+  need('customfields:read'),
+  h(async (req, res) => {
+    const id = uuid.safeParse(req.params.id);
+    await assertKeyOwnerSeesEveryone(req.apiKey!);
+    const out = id.success
+      ? await read(req, async (tx) => {
+          const u = await tx.user.findUnique({ where: { id: id.data }, select: { processingRestrictedAt: true, anonymizedAt: true } });
+          if (!u || u.processingRestrictedAt || u.anonymizedAt) return null;
+          const defs = await fieldDefs(tx);
+          const values = await fieldValues(tx, id.data, defs.map((d) => d.id));
+          return Object.fromEntries(defs.map((d) => [d.key, typedValue(d, values.get(d.id) ?? null)]));
+        })
+      : null;
+    if (!out) throw notFound('Person');
+    res.json({ data: out });
   }),
 );
 

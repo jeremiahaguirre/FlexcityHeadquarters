@@ -4,6 +4,7 @@
  */
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError, type ZodIssue } from 'zod';
+import { accessOf } from '../auth/middleware.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { type Tx, withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
@@ -25,6 +26,18 @@ declare global {
       apiKey?: ApiKeyContext;
     }
   }
+}
+
+/**
+ * Custom-field values (HR-only ones among them) are read through a key with its maker's access, as
+ * it is now: still active, and HR (users.write) for the whole organization, since a key has no
+ * department limit. A maker whose role was later limited to departments stops the key's reads.
+ */
+export async function assertKeyOwnerSeesEveryone(k: ApiKeyContext) {
+  const creator = await withTenant(k.tenantId, (tx) => tx.user.findUnique({ where: { id: k.createdById }, select: { roles: true } }));
+  const access = creator ? await accessOf(k.tenantId, k.createdById, creator.roles) : null;
+  if (!access) throw new HttpError(403, 'KEY_OWNER_INACTIVE', 'The person who made this key no longer has access, so it can’t read custom fields. Ask an administrator to make a new key.');
+  if (!access.permissions.has('users.write') || access.scope) throw new HttpError(403, 'KEY_OWNER_LACKS_PERMISSION', 'The person who made this key no longer has HR access for the whole organization, so the key can’t read custom fields.', { scope: 'customfields:read' });
 }
 
 /** The request needs one of these scopes (and its feature switched on). */
