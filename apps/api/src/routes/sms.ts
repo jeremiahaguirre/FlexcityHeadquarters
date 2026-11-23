@@ -9,7 +9,7 @@ import { authOf } from '../auth/middleware.js';
 import { config } from '../config.js';
 import { allow } from '../auth/rateLimit.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, badRequest } from '../lib/errors.js';
+import { HttpError, invalid } from '../lib/errors.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { maskPhone, toE164 } from '../services/notifications/sms.js';
 import { urgentSoon } from '../services/notifications/urgent.js';
@@ -40,7 +40,7 @@ smsRouter.post(
     const { features } = await tenantSettings(a.tenantId);
     if (!features.textAlerts) throw new HttpError(409, 'TEXT_ALERTS_OFF', 'Your organization hasn’t turned on text alerts.');
     const phone = toE164(phoneBody.parse(req.body).phone);
-    if (!phone) throw badRequest('Use a 10-digit Canadian or US mobile number.');
+    if (!phone) throw invalid('PHONE_INVALID', 'Use a 10-digit Canadian or US mobile number.');
     if (!(await allow(`sms-code:${a.userId}`, 5, 3_600_000))) throw new HttpError(429, 'TOO_MANY_CODES', 'Too many codes sent. Try again in an hour.');
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
     await withTenant(a.tenantId, async (tx) => {
@@ -62,7 +62,7 @@ smsRouter.post(
     const a = authOf(req);
     const b = phoneBody.extend({ code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code.') }).parse(req.body);
     const phone = toE164(b.phone);
-    if (!phone) throw badRequest('Use a 10-digit Canadian or US mobile number.');
+    if (!phone) throw invalid('PHONE_INVALID', 'Use a 10-digit Canadian or US mobile number.');
     if (!(await allow(`sms-verify:${a.userId}`, 10, 3_600_000))) throw new HttpError(429, 'TOO_MANY_TRIES', 'Too many tries. Ask for a new code in an hour.');
     const ok = await withTenant(a.tenantId, async (tx) => {
       const t = await tx.authToken.findFirst({ where: { userId: a.userId, purpose: 'SMS_VERIFY', usedAt: null, expiresAt: { gt: new Date() }, tokenHash: hashCode(a.userId, phone, b.code) } });
