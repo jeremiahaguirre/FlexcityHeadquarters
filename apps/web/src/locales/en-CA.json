@@ -392,7 +392,8 @@
     "kiosk_tablet_locked": "The kiosk “{{kiosk}}” paused for {{minutes}} minutes after many wrong PINs.",
     "release_scheduled": "Coming {{whenEn}}: {{titleEn}}. See what changes for your organization.",
     "maintenance_scheduled": "Planned maintenance {{whenEn}}: {{messageEn}}",
-    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}"
+    "maintenance_soon": "Maintenance tomorrow, {{whenEn}}: {{messageEn}}",
+    "cert_rejected": "Your {{name}} certification wasn’t accepted: {{reason}}. Check it and add it again."
   },
   "today": {
     "morning": "Good morning",
@@ -776,7 +777,13 @@
     "NOT_IN_DEMO": "This isn’t available in the demo.",
     "EXPORT_INVALID": "Some details are missing before this period can be sent.",
     "PROVIDER_SEND_FAILED": "The payroll provider didn’t take the hours. Try again, or download the file.",
-    "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later."
+    "BANK_SEND_FAILED": "The bank didn’t take the file. Try again later.",
+    "CERT_CHANGED": "The employee changed this entry since you opened it. Check it again.",
+    "CERT_VERIFIED": "This certificate was already verified. Ask your supervisor to change it.",
+    "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
+    "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
+    "CERT_EXISTS": "There’s already a certificate with that name.",
+    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1077,7 +1084,12 @@
     "languageHint": "Used for the app, emails and notifications.",
     "password": "Password",
     "currentPassword": "Current password",
-    "changePassword": "Change password"
+    "changePassword": "Change password",
+    "editCert": "Correct a certification",
+    "editCertFor": "Correct {{name}}",
+    "certUpdated": "Saved. A supervisor will verify it before it counts for shifts.",
+    "removeCert": "Remove it",
+    "certRemoved": "Removed."
   },
   "builder": {
     "title": "Schedule builder",
@@ -1201,7 +1213,12 @@
     "noneExpiring": "None in this window.",
     "expiredBlocks": "Expired: can’t work",
     "daysLeft_one": "{{count}} day left",
-    "daysLeft_other": "{{count}} days left"
+    "daysLeft_other": "{{count}} days left",
+    "reject": "Turn down",
+    "rejectTitle": "Turn down this certificate",
+    "rejectReason": "Reason",
+    "rejectHint": "The employee sees this and can add the certificate again with the right details.",
+    "rejected": "Turned down. {{name}} was told why."
   },
   "staff": {
     "title": "Staff",
@@ -1813,7 +1830,8 @@
       "rules": "Agreement rules",
       "roles": "Roles",
       "departments": "Departments",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "positions": "Positions"
     },
     "org": "Organization",
     "orgHelp": "Your staff sign in at {{host}}.",
@@ -1960,7 +1978,16 @@
     "weatherSite": "Weather forecast site (optional)",
     "weatherSiteHint": "Leave empty to use the nearest Environment Canada forecast to the coordinates, or enter a site code such as bc-48.",
     "weatherSiteFound": "Using the nearest forecast: {{name}}. Enter a site code to choose another.",
-    "weatherSiteSet": "Forecast for {{name}}. Leave empty to use the nearest one instead."
+    "weatherSiteSet": "Forecast for {{name}}. Leave empty to use the nearest one instead.",
+    "positionsHelp": "The jobs people are hired for, with their department, minimum age, required certificates and driving limits. Schedules and the shift board check them.",
+    "noPositionsHelp": "Add a position for each job your staff do, then give people their positions on their staff page.",
+    "positionDepartment": "Department",
+    "noDepartment": "No department",
+    "addCertsFirst": "Add certificates to the catalog above first.",
+    "unpaidBreak": "Unpaid meal break (minutes)",
+    "unpaidBreakHint": "Taken off each shift’s paid time. A shift can set its own.",
+    "neverAlone": "Never alone: at least two qualified people must overlap on its shifts",
+    "departmentsUnavailable": "Departments couldn’t be loaded, so a position’s department stays as it is."
   },
   "jobs": {
     "title": "Job postings",
@@ -4156,7 +4183,28 @@
     "online_other": "{{count}} online sign-ups to collect",
     "onlineHelp": "Families who signed up on your public page. Take payment as they pay at the desk or by phone.",
     "onlineNone": "All online sign-ups are paid.",
-    "takePayment": "Paid {{price}}"
+    "takePayment": "Paid {{price}}",
+    "toPay_one": "{{count}} registration to pay",
+    "toPay_other": "{{count}} registrations to pay",
+    "toPayHelp": "Online sign-ups, and spots with no payment yet, such as families moved off a waitlist. Take payment as they pay at the desk or by phone.",
+    "toPayNone": "Every registration is paid.",
+    "fromDesk": "Registered at the desk",
+    "editFamily": "Edit family",
+    "familySaved": "Family saved",
+    "addMember": "Add family member",
+    "memberAdded": "Family member added",
+    "editMember": "Edit {{name}}",
+    "editMemberOne": "Edit {{name}}",
+    "editMemberHelp": "A new safety note also goes on this person’s class lists.",
+    "memberSaved": "Family member saved",
+    "roleLabel": "In the family",
+    "photoConsent": "Photos allowed",
+    "takePaymentFor": "Take payment · {{price}}",
+    "takePaymentTitle": "Take payment for {{name}}",
+    "opensOn": "Registration opens {{date}}",
+    "earlyTitle": "Register early?",
+    "earlyHelp": "Registration opens {{date}}. Register for {{set}} now, before the public, for example a returning swimmer’s priority week.",
+    "registerEarly": "Register early"
   },
   "fees": {
     "title": "Prices",
@@ -8683,6 +8731,36 @@
       "active": "Under way",
       "ended": "Ended",
       "cancelled": "Cancelled"
+    }
+  },
+  "catalog": {
+    "title": "Certificates and licences",
+    "help": "What your positions, coverage rules and vehicles can require, and what staff add to their profiles.",
+    "add": "Add a certificate",
+    "starter": "Add from the starter list",
+    "starterHelp": "Common certificates for arenas, water and wastewater plants and driving. Pick the ones your organization uses. You can correct any of them afterwards.",
+    "addPicked_one": "Add {{count}} certificate",
+    "addPicked_other": "Add {{count}} certificates",
+    "alreadyAdded": "Already in your catalog",
+    "empty": "No certificates yet",
+    "emptyHelp": "Add the certificates and licences your positions require, or start from the starter list.",
+    "formHelp": "Enter it as it appears on the card.",
+    "name": "Name",
+    "nameFr": "Name in French",
+    "issuingBody": "Issued by",
+    "validity": "Valid for (months)",
+    "validityHint": "Leave empty if it doesn’t expire, or if the expiry differs for each person.",
+    "validFor_one": "Valid {{count}} month",
+    "validFor_other": "Valid {{count}} months",
+    "noExpiry": "No set expiry",
+    "shared": "Shared list",
+    "saved": "Certificate saved.",
+    "groups": {
+      "aquatics": "Aquatics",
+      "arena": "Arenas and ice plants",
+      "water": "Drinking water",
+      "wastewater": "Wastewater",
+      "licence": "Driver’s licences"
     }
   }
 }

@@ -420,16 +420,28 @@ signupRouter.post(
   }),
 );
 
-/** Online sign-ups that still need payment taken (registered, not waitlisted). */
+/**
+ * Registrations that still need payment taken: online sign-ups, and any confirmed spot with no payment on
+ * file, such as a family registered at the desk and moved off the waitlist.
+ */
 signupRouter.get(
   '/online-registrations',
   requirePermission('members.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const out = await withTenant(a.tenantId, async (tx) => {
-      const list = await tx.lessonEnrollment.findMany({ where: { source: 'ONLINE', status: { not: 'CANCELLED' } }, include: { lessonClass: true }, orderBy: { createdAt: 'desc' }, take: 200 });
-      const paid = await tx.sale.findMany({ where: { enrollmentId: { in: list.map((e) => e.id) }, refundedAt: null }, select: { enrollmentId: true } });
-      return list.map((e) => ({ id: e.id, reference: e.reference, swimmerName: e.swimmerName, householdId: e.householdId, status: e.status, priceCents: e.priceCents, set: e.lessonClass.name, createdAt: e.createdAt, paid: paid.some((p) => p.enrollmentId === e.id) }));
+      const online = await tx.lessonEnrollment.findMany({ where: { source: 'ONLINE', status: { not: 'CANCELLED' } }, include: { lessonClass: true }, orderBy: { createdAt: 'desc' }, take: 200 });
+      // Member services' own registrations (a family and a person on file) that are confirmed and have no payment, found in the
+      // database so none drop out behind paid ones. Instructors' class-list entries (no family, no price) are never owed.
+      const unpaid = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT e."id" FROM "LessonEnrollment" e
+        WHERE e."source" <> 'ONLINE' AND e."status" = 'ENROLLED' AND e."householdId" IS NOT NULL AND e."memberId" IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM "Sale" s WHERE s."enrollmentId" = e."id" AND s."refundedAt" IS NULL)
+        ORDER BY e."createdAt" DESC LIMIT 300`;
+      const desk = await tx.lessonEnrollment.findMany({ where: { id: { in: unpaid.map((u) => u.id) } }, include: { lessonClass: true } });
+      const paid = new Set((await tx.sale.findMany({ where: { enrollmentId: { in: online.map((e) => e.id) }, refundedAt: null }, select: { enrollmentId: true } })).map((p) => p.enrollmentId));
+      const list = [...online, ...desk].sort((x, y) => y.createdAt.getTime() - x.createdAt.getTime());
+      return list.map((e) => ({ id: e.id, reference: e.reference, source: e.source, swimmerName: e.swimmerName, householdId: e.householdId, status: e.status, priceCents: e.priceCents, set: e.lessonClass.name, createdAt: e.createdAt, paid: paid.has(e.id) }));
     });
     res.json(out);
   }),
@@ -442,10 +454,13 @@ signupRouter.post(
     const a = authOf(req);
     const { paymentMethod } = z.object({ paymentMethod: z.enum(['CASH', 'DEBIT', 'CREDIT', 'ON_ACCOUNT', 'COMPLIMENTARY']) }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      const e = await tx.lessonEnrollment.findUnique({ where: { id: uuid.parse(req.params.id) }, include: { lessonClass: true } });
-      if (!e || e.status !== 'ENROLLED') throw conflict('NOT_PAYABLE', 'Only confirmed spots are paid for.');
+      const id = uuid.parse(req.params.id);
+      // One payment per spot: two desks taking it at once wait here, and the second finds it paid.
+      await tx.$queryRaw`SELECT "id" FROM "LessonEnrollment" WHERE "id" = ${id}::uuid FOR UPDATE`;
+      const e = await tx.lessonEnrollment.findUnique({ where: { id }, include: { lessonClass: true } });
+      if (!e || e.status !== 'ENROLLED' || !e.householdId) throw conflict('NOT_PAYABLE', 'Only confirmed spots of a family on file are paid for.');
       if (await tx.sale.count({ where: { enrollmentId: e.id, refundedAt: null } })) throw conflict('ALREADY_PAID', 'Already paid.');
-      await tx.sale.create({ data: { tenantId: a.tenantId, householdId: e.householdId, memberId: e.memberId, enrollmentId: e.id, facilityId: e.lessonClass.facilityId, description: `L: ${e.lessonClass.name} (online ${e.reference ?? ''})`, priceCents: e.priceCents ?? 0, paymentMethod, soldById: a.userId } });
+      await tx.sale.create({ data: { tenantId: a.tenantId, householdId: e.householdId, memberId: e.memberId, enrollmentId: e.id, facilityId: e.lessonClass.facilityId, description: `L: ${e.lessonClass.name}${e.source === 'ONLINE' ? ` (online ${e.reference ?? ''})` : ''}`, priceCents: e.priceCents ?? 0, paymentMethod, soldById: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'registration.paid', entity: 'LessonEnrollment', entityId: e.id });
     });
     res.json({ ok: true });
