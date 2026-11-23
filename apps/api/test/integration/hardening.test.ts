@@ -207,6 +207,29 @@ describe('FH support visits never open individual records', () => {
     expect((await call(tok.hr).get('/api/reports/run?key=time_off')).status).toBe(200);
   });
 
+  it('named exit-survey answers aren’t open to a visit; anonymous pulse results still are', async () => {
+    const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
+    const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
+    const session = await owner.supportSession.create({ data: { tenantId: t.tenant.id, grantId: grant.id, adminId: admin.id, codeHash: randomBytes(16).toString('hex'), codeExpiresAt: new Date(Date.now() + 60_000), usedAt: new Date(), endsAt: new Date(Date.now() + 1_800_000) } });
+    const visit = await signAccessToken({ sub: ids.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], mfa: true, sup: session.id });
+    const questions = [{ id: 'q1', type: 'TEXT', text: 'Why are you leaving?' }];
+    const base = { tenantId: t.tenant.id, questions, seriesId: randomUUID(), opensAt: new Date(Date.now() - 86_400_000), closesAt: new Date(Date.now() - 3_600_000), publishedAt: new Date(Date.now() - 86_400_000), closedAt: new Date(), createdById: ids.hr };
+    const exit = await owner.survey.create({ data: { ...base, kind: 'EXIT', title: 'Before you go', anonymous: false, subjectUserId: t.users[0]!.id } });
+    await owner.surveyResponse.create({ data: { tenantId: t.tenant.id, surveyId: exit.id, userId: t.users[0]!.id, answers: { q1: 'Private reason for leaving' } } });
+    const pulse = await owner.survey.create({ data: { ...base, kind: 'PULSE', title: 'Weekly check-in', anonymous: true, minGroup: 5 } });
+    for (const path of [`/api/surveys/${exit.id}/results`, `/api/surveys/${exit.id}/results.csv`]) {
+      const r = await call(visit).get(path);
+      expect(r.status, `${path} → ${r.status} ${r.text.slice(0, 100)}`).toBe(403);
+      expect(r.text).not.toContain('Private reason');
+    }
+    const list = await call(visit).get('/api/surveys');
+    expect(list.status).toBe(200);
+    expect(JSON.stringify(list.body)).not.toContain(exit.id);
+    expect((await call(visit).get(`/api/surveys/${pulse.id}/results`)).status).toBe(200);
+    // HR itself still reads the exit survey.
+    expect((await call(tok.hr).get(`/api/surveys/${exit.id}/results`)).text).toContain('Private reason');
+  });
+
   it('an absolute-form request line (GET http://host/api/… HTTP/1.1) doesn’t get past the block either', async () => {
     const admin = await owner.platformAdmin.create({ data: { email: `fh-${randomBytes(3).toString('hex')}@fh.test`, name: 'FH Support', passwordHash: 'x' } });
     const grant = await owner.supportGrant.create({ data: { tenantId: t.tenant.id, grantedById: ids.hr, level: 'FULL', expiresAt: new Date(Date.now() + 3_600_000) } });
