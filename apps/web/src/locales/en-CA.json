@@ -778,7 +778,10 @@
     "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
     "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
     "CERT_EXISTS": "There’s already a certificate with that name.",
-    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again."
+    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again.",
+    "OVERTIME_VOIDED": "This entry has already been voided.",
+    "OVERTIME_REVERSAL": "This entry already cancels another one. Record a new call-out instead.",
+    "OWN_OVERTIME": "Someone else corrects your own overtime record."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -3377,7 +3380,21 @@
     "note": "Warnings appear before overtime goes to someone out of order. They inform the decision; a supervisor still decides, and every override is logged.",
     "skips_one": "This skips {{count}} person ahead in the overtime order",
     "skips_other": "This skips {{count}} people ahead in the overtime order",
-    "skippedLine": "{{name}}: {{hours}} h charged, seniority {{since}}"
+    "skippedLine": "{{name}}: {{hours}} h charged, seniority {{since}}",
+    "history": "History",
+    "historyFor": "Call-out history for {{name}}",
+    "historyTitle": "Call-outs: {{name}}",
+    "historyHelp": "Everything recorded since {{date}}. A wrong entry is voided, not deleted: it stays here, marked, and stops counting.",
+    "historyEmpty": "Nothing recorded this period.",
+    "recordedBy": "Recorded by {{name}}",
+    "takenBack": "Taken back",
+    "voidedPill": "Voided",
+    "voidedBy": "Voided by {{name}}: {{reason}}",
+    "void": "Void this entry",
+    "voidReason": "Why is this entry wrong?",
+    "voidHelp": "Union stewards can see this reason. To correct an entry, void it and record the right call.",
+    "voidConfirm": "Void",
+    "voidDone": "Voided. The order is updated."
   },
   "brand": {
     "category": "FlexcityHeadquarters · Workforce management",

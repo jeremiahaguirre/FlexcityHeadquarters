@@ -778,7 +778,10 @@
     "CERT_CHANGED": "L’employé a modifié cette inscription depuis que vous l’avez ouverte. Vérifiez-la de nouveau.",
     "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
     "CERT_EXISTS": "Un certificat porte déjà ce nom.",
-    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez."
+    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez.",
+    "OVERTIME_VOIDED": "Cette inscription a déjà été annulée.",
+    "OVERTIME_REVERSAL": "Cette inscription en annule déjà une autre. Inscrivez plutôt un nouvel appel.",
+    "OWN_OVERTIME": "Quelqu’un d’autre corrige votre propre dossier d’heures supplémentaires."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -3377,7 +3380,21 @@
     "note": "Les avertissements apparaissent avant que des heures supplémentaires soient attribuées hors de l’ordre. Ils éclairent la décision; un superviseur décide, et chaque dérogation est consignée.",
     "skips_one": "Cela saute {{count}} personne devant dans l’ordre des heures supplémentaires",
     "skips_other": "Cela saute {{count}} personnes devant dans l’ordre des heures supplémentaires",
-    "skippedLine": "{{name}} : {{hours}} h imputées, ancienneté {{since}}"
+    "skippedLine": "{{name}} : {{hours}} h imputées, ancienneté {{since}}",
+    "history": "Historique",
+    "historyFor": "Historique des appels pour {{name}}",
+    "historyTitle": "Appels : {{name}}",
+    "historyHelp": "Tout ce qui a été inscrit depuis le {{date}}. Une inscription erronée est annulée, pas supprimée : elle reste ici, marquée, et ne compte plus.",
+    "historyEmpty": "Rien d’inscrit pour cette période.",
+    "recordedBy": "Inscrit par {{name}}",
+    "takenBack": "Retiré",
+    "voidedPill": "Annulé",
+    "voidedBy": "Annulé par {{name}} : {{reason}}",
+    "void": "Annuler cette inscription",
+    "voidReason": "Pourquoi cette inscription est-elle erronée?",
+    "voidHelp": "Les délégués syndicaux peuvent voir cette raison. Pour corriger une inscription, annulez-la et inscrivez le bon appel.",
+    "voidConfirm": "Annuler l’inscription",
+    "voidDone": "Annulée. L’ordre est mis à jour."
   },
   "brand": {
     "category": "FlexcityHeadquarters · Gestion de la main-d’œuvre",

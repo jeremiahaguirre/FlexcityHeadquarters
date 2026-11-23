@@ -82,3 +82,60 @@ describe('overtime equalization', () => {
     expect((await call(steward).post('/api/overtime/entries', {})).status).toBe(403);
   });
 });
+
+describe('correcting the overtime ledger', () => {
+  const pos = () => t.position.id;
+  const standingOf = async (i: number) => (await call(sup).get(`/api/overtime/standings?positionId=${pos()}`)).body.rows.find((x: { userId: string }) => x.userId === id(i));
+
+  it('a call-out recorded against the wrong person can be seen and voided, with a reason, and the order is restored', async () => {
+    await call(sup).put('/api/overtime/policy', { countRefusals: true, clause: 'Article 12.3', periodStartMonth: 1 });
+    const made = await call(sup).post('/api/overtime/entries', { userId: id(C), positionId: pos(), kind: 'REFUSED', hours: '4', occurredAt: new Date().toISOString(), note: 'Wrong lifeguard' });
+    expect(made.status).toBe(201);
+    expect(await standingOf(C)).toMatchObject({ chargedHours: 4, refusals: 1 });
+
+    // The history: who recorded what, with the note. Union stewards read it too; staff can't.
+    const history = await call(sup).get(`/api/overtime/entries?positionId=${pos()}&userId=${id(C)}`);
+    expect(history.status).toBe(200);
+    expect(history.body.entries).toEqual([expect.objectContaining({ id: made.body.id, kind: 'REFUSED', hours: '4.00', note: 'Wrong lifeguard', recordedBy: 'S V', voided: null, reversal: false })]);
+    expect((await call(steward).get(`/api/overtime/entries?positionId=${pos()}&userId=${id(C)}`)).status).toBe(200);
+    expect((await call(guard).get(`/api/overtime/entries?positionId=${pos()}&userId=${id(C)}`)).status).toBe(403);
+
+    // Voiding needs overtime.manage and a reason.
+    expect((await call(steward).post(`/api/overtime/entries/${made.body.id}/void`, { reason: 'Not mine to fix' })).status).toBe(403);
+    expect((await call(sup).post(`/api/overtime/entries/${made.body.id}/void`, { reason: '' })).body.code).toBe('REASON_REQUIRED');
+
+    const v = await call(sup).post(`/api/overtime/entries/${made.body.id}/void`, { reason: 'Recorded against the wrong person' });
+    expect(v.status).toBe(201);
+    expect(await standingOf(C)).toMatchObject({ chargedHours: 0, refusals: 0 });
+
+    const after = (await call(sup).get(`/api/overtime/entries?positionId=${pos()}&userId=${id(C)}`)).body.entries;
+    expect(after).toHaveLength(1);
+    expect(after[0]).toMatchObject({ id: made.body.id, voided: { by: 'S V', reason: 'Recorded against the wrong person' } });
+    expect(await owner.auditLog.findFirst({ where: { tenantId: t.tenant.id, action: 'overtime.void', entityId: made.body.id } })).not.toBeNull();
+
+    // Neither the entry nor its reversal can be voided again.
+    expect((await call(sup).post(`/api/overtime/entries/${made.body.id}/void`, { reason: 'Again' })).body.code).toBe('OVERTIME_VOIDED');
+    expect((await call(sup).post(`/api/overtime/entries/${v.body.id}/void`, { reason: 'Undo the undo' })).body.code).toBe('OVERTIME_REVERSAL');
+  });
+
+  it('two supervisors voiding the same entry at once take it off only once', async () => {
+    const made = await call(sup).post('/api/overtime/entries', { userId: id(C), positionId: pos(), kind: 'ACCEPTED', hours: '3', occurredAt: new Date().toISOString() });
+    const before = await standingOf(C);
+    const [x, y] = await Promise.all([
+      call(sup).post(`/api/overtime/entries/${made.body.id}/void`, { reason: 'Wrong day' }),
+      call(sup).post(`/api/overtime/entries/${made.body.id}/void`, { reason: 'Wrong day' }),
+    ]);
+    expect([x.status, y.status].sort()).toEqual([201, 409]);
+    expect((x.status === 409 ? x : y).body.code).toBe('OVERTIME_VOIDED');
+    expect((await standingOf(C)).chargedHours).toBe(before.chargedHours - 3);
+    expect(await owner.overtimeEntry.count({ where: { reversesId: made.body.id } })).toBe(1);
+  });
+
+  it('a supervisor cannot void an entry about themselves', async () => {
+    const me = await owner.user.findFirstOrThrow({ where: { email: 'sup@otfair.test' } });
+    const own = await owner.overtimeEntry.create({ data: { tenantId: t.tenant.id, userId: me.id, positionId: t.position.id, kind: 'REFUSED', hours: '4', occurredAt: new Date(), recordedById: id(A) } });
+    const r = await call(sup).post(`/api/overtime/entries/${own.id}/void`, { reason: 'Not me' });
+    expect(r.status).toBe(403);
+    expect(r.body.code).toBe('OWN_OVERTIME');
+  });
+});
