@@ -48,19 +48,19 @@ function defaultHours(type: TimeOffType, hireDate: Date | null, year: number): n
 async function balances(tx: Tx, userIds: string[], year: number) {
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
-  const [users, ents, requests, shifts] = await Promise.all([
+  const [users, ents, requests] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, hireDate: true } }),
     tx.leaveEntitlement.findMany({ where: { userId: { in: userIds }, year } }),
     tx.timeOffRequest.findMany({ where: { userId: { in: userIds }, startsAt: { lt: end }, endsAt: { gt: start }, status: { in: ['APPROVED', 'PENDING'] } } }),
-    scheduledShifts(tx, userIds, start, end),
   ]);
+  // Over every day the requests cover, not just this year: a request across New Year counts the same in both years.
+  const from = new Date(Math.min(start.getTime(), ...requests.map((r) => r.startsAt.getTime())));
+  const to = new Date(Math.max(end.getTime(), ...requests.map((r) => r.endsAt.getTime())));
+  const shifts = await scheduledShifts(tx, userIds, from, to);
   // One query each: the zone and the holidays' province each request is counted in.
   const [zoneOf, provinceOf] = await Promise.all([leaveTimeZones(tx, requests), leaveProvinces(tx, requests)]);
   // Holidays (statutory and the organization's own) for each province requests are counted in, once each.
   const daysOffIn = new Map<string | null, Set<string>>();
-  // Over every day the requests cover, not just this year: a request across New Year counts the same in both years.
-  const from = new Date(Math.min(start.getTime(), ...requests.map((r) => r.startsAt.getTime())));
-  const to = new Date(Math.max(end.getTime(), ...requests.map((r) => r.endsAt.getTime())));
   for (const p of new Set(requests.map(provinceOf))) daysOffIn.set(p, await leaveDaysOff(tx, p, from, to));
   // Approved: what was charged at approval (older requests: the weekday count). Pending: their schedule as it stands.
   const hoursOf = (r: (typeof requests)[number]) =>

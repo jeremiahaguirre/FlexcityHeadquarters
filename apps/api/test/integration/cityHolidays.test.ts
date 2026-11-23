@@ -224,6 +224,19 @@ describe('leave and calendars', () => {
     await owner.tenantHoliday.delete({ where: { id: closure.id } });
   });
 
+  it('a pending request across New Year with shifts in one year only counts those shifts in both years’ balances', async () => {
+    const tz = a.facility.timezone;
+    const who = a.users[2]!.id;
+    for (const d of ['2031-12-30', '2031-12-31']) {
+      const at = new Date(startOfLocalDay(d, tz).getTime() + 9 * 3_600_000);
+      await owner.shift.create({ data: { tenantId: a.tenant.id, facilityId: a.facility.id, positionId: a.position.id, userId: who, startsAt: at, endsAt: new Date(at.getTime() + 8 * 3_600_000), status: 'PUBLISHED' } });
+    }
+    await owner.timeOffRequest.create({ data: { tenantId: a.tenant.id, userId: who, type: 'VACATION', status: 'PENDING', startsAt: startOfLocalDay('2031-12-29', tz), endsAt: startOfLocalDay('2032-01-10', tz) } });
+    const tok = await signAccessToken({ sub: who, tid: a.tenant.id, roles: ['STAFF'], aat: now() });
+    const pending = async (year: number) => ((await call(tok).get(`/api/me/leave?year=${year}`)).body.types as Array<{ type: string; pending: number }>).find((x) => x.type === 'VACATION')!.pending;
+    expect([await pending(2031), await pending(2032)]).toEqual([16, 16]);
+  });
+
   it('lists the city’s days with the statutory ones, for staff and through the public API', async () => {
     const mine = await call(guardTok).get(`/api/me/holidays?from=${PERIOD}`);
     const city = mine.body.holidays.filter((h: { source: string }) => h.source === 'CITY');
