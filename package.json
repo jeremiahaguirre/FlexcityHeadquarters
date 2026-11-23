@@ -21,6 +21,7 @@
   },
   "overrides": {
     "postcss": "8.5.32",
-    "superagent": "10.4.1"
+    "superagent": "10.4.1",
+    "effect": "3.22.4"
   }
 }
