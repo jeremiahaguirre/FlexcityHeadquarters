@@ -5,6 +5,7 @@
  * city export, erasure and isolation between cities.
  */
 import { randomBytes } from 'node:crypto';
+import { strFromU8, unzipSync } from 'fflate';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
@@ -12,10 +13,13 @@ import { resetLimits } from '../../src/auth/rateLimit.js';
 import { hashPassword, signAccessToken } from '../../src/auth/tokens.js';
 import { withTenant } from '../../src/lib/db.js';
 import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
-import { exportSummary } from '../../src/services/platform/cityExport.js';
+import { exportSummary, writeCityExport } from '../../src/services/platform/cityExport.js';
 import { anonymizeUser } from '../../src/services/privacy/erasure.js';
 import { exportPersonRecords } from '../../src/services/privacy/recordsExport.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
+
+// HR-only values are sealed with the organization's key.
+process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
 
 const server = createApp();
 const A = 'cfields';
@@ -228,5 +232,108 @@ describe('privacy', () => {
     expect((await call(tok.hr).patch(`/api/settings/custom-fields/${f.id}`, { label: 'Badge number', labelFr: 'Numéro d’insigne', archived: true, viewAccess: 'MANAGER', editAccess: 'MANAGER' })).status).toBe(200);
     expect(keysOf(await call(tok.hr).get(`/api/users/${ids.librarian}/custom-fields`))).not.toContain('badge_number');
     expect(await owner.customFieldValue.count({ where: { fieldId: f.id } })).toBe(1);
+  });
+});
+
+describe('review round 1', () => {
+  let scopedHr = '';
+  beforeAll(async () => {
+    // "Aquatics HR": HR and settings powers, limited to the lifeguard position's department.
+    const u = await owner.user.create({ data: { tenantId: a.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'aqhr', lastName: 'X', email: `aqhr@${A}.test` } });
+    const role = await owner.customRole.create({ data: { tenantId: a.tenant.id, name: 'Aquatics HR', permissions: ['users.read', 'users.write', 'tenant.configure'], scopePositionIds: [a.position.id] } });
+    await owner.userCustomRole.create({ data: { tenantId: a.tenant.id, userId: u.id, customRoleId: role.id } });
+    forgetCustomPermissions(a.tenant.id);
+    scopedHr = await signAccessToken({ sub: u.id, tid: a.tenant.id, roles: ['EMPLOYEE'], aat: now(), mfa: true });
+    await call(tok.hr).put(`/api/users/${ids.librarian}/custom-fields`, { values: { police_check_ref: 'PC-SECRET' } });
+  });
+
+  it('a role limited to a department can’t give a key the custom-fields read scope (keys reach the whole organization)', async () => {
+    // In the app the librarian is out of reach…
+    expect((await call(scopedHr).get(`/api/users/${ids.librarian}/custom-fields`)).status).toBe(404);
+    // …so a key that would read every person's HR-only values is refused.
+    const k = await call(scopedHr).post('/api/integrations/api-keys', { name: 'Leak', scopes: ['customfields:read'] });
+    expect(k.status).toBe(403);
+    expect(k.body.code).toBe('SCOPE_NOT_YOURS');
+    const listed = (await call(scopedHr).get('/api/integrations')).body.scopes as Array<{ scope: string; allowed: boolean }>;
+    expect(listed.find((s) => s.scope === 'customfields:read')!.allowed).toBe(false);
+    // HR for the whole organization still can.
+    expect((await call(tok.hr).post('/api/integrations/api-keys', { name: 'HRIS 2', scopes: ['customfields:read'] })).status).toBe(201);
+  });
+
+  it('a key stops reading custom fields once its maker’s role is limited to a department', async () => {
+    const u = await owner.user.create({ data: { tenantId: a.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'orghr', lastName: 'X', email: `orghr@${A}.test` } });
+    const role = await owner.customRole.create({ data: { tenantId: a.tenant.id, name: 'Organization HR', permissions: ['users.read', 'users.write', 'tenant.configure'] } });
+    await owner.userCustomRole.create({ data: { tenantId: a.tenant.id, userId: u.id, customRoleId: role.id } });
+    forgetCustomPermissions(a.tenant.id);
+    const token = await signAccessToken({ sub: u.id, tid: a.tenant.id, roles: ['EMPLOYEE'], aat: now(), mfa: true });
+    const k = await call(token).post('/api/integrations/api-keys', { name: 'HRIS org', scopes: ['customfields:read', 'customfields:write'] });
+    expect(k.status).toBe(201);
+    expect((await v1(k.body.key).get(`/people/${ids.librarian}/custom-fields`)).body.data.police_check_ref).toBe('PC-SECRET');
+    await owner.customRole.update({ where: { id: role.id }, data: { scopePositionIds: [a.position.id] } });
+    forgetCustomPermissions(a.tenant.id);
+    const r = await v1(k.body.key).get(`/people/${ids.librarian}/custom-fields`);
+    expect(r.status).toBe(403);
+    expect(r.body.code).toBe('KEY_OWNER_LACKS_PERMISSION');
+    expect(JSON.stringify(r.body)).not.toContain('PC-SECRET');
+    expect((await v1(k.body.key).patch(`/people/${ids.librarian}/custom-fields`, { locker: 3 })).body.code).toBe('KEY_OWNER_LACKS_PERMISSION');
+  });
+
+  it('a role limited to a department can’t define, change or archive the organization’s fields', async () => {
+    const f = await owner.customFieldDefinition.findFirstOrThrow({ where: { tenantId: a.tenant.id, key: 'police_check_ref' } });
+    expect((await call(scopedHr).get('/api/settings/custom-fields')).status).toBe(403);
+    expect((await call(scopedHr).post('/api/settings/custom-fields', { key: 'aq_only', label: 'Aquatics only', labelFr: 'Aquatique seulement', type: 'TEXT' })).status).toBe(403);
+    expect((await call(scopedHr).patch(`/api/settings/custom-fields/${f.id}`, { label: 'Police check reference', labelFr: 'Référence de vérification policière', viewAccess: 'MANAGER', editAccess: 'HR' })).status).toBe(403);
+    expect((await call(scopedHr).patch(`/api/settings/custom-fields/${f.id}`, { label: 'Police check reference', labelFr: 'Référence de vérification policière', viewAccess: 'HR', editAccess: 'HR', archived: true })).status).toBe(403);
+    expect(await owner.customFieldDefinition.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({ viewAccess: 'HR', archivedAt: null });
+    expect(await owner.customFieldDefinition.count({ where: { tenantId: a.tenant.id, key: 'aq_only' } })).toBe(0);
+  });
+
+  it('HR-only values are sealed with the organization’s key; manager-level ones stay plain text', async () => {
+    const police = await owner.customFieldDefinition.findFirstOrThrow({ where: { tenantId: a.tenant.id, key: 'police_check_ref' } });
+    const uniform = await owner.customFieldDefinition.findFirstOrThrow({ where: { tenantId: a.tenant.id, key: 'uniform_size' } });
+    await call(tok.hr).put(`/api/users/${ids.librarian}/custom-fields`, { values: { uniform_size: 'S' } });
+    const raw = await owner.$queryRawUnsafe<Array<{ id: string; value: string | null; sealed: Buffer | null }>>(`SELECT "id", "value", "valueCiphertext" AS sealed FROM "CustomFieldValue" WHERE "userId" = '${ids.librarian}' AND "fieldId" = '${police.id}'`);
+    expect(raw[0]!.value).toBeNull();
+    expect(raw[0]!.sealed).toBeTruthy();
+    expect(Buffer.from(raw[0]!.sealed!).toString('utf8')).not.toContain('PC-SECRET');
+    expect((await owner.customFieldValue.findFirstOrThrow({ where: { userId: ids.librarian, fieldId: uniform.id } })).value).toBe('S');
+    // The database refuses a row that is both plain and sealed.
+    await expect(owner.$executeRawUnsafe(`UPDATE "CustomFieldValue" SET "value" = 'x' WHERE "id" = '${raw[0]!.id}'`)).rejects.toThrow();
+    // Opened for HR, the person's records export and the public API.
+    expect((await call(tok.hr).get(`/api/users/${ids.librarian}/custom-fields`)).body.fields.find((f: Field) => f.key === 'police_check_ref').value).toBe('PC-SECRET');
+    const rec = await withTenant(a.tenant.id, (tx) => exportPersonRecords(tx, ids.librarian));
+    expect((rec as unknown as { customFields: Array<{ key: string; value: unknown }> }).customFields.find((f) => f.key === 'police_check_ref')!.value).toBe('PC-SECRET');
+    const k = await call(tok.hr).post('/api/integrations/api-keys', { name: 'HRIS 3', scopes: ['customfields:read'] });
+    expect((await v1(k.body.key).get(`/people/${ids.librarian}/custom-fields`)).body.data.police_check_ref).toBe('PC-SECRET');
+    // An unchanged value isn't written (or audited) again.
+    expect((await call(tok.hr).put(`/api/users/${ids.librarian}/custom-fields`, { values: { police_check_ref: 'PC-SECRET' } })).body.changed).toEqual([]);
+  });
+
+  it('the city export opens the sealed values, without their machinery', async () => {
+    const chunks: Uint8Array[] = [];
+    await new Promise<void>((resolve) => {
+      void writeCityExport(a.tenant.id, { userId: ids.hr, name: 'hr X' }, (c, final) => {
+        chunks.push(c);
+        if (final) resolve();
+      });
+    });
+    const zip = unzipSync(new Uint8Array(Buffer.concat(chunks)));
+    const csv = strFromU8(zip['flexcity-export/csv/CustomFieldValue.csv']!);
+    expect(csv).toContain('PC-SECRET');
+    expect(csv).not.toMatch(/valueCiphertext|valueWrappedKey|valueKekId/);
+    expect(JSON.parse(strFromU8(zip['flexcity-export/README.json']!)).problems).toEqual([]);
+  });
+
+  it('changing who sees a field seals or opens its stored values to match', async () => {
+    const f = await owner.customFieldDefinition.findFirstOrThrow({ where: { tenantId: a.tenant.id, key: 'police_check_ref' } });
+    const body = { label: 'Police check reference', labelFr: 'Référence de vérification policière', editAccess: 'HR', sortOrder: 3 };
+    const stored = async () => (await owner.$queryRawUnsafe<Array<{ value: string | null; sealed: Buffer | null }>>(`SELECT "value", "valueCiphertext" AS sealed FROM "CustomFieldValue" WHERE "userId" = '${ids.librarian}' AND "fieldId" = '${f.id}'`))[0]!;
+    expect((await call(tok.hr).patch(`/api/settings/custom-fields/${f.id}`, { ...body, viewAccess: 'MANAGER' })).status).toBe(200);
+    expect(await stored()).toEqual({ value: 'PC-SECRET', sealed: null });
+    expect((await call(tok.hr).patch(`/api/settings/custom-fields/${f.id}`, { ...body, viewAccess: 'HR' })).status).toBe(200);
+    const row = await stored();
+    expect(row.value).toBeNull();
+    expect(row.sealed).toBeTruthy();
+    expect((await call(tok.hr).get(`/api/users/${ids.librarian}/custom-fields`)).body.fields.find((x: Field) => x.key === 'police_check_ref').value).toBe('PC-SECRET');
   });
 });

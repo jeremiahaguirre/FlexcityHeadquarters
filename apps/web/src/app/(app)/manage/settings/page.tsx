@@ -81,9 +81,10 @@ function Section({ title, description, action, children }: { title: string; desc
 /** Organization settings: the organization itself, its facilities, pools and pay rules. Sections show only to people allowed to change them. */
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const { can } = useSession();
+  const { can, me } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'departments', 'fields', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
+  // Staff fields are on every person: set by the organization's administrators, not a role limited to departments.
+  const tabs: Tab[] = [...(org ? (['org', 'departments', ...(me?.scoped ? [] : (['fields'] as const)), 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
   // A link can open a tab (the email about a webhook that was turned off opens Integrations).
   useEffect(() => {

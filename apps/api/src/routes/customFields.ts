@@ -7,8 +7,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
-import { HttpError, notFound } from '../lib/errors.js';
-import { MAX_FIELDS, fieldDef, fieldDefs, fieldsFor, saveFieldValues } from '../services/people/customFields.js';
+import { HttpError, forbidden, notFound } from '../lib/errors.js';
+import { MAX_FIELDS, fieldDef, fieldDefs, fieldsFor, restoreFieldValues, saveFieldValues } from '../services/people/customFields.js';
 import { assertUserInScope } from '../services/people/scope.js';
 import { h } from './context.js';
 
@@ -31,6 +31,11 @@ const createBody = editable.extend({
   type: z.enum(['TEXT', 'NUMBER', 'DATE', 'CHOICE', 'BOOLEAN']),
 });
 
+/** Fields are on every person in the organization: defined by its own administrators, never by a role limited to departments. */
+function orgWide(a: { scope: unknown }) {
+  if (a.scope) throw forbidden('Staff fields are set for the whole organization, by its administrators.');
+}
+
 function checkDefinition(b: { type?: string; choices: Array<{ value: string }>; viewAccess: string; editAccess: string }) {
   if (b.type === 'CHOICE' && b.choices.length < 2) throw new HttpError(400, 'CUSTOM_FIELD_CHOICES', 'A choice field needs at least two choices.');
   if (new Set(b.choices.map((c) => c.value)).size !== b.choices.length) throw new HttpError(400, 'CUSTOM_FIELD_CHOICES', 'Each choice needs its own value.');
@@ -43,6 +48,7 @@ customFieldsRouter.get(
   requirePermission('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
+    orgWide(a);
     const rows = await withTenant(a.tenantId, (tx) => fieldDefs(tx, { archived: true }));
     res.json({ fields: rows.map((d) => ({ ...d, archivedAt: d.archivedAt?.toISOString() ?? null })), max: MAX_FIELDS });
   }),
@@ -53,6 +59,7 @@ customFieldsRouter.post(
   requirePermission('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
+    orgWide(a);
     const b = createBody.parse(req.body);
     checkDefinition(b);
     const row = await withTenant(a.tenantId, async (tx) => {
@@ -72,6 +79,7 @@ customFieldsRouter.patch(
   requirePermission('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
+    orgWide(a);
     const id = uuid.parse(req.params.id);
     const b = editable.extend({ archived: z.boolean().default(false) }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
@@ -80,6 +88,8 @@ customFieldsRouter.patch(
       checkDefinition({ ...b, type: before.type });
       const { archived, ...rest } = b;
       await tx.customFieldDefinition.update({ where: { id }, data: { ...rest, choices: before.type === 'CHOICE' ? rest.choices : [], archivedAt: archived ? (before.archivedAt ?? new Date()) : null } });
+      // Now HR-only: its values are sealed; now manager-level: opened.
+      if (before.viewAccess !== rest.viewAccess) await restoreFieldValues(tx, a.tenantId, id, rest.viewAccess);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'customfield.update', entity: 'CustomFieldDefinition', entityId: id, before: fieldDef(before), after: b });
     });
     res.json({ ok: true });

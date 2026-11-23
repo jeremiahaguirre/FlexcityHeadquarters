@@ -26,6 +26,7 @@ import { keys } from '../../routes/context.js';
 import { open } from '../crypto/envelope.js';
 import { csvCell } from '../payroll/export.js';
 import { accountNumber, revealSin } from '../payroll/bank.js';
+import { storedValue } from '../people/customFields.js';
 import { attachmentName } from '../messaging/conversations.js';
 import { messageAad, openWith } from '../messaging/crypto.js';
 import { anonymousResults, type Answers, type Question } from '../surveys/results.js';
@@ -181,6 +182,8 @@ export async function writeCityExport(tenantId: string, by: { userId: string; na
       // Open what's sealed with the organization's key, before its machinery is dropped.
       try {
         if (table === 'PayProfile') row.sin = await revealSin(tenantId, r as never);
+        // An HR-only custom field's value, sealed; copied below as `value`.
+        if (table === 'CustomFieldValue' && r.value === null) r.value = await storedValue(r as never);
         if (table === 'BankAccount') row.accountNumber = await accountNumber(tenantId, r as never);
         if (table === 'IncidentReport') {
           row.narrative = JSON.parse(await open(keys(), { ciphertext: r.ciphertext as Buffer, iv: r.iv as Buffer, authTag: r.authTag as Buffer, wrappedDataKey: r.wrappedDataKey as Buffer, kekId: r.kekId as string }, `incident:${tenantId}:${r.id}`));

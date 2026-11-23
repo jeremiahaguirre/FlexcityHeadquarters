@@ -485,6 +485,7 @@ citiesRouter.post(
         const pv = await preview(tx, csv);
         if (pv.missingColumns.length) throw invalid('COLUMNS_MISSING', `Missing columns: ${pv.missingColumns.join(', ')}`, { columns: pv.missingColumns.join(', ') });
         const ready = pv.rows.filter((r) => r.status === 'create');
+        const managerLevel = new Set((await fieldDefs(tx)).filter((d) => d.viewAccess === 'MANAGER').map((d) => d.id));
         // FH creates a city's first HR administrators while setting it up; after that, only the city's own HR can.
         if (ready.some((r) => r.roles.includes('HR_ADMIN')) && (await tx.user.count({ where: { status: 'ACTIVE', roles: { has: 'HR_ADMIN' } } }))) {
           throw forbidden('This organization already has an HR administrator: only its own HR can add more. Remove HR_ADMIN from the file.');
@@ -508,7 +509,8 @@ citiesRouter.post(
             },
           });
           if (r.customRoleIds.length) await setUserCustomRoles(tx, id, u.id, r.customRoleIds);
-          const values = Object.entries(r.customFields);
+          // Manager-level values only (stored as text): the preview refuses HR-only columns, and FH never writes one.
+          const values = Object.entries(r.customFields).filter(([fieldId]) => managerLevel.has(fieldId));
           if (values.length) await tx.customFieldValue.createMany({ data: values.map(([fieldId, value]) => ({ tenantId: id, fieldId, userId: u.id, value })) });
           if (r.positionIds.length) await tx.userPosition.createMany({ data: [...new Set(r.positionIds)].map((positionId) => ({ tenantId: id, userId: u.id, positionId })) });
           if (sendInvites) {

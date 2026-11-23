@@ -8,8 +8,9 @@
  *   default; write scopes ("Can change data") are opt-in per key. Revoking is immediate; rotating
  *   makes a new key and lets the old one work for a day.
  * - Someone can only give a key the access they hold themselves (SCOPE_PERMISSIONS), and write
- *   scopes only with access to the whole organization (keys are organization-wide). A key's writes
- *   also stop when the person who made it leaves or loses that permission.
+ *   scopes and customfields:read only with access to the whole organization (keys are
+ *   organization-wide). A key's writes, and its custom-field reads, also stop when the person who
+ *   made it leaves or loses that access.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { BlockList, isIP } from 'node:net';
@@ -22,6 +23,11 @@ export const WRITE_SCOPES = ['people:write', 'departments:write', 'positions:wri
 export const SCOPES = [...READ_SCOPES, ...WRITE_SCOPES] as const;
 export type ApiScope = (typeof SCOPES)[number];
 export const isWriteScope = (s: string) => (WRITE_SCOPES as readonly string[]).includes(s);
+/**
+ * Scopes only someone with access to the whole organization can give: every write scope, and
+ * reading custom fields (HR-only values of every person; a key has no department limit).
+ */
+export const needsWholeOrganization = (s: string) => isWriteScope(s) || s === 'customfields:read';
 
 /** What the person making the key must hold to give it each scope (any one). */
 export const SCOPE_PERMISSIONS: Record<ApiScope, Permission[]> = {

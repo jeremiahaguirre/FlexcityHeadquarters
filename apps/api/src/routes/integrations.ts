@@ -15,7 +15,7 @@ import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, invalid, notFound } from '../lib/errors.js';
 import { hasModule } from '../services/billing/entitlements.js';
-import { type ApiScope, SCOPES, SCOPE_PERMISSIONS, isWriteScope, newKey, parseIpEntry } from '../services/integrations/apiKeys.js';
+import { type ApiScope, SCOPES, SCOPE_PERMISSIONS, isWriteScope, needsWholeOrganization, newKey, parseIpEntry } from '../services/integrations/apiKeys.js';
 import { WEBHOOK_EVENT_TYPES, attemptDelivery, checkWebhookUrl, newSigningSecret, redeliver, sealSecret, sendTestEvent } from '../services/integrations/webhooks.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
@@ -75,8 +75,8 @@ const deliveryView = (d: WebhookDelivery) => ({
   nextAttemptAt: d.status === 'PENDING' ? d.nextAttemptAt : null,
 });
 
-/** The scope's data must be the maker's own; a write scope also needs access to the whole organization (keys are organization-wide). */
-const mayGrant = (a: { permissions: Set<Permission>; scope: unknown }, scope: ApiScope) => SCOPE_PERMISSIONS[scope].some((p) => a.permissions.has(p)) && (!isWriteScope(scope) || !a.scope);
+/** The scope's data must be the maker's own; a write scope, or reading custom fields, also needs access to the whole organization (keys are organization-wide). */
+const mayGrant = (a: { permissions: Set<Permission>; scope: unknown }, scope: ApiScope) => SCOPE_PERMISSIONS[scope].some((p) => a.permissions.has(p)) && (!needsWholeOrganization(scope) || !a.scope);
 
 integrationsRouter.get(
   '/integrations',
