@@ -161,6 +161,18 @@ describe('offboarding', () => {
     expect(e.endsOn?.toISOString().slice(0, 10)).toBe('2026-11-30');
     expect((await call(tok.emp2).get('/api/me/leave')).status).toBe(401);
   });
+
+  it('someone rehired after leaving can be offboarded again; only one offboarding is open at a time', async () => {
+    const u = t.users[1]!.id;
+    // Back for another season.
+    await owner.user.update({ where: { id: u }, data: { status: 'ACTIVE' } });
+    const again = await call(tok.hr).post(`/api/users/${u}/offboarding`, { lastDay: '2027-08-31', reason: 'END_OF_SEASON' });
+    expect(again.status).toBe(201);
+    expect((await call(tok.hr).post(`/api/users/${u}/offboarding`, { lastDay: '2027-09-30', reason: 'RESIGNATION' })).body.code).toBe('ALREADY_OFFBOARDING');
+    expect((await owner.offboarding.findMany({ where: { userId: u }, orderBy: { lastDay: 'asc' } })).map((o) => o.lastDay.toISOString().slice(0, 10))).toEqual(['2026-11-30', '2027-08-31']);
+    // Done with (as if the checklist were finished), so it doesn’t count as open further on.
+    await owner.offboarding.update({ where: { id: again.body.id }, data: { completedAt: new Date() } });
+  });
 });
 
 describe('HR overview', () => {

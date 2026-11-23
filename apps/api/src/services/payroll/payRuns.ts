@@ -196,7 +196,8 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   for (const c of claims) if (!runUsers.includes(c.userId)) runUsers.push(c.userId);
   const lieuBanks = await lieuBanksOf(tx, runUsers, { excludeRunId: runId });
   const bankers = new Set(policy.enabled && kind === 'REGULAR' ? (await tx.user.findMany({ where: { id: { in: runUsers }, bankOvertime: true }, select: { id: true } })).map((u) => u.id) : []);
-  const leaving = new Set((await tx.offboarding.findMany({ where: { userId: { in: runUsers }, lastDay: { lte: new Date(periodEnd) } }, select: { userId: true } })).map((o) => o.userId));
+  // Leaving in this period: a last day from an earlier time they left (and were rehired since) doesn't count.
+  const leaving = new Set((await tx.offboarding.findMany({ where: { userId: { in: runUsers }, lastDay: { gte: new Date(input.periodStart), lte: new Date(periodEnd) } }, select: { userId: true } })).map((o) => o.userId));
   // Someone who also worked in another department this period has to be paid in one run (city-wide), so
   // tax and CPP/EI are worked out once on all their pay, not twice on halves.
   if (kind === 'REGULAR' && input.departmentId && positions && runUsers.length) {

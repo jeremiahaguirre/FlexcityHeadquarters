@@ -125,4 +125,13 @@ describe('time in lieu', () => {
     const r = await runFor('2026-07-06', '2026-07-24');
     expect(r.warnings.some((w) => w.code === 'LIEU_EXPIRED')).toBe(true);
   });
+
+  it('someone who left before and was rehired isn’t treated as leaving on a later run', async () => {
+    // They left at the end of May and came back; the banked time still on the books isn’t owed as a final payout.
+    await owner.offboarding.create({ data: { tenantId: t.tenant.id, userId: guard, lastDay: new Date('2026-05-31'), reason: 'END_OF_SEASON', checklist: [], completedAt: new Date('2026-06-01'), createdById: guard } });
+    const start = new Date(Date.UTC(2026, 6, 21, 16));
+    await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: guard, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 6 * 3_600_000), status: 'APPROVED' } });
+    const r = await runFor('2026-07-20', '2026-08-07');
+    expect(r.warnings.some((w) => w.code === 'LIEU_OWED')).toBe(false);
+  });
 });

@@ -191,7 +191,8 @@ export async function startOffboarding(tx: Tx, a: AuthContext, userId: string, b
   if (userId === a.userId) throw forbidden('Someone else has to offboard you.');
   const u = await tx.user.findUnique({ where: { id: userId }, select: { id: true, anonymizedAt: true, status: true } });
   if (!u || u.anonymizedAt) throw notFound('Staff member');
-  if (await tx.offboarding.findUnique({ where: { userId } })) throw conflict('ALREADY_OFFBOARDING', 'This person is already being offboarded.');
+  // One at a time: a finished offboarding (they were rehired since) doesn't stop a new one.
+  if (await tx.offboarding.findFirst({ where: { userId, completedAt: null }, select: { id: true } })) throw conflict('ALREADY_OFFBOARDING', 'This person is already being offboarded.');
   const created = await tx.offboarding.create({ data: { tenantId: a.tenantId, userId, lastDay: new Date(b.lastDay), reason: b.reason, checklist: OFFBOARD_ITEMS.map((key) => ({ key, done: false, doneAt: null, doneById: null })), createdById: a.userId } });
   await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'offboarding.start', entity: 'User', entityId: userId, after: b });
   return created;
