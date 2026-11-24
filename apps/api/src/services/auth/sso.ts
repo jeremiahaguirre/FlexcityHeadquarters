@@ -25,6 +25,7 @@ import { assertPublicUrl, publicRequest } from '../../lib/egress.js';
 import { safeNext } from '../../lib/safeNext.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
+import { accessOf, isAdminLevel, needsPasskey } from '../../auth/middleware.js';
 
 export const STATE_COOKIE = 'fc_sso';
 const STATE_TTL_S = 10 * 60;
@@ -220,7 +221,48 @@ async function oidcFinish(c: SsoConnection, sub: string, st: State, query: Recor
   // Entra puts the address in email, preferred_username or upn depending on the directory.
   const email = [claims.email, claims.preferred_username, claims.upn].find((x): x is string => typeof x === 'string' && x.includes('@'));
   const amr = Array.isArray(claims.amr) ? (claims.amr as unknown[]) : [];
-  return { email, subject: `${c.oidcIssuer}|${String(claims.sub)}`, mfa: amr.includes('mfa') };
+  const phishingResistant = amr.some((m) => typeof m === 'string' && PHISHING_RESISTANT_AMR.has(m)) || (typeof claims.acr === 'string' && PHISHING_RESISTANT_ACR.has(claims.acr));
+  return { email, subject: `${c.oidcIssuer}|${String(claims.sub)}`, mfa: amr.includes('mfa'), phishingResistant, authTime: typeof claims.auth_time === 'number' ? claims.auth_time : undefined };
+}
+
+/**
+ * What proves a phishing-resistant method in an OIDC ID token:
+ * - `amr` `hwk` or `swk`: proof of possession of a hardware- or software-secured key (RFC 8176 §2);
+ *   `fido`: a FIDO2 key or passkey, as Microsoft Entra ID reports it;
+ * - `acr` `phr` or `phrh`: phishing-resistant, and hardware-protected (OpenID Connect Extended
+ *   Authentication Profile ACR Values 1.0).
+ * A plain `mfa` amr (which an SMS, OTP or push factor also produces) is not enough. FH doesn't send
+ * `acr_values`, so asking never forces a method on staff whose role doesn't need one.
+ */
+const PHISHING_RESISTANT_AMR: ReadonlySet<string> = new Set(['hwk', 'swk', 'fido']);
+const PHISHING_RESISTANT_ACR: ReadonlySet<string> = new Set(['phr', 'phrh']);
+/** How recent the provider's sign-in must be for admin-level powers (target AUTH-02, 7.1.3). */
+export const ADMIN_AUTH_MAX_AGE_S = 15 * 60;
+
+export interface SsoProof {
+  /** The provider reported a second factor of some kind (any `mfa` amr, Entra's multipleauthn). */
+  mfa: boolean;
+  /** The provider proved a phishing-resistant method (OIDC only; see PHISHING_RESISTANT_AMR). */
+  phishingResistant: boolean;
+  /** When the person signed in at the provider (epoch seconds), when it says. */
+  authTime?: number;
+}
+
+/**
+ * Whether a single sign-on gives the session its second factor (ASVS 6.8.4; owner decision 1).
+ * - Roles that need a passkey (HR, payroll, managers, admins: needsPasskey): only with proof of a
+ *   phishing-resistant method, and for admin-level powers a provider sign-in at most 15 minutes old.
+ *   The city's "our provider always requires MFA" switch and a plain `mfa` amr never count. Without
+ *   the proof the session owes a passkey (passkeyRequired), whatever the city's own settings.
+ * - Everyone else: as before, any second factor the provider reports, or the city's switch.
+ */
+export function ssoSecondFactor(proof: SsoProof, opts: { idpMfa: boolean; permissions: Iterable<string>; now?: number }): { mfa: boolean; passkeyRequired: boolean } {
+  const perms = [...opts.permissions];
+  if (!needsPasskey(perms)) return { mfa: proof.mfa || opts.idpMfa, passkeyRequired: false };
+  const now = opts.now ?? Math.floor(Date.now() / 1000);
+  const fresh = !isAdminLevel(perms) || (proof.authTime !== undefined && now - proof.authTime <= ADMIN_AUTH_MAX_AGE_S && proof.authTime <= now + 60);
+  const mfa = proof.phishingResistant && fresh;
+  return { mfa, passkeyRequired: !mfa };
 }
 
 /* ---------------- SAML 2.0 ---------------- */
@@ -291,7 +333,8 @@ async function samlFinish(c: SsoConnection, sub: string, st: State, body: Record
   if (!profile) throw new SsoError('SSO_TOKEN_INVALID');
   const email = [...SAML_EMAIL.map((k) => profile![k]), profile.nameID].find((x): x is string => typeof x === 'string' && x.includes('@'));
   const methods = ([] as unknown[]).concat(profile[MFA_CLAIM] ?? []);
-  return { email, subject: `${profile.issuer}|${profile.nameID}`, mfa: methods.some((m) => typeof m === 'string' && /multipleauthn|mfa/i.test(m)) };
+  // SAML: no agreed phishing-resistant AuthnContextClassRef yet, so passkey-mandatory roles confirm with an FH passkey.
+  return { email, subject: `${profile.issuer}|${profile.nameID}`, mfa: methods.some((m) => typeof m === 'string' && /multipleauthn|mfa/i.test(m)), phishingResistant: false, authTime: undefined };
 }
 
 /* ---------------- Shared ---------------- */
@@ -323,15 +366,19 @@ export async function finishSso(tenantId: string, sub: string, p: State['p'], ra
   if (!who.email) throw new SsoError('SSO_NO_EMAIL');
   const email = who.email.toLowerCase();
   if (c.domains.length && !c.domains.includes(email.split('@')[1]!)) throw new SsoError('SSO_DOMAIN');
+  // What this person may do decides how much the provider's proof has to show.
+  const pre = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { tenantId_email: { tenantId, email } }, select: { id: true, roles: true } }));
+  const access = pre ? await accessOf(tenantId, pre.id, pre.roles) : null;
+  const factor = ssoSecondFactor(who, { idpMfa: c.idpMfa, permissions: access?.permissions ?? [] });
   const out: { code: string } | { refused: string; userId: string | null } = await withTenant(tenantId, async (tx) => {
     const user = await tx.user.findUnique({ where: { tenantId_email: { tenantId, email } } });
     if (!user || user.status !== 'ACTIVE' || user.processingRestrictedAt) return { refused: 'SSO_NO_ACCOUNT', userId: user?.id ?? null };
     if (user.ssoSubject && user.ssoSubject !== who.subject) return { refused: 'SSO_SUBJECT_CHANGED', userId: user.id };
     if (!user.ssoSubject) await tx.user.update({ where: { id: user.id }, data: { ssoSubject: who.subject } });
     await tx.ssoConnection.update({ where: { id: c.id }, data: { lastUsedAt: new Date() } });
-    const mfa = who.mfa || c.idpMfa;
-    await audit(tx, { tenantId, actorId: user.id, action: 'auth.sso', entity: 'SsoConnection', entityId: c.id, after: { protocol: p, mfa } });
-    return { code: await issueAuthToken(tx, tenantId, user.id, mfa ? 'SSO_MFA' : 'SSO') };
+    const { mfa, passkeyRequired } = factor;
+    await audit(tx, { tenantId, actorId: user.id, action: 'auth.sso', entity: 'SsoConnection', entityId: c.id, after: { protocol: p, mfa, passkeyRequired, phishingResistant: who.phishingResistant } });
+    return { code: await issueAuthToken(tx, tenantId, user.id, mfa ? 'SSO_MFA' : passkeyRequired ? 'SSO_PASSKEY' : 'SSO') };
   });
   if ('code' in out) return { code: out.code, next: safeNext(st.nx) };
   await withTenant(tenantId, (tx) => audit(tx, { tenantId, actorId: out.userId, action: 'auth.sso.refused', entity: 'SsoConnection', entityId: c.id, after: { code: out.refused, protocol: p } }));

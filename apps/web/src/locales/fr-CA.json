@@ -5482,7 +5482,7 @@
     "enforced": "En faire le seul moyen de connexion",
     "enforcedHint": "Les mots de passe cessent de fonctionner, sauf pour les personnes qui peuvent modifier ce paramètre, afin que personne ne soit bloqué.",
     "idpMfa": "Notre fournisseur exige toujours un deuxième facteur",
-    "idpMfaHint": "N’activez que si votre fournisseur impose l’AMF à tous (p. ex. une stratégie d’accès conditionnel). Sinon, nous utilisons ce que le fournisseur indique.",
+    "idpMfaHint": "N’activez que si votre fournisseur impose l’AMF à tous (p. ex. une stratégie d’accès conditionnel). Sinon, nous utilisons ce que le fournisseur indique. Dans tous les cas, les RH, la paie, les gestionnaires et les administrateurs confirment avec une clé d’accès après la connexion, sauf si le fournisseur prouve une méthode résistante à l’hameçonnage, comme une clé de sécurité ou une clé d’accès.",
     "saved": "Authentification unique enregistrée",
     "lastUsed": "Dernière utilisation : {{time}}",
     "safety": "Chaque compte est lié à son compte d’annuaire à la première utilisation. Chaque connexion et chaque refus figurent dans le journal d’audit."

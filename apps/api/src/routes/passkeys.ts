@@ -115,7 +115,8 @@ passkeyAuthRouter.post(
     const usedPasskey = !('password' in body);
     const raw = req.cookies?.[COOKIE] as string | undefined;
     if (raw) await withTenant(a.tenantId, (tx) => markReauthenticated(tx, raw, new Date(), usedPasskey));
-    res.json({ accessToken: await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(), mfa: a.mfa || usedPasskey }) });
+    // A password step-up doesn't lift a passkey requirement; the token keeps it (the refresh row does too).
+    res.json({ accessToken: await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(), mfa: a.mfa || usedPasskey, pkr: a.passkeyRequired }) });
   }),
 );
 

@@ -66,17 +66,18 @@ ssoAuthRouter.post(
     const { code } = z.object({ code: z.string().min(20).max(100) }).parse(req.body);
     if (!(await allow(`sso-x:${addressKey(req.ip)}:${tenantId}`, 30, 10 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const out = await withTenant(tenantId, async (tx) => {
-      const t = await consumeAuthToken(tx, code, ['SSO', 'SSO_MFA']);
+      const t = await consumeAuthToken(tx, code, ['SSO', 'SSO_MFA', 'SSO_PASSKEY']);
       if (!t) return null;
       const user = await tx.user.findUniqueOrThrow({ where: { id: t.userId } });
       if (user.status !== 'ACTIVE' || user.processingRestrictedAt) return null;
       const mfa = t.purpose === 'SSO_MFA';
+      const passkeyRequired = t.purpose === 'SSO_PASSKEY';
       const now = new Date();
-      const refresh = await issueRefreshToken(tx, tenantId, user.id, undefined, now, mfa ? now : null);
-      return { user, refresh, mfa };
+      const refresh = await issueRefreshToken(tx, tenantId, user.id, undefined, now, mfa ? now : null, passkeyRequired);
+      return { user, refresh, mfa, passkeyRequired };
     });
     if (!out) throw new HttpError(400, 'LINK_EXPIRED', 'This sign-in has expired. Try again.');
-    const accessToken = await signAccessToken({ sub: out.user.id, tid: tenantId, roles: out.user.roles, aat: epochSeconds(), mfa: out.mfa });
+    const accessToken = await signAccessToken({ sub: out.user.id, tid: tenantId, roles: out.user.roles, aat: epochSeconds(), mfa: out.mfa, pkr: out.passkeyRequired });
     res.cookie(COOKIE, out.refresh, cookieOpts());
     res.json({ accessToken, user: { id: out.user.id, firstName: out.user.firstName, lastName: out.user.lastName, roles: out.user.roles, locale: out.user.locale } });
   }),

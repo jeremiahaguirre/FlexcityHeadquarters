@@ -34,6 +34,8 @@ async function codesAllowed(tenantId: string): Promise<boolean> {
 const codesOff = () => new HttpError(403, 'MFA_CODES_OFF', 'Your organization accepts only passkeys as the second factor.');
 /** Only a session that still owes a second factor sends or checks codes: they're not a general-purpose step-up. */
 const notNeeded = () => new HttpError(409, 'MFA_NOT_NEEDED', 'This session doesn’t need a second factor.');
+/** A role that needs a passkey, signed in by single sign-on without phishing-resistant proof: a code never does. */
+const passkeyOnly = () => new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey (Face ID, fingerprint or Windows Hello) to do this.');
 
 async function me(tenantId: string, userId: string) {
   const [u, { features }] = await Promise.all([
@@ -49,7 +51,7 @@ mfaCodeRouter.get(
   requireAuth,
   h(async (req, res) => {
     const a = authOf(req);
-    if (!(await codesAllowed(a.tenantId))) return void res.json({ codes: false, channels: [] });
+    if (a.passkeyRequired || !(await codesAllowed(a.tenantId))) return void res.json({ codes: false, channels: [] });
     const { u, textAlerts } = await me(a.tenantId, a.userId);
     res.json({ codes: true, channels: codeOptions(u, textAlerts), expiresInMinutes: CODE_MINUTES, resendAfterSeconds: RESEND_SECONDS });
   }),
@@ -61,6 +63,7 @@ mfaCodeRouter.post(
   requireAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    if (a.passkeyRequired) throw passkeyOnly();
     const { channel } = z.object({ channel: z.enum(['email', 'sms']) }).parse(req.body);
     if (!a.mfaPending) throw notNeeded();
     if (!(await codesAllowed(a.tenantId))) throw codesOff();
@@ -101,6 +104,7 @@ mfaCodeRouter.post(
   requireAuth,
   h(async (req, res) => {
     const a = authOf(req);
+    if (a.passkeyRequired) throw passkeyOnly();
     const { code } = z.object({ code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code.') }).parse(req.body);
     if (!a.mfaPending) throw notNeeded();
     if (!(await codesAllowed(a.tenantId))) throw codesOff();

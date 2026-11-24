@@ -21,12 +21,14 @@ export interface AccessClaims {
   mfa?: boolean;
   /** An FH support visit (SupportSession id): read-only, consent-based. */
   sup?: string;
+  /** Passkey required: signed in by single sign-on without proof of a phishing-resistant method, for a role that needs a passkey. */
+  pkr?: boolean;
 }
 
 const secret = () => new TextEncoder().encode(config().JWT_SECRET);
 
 export async function signAccessToken(claims: AccessClaims, ttlSeconds?: number): Promise<string> {
-  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}), ...(claims.mfa ? { mfa: true } : {}), ...(claims.sup ? { sup: claims.sup } : {}) })
+  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}), ...(claims.mfa ? { mfa: true } : {}), ...(claims.sup ? { sup: claims.sup } : {}), ...(claims.pkr ? { pkr: true } : {}) })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(claims.sub)
     .setIssuedAt()
@@ -39,7 +41,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
   if (typeof payload.sub !== 'string' || typeof payload.tid !== 'string' || !Array.isArray(payload.roles)) {
     throw new Error('Malformed token');
   }
-  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true, ...(typeof payload.sup === 'string' ? { sup: payload.sup } : {}) };
+  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true, ...(typeof payload.sup === 'string' ? { sup: payload.sup } : {}), ...(payload.pkr === true ? { pkr: true } : {}) };
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -52,6 +54,7 @@ export async function issueRefreshToken(
   familyId: string = randomUUID(),
   authenticatedAt: Date = new Date(),
   mfaAt: Date | null = null,
+  passkeyRequired = false,
 ): Promise<string> {
   const raw = randomBytes(32).toString('base64url');
   await tx.refreshToken.create({
@@ -61,6 +64,7 @@ export async function issueRefreshToken(
       familyId,
       authenticatedAt,
       mfaAt,
+      passkeyRequired,
       tokenHash: sha256(raw),
       expiresAt: new Date(Date.now() + config().REFRESH_TOKEN_TTL_DAYS * 86_400_000),
     },
@@ -75,7 +79,7 @@ export async function issueRefreshToken(
 export async function rotateRefreshToken(
   tx: Tx,
   raw: string,
-): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date; mfa: boolean } | null> {
+): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date; mfa: boolean; passkeyRequired: boolean } | null> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (!existing) return null;
   if (existing.revokedAt || existing.expiresAt < new Date()) {
@@ -87,8 +91,8 @@ export async function rotateRefreshToken(
   // The row as it is once locked: a step-up or second factor that committed meanwhile is carried over.
   const current = await tx.refreshToken.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
   // Rotation keeps the original sign-in time and second factor: refreshing is not proving who you are.
-  const token = await issueRefreshToken(tx, current.tenantId, current.userId, current.familyId, current.authenticatedAt, current.mfaAt);
-  return { userId: current.userId, tenantId: current.tenantId, token, authenticatedAt: current.authenticatedAt, mfa: !!current.mfaAt };
+  const token = await issueRefreshToken(tx, current.tenantId, current.userId, current.familyId, current.authenticatedAt, current.mfaAt, current.passkeyRequired);
+  return { userId: current.userId, tenantId: current.tenantId, token, authenticatedAt: current.authenticatedAt, mfa: !!current.mfaAt, passkeyRequired: current.passkeyRequired };
 }
 
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {
