@@ -3388,7 +3388,11 @@
     "note": "Warnings appear before overtime goes to someone out of order. They inform the decision; a supervisor still decides, and every override is logged.",
     "skips_one": "This skips {{count}} person ahead in the overtime order",
     "skips_other": "This skips {{count}} people ahead in the overtime order",
-    "skippedLine": "{{name}}: {{hours}} h charged, seniority {{since}}"
+    "skippedLine": "{{name}}: {{hours}} h charged, seniority {{since}}",
+    "readOnlyDescription": "Overtime offered in the order your collective agreement sets: fewest hours charged this period first, then seniority. Read only: supervisors record call-outs and set the rule.",
+    "whatCounts": "What counts as charged",
+    "refusalsCount": "Accepted, refused and unanswered offers",
+    "acceptedOnly": "Accepted overtime only"
   },
   "brand": {
     "category": "FlexcityHeadquarters · Workforce management",
