@@ -854,6 +854,8 @@ model OvertimeEntry {
   occurredAt   DateTime          @db.Timestamptz(3)
   recordedById String            @db.Uuid
   note         String?
+  /// Set on a reversing entry made when someone voids a call-out: the entry it cancels (one reversal each).
+  reversesId   String?           @unique @db.Uuid
   createdAt    DateTime          @default(now()) @db.Timestamptz(3)
 
   @@index([userId, occurredAt])

@@ -48,8 +48,12 @@ export async function standings(tx: Tx, positionId: string, now = new Date()) {
     select: { id: true, firstName: true, lastName: true, seniorityDate: true, seniorityHours: true },
   });
   const entries = await tx.overtimeEntry.findMany({ where: { userId: { in: users.map((u) => u.id) }, occurredAt: { gte: from } } });
+  // A voided call-out and its reversing entry cancel out: their hours net to zero below, and
+  // neither counts as a refusal.
+  const voided = new Set(entries.map((e) => e.reversesId).filter((id): id is string => !!id));
   const rows: Standing[] = users.map((u) => {
     const mine = entries.filter((e) => e.userId === u.id);
+    const counted = mine.filter((e) => !e.reversesId && !voided.has(e.id));
     const sum = (k: string) => mine.filter((e) => e.kind === k).reduce((s, e) => s + Number(e.hours), 0);
     const accepted = sum('ACCEPTED');
     return {
@@ -57,12 +61,46 @@ export async function standings(tx: Tx, positionId: string, now = new Date()) {
       name: `${u.firstName} ${u.lastName}`,
       acceptedHours: accepted,
       chargedHours: accepted + (policy.countRefusals ? sum('REFUSED') + sum('NO_ANSWER') : 0),
-      refusals: mine.filter((e) => e.kind !== 'ACCEPTED').length,
+      refusals: counted.filter((e) => e.kind !== 'ACCEPTED').length,
       seniorityDate: useSeniority && u.seniorityDate ? u.seniorityDate.toISOString().slice(0, 10) : null,
       seniorityHours: useSeniority ? Number(u.seniorityHours) : 0,
     };
   });
   return { policy, useSeniority, periodFrom: from.toISOString().slice(0, 10), rows: rows.sort(rank) };
+}
+
+export interface EntryRow {
+  id: string; kind: string; hours: string; occurredAt: string; note: string | null; shiftId: string | null;
+  recordedBy: string; createdAt: string;
+  /** A charge taken back automatically (the shift was unassigned or cancelled): it can't be voided. */
+  reversal: boolean;
+  /** A shift's charge whose hours were already taken back that way: voiding it would take them off twice. */
+  takenBack: boolean;
+  voided: { by: string; at: string; reason: string | null } | null;
+}
+
+/**
+ * One person's ledger in a position since `from`, newest first. Voids show on the entry they
+ * cancel rather than as rows of their own.
+ */
+export async function entryHistory(tx: Tx, userId: string, positionId: string, from: Date): Promise<{ periodFrom: string; entries: EntryRow[] }> {
+  const all = await tx.overtimeEntry.findMany({ where: { userId, positionId, occurredAt: { gte: from } }, orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }] });
+  const people = await tx.user.findMany({ where: { id: { in: [...new Set(all.map((e) => e.recordedById))] } }, select: { id: true, firstName: true, lastName: true } });
+  const name = (id: string) => { const p = people.find((x) => x.id === id); return p ? `${p.firstName} ${p.lastName}` : '—'; };
+  const voids = new Map(all.filter((e) => e.reversesId).map((e) => [e.reversesId!, e]));
+  const shiftIds = [...new Set(all.filter((e) => e.shiftId && e.kind === 'ACCEPTED').map((e) => e.shiftId!))];
+  const net = await Promise.all(shiftIds.map(async (s) => [s, await shiftCharge(tx, userId, s)] as const));
+  const takenBack = new Set(net.filter(([, h]) => !h.gt(0)).map(([s]) => s));
+  const entries = all.filter((e) => !e.reversesId).map((e) => {
+    const v = voids.get(e.id);
+    return {
+      id: e.id, kind: e.kind, hours: dec(e.hours).toFixed(2), occurredAt: e.occurredAt.toISOString(), note: e.note, shiftId: e.shiftId,
+      recordedBy: name(e.recordedById), createdAt: e.createdAt.toISOString(), reversal: !dec(e.hours).gt(0),
+      takenBack: !!e.shiftId && e.kind === 'ACCEPTED' && takenBack.has(e.shiftId) && !v,
+      voided: v ? { by: name(v.recordedById), at: v.createdAt.toISOString(), reason: v.note } : null,
+    };
+  });
+  return { periodFrom: from.toISOString().slice(0, 10), entries };
 }
 
 /**
@@ -86,6 +124,12 @@ export async function fairnessCheck(tx: Tx, shiftId: string, userId: string) {
     if (skipped.length >= 5) break;
   }
   return { overtime: true as const, overtimeHours: e.overtimeHours.toFixed(2), skipped, clause: policy.clause };
+}
+
+/** What's still charged to someone for a shift: its accepted charges net of every reversal. */
+export async function shiftCharge(tx: Tx, userId: string, shiftId: string) {
+  const rows = await tx.overtimeEntry.findMany({ where: { userId, shiftId, kind: 'ACCEPTED' }, select: { hours: true } });
+  return rows.reduce((s, r) => s.plus(dec(r.hours)), dec(0));
 }
 
 /**

@@ -759,7 +759,6 @@
     "SUBDOMAIN_TAKEN": "Another organization already uses that address.",
     "SUPPORT_CODE_INVALID": "This support link has expired or was already used.",
     "SUPPORT_ENDED": "This support visit has ended.",
-    "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "SUPPORT_READ_ONLY": "FH support can look, not change anything.",
     "TEXT_ALERTS_OFF": "Your organization hasn’t turned on text alerts.",
     "TOO_LARGE": "Files can be up to 10 MB.",
@@ -785,7 +784,11 @@
     "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days.",
     "UNTIL_BEFORE_START": "The last year is before the first date.",
     "NTH_WEEKDAY_FIFTH": "A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.",
-    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month."
+    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month.",
+    "OWN_OVERTIME": "Someone else corrects your own overtime record.",
+    "OVERTIME_REVERSAL": "This entry already cancels another one. Record a new call-out instead.",
+    "OVERTIME_VOIDED": "This entry has already been voided.",
+    "OVERTIME_TAKEN_BACK": "These hours were already taken back when the shift changed."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -3389,7 +3392,21 @@
     "note": "Warnings appear before overtime goes to someone out of order. They inform the decision; a supervisor still decides, and every override is logged.",
     "skips_one": "This skips {{count}} person ahead in the overtime order",
     "skips_other": "This skips {{count}} people ahead in the overtime order",
-    "skippedLine": "{{name}}: {{hours}} h charged, seniority {{since}}"
+    "skippedLine": "{{name}}: {{hours}} h charged, seniority {{since}}",
+    "history": "History",
+    "historyFor": "Call-out history for {{name}}",
+    "historyTitle": "Call-outs: {{name}}",
+    "historyHelp": "Everything recorded since {{date}}. A wrong entry is voided, not deleted: it stays here, marked, and stops counting.",
+    "historyEmpty": "Nothing recorded this period.",
+    "recordedBy": "Recorded by {{name}}",
+    "takenBack": "Taken back",
+    "voidedPill": "Voided",
+    "voidedBy": "Voided by {{name}}: {{reason}}",
+    "void": "Void this entry",
+    "voidReason": "Why is this entry wrong?",
+    "voidHelp": "Union stewards can see this reason. To correct an entry, void it and record the right call.",
+    "voidConfirm": "Void",
+    "voidDone": "Voided. The order is updated."
   },
   "brand": {
     "category": "FlexcityHeadquarters · Workforce management",
