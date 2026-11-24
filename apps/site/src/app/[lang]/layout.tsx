@@ -43,8 +43,10 @@ export default async function LangLayout(props: { children: ReactNode; params: P
   return (
     <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable}>
       <head>
-        {/* Same rule as the font-src header in vercel.json, for any static host that sends no headers. */}
+        {/* Same font-src and media-src rules as the header in vercel.json, for any static host that sends no headers.
+            Two policies, both enforced: fonts, and video/captions (the demo page's ad), from our own origin only. */}
         <meta httpEquiv="Content-Security-Policy" content="font-src 'self'" />
+        <meta httpEquiv="Content-Security-Policy" content="media-src 'self'" />
       </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
         <script dangerouslySetInnerHTML={{ __html: REVEAL_BOOT }} />

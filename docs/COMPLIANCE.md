@@ -194,8 +194,10 @@ Both apps self-host Plus Jakarta Sans with `next/font/local` (OFL), from the wof
 `src/fonts`: builds download nothing and pages request no font from another host. Emails use the
 system font stack only (no web font named or linked); PDFs use PDFKit's built-in base-14 fonts
 (nothing fetched). `font-src 'self'` everywhere: the app's middleware CSP and `next.config.mjs`
-headers, the website's CSP header (`font-src 'self'; object-src 'none'; base-uri 'self'; form-action
-'self'; frame-ancestors 'none'`), and a `<meta>` CSP in both apps for static hosts (the demo).
+headers, the website's CSP header (`font-src 'self'; media-src 'self'; object-src 'none'; base-uri
+'self'; form-action 'self'; frame-ancestors 'none'`, the same on CloudFront in `ops/terraform/edge.tf`),
+and a `<meta>` CSP in both apps for static hosts (the demo). The website's video ad and its captions
+are self-hosted too (`media-src 'self'`).
 Tests: `apps/site/src/content/compliance.test.ts` (Google Fonts in sources), the two
 `selfHostedFonts.test.ts` files (every `@font-face` in the build is the committed file from our own
 origin, Tailwind stacks are the brand font then system fonts), `apps/api/test/unit/fonts.test.ts`

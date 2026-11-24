@@ -81,6 +81,11 @@ jobs:
       - run: npm run build
       # Fonts in the built site are the committed woff2, from our own origin only.
       - run: npx vitest run src/lib/selfHostedFonts.test.ts
+      # Browser tests against the build, served with vercel.json's headers (the demo page's video ad).
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Browser tests
+        run: npm run test:e2e
 
   web:
     runs-on: ubuntu-latest
