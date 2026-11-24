@@ -15,6 +15,7 @@ import { HttpError } from '../lib/errors.js';
 import { permissionsFor } from '../auth/permissions.js';
 import { connectionFor, publicSso, ready } from '../services/auth/sso.js';
 import { notify } from '../services/notifications/notifier.js';
+import { confirmEmailChange } from '../services/people/emailChange.js';
 import { h, lookupTenant, subdomainOf } from './context.js';
 
 export const COOKIE = 'fc_refresh';
@@ -260,6 +261,19 @@ authRouter.post(
     }
     await floor;
     res.status(202).json({ ok: true });
+  }),
+);
+
+/** Confirms a new sign-in email from the link sent to it (services/people/emailChange.ts). */
+authRouter.post(
+  '/auth/email-change/confirm',
+  h(async (req, res) => {
+    const body = z.object({ token: z.string().min(20).max(100) }).parse(req.body);
+    const tenantId = req.tenantId!;
+    if (!(await allow(`email-change:${addressKey(req.ip)}:${tenantId}`, 10, 15 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
+    const done = await withTenant(tenantId, (tx) => confirmEmailChange(tx, tenantId, body.token));
+    if (!done) throw new HttpError(400, 'LINK_EXPIRED', 'This link has expired or was already used. Ask for a new one.');
+    res.json({ ok: true });
   }),
 );
 

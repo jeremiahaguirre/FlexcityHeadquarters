@@ -548,6 +548,9 @@ model User {
   adultConfirmedNote String?
   /// Identity-provider subject this account is bound to after its first single sign-on ("issuer|subject").
   ssoSubject         String?
+  /// A new sign-in email waiting for the person to confirm it from that address (services/people/emailChange.ts).
+  pendingEmail       String?
+  pendingEmailAt     DateTime? @db.Timestamptz(3)
   /// Mobile number confirmed with a texted code (E.164), for urgent texts and calls when the city turns them on.
   smsPhone           String?
   smsVerifiedAt      DateTime? @db.Timestamptz(3)
@@ -672,6 +675,8 @@ enum AuthTokenPurpose {
   SSO_MFA
   /// A code texted to confirm a mobile number.
   SMS_VERIFY
+  /// A link sent to a new sign-in email, to confirm it before it replaces the old one.
+  EMAIL_CHANGE
 }
 
 /// One-time links for invitations and password resets. Only a hash is stored.

@@ -17,6 +17,7 @@ import { HttpError, conflict, forbidden, invalid, notFound } from '../../lib/err
 import { forgetActive, setUserCustomRoles } from './customRoles.js';
 import { setManagers, setReportsOf } from './reporting.js';
 import { actorOf, assertUserInScope } from './scope.js';
+import { applyEmail, assertMayChangeIdentity, hasSignedIn, requestEmailChange } from './emailChange.js';
 
 /**
  * Nobody gives out more than they hold: outside HR for the whole organization, every permission of
@@ -143,9 +144,15 @@ export async function updatePerson(tx: Tx, a: AuthContext, id: string, change: P
   const before = await tx.user.findUnique({ where: { id } });
   if (!before || before.anonymizedAt) throw notFound('Staff member');
   await assertUnique(tx, id, body);
+  const newEmail = body.email && body.email.toLowerCase() !== before.email ? body.email.toLowerCase() : null;
+  // The sign-in email and status are the account itself: only an editor whose access covers the
+  // person's may change them (emailChange.ts, SEC-01/05/12/17).
+  if (newEmail || (body.status && body.status !== before.status)) await assertMayChangeIdentity(tx, a, before);
+  // A used account's new email waits for confirmation from that address; a never-used one changes now.
+  const emailPending = !!newEmail && (await hasSignedIn(tx, before));
   const data: Prisma.UserUpdateInput = {
     ...body,
-    email: body.email?.toLowerCase(),
+    email: undefined,
     hireDate: dateOnly(body.hireDate),
     seniorityDate: dateOnly(body.seniorityDate),
     vscClearedDate: dateOnly(body.vscClearedDate),
@@ -164,12 +171,8 @@ export async function updatePerson(tx: Tx, a: AuthContext, id: string, change: P
   }
   if (managerId !== undefined) await setManagers(tx, a, a.tenantId, [id], managerId);
   // A new sign-in email: sessions end, and the old address is told (an account can't be quietly redirected).
-  const emailChanged = body.email && body.email.toLowerCase() !== before.email;
-  if (emailChanged) {
-    await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
-    await tx.authToken.updateMany({ where: { userId: id, usedAt: null }, data: { usedAt: new Date() } });
-    await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: before.email, template: 'email_changed', locale: before.locale, params: { newEmail: body.email!.toLowerCase().replace(/^(.).*(@.*)$/, '$1•••$2') } } });
-  }
+  if (newEmail && emailPending) await requestEmailChange(tx, a.tenantId, before, newEmail, a.userId);
+  else if (newEmail) await applyEmail(tx, a.tenantId, before, newEmail);
   if (body.status && body.status !== 'ACTIVE') {
     await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
     forgetActive(id);
@@ -183,7 +186,7 @@ export async function updatePerson(tx: Tx, a: AuthContext, id: string, change: P
   const was = before as unknown as Record<string, unknown>;
   const old = Object.fromEntries(Object.keys(body).map((k) => [k, was[k] instanceof Date ? (was[k] as Date).toISOString().slice(0, 10) : was[k] && typeof was[k] === 'object' && 'toFixed' in (was[k] as object) ? String(was[k]) : was[k]]));
   await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status, ...old }, after: { ...body, customRoleIds, positionIds, managerId } });
-  return before;
+  return Object.assign(before, { emailPending });
 }
 
 /* ---------- Offboarding ---------- */
@@ -194,8 +197,10 @@ export const OFFBOARD_REASONS = ['RESIGNATION', 'RETIREMENT', 'END_OF_SEASON', '
 /** Starts someone's offboarding: their last day and why, and HR's checklist. Nothing is deleted. */
 export async function startOffboarding(tx: Tx, a: AuthContext, userId: string, b: { lastDay: string; reason: (typeof OFFBOARD_REASONS)[number] }) {
   if (userId === a.userId) throw forbidden('Someone else has to offboard you.');
-  const u = await tx.user.findUnique({ where: { id: userId }, select: { id: true, anonymizedAt: true, status: true } });
+  const u = await tx.user.findUnique({ where: { id: userId }, select: { id: true, anonymizedAt: true, status: true, roles: true } });
   if (!u || u.anonymizedAt) throw notFound('Staff member');
+  // Ending someone's employment ends their account: the same protection as changing their status.
+  await assertMayChangeIdentity(tx, a, u);
   // One at a time: a finished offboarding (they were rehired since) doesn't stop a new one. The person's
   // row is locked first, so two requests at once can't both pass this check and open two.
   await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
