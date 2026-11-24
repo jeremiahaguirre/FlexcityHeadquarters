@@ -481,6 +481,9 @@ export async function lockRun(tx: Tx, runId: string) {
   return tx.payRun.findUnique({ where: { id: runId } });
 }
 
+/** How long a send stays "may still be uploading": well past the connect timeout (20 s) plus any transfer. */
+export const SEND_SETTLE_MS = 15 * 60_000;
+
 /** A transmission to the bank that may have reached it (sent, or being sent). */
 export const bankHasIt = (tx: Tx, runId: string) => tx.payTransmission.findFirst({ where: { payRunId: runId, status: { in: ['SENT', 'SENDING'] } }, select: { id: true, status: true } });
 

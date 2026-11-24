@@ -230,11 +230,53 @@ describe('sending payroll straight to the bank', () => {
     // After checking with the bank, payroll records what happened, with a reason.
     const path = `/api/payroll/runs/${runId}/transmissions/${prepared.transmissionId}/resolve`;
     expect((await call(tok.approver).post(path, { outcome: 'SENT', reason: '' })).status).toBe(400);
+    // Right after the send it might still be uploading, so it can't be resolved yet.
+    expect((await call(tok.approver).post(path, { outcome: 'SENT', reason: 'The bank confirmed it received file 0003 by phone' })).body.code).toBe('SEND_IN_PROGRESS');
+    await owner.payTransmission.update({ where: { id: prepared.transmissionId }, data: { createdAt: new Date(Date.now() - 16 * 60_000) } });
     const done = await call(tok.approver).post(path, { outcome: 'SENT', reason: 'The bank confirmed it received file 0003 by phone' });
     expect(done.status).toBe(200);
     expect((await owner.payTransmission.findUniqueOrThrow({ where: { id: prepared.transmissionId } })).status).toBe('SENT');
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.bank.resolved', entityId: runId } })).toBe(1);
     expect((await call(tok.approver).post(path, { outcome: 'FAILED', reason: 'Changed my mind' })).body.code).toBe('NOT_SENDING');
     await call(tok.approver).put('/api/payroll/bank-connection', link());
+  });
+
+  it('a send still uploading can’t be resolved; a result arriving after someone resolved it never overwrites that', async () => {
+    const u = t.users[0]!;
+    for (const d of [13, 14]) {
+      const start = new Date(Date.UTC(2026, 3, d, 16));
+      await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: u.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 8 * 3_600_000), status: 'APPROVED' } });
+    }
+    await call(tok.approver).put('/api/payroll/bank-connection', { ...link(), autoSend: false });
+    const run = await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: '2026-04-13', weeks: 2, payDate: '2026-05-01' });
+    expect(run.status).toBe(201);
+    const runId = run.body.id as string;
+    expect((await call(tok.approver).post(`/api/payroll/runs/${runId}/approve`)).status).toBe(200);
+    let release!: () => void;
+    gate = new Promise((r) => (release = r));
+    uploading = false;
+    const sending = call(tok.approver).post(`/api/payroll/runs/${runId}/send`).then((r) => r);
+    try {
+      await expect.poll(() => uploading, { timeout: 10_000 }).toBe(true);
+      const row = await owner.payTransmission.findFirstOrThrow({ where: { payRunId: runId, status: 'SENDING' } });
+      const path = `/api/payroll/runs/${runId}/transmissions/${row.id}/resolve`;
+      // Someone asks the bank mid-upload, is told nothing has arrived, and tries to record that.
+      const early = await call(tok.approver).post(path, { outcome: 'FAILED', reason: 'The bank has nothing from us yet' });
+      expect(early.status).toBe(409);
+      expect(early.body.code).toBe('SEND_IN_PROGRESS');
+      expect((await call(tok.approver).post(`/api/payroll/runs/${runId}/void`, { reason: 'Rebuilding it' })).body.code).toBe('RUN_SENT_TO_BANK');
+      // Much later (the upload is stuck), it can be resolved; then the upload finishes after all.
+      await owner.payTransmission.update({ where: { id: row.id }, data: { createdAt: new Date(Date.now() - 16 * 60_000) } });
+      expect((await call(tok.approver).post(path, { outcome: 'FAILED', reason: 'The bank has no file from us today' })).status).toBe(200);
+      release();
+      gate = null;
+      await sending;
+      expect((await owner.payTransmission.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('FAILED');
+      expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.bank.late_result', entityId: runId } })).toBe(1);
+    } finally {
+      release();
+      gate = null;
+      await call(tok.approver).put('/api/payroll/bank-connection', link());
+    }
   });
 });

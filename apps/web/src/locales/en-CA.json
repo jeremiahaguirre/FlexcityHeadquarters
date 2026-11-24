@@ -793,7 +793,8 @@
     "RUN_SENT_TO_BANK": "This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.",
     "NOT_SENDING": "This send has already been resolved.",
     "OWN_PAY_RATE": "You can’t set or change your own pay rate. Another administrator has to.",
-    "RUN_CHANGED": "This pay run changed while you were voiding it. Open it again."
+    "RUN_CHANGED": "This pay run changed while you were voiding it. Open it again.",
+    "SEND_IN_PROGRESS": "This file may still be on its way to the bank. Check again later."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1585,7 +1586,8 @@
       "resolveFailed": "The bank doesn’t have it",
       "resolveReason": "How you checked",
       "resolvePlaceholder": "Called the bank’s payroll line; they have file 0003",
-      "resolved": "Recorded."
+      "resolved": "Recorded.",
+      "stillSending": "This file may still be on its way to the bank. You can record what the bank says after {{time}}."
     },
     "employerPaid": "Paid by your employer: {{list}}",
     "taxableBenefit": "taxable benefit",

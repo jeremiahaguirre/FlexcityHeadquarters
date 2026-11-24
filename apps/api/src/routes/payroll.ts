@@ -13,11 +13,12 @@ import { z } from 'zod';
 import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
+import { logError } from '../lib/log.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
 import { linkView, testBankLink } from '../services/payroll/bankLink.js';
 import { bankLinkBody, buildBankLink } from '../services/payroll/setup.js';
-import { type PayrollSettings, approveRun, bankHasIt, buildRun, depositFile, lockRun, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
+import { type PayrollSettings, SEND_SETTLE_MS, approveRun, bankHasIt, buildRun, depositFile, lockRun, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
 import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, assignRl1Numbers, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
@@ -224,8 +225,15 @@ async function send(a: AuthContext, runId: string, settings: PayrollSettings) {
   const prepared = await withTenant(a.tenantId, (tx) => prepareBankFile(tx, a.tenantId, runId, settings));
   const result = await sendToBank(a.tenantId, runId, a.userId, settings, prepared, (data) =>
     withTenant(a.tenantId, async (tx) => {
-      // The attempt was recorded (SENDING) before the upload; now its outcome.
-      await tx.payTransmission.update({ where: { id: prepared.transmissionId }, data: { status: data.status, error: data.error, sentById: data.sentById } });
+      // The attempt was recorded (SENDING) before the upload; now its outcome. Only over SENDING: if
+      // someone already resolved it after checking with the bank, their answer stands and the late
+      // result is kept in the audit log for them to reconcile.
+      const { count } = await tx.payTransmission.updateMany({ where: { id: prepared.transmissionId, status: 'SENDING' }, data: { status: data.status, error: data.error, sentById: data.sentById } });
+      if (count !== 1) {
+        logError('payroll: a bank send finished after it was resolved by hand', new Error(`transmission ${prepared.transmissionId}: ${data.status}`));
+        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank.late_result', entity: 'PayRun', entityId: runId, after: { transmissionId: prepared.transmissionId, status: data.status, error: data.error } });
+        return;
+      }
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: data.status === 'SENT' ? 'payroll.bank.sent' : 'payroll.bank.failed', entity: 'PayRun', entityId: runId, after: { fileName: data.fileName, sha256: data.sha256, encrypted: data.encrypted, error: data.error } });
     }),
   );
@@ -277,6 +285,8 @@ payrollRouter.post(
       const sending = await tx.payTransmission.findFirst({ where: { id: tid, payRunId: id } });
       if (!sending) throw notFound('Bank transmission');
       if (sending.status !== 'SENDING') throw conflict('NOT_SENDING', 'This transmission has already been resolved.');
+      // Too soon to tell a stopped send from one still uploading (the bank would truthfully say it has nothing yet).
+      if (Date.now() - sending.createdAt.getTime() < SEND_SETTLE_MS) throw conflict('SEND_IN_PROGRESS', 'This file may still be on its way to the bank. Check again later.', { after: new Date(sending.createdAt.getTime() + SEND_SETTLE_MS).toISOString() });
       await tx.payTransmission.update({ where: { id: tid }, data: { status: body.outcome, error: body.outcome === 'FAILED' ? `Resolved as not received: ${body.reason}` : null, sentById: body.outcome === 'SENT' ? a.userId : null } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank.resolved', entity: 'PayRun', entityId: id, before: { transmissionId: tid, status: 'SENDING' }, after: { status: body.outcome, reason: body.reason } });
     });

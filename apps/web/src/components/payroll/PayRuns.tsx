@@ -18,6 +18,9 @@ import type { Departments } from '@/lib/departments';
 import { formatDate, formatMoney } from '@/lib/format';
 import { type Run, STATUS_TONE, type Statement } from '@/lib/payroll';
 import { useSession } from '@/lib/session';
+
+/** Matches the server: a send can be resolved by hand only once it can't still be uploading. */
+const SEND_SETTLE_MS = 15 * 60_000;
 import { plusDays, todayIso, useAction, useQuery } from '@/lib/useQuery';
 import { issueKey, issueLabel } from '@/lib/payrollIssues';
 import { errorText } from '@/lib/apiError';
@@ -234,7 +237,9 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
                   <StatusPill tone={x.status === 'SENT' ? 'ok' : x.status === 'SENDING' ? 'warn' : 'danger'}>{t(`payroll.bank.status.${x.status}`)}</StatusPill>
                   <span className="text-muted">{new Date(x.at).toLocaleString(lng)} · {x.fileName}{x.encrypted ? ` · ${t('payroll.bank.pgpShort')}` : ''}</span>
                   {x.error ? <span className="basis-full text-caption text-danger">{x.error}</span> : null}
-                  {x.status === 'SENDING' && can('payroll.approve') ? (
+                  {x.status === 'SENDING' && can('payroll.approve') && Date.now() - new Date(x.at).getTime() < SEND_SETTLE_MS ? (
+                    <span className="basis-full text-caption text-muted">{t('payroll.bank.stillSending', { time: new Date(new Date(x.at).getTime() + SEND_SETTLE_MS).toLocaleTimeString(lng, { hour: 'numeric', minute: '2-digit' }) })}</span>
+                  ) : x.status === 'SENDING' && can('payroll.approve') ? (
                     resolving === x.id ? (
                       <form
                         className="grid basis-full gap-3 rounded-xl border border-line p-3"

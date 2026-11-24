@@ -793,7 +793,8 @@
     "RATE_BELOW_MINIMUM": "Ce taux est inférieur à tout salaire minimum au Canada. Vérifiez le montant.",
     "PERIOD_PAID": "Ceci est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
     "BANK_SEND_UNCONFIRMED": "La banque a reçu le fichier, mais l’envoi n’a pas pu être inscrit. Il reste marqué « envoi en cours » : vérifiez auprès de la banque, puis inscrivez sa réponse.",
-    "NOT_SENDING": "Cet envoi a déjà été réglé."
+    "NOT_SENDING": "Cet envoi a déjà été réglé.",
+    "SEND_IN_PROGRESS": "Ce fichier est peut-être encore en route vers la banque. Vérifiez plus tard."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1585,7 +1586,8 @@
       "resolveFailed": "La banque ne l’a pas",
       "resolveReason": "Comment vous avez vérifié",
       "resolvePlaceholder": "Appel à la ligne paie de la banque; elle a le fichier 0003",
-      "resolved": "Inscrit."
+      "resolved": "Inscrit.",
+      "stillSending": "Ce fichier est peut-être encore en route vers la banque. Vous pourrez inscrire la réponse de la banque après {{time}}."
     },
     "employerPaid": "Payé par votre employeur : {{list}}",
     "taxableBenefit": "avantage imposable",
