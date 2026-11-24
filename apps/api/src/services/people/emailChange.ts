@@ -17,7 +17,11 @@ import { tenantSettings } from '../platform/features.js';
 import { permissionsWithOverrides } from '../platform/roleOverrides.js';
 import { SUPERVISORY, isAllowedCustomPermission } from './customRoles.js';
 
-const masked = (email: string) => email.replace(/^(.).*(@.*)$/, '$1•••$2');
+/** a•••@example.ca: the first character and the domain. No regular expression, so no input can make it slow. */
+export const masked = (email: string) => {
+  const at = email.lastIndexOf('@');
+  return at > 0 ? `${email[0]}•••${email.slice(at)}` : '•••';
+};
 
 /** Refuses an email or status change for someone whose access isn't covered by the editor's own. */
 export async function assertMayChangeIdentity(tx: Tx, a: AuthContext, target: Pick<User, 'id' | 'roles'>) {
