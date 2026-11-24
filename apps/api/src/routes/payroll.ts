@@ -752,7 +752,8 @@ payrollRouter.post(
       const name = await tx.user.findUnique({ where: { id: userId }, select: { firstName: true, lastName: true, hireDate: true } });
       const problems = t4Problems(employer, new Map([[userId, person]]), [{ userId, name: `${name?.firstName} ${name?.lastName}` }]);
       if (problems.length) throw new HttpError(400, 'FILING_INCOMPLETE', 'Some details are missing before this file can be made.', { problems });
-      const off = await tx.offboarding.findUnique({ where: { userId } });
+      // Their latest departure (someone rehired may have left before).
+      const off = await tx.offboarding.findFirst({ where: { userId }, orderBy: { lastDay: 'desc' } });
       const first = f.periods.at(-1)!;
       const days = Math.round((Date.parse(first.periodEnd) - Date.parse(first.periodStart)) / 86_400_000) + 1;
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.roe.xml', entity: 'User', entityId: userId, after: { reason: b.reason, recall: b.recall } });
