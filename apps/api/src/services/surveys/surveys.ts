@@ -243,7 +243,11 @@ export async function respond(tx: Tx, a: AuthContext, id: string, raw: Record<st
 
 /** For HR and the manager who made it: counts only, never who. */
 export async function listSurveys(tx: Tx, a: AuthContext) {
-  const where: Prisma.SurveyWhereInput = a.permissions.has('surveys.manage') ? {} : { createdById: a.userId };
+  const where: Prisma.SurveyWhereInput = {
+    ...(a.permissions.has('surveys.manage') ? {} : { createdById: a.userId }),
+    // An FH support visit never sees exit surveys: they name who is leaving, and they answer by name.
+    ...(a.support ? { kind: 'PULSE' as const } : {}),
+  };
   const rows = await tx.survey.findMany({ where, orderBy: { createdAt: 'desc' }, take: 200 });
   const ids = rows.map((r) => r.id);
   const [invited, answered] = await Promise.all([
@@ -318,6 +322,8 @@ export async function surveyResults(tx: Tx, a: AuthContext, id: string, now = ne
   const responses = await tx.surveyResponse.findMany({ where: { surveyId: id }, orderBy: { id: 'asc' } });
   if (!s.anonymous) {
     if (!a.permissions.has('surveys.manage')) throw notFound('Survey');
+    // Named answers (exit surveys) are an individual record: never for an FH support visit.
+    if (a.support) throw new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.');
     const people = await tx.user.findMany({ where: { id: { in: responses.map((r) => r.userId).filter((x): x is string => !!x) } }, select: { id: true, firstName: true, lastName: true } });
     await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'survey.read_named', entity: 'Survey', entityId: id });
     return { ...base, total: responses.length, minGroup: s.minGroup, shown: true, named: responses.map((r) => ({ name: (() => { const p = people.find((x) => x.id === r.userId); return p ? `${p.firstName} ${p.lastName}` : ''; })(), answers: r.answers as Answers })) };

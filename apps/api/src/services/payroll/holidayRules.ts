@@ -27,6 +27,7 @@
  */
 import type { Province } from '../../generated/prisma/client.js';
 import type { HolidayKey, Jurisdiction } from './statHolidays.js';
+import { type CityHolidayRule, cityHolidayDates, cityRule } from './cityHolidays.js';
 
 /** SUBSTITUTE: another day off with holiday pay. PAY: holiday pay for the day, no extra day off. NONE: nothing owed. */
 export type OffDayRule = 'SUBSTITUTE' | 'PAY' | 'NONE';
@@ -147,7 +148,16 @@ export interface HolidayRowLike {
   kind: 'ACTUAL' | 'MOVED' | 'MOVED_IF_OFF';
   observedOn: string | null;
   weekdayOn: string | null;
+  /** Where it comes from: the province's law, or the organization (TenantHoliday). Unset = statutory. */
+  source?: 'STATUTORY' | 'CITY';
+  /** False for a city closure day: a day off, but no holiday pay or premium. Unset = paid. */
+  paid?: boolean;
+  /** The TenantHoliday row a city holiday comes from. */
+  cityHolidayId?: string;
 }
+
+/** A holiday that is paid as one (statutory, or a city-added paid holiday), not a closure day. */
+export const isPaidHoliday = (h: HolidayRowLike) => h.paid !== false;
 
 /** The holiday's day as the law fixes it for most people (MOVED and MOVED_IF_OFF use the moved day). */
 export const statutoryDay = (h: HolidayRowLike) => (h.kind === 'ACTUAL' ? h.date : h.observedOn ?? h.date);
@@ -182,16 +192,58 @@ export function holidayRow(r: { date: Date; key: string | null; name: string; na
   return { date: iso(r.date)!, key: r.key, name: r.name, nameFr: r.nameFr, kind: r.kind as HolidayRowLike['kind'], observedOn: iso(r.observedOn), weekdayOn: iso(r.weekdayOn) };
 }
 
+const plusDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
+const weekend = (d: string) => [0, 6].includes(weekdayOf(d));
+
+/**
+ * The statutory holidays and the organization's own (TenantHoliday) as one list. A city day that
+ * the province already makes a statutory holiday is left out (the statutory one wins, so it is
+ * never paid twice). A paid city holiday on a weekend gets the next free weekday, for
+ * organizations that observe weekend holidays on a weekday; a closure day stays on its date.
+ */
+export function mergeCityHolidays(statutory: HolidayRowLike[], city: CityHolidayRule[], province: Province, from: string, to: string): HolidayRowLike[] {
+  const statDays = new Set(statutory.flatMap((h) => [h.date, statutoryDay(h)]));
+  const taken = new Set(statutory.flatMap((h) => [statutoryDay(h), h.weekdayOn]).filter((d): d is string => d !== null));
+  const out: HolidayRowLike[] = [...statutory];
+  const days = city
+    .filter((c) => c.province === null || c.province === province)
+    .flatMap((c) => cityHolidayDates(c, from, to).map((date) => ({ c, date })))
+    .filter(({ date }) => !statDays.has(date))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  for (const { date } of days) taken.add(date);
+  for (const { c, date } of days) {
+    let weekdayOn: string | null = null;
+    if (c.kind === 'PAID' && weekend(date)) {
+      let w = plusDays(date, 1);
+      while (weekend(w) || taken.has(w)) w = plusDays(w, 1);
+      weekdayOn = w;
+      taken.add(w);
+    }
+    out.push({ date, key: null, name: c.name, nameFr: c.nameFr, kind: 'ACTUAL', observedOn: null, weekdayOn, source: 'CITY', paid: c.kind === 'PAID', cityHolidayId: c.id });
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
+
 /**
  * Holidays whose date, statutory day or weekday falls in [from, to) (a holiday on Saturday
- * the 31st can be observed in the next period). Loads a few days either side and filters.
+ * the 31st can be observed in the next period): the province's statutory holidays and the
+ * organization's own paid holidays and closure days (cityHolidays.ts). Loads a few days either
+ * side and filters. Callers that pay holidays keep the paid ones (isPaidHoliday).
  */
 export async function holidaysTouching(
-  tx: { statutoryHoliday: { findMany(args: { where: { province: Province; date: { gte: Date; lt: Date } } }): Promise<Array<Parameters<typeof holidayRow>[0]>> } },
+  tx: {
+    statutoryHoliday: { findMany(args: { where: { province: Province; date: { gte: Date; lt: Date } } }): Promise<Array<Parameters<typeof holidayRow>[0]>> };
+    tenantHoliday: { findMany(args: { where: { OR: Array<{ province: Province | null }> } }): Promise<Array<Parameters<typeof cityRule>[0]>> };
+  },
   province: Province,
   from: string,
   to: string,
 ): Promise<HolidayRowLike[]> {
-  const rows = await tx.statutoryHoliday.findMany({ where: { province, date: { gte: new Date(Date.parse(`${from}T00:00:00Z`) - 4 * DAY), lt: new Date(Date.parse(`${to}T00:00:00Z`) + DAY) } } });
-  return rows.map(holidayRow).filter((h) => [h.date, h.observedOn, h.weekdayOn].some((d) => d !== null && d >= from && d < to));
+  const [rows, city] = await Promise.all([
+    tx.statutoryHoliday.findMany({ where: { province, date: { gte: new Date(Date.parse(`${from}T00:00:00Z`) - 4 * DAY), lt: new Date(Date.parse(`${to}T00:00:00Z`) + DAY) } } }),
+    // Under row-level security: only this organization's rows.
+    tx.tenantHoliday.findMany({ where: { OR: [{ province: null }, { province }] } }),
+  ]);
+  const merged = mergeCityHolidays(rows.map(holidayRow), city.map(cityRule), province, plusDays(from, -4), plusDays(to, 1));
+  return merged.filter((h) => [h.date, h.observedOn, h.weekdayOn].some((d) => d !== null && d >= from && d < to));
 }

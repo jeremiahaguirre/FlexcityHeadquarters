@@ -79,6 +79,28 @@ describe('departments', () => {
     expect(d.departments.map((x: { name: string }) => x.name)).toEqual(['Aquatics']);
   });
 
+  it('percent-encoding or changing the case of the person id doesn’t get past the department guard (SEC-04/09)', async () => {
+    const hex = (c: string) => `%${c.charCodeAt(0).toString(16)}`;
+    const encodedFirst = hex(ids.water[0]!) + ids.water.slice(1);
+    const encodedAll = [...ids.water].map(hex).join('');
+    const upper = ids.water.toUpperCase();
+    for (const id of [encodedFirst, encodedAll, upper]) {
+      for (const path of ['', '/discipline', '/reliability', '/case-file', '/availability']) {
+        const r = await call(tok.sup).get(`/api/users/${id}${path}`);
+        expect(r.status, `${id}${path}`).toBe(404);
+      }
+      const note = await call(tok.sup).post(`/api/users/${id}/conduct-notes`, { category: 'CONDUCT', summary: 'Written about someone in another department.', occurredAt: new Date().toISOString() });
+      expect(note.status, `${id} conduct note`).toBe(404);
+      const onb = await call(tok.sup).get(`/api/onboarding/people/${id}`);
+      expect(onb.status, `${id} onboarding`).toBe(404);
+    }
+    expect(await owner.conductNote.count({ where: { userId: ids.water } })).toBe(0);
+    // A malformed escape is refused, not passed through.
+    expect((await call(tok.sup).get(`/api/users/%zz${ids.water.slice(1)}`)).status).toBe(400);
+    // The supervisor's own department still works, encoded or not.
+    expect((await call(tok.sup).get(`/api/users/${hex(ids.guard[0]!)}${ids.guard.slice(1)}`)).status).toBe(200);
+  });
+
   it('an aquatic supervisor can’t read or record onboarding for a water works employee (central department guard)', async () => {
     expect((await call(tok.sup).get(`/api/onboarding/people/${ids.guard}`)).status).toBe(200);
     const theirs = await call(tok.sup).get(`/api/onboarding/people/${ids.water}`);
