@@ -81,7 +81,13 @@ function permissionsMissing(md: string, files: Array<{ file: string; source: str
     const row = routeRow(md, file);
     if (!row) continue;
     const named = new Set([...source.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]!).filter((p) => known.has(p)));
-    for (const p of named) if (!new RegExp(`(^|[^a-z_.])${p.replace(/\./g, '\\.')}($|[^a-z_.])`).test(row)) out.push(`${file}: ${p}`);
+    // A whole-word match without a regular expression: the permission, not part of a longer name.
+    const isWord = (c: string | undefined) => c !== undefined && /[a-z_.]/.test(c);
+    const inRow = (p: string) => {
+      for (let i = row.indexOf(p); i >= 0; i = row.indexOf(p, i + 1)) if (!isWord(row[i - 1]) && !isWord(row[i + p.length])) return true;
+      return false;
+    };
+    for (const p of named) if (!inRow(p)) out.push(`${file}: ${p}`);
   }
   return out;
 }
