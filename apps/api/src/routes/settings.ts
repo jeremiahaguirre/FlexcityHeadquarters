@@ -11,6 +11,7 @@ import { h } from './context.js';
 import { forgetFeatures, resolveFeatures, tenantSettings } from '../services/platform/features.js';
 import { RETENTION_DEFAULTS, RETENTION_LIMITS, readRetention } from '../services/privacy/retention.js';
 import { offDaySummary } from '../services/payroll/holidayRules.js';
+import { cityHolidayDates, cityRule, validRule } from '../services/payroll/cityHolidays.js';
 import { reliabilityPolicy } from '../services/reliability/load.js';
 import { RECOVERY_MODES, RULES, lastRestart, nextRestart } from '../services/reliability/score.js';
 
@@ -269,6 +270,99 @@ settingsRouter.put(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'settings.role_labels', entity: 'Tenant', entityId: a.tenantId, before: { profile: before.roleVocabulary, roleLabels: before.roleLabels }, after: { profile: b.profile, roleLabels: labels } });
     });
     res.json(await withTenant(a.tenantId, (tx) => vocabularyOf(tx, a.tenantId)));
+  }),
+);
+
+// ------------------------------------------------- City holidays and closure days
+
+const cityHolidayBody = z.object({
+  name: z.string().trim().min(2).max(80),
+  nameFr: z.string().trim().min(2).max(80),
+  kind: z.enum(['PAID', 'CLOSURE']),
+  date: isoDate,
+  recurrence: z.enum(['NONE', 'YEARLY_DATE', 'YEARLY_NTH_WEEKDAY', 'YEARLY_LAST_WEEKDAY', 'EASTER_OFFSET']).default('NONE'),
+  untilYear: z.number().int().min(2000).max(2200).nullable().default(null),
+  province: province.nullable().default(null),
+});
+const CITY_HOLIDAY_ERRORS: Record<string, string> = {
+  UNTIL_BEFORE_START: 'The last year is before the first date.',
+  NTH_WEEKDAY_FIFTH: 'A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.',
+  NOT_LAST_WEEKDAY: 'For “last weekday of the month”, pick a date that is the last such weekday of its month.',
+};
+const cityHolidayOut = (r: Parameters<typeof cityRule>[0], from: string, to: string) => {
+  const c = cityRule(r);
+  return { ...c, next: cityHolidayDates(c, from, to) };
+};
+/** Holidays change pay in every department: set for the whole organization, never by a role limited to departments. */
+function orgWide(a: { scope: unknown }) {
+  if (a.scope) throw forbidden('Holidays are set for the whole organization, by HR.');
+}
+function checkRule(b: z.infer<typeof cityHolidayBody>) {
+  const bad = validRule(b);
+  if (bad) throw new HttpError(400, bad, CITY_HOLIDAY_ERRORS[bad]!);
+}
+
+/** The organization's own holidays and closure days, each with its days in the coming year. */
+settingsRouter.get(
+  '/settings/city-holidays',
+  h(async (req, res) => {
+    const a = authOf(req);
+    orgWide(a);
+    const from = new Date().toISOString().slice(0, 10);
+    const to = new Date(Date.now() + 366 * 86_400_000).toISOString().slice(0, 10);
+    const rows = await withTenant(a.tenantId, (tx) => tx.tenantHoliday.findMany({ orderBy: [{ date: 'asc' }, { name: 'asc' }] }));
+    res.json({ holidays: rows.map((r) => cityHolidayOut(r, from, to)) });
+  }),
+);
+
+settingsRouter.post(
+  '/settings/city-holidays',
+  h(async (req, res) => {
+    const a = authOf(req);
+    orgWide(a);
+    const b = cityHolidayBody.parse(req.body);
+    checkRule(b);
+    const row = await withTenant(a.tenantId, async (tx) => {
+      if ((await tx.tenantHoliday.count()) >= 100) throw new HttpError(400, 'TOO_MANY_HOLIDAYS', 'An organization can keep up to 100 holidays and closure days.');
+      const r = await tx.tenantHoliday.create({ data: { ...b, tenantId: a.tenantId, date: day(b.date)! } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cityholiday.create', entity: 'TenantHoliday', entityId: r.id, after: b });
+      return r;
+    });
+    res.status(201).json({ id: row.id });
+  }),
+);
+
+settingsRouter.patch(
+  '/settings/city-holidays/:id',
+  h(async (req, res) => {
+    const a = authOf(req);
+    orgWide(a);
+    const id = uuid.parse(req.params.id);
+    const b = cityHolidayBody.parse(req.body);
+    checkRule(b);
+    await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenantHoliday.findUnique({ where: { id } });
+      if (!before) throw notFound('Holiday');
+      await tx.tenantHoliday.update({ where: { id }, data: { ...b, date: day(b.date)! } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cityholiday.update', entity: 'TenantHoliday', entityId: id, before: cityRule(before), after: b });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+settingsRouter.delete(
+  '/settings/city-holidays/:id',
+  h(async (req, res) => {
+    const a = authOf(req);
+    orgWide(a);
+    const id = uuid.parse(req.params.id);
+    await withTenant(a.tenantId, async (tx) => {
+      const before = await tx.tenantHoliday.findUnique({ where: { id } });
+      if (!before) throw notFound('Holiday');
+      await tx.tenantHoliday.delete({ where: { id } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'cityholiday.delete', entity: 'TenantHoliday', entityId: id, before: cityRule(before) });
+    });
+    res.status(204).end();
   }),
 );
 

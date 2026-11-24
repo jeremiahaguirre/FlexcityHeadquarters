@@ -449,6 +449,7 @@
     "NOT_ELIGIBLE": "Vous ne pouvez pas prendre ce quart.",
     "FORBIDDEN": "Vous n’avez pas accès à cette action.",
     "VALIDATION": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez.",
+    "MALFORMED_ADDRESS": "Cette adresse n’est pas valide. Revenez en arrière et réessayez.",
     "BAD_REQUEST": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez.",
     "ALREADY_CLOCKED_IN": "Votre arrivée est déjà pointée.",
     "NOT_CLOCKED_IN": "Votre arrivée n’est pas pointée.",
@@ -470,6 +471,7 @@
     "NO_PASSKEY": "Aucune clé d’accès sur ce compte.",
     "TOO_MANY_PASSKEYS": "Retirez une clé d’accès avant d’en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d’accès pour ce compte.",
+    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "CSRF_REFUSED": "Cette requête ne vient pas de la console Dev. Rechargez la page et réessayez.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d’abord.",
     "ALREADY_ENDED": "Cette séance est déjà terminée.",
@@ -605,6 +607,7 @@
     "SHIFT_TOO_LONG": "Un quart peut durer au plus {{maxHours}} heures.",
     "TITLE_REQUIRED": "Donnez un titre à ce quart.",
     "STATION_UNKNOWN": "Un poste de surveillance ne fait pas partie de cette plage.",
+    "POOL_BODY_UNKNOWN": "Ce bassin ne fait pas partie de cette installation. Choisissez l’un de ses propres bassins.",
     "STATION_TWICE": "Une personne est à deux postes de surveillance en même temps.",
     "POOL_DEPTH": "La partie peu profonde ne doit pas être plus profonde que la partie profonde.",
     "READING_INVALID": "Cette lecture semble erronée. Vérifiez-la et réessayez.",
@@ -757,7 +760,6 @@
     "SUBDOMAIN_TAKEN": "Une autre organisation utilise déjà cette adresse.",
     "SUPPORT_CODE_INVALID": "Ce lien de soutien est expiré ou a déjà été utilisé.",
     "SUPPORT_ENDED": "Cette visite de soutien est terminée.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "SUPPORT_READ_ONLY": "Le soutien FH peut consulter, mais ne peut rien modifier.",
     "TEXT_ALERTS_OFF": "Votre organisation n’a pas activé les alertes par texto.",
     "TOO_LARGE": "Les fichiers peuvent faire au plus 10 Mo.",
@@ -779,7 +781,11 @@
     "CERT_CHANGED": "L’employé a modifié cette inscription depuis que vous l’avez ouverte. Vérifiez-la de nouveau.",
     "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
     "CERT_EXISTS": "Un certificat porte déjà ce nom.",
-    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez."
+    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez.",
+    "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture.",
+    "UNTIL_BEFORE_START": "La dernière année est avant la première date.",
+    "NTH_WEEKDAY_FIFTH": "Un cinquième jour de semaine du mois n’existe pas chaque année. Choisissez plutôt « dernier jour de semaine du mois ».",
+    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -881,7 +887,9 @@
     "holidayObserved": "observé le {{date}}",
     "holidayMovedIfOff": "le {{date}} si vous ne travaillez pas habituellement ce jour-là",
     "holidaysMore": "Afficher les {{count}}",
-    "holidaysLess": "Afficher moins"
+    "holidaysLess": "Afficher moins",
+    "holidayCity": "Congé de l’organisation",
+    "holidayClosure": "Fermé (non payé)"
   },
   "availability": {
     "title": "Disponibilités",
@@ -1322,7 +1330,10 @@
       "remove": "Retirer la confirmation",
       "removed": "Confirmation retirée.",
       "private": "Seules les RH voient ceci."
-    }
+    },
+    "phone": "Téléphone",
+    "seniorityHours": "Heures d’ancienneté",
+    "seniorityHoursHint": "Utilisées là où l’ancienneté se compte en heures (rondes de soumissions, heures supplémentaires, rappels)."
   },
   "payroll": {
     "title": "Paie",
@@ -1822,7 +1833,7 @@
       "facilities": "Installations",
       "pools": "Bassins",
       "pay": "Codes de paie",
-      "calendar": "Calendrier scolaire",
+      "calendar": "Congés et calendrier",
       "rules": "Convention collective",
       "roles": "Rôles",
       "departments": "Services",
@@ -4543,7 +4554,12 @@
     "reportableHelp": "Les premiers soins seulement, sans perte de temps, restent au dossier sans déclaration. Si l’un ou l’autre change, mettez à jour et la déclaration devient due.",
     "save": "Enregistrer",
     "claimNumber": "Numéro de dossier de l’organisme",
-    "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu’une déclaration est en retard."
+    "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu’une déclaration est en retard.",
+    "update": "Mettre à jour",
+    "updateFor": "Mettre à jour la déclaration de lésion de {{name}}",
+    "updateHelp": "Indiquez une perte de temps ou des soins de santé constatés après l’enregistrement. Si l’un ou l’autre s’applique, la déclaration à l’organisme devient due.",
+    "updated": "Enregistré.",
+    "nowDue": "Enregistré. La déclaration à {{board}} est maintenant due : elle figure dans la liste à envoyer."
   },
   "departments": {
     "tabs": "Service",
@@ -8760,46 +8776,86 @@
       "licence": "Permis de conduire"
     }
   },
-  "roleLabels": {
-    "profileNames": {
-      "AQUATIC": "Aquatique (Sauveteur / moniteur, Bord du bassin)",
-      "PRIVATE": "Milieu de travail (Membre de l’équipe, Gestionnaire)",
-      "MUNICIPAL": "Municipal (Personnel de première ligne, Sur place)"
+  "cityHolidays": {
+    "dateFirst": "La première fois qu’il s’applique. Rien ne se répète avant.",
+    "kindHint": {
+      "CLOSURE": "Aucune indemnité ni taux majoré. Le jour n’est pas compté dans les congés, et les installations réglées pour fermer les jours fériés n’y reçoivent aucun nouveau quart.",
+      "PAID": "Payé comme un jour férié légal : indemnité de jour férié, et taux majoré pour les heures travaillées."
     },
-    "profileHint": "Automatique : termes de milieu de travail pour un employeur privé, termes aquatiques si vous avez des bassins ou un service aquatique, termes neutres dès que vous avez des services et qu’aucun n’est aquatique.",
+    "kindLabel": "Type",
+    "date": "Date",
+    "help": "Les jours que votre organisation ajoute aux jours fériés légaux de chaque province, comme le lendemain de Noël, le lundi de Pâques ou un congé civique. La paie paie un jour férié payé comme un jour férié légal (indemnité de jour férié et taux majoré pour les heures travaillées); un jour de fermeture ne paie rien de plus. Les congés ne comptent ni l’un ni l’autre, et les rotations et modèles de quarts n’y ajoutent aucun quart aux installations réglées pour fermer les jours fériés (paramètres de Remplir).",
+    "removed": "Jour férié retiré.",
+    "recurrence": {
+      "NONE": "Une fois",
+      "YEARLY_NTH_WEEKDAY": "Chaque année le même jour de semaine du mois (p. ex. le premier lundi d’août)",
+      "EASTER_OFFSET": "Chaque année, le même nombre de jours après Pâques (p. ex. le lundi de Pâques)",
+      "YEARLY_LAST_WEEKDAY": "Chaque année le dernier de ces jours de semaine du mois",
+      "YEARLY_DATE": "Chaque année à la même date"
+    },
+    "edit": "Modifier {{name}}",
+    "remove": "Retirer {{name}}",
+    "recurrenceLabel": "Répétition",
+    "allProvinces": "Toutes les installations",
+    "untilYearHint": "Laissez vide pour répéter sans fin.",
+    "kind": {
+      "CLOSURE": "Jour de fermeture",
+      "PAID": "Jour férié payé"
+    },
+    "nextOn": "Prochain : {{date}}",
+    "province": "S’applique à",
+    "saved": "Jour férié enregistré.",
+    "empty": "Aucun jour férié de l’organisation pour l’instant. Les jours fériés légaux s’appliquent automatiquement.",
+    "nameFr": "Nom (français)",
+    "untilYear": "Dernière année (facultatif)",
+    "noneComing": "Aucun dans l’année à venir.",
+    "editTitle": "Modifier un jour férié ou de fermeture",
+    "title": "Jours fériés et jours de fermeture de l’organisation",
+    "add": "Ajouter un jour",
+    "until": "jusqu’en {{year}}",
+    "name": "Nom (anglais)",
+    "addTitle": "Ajouter un jour férié ou de fermeture"
+  },
+  "roleNames": {
+    "PRIVATE": {
+      "HEAD_LIFEGUARD": "Chef d’équipe",
+      "HR_ADMIN": "Administration RH",
+      "STAFF": "Membre de l’équipe",
+      "AQUATIC_SUPERVISOR": "Gestionnaire",
+      "EMPLOYEE": "Employé",
+      "FRONT_DESK": "Réception",
+      "UNION_STEWARD": "Délégué syndical"
+    },
+    "MUNICIPAL": {
+      "HR_ADMIN": "Administration RH",
+      "AQUATIC_SUPERVISOR": "Superviseur",
+      "FRONT_DESK": "Accueil",
+      "UNION_STEWARD": "Délégué syndical",
+      "STAFF": "Personnel de première ligne",
+      "HEAD_LIFEGUARD": "Chef d’équipe",
+      "EMPLOYEE": "Employé (général)"
+    }
+  },
+  "roleLabels": {
     "profiles": {
       "MUNICIPAL": "municipaux",
       "PRIVATE": "de milieu de travail",
       "AQUATIC": "aquatiques"
     },
-    "en": "Anglais",
-    "profileAuto": "Automatique",
     "title": "Noms des rôles intégrés",
+    "help": "Votre organisation utilise les termes {{profile}} par défaut. Donnez à un rôle votre propre nom en anglais et en français; laissez les deux vides pour garder celui par défaut.",
+    "both": "Donnez le nom dans les deux langues, ou laissez les deux vides.",
+    "fr": "Français",
     "wordsOnly": "Seuls les noms changent; ce que chaque rôle peut faire reste le même.",
     "saved": "Noms des rôles enregistrés.",
     "profile": "Termes par défaut",
-    "fr": "Français",
-    "help": "Votre organisation utilise les termes {{profile}} par défaut. Donnez à un rôle votre propre nom en anglais et en français; laissez les deux vides pour garder celui par défaut.",
-    "both": "Donnez le nom dans les deux langues, ou laissez les deux vides."
-  },
-  "roleNames": {
-    "PRIVATE": {
-      "AQUATIC_SUPERVISOR": "Gestionnaire",
-      "EMPLOYEE": "Employé",
-      "STAFF": "Membre de l’équipe",
-      "HR_ADMIN": "Administration RH",
-      "HEAD_LIFEGUARD": "Chef d’équipe",
-      "FRONT_DESK": "Réception",
-      "UNION_STEWARD": "Délégué syndical"
+    "profileNames": {
+      "PRIVATE": "Milieu de travail (Membre de l’équipe, Gestionnaire)",
+      "MUNICIPAL": "Municipal (Personnel de première ligne, Sur place)",
+      "AQUATIC": "Aquatique (Sauveteur / moniteur, Bord du bassin)"
     },
-    "MUNICIPAL": {
-      "AQUATIC_SUPERVISOR": "Superviseur",
-      "HEAD_LIFEGUARD": "Chef d’équipe",
-      "FRONT_DESK": "Accueil",
-      "UNION_STEWARD": "Délégué syndical",
-      "HR_ADMIN": "Administration RH",
-      "EMPLOYEE": "Employé (général)",
-      "STAFF": "Personnel de première ligne"
-    }
+    "profileAuto": "Automatique",
+    "en": "Anglais",
+    "profileHint": "Automatique : termes de milieu de travail pour un employeur privé, termes aquatiques si vous avez des bassins ou un service aquatique, termes neutres dès que vous avez des services et qu’aucun n’est aquatique."
   }
 }

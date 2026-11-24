@@ -22,7 +22,7 @@ import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useSession } from '@/lib/session';
 import type { CustomRole } from '@/lib/customRoles';
-import { EMPLOYMENT, type Position, ROLES, TIERS } from '@/lib/staff';
+import { EMPLOYMENT, hrBody, type Position, ROLES, TIERS } from '@/lib/staff';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { DocumentsCard } from '@/components/people/DocumentsCard';
 import { EmergencyContactsCard } from '@/components/people/EmergencyContacts';
@@ -94,24 +94,7 @@ function Person() {
   async function saveHr(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    await run('hr', () =>
-      api(`/api/users/${id}`, {
-        method: 'PATCH',
-        body: {
-          roles: f.getAll('roles').length ? f.getAll('roles') : f.getAll('customRoles').length ? ['EMPLOYEE'] : [],
-          customRoleIds: f.getAll('customRoles'),
-          status: val(f, 'status'),
-          employmentStatus: val(f, 'employment'),
-          hireDate: val(f, 'hireDate'),
-          seniorityDate: val(f, 'seniorityDate'),
-          vscClearedDate: val(f, 'vsc'),
-          dateOfBirth: val(f, 'dob'),
-          employeeNumber: val(f, 'employeeNumber'),
-          unionMember: f.get('union') === 'on',
-        },
-      }),
-      t('profile.saved'),
-    );
+    await run('hr', () => api(`/api/users/${id}`, { method: 'PATCH', body: hrBody(f, { seniorityHours: p?.seniorityHours }) }), t('profile.saved'));
     await person.reload();
   }
 
@@ -214,6 +197,9 @@ function Person() {
           <Section title={t('staff.hrRecord')} description={t('staff.hrHelp')}>
             <form onSubmit={(e) => void saveHr(e)} className="grid gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t('staff.firstName')}>{(f) => <Input {...f} name="firstName" required maxLength={60} defaultValue={p.firstName} />}</Field>
+                <Field label={t('staff.lastName')}>{(f) => <Input {...f} name="lastName" required maxLength={60} defaultValue={p.lastName} />}</Field>
+                <Field label={t('staff.phone')} hint={t('common.optional')}>{(f) => <Input {...f} name="phone" type="tel" maxLength={30} defaultValue={p.phone ?? ''} />}</Field>
                 <Field label={t('staff.status')}>
                   {(f) => (
                     <Select {...f} name="status" defaultValue={p.status}>
@@ -238,6 +224,7 @@ function Person() {
                 </Field>
                 <Field label={t('staff.hireDate')}>{(f) => <Input {...f} name="hireDate" type="date" defaultValue={p.hireDate ?? ''} />}</Field>
                 {me?.features?.seniority !== false ? <Field label={t('staff.seniorityDate')}>{(f) => <Input {...f} name="seniorityDate" type="date" defaultValue={p.seniorityDate ?? ''} />}</Field> : null}
+                {me?.features?.seniority !== false ? <Field label={t('staff.seniorityHours')} hint={t('staff.seniorityHoursHint')}>{(f) => <Input {...f} name="seniorityHours" type="number" min={0} max={999999} step="0.25" inputMode="decimal" defaultValue={p.seniorityHours} />}</Field> : null}
                 <Field label={t('staff.vsc')} hint={t('staff.vscHint')}>{(f) => <Input {...f} name="vsc" type="date" defaultValue={p.vscClearedDate ?? ''} />}</Field>
                 <Field label={t('staff.dob')}>{(f) => <Input {...f} name="dob" type="date" defaultValue={p.dateOfBirth ?? ''} />}</Field>
                 <AdultConfirmation userId={p.id} name={p.firstName} hasBirthDate={!!p.dateOfBirth} value={p.adultConfirmation} onChanged={() => void person.reload()} />

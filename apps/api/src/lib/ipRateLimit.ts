@@ -17,6 +17,16 @@
  *   once that is empty, the address's credentialed requests are refused too until it refills. An
  *   access token that is genuine but expired (res.locals.credentialExpired, set by requireAuth)
  *   isn't a failure: phones refresh it and carry on.
+ * - Calendar links that don't work (res.locals.calendarMiss, set by routes/calendar.ts: an unknown
+ *   link, or one the route refuses past its own hourly miss limit) draw from a separate bucket per
+ *   address (GLOBAL_RATE_LIMIT_CALENDAR_MISSES, default 600 a minute), never the failure bucket.
+ *   Once it is empty, that address's calendar requests, working links included, get 429 until it
+ *   refills (10 a second at the default); calendar services retry on their own schedule. Nothing
+ *   else from the address is affected: Bearer, kiosk and session traffic behind the same address
+ *   (an office NAT, a shared calendar service) keeps working. The route's own limit (300 misses an
+ *   hour per address, CALENDAR_MISSES_PER_HOUR) normally answers long before this bucket empties,
+ *   so stale links from a shared service never block its working feeds; the bucket bounds what is
+ *   left, made-up links sent fast enough to cost a lookup each (SECURITY-AUDIT SEC-46).
  * - Keyed by address: the IPv4 address, or the IPv6 /64 (lib/address.ts), so rotating through
  *   one customer's IPv6 range doesn't make fresh buckets.
  * - /healthz, /readyz and /metrics (which has its own token) are never limited. The live
@@ -26,6 +36,7 @@
  * On by default in production; GLOBAL_RATE_LIMIT=on|off overrides (off in development and tests,
  * so local tools and the test suite, all from 127.0.0.1, aren't throttled).
  */
+import { timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { addressKey } from './address.js';
 import { rateLimited } from './metrics.js';
@@ -34,8 +45,31 @@ export interface LimiterOptions {
   authPerMinute: number;
   anonPerMinute: number;
   failuresPerMinute: number;
+  /** Calendar links that don't work, per address (default 600). */
+  calendarMissesPerMinute?: number;
   /** Most addresses tracked per process before idle (full) buckets are forgotten. */
   maxAddresses?: number;
+  /**
+   * The web app's server-side calls, which all come from the web tasks' addresses (SEC-48). Only
+   * Next cache misses reach the API (each organization's branding at most once a minute per web
+   * task, its postings every 5 minutes), so the default 6000 a minute leaves room for thousands of
+   * organizations. A visitor making up subdomains is bounded by the firewall's per-address limit;
+   * the web app remembers unknown subdomains for a minute (apps/web lib/tenant.ts).
+   */
+  internalPerMinute?: number;
+  /** INTERNAL_API_TOKEN: a request carrying it in x-fh-internal is the web app's server. */
+  internalToken?: string;
+}
+
+export const INTERNAL_HEADER = 'x-fh-internal';
+
+/** Whether the request carries the web app's internal token (compared in constant time). */
+export function isInternal(req: Request, token: string | undefined): boolean {
+  const sent = req.headers[INTERNAL_HEADER];
+  if (!token || token.length < 32 || typeof sent !== 'string') return false;
+  const a = Buffer.from(sent);
+  const b = Buffer.from(token);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 interface Bucket {
@@ -125,15 +159,36 @@ export const defaultOptions = (): LimiterOptions => ({
   authPerMinute: num(process.env.GLOBAL_RATE_LIMIT_AUTH, 1200),
   anonPerMinute: num(process.env.GLOBAL_RATE_LIMIT_ANON, 120),
   failuresPerMinute: num(process.env.GLOBAL_RATE_LIMIT_FAILURES, 120),
+  calendarMissesPerMinute: num(process.env.GLOBAL_RATE_LIMIT_CALENDAR_MISSES, 600),
+  internalPerMinute: num(process.env.GLOBAL_RATE_LIMIT_INTERNAL, 6000),
+  internalToken: process.env.INTERNAL_API_TOKEN,
 });
+
+/**
+ * A token that is set but too short is ignored (isInternal): say so at boot, or the web server's
+ * renders would quietly fall back to the shared anonymous budget, the SEC-48 failure again.
+ */
+export function warnUnusableInternalToken(token: string | undefined, warn: (msg: string) => void = (m) => console.warn(m)): boolean {
+  if (!token || token.length >= 32) return false;
+  warn(`[warn] INTERNAL_API_TOKEN is set but shorter than 32 characters, so it is ignored: the web server's own calls get the shared anonymous rate limit. Use 48 random characters.`);
+  return true;
+}
 
 /** The middleware. `opts` fixed for tests; otherwise read from the environment once. */
 export function ipRateLimit(opts?: LimiterOptions & { force?: boolean }) {
-  let state: { auth: TokenBuckets; anon: TokenBuckets; failures: TokenBuckets } | null = null;
+  if (!opts) warnUnusableInternalToken(process.env.INTERNAL_API_TOKEN);
+  let state: { auth: TokenBuckets; anon: TokenBuckets; failures: TokenBuckets; calendarMisses: TokenBuckets; internal: TokenBuckets; token?: string } | null = null;
   const buckets = () => {
     if (!state) {
       const o = opts ?? defaultOptions();
-      state = { auth: new TokenBuckets(o.authPerMinute, o.maxAddresses), anon: new TokenBuckets(o.anonPerMinute, o.maxAddresses), failures: new TokenBuckets(o.failuresPerMinute, o.maxAddresses) };
+      state = {
+        auth: new TokenBuckets(o.authPerMinute, o.maxAddresses),
+        anon: new TokenBuckets(o.anonPerMinute, o.maxAddresses),
+        failures: new TokenBuckets(o.failuresPerMinute, o.maxAddresses),
+        calendarMisses: new TokenBuckets(o.calendarMissesPerMinute ?? 600, o.maxAddresses),
+        internal: new TokenBuckets(o.internalPerMinute ?? 6000, o.maxAddresses),
+        token: o.internalToken,
+      };
     }
     return state;
   };
@@ -142,11 +197,23 @@ export function ipRateLimit(opts?: LimiterOptions & { force?: boolean }) {
     const ip = addressKey(req.ip);
     const b = buckets();
     const credentialed = hasCredential(req);
+    const calendar = req.path.startsWith('/api/calendar/');
     let wait: number;
     let layer: string;
-    if (credentialed) {
+    // The web app's server-side page renders (an organization's branding, its job postings) all
+    // come from the web tasks' few addresses: with the token they get their own, larger budget, so
+    // anonymous page views can't use up the anonymous budget every sign-in page depends on (SEC-48).
+    // The firewall still limits each visitor's address in front of the web app.
+    if (isInternal(req, b.token)) {
+      wait = b.internal.take(ip);
+      layer = 'global_internal';
+    } else if (credentialed) {
       wait = b.failures.peek(ip);
       layer = 'global_failures';
+      if (!wait && calendar) {
+        wait = b.calendarMisses.peek(ip);
+        layer = 'global_calendar_misses';
+      }
       if (!wait) {
         wait = b.auth.take(ip);
         layer = 'global_auth';
@@ -163,6 +230,8 @@ export function ipRateLimit(opts?: LimiterOptions & { force?: boolean }) {
     }
     res.once('finish', () => {
       if (res.statusCode === 401 && !res.locals.credentialExpired) b.failures.drain(ip);
+      // A calendar link that doesn't work draws from the calendar-only bucket (see above).
+      else if (calendar && res.locals.calendarMiss) b.calendarMisses.drain(ip);
     });
     next();
   };

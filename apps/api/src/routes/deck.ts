@@ -3,8 +3,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { announceChange } from '../lib/changes.js';
-import { audit, withTenant } from '../lib/db.js';
-import { forbidden, notFound } from '../lib/errors.js';
+import { type Tx, audit, withTenant } from '../lib/db.js';
+import { forbidden, invalid, notFound } from '../lib/errors.js';
 import { applyRotation, loadPlan } from '../services/ops/rotation.js';
 import { complianceSnapshot } from '../services/ops/compliance.js';
 import { draftShiftsFor, forecastWeek, previewShiftsFor } from '../services/ops/forecast.js';
@@ -13,13 +13,25 @@ import { facilitiesOf } from '../services/people/scope.js';
 
 export const deckRouter = Router();
 deckRouter.use(['/deck', '/me/deck'], requireFeature('rotations'));
-// A lead limited to some facilities can't see or change other pools' decks.
-deckRouter.use('/deck', (req, _res, next) => {
-  const only = facilitiesOf(authOf(req).scope);
-  const facilityId = (req.query.facilityId ?? (req.body as { facilityId?: unknown } | undefined)?.facilityId) as string | undefined;
-  next(only && facilityId && !only.includes(facilityId) ? notFound('Facility') : undefined);
-});
 const uuid = z.string().uuid();
+// A lead limited to some facilities can't see or change other pools' decks. Reads take the facility
+// from the query; writes take it from the body and check it themselves (facilityInScope), so the
+// guard and the handler never read different sources. A facility named twice in the query is refused.
+deckRouter.use('/deck', (req, _res, next) => {
+  try {
+    const facilityId = uuid.optional().parse(req.query.facilityId);
+    if (facilityId) facilityInScope(req, facilityId);
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
+/** A station's pool must be one of its own facility's pools. */
+async function assertPoolAt(tx: Tx, facilityId: string, poolBodyId: string | null | undefined) {
+  if (!poolBodyId) return;
+  const pool = await tx.poolBody.findUnique({ where: { id: poolBodyId }, select: { facilityId: true } });
+  if (pool?.facilityId !== facilityId) throw invalid('POOL_BODY_UNKNOWN', 'That pool isn’t at this facility.');
+}
 
 deckRouter.get(
   '/deck/stations',
@@ -40,9 +52,11 @@ deckRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = stationBody.extend({ facilityId: uuid }).parse(req.body);
+    facilityInScope(req, body.facilityId);
     const s = await withTenant(a.tenantId, async (tx) => {
       await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       if (!(await tx.facility.findUnique({ where: { id: body.facilityId } }))) throw notFound('Facility');
+      await assertPoolAt(tx, body.facilityId, body.poolBodyId);
       const created = await tx.deckStation.create({ data: { ...body, tenantId: a.tenantId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'deck.station.create', entity: 'DeckStation', entityId: created.id, after: body });
       return created;
@@ -61,7 +75,9 @@ deckRouter.patch(
     await withTenant(a.tenantId, async (tx) => {
       await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       const before = await tx.deckStation.findUnique({ where: { id } });
-      if (!before) throw notFound('Station');
+      const only = facilitiesOf(a.scope);
+      if (!before || (only && !only.includes(before.facilityId))) throw notFound('Station');
+      await assertPoolAt(tx, before.facilityId, body.poolBodyId);
       const { archived, ...rest } = body;
       await tx.deckStation.update({ where: { id }, data: { ...rest, ...(archived === undefined ? {} : { archivedAt: archived ? new Date() : null }) } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'deck.station.update', entity: 'DeckStation', entityId: id, before, after: body });
@@ -87,6 +103,7 @@ deckRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ facilityId: uuid, assignments: z.array(z.object({ stationId: uuid, userId: uuid.nullable() })).max(60) }).parse(req.body);
+    facilityInScope(req, body.facilityId);
     const out = await withTenant(a.tenantId, async (tx) => {
       await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       const r = await applyRotation(tx, a.tenantId, body.facilityId, a.userId, body.assignments);
@@ -104,6 +121,7 @@ deckRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const { facilityId } = z.object({ facilityId: uuid }).parse(req.body);
+    facilityInScope(req, facilityId);
     await withTenant(a.tenantId, async (tx) => {
       await announceChange(tx, a.tenantId, 'deck'); // sent at commit only (lib/changes.ts)
       await tx.rotationLog.updateMany({ where: { facilityId, endedAt: null }, data: { endedAt: new Date() } });

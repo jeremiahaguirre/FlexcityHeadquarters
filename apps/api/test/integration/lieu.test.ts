@@ -125,4 +125,39 @@ describe('time in lieu', () => {
     const r = await runFor('2026-07-06', '2026-07-24');
     expect(r.warnings.some((w) => w.code === 'LIEU_EXPIRED')).toBe(true);
   });
+
+  it('someone who left before and was rehired isn’t treated as leaving on a later run', async () => {
+    // They left at the end of May and came back; the banked time still on the books isn’t owed as a final payout.
+    await owner.offboarding.create({ data: { tenantId: t.tenant.id, userId: guard, lastDay: new Date('2026-05-31'), reason: 'END_OF_SEASON', checklist: [], completedAt: new Date('2026-06-01'), createdById: guard } });
+    const start = new Date(Date.UTC(2026, 6, 21, 16));
+    await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: guard, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 6 * 3_600_000), status: 'APPROVED' } });
+    const r = await runFor('2026-07-20', '2026-08-07');
+    expect(r.warnings.some((w) => w.code === 'LIEU_OWED')).toBe(false);
+  });
+
+  it('leaving and being rehired inside one pay period isn’t treated as leaving either', async () => {
+    // Last day Aug 4, offboarding completed Aug 5, back at work Aug 10: all in the Aug 3–16 period.
+    await owner.offboarding.create({ data: { tenantId: t.tenant.id, userId: guard, lastDay: new Date('2026-08-04'), reason: 'END_OF_CONTRACT', checklist: [], completedAt: new Date('2026-08-05'), createdById: guard } });
+    const start = new Date(Date.UTC(2026, 7, 10, 16));
+    await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: guard, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 6 * 3_600_000), status: 'APPROVED' } });
+    const r = await runFor('2026-08-03', '2026-08-21');
+    expect(r.warnings.some((w) => w.code === 'LIEU_OWED')).toBe(false);
+  });
+
+  it('someone really leaving is still warned about banked time on a final-pay run after their last day', async () => {
+    // Still being offboarded (last day Aug 21), and paid out in an off-cycle run for the period after it.
+    const off = await owner.offboarding.create({ data: { tenantId: t.tenant.id, userId: guard, lastDay: new Date('2026-08-21'), reason: 'RESIGNATION', checklist: [], createdById: guard } });
+    const run = await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: '2026-08-31', weeks: 2, payDate: '2026-09-18', kind: 'OFF_CYCLE', note: 'Final pay' });
+    expect(run.status).toBe(201);
+    expect((await call(tok.prep).post(`/api/payroll/runs/${run.body.id}/adjustments`, { userId: guard, kind: 'VACATION_PAYOUT', description: 'Vacation owed', amount: 300 })).status).toBe(201);
+    const detail = (await call(tok.prep).get(`/api/payroll/runs/${run.body.id}`)).body as { run: { warnings: Array<{ code: string }> } };
+    expect(detail.run.warnings.some((w) => w.code === 'LIEU_OWED')).toBe(true);
+    // Once their offboarding is done and they're terminated, a later final-pay run still counts them as leaving.
+    await owner.offboarding.update({ where: { id: off.id }, data: { completedAt: new Date('2026-08-24') } });
+    await owner.user.update({ where: { id: guard }, data: { status: 'TERMINATED' } });
+    expect((await call(tok.prep).post(`/api/payroll/runs/${run.body.id}/recalculate`)).status).toBe(200);
+    const again = (await call(tok.prep).get(`/api/payroll/runs/${run.body.id}`)).body as { run: { warnings: Array<{ code: string }> } };
+    expect(again.run.warnings.some((w) => w.code === 'LIEU_OWED')).toBe(true);
+    await owner.user.update({ where: { id: guard }, data: { status: 'ACTIVE' } });
+  });
 });
