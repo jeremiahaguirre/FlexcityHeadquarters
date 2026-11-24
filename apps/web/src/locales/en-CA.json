@@ -308,6 +308,8 @@
     "front_desk_page": "Front desk: {{message}}",
     "welcome": "Welcome to FlexcityHeadquarters.",
     "password_changed": "Your password was changed.",
+    "passkey_added_after_sso": "A passkey was added to your account right after a single sign-on that didn’t prove a phishing-resistant method. If it wasn’t you, tell HR now.",
+    "staff_passkey_added_after_sso": "{{name}} added a first passkey right after a single sign-on that didn’t prove a phishing-resistant method. Check that it was them.",
     "discipline_issued": "A record was added to your file. Please read and sign it.",
     "cert_expiring": "Your {{certification}} expires in {{days}} days. Renew it to keep getting shifts.",
     "staff_cert_expiring": "{{name}}’s {{certification}} expires in {{days}} days.",
@@ -5483,7 +5485,7 @@
     "enforced": "Make it the only way to sign in",
     "enforcedHint": "Passwords stop working, except for people who can change this setting, so nobody gets locked out.",
     "idpMfa": "Our provider always requires a second factor",
-    "idpMfaHint": "Turn on only if your provider enforces MFA for everyone (e.g. a conditional access policy). Otherwise we use what the provider reports.",
+    "idpMfaHint": "Turn on only if your provider enforces MFA for everyone (e.g. a conditional access policy). Otherwise we use what the provider reports. Either way, HR, payroll, managers and administrators confirm with a passkey after signing in, unless the provider proves a phishing-resistant method such as a security key or a passkey.",
     "saved": "Single sign-on saved",
     "lastUsed": "Last used {{time}}",
     "safety": "Each account is linked to its directory account the first time it’s used. Every sign-in and refusal is in the audit log."

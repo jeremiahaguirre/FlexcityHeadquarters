@@ -6,8 +6,8 @@ import type { AccessRole } from '../generated/prisma/client.js';
 import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';
-import { verifyAccessToken } from './tokens.js';
-import { type Scope, customAccess, scopeOf, stillActive } from '../services/people/customRoles.js';
+import { type SsoStrength, verifyAccessToken } from './tokens.js';
+import { CUSTOM_ROLE_PERMISSIONS, type Scope, customAccess, scopeOf, stillActive } from '../services/people/customRoles.js';
 import { managedScope } from '../services/people/departments.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
@@ -27,6 +27,14 @@ export interface AuthContext {
   mfa: boolean;
   /** The city requires a second factor for one of this person's access levels, and this session hasn't given one. */
   mfaPending: boolean;
+  /**
+   * Signed in by single sign-on without the proof this person's powers need (ssoNeedsPasskey):
+   * judged on every request, so it also catches powers given after sign-in. The second factor is
+   * then owed whatever the city's settings, and only a passkey gives it.
+   */
+  passkeyRequired: boolean;
+  /** What single sign-on proved, if this is an SSO session no passkey has confirmed yet. */
+  ssoStrength?: SsoStrength;
   /** Where supervisory capabilities reach: null = the whole organization, else a department. */
   scope: Scope;
   /** An FH support visit (read-only, with the organization's consent). */
@@ -36,7 +44,26 @@ export interface AuthContext {
 /** What someone who still owes a second factor may reach: enough to give it (a passkey or a code), or set up a passkey. */
 const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/passkeys$/, /^\/api\/auth\/step-up(\/|$)/, /^\/api\/auth\/mfa\/(options|code|code\/verify)$/];
 /** Powers that need the same second factor as HR. */
-const ADMIN_LEVEL = new Set<string>(['users.write', 'tenant.configure', 'payroll.approve', 'payroll.export', 'roles.manage', 'documents.manage', 'billing.manage', 'audit.read']);
+export const ADMIN_LEVEL: ReadonlySet<string> = new Set<string>(['users.write', 'tenant.configure', 'payroll.approve', 'payroll.export', 'roles.manage', 'documents.manage', 'billing.manage', 'audit.read']);
+/**
+ * Powers that make a passkey mandatory: every manager- and admin-level permission, which includes
+ * ADMIN_LEVEL. Decision 1 (2026-11-17) names admin, HR and payroll roles; managers and city admins
+ * are pending the owner's confirmation (D-38 in SECURITY.md). The built-in HR_ADMIN and
+ * AQUATIC_SUPERVISOR hold some; leads, staff, front desk and stewards don't.
+ */
+const PASSKEY_MANDATORY: ReadonlySet<string> = new Set<string>([...CUSTOM_ROLE_PERMISSIONS.manager, ...CUSTOM_ROLE_PERMISSIONS.admin, ...ADMIN_LEVEL]);
+export const needsPasskey = (permissions: Iterable<string>) => [...permissions].some((p) => PASSKEY_MANDATORY.has(p));
+export const isAdminLevel = (permissions: Iterable<string>) => [...permissions].some((p) => ADMIN_LEVEL.has(p));
+/**
+ * Whether a single sign-on with this proof still owes a passkey for these powers: always for weak
+ * proof, and for admin-level powers unless the phishing-resistant sign-in was within 15 minutes.
+ */
+export function ssoNeedsPasskey(strength: SsoStrength, permissions: Iterable<string>): boolean {
+  const perms = [...permissions];
+  if (!needsPasskey(perms)) return false;
+  if (strength === 'phr_fresh') return false;
+  return !(strength === 'phr' && !isAdminLevel(perms));
+}
 
 /**
  * Never open to an FH support visit, whatever the organization allowed. Matched against the
@@ -100,19 +127,25 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       const exportOnly = exportUntil && exportUntil > new Date() && granted.has('tenant.configure') && !claims.sup && CLOSED_EXPORT.test(req.originalUrl.split('?')[0]!);
       if (!exportOnly) throw new HttpError(403, 'ORG_DISABLED', 'This organization’s account is closed. Contact FlexcityHeadquarters.');
     }
-    const mfa = claims.mfa === true;
+    const permissions = withoutDisabled(granted, features);
+    // Single sign-on without the proof these powers need never counts as the second factor, whenever
+    // the powers were given: checked here, not once at sign-in.
+    const passkeyRequired = !!claims.sso && ssoNeedsPasskey(claims.sso, permissions);
+    const mfa = claims.mfa === true && !passkeyRequired;
     // A second factor follows the access, not just the role's name: when the city requires it for HR,
     // anyone holding HR-level powers through a custom role needs it too.
     const adminLike = mfaRoles.includes('HR_ADMIN') && [...granted].some((p) => ADMIN_LEVEL.has(p));
-    const mfaPending = !mfa && (claims.roles.some((r) => mfaRoles.includes(r)) || adminLike);
+    const mfaPending = !mfa && (passkeyRequired || claims.roles.some((r) => mfaRoles.includes(r)) || adminLike);
     req.auth = {
       userId: claims.sub,
       tenantId: claims.tid,
       roles: claims.roles,
-      permissions: withoutDisabled(granted, features),
+      permissions,
       authenticatedAt: claims.aat ? new Date(claims.aat * 1000) : null,
       mfa,
       mfaPending,
+      passkeyRequired,
+      ...(claims.sso ? { ssoStrength: claims.sso } : {}),
       scope: scopeOf(builtIn, custom, { roles: claims.roles, managed }),
     };
     // FH support, with the organization's consent: read-only, what the grant allows, every page logged.
@@ -208,5 +241,5 @@ export async function accessOf(tenantId: string, userId: string, roles: AccessRo
   const [{ features, overrides }, custom, ok, managed] = await Promise.all([tenantSettings(tenantId), customAccess(tenantId, userId), stillActive(tenantId, userId), managedScope(tenantId, userId)]);
   if (!ok) return null;
   const builtIn = permissionsWithOverrides(roles, overrides);
-  return { userId, tenantId, roles, permissions: withoutDisabled(new Set([...builtIn, ...custom.perms]), features), authenticatedAt: null, mfa: false, mfaPending: false, scope: scopeOf(builtIn, custom, { roles, managed }) };
+  return { userId, tenantId, roles, permissions: withoutDisabled(new Set([...builtIn, ...custom.perms]), features), authenticatedAt: null, mfa: false, mfaPending: false, passkeyRequired: false, scope: scopeOf(builtIn, custom, { roles, managed }) };
 }

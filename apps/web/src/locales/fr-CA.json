@@ -308,6 +308,8 @@
     "front_desk_page": "Accueil : {{message}}",
     "welcome": "Bienvenue sur FlexcityHeadquarters.",
     "password_changed": "Votre mot de passe a été modifié.",
+    "passkey_added_after_sso": "Une clé d’accès a été ajoutée à votre compte juste après une authentification unique qui n’a pas prouvé une méthode résistante à l’hameçonnage. Si ce n’était pas vous, avisez les RH tout de suite.",
+    "staff_passkey_added_after_sso": "{{name}} a ajouté une première clé d’accès juste après une authentification unique qui n’a pas prouvé une méthode résistante à l’hameçonnage. Vérifiez que c’était bien cette personne.",
     "discipline_issued": "Un document a été ajouté à votre dossier. Veuillez le lire et le signer.",
     "cert_expiring": "Votre certification {{certification}} expire dans {{days}} jours. Renouvelez-la pour continuer à obtenir des quarts.",
     "staff_cert_expiring": "La certification {{certification}} de {{name}} expire dans {{days}} jours.",
@@ -5483,7 +5485,7 @@
     "enforced": "En faire le seul moyen de connexion",
     "enforcedHint": "Les mots de passe cessent de fonctionner, sauf pour les personnes qui peuvent modifier ce paramètre, afin que personne ne soit bloqué.",
     "idpMfa": "Notre fournisseur exige toujours un deuxième facteur",
-    "idpMfaHint": "N’activez que si votre fournisseur impose l’AMF à tous (p. ex. une stratégie d’accès conditionnel). Sinon, nous utilisons ce que le fournisseur indique.",
+    "idpMfaHint": "N’activez que si votre fournisseur impose l’AMF à tous (p. ex. une stratégie d’accès conditionnel). Sinon, nous utilisons ce que le fournisseur indique. Dans tous les cas, les RH, la paie, les gestionnaires et les administrateurs confirment avec une clé d’accès après la connexion, sauf si le fournisseur prouve une méthode résistante à l’hameçonnage, comme une clé de sécurité ou une clé d’accès.",
     "saved": "Authentification unique enregistrée",
     "lastUsed": "Dernière utilisation : {{time}}",
     "safety": "Chaque compte est lié à son compte d’annuaire à la première utilisation. Chaque connexion et chaque refus figurent dans le journal d’audit."

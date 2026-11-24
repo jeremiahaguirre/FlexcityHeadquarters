@@ -11,19 +11,19 @@ const TTL_MS: Record<AuthTokenPurpose, number> = { RESET: 60 * 60_000, INVITE: 7
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Issue a one-time link token. Older unused tokens of the same purpose are retired. */
-export async function issueAuthToken(tx: Tx, tenantId: string, userId: string, purpose: AuthTokenPurpose): Promise<string> {
+export async function issueAuthToken(tx: Tx, tenantId: string, userId: string, purpose: AuthTokenPurpose, extra: { ssoStrength?: string } = {}): Promise<string> {
   await tx.authToken.updateMany({ where: { userId, purpose, usedAt: null }, data: { usedAt: new Date() } });
   const raw = randomBytes(32).toString('base64url');
-  await tx.authToken.create({ data: { tenantId, userId, purpose, tokenHash: sha(raw), expiresAt: new Date(Date.now() + TTL_MS[purpose]) } });
+  await tx.authToken.create({ data: { tenantId, userId, purpose, tokenHash: sha(raw), expiresAt: new Date(Date.now() + TTL_MS[purpose]), ssoStrength: extra.ssoStrength ?? null } });
   return raw;
 }
 
 /** Returns the user id if the token is valid, and marks it used. */
-export async function consumeAuthToken(tx: Tx, raw: string, purposes: readonly AuthTokenPurpose[]): Promise<{ userId: string; purpose: AuthTokenPurpose } | null> {
+export async function consumeAuthToken(tx: Tx, raw: string, purposes: readonly AuthTokenPurpose[]): Promise<{ userId: string; purpose: AuthTokenPurpose; ssoStrength: string | null } | null> {
   const t = await tx.authToken.findUnique({ where: { tokenHash: sha(raw) } });
   if (!t || t.usedAt || t.expiresAt < new Date() || !purposes.includes(t.purpose)) return null;
   await tx.authToken.update({ where: { id: t.id }, data: { usedAt: new Date() } });
-  return { userId: t.userId, purpose: t.purpose };
+  return { userId: t.userId, purpose: t.purpose, ssoStrength: t.ssoStrength };
 }
 
 export function appUrl(subdomain: string, path: string): string {

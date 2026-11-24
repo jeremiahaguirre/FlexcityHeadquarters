@@ -21,12 +21,19 @@ export interface AccessClaims {
   mfa?: boolean;
   /** An FH support visit (SupportSession id): read-only, consent-based. */
   sup?: string;
+  /** Signed in by single sign-on: what the provider proved (RefreshToken.ssoStrength). */
+  sso?: SsoStrength;
 }
+
+/** What an identity provider proved: no phishing-resistant method, one, or one within 15 minutes. */
+export type SsoStrength = 'weak' | 'phr' | 'phr_fresh';
+const SSO_STRENGTHS: readonly string[] = ['weak', 'phr', 'phr_fresh'];
+export const asSsoStrength = (v: unknown): SsoStrength | undefined => (typeof v === 'string' && SSO_STRENGTHS.includes(v) ? (v as SsoStrength) : undefined);
 
 const secret = () => new TextEncoder().encode(config().JWT_SECRET);
 
 export async function signAccessToken(claims: AccessClaims, ttlSeconds?: number): Promise<string> {
-  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}), ...(claims.mfa ? { mfa: true } : {}), ...(claims.sup ? { sup: claims.sup } : {}) })
+  return new SignJWT({ tid: claims.tid, roles: claims.roles, ...(claims.aat ? { aat: claims.aat } : {}), ...(claims.mfa ? { mfa: true } : {}), ...(claims.sup ? { sup: claims.sup } : {}), ...(claims.sso ? { sso: claims.sso } : {}) })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(claims.sub)
     .setIssuedAt()
@@ -39,7 +46,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
   if (typeof payload.sub !== 'string' || typeof payload.tid !== 'string' || !Array.isArray(payload.roles)) {
     throw new Error('Malformed token');
   }
-  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true, ...(typeof payload.sup === 'string' ? { sup: payload.sup } : {}) };
+  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true, ...(typeof payload.sup === 'string' ? { sup: payload.sup } : {}), ...(asSsoStrength(payload.sso) ? { sso: asSsoStrength(payload.sso) } : {}) };
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -52,6 +59,7 @@ export async function issueRefreshToken(
   familyId: string = randomUUID(),
   authenticatedAt: Date = new Date(),
   mfaAt: Date | null = null,
+  ssoStrength: SsoStrength | null = null,
 ): Promise<string> {
   const raw = randomBytes(32).toString('base64url');
   await tx.refreshToken.create({
@@ -61,6 +69,7 @@ export async function issueRefreshToken(
       familyId,
       authenticatedAt,
       mfaAt,
+      ssoStrength,
       tokenHash: sha256(raw),
       expiresAt: new Date(Date.now() + config().REFRESH_TOKEN_TTL_DAYS * 86_400_000),
     },
@@ -75,7 +84,7 @@ export async function issueRefreshToken(
 export async function rotateRefreshToken(
   tx: Tx,
   raw: string,
-): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date; mfa: boolean } | null> {
+): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date; mfa: boolean; ssoStrength: SsoStrength | null } | null> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (!existing) return null;
   if (existing.revokedAt || existing.expiresAt < new Date()) {
@@ -87,8 +96,8 @@ export async function rotateRefreshToken(
   // The row as it is once locked: a step-up or second factor that committed meanwhile is carried over.
   const current = await tx.refreshToken.update({ where: { id: existing.id }, data: { revokedAt: new Date() } });
   // Rotation keeps the original sign-in time and second factor: refreshing is not proving who you are.
-  const token = await issueRefreshToken(tx, current.tenantId, current.userId, current.familyId, current.authenticatedAt, current.mfaAt);
-  return { userId: current.userId, tenantId: current.tenantId, token, authenticatedAt: current.authenticatedAt, mfa: !!current.mfaAt };
+  const token = await issueRefreshToken(tx, current.tenantId, current.userId, current.familyId, current.authenticatedAt, current.mfaAt, asSsoStrength(current.ssoStrength) ?? null);
+  return { userId: current.userId, tenantId: current.tenantId, token, authenticatedAt: current.authenticatedAt, mfa: !!current.mfaAt, ssoStrength: asSsoStrength(current.ssoStrength) ?? null };
 }
 
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {
@@ -117,13 +126,14 @@ export const epochSeconds = (d: Date = new Date()) => Math.floor(d.getTime() / 1
 /**
  * Marks the session behind this refresh token as just re-authenticated (step-up).
  * `mfa`: it was done with a passkey or a one-time code, so the session now has a second factor.
+ * `passkey`: it was a passkey, which also settles what single sign-on didn't prove (ssoStrength).
  */
-export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Date(), mfa = false): Promise<void> {
+export async function markReauthenticated(tx: Tx, raw: string, at: Date = new Date(), mfa = false, passkey = false): Promise<void> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (existing) {
     // Waits for a refresh rotating this family right now, so the token it issues is marked too
     // (the update below then sees it); without this the mark could land only on the revoked one.
     await tx.$queryRaw`SELECT id FROM "RefreshToken" WHERE "familyId" = ${existing.familyId}::uuid AND "revokedAt" IS NULL FOR UPDATE`;
-    await tx.refreshToken.updateMany({ where: { familyId: existing.familyId, revokedAt: null }, data: { authenticatedAt: at, ...(mfa ? { mfaAt: at } : {}) } });
+    await tx.refreshToken.updateMany({ where: { familyId: existing.familyId, revokedAt: null }, data: { authenticatedAt: at, ...(mfa ? { mfaAt: at } : {}), ...(passkey ? { ssoStrength: null } : {}) } });
   }
 }

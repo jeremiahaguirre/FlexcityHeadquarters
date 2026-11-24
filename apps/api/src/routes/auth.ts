@@ -214,7 +214,7 @@ authRouter.post(
       throw new HttpError(401, 'UNAUTHENTICATED', 'Session expired');
     }
     res.cookie(COOKIE, rotated.token, cookieOpts());
-    res.json({ accessToken: await signAccessToken({ sub: rotated.userId, tid: tenantId, roles: rotated.roles, aat: epochSeconds(rotated.authenticatedAt), mfa: rotated.mfa }) });
+    res.json({ accessToken: await signAccessToken({ sub: rotated.userId, tid: tenantId, roles: rotated.roles, aat: epochSeconds(rotated.authenticatedAt), mfa: rotated.mfa, ...(rotated.ssoStrength ? { sso: rotated.ssoStrength } : {}) }) });
   }),
 );
 

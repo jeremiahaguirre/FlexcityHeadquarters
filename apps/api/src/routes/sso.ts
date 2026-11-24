@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { appUrl, consumeAuthToken } from '../auth/authTokens.js';
 import { authOf, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
-import { epochSeconds, issueRefreshToken, signAccessToken } from '../auth/tokens.js';
+import { epochSeconds, issueRefreshToken, signAccessToken, asSsoStrength } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { checkIssuerHost, checkIssuerUrl, connectionFor, finishSso, samlMetadata, sealClientSecret, spUrls, SsoError, startSso, STATE_COOKIE, stateCookieOpts } from '../services/auth/sso.js';
@@ -71,12 +71,14 @@ ssoAuthRouter.post(
       const user = await tx.user.findUniqueOrThrow({ where: { id: t.userId } });
       if (user.status !== 'ACTIVE' || user.processingRestrictedAt) return null;
       const mfa = t.purpose === 'SSO_MFA';
+      // An older code without a recorded strength (issued before this change) counts as weak.
+      const sso = asSsoStrength(t.ssoStrength) ?? 'weak';
       const now = new Date();
-      const refresh = await issueRefreshToken(tx, tenantId, user.id, undefined, now, mfa ? now : null);
-      return { user, refresh, mfa };
+      const refresh = await issueRefreshToken(tx, tenantId, user.id, undefined, now, mfa ? now : null, sso);
+      return { user, refresh, mfa, sso };
     });
     if (!out) throw new HttpError(400, 'LINK_EXPIRED', 'This sign-in has expired. Try again.');
-    const accessToken = await signAccessToken({ sub: out.user.id, tid: tenantId, roles: out.user.roles, aat: epochSeconds(), mfa: out.mfa });
+    const accessToken = await signAccessToken({ sub: out.user.id, tid: tenantId, roles: out.user.roles, aat: epochSeconds(), mfa: out.mfa, sso: out.sso });
     res.cookie(COOKIE, out.refresh, cookieOpts());
     res.json({ accessToken, user: { id: out.user.id, firstName: out.user.firstName, lastName: out.user.lastName, roles: out.user.roles, locale: out.user.locale } });
   }),

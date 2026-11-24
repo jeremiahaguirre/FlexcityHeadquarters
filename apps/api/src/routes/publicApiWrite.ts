@@ -65,7 +65,7 @@ async function keyActor(req: Request, scopes: ApiScope[]): Promise<AuthContext> 
   const permissions = withoutDisabled(new Set([...permissionsWithOverrides(creator.roles, settings.overrides), ...custom.perms]), settings.features);
   const scope = scopes.find((s) => k.scopes.includes(s))!;
   if (!SCOPE_PERMISSIONS[scope].some((p) => permissions.has(p))) throw new HttpError(403, 'KEY_OWNER_LACKS_PERMISSION', `The person who made this key no longer has the access ${scope} needs, so the key can’t make this change.`, { scope });
-  return { userId: creator.id, tenantId: k.tenantId, roles: creator.roles, permissions, authenticatedAt: new Date(), mfa: true, mfaPending: false, scope: null };
+  return { userId: creator.id, tenantId: k.tenantId, roles: creator.roles, permissions, authenticatedAt: new Date(), mfa: true, mfaPending: false, passkeyRequired: false, scope: null };
 }
 
 function send(res: Response, a: StoredAnswer) {

@@ -654,6 +654,11 @@ model RefreshToken {
   /// When this session proved a second factor (a passkey), carried through
   /// rotation. Null = password only.
   mfaAt           DateTime? @db.Timestamptz(3)
+  /// Signed in by single sign-on: what the provider proved ('weak', 'phr' = phishing-resistant,
+  /// 'phr_fresh' = phishing-resistant within 15 minutes). Null for other sign-ins, and cleared once
+  /// a passkey is used in the session. requireAuth applies the passkey rule from it on every
+  /// request. Carried through rotation.
+  ssoStrength     String?
   expiresAt       DateTime  @db.Timestamptz(3)
   revokedAt       DateTime? @db.Timestamptz(3)
   createdAt       DateTime  @default(now()) @db.Timestamptz(3)
@@ -684,6 +689,8 @@ model AuthToken {
   expiresAt DateTime         @db.Timestamptz(3)
   usedAt    DateTime?        @db.Timestamptz(3)
   createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  /// SSO hand-off codes only: what the provider proved (see RefreshToken.ssoStrength).
+  ssoStrength String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
