@@ -2,6 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
+import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 const server = createApp();
@@ -63,5 +64,38 @@ describe('announcements', () => {
   it('ending one takes it off everyone’s screen', async () => {
     await as('sup').post(`/api/announcements/${annId}/end`);
     expect((await as('guard').get('/api/me/announcements')).body).toEqual([]);
+  });
+});
+
+describe('a poster limited to a department', () => {
+  it('writes only to their department’s positions, and sees and ends only their department’s announcements', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const hrUser = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'Hr', lastName: 'X', email: `hr@${SUB}.test` } });
+    tok.hr = await signAccessToken({ sub: hrUser.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: now, mfa: true });
+    const water = (await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Water Operator' } })).id;
+    const aquatics = (await as('hr').post('/api/departments', { name: 'Aquatics', positionIds: [t.position.id] })).body.id as string;
+    expect((await as('hr').post('/api/departments', { name: 'Water Works', positionIds: [water] })).status).toBe(201);
+    const role = await as('hr').post('/api/roles', { name: 'Aquatics notices', permissions: ['announcements.post'], scopeDepartmentIds: [aquatics] });
+    expect(role.status).toBe(201);
+    const poster = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'Poster', lastName: 'X', email: `poster@${SUB}.test` } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: poster.id, customRoleId: role.body.id } });
+    forgetCustomPermissions(t.tenant.id);
+    tok.poster = await signAccessToken({ sub: poster.id, tid: t.tenant.id, roles: ['EMPLOYEE'], aat: now });
+    const theirs = (await as('hr').post('/api/announcements', { title: 'Plant closed Friday', body: 'Water Works only: the plant closes Friday.', positionIds: [water], pinned: true })).body.id as string;
+    const before = await owner.announcement.count({ where: { tenantId: t.tenant.id } });
+    // Everyone (no positions) and another department's positions are refused; their own are fine.
+    expect((await as('poster').post('/api/announcements', { title: 'To everyone', body: 'Addressed to the whole organization.' })).status).toBe(403);
+    expect((await as('poster').post('/api/announcements', { title: 'To Water Works', body: 'Addressed to another department.', positionIds: [water] })).status).toBe(403);
+    expect(await owner.announcement.count({ where: { tenantId: t.tenant.id } })).toBe(before);
+    const own = await as('poster').post('/api/announcements', { title: 'Pool notice', body: 'Addressed to the pool only.', positionIds: [t.position.id] });
+    expect(own.status).toBe(201);
+    // The list shows their department's announcements, not Water Works', and they can't end Water Works'.
+    const list = (await as('poster').get('/api/announcements')).body as Array<{ id: string }>;
+    expect(list.map((x) => x.id)).toContain(own.body.id);
+    expect(list.map((x) => x.id)).not.toContain(theirs);
+    expect((await as('poster').post(`/api/announcements/${theirs}/end`)).status).toBe(404);
+    const still = await owner.announcement.findUniqueOrThrow({ where: { id: theirs } });
+    expect([still.pinned, still.expiresAt]).toEqual([true, null]);
+    expect((await as('poster').post(`/api/announcements/${own.body.id}/end`)).status).toBe(200);
   });
 });

@@ -21,6 +21,7 @@ import type { Express } from 'express';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { resetLimits } from '../../src/auth/rateLimit.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { FEATURE_KEYS, forgetFeatures } from '../../src/services/platform/features.js';
@@ -32,7 +33,7 @@ const server = createApp();
 const SUB = 'scopesweep';
 let t: Awaited<ReturnType<typeof seedTenant>>;
 const tok = { limited: '', hr: '' };
-const ids = { hr: '', limited: '', mine: '', theirs: '' };
+const ids = { hr: '', limited: '', mine: '', theirs: '', water: '' };
 const kinds: Record<string, string[]> = {};
 const markers: string[] = [];
 
@@ -44,7 +45,11 @@ const EXCLUDED: Array<{ test: (method: string, path: string) => boolean; why: st
   { test: (m, p) => m === 'GET' && p === '/api/notifications/stream', why: 'the live stream stays open by design; it carries only the caller’s own ids and topics' },
 ];
 
-/** Answers a department-limited admin may get as a 2xx write, each with the reason. Keep it short. */
+/**
+ * Parameterless writes a department-limited admin may get a 2xx on, each with the reason. Keep it short.
+ * This excuses only the parameterless-write rule: their answers are still checked for the other
+ * department's data, and the final snapshot still compares what the other department can see.
+ */
 const ALLOWED: Array<{ route: string; why: string }> = [
   { route: 'POST /api/kiosk/unpair', why: 'clears the calling browser’s own kiosk cookie; touches no data' },
   { route: 'POST /api/auth/support/end', why: 'clears the calling browser’s own support-visit cookie' },
@@ -94,6 +99,11 @@ const BODIES: Record<string, () => Record<string, unknown>> = {
   'POST /api/punches/decision': () => ({ ids: kinds.punch, decision: 'APPROVE' }),
   'POST /api/roles': () => ({ name: 'Swept role', permissions: ['schedule.read', 'users.read'] }),
   'POST /api/notifications/read': () => ({ ids: [] }),
+  // Allowed writes whose limits matter: aimed, through their range or audience, at Water Works' draft, rotation and readers.
+  'POST /api/shifts/publish': () => ({ facilityId: t.facility.id, from: new Date(Date.now() - 86_400_000).toISOString(), to: new Date(Date.now() + 5 * 86_400_000).toISOString(), acknowledgeWarnings: true }),
+  'POST /api/shifts/publish/check': () => ({ facilityId: t.facility.id, from: new Date(Date.now() - 86_400_000).toISOString(), to: new Date(Date.now() + 5 * 86_400_000).toISOString() }),
+  'POST /api/schedule/rotations/generate': () => ({ from: isoDay(10), to: isoDay(16), dryRun: false }),
+  'POST /api/announcements': () => ({ title: 'Sweep notice', body: 'A notice from the sweep, addressed to no one in particular.' }),
   'PUT /api/users/:id/roles': () => ({ customRoleIds: [] }),
   'PUT /api/positions/:id': () => ({ name: 'Water Operator', requiredCertificationIds: [] }),
   'POST /api/certifications/starter': () => ({ keys: [STARTER_CERTS[0]!.key] }),
@@ -155,7 +165,6 @@ const UNREACHED: Array<{ route: string; why: string }> = [
   { route: 'PATCH /api/reports/saved/:id', why: 'needs a saved report the sweep doesn’t seed; the caller’s own (reports.test.ts)' },
   { route: 'PATCH /api/vehicles/:id', why: 'needs a vehicle or winter route the sweep doesn’t seed (fleet.test.ts, winter.test.ts)' },
   { route: 'PATCH /api/winter/routes/:id', why: 'needs a vehicle or winter route the sweep doesn’t seed (fleet.test.ts, winter.test.ts)' },
-  { route: 'POST /api/announcements/:id/end', why: 'needs an announcement the sweep doesn’t seed (communication.test.ts)' },
   { route: 'POST /api/applications/:id/hire', why: 'needs a job posting or application the sweep doesn’t seed (applications.test.ts, jobs.test.ts)' },
   { route: 'POST /api/auth/passkey', why: 'a sign-in step: needs a live challenge, code or emailed token' },
   { route: 'POST /api/auth/passkeys', why: 'a sign-in step: needs a live challenge, code or emailed token' },
@@ -178,6 +187,7 @@ const UNREACHED: Array<{ route: string; why: string }> = [
   { route: 'POST /api/lessons/attendance', why: 'needs a member-services record the sweep doesn’t seed (programs.test.ts, signup.test.ts, lessons.test.ts)' },
   { route: 'POST /api/messages/:id/report', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
   { route: 'POST /api/messages/conversations/:id/members', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
+  { route: 'POST /api/messages/conversations/:id/messages', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts); it was counted only through rate-limited (429) answers' },
   { route: 'POST /api/messages/conversations/:id/mute', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
   { route: 'POST /api/messages/conversations/:id/read', why: 'needs a conversation or message the sweep doesn’t seed (the rule of two is tested in messagingSecurity.test.ts)' },
   { route: 'POST /api/offboarding/:id/complete', why: 'needs an HR record the sweep doesn’t seed (hr.test.ts, injury.test.ts)' },
@@ -241,6 +251,8 @@ async function orgSnapshot() {
 
 async function snapshot() {
   const where = { userId: ids.theirs };
+  // Announcements Water Works reads: addressed to everyone, or to its positions.
+  const notices = (await owner.announcement.findMany({ where: { tenantId: t.tenant.id }, orderBy: { id: 'asc' } })).filter((x) => !x.positionIds.length || x.positionIds.includes(ids.water));
   const [user, shifts, punches, timeOff, discipline, notes, events, rates, positions, accommodations, tenant, departments, allPositions, managers] = await Promise.all([
     owner.user.findUnique({ where: { id: ids.theirs } }),
     owner.shift.findMany({ where, orderBy: { id: 'asc' } }),
@@ -258,7 +270,7 @@ async function snapshot() {
     owner.position.findMany({ where: { tenantId: t.tenant.id }, orderBy: { id: 'asc' } }),
     owner.departmentManager.findMany({ where: { tenantId: t.tenant.id }, orderBy: [{ departmentId: 'asc' }, { userId: 'asc' }] }),
   ]);
-  return JSON.stringify({ user, shifts, punches, timeOff, discipline, notes, events, rates, positions, accommodations, tenant, departments, allPositions, managers });
+  return JSON.stringify({ user, shifts, punches, timeOff, discipline, notes, events, rates, positions, accommodations, tenant, departments, allPositions, managers, notices });
 }
 
 /** Sets `value` at `path` in `body`, making the objects and arrays on the way. */
@@ -283,6 +295,9 @@ function idFor(name: string): string {
   if (/^(id|ids|userids?|personids?|memberids?|subjectids?|employeeids?|managerids?)$/.test(n)) return kinds.user![0]!;
   return kinds.user![0]!;
 }
+
+/** A day from today, as YYYY-MM-DD. */
+const isoDay = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
 
 /** Ends of a range come after their starts; things that happened are in the past (dates relative to now). */
 const later = (k: string) => /(end|close|to$|until|expir|last|max)/.test(k);
@@ -349,8 +364,8 @@ function valueFor(issue: { code: string; path: Array<string | number>; expected?
 }
 
 type Answer = { status: number; code?: string; text: string };
-/** An answer that shows the route ran its checks: not validation (400), a missing id (404), a crash (5xx) or no answer. */
-const tested = (status: number) => status !== 0 && status !== 400 && status !== 404 && status < 500;
+/** An answer that shows the route ran its checks: not validation (400), a missing id (404), a rate limit (429), a crash (5xx) or no answer. */
+const tested = (status: number) => status !== 0 && status !== 400 && status !== 404 && status !== 429 && status < 500;
 const slow: string[] = [];
 
 /** Sends a request; on 400 VALIDATION, fills what zod asked for and tries again (a few rounds). */
@@ -400,6 +415,7 @@ beforeAll(async () => {
   const now = Math.floor(Date.now() / 1000);
   const guard = (await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Pool Lifeguard' } })).id;
   const water = (await owner.position.create({ data: { tenantId: t.tenant.id, name: 'Water Operator' } })).id;
+  ids.water = water;
   const mk = async (roles: Array<'HR_ADMIN' | 'STAFF' | 'EMPLOYEE'>, first: string, last: string, position?: string) => {
     const u = await owner.user.create({ data: { tenantId: t.tenant.id, roles, employmentStatus: 'FULL_TIME', firstName: first, lastName: last, email: `${first.toLowerCase()}.${last.toLowerCase()}@${SUB}.test`, dateOfBirth: new Date('1990-01-01') } });
     if (position) await owner.userPosition.create({ data: { tenantId: t.tenant.id, userId: u.id, positionId: position } });
@@ -436,6 +452,11 @@ beforeAll(async () => {
   const cert = await owner.userCertification.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, certificationId: t.nls.id, issueDate: new Date('2026-01-01'), expiryDate: new Date('2028-01-01') } });
   const item = await owner.onboardingItem.create({ data: { tenantId: t.tenant.id, name: 'Sweep orientation (organization catalogue)', owner: 'SUPERVISOR', kind: 'TASK' } });
   await owner.payRate.create({ data: { tenantId: t.tenant.id, userId: ids.theirs, positionId: water, hourlyRate: 47.13, effectiveFrom: new Date('2025-01-01') } });
+  // What the allowed writes could act on: a draft shift in the publishing range, a rotation in the
+  // generating range, and a pinned notice to Water Works (the snapshot compares all three).
+  await owner.shift.create({ data: { tenantId: t.tenant.id, facilityId: t.facility.id, positionId: water, userId: ids.theirs, startsAt: new Date(Date.now() + 2 * 86_400_000), endsAt: new Date(Date.now() + 2 * 86_400_000 + 4 * 3_600_000), status: 'DRAFT' } });
+  const rotation = await owner.rotationTemplate.create({ data: { tenantId: t.tenant.id, name: 'Waterworks-only rotation', departmentId: waterWorks, facilityId: t.facility.id, positionId: water, cycleDays: 1, anchorDate: new Date(isoDay(0)), pattern: [{ day: 0, start: '09:00', end: '17:00', label: 'day' }], crews: [{ name: 'A', offsetDays: 0, userIds: [ids.theirs], openSlots: 0 }], createdById: ids.hr } });
+  const notice = await owner.announcement.create({ data: { tenantId: t.tenant.id, title: 'Waterworks-only notice', body: 'Waterworks-only: the plant closes Friday.', positionIds: [water], pinned: true, authorId: ids.hr } });
   Object.assign(kinds, {
     user: [ids.theirs],
     shift: [shift.id],
@@ -454,8 +475,10 @@ beforeAll(async () => {
     expense: [expense.id],
     lonework: [alone.id],
     certification: [cert.id],
+    rotation: [rotation.id],
+    announcement: [notice.id],
   });
-  markers.push(ids.theirs, shift.id, punch.id, timeOff.id, note.id, event.id, discipline.id, accommodation.id, expense.id, alone.id, cert.id, 'Waterworksonly', `wendell.waterworksonly@${SUB}.test`, 'Waterworks-only');
+  markers.push(rotation.id, notice.id, ids.theirs, shift.id, punch.id, timeOff.id, note.id, event.id, discipline.id, accommodation.id, expense.id, alone.id, cert.id, 'Waterworksonly', `wendell.waterworksonly@${SUB}.test`, 'Waterworks-only');
 });
 afterAll(async () => {
   await appDb.$disconnect();
@@ -464,6 +487,7 @@ afterAll(async () => {
 
 describe('department limits hold on every route', () => {
   it('a department-limited role with every capability reaches no one outside its department, and no organization-wide setting', async () => {
+    resetLimits();
     const before = await snapshot();
     const all = routes(server as unknown as Express).filter(([m, p]) => p.startsWith('/api/') && !EXCLUDED.some((x) => x.test(m, p)));
     expect(all.length).toBeGreaterThan(300);
@@ -513,10 +537,11 @@ describe('department limits hold on every route', () => {
     }
     for (const [n, a] of answers) {
       const j = jobs[n]!;
-      if (a.status < 200 || a.status >= 300 || allowed(j.method, j.path)) continue;
+      if (a.status < 200 || a.status >= 300) continue;
       const hit = markers.find((m) => a.text.includes(m));
       if (hit) problems.push(`${j.method} ${j.url} → ${a.status} holds ${hit}`);
       else if (j.method !== 'GET' && j.aimed) problems.push(`${j.method} ${j.url} → ${a.status} (a write aimed at another department)`);
+      else if (allowed(j.method, j.path)) continue;
       // Any other write that succeeds without parameters must be listed in ALLOWED with its reason:
       // a write that changes something organization-wide isn't always in the four tables compared.
       else if (j.method !== 'GET' && !ownPage(j.path)) problems.push(`${j.method} ${j.url} → ${a.status} (${changedOrg.has(n) ? 'changed an organization-wide setting' : 'a write without parameters: list it in ALLOWED with the reason, or refuse it'})`);
@@ -537,6 +562,7 @@ describe('department limits hold on every route', () => {
       if (tested(a.status)) reachedRoutes.add(`${j.method} ${j.path}`);
       else pending.push({ j, a });
     }
+    resetLimits();
     for (const { j } of pending) {
       const key = `${j.method} ${j.path}`;
       if (reachedRoutes.has(key)) continue;

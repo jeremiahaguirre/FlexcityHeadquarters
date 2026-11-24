@@ -82,6 +82,29 @@ function isFor(x: A, mine: { positions: Set<string>; facilities: Set<string> }) 
   return true;
 }
 
+/** The positions someone holds and the facilities they've worked or will work at (±30 days). */
+async function audienceOf(tx: Tx, userId: string) {
+  const near = { gte: new Date(Date.now() - 30 * 86_400_000), lt: new Date(Date.now() + 30 * 86_400_000) };
+  const [positions, shifts] = await Promise.all([
+    tx.userPosition.findMany({ where: { userId }, select: { positionId: true } }),
+    tx.shift.findMany({ where: { userId, startsAt: near }, select: { facilityId: true }, distinct: ['facilityId'] }),
+  ]);
+  return { positions: new Set(positions.map((p) => p.positionId)), facilities: new Set(shifts.map((s) => s.facilityId)) };
+}
+
+/**
+ * A poster limited to a department manages the announcements they wrote and those addressed only to
+ * their department (the rule for posting, below). Others' announcements to everyone or to another
+ * department aren't theirs to list or end.
+ */
+function inMyDepartment(a: AuthContext, x: A & { authorId: string }) {
+  if (!a.scope || x.authorId === a.userId) return true;
+  const { positionIds: p, facilityIds: f } = a.scope;
+  if (p.length && (!x.positionIds.length || x.positionIds.some((id) => !p.includes(id)))) return false;
+  if (f.length && (!x.facilityIds.length || x.facilityIds.some((id) => !f.includes(id)))) return false;
+  return true;
+}
+
 communicationRouter.get(
   '/me/announcements',
   h(async (req, res) => {
@@ -89,14 +112,11 @@ communicationRouter.get(
     res.json(
       await withTenant(a.tenantId, async (tx) => {
         const now = new Date();
-        const near = { gte: new Date(now.getTime() - 30 * 86_400_000), lt: new Date(now.getTime() + 30 * 86_400_000) };
-        const [positions, shifts, list, reads] = await Promise.all([
-          tx.userPosition.findMany({ where: { userId: a.userId }, select: { positionId: true } }),
-          tx.shift.findMany({ where: { userId: a.userId, startsAt: near }, select: { facilityId: true }, distinct: ['facilityId'] }),
+        const [mine, list, reads] = await Promise.all([
+          audienceOf(tx, a.userId),
           tx.announcement.findMany({ where: { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }], publishedAt: { gte: new Date(now.getTime() - 90 * 86_400_000) } }, orderBy: [{ pinned: 'desc' }, { publishedAt: 'desc' }], take: 50 }),
           tx.announcementRead.findMany({ where: { userId: a.userId }, select: { announcementId: true } }),
         ]);
-        const mine = { positions: new Set(positions.map((p) => p.positionId)), facilities: new Set(shifts.map((s) => s.facilityId)) };
         const read = new Set(reads.map((r) => r.announcementId));
         const out = [];
         for (const x of list) if (x.authorId === a.userId || isFor(x, mine)) out.push({ id: x.id, title: x.title, body: x.body, pinned: x.pinned, publishedAt: x.publishedAt, expiresAt: x.expiresAt, read: read.has(x.id) });
@@ -112,7 +132,9 @@ communicationRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
-      if (!(await tx.announcement.findUnique({ where: { id }, select: { id: true } }))) throw notFound('Announcement');
+      // Only an announcement addressed to them (or written by them) can be marked read.
+      const x = await tx.announcement.findUnique({ where: { id } });
+      if (!x || (x.authorId !== a.userId && !isFor(x, await audienceOf(tx, a.userId)))) throw notFound('Announcement');
       await tx.announcementRead.upsert({ where: { announcementId_userId: { announcementId: id, userId: a.userId } }, update: {}, create: { tenantId: a.tenantId, announcementId: id, userId: a.userId } });
     });
     res.json({ ok: true });
@@ -128,7 +150,7 @@ communicationRouter.get(
       await withTenant(a.tenantId, async (tx) => {
         const list = await tx.announcement.findMany({ orderBy: { publishedAt: 'desc' }, take: 50, include: { _count: { select: { reads: true } } } });
         const out = [];
-        for (const x of list) out.push({ id: x.id, title: x.title, body: x.body, pinned: x.pinned, positionIds: x.positionIds, facilityIds: x.facilityIds, publishedAt: x.publishedAt, expiresAt: x.expiresAt, read: x._count.reads, of: (await audienceIds(tx, x)).length });
+        for (const x of list) if (inMyDepartment(a, x)) out.push({ id: x.id, title: x.title, body: x.body, pinned: x.pinned, positionIds: x.positionIds, facilityIds: x.facilityIds, publishedAt: x.publishedAt, expiresAt: x.expiresAt, read: x._count.reads, of: (await audienceIds(tx, x)).length });
         return out;
       }),
     );
@@ -162,8 +184,9 @@ communicationRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
-      const done = await tx.announcement.updateMany({ where: { id }, data: { expiresAt: new Date(), pinned: false } });
-      if (!done.count) throw notFound('Announcement');
+      const x = await tx.announcement.findUnique({ where: { id } });
+      if (!x || !inMyDepartment(a, x)) throw notFound('Announcement');
+      await tx.announcement.update({ where: { id }, data: { expiresAt: new Date(), pinned: false } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'announcement.end', entity: 'Announcement', entityId: id });
     });
     res.json({ ok: true });
