@@ -18,7 +18,7 @@ const tok = { hr: '', guard: '' };
 const as = (token: string) => ({
   get: (p: string) => request(server).get(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }),
   post: (p: string, b: object = {}) => request(server).post(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
-
+  patch: (p: string, b: object = {}) => request(server).patch(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
   put: (p: string, b: object = {}) => request(server).put(p).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' }).send(b),
 });
 const day = (offset: number) => new Date(Date.now() + offset * 86_400_000);
@@ -30,8 +30,15 @@ const account = (data: object = {}) =>
   });
 async function invoice(dueOffsetDays: number, totalCents = 113_000) {
   const n = Math.floor(Math.random() * 1e9);
+  // A complete invoice (a line plus 13% HST adding up to the total), so FH's books stay balanced
+  // whichever test file reads them next.
+  const subtotalCents = Math.round(totalCents / 1.13);
   return owner.invoice.create({
-    data: { tenantId: t.tenant.id, number: `T-${n}`, status: 'SENT', periodStart: day(-60), periodEnd: day(-31), issueDate: day(dueOffsetDays - 30), dueDate: day(dueOffsetDays), subtotalCents: 100_000, totalCents, billTo: {}, createdById: hr },
+    data: {
+      tenantId: t.tenant.id, number: `T-${n}`, status: 'SENT', periodStart: day(-60), periodEnd: day(-31), issueDate: day(dueOffsetDays - 30), dueDate: day(dueOffsetDays),
+      subtotalCents, taxLines: [{ name: 'HST', amountCents: totalCents - subtotalCents }], totalCents, billTo: {}, createdById: hr,
+      lines: { create: [{ position: 1, kind: 'facility', description: 'Facility licence', quantity: 1, unitCents: subtotalCents, amountCents: subtotalCents }] },
+    },
   });
 }
 
@@ -135,6 +142,11 @@ describe('unpaid invoices', () => {
     expect((await as(tok.guard).post('/api/incidents', {})).status).not.toBe(402);
     expect((await as(tok.guard).post('/api/timeclock/in', {})).status).not.toBe(402);
     expect((await as(tok.guard).post('/api/me/lone-work', {})).status).not.toBe(402);
+    // Signing the consent agreement (needed before a new hire can clock in) and reporting a workplace
+    // injury to the board (a legal deadline) also keep working.
+    expect((await as(tok.guard).post('/api/me/consent', {})).status).not.toBe(402);
+    expect((await as(tok.hr).post('/api/injury-claims', {})).status).not.toBe(402);
+    expect((await as(tok.hr).patch('/api/injury-claims/00000000-0000-4000-8000-000000000000', { lostTime: true })).status).not.toBe(402);
   });
 
   it('the city sees its invoices and balance, but not drafts', async () => {
