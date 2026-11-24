@@ -3,6 +3,7 @@
  * security headers, body limits per route, public routes before sign-in, then the signed-in API),
  * and errorHandler turns every thrown error into one JSON shape.
  */
+import { largeBodyAllowed } from './lib/largeBody.js';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import { stripeWebhookRouter } from './routes/billing.js';
@@ -71,9 +72,13 @@ export function createApp() {
   const smallJson = jsonBody({ limit: '100kb' });
   const uploadJson = jsonBody({ limit: '14mb' });
   const signatureJson = jsonBody({ limit: '400kb' });
-  app.use((req, res, next) =>
-    (req.method === 'POST' && (/^\/api\/(me|users\/[0-9a-f-]{36})\/documents$/.test(req.path) || /^\/api\/messages\/conversations\/[0-9a-f-]{36}\/messages$/.test(req.path)) ? uploadJson : req.method === 'POST' && req.path === '/api/me/consent' ? signatureJson : smallJson)(req, res, next),
-  );
+  app.use((req, res, next) => {
+    const large = req.method === 'POST' && (/^\/api\/(me|users\/[0-9a-f-]{36})\/documents$/.test(req.path) || /^\/api\/messages\/conversations\/[0-9a-f-]{36}\/messages$/.test(req.path)) ? uploadJson : req.method === 'POST' && req.path === '/api/me/consent' ? signatureJson : null;
+    if (!large) return smallJson(req, res, next);
+    // A large body is read only for a valid access token: anonymous senders can't make a process
+    // parse megabytes before authentication (SECURITY-AUDIT SEC-47). Same 401 as requireAuth.
+    largeBodyAllowed(req, res).then((ok) => (ok ? large(req, res, next) : next(new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token'))), next);
+  });
   app.use(cookieParser());
 
   // Browsers' error reports, from any page (an organization's or the Dev console).
@@ -81,7 +86,7 @@ export function createApp() {
   app.use('/api', publicLogoRouter);
   // Calendar apps fetch a person's private shift feed by its link (routes/calendar.ts).
   app.use('/api', publicCalendarRouter);
-  // Facility kiosks (shared tablets) sign requests with their own secret, not a person's session.
+  // Facility kiosks (shared tablets) present their own device secret, not a person's session.
   app.use('/api', kioskRouter);
   app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, mfaCodeRouter, publicJobsRouter, publicApplicationsRouter, publicSignupRouter, publicMaintenanceRouter);
   app.use('/api', api);
