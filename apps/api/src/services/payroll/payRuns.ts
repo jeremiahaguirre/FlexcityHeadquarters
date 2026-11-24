@@ -457,7 +457,8 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
     blockers: blockers.list() as unknown as Prisma.InputJsonValue,
     warnings: warnings.list() as unknown as Prisma.InputJsonValue,
   };
-  const run = runId ? await tx.payRun.update({ where: { id: runId }, data }) : await tx.payRun.create({ data: { ...data, tenantId, preparedById } });
+  // Whoever builds it (prepares or recalculates) is its preparer, so they can't also approve what they last built.
+  const run = runId ? await tx.payRun.update({ where: { id: runId }, data: { ...data, preparedById } }) : await tx.payRun.create({ data: { ...data, tenantId, preparedById } });
   await tx.payStatement.deleteMany({ where: { payRunId: run.id } });
   if (statements.length) await tx.payStatement.createMany({ data: statements.map((s) => ({ ...s, payRunId: run.id })) });
   return run;
@@ -469,8 +470,34 @@ export function runInput(run: { departmentId: string | null; periodStart: Date; 
   return { departmentId: run.departmentId, periodStart: start, weeks: Math.round(days / 7), payDate: run.payDate.toISOString().slice(0, 10), kind: run.kind === 'OFF_CYCLE' ? 'OFF_CYCLE' : 'REGULAR', note: run.note ?? null };
 }
 
-/** A second person checks and releases the run. It's recalculated first so year-to-date figures are current. */
-export async function approveRun(tx: Tx, tenantId: string, runId: string, approverId: string, settings: PayrollSettings) {
+/** Sorted object keys all the way down, so the same values always give the same text. */
+function canonical(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(canonical);
+  if (v && typeof v === 'object' && !(v instanceof Date)) return Object.fromEntries(Object.keys(v).sort().map((k) => [k, canonical((v as Record<string, unknown>)[k])]));
+  return v;
+}
+
+/**
+ * What the run pays and to whom, as a hash: each statement's earnings, deductions, totals and
+ * deposit account, and the run's totals. Year-to-date figures and ids are left out (they change
+ * without changing this run's pay). Approval binds to it (SEC-10).
+ */
+export async function runFingerprint(tx: Tx, runId: string): Promise<string> {
+  const [run, statements] = await Promise.all([
+    tx.payRun.findUniqueOrThrow({ where: { id: runId }, select: { totals: true } }),
+    tx.payStatement.findMany({ where: { payRunId: runId }, orderBy: { userId: 'asc' }, select: { userId: true, departmentId: true, province: true, hours: true, earnings: true, deductions: true, gross: true, totalDeductions: true, net: true, employerCpp: true, employerEi: true, bankAccountId: true } }),
+  ]);
+  const text = JSON.stringify(canonical({ totals: run.totals, statements: statements.map((x) => ({ ...x, hours: String(x.hours), gross: String(x.gross), totalDeductions: String(x.totalDeductions), net: String(x.net), employerCpp: String(x.employerCpp), employerEi: String(x.employerEi) })) }));
+  return createHash('sha256').update(text).digest('hex');
+}
+
+/**
+ * A second person checks and releases the run. It's recalculated first so year-to-date figures are
+ * current, and that recalculation must pay exactly what was prepared and reviewed (SEC-10): a pay
+ * rate, salary, hours or deduction that changed since then refuses the approval (RUN_CHANGED), and
+ * the preparer recalculates it for a fresh review. `reviewed`: the fingerprint the approver looked at.
+ */
+export async function approveRun(tx: Tx, tenantId: string, runId: string, approverId: string, settings: PayrollSettings, reviewed?: string) {
   const run = await tx.payRun.findUnique({ where: { id: runId } });
   if (!run) throw notFound('Pay run');
   if (run.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be approved.');
@@ -482,9 +509,13 @@ export async function approveRun(tx: Tx, tenantId: string, runId: string, approv
   }
   // In-app pay runs only while the organization runs payroll in the app.
   if (settings.payrollProvider && settings.payrollProvider.mode !== 'in_app') throw conflict('PAYROLL_WITH_PROVIDER', `Payroll runs with ${settings.payrollProvider.mode} for this organization: send the period from the Payroll provider tab, or switch back to payroll in the app.`);
+  const prepared = await runFingerprint(tx, runId);
+  if (reviewed && reviewed !== prepared) throw conflict('RUN_CHANGED', 'This pay run was recalculated since you opened it. Review it again before approving.');
   const fresh = await buildRun(tx, tenantId, run.preparedById, runInput(run), run.id);
   const blockers = fresh.blockers as unknown as Array<Issue | string>;
   if (blockers.length) throw new HttpError(409, 'RUN_BLOCKED', 'This pay run can’t be approved yet.', { blockers });
+  // Thrown inside the transaction: the recalculation is undone and the run stays as it was reviewed.
+  if ((await runFingerprint(tx, runId)) !== prepared) throw conflict('RUN_CHANGED', 'Pay, hours or deductions changed since this pay run was prepared. Ask the person who prepared it to recalculate it, then review it again.');
   const approved = await tx.payRun.update({ where: { id: runId }, data: { status: 'APPROVED', approvedById: approverId, approvedAt: new Date() } });
   const people = await tx.payStatement.findMany({ where: { payRunId: runId }, select: { id: true, userId: true, net: true, deductions: true } });
   // Expense claims on this run are paid now (and so drop out of any other draft run).
@@ -496,6 +527,16 @@ export async function approveRun(tx: Tx, tenantId: string, runId: string, approv
     people.map((s) => ({ userId: s.userId, type: 'pay_statement_ready', params: { payDate: run.payDate.toISOString().slice(0, 10) }, link: `/pay?statement=${s.id}`, email: 'pay_statement_ready' })),
   );
   return approved;
+}
+
+/**
+ * Nobody changes their own salary, pay rates or tax profile through HR's screens while pay runs need
+ * two people (SEC-10): the approver could raise their own pay before approving. Someone else does it.
+ */
+export async function assertNotOwnPay(tx: Tx, actorId: string, userId: string) {
+  if (actorId !== userId) return;
+  const settings = readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings);
+  if (settings.twoPersonApproval !== false) throw new HttpError(403, 'SELF_PAY_CHANGE', 'Someone else has to change your own pay: pay runs need two people.');
 }
 
 /** The bank file for an approved run. The same run always gets the same file creation number. */

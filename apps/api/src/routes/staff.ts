@@ -5,6 +5,7 @@ import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
 import { type AuthContext, accessOf, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { assertNotOwnPay } from '../services/payroll/payRuns.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
@@ -735,6 +736,7 @@ staffRouter.post(
     if (Number(body.hourlyRate) < 10) throw badRequest('That rate is below any Canadian minimum wage. Check the amount.');
     const rate = await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, id);
+      await assertNotOwnPay(tx, a.userId, id);
       const later = await tx.payRate.findFirst({ where: { userId: id, positionId: body.positionId, effectiveFrom: { gte: d(body.effectiveFrom)! } } });
       if (later) throw conflict('RATE_EXISTS', 'A rate already starts on or after that date for this position.');
       await tx.payRate.updateMany({

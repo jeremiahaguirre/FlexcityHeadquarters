@@ -439,6 +439,9 @@
     "emptyBody": "Vos quarts s’afficheront ici dès qu’un superviseur publiera l’horaire."
   },
   "errors": {
+    "RUN_CHANGED": "La paie, les heures ou les retenues ont changé depuis la préparation de cette paie. Demandez à la personne qui l’a préparée de la recalculer, puis vérifiez-la de nouveau.",
+    "SELF_PAY_CHANGE": "Une autre personne doit modifier votre propre rémunération : les paies exigent deux personnes.",
+    "VOID_AFTER_FILE": "Le fichier de dépôt de cette paie a déjà été créé ou envoyé : elle ne peut pas être annulée. Marquez-la comme payée et corrigez-la dans la prochaine paie.",
     "SHIFT_ALREADY_CLAIMED": "Quelqu’un d’autre a pris ce quart avant vous.",
     "SHIFT_CHANGED": "Ce quart vient de changer. Actualisez pour voir la dernière version.",
     "OWN_OFFER": "C’est votre propre quart.",
