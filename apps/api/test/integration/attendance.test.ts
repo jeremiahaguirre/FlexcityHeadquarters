@@ -218,6 +218,32 @@ describe('punch corrections: payroll integrity', () => {
     expect((await call(sup).post('/api/punches/decision', { ids: [r.body.id], decision: 'APPROVE' })).body.code).toBe('OWN_CORRECTION');
   });
 
+  it('a rejected punch can’t be approved straight after by the supervisor who added it', async () => {
+    const r = await add(sup, local(-4, '06:00'), local(-4, '10:00'));
+    expect(r.status).toBe(201);
+    expect((await call(sup2).post('/api/punches/decision', { ids: [r.body.id], decision: 'REJECT', note: 'They weren’t on shift that morning' })).status).toBe(200);
+    // Only punches waiting for review can be decided; a decided one goes back through a correction.
+    const again = await call(sup).post('/api/punches/decision', { ids: [r.body.id], decision: 'APPROVE' });
+    expect(again.status).toBe(409);
+    expect(again.body.code).toBe('NOT_PENDING');
+    expect((await owner.timePunch.findUniqueOrThrow({ where: { id: r.body.id } })).status).toBe('REJECTED');
+  });
+
+  it('punches in an approved or paid pay period can’t be approved or rejected', async () => {
+    const day = DateTime.now().setZone(VAN_TZ).minus({ days: 10 }).toISODate()!;
+    const p = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: instant(`${day}T08:00`), clockOut: instant(`${day}T12:00`), status: 'PENDING' } });
+    const run = await owner.payRun.create({ data: { tenantId: t.tenant.id, periodStart: new Date(`${day}T00:00:00Z`), periodEnd: new Date(`${day}T00:00:00Z`), payDate: new Date(`${day}T00:00:00Z`), periodsPerYear: 26, status: 'APPROVED', preparedById: supId } });
+    try {
+      const approve = await call(sup2).post('/api/punches/decision', { ids: [p.id], decision: 'APPROVE' });
+      expect(approve.status).toBe(409);
+      expect(approve.body.code).toBe('PERIOD_PAID');
+      expect((await call(sup2).post('/api/punches/decision', { ids: [p.id], decision: 'REJECT', note: 'Wrong day' })).body.code).toBe('PERIOD_PAID');
+      expect((await owner.timePunch.findUniqueOrThrow({ where: { id: p.id } })).status).toBe('PENDING');
+    } finally {
+      await owner.payRun.update({ where: { id: run.id }, data: { status: 'VOID' } });
+    }
+  });
+
   it('time in an approved or paid pay period can’t be added or changed', async () => {
     const day = DateTime.now().setZone(VAN_TZ).minus({ days: 9 }).toISODate()!;
     const p = await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: worker.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: instant(`${day}T08:00`), clockOut: instant(`${day}T12:00`), status: 'APPROVED' } });

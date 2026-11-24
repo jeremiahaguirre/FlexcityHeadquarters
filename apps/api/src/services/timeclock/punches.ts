@@ -261,7 +261,7 @@ const MAX_PUNCH_MS = 24 * 3_600_000;
  * punch's department): its hours are on a pay statement already, so the time is fixed with an
  * adjustment on a later run, never by changing the record that was paid.
  */
-async function assertPeriodOpen(tx: Tx, p: { positionId: string; facilityId: string; clockIn: Date }) {
+export async function assertPeriodOpen(tx: Tx, p: { positionId: string; facilityId: string; clockIn: Date }) {
   const facility = await tx.facility.findUnique({ where: { id: p.facilityId }, select: { timezone: true } });
   if (!facility) return;
   const day = new Date(`${localDate(p.clockIn, facility.timezone)}T00:00:00Z`);
