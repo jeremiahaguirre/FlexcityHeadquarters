@@ -95,6 +95,14 @@ const schema = z.object({
   /** Recovery region (ca-west-1): organizations' keys are created multi-region and copied there. */
   KMS_REPLICA_REGION: z.string().optional(),
   AWS_REGION: z.string().default('ca-central-1'),
+  /** Email. "console" notes each send (development and tests); "ses" sends through Amazon SES. */
+  MAIL_PROVIDER: z.enum(['console', 'ses']).default('console'),
+  /** The sender for MAIL_PROVIDER=ses: an address or domain verified in SES, e.g. "Name <notices@example.ca>". */
+  MAIL_FROM: z.string().default(''),
+  /** SES region: Canada (Central) by default, so mail is sent from Canada. */
+  SES_REGION: z.string().default('ca-central-1'),
+  /** Optional SES configuration set (bounce and complaint events). */
+  SES_CONFIGURATION_SET: z.string().optional(),
   /** Texts and voice calls (urgent alerts). "console" logs them; "twilio" sends them. */
   SMS_PROVIDER: z.enum(['console', 'twilio']).default('console'),
   TWILIO_ACCOUNT_SID: z.string().optional(),
