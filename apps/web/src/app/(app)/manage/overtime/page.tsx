@@ -8,6 +8,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Dialog } from '@/components/ui/Dialog';
 import { Field, Input, Select } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
@@ -16,7 +17,7 @@ import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Row { userId: string; name: string; chargedHours: number; acceptedHours: number; refusals: number; seniorityDate: string | null }
-interface Entry { id: string; kind: 'ACCEPTED' | 'REFUSED' | 'NO_ANSWER'; hours: string; occurredAt: string; note: string | null; recordedBy: string; reversal: boolean; voided: { by: string; at: string; reason: string | null } | null }
+interface Entry { id: string; kind: 'ACCEPTED' | 'REFUSED' | 'NO_ANSWER'; hours: string; occurredAt: string; note: string | null; recordedBy: string; reversal: boolean; takenBack?: boolean; voided: { by: string; at: string; reason: string | null } | null }
 interface Standings { policy: { countRefusals: boolean; clause: string | null; periodStartMonth: number }; useSeniority?: boolean; periodFrom: string; rows: Row[] }
 
 const localInput = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
@@ -140,7 +141,9 @@ export default function OvertimePage() {
         </form>
       </Dialog>
       <Dialog open={!!viewing} onClose={() => { setViewing(null); setVoiding(null); }} title={t('overtime.historyTitle', { name: viewing?.name ?? '' })} description={history.data ? t('overtime.historyHelp', { date: formatDate(`${history.data.periodFrom}T12:00:00`, lng, 'dated') }) : undefined} closeLabel={t('common.close')}>
-        {!history.data ? (
+        {history.error ? (
+          <ErrorNotice onRetry={() => void history.reload()} />
+        ) : !history.data ? (
           <Skeleton className="h-32" />
         ) : history.data.entries.length === 0 ? (
           <p className="text-small text-muted">{t('overtime.historyEmpty')}</p>
@@ -150,12 +153,12 @@ export default function OvertimePage() {
               <li key={x.id} className={`grid gap-1 rounded-lg border border-line p-3 text-small ${x.voided ? 'opacity-70' : ''}`}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className={`font-semibold ${x.voided ? 'line-through' : ''}`}>{t(`overtime.kind.${x.kind}`)} · <span className="tabular-nums">{Number(x.hours).toFixed(2)} h</span></span>
-                  {x.voided ? <StatusPill tone="inactive">{t('overtime.voidedPill')}</StatusPill> : x.reversal ? <StatusPill tone="neutral">{t('overtime.takenBack')}</StatusPill> : null}
+                  {x.voided ? <StatusPill tone="inactive">{t('overtime.voidedPill')}</StatusPill> : x.reversal || x.takenBack ? <StatusPill tone="neutral">{t('overtime.takenBack')}</StatusPill> : null}
                 </div>
                 <span className="text-caption text-muted">{formatMoment(x.occurredAt, lng)} · {t('overtime.recordedBy', { name: x.recordedBy })}</span>
                 {x.note ? <span>{x.note}</span> : null}
                 {x.voided ? <span className="text-caption">{t('overtime.voidedBy', { name: x.voided.by, reason: x.voided.reason ?? '' })}</span> : null}
-                {manage && !x.voided && !x.reversal ? (
+                {manage && !x.voided && !x.reversal && !x.takenBack ? (
                   voiding?.id === x.id ? (
                     <form className="mt-2 grid gap-3" onSubmit={(e) => void voidEntry(e)}>
                       <Field label={t('overtime.voidReason')} hint={t('overtime.voidHelp')}>{(p) => <Input {...p} name="reason" required minLength={3} maxLength={300} autoFocus />}</Field>

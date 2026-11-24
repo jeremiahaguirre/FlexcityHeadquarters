@@ -131,6 +131,19 @@ describe('correcting the overtime ledger', () => {
     expect(await owner.overtimeEntry.count({ where: { reversesId: made.body.id } })).toBe(1);
   });
 
+  it('a shift charge already taken back (the shift was unassigned) can’t be voided again', async () => {
+    // As reverseOvertime does: the charge, then a negative entry for the same shift with no link to it.
+    const charge = await owner.overtimeEntry.create({ data: { tenantId: t.tenant.id, userId: id(C), positionId: pos(), shiftId, kind: 'ACCEPTED', hours: '3', occurredAt: new Date(), recordedById: id(A) } });
+    await owner.overtimeEntry.create({ data: { tenantId: t.tenant.id, userId: id(C), positionId: pos(), shiftId, kind: 'ACCEPTED', hours: '-3', occurredAt: new Date(), recordedById: id(A), note: 'Unassigned' } });
+    const before = (await standingOf(C)).chargedHours;
+    const history = (await call(sup).get(`/api/overtime/entries?positionId=${pos()}&userId=${id(C)}`)).body.entries;
+    expect(history.find((e: { id: string }) => e.id === charge.id)).toMatchObject({ takenBack: true });
+    const r = await call(sup).post(`/api/overtime/entries/${charge.id}/void`, { reason: 'Wrong person' });
+    expect(r.status).toBe(409);
+    expect(r.body.code).toBe('OVERTIME_TAKEN_BACK');
+    expect((await standingOf(C)).chargedHours).toBe(before);
+  });
+
   it('a supervisor cannot void an entry about themselves', async () => {
     const me = await owner.user.findFirstOrThrow({ where: { email: 'sup@otfair.test' } });
     const own = await owner.overtimeEntry.create({ data: { tenantId: t.tenant.id, userId: me.id, positionId: t.position.id, kind: 'REFUSED', hours: '4', occurredAt: new Date(), recordedById: id(A) } });

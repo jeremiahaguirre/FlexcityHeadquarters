@@ -7,7 +7,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { updateTenantJson } from '../lib/tenantSettings.js';
 import { HttpError, conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { dec } from '../lib/money.js';
-import { entryHistory, fairnessCheck, parsePolicy, periodStart, standings } from '../services/scheduling/overtime.js';
+import { entryHistory, fairnessCheck, parsePolicy, periodStart, shiftCharge, standings } from '../services/scheduling/overtime.js';
 import { h } from './context.js';
 import { assertPositionInScope, shiftInScope } from '../services/people/scope.js';
 
@@ -90,6 +90,9 @@ overtimeRouter.post(
       if (e.userId === a.userId) throw new HttpError(403, 'OWN_OVERTIME', 'Someone else corrects your own overtime record.');
       if (e.reversesId || !dec(e.hours).gt(0)) throw conflict('OVERTIME_REVERSAL', 'This entry already cancels another one. Record a new call-out instead.');
       if (await tx.overtimeEntry.findUnique({ where: { reversesId: id }, select: { id: true } })) throw conflict('OVERTIME_VOIDED', 'This entry has already been voided.');
+      // A shift's charge already taken back when the shift was unassigned or cancelled (an unlinked
+      // negative entry): voiding it too would take the hours off twice.
+      if (e.shiftId && e.kind === 'ACCEPTED' && !(await shiftCharge(tx, e.userId, e.shiftId)).gt(0)) throw conflict('OVERTIME_TAKEN_BACK', 'These hours were already taken back when the shift changed.');
       try {
         const r = await tx.overtimeEntry.create({
           data: { tenantId: a.tenantId, userId: e.userId, positionId: e.positionId, shiftId: e.shiftId, kind: e.kind, hours: dec(e.hours).neg().toFixed(2), occurredAt: e.occurredAt, recordedById: a.userId, note: reason, reversesId: e.id },

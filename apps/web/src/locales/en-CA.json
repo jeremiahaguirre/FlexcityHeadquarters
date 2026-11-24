@@ -786,7 +786,8 @@
     "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month.",
     "OWN_OVERTIME": "Someone else corrects your own overtime record.",
     "OVERTIME_REVERSAL": "This entry already cancels another one. Record a new call-out instead.",
-    "OVERTIME_VOIDED": "This entry has already been voided."
+    "OVERTIME_VOIDED": "This entry has already been voided.",
+    "OVERTIME_TAKEN_BACK": "These hours were already taken back when the shift changed."
   },
   "timeclock": {
     "title": "Timeclock",

@@ -786,7 +786,8 @@
     "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois.",
     "OVERTIME_REVERSAL": "Cette inscription en annule déjà une autre. Inscrivez plutôt un nouvel appel.",
     "OWN_OVERTIME": "Quelqu’un d’autre corrige votre propre dossier d’heures supplémentaires.",
-    "OVERTIME_VOIDED": "Cette inscription a déjà été annulée."
+    "OVERTIME_VOIDED": "Cette inscription a déjà été annulée.",
+    "OVERTIME_TAKEN_BACK": "Ces heures ont déjà été retirées lorsque le quart a changé."
   },
   "timeclock": {
     "title": "Horodateur",
