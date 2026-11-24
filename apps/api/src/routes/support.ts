@@ -11,7 +11,7 @@ import { authOf, requirePermission } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { signAccessToken, verifyAccessToken } from '../auth/tokens.js';
 import { config } from '../config.js';
-import { audit, db, withTenant } from '../lib/db.js';
+import { audit, db, platformDb, withTenant } from '../lib/db.js';
 import { HttpError, forbidden, notFound } from '../lib/errors.js';
 import { redeemSupportCode } from '../services/platform/support.js';
 import { h } from './context.js';
@@ -79,7 +79,8 @@ supportRouter.get(
     const a = authOf(req);
     const grants = await withTenant(a.tenantId, (tx) => tx.supportGrant.findMany({ orderBy: { createdAt: 'desc' }, take: 20 }));
     const sessions = await db().supportSession.findMany({ where: { tenantId: a.tenantId, usedAt: { not: null } }, orderBy: { usedAt: 'desc' }, take: 50 });
-    const admins = await db().platformAdmin.findMany({ where: { id: { in: [...new Set(sessions.map((s) => s.adminId))] } }, select: { id: true, name: true } });
+    // The visitors' names only (FH's accounts are the platform role's: db/rls.sql).
+    const admins = await platformDb().platformAdmin.findMany({ where: { id: { in: [...new Set(sessions.map((s) => s.adminId))] } }, select: { id: true, name: true } });
     const people = await withTenant(a.tenantId, (tx) => tx.user.findMany({ where: { id: { in: [...new Set(grants.map((g) => g.grantedById))] } }, select: { id: true, firstName: true, lastName: true } }));
     const now = new Date();
     res.json({

@@ -7,6 +7,7 @@ import { addDays, startOfLocalDay } from '../../src/lib/time.js';
 import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { refreshWeather, type DayForecast, type WeatherSource } from '../../src/services/ops/weather.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
+import { platformDb } from '../../src/lib/db.js';
 
 const server = createApp();
 const WEEK = '2026-08-17'; // a summer Monday
@@ -102,7 +103,7 @@ describe('weather cache shared across organizations', () => {
   it('fetches each forecast site once for every city near it, sending only rounded coordinates', async () => {
     const counts: Record<string, number> = {};
     const seen: string[] = [];
-    const r = await refreshWeather({ source: fakeSource(counts, seen), prisma: appDb, now: new Date('2026-08-16T18:00:00Z'), tenants: [A.tenant.id, B.tenant.id] });
+    const r = await refreshWeather({ source: fakeSource(counts, seen), prisma: platformDb(), now: new Date('2026-08-16T18:00:00Z'), tenants: [A.tenant.id, B.tenant.id] });
     expect(r).toMatchObject({ sites: 1, fetched: 1, failed: 0, located: 2 });
     expect(counts[`cityPage:${SITE}`]).toBe(1);
     // Two facilities, one rounded point: one lookup.
@@ -116,7 +117,7 @@ describe('weather cache shared across organizations', () => {
 
     // Fresh: the next round within three hours asks nothing.
     const again: Record<string, number> = {};
-    expect(await refreshWeather({ source: fakeSource(again), prisma: appDb, now: new Date('2026-08-16T19:00:00Z'), tenants: [A.tenant.id, B.tenant.id] })).toMatchObject({ fetched: 0 });
+    expect(await refreshWeather({ source: fakeSource(again), prisma: platformDb(), now: new Date('2026-08-16T19:00:00Z'), tenants: [A.tenant.id, B.tenant.id] })).toMatchObject({ fetched: 0 });
     expect(again[`cityPage:${SITE}`]).toBeUndefined();
   });
 
@@ -233,11 +234,11 @@ describe('when the weather service fails', () => {
       climateStation: async () => null,
       climateDaily: async () => [],
     };
-    const r = await refreshWeather({ source: broken, prisma: appDb, tenants: [B.tenant.id] });
+    const r = await refreshWeather({ source: broken, prisma: platformDb(), tenants: [B.tenant.id] });
     expect(r).toMatchObject({ sites: 1, fetched: 0, failed: 1 });
     expect(await owner.weatherSite.findUniqueOrThrow({ where: { site: FAIL_SITE } })).toMatchObject({ failures: 1, lastError: 'No answer within 10 s' });
     // Straight after a failure it waits before trying again.
-    expect(await refreshWeather({ source: broken, prisma: appDb, tenants: [B.tenant.id] })).toMatchObject({ failed: 0, fetched: 0 });
+    expect(await refreshWeather({ source: broken, prisma: platformDb(), tenants: [B.tenant.id] })).toMatchObject({ failed: 0, fetched: 0 });
 
     const monday = (() => {
       const d = new Date();

@@ -11,7 +11,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { z } from 'zod';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
 import { config } from '../../config.js';
-import { db } from '../../lib/db.js';
+import { platformDb } from '../../lib/db.js';
 import { HttpError, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { open, seal } from '../../services/crypto/envelope.js';
 import { auditorBundle, postureSummary, postureSummaryCsv, postureSummaryPdf } from '../../services/trust/exports.js';
@@ -40,12 +40,12 @@ const manage = requireTrust('trust.manage');
 /** The two guards, exported so a test can check every Trust route carries one of them. */
 export const trustGuards = { read, manage };
 
-const audit = (adminId: string, action: string, detail?: object) => db().platformAudit.create({ data: { adminId, action: `trust.${action}`, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
+const audit = (adminId: string, action: string, detail?: object) => platformDb().platformAudit.create({ data: { adminId, action: `trust.${action}`, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
 
 let seeded: Promise<void> | null = null;
 /** Starter content on first use (idempotent; also run by the worker). */
 trustRouter.use('/trust', (_req, _res, next) => {
-  seeded ??= ensureTrustSeeded(db()).catch((e) => {
+  seeded ??= ensureTrustSeeded(platformDb()).catch((e) => {
     seeded = null;
     throw e;
   });
@@ -59,7 +59,7 @@ const text = (max: number) => z.string().trim().min(1).max(max);
 const optText = (max: number) => z.string().trim().max(max).nullable().optional().transform((v) => (v === '' ? null : v));
 
 async function people() {
-  return db().platformAdmin.findMany({ where: { disabledAt: null }, select: { id: true, name: true, email: true, permissions: true }, orderBy: { name: 'asc' } });
+  return platformDb().platformAdmin.findMany({ where: { disabledAt: null }, select: { id: true, name: true, email: true, permissions: true }, orderBy: { name: 'asc' } });
 }
 
 // ---- Overview ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ trustRouter.get(
   '/trust/overview',
   read,
   h(async (req, res) => {
-    const p = db();
+    const p = platformDb();
     const now = new Date();
     const s = await settings(p);
     const scope = req.query.frameworks !== undefined ? parseScope(req.query.frameworks) : defaultScope(s.frameworks);
@@ -123,8 +123,8 @@ trustRouter.patch(
   h(async (req, res) => {
     const b = z.object({ riskAppetite: z.number().int().min(APPETITE_RANGE[0]).max(APPETITE_RANGE[1]).optional(), frameworks: z.array(z.enum(FRAMEWORK_KEYS as [FrameworkKey, ...FrameworkKey[]])).max(10).optional() }).parse(req.body);
     const p = platformOf(req);
-    await settings(db());
-    const out = await db().trustSettings.update({ where: { id: 1 }, data: { ...b, updatedById: p.adminId } });
+    await settings(platformDb());
+    const out = await platformDb().trustSettings.update({ where: { id: 1 }, data: { ...b, updatedById: p.adminId } });
     await audit(p.adminId, 'settings', b);
     res.json({ riskAppetite: out.riskAppetite, frameworks: out.frameworks });
   }),
@@ -135,13 +135,13 @@ trustRouter.get('/trust/people', read, h(async (_req, res) => res.json((await pe
 trustRouter.get(
   '/trust/alerts',
   read,
-  h(async (_req, res) => res.json(await db().trustAlert.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, kind: true, title: true, titleFr: true, link: true, createdAt: true, readAt: true } }))),
+  h(async (_req, res) => res.json(await platformDb().trustAlert.findMany({ orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, kind: true, title: true, titleFr: true, link: true, createdAt: true, readAt: true } }))),
 );
 trustRouter.post(
   '/trust/alerts/read',
   read,
   h(async (_req, res) => {
-    await db().trustAlert.updateMany({ where: { readAt: null }, data: { readAt: new Date() } });
+    await platformDb().trustAlert.updateMany({ where: { readAt: null }, data: { readAt: new Date() } });
     res.status(204).end();
   }),
 );
@@ -152,7 +152,7 @@ trustRouter.get(
   '/trust/frameworks',
   read,
   h(async (_req, res) => {
-    const { statuses } = await controlStatuses(db());
+    const { statuses } = await controlStatuses(platformDb());
     res.json(
       FRAMEWORKS.map((f) => ({
         key: f.key, name: f.name, nameFr: f.nameFr, description: f.description, descriptionFr: f.descriptionFr, note: f.note ?? null, noteFr: f.noteFr ?? null, optional: !!f.optional,
@@ -170,7 +170,7 @@ trustRouter.get(
   '/trust/controls',
   read,
   h(async (_req, res) => {
-    const p = db();
+    const p = platformDb();
     const { statuses, states } = await controlStatuses(p);
     const [ev, tests, admins] = await Promise.all([
       p.trustEvidence.groupBy({ by: ['controlKey'], where: { deletedAt: null }, _count: true, _max: { createdAt: true } }),
@@ -206,11 +206,11 @@ trustRouter.patch(
     const key = String(req.params.key);
     if (!controlByKey.has(key)) throw notFound('Control');
     const b = z.object({ ownerId, manualStatus: z.enum(['PASSING', 'FAILING', 'NEEDS_EVIDENCE', 'NOT_APPLICABLE']).nullable().optional(), justification: optText(1000), notes: optText(2000) }).parse(req.body);
-    const before = await db().trustControlState.findUnique({ where: { key } });
+    const before = await platformDb().trustControlState.findUnique({ where: { key } });
     const just = b.justification !== undefined ? b.justification : before?.justification;
     if (b.manualStatus && !just) throw invalid('REASON_REQUIRED', 'Say why: a manual status needs a justification.');
     const p = platformOf(req);
-    const out = await db().trustControlState.upsert({ where: { key }, create: { key, ...b, updatedById: p.adminId }, update: { ...b, updatedById: p.adminId } });
+    const out = await platformDb().trustControlState.upsert({ where: { key }, create: { key, ...b, updatedById: p.adminId }, update: { ...b, updatedById: p.adminId } });
     await audit(p.adminId, 'control.update', { key, ...b });
     res.json(out);
   }),
@@ -222,7 +222,7 @@ trustRouter.get(
   '/trust/tests',
   read,
   h(async (_req, res) => {
-    const [rows, admins] = await Promise.all([db().trustTest.findMany(), people()]);
+    const [rows, admins] = await Promise.all([platformDb().trustTest.findMany(), people()]);
     res.json(
       MONITORS.map((m) => {
         const t = rows.find((x) => x.key === m.key);
@@ -244,7 +244,7 @@ trustRouter.get(
     const key = String(req.params.key);
     if (!monitorByKey.has(key)) throw notFound('Test');
     const days = Math.min(400, Math.max(1, Number(req.query.days) || 30));
-    res.json(await db().trustTestRun.findMany({ where: { testKey: key, at: { gte: new Date(Date.now() - days * DAY) } }, orderBy: { at: 'desc' }, take: 500, select: { id: true, status: true, summary: true, details: true, at: true, trigger: true, durationMs: true } }));
+    res.json(await platformDb().trustTestRun.findMany({ where: { testKey: key, at: { gte: new Date(Date.now() - days * DAY) } }, orderBy: { at: 'desc' }, take: 500, select: { id: true, status: true, summary: true, details: true, at: true, trigger: true, durationMs: true } }));
   }),
 );
 
@@ -256,7 +256,7 @@ trustRouter.post(
     const keys = b.keys?.filter((k) => monitorByKey.has(k));
     const p = platformOf(req);
     const out = await runMonitors({ keys: keys?.length ? keys : undefined, force: true, trigger: 'manual' });
-    await snapshot(db(), new Date(), true);
+    await snapshot(platformDb(), new Date(), true);
     await audit(p.adminId, 'tests.run', { keys: out.map((o) => o.key) });
     res.json(out);
   }),
@@ -270,7 +270,7 @@ trustRouter.patch(
     if (!monitorByKey.has(key)) throw notFound('Test');
     const b = z.object({ ownerId, enabled: z.boolean().optional() }).parse(req.body);
     const p = platformOf(req);
-    const out = await db().trustTest.upsert({ where: { key }, create: { key, ...b }, update: b });
+    const out = await platformDb().trustTest.upsert({ where: { key }, create: { key, ...b }, update: b });
     await audit(p.adminId, 'test.update', { key, ...b });
     res.json({ key: out.key, ownerId: out.ownerId, enabled: out.enabled });
   }),
@@ -287,8 +287,8 @@ trustRouter.get(
   read,
   h(async (_req, res) => {
     const [items, requests, admins] = await Promise.all([
-      db().trustEvidence.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 2000, select: EVIDENCE_LIST }),
-      db().trustEvidenceRequest.findMany({ orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], take: 500 }),
+      platformDb().trustEvidence.findMany({ where: { deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 2000, select: EVIDENCE_LIST }),
+      platformDb().trustEvidenceRequest.findMany({ orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], take: 500 }),
       people(),
     ]);
     const name = (id: string | null) => admins.find((a) => a.id === id)?.name ?? null;
@@ -328,8 +328,8 @@ trustRouter.post(
       file = { fileName: storedName(b.fileName, type), contentType: type, size: buf.length, sha256: createHash('sha256').update(buf).digest('hex'), ciphertext: sealed.ciphertext, iv: sealed.iv, authTag: sealed.authTag, wrappedKey: sealed.wrappedDataKey, kekId: sealed.kekId };
     } else if (b.kind === 'LINK' && !b.url) throw invalid('LINK_REQUIRED', 'Add the link.');
     else if (b.kind === 'CI' && !b.result) throw invalid('RESULT_REQUIRED', 'Say whether the run passed.');
-    const e = await db().trustEvidence.create({ data: { id, controlKey: b.controlKey, kind: b.kind, title: b.title, url: b.url ?? null, note: b.note ?? null, result: b.kind === 'CI' ? b.result : null, validUntil: b.validUntil ?? null, addedById: p.adminId, ...file }, select: EVIDENCE_LIST });
-    if (b.requestId) await db().trustEvidenceRequest.updateMany({ where: { id: b.requestId, status: 'OPEN' }, data: { status: 'DONE', evidenceId: id, closedAt: new Date() } });
+    const e = await platformDb().trustEvidence.create({ data: { id, controlKey: b.controlKey, kind: b.kind, title: b.title, url: b.url ?? null, note: b.note ?? null, result: b.kind === 'CI' ? b.result : null, validUntil: b.validUntil ?? null, addedById: p.adminId, ...file }, select: EVIDENCE_LIST });
+    if (b.requestId) await platformDb().trustEvidenceRequest.updateMany({ where: { id: b.requestId, status: 'OPEN' }, data: { status: 'DONE', evidenceId: id, closedAt: new Date() } });
     await audit(p.adminId, 'evidence.add', { id, controlKey: b.controlKey, kind: b.kind, size: e.size, sha256: e.sha256 });
     // A test that reads this evidence (backups, restore, CI) re-runs now, so the dashboard reflects it.
     const tests = controlByKey.get(b.controlKey)!.tests;
@@ -344,7 +344,7 @@ trustRouter.get(
   requirePlatformStepUp,
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
-    const e = await db().trustEvidence.findFirst({ where: { id, deletedAt: null, kind: 'FILE' } });
+    const e = await platformDb().trustEvidence.findFirst({ where: { id, deletedAt: null, kind: 'FILE' } });
     if (!e?.ciphertext) throw notFound('Evidence file');
     const b64 = await open(keys(), { ciphertext: Buffer.from(e.ciphertext), iv: Buffer.from(e.iv!), authTag: Buffer.from(e.authTag!), wrappedDataKey: Buffer.from(e.wrappedKey!), kekId: e.kekId! }, aad(id));
     const buf = Buffer.from(b64, 'base64');
@@ -361,7 +361,7 @@ trustRouter.delete(
     const id = uuid.parse(req.params.id);
     const p = platformOf(req);
     // Kept (removed from the count, still in the auditor's index): the contents are cleared.
-    const r = await db().trustEvidence.updateMany({ where: { id, deletedAt: null }, data: { deletedAt: new Date(), ciphertext: null, iv: null, authTag: null, wrappedKey: null } });
+    const r = await platformDb().trustEvidence.updateMany({ where: { id, deletedAt: null }, data: { deletedAt: new Date(), ciphertext: null, iv: null, authTag: null, wrappedKey: null } });
     if (!r.count) throw notFound('Evidence');
     await audit(p.adminId, 'evidence.remove', { id });
     res.status(204).end();
@@ -374,7 +374,7 @@ trustRouter.post(
   h(async (req, res) => {
     const b = z.object({ controlKey: z.string().refine((k) => controlByKey.has(k)), title: text(160), detail: optText(2000), ownerId, dueAt: optDate.refine((d) => !!d, 'Pick a due date') }).parse(req.body);
     const p = platformOf(req);
-    const r = await db().trustEvidenceRequest.create({ data: { controlKey: b.controlKey, title: b.title, detail: b.detail ?? null, ownerId: b.ownerId ?? null, dueAt: b.dueAt!, createdById: p.adminId } });
+    const r = await platformDb().trustEvidenceRequest.create({ data: { controlKey: b.controlKey, title: b.title, detail: b.detail ?? null, ownerId: b.ownerId ?? null, dueAt: b.dueAt!, createdById: p.adminId } });
     await audit(p.adminId, 'evidence_request.add', { id: r.id, controlKey: b.controlKey });
     res.status(201).json(r);
   }),
@@ -387,7 +387,7 @@ trustRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = z.object({ status: z.enum(['OPEN', 'DONE', 'CANCELLED']).optional(), ownerId, dueAt: optDate, title: text(160).optional() }).parse(req.body);
     const p = platformOf(req);
-    const r = await db().trustEvidenceRequest.update({ where: { id }, data: { ...b, dueAt: b.dueAt ?? undefined, closedAt: b.status && b.status !== 'OPEN' ? new Date() : b.status === 'OPEN' ? null : undefined } }).catch(() => {
+    const r = await platformDb().trustEvidenceRequest.update({ where: { id }, data: { ...b, dueAt: b.dueAt ?? undefined, closedAt: b.status && b.status !== 'OPEN' ? new Date() : b.status === 'OPEN' ? null : undefined } }).catch(() => {
       throw notFound('Evidence request');
     });
     await audit(p.adminId, 'evidence_request.update', { id, ...b });
@@ -403,7 +403,7 @@ trustRouter.get(
   h(async (req, res) => {
     const me = platformOf(req).adminId;
     const [list, admins] = await Promise.all([
-      db().trustPolicy.findMany({ orderBy: { title: 'asc' }, include: { versions: { orderBy: { version: 'desc' }, include: { acks: { select: { adminId: true, at: true } } } } } }),
+      platformDb().trustPolicy.findMany({ orderBy: { title: 'asc' }, include: { versions: { orderBy: { version: 'desc' }, include: { acks: { select: { adminId: true, at: true } } } } } }),
       people(),
     ]);
     const name = (id: string | null) => admins.find((a) => a.id === id)?.name ?? null;
@@ -433,7 +433,7 @@ trustRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = z.object({ ownerId, reviewEveryMonths: z.number().int().min(1).max(36).optional(), nextReviewAt: optDate }).parse(req.body);
     const p = platformOf(req);
-    const r = await db().trustPolicy.update({ where: { id }, data: b }).catch(() => {
+    const r = await platformDb().trustPolicy.update({ where: { id }, data: b }).catch(() => {
       throw notFound('Policy');
     });
     await audit(p.adminId, 'policy.update', { id, ...b });
@@ -448,12 +448,12 @@ trustRouter.post(
     const id = uuid.parse(req.params.id);
     const b = z.object({ body: text(20_000), bodyFr: text(20_000), changeNote: optText(300) }).parse(req.body);
     const p = platformOf(req);
-    const last = await db().trustPolicyVersion.findFirst({ where: { policyId: id }, orderBy: { version: 'desc' } });
+    const last = await platformDb().trustPolicyVersion.findFirst({ where: { policyId: id }, orderBy: { version: 'desc' } });
     if (!last) throw notFound('Policy');
     // One draft at a time: an unpublished draft is edited in place.
     const v = last.status === 'DRAFT'
-      ? await db().trustPolicyVersion.update({ where: { id: last.id }, data: { body: b.body, bodyFr: b.bodyFr, changeNote: b.changeNote ?? last.changeNote, createdById: p.adminId } })
-      : await db().trustPolicyVersion.create({ data: { policyId: id, version: last.version + 1, body: b.body, bodyFr: b.bodyFr, changeNote: b.changeNote ?? null, createdById: p.adminId } });
+      ? await platformDb().trustPolicyVersion.update({ where: { id: last.id }, data: { body: b.body, bodyFr: b.bodyFr, changeNote: b.changeNote ?? last.changeNote, createdById: p.adminId } })
+      : await platformDb().trustPolicyVersion.create({ data: { policyId: id, version: last.version + 1, body: b.body, bodyFr: b.bodyFr, changeNote: b.changeNote ?? null, createdById: p.adminId } });
     await audit(p.adminId, 'policy.draft', { id, version: v.version });
     res.status(201).json({ id: v.id, version: v.version, status: v.status });
   }),
@@ -468,18 +468,18 @@ trustRouter.post(
     const id = uuid.parse(req.params.id);
     const vid = uuid.parse(req.params.vid);
     const p = platformOf(req);
-    const v = await db().trustPolicyVersion.findFirst({ where: { id: vid, policyId: id }, include: { policy: true } });
+    const v = await platformDb().trustPolicyVersion.findFirst({ where: { id: vid, policyId: id }, include: { policy: true } });
     if (!v) throw notFound('Policy version');
     const now = new Date();
     if (step === 'approve') {
       if (v.status !== 'DRAFT') throw invalid('NOT_DRAFT', 'Only a draft can be approved.');
-      await db().trustPolicyVersion.update({ where: { id: vid }, data: { status: 'APPROVED', approvedById: p.adminId, approvedAt: now } });
+      await platformDb().trustPolicyVersion.update({ where: { id: vid }, data: { status: 'APPROVED', approvedById: p.adminId, approvedAt: now } });
     } else {
       if (v.status !== 'APPROVED') throw invalid('NOT_APPROVED', 'Approve the version before publishing it.');
-      await db().$transaction([
-        db().trustPolicyVersion.updateMany({ where: { policyId: id, status: 'PUBLISHED' }, data: { status: 'RETIRED' } }),
-        db().trustPolicyVersion.update({ where: { id: vid }, data: { status: 'PUBLISHED', publishedAt: now } }),
-        db().trustPolicy.update({ where: { id }, data: { nextReviewAt: addMonths(now, v.policy.reviewEveryMonths) } }),
+      await platformDb().$transaction([
+        platformDb().trustPolicyVersion.updateMany({ where: { policyId: id, status: 'PUBLISHED' }, data: { status: 'RETIRED' } }),
+        platformDb().trustPolicyVersion.update({ where: { id: vid }, data: { status: 'PUBLISHED', publishedAt: now } }),
+        platformDb().trustPolicy.update({ where: { id }, data: { nextReviewAt: addMonths(now, v.policy.reviewEveryMonths) } }),
       ]);
     }
     await audit(p.adminId, `policy.${step}`, { id, version: v.version });
@@ -493,9 +493,9 @@ trustRouter.post(
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
     const p = platformOf(req);
-    const v = await db().trustPolicyVersion.findFirst({ where: { policyId: id, status: 'PUBLISHED' } });
+    const v = await platformDb().trustPolicyVersion.findFirst({ where: { policyId: id, status: 'PUBLISHED' } });
     if (!v) throw invalid('NOT_PUBLISHED', 'This policy isn’t published yet.');
-    await db().trustPolicyAck.createMany({ data: [{ versionId: v.id, adminId: p.adminId }], skipDuplicates: true });
+    await platformDb().trustPolicyAck.createMany({ data: [{ versionId: v.id, adminId: p.adminId }], skipDuplicates: true });
     await audit(p.adminId, 'policy.ack', { id, version: v.version });
     res.status(201).json({ version: v.version });
   }),
@@ -515,7 +515,7 @@ trustRouter.get(
   '/trust/risks',
   read,
   h(async (_req, res) => {
-    const [list, admins, s] = await Promise.all([db().trustRisk.findMany({ orderBy: { ref: 'asc' } }), people(), settings(db())]);
+    const [list, admins, s] = await Promise.all([platformDb().trustRisk.findMany({ orderBy: { ref: 'asc' } }), people(), settings(platformDb())]);
     res.json({
       riskAppetite: s.riskAppetite,
       risks: list.map((r) => {
@@ -534,10 +534,10 @@ trustRouter.post(
   h(async (req, res) => {
     const b = riskBody.parse(req.body);
     const p = platformOf(req);
-    const count = await db().trustRisk.count();
+    const count = await platformDb().trustRisk.count();
     let ref = `R-${String(count + 1).padStart(3, '0')}`;
-    while (await db().trustRisk.findUnique({ where: { ref } })) ref = `R-${String(Number(ref.slice(2)) + 1).padStart(3, '0')}`;
-    const r = await db().trustRisk.create({ data: { ...b, ref, titleFr: b.titleFr ?? null, treatmentPlan: b.treatmentPlan ?? null, ownerId: b.ownerId ?? null, controlKeys: b.controlKeys ?? [], vendorIds: b.vendorIds ?? [], dueAt: b.dueAt ?? null, lastReviewedAt: new Date() } });
+    while (await platformDb().trustRisk.findUnique({ where: { ref } })) ref = `R-${String(Number(ref.slice(2)) + 1).padStart(3, '0')}`;
+    const r = await platformDb().trustRisk.create({ data: { ...b, ref, titleFr: b.titleFr ?? null, treatmentPlan: b.treatmentPlan ?? null, ownerId: b.ownerId ?? null, controlKeys: b.controlKeys ?? [], vendorIds: b.vendorIds ?? [], dueAt: b.dueAt ?? null, lastReviewedAt: new Date() } });
     await audit(p.adminId, 'risk.add', { id: r.id, ref });
     res.status(201).json(r);
   }),
@@ -550,7 +550,7 @@ trustRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = riskBody.partial().parse(req.body);
     const p = platformOf(req);
-    const r = await db().trustRisk.update({ where: { id }, data: b }).catch(() => {
+    const r = await platformDb().trustRisk.update({ where: { id }, data: b }).catch(() => {
       throw notFound('Risk');
     });
     await audit(p.adminId, 'risk.update', { id, ...b });
@@ -564,7 +564,7 @@ trustRouter.post(
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
     const p = platformOf(req);
-    const r = await db().trustRisk.update({ where: { id }, data: { lastReviewedAt: new Date() } }).catch(() => {
+    const r = await platformDb().trustRisk.update({ where: { id }, data: { lastReviewedAt: new Date() } }).catch(() => {
       throw notFound('Risk');
     });
     await audit(p.adminId, 'risk.review', { id });
@@ -586,7 +586,7 @@ trustRouter.get(
   '/trust/vendors',
   read,
   h(async (_req, res) => {
-    const [list, admins, risks] = await Promise.all([db().trustVendor.findMany({ orderBy: { name: 'asc' } }), people(), db().trustRisk.findMany({ select: { id: true, ref: true, vendorIds: true } })]);
+    const [list, admins, risks] = await Promise.all([platformDb().trustVendor.findMany({ orderBy: { name: 'asc' } }), people(), platformDb().trustRisk.findMany({ select: { id: true, ref: true, vendorIds: true } })]);
     res.json({
       questions: VENDOR_QUESTIONS.map((q) => q.key),
       vendors: list.map((v) => ({ ...v, owner: admins.find((a) => a.id === v.ownerId)?.name ?? null, risk: vendorRisk(v), risks: risks.filter((r) => r.vendorIds.includes(v.id)).map((r) => r.ref) })),
@@ -603,7 +603,7 @@ trustRouter.post(
     const b = vendorBody.parse(req.body);
     const p = platformOf(req);
     const q = cleanQuestionnaire(b.questionnaire);
-    const v = await db().trustVendor.create({ data: { ...b, questionnaire: q, score: vendorScore(q), controlKeys: b.controlKeys ?? [] } }).catch((e) => {
+    const v = await platformDb().trustVendor.create({ data: { ...b, questionnaire: q, score: vendorScore(q), controlKeys: b.controlKeys ?? [] } }).catch((e) => {
       if ((e as { code?: string }).code === 'P2002') throw new HttpError(409, 'DUPLICATE', 'A vendor with this name exists.');
       throw e;
     });
@@ -620,7 +620,7 @@ trustRouter.patch(
     const b = vendorBody.partial().parse(req.body);
     const p = platformOf(req);
     const q = cleanQuestionnaire(b.questionnaire);
-    const v = await db().trustVendor.update({ where: { id }, data: { ...b, ...(q ? { questionnaire: q, score: vendorScore(q) } : {}) } }).catch(() => {
+    const v = await platformDb().trustVendor.update({ where: { id }, data: { ...b, ...(q ? { questionnaire: q, score: vendorScore(q) } : {}) } }).catch(() => {
       throw notFound('Vendor');
     });
     await audit(p.adminId, 'vendor.update', { id, fields: Object.keys(b) });
@@ -634,10 +634,10 @@ trustRouter.post(
   h(async (req, res) => {
     const id = uuid.parse(req.params.id);
     const p = platformOf(req);
-    const v = await db().trustVendor.findUnique({ where: { id } });
+    const v = await platformDb().trustVendor.findUnique({ where: { id } });
     if (!v) throw notFound('Vendor');
     const now = new Date();
-    const out = await db().trustVendor.update({ where: { id }, data: { lastReviewedAt: now, nextReviewAt: addMonths(now, v.reviewEveryMonths) } });
+    const out = await platformDb().trustVendor.update({ where: { id }, data: { lastReviewedAt: now, nextReviewAt: addMonths(now, v.reviewEveryMonths) } });
     await audit(p.adminId, 'vendor.review', { id });
     res.json(out);
   }),
@@ -656,9 +656,9 @@ trustRouter.get(
   read,
   h(async (_req, res) => {
     const [list, admins, tenants] = await Promise.all([
-      db().trustCommitment.findMany({ orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], include: { fulfilments: { orderBy: { metAt: 'desc' }, take: 20 } } }),
+      platformDb().trustCommitment.findMany({ orderBy: [{ status: 'asc' }, { dueAt: 'asc' }], include: { fulfilments: { orderBy: { metAt: 'desc' }, take: 20 } } }),
       people(),
-      db().$queryRaw<Array<{ id: string }>>`SELECT all_tenant_ids() AS id`,
+      platformDb().$queryRaw<Array<{ id: string }>>`SELECT all_tenant_ids() AS id`,
     ]);
     res.json({ kinds: KINDS, tenants: tenants.length, commitments: list.map((c) => ({ ...c, owner: admins.find((a) => a.id === c.ownerId)?.name ?? null })) });
   }),
@@ -667,7 +667,7 @@ trustRouter.get(
 /** The customer must be an organization on the platform when a tenant is named. */
 async function checkTenant(tenantId: string | null | undefined) {
   if (!tenantId) return;
-  const ids = await db().$queryRaw<Array<{ id: string }>>`SELECT all_tenant_ids() AS id`;
+  const ids = await platformDb().$queryRaw<Array<{ id: string }>>`SELECT all_tenant_ids() AS id`;
   if (!ids.some((x) => x.id === tenantId)) throw invalid('UNKNOWN_ORGANIZATION', 'Unknown organization.');
 }
 
@@ -678,7 +678,7 @@ trustRouter.post(
     const b = commitmentBody.parse(req.body);
     await checkTenant(b.tenantId);
     const p = platformOf(req);
-    const c = await db().trustCommitment.create({ data: { ...b, tenantId: b.tenantId ?? null, detail: b.detail ?? null, source: b.source ?? null, dueAt: b.dueAt ?? null, ownerId: b.ownerId ?? null, controlKeys: b.controlKeys ?? [], createdById: p.adminId } });
+    const c = await platformDb().trustCommitment.create({ data: { ...b, tenantId: b.tenantId ?? null, detail: b.detail ?? null, source: b.source ?? null, dueAt: b.dueAt ?? null, ownerId: b.ownerId ?? null, controlKeys: b.controlKeys ?? [], createdById: p.adminId } });
     await audit(p.adminId, 'commitment.add', { id: c.id, kind: c.kind, tenantId: c.tenantId });
     res.status(201).json(c);
   }),
@@ -692,7 +692,7 @@ trustRouter.patch(
     const b = commitmentBody.partial().parse(req.body);
     await checkTenant(b.tenantId);
     const p = platformOf(req);
-    const c = await db().trustCommitment.update({ where: { id }, data: b }).catch(() => {
+    const c = await platformDb().trustCommitment.update({ where: { id }, data: b }).catch(() => {
       throw notFound('Commitment');
     });
     await audit(p.adminId, 'commitment.update', { id, fields: Object.keys(b) });
@@ -708,13 +708,13 @@ trustRouter.post(
     const id = uuid.parse(req.params.id);
     const b = z.object({ note: optText(2000), evidenceId: uuid.nullable().optional() }).parse(req.body ?? {});
     const p = platformOf(req);
-    const c = await db().trustCommitment.findUnique({ where: { id } });
+    const c = await platformDb().trustCommitment.findUnique({ where: { id } });
     if (!c) throw notFound('Commitment');
     if (c.status !== 'OPEN') throw invalid('ALREADY_CLOSED', 'This commitment is already closed.');
     const next = c.dueAt ? nextDue(c.dueAt, c.recurrence as 'NONE') : null;
-    const [, out] = await db().$transaction([
-      db().trustCommitmentFulfilment.create({ data: { commitmentId: id, dueAt: c.dueAt, note: b.note ?? null, evidenceId: b.evidenceId ?? null, byId: p.adminId } }),
-      db().trustCommitment.update({ where: { id }, data: next ? { dueAt: next } : { status: 'MET' } }),
+    const [, out] = await platformDb().$transaction([
+      platformDb().trustCommitmentFulfilment.create({ data: { commitmentId: id, dueAt: c.dueAt, note: b.note ?? null, evidenceId: b.evidenceId ?? null, byId: p.adminId } }),
+      platformDb().trustCommitment.update({ where: { id }, data: next ? { dueAt: next } : { status: 'MET' } }),
     ]);
     await audit(p.adminId, 'commitment.fulfil', { id, dueAt: c.dueAt, next });
     res.json(out);
@@ -729,7 +729,7 @@ trustRouter.get(
   '/trust/answers',
   read,
   h(async (_req, res) => {
-    const [list, admins] = await Promise.all([db().trustAnswer.findMany({ orderBy: [{ category: 'asc' }, { question: 'asc' }] }), people()]);
+    const [list, admins] = await Promise.all([platformDb().trustAnswer.findMany({ orderBy: [{ category: 'asc' }, { question: 'asc' }] }), people()]);
     res.json(list.map((a) => ({ ...a, reviewedBy: admins.find((x) => x.id === a.reviewedById)?.name ?? null })));
   }),
 );
@@ -740,7 +740,7 @@ trustRouter.post(
   h(async (req, res) => {
     const b = answerBody.parse(req.body);
     const p = platformOf(req);
-    const a = await db().trustAnswer.create({ data: { ...b, controlKeys: b.controlKeys ?? [], reviewedById: p.adminId } });
+    const a = await platformDb().trustAnswer.create({ data: { ...b, controlKeys: b.controlKeys ?? [], reviewedById: p.adminId } });
     await audit(p.adminId, 'answer.add', { id: a.id });
     res.status(201).json(a);
   }),
@@ -754,7 +754,7 @@ trustRouter.patch(
     const b = answerBody.partial().extend({ reviewed: z.boolean().optional() }).parse(req.body);
     const p = platformOf(req);
     const { reviewed, ...data } = b;
-    const a = await db().trustAnswer.update({ where: { id }, data: { ...data, ...(reviewed || Object.keys(data).length ? { lastReviewedAt: new Date(), reviewedById: p.adminId } : {}) } }).catch(() => {
+    const a = await platformDb().trustAnswer.update({ where: { id }, data: { ...data, ...(reviewed || Object.keys(data).length ? { lastReviewedAt: new Date(), reviewedById: p.adminId } : {}) } }).catch(() => {
       throw notFound('Answer');
     });
     await audit(p.adminId, 'answer.update', { id, fields: Object.keys(b) });
@@ -771,7 +771,7 @@ trustRouter.get(
   h(async (req, res) => {
     const fw = z.enum(FRAMEWORK_KEYS as [FrameworkKey, ...FrameworkKey[]]).parse(req.params.framework);
     const fr = String(req.query.lang ?? '').startsWith('fr');
-    const out = await auditorBundle(db(), fw, new Date(), fr);
+    const out = await auditorBundle(platformDb(), fw, new Date(), fr);
     await audit(platformOf(req).adminId, 'export.auditor', { framework: fw, lang: fr ? 'fr' : 'en', files: out.files, bytes: out.zip.length });
     res.setHeader('content-type', 'application/zip');
     res.setHeader('content-disposition', `attachment; filename="fh-${fw}-evidence-${new Date().toISOString().slice(0, 10)}.zip"`);
@@ -790,14 +790,14 @@ trustRouter.get(
     const fr = String(req.query.lang ?? '').startsWith('fr');
     await audit(platformOf(req).adminId, 'export.summary', { format, lang: fr ? 'fr' : 'en' });
     const name = `fh-security-posture-${new Date().toISOString().slice(0, 10)}`;
-    if (format === 'json') return void res.json(await postureSummary(db()));
+    if (format === 'json') return void res.json(await postureSummary(platformDb()));
     if (format === 'csv') {
       res.setHeader('content-type', 'text/csv; charset=utf-8');
       res.setHeader('content-disposition', `attachment; filename="${name}.csv"`);
-      return void res.send(await postureSummaryCsv(db(), fr));
+      return void res.send(await postureSummaryCsv(platformDb(), fr));
     }
     res.setHeader('content-type', 'application/pdf');
     res.setHeader('content-disposition', `attachment; filename="${name}.pdf"`);
-    res.send(await postureSummaryPdf(db(), fr));
+    res.send(await postureSummaryPdf(platformDb(), fr));
   }),
 );

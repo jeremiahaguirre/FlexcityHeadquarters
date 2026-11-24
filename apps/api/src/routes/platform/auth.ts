@@ -7,7 +7,7 @@ import { POLICIES, abandonAttempt, accountRule, afterFailure, beginAttempt, fail
 import { addressKey } from '../../lib/address.js';
 import { authFailures, authIpBlocks, authLockouts } from '../../lib/metrics.js';
 import { verifyPassword } from '../../auth/tokens.js';
-import { db } from '../../lib/db.js';
+import { platformDb } from '../../lib/db.js';
 import { HttpError } from '../../lib/errors.js';
 import { h } from '../context.js';
 
@@ -39,10 +39,10 @@ platformAuthRouter.post(
       authFailures.inc({ surface: 'platform', reason: 'rate_limited' });
       throw tooMany();
     }
-    const pre = await db().platformAdmin.findUnique({ where: { email: lower }, select: { id: true, passwordHash: true, lockedUntil: true, knownNetworks: true } });
+    const pre = await platformDb().platformAdmin.findUnique({ where: { email: lower }, select: { id: true, passwordHash: true, lockedUntil: true, knownNetworks: true } });
     const attempt = pre ? await beginAttempt('platform', lower, req.ip, pre) : null;
     const ok = pre ? await verifyPassword(password, pre.passwordHash) : await verifyPassword(password, 'scrypt$AAAA$AAAA').then(() => false);
-    const outcome = await db().$transaction(async (tx) => {
+    const outcome = await platformDb().$transaction(async (tx) => {
       if (!pre || !attempt) return { signedIn: null, locked: false };
       await tx.$queryRaw`SELECT id FROM "PlatformAdmin" WHERE id = ${pre.id}::uuid FOR UPDATE`;
       const admin = await tx.platformAdmin.findUniqueOrThrow({ where: { id: pre.id } });
@@ -74,13 +74,13 @@ platformAuthRouter.post(
       authFailures.inc({ surface: 'platform', reason: outcome.locked ? 'locked' : 'invalid' });
       if (!ok && (await noteFailure('platform', req.ip, email))) {
         authIpBlocks.inc({ surface: 'platform' });
-        if (pre) await db().platformAudit.create({ data: { adminId: pre.id, action: 'auth.ip_blocked', detail: { ip: req.ip ?? null, forMinutes: policy.ipBlockMs / 60_000 } } });
+        if (pre) await platformDb().platformAudit.create({ data: { adminId: pre.id, action: 'auth.ip_blocked', detail: { ip: req.ip ?? null, forMinutes: policy.ipBlockMs / 60_000 } } });
       }
       throw invalid();
     }
     const admin = outcome.signedIn;
     setPlatformCookies(res, await startPlatformSession(admin.id));
-    const hasPasskey = (await db().platformPasskey.count({ where: { adminId: admin.id } })) > 0;
+    const hasPasskey = (await platformDb().platformPasskey.count({ where: { adminId: admin.id } })) > 0;
     // A password alone isn't enough: the console asks for a passkey next (or to set one up).
     res.json({ admin: { id: admin.id, email: admin.email, name: admin.name }, mfaRequired: platformMfaRequired(), hasPasskey });
   }),
@@ -100,7 +100,7 @@ platformAuthRouter.get(
   requirePlatformSession,
   h(async (req, res) => {
     const p = platformOf(req);
-    const hasPasskey = (await db().platformPasskey.count({ where: { adminId: p.adminId } })) > 0;
+    const hasPasskey = (await platformDb().platformPasskey.count({ where: { adminId: p.adminId } })) > 0;
     res.json({ id: p.adminId, email: p.email, name: p.name, mfa: p.mfa, mfaRequired: platformMfaRequired() && !p.mfa, hasPasskey, permissions: p.permissions });
   }),
 );

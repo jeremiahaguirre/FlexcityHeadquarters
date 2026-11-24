@@ -7,7 +7,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
-import { db, withTenant } from '../../lib/db.js';
+import { withTenant, platformDb } from '../../lib/db.js';
 import { HttpError, notFound } from '../../lib/errors.js';
 import { linkView, testBankLink } from '../../services/payroll/bankLink.js';
 import { type PayrollSettings, readSettings } from '../../services/payroll/payRuns.js';
@@ -21,7 +21,7 @@ export const platformPayrollRouter = Router();
 const uuid = z.string().uuid();
 type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
 const audit = (adminId: string, tenantId: string, action: string, detail?: object) =>
-  db().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
+  platformDb().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
 const read = async (tx: Tx) => readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings);
 const write = (tx: Tx, tenantId: string, s: PayrollSettings) => tx.tenant.update({ where: { id: tenantId }, data: { payrollSettings: JSON.parse(JSON.stringify(s)) } });
 

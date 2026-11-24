@@ -7,7 +7,7 @@ process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
 const { createApp } = await import('../../src/app.js');
 const { resetLimits } = await import('../../src/auth/rateLimit.js');
 const { hashPassword } = await import('../../src/auth/tokens.js');
-const { db, withTenant } = await import('../../src/lib/db.js');
+const { db, platformDb, withTenant } = await import('../../src/lib/db.js');
 const { checkRls, runMonitors } = await import('../../src/services/trust/monitors.js');
 const { runReminders } = await import('../../src/services/trust/reminders.js');
 const { ensureTrustSeeded } = await import('../../src/services/trust/seed.js');
@@ -32,7 +32,7 @@ async function admin(name: string, permissions?: string[], extra: object = {}) {
 let mgr: Awaited<ReturnType<typeof admin>>;
 beforeAll(async () => {
   mgr = await admin('manager');
-  await ensureTrustSeeded(db());
+  await ensureTrustSeeded(platformDb());
 });
 afterAll(async () => {
   await owner.$executeRawUnsafe('DROP SCHEMA IF EXISTS trust_rls_probe CASCADE');
@@ -103,6 +103,21 @@ describe('Trust: monitors', () => {
     const r = await checkRls(db(), 'trust_rls_probe');
     expect(r.status).toBe('FAIL');
     expect(r.details!.problems).toEqual(expect.arrayContaining(['Leaky: row-level security off', 'NoPolicy: no policy']));
+  });
+
+  it('the RLS check watches the platform and global tables too (review of #61)', async () => {
+    // Inside a transaction that is rolled back: the real tables, briefly not forced.
+    const seen = await owner
+      .$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('ALTER TABLE "PlatformAdmin" NO FORCE ROW LEVEL SECURITY');
+        await tx.$executeRawUnsafe('ALTER TABLE "PayrollTaxTable" DISABLE ROW LEVEL SECURITY');
+        const r = await checkRls(tx as never);
+        throw Object.assign(new Error('rollback'), { r });
+      })
+      .catch((e: { r?: Awaited<ReturnType<typeof checkRls>> }) => e.r);
+    expect(seen!.status).toBe('FAIL');
+    expect(seen!.details!.problems).toEqual(expect.arrayContaining(['PlatformAdmin: not forced', 'PayrollTaxTable: row-level security off']));
+    expect((await checkRls(db())).status).toBe('PASS');
   });
 
   it('the MFA check fails while passkeys aren’t enforced, and names admins without one', async () => {
@@ -209,13 +224,13 @@ describe('Trust: reminders', () => {
     expect(v.status).toBe(201);
     expect(v.body.score).toBe(100);
     expect(v.body.questionnaire).not.toHaveProperty('bogus');
-    await runReminders(db(), now);
+    await runReminders(platformDb(), now);
     const alerts = await db().trustAlert.findMany({ where: { title: { contains: `Mail Co ${tag}: SOC 2 report expires` } } });
     expect(alerts).toHaveLength(1);
     expect(alerts[0]!.title).toContain('due in 6 days');
-    await runReminders(db(), now);
+    await runReminders(platformDb(), now);
     expect(await db().trustAlert.count({ where: { title: { contains: `Mail Co ${tag}: SOC 2` } } })).toBe(1);
-    await runReminders(db(), new Date(now.getTime() + 5 * DAY + 3_600_000));
+    await runReminders(platformDb(), new Date(now.getTime() + 5 * DAY + 3_600_000));
     expect(await db().trustAlert.count({ where: { title: { contains: `Mail Co ${tag}: SOC 2` } } })).toBe(2);
   });
 
@@ -225,13 +240,13 @@ describe('Trust: reminders', () => {
     const c = await mgr.as('post', '/trust/commitments').send({ tenantId: tenant.id, customer: tenant.name, kind: 'REPORT_DELIVERY', title: `Annual security report ${tag}`, dueAt: due.toISOString(), recurrence: 'YEARLY' });
     expect(c.status).toBe(201);
     const at = (d: number) => new Date(due.getTime() - d * DAY);
-    for (const d of [40, 30, 20, 7, 1, -2, -3]) await runReminders(db(), at(d));
+    for (const d of [40, 30, 20, 7, 1, -2, -3]) await runReminders(platformDb(), at(d));
     const titles = (await db().trustAlert.findMany({ where: { title: { contains: `Annual security report ${tag}` } }, orderBy: { createdAt: 'asc' } })).map((a) => a.title);
     expect(titles.map((x) => /\((due in \d+ days|due tomorrow|overdue)/.exec(x)![1])).toEqual(['due in 30 days', 'due in 7 days', 'due tomorrow', 'overdue']);
     const f = await mgr.as('post', `/trust/commitments/${c.body.id}/fulfil`).send({ note: 'Sent the PDF to the city’s privacy office' });
     expect(f.status).toBe(200);
     expect(f.body).toMatchObject({ status: 'OPEN', dueAt: '2028-03-15T12:00:00.000Z' });
-    await runReminders(db(), new Date(Date.UTC(2028, 1, 14, 12)));
+    await runReminders(platformDb(), new Date(Date.UTC(2028, 1, 14, 12)));
     expect(await db().trustAlert.count({ where: { title: { contains: `Annual security report ${tag}` } } })).toBe(5);
     expect(await db().trustCommitmentFulfilment.count({ where: { commitmentId: c.body.id } })).toBe(1);
     expect((await mgr.as('post', '/trust/commitments').send({ tenantId: '00000000-0000-4000-8000-000000000000', customer: 'X', kind: 'CUSTOM', title: 'x' })).status).toBe(400);
@@ -287,8 +302,8 @@ describe('Trust: posture summary for customers', () => {
     const { auditorBundle } = await import('../../src/services/trust/exports.js');
     await runMonitors({ keys: ['data_residency'], force: true, trigger: 'manual' });
     const files = (z: Uint8Array) => Object.fromEntries(Object.entries(unzipSync(z)).map(([k, v]) => [k, strFromU8(v)]));
-    const en = files((await auditorBundle(db(), 'soc2')).zip);
-    const fr = files((await auditorBundle(db(), 'soc2', new Date(), true)).zip);
+    const en = files((await auditorBundle(platformDb(), 'soc2')).zip);
+    const fr = files((await auditorBundle(platformDb(), 'soc2', new Date(), true)).zip);
     expect(en['requirements.csv']).toContain('Requirement,Group,Title');
     expect(fr['requirements.csv']).toContain('Exigence,Groupe,Titre');
     expect(fr['requirements.csv']).toContain('CC6 Accès logique et physique');

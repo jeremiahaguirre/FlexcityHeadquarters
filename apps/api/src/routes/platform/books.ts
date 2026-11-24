@@ -5,7 +5,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
-import { db } from '../../lib/db.js';
+import { platformDb } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import {
   addManualEntry,
@@ -53,7 +53,7 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const today = () => new Date().toISOString().slice(0, 10);
 
 async function audit(adminId: string, tenantId: string | null, action: string, detail?: object) {
-  await db().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
+  await platformDb().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
 }
 
 // ------------------------------------------------------------------ PAD agreements
@@ -61,7 +61,7 @@ booksRouter.get(
   '/billing/pad/:tenantId',
   h(async (req, res) => {
     const tenantId = uuid.parse(req.params.tenantId);
-    const rows = await db().padAgreement.findMany({ where: { tenantId }, orderBy: { authorizedAt: 'desc' } });
+    const rows = await platformDb().padAgreement.findMany({ where: { tenantId }, orderBy: { authorizedAt: 'desc' } });
     res.json({ active: rows.find((r) => r.status === 'ACTIVE') ? agreementView(rows.find((r) => r.status === 'ACTIVE')!) : null, history: rows.filter((r) => r.status !== 'ACTIVE').map(agreementView), terms: agreementTerms('en-CA') });
   }),
 );
@@ -88,7 +88,7 @@ booksRouter.post(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const { reason } = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
-    const a = await db().padAgreement.findUnique({ where: { id } });
+    const a = await platformDb().padAgreement.findUnique({ where: { id } });
     if (!a) throw notFound('Agreement');
     await cancelAgreement(id, reason);
     await audit(p.adminId, a.tenantId, 'pad.cancel', { id, reason });
@@ -258,7 +258,7 @@ booksRouter.get(
   h(async (req, res) => {
     const { from, to } = range(req.query);
     const entries = await journal(from, to);
-    res.json({ from, to, entries, manual: await db().fhJournalEntry.findMany({ where: { date: { gte: new Date(from), lte: new Date(`${to}T23:59:59Z`) } }, select: { id: true, reference: true } }) });
+    res.json({ from, to, entries, manual: await platformDb().fhJournalEntry.findMany({ where: { date: { gte: new Date(from), lte: new Date(`${to}T23:59:59Z`) } }, select: { id: true, reference: true } }) });
   }),
 );
 booksRouter.post(
@@ -278,7 +278,7 @@ booksRouter.post(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const { date: on } = z.object({ date }).parse(req.body);
-    const e = await db().fhJournalEntry.findUnique({ where: { id } });
+    const e = await platformDb().fhJournalEntry.findUnique({ where: { id } });
     if (!e) throw notFound('Entry');
     const lines = (e.lines as Array<{ account: string; debitCents: number; creditCents: number }>).map((l) => ({ account: l.account, debitCents: l.creditCents, creditCents: l.debitCents }));
     const r = await addManualEntry({ date: on, memo: `Reversal: ${e.memo}`.slice(0, 200), reference: `REV-${e.reference ?? id.slice(0, 6)}`.slice(0, 40), lines }, p.adminId);

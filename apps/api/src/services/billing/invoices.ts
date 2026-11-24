@@ -6,7 +6,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { appUrl } from '../../auth/authTokens.js';
 import { billingContact, config } from '../../config.js';
-import { db, withTenant } from '../../lib/db.js';
+import { withTenant, platformDb } from '../../lib/db.js';
 import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import { type Line, lineLabel, monthlyLines, staffUsage } from './pricing.js';
 import { type Terms, invoiceLinesFor, termSummary } from './terms.js';
@@ -82,7 +82,7 @@ async function activeUsers(tenantId: string, from: Date, to: Date) {
 
 export async function getAccount(tenantId: string) {
   const [account, facilities, tenant] = await Promise.all([
-    db().billingAccount.findUnique({ where: { tenantId } }),
+    platformDb().billingAccount.findUnique({ where: { tenantId } }),
     withTenant(tenantId, (tx) => tx.facility.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, province: true, billingTier: true, billingMonthlyCents: true } })),
     withTenant(tenantId, (tx) => tx.tenant.findUnique({ where: { id: tenantId }, select: { name: true, defaultLocale: true, subdomain: true } })),
   ]);
@@ -156,7 +156,7 @@ export async function saveAccount(tenantId: string, body: AccountInput) {
       if (!updated.count) throw notFound('Facility');
     }
   });
-  await db().billingAccount.upsert({ where: { tenantId }, create: { tenantId, ...data }, update: data });
+  await platformDb().billingAccount.upsert({ where: { tenantId }, create: { tenantId, ...data }, update: data });
   forgetFeatures(tenantId);
 }
 
@@ -180,9 +180,9 @@ export async function generateDraft(tenantId: string, month: string, adminId: st
   // A month wholly inside a free trial isn't invoiced (terms and refund policy: invoicing starts
   // once the subscription begins).
   if (account?.trialEndsAt && account.trialEndsAt.getTime() >= end.getTime() + 86_400_000 - 1) return 'nothing-to-bill';
-  const existing = await db().invoice.findFirst({ where: { tenantId, periodStart: start, status: { not: 'VOID' } } });
+  const existing = await platformDb().invoice.findFirst({ where: { tenantId, periodStart: start, status: { not: 'VOID' } } });
   if (existing) return 'exists';
-  await db().invoice.create({
+  await platformDb().invoice.create({
     data: {
       tenantId,
       periodStart: start,
@@ -207,11 +207,11 @@ export const draftPatch = z.object({
 });
 
 export async function updateDraft(id: string, patch: z.infer<typeof draftPatch>) {
-  const inv = await db().invoice.findUnique({ where: { id } });
+  const inv = await platformDb().invoice.findUnique({ where: { id } });
   if (!inv) throw notFound('Invoice');
   if (inv.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only drafts can be changed. Void it and issue a new one.');
   const bill = inv.billTo as { province: string; taxExempt: boolean };
-  await db().$transaction(async (tx) => {
+  await platformDb().$transaction(async (tx) => {
     if (patch.lines) {
       // Each line keeps its kind (it decides the revenue account): given, or the one at the same position, or a credit if negative.
       const before = await tx.invoiceLine.findMany({ where: { invoiceId: id }, orderBy: { position: 'asc' } });
@@ -227,14 +227,14 @@ export async function updateDraft(id: string, patch: z.infer<typeof draftPatch>)
 
 /** Finalizes: next number in sequence for the year, issue and due dates, then emails the billing contact. */
 export async function sendInvoice(id: string) {
-  const inv = await db().invoice.findUnique({ where: { id } });
+  const inv = await platformDb().invoice.findUnique({ where: { id } });
   if (!inv) throw notFound('Invoice');
   if (inv.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'This invoice was already sent.');
-  const account = await db().billingAccount.findUnique({ where: { tenantId: inv.tenantId } });
+  const account = await platformDb().billingAccount.findUnique({ where: { tenantId: inv.tenantId } });
   if (!account) throw invalid('BILLING_ACCOUNT_REQUIRED', 'Set up the billing account first.');
   const today = new Date();
   const year = today.getUTCFullYear();
-  const sent = await db().$transaction(async (tx) => {
+  const sent = await platformDb().$transaction(async (tx) => {
     const [row] = await tx.$queryRaw<Array<{ last: number }>>`
       INSERT INTO "InvoiceCounter" (year, last) VALUES (${year}, 1)
       ON CONFLICT (year) DO UPDATE SET last = "InvoiceCounter".last + 1 RETURNING last`;
@@ -244,7 +244,7 @@ export async function sendInvoice(id: string) {
   });
   const tenant = await withTenant(inv.tenantId, (tx) => tx.tenant.findUniqueOrThrow({ where: { id: inv.tenantId } }));
   // For organizations paying by pre-authorized debit, the invoice is also the debit notice.
-  const pad = await db().padAgreement.findFirst({ where: { tenantId: inv.tenantId, status: 'ACTIVE' } });
+  const pad = await platformDb().padAgreement.findFirst({ where: { tenantId: inv.tenantId, status: 'ACTIVE' } });
   await withTenant(inv.tenantId, (tx) =>
     tx.emailOutbox.create({
       data: {
@@ -281,7 +281,7 @@ export const paymentBody = z.object({
 });
 
 export async function recordPayment(id: string, adminId: string | null, p: z.infer<typeof paymentBody>) {
-  const out = await db().$transaction(async (tx) => {
+  const out = await platformDb().$transaction(async (tx) => {
     const inv = await tx.invoice.findUnique({ where: { id } });
     if (!inv) throw notFound('Invoice');
     if (inv.status !== 'SENT') throw conflict('NOT_PAYABLE', inv.status === 'DRAFT' ? 'Send the invoice before recording payments.' : 'This invoice is closed.');
@@ -299,14 +299,14 @@ export async function recordPayment(id: string, adminId: string | null, p: z.inf
 export const ONLINE_PAYMENT_ACTOR = '00000000-0000-0000-0000-000000000000';
 
 export async function voidInvoice(id: string, reason: string) {
-  const inv = await db().invoice.findUnique({ where: { id } });
+  const inv = await platformDb().invoice.findUnique({ where: { id } });
   if (!inv) throw notFound('Invoice');
   if (inv.status === 'PAID' || inv.status === 'VOID' || inv.paidCents > 0) throw conflict('NOT_VOIDABLE', 'Paid or partly paid invoices can’t be voided; issue a credit instead.');
   if (inv.status === 'DRAFT') {
-    await db().invoice.delete({ where: { id } }); // never numbered: nothing to keep
+    await platformDb().invoice.delete({ where: { id } }); // never numbered: nothing to keep
     return 'deleted' as const;
   }
-  await db().invoice.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date(), voidReason: reason } });
+  await platformDb().invoice.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date(), voidReason: reason } });
   forgetFeatures(inv.tenantId);
   return 'voided' as const;
 }

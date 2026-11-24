@@ -191,6 +191,8 @@ describe('monitor helpers', () => {
     expect(l.tenant).toContain('User');
     expect(l.fh).toContain('PlatformAudit');
     expect(l.fhOnly).toContain('TrustRisk');
+    expect(l.platform).toEqual(expect.arrayContaining(['PlatformAdmin', 'PlatformSession', 'Lead', 'FhBooks']));
+    expect(l.global).toEqual(expect.arrayContaining(['PayrollTaxTable', 'StatutoryHoliday', 'BenchmarkSnapshot']));
   });
 
   it('flags missing headers, and HSTS only in production', () => {

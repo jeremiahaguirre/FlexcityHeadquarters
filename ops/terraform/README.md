@@ -64,6 +64,8 @@ Use a **separate AWS account per environment** (staging, production). The API ma
    | --- | --- |
    | `FLEXCITY_APP_PASSWORD` | A new random password (32+ characters) for the app role |
    | `APP_DATABASE_URL` | `postgresql://flexcity_app:<that password, URL-encoded>@<endpoint>:5432/flexcity?sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem` |
+   | `FLEXCITY_PLATFORM_PASSWORD` | A new random password (32+ characters) for FH's own role, `flexcity_platform` (the Dev console, billing, leads, the worker's refreshes) |
+   | `PLATFORM_DATABASE_URL` | The same form as `APP_DATABASE_URL`, as `flexcity_platform` with that password. The API refuses to start in production without it. The app role has no access to FH's platform tables and only reads the global reference tables (`apps/api/db/rls.sql`) |
    | `LISTEN_DATABASE_URL` | The same as `APP_DATABASE_URL` (direct to the database, never through a transaction pooler) |
    | `JWT_SECRET` | 64 random bytes, base64 |
    | `METRICS_TOKEN` | 32 random characters; also given to the metrics collector |

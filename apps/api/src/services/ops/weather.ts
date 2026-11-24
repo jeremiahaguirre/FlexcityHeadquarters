@@ -16,7 +16,7 @@
  */
 import type { PrismaClient } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
-import { db, tenantIds, withTenant } from '../../lib/db.js';
+import { db, tenantIds, withTenant, platformDb } from '../../lib/db.js';
 import { publicGet } from '../../lib/egress.js';
 import { weatherFetches } from '../../lib/metrics.js';
 import { addDays, dayOfWeek, localDate } from '../../lib/time.js';
@@ -476,7 +476,8 @@ export interface RefreshResult {
  */
 /** `tenants` limits the run to some organizations (tests, a one-off run); default every one. */
 export async function refreshWeather(opts: { source?: WeatherSource; prisma?: PrismaClient; now?: Date; force?: boolean; tenants?: string[] } = {}): Promise<RefreshResult> {
-  const prisma = opts.prisma ?? db();
+  // FH's role: weather is global reference data, which the app role only reads (db/rls.sql).
+  const prisma = opts.prisma ?? platformDb();
   const source = opts.source ?? ecccSource();
   const now = opts.now ?? new Date();
   const today = now.toISOString().slice(0, 10);

@@ -6,7 +6,7 @@ import { markPlatformMfa, platformMfaRequired, platformOf, requirePlatform, requ
 import { allow } from '../../auth/rateLimit.js';
 import { signedInFrom } from '../../auth/bruteForce.js';
 import { addressKey } from '../../lib/address.js';
-import { db } from '../../lib/db.js';
+import { platformDb } from '../../lib/db.js';
 import { HttpError, notFound } from '../../lib/errors.js';
 import { authenticationOptions, deviceName, platformRp, registrationOptions, verifyAuthentication, verifyRegistration } from '../../services/auth/passkeys.js';
 import { h } from '../context.js';
@@ -30,14 +30,14 @@ platformPasskeyRouter.post(
   h(async (req, res) => {
     const body = z.object({ challengeId: uuid, response: credential }).parse(req.body);
     const response = body.response as unknown as AuthenticationResponseJSON;
-    const passkey = await db().platformPasskey.findUnique({ where: { credentialId: String(response.id ?? '') } });
+    const passkey = await platformDb().platformPasskey.findUnique({ where: { credentialId: String(response.id ?? '') } });
     const { newCounter } = await verifyAuthentication(platformRp(), body.challengeId, 'platform-login', response, passkey);
-    const admin = await db().platformAdmin.findUniqueOrThrow({ where: { id: passkey!.adminId } });
+    const admin = await platformDb().platformAdmin.findUniqueOrThrow({ where: { id: passkey!.adminId } });
     if (admin.disabledAt) throw new HttpError(401, 'INVALID_CREDENTIALS', 'This account can’t sign in.');
-    await db().platformPasskey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
+    await platformDb().platformPasskey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
     const knownNetworks = await signedInFrom('platform', admin.email.toLowerCase(), req.ip, admin.knownNetworks);
     const stillLocked = !!admin.lockedUntil && admin.lockedUntil > new Date();
-    await db().platformAdmin.update({ where: { id: admin.id }, data: { knownNetworks, lastLoginAt: new Date(), ...(stillLocked ? {} : { failedLogins: 0, lockedUntil: null, lockoutLevel: 0 }) } });
+    await platformDb().platformAdmin.update({ where: { id: admin.id }, data: { knownNetworks, lastLoginAt: new Date(), ...(stillLocked ? {} : { failedLogins: 0, lockedUntil: null, lockoutLevel: 0 }) } });
     setPlatformCookies(res, await startPlatformSession(admin.id, true));
     res.json({ admin: { id: admin.id, email: admin.email, name: admin.name } });
   }),
@@ -49,7 +49,7 @@ platformPasskeyRouter.post(
   requirePlatformSession,
   h(async (req, res) => {
     const p = platformOf(req);
-    const mine = await db().platformPasskey.findMany({ where: { adminId: p.adminId } });
+    const mine = await platformDb().platformPasskey.findMany({ where: { adminId: p.adminId } });
     if (!mine.length) throw new HttpError(404, 'NO_PASSKEY', 'Set up a passkey first.');
     res.json(await authenticationOptions(platformRp(), 'platform-mfa', mine, { adminId: p.adminId }));
   }),
@@ -63,10 +63,10 @@ platformPasskeyRouter.post(
     if (!await allow(`platform-mfa:${p.adminId}`, 10, 10 * 60_000)) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
     const body = z.object({ challengeId: uuid, response: credential }).parse(req.body);
     const response = body.response as unknown as AuthenticationResponseJSON;
-    const passkey = await db().platformPasskey.findFirst({ where: { credentialId: String(response.id ?? ''), adminId: p.adminId } });
+    const passkey = await platformDb().platformPasskey.findFirst({ where: { credentialId: String(response.id ?? ''), adminId: p.adminId } });
     const { challenge, newCounter } = await verifyAuthentication(platformRp(), body.challengeId, 'platform-mfa', response, passkey);
     if (challenge.adminId !== p.adminId) throw new HttpError(401, 'PASSKEY_FAILED', 'That passkey didn’t work.');
-    await db().platformPasskey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
+    await platformDb().platformPasskey.update({ where: { id: passkey!.id }, data: { counter: newCounter, lastUsedAt: new Date() } });
     await markPlatformMfa(p.sessionId);
     res.json({ mfa: true });
   }),
@@ -79,7 +79,7 @@ platformPasskeyRouter.post(
 async function mayEnrol(req: Parameters<typeof platformOf>[0]) {
   const p = platformOf(req);
   if (p.mfa || !platformMfaRequired()) return;
-  if (await db().platformPasskey.count({ where: { adminId: p.adminId } })) throw new HttpError(403, 'MFA_REQUIRED', 'Confirm with your passkey to continue.');
+  if (await platformDb().platformPasskey.count({ where: { adminId: p.adminId } })) throw new HttpError(403, 'MFA_REQUIRED', 'Confirm with your passkey to continue.');
 }
 
 /** Adding or removing a passkey needs a sign-in from the last 10 minutes. */
@@ -91,7 +91,7 @@ platformPasskeyRouter.get(
   '/passkeys',
   requirePlatformSession,
   h(async (req, res) => {
-    const list = await db().platformPasskey.findMany({ where: { adminId: platformOf(req).adminId }, orderBy: { createdAt: 'asc' } });
+    const list = await platformDb().platformPasskey.findMany({ where: { adminId: platformOf(req).adminId }, orderBy: { createdAt: 'asc' } });
     res.json(list.map((p) => ({ id: p.id, name: p.name, createdAt: p.createdAt, lastUsedAt: p.lastUsedAt })));
   }),
 );
@@ -103,7 +103,7 @@ platformPasskeyRouter.post(
     recent(req);
     await mayEnrol(req);
     const p = platformOf(req);
-    const mine = await db().platformPasskey.findMany({ where: { adminId: p.adminId } });
+    const mine = await platformDb().platformPasskey.findMany({ where: { adminId: p.adminId } });
     res.json(await registrationOptions(platformRp(), { id: p.adminId, email: p.email, displayName: p.name }, mine, 'platform-register', { adminId: p.adminId }));
   }),
 );
@@ -118,10 +118,10 @@ platformPasskeyRouter.post(
     const body = z.object({ challengeId: uuid, response: credential, name: z.string().trim().min(1).max(60).optional() }).parse(req.body);
     const r = await verifyRegistration(platformRp(), body.challengeId, 'platform-register', body.response as unknown as RegistrationResponseJSON);
     if (r.challenge.adminId !== p.adminId) throw new HttpError(400, 'PASSKEY_FAILED', 'That passkey could not be set up.');
-    const created = await db().platformPasskey.create({
+    const created = await platformDb().platformPasskey.create({
       data: { adminId: p.adminId, credentialId: r.credentialId, publicKey: r.publicKey, counter: r.counter, transports: r.transports, name: body.name ?? deviceName(req.header('user-agent')) },
     });
-    await db().platformAudit.create({ data: { adminId: p.adminId, action: 'passkey.add', detail: { name: created.name } } });
+    await platformDb().platformAudit.create({ data: { adminId: p.adminId, action: 'passkey.add', detail: { name: created.name } } });
     // Setting up the first passkey with the device's lock is the second factor.
     if (!p.mfa) await markPlatformMfa(p.sessionId);
     res.status(201).json({ id: created.id, name: created.name });
@@ -134,9 +134,9 @@ platformPasskeyRouter.delete(
   h(async (req, res) => {
     recent(req);
     const p = platformOf(req);
-    const gone = await db().platformPasskey.deleteMany({ where: { id: uuid.parse(req.params.id), adminId: p.adminId } });
+    const gone = await platformDb().platformPasskey.deleteMany({ where: { id: uuid.parse(req.params.id), adminId: p.adminId } });
     if (!gone.count) throw notFound('Passkey');
-    await db().platformAudit.create({ data: { adminId: p.adminId, action: 'passkey.remove' } });
+    await platformDb().platformAudit.create({ data: { adminId: p.adminId, action: 'passkey.remove' } });
     res.status(204).end();
   }),
 );

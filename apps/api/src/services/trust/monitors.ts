@@ -16,7 +16,7 @@ import type { AddressInfo } from 'node:net';
 import type { PrismaClient } from '../../generated/prisma/client.js';
 import { platformMfaRequired } from '../../auth/platform.js';
 import { config } from '../../config.js';
-import { db, tenantIds, withTenant } from '../../lib/db.js';
+import { db, tenantIds, withTenant, platformDb } from '../../lib/db.js';
 import { leastPrivilegeProblems, roleFacts } from '../../lib/dbRole.js';
 import { readiness } from '../../lib/health.js';
 import { type MonitorDetails, SECRETISH } from './detailKeys.js';
@@ -79,7 +79,7 @@ export function healthReasonFr(reason: string): string {
 
 const RLS_SQL = new URL('../../../db/rls.sql', import.meta.url);
 /** The table lists in db/rls.sql, when the file ships with the build. */
-export function rlsLists(text?: string): { tenant: string[]; fh: string[]; fhOnly: string[] } | null {
+export function rlsLists(text?: string): { tenant: string[]; fh: string[]; fhOnly: string[]; platform: string[]; global: string[] } | null {
   let sql = text;
   if (sql === undefined) {
     try {
@@ -92,7 +92,7 @@ export function rlsLists(text?: string): { tenant: string[]; fh: string[]; fhOnl
     const mm = new RegExp(`${name} text\\[\\] := ARRAY\\[([^\\]]*)\\]`).exec(sql!);
     return mm ? [...mm[1]!.matchAll(/'([^']+)'/g)].map((x) => x[1]!) : [];
   };
-  return { tenant: list('tenant_tables'), fh: list('fh_tables'), fhOnly: list('fh_only_tables') };
+  return { tenant: list('tenant_tables'), fh: list('fh_tables'), fhOnly: list('fh_only_tables'), platform: list('platform_tables'), global: list('global_tables') };
 }
 
 /** FH's own tables that carry a tenantId and are read across cities by the Dev console (RLS on, not forced). */
@@ -123,6 +123,15 @@ export async function checkRls(prisma: PrismaClient, schema = 'public', lists = 
       const t = byName.get(name);
       if (!t) problems.push(`${name}: listed in rls.sql but missing`);
       else if (!t.rls && !problems.some((p) => p.startsWith(`${name}:`))) problems.push(`${name}: row-level security off`);
+    }
+    // FH's platform tables and the global reference tables have no tenantId: they must be listed,
+    // with row-level security on and forced, and have their policies (review of #61).
+    for (const name of [...lists.platform, ...lists.global]) {
+      const t = byName.get(name);
+      if (!t) problems.push(`${name}: listed in rls.sql but missing`);
+      else if (!t.rls) problems.push(`${name}: row-level security off`);
+      else if (!t.forced) problems.push(`${name}: not forced`);
+      else if (!t.policies) problems.push(`${name}: no policy`);
     }
   }
   const checked = rows.filter((x) => x.tenant).length;
@@ -346,7 +355,7 @@ export const MONITORS: Monitor[] = [
   {
     key: 'audit_log', title: 'Audit log written and append-only', titleFr: 'Journal d’audit alimenté et en ajout seulement', everyMinutes: 15,
     async run({ db: p, now }) {
-      // The role the app actually connects as (db() uses APP_DATABASE_URL), on both logs: each city's and the Dev console's.
+      // The role the app actually connects as (platformDb() uses APP_DATABASE_URL), on both logs: each city's and the Dev console's.
       const priv = await p.$queryRaw<Array<{ tbl: string; upd: boolean; del: boolean }>>`
         SELECT t AS tbl, has_table_privilege(current_user, format('%I', t), 'UPDATE') AS upd, has_table_privilege(current_user, format('%I', t), 'DELETE') AS del
           FROM unnest(ARRAY['AuditLog', 'PlatformAudit']) AS t`;
@@ -501,7 +510,7 @@ export interface RunOutcome { key: string; status: TestStatus; changed: boolean 
  * and raises an alert when a test starts failing or recovers. Returns what ran.
  */
 export async function runMonitors(opts: { keys?: string[]; force?: boolean; trigger?: 'schedule' | 'manual'; now?: Date; prisma?: PrismaClient } = {}): Promise<RunOutcome[]> {
-  const p = opts.prisma ?? db();
+  const p = opts.prisma ?? platformDb();
   const now = opts.now ?? new Date();
   const trigger = opts.trigger ?? 'schedule';
   const rows = new Map((await p.trustTest.findMany()).map((x) => [x.key, x]));
@@ -547,7 +556,7 @@ export async function runMonitors(opts: { keys?: string[]; force?: boolean; trig
 }
 
 /** History, snapshots and the feed are kept HISTORY_DAYS. */
-export async function pruneTrustHistory(prisma: PrismaClient = db(), now = new Date()): Promise<number> {
+export async function pruneTrustHistory(prisma: PrismaClient = platformDb(), now = new Date()): Promise<number> {
   const before = ago(now, HISTORY_DAYS);
   const a = await prisma.trustTestRun.deleteMany({ where: { at: { lt: before } } });
   const b = await prisma.trustScoreSnapshot.deleteMany({ where: { at: { lt: before } } });

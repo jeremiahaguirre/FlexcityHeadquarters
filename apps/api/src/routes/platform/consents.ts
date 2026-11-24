@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { platformOf } from '../../auth/platform.js';
-import { db, withTenant } from '../../lib/db.js';
+import { withTenant, platformDb } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import { csvCell } from '../../services/payroll/export.js';
 import { CONSENT_VERSION } from '../../services/privacy/consent.js';
@@ -12,7 +12,7 @@ import { h } from '../context.js';
 export const consentsRouter = Router();
 const uuid = z.string().uuid();
 const audit = (adminId: string, tenantId: string, action: string, detail?: object) =>
-  db().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
+  platformDb().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
 
 async function rows(tenantId: string) {
   return withTenant(tenantId, async (tx) => {

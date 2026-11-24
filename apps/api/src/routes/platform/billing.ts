@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { platformOf } from '../../auth/platform.js';
 import { billingContact, config } from '../../config.js';
-import { db, tenantIds, withTenant } from '../../lib/db.js';
+import { tenantIds, withTenant, platformDb } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import {
   accountBody,
@@ -39,7 +39,7 @@ async function names() {
 }
 
 async function audit(adminId: string, tenantId: string | null, action: string, detail?: object) {
-  await db().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
+  await platformDb().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
 }
 
 const invoiceView = (inv: Awaited<ReturnType<typeof loadInvoice>>, org?: { name: string; subdomain: string }) => ({
@@ -67,7 +67,7 @@ const invoiceView = (inv: Awaited<ReturnType<typeof loadInvoice>>, org?: { name:
 });
 
 async function loadInvoice(id: string) {
-  const inv = await db().invoice.findUnique({ where: { id }, include: { lines: { orderBy: { position: 'asc' } }, payments: { orderBy: { receivedOn: 'asc' } } } });
+  const inv = await platformDb().invoice.findUnique({ where: { id }, include: { lines: { orderBy: { position: 'asc' } }, payments: { orderBy: { receivedOn: 'asc' } } } });
   if (!inv) throw notFound('Invoice');
   return inv;
 }
@@ -78,16 +78,16 @@ billingRouter.get(
   h(async (_req, res) => {
     const orgs = await names();
     const month = thisMonth();
-    const accounts = await db().billingAccount.findMany();
+    const accounts = await platformDb().billingAccount.findMany();
     const cities = await Promise.all(
       [...orgs.values()].map(async (o) => {
         const est = accounts.some((a) => a.tenantId === o.id) ? await estimate(o.id, month) : null;
         return { tenantId: o.id, name: o.name, subdomain: o.subdomain, hasAccount: !!est, monthlySubtotalCents: est?.subtotalCents ?? 0, monthlyTotalCents: est?.totalCents ?? 0 };
       }),
     );
-    const open = await db().invoice.findMany({ where: { status: 'SENT' } });
+    const open = await platformDb().invoice.findMany({ where: { status: 'SENT' } });
     const { start, next } = monthBounds(month);
-    const paidThisMonth = await db().invoicePayment.aggregate({ _sum: { amountCents: true }, _count: true, where: { receivedOn: { gte: start, lt: next } } });
+    const paidThisMonth = await platformDb().invoicePayment.aggregate({ _sum: { amountCents: true }, _count: true, where: { receivedOn: { gte: start, lt: next } } });
     const overdue = open.filter((i) => displayStatus(i) === 'OVERDUE');
     res.json({
       month,
@@ -147,7 +147,7 @@ billingRouter.post(
     const p = platformOf(req);
     const body = z.object({ month: z.string(), tenantIds: z.array(uuid).max(500).optional() }).parse(req.body);
     monthBounds(body.month);
-    const targets = body.tenantIds ?? (await db().billingAccount.findMany({ select: { tenantId: true } })).map((a) => a.tenantId);
+    const targets = body.tenantIds ?? (await platformDb().billingAccount.findMany({ select: { tenantId: true } })).map((a) => a.tenantId);
     const results: Record<string, number> = { created: 0, exists: 0, 'no-account': 0, 'nothing-to-bill': 0 };
     for (const t of targets) results[await generateDraft(t, body.month, p.adminId)]!++;
     await audit(p.adminId, null, 'billing.generate', { month: body.month, ...results });
@@ -164,7 +164,7 @@ billingRouter.get(
       ...(q.status === 'OVERDUE' || q.status === 'OPEN' ? { status: 'SENT' as const } : q.status ? { status: q.status } : {}),
     };
     const [rows, orgs] = await Promise.all([
-      db().invoice.findMany({ where, include: { lines: { orderBy: { position: 'asc' } }, payments: true }, orderBy: [{ periodStart: 'desc' }, { createdAt: 'desc' }], take: 500 }),
+      platformDb().invoice.findMany({ where, include: { lines: { orderBy: { position: 'asc' } }, payments: true }, orderBy: [{ periodStart: 'desc' }, { createdAt: 'desc' }], take: 500 }),
       names(),
     ]);
     const list = rows.map((r) => invoiceView(r, orgs.get(r.tenantId)));
@@ -226,7 +226,7 @@ billingRouter.post(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const { reason } = z.object({ reason: z.string().trim().min(3).max(200) }).parse(req.body);
-    const inv = await db().invoice.findUnique({ where: { id } });
+    const inv = await platformDb().invoice.findUnique({ where: { id } });
     if (!inv) throw notFound('Invoice');
     const outcome = await voidInvoice(id, reason);
     await audit(p.adminId, inv.tenantId, outcome === 'deleted' ? 'invoice.discard' : 'invoice.void', { id, number: inv.number, reason });

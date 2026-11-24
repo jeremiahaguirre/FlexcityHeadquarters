@@ -14,7 +14,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { config } from '../config.js';
-import { db } from '../lib/db.js';
+import { platformDb } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 
 export const PLATFORM_COOKIE = 'fh_platform';
@@ -54,16 +54,16 @@ export const platformCookieOpts = () => ({
 /** `mfa`: the sign-in used a passkey, which is a second factor on its own. */
 export async function startPlatformSession(adminId: string, mfa = false): Promise<string> {
   const raw = randomBytes(32).toString('base64url');
-  await db().platformSession.create({ data: { adminId, tokenHash: sha256(raw), expiresAt: new Date(Date.now() + SESSION_MS), mfaAt: mfa ? new Date() : null } });
+  await platformDb().platformSession.create({ data: { adminId, tokenHash: sha256(raw), expiresAt: new Date(Date.now() + SESSION_MS), mfaAt: mfa ? new Date() : null } });
   return raw;
 }
 
 export async function markPlatformMfa(sessionId: string): Promise<void> {
-  await db().platformSession.update({ where: { id: sessionId }, data: { mfaAt: new Date() } });
+  await platformDb().platformSession.update({ where: { id: sessionId }, data: { mfaAt: new Date() } });
 }
 
 export async function endPlatformSession(raw: string | undefined): Promise<void> {
-  if (raw) await db().platformSession.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: new Date() } });
+  if (raw) await platformDb().platformSession.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
 /**
@@ -110,7 +110,7 @@ export async function requirePlatformSession(req: Request, _res: Response, next:
   try {
     const raw = req.cookies?.[PLATFORM_COOKIE] as string | undefined;
     if (!raw) throw new HttpError(401, 'UNAUTHENTICATED', 'Sign in to the Dev console');
-    const s = await db().platformSession.findUnique({ where: { tokenHash: sha256(raw) }, include: { admin: true } });
+    const s = await platformDb().platformSession.findUnique({ where: { tokenHash: sha256(raw) }, include: { admin: true } });
     if (!s || s.revokedAt || s.expiresAt < new Date() || s.admin.disabledAt) throw new HttpError(401, 'UNAUTHENTICATED', 'Session expired');
     req.platform = { adminId: s.admin.id, email: s.admin.email, name: s.admin.name, signedInAt: s.createdAt, sessionId: s.id, mfa: !!s.mfaAt, mfaAt: s.mfaAt, permissions: s.admin.permissions };
     next();

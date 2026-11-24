@@ -11,7 +11,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { type NextFunction, type Request, type Response, Router } from 'express';
 import { z } from 'zod';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
-import { db } from '../../lib/db.js';
+import { platformDb } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { announceNote, consoleView, noteBody, resolveAudience } from '../../services/platform/releaseNotes.js';
 import { applyStage, listRings, previewStage, releaseBody, releaseTick, rollbackRelease, rollbackStage, scheduleStage, setRingMembers, stageBody } from '../../services/platform/releases.js';
@@ -31,13 +31,13 @@ updatesRouter.use(['/notes', '/releases', '/rings', '/stages', '/maintenance'], 
 
 const json = (v: unknown) => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue;
 async function log(adminId: string, action: string, detail: unknown) {
-  await db().platformAudit.create({ data: { adminId, tenantId: null, action, detail: json(detail) } });
+  await platformDb().platformAudit.create({ data: { adminId, tenantId: null, action, detail: json(detail) } });
 }
 
 updatesRouter.get(
   '/notes',
   h(async (_req, res) => {
-    const rows = await db().releaseNote.findMany({ orderBy: [{ publishAt: 'desc' }, { createdAt: 'desc' }], take: 200 });
+    const rows = await platformDb().releaseNote.findMany({ orderBy: [{ publishAt: 'desc' }, { createdAt: 'desc' }], take: 200 });
     const now = new Date();
     res.json(rows.map((n) => consoleView(n, now)));
   }),
@@ -49,8 +49,8 @@ updatesRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const b = noteBody.parse(req.body);
-    const tenantIds = await resolveAudience(db(), b);
-    const n = await db().releaseNote.create({ data: { ...b, tenantIds, createdById: p.adminId } });
+    const tenantIds = await resolveAudience(platformDb(), b);
+    const n = await platformDb().releaseNote.create({ data: { ...b, tenantIds, createdById: p.adminId } });
     await log(p.adminId, 'note.create', { id: n.id, title: n.titleEn });
     res.status(201).json(consoleView(n));
   }),
@@ -59,7 +59,7 @@ updatesRouter.post(
 /** Changing a note people may already be reading needs the passkey, as publishing does. */
 const stepUpIfPublished = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const n = await db().releaseNote.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { publishedAt: true } });
+    const n = await platformDb().releaseNote.findUnique({ where: { id: uuid.parse(req.params.id) }, select: { publishedAt: true } });
     if (!n) throw notFound('Note');
     if (n.publishedAt) return requirePlatformStepUp(req, res, next);
     next();
@@ -75,13 +75,13 @@ updatesRouter.put(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const b = noteBody.parse(req.body);
-    const before = await db().releaseNote.findUniqueOrThrow({ where: { id } });
+    const before = await platformDb().releaseNote.findUniqueOrThrow({ where: { id } });
     if (before.withdrawnAt) throw conflict('NOTE_WITHDRAWN', 'This note was withdrawn.');
-    const tenantIds = await resolveAudience(db(), b);
-    const n = await db().releaseNote.update({ where: { id }, data: { ...b, tenantIds } });
+    const tenantIds = await resolveAudience(platformDb(), b);
+    const n = await platformDb().releaseNote.update({ where: { id }, data: { ...b, tenantIds } });
     await log(p.adminId, 'note.update', { id, title: n.titleEn, published: !!n.publishedAt });
     // A published note that changed shows its new words straight away.
-    if (n.publishedAt && n.publishAt <= new Date()) await announceNote(db(), n);
+    if (n.publishedAt && n.publishAt <= new Date()) await announceNote(platformDb(), n);
     res.json(consoleView(n));
   }),
 );
@@ -92,16 +92,16 @@ updatesRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
-    const before = await db().releaseNote.findUnique({ where: { id } });
+    const before = await platformDb().releaseNote.findUnique({ where: { id } });
     if (!before) throw notFound('Note');
     if (before.withdrawnAt) throw conflict('NOTE_WITHDRAWN', 'This note was withdrawn.');
     if (before.publishedAt) return res.json(consoleView(before));
     const now = new Date();
-    const n = await db().releaseNote.update({ where: { id }, data: { publishedAt: now } });
+    const n = await platformDb().releaseNote.update({ where: { id }, data: { publishedAt: now } });
     await log(p.adminId, 'note.publish', { id, title: n.titleEn, publishAt: n.publishAt, roles: n.roles, organizations: n.tenantIds.length || 'all' });
     // Due now: everyone it's for sees it without reloading. Later: the worker sends the signal then.
-    if (n.publishAt <= now) await announceNote(db(), n);
-    res.json(consoleView(await db().releaseNote.findUniqueOrThrow({ where: { id } })));
+    if (n.publishAt <= now) await announceNote(platformDb(), n);
+    res.json(consoleView(await platformDb().releaseNote.findUniqueOrThrow({ where: { id } })));
   }),
 );
 
@@ -111,12 +111,12 @@ updatesRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
-    const before = await db().releaseNote.findUnique({ where: { id } });
+    const before = await platformDb().releaseNote.findUnique({ where: { id } });
     if (!before) throw notFound('Note');
-    const n = before.withdrawnAt ? before : await db().releaseNote.update({ where: { id }, data: { withdrawnAt: new Date() } });
+    const n = before.withdrawnAt ? before : await platformDb().releaseNote.update({ where: { id }, data: { withdrawnAt: new Date() } });
     if (!before.withdrawnAt) {
       await log(p.adminId, 'note.withdraw', { id, title: n.titleEn });
-      if (n.publishedAt) await announceNote(db(), n);
+      if (n.publishedAt) await announceNote(platformDb(), n);
     }
     res.json(consoleView(n));
   }),
@@ -131,9 +131,9 @@ updatesRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const { name } = z.object({ name: z.string().trim().min(2).max(40) }).parse(req.body);
-    if (await db().releaseRing.findUnique({ where: { name } })) throw conflict('RING_EXISTS', 'There is already a ring with that name.');
-    const last = await db().releaseRing.findFirst({ orderBy: { position: 'desc' } });
-    const r = await db().releaseRing.create({ data: { name, position: (last?.position ?? 0) + 1 } });
+    if (await platformDb().releaseRing.findUnique({ where: { name } })) throw conflict('RING_EXISTS', 'There is already a ring with that name.');
+    const last = await platformDb().releaseRing.findFirst({ orderBy: { position: 'desc' } });
+    const r = await platformDb().releaseRing.create({ data: { name, position: (last?.position ?? 0) + 1 } });
     await log(p.adminId, 'ring.create', { id: r.id, name });
     res.status(201).json(r);
   }),
@@ -146,9 +146,9 @@ updatesRouter.put(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const { tenantIds } = z.object({ tenantIds: z.array(uuid).max(5000) }).parse(req.body);
-    const ring = await db().releaseRing.findUnique({ where: { id } });
+    const ring = await platformDb().releaseRing.findUnique({ where: { id } });
     if (!ring) throw notFound('Ring');
-    await setRingMembers(db(), id, [...new Set(tenantIds)]);
+    await setRingMembers(platformDb(), id, [...new Set(tenantIds)]);
     await log(p.adminId, 'ring.members', { id, name: ring.name, organizations: tenantIds.length });
     res.json(await listRings());
   }),
@@ -162,7 +162,7 @@ updatesRouter.get('/releases/features', (_req, res) => void res.json(FEATURE_KEY
 updatesRouter.get(
   '/releases',
   h(async (_req, res) => {
-    const rows = await db().release.findMany({ orderBy: { createdAt: 'desc' }, take: 100, include: { stages: { orderBy: { scheduledAt: 'asc' }, include: { changes: { select: { status: true, skipped: true, noticeSentAt: true } } } } } });
+    const rows = await platformDb().release.findMany({ orderBy: { createdAt: 'desc' }, take: 100, include: { stages: { orderBy: { scheduledAt: 'asc' }, include: { changes: { select: { status: true, skipped: true, noticeSentAt: true } } } } } });
     res.json(
       rows.map(({ stages, ...r }) => ({
         ...r,
@@ -177,7 +177,7 @@ updatesRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const b = releaseBody.parse(req.body);
-    const r = await db().release.create({ data: { ...b, createdById: p.adminId } });
+    const r = await platformDb().release.create({ data: { ...b, createdById: p.adminId } });
     await log(p.adminId, 'release.create', { id: r.id, name: r.name, features: b.features });
     res.status(201).json({ ...r, stages: [] });
   }),
@@ -190,9 +190,9 @@ updatesRouter.put(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const b = releaseBody.parse(req.body);
-    const live = await db().releaseStage.count({ where: { releaseId: id, status: { in: ['SCHEDULED', 'APPLIED'] } } });
+    const live = await platformDb().releaseStage.count({ where: { releaseId: id, status: { in: ['SCHEDULED', 'APPLIED'] } } });
     if (live) throw conflict('RELEASE_LIVE', 'Undo its scheduled rings first, then change it.');
-    const r = await db().release.update({ where: { id }, data: b });
+    const r = await platformDb().release.update({ where: { id }, data: b });
     await log(p.adminId, 'release.update', { id, name: r.name, features: b.features });
     res.json(r);
   }),
@@ -202,7 +202,7 @@ updatesRouter.put(
 updatesRouter.get(
   '/releases/:id/preview/:ringId',
   h(async (req, res) => {
-    res.json(await previewStage(db(), uuid.parse(req.params.id), uuid.parse(req.params.ringId)));
+    res.json(await previewStage(platformDb(), uuid.parse(req.params.id), uuid.parse(req.params.ringId)));
   }),
 );
 
@@ -211,10 +211,10 @@ updatesRouter.post(
   requirePlatformStepUp,
   h(async (req, res) => {
     const p = platformOf(req);
-    const stage = await scheduleStage(db(), uuid.parse(req.params.id), stageBody.parse(req.body), p.adminId);
+    const stage = await scheduleStage(platformDb(), uuid.parse(req.params.id), stageBody.parse(req.body), p.adminId);
     // Due already: notices and switches now, not at the worker's next minute.
-    if (stage.scheduledAt <= new Date()) await releaseTick(db());
-    res.status(201).json(await db().releaseStage.findUniqueOrThrow({ where: { id: stage.id } }));
+    if (stage.scheduledAt <= new Date()) await releaseTick(platformDb());
+    res.status(201).json(await platformDb().releaseStage.findUniqueOrThrow({ where: { id: stage.id } }));
   }),
 );
 
@@ -225,11 +225,11 @@ updatesRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
-    const s = await db().releaseStage.findUnique({ where: { id } });
+    const s = await platformDb().releaseStage.findUnique({ where: { id } });
     if (!s) throw notFound('Stage');
     if (s.status !== 'SCHEDULED') throw conflict('STAGE_CLOSED', 'This stage isn’t waiting to go out.');
     await log(p.adminId, 'release.apply_now', { stageId: id, releaseId: s.releaseId });
-    const applied = await applyStage(db(), id);
+    const applied = await applyStage(platformDb(), id);
     res.json({ applied });
   }),
 );
@@ -239,7 +239,7 @@ updatesRouter.post(
   requireReleases,
   requirePlatformStepUp,
   h(async (req, res) => {
-    res.json(await rollbackStage(db(), uuid.parse(req.params.id), platformOf(req).adminId));
+    res.json(await rollbackStage(platformDb(), uuid.parse(req.params.id), platformOf(req).adminId));
   }),
 );
 
@@ -247,7 +247,7 @@ updatesRouter.post(
   '/releases/:id/rollback',
   requirePlatformStepUp,
   h(async (req, res) => {
-    res.json(await rollbackRelease(db(), uuid.parse(req.params.id), platformOf(req).adminId));
+    res.json(await rollbackRelease(platformDb(), uuid.parse(req.params.id), platformOf(req).adminId));
   }),
 );
 
@@ -257,7 +257,7 @@ updatesRouter.get(
   '/maintenance',
   h(async (_req, res) => {
     const now = new Date();
-    const rows = await db().maintenanceWindow.findMany({ orderBy: { startsAt: 'desc' }, take: 100 });
+    const rows = await platformDb().maintenanceWindow.findMany({ orderBy: { startsAt: 'desc' }, take: 100 });
     res.json(rows.map((w) => ({ ...w, status: maintenanceStatus(w, now) })));
   }),
 );
@@ -269,12 +269,12 @@ updatesRouter.post(
     const p = platformOf(req);
     const b = maintenanceBody.parse(req.body);
     if (b.endsAt <= new Date()) throw conflict('MAINTENANCE_PAST', 'That window is already over.');
-    const tenantIds = await resolveAudience(db(), b);
-    const w = await db().maintenanceWindow.create({ data: { ...b, tenantIds, createdById: p.adminId } });
+    const tenantIds = await resolveAudience(platformDb(), b);
+    const w = await platformDb().maintenanceWindow.create({ data: { ...b, tenantIds, createdById: p.adminId } });
     await log(p.adminId, 'maintenance.schedule', { id: w.id, startsAt: w.startsAt, endsAt: w.endsAt, organizations: tenantIds.length || 'all' });
-    await announceMaintenance(db(), w);
+    await announceMaintenance(platformDb(), w);
     // HR admins hear about it now rather than at the worker's next minute.
-    await maintenanceNotices(db());
+    await maintenanceNotices(platformDb());
     res.status(201).json({ ...w, status: maintenanceStatus(w) });
   }),
 );
@@ -287,22 +287,22 @@ updatesRouter.put(
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
     const b = maintenanceBody.parse(req.body);
-    const before = await db().maintenanceWindow.findUnique({ where: { id } });
+    const before = await platformDb().maintenanceWindow.findUnique({ where: { id } });
     if (!before) throw notFound('Maintenance window');
     if (before.cancelledAt || before.endsAt <= new Date()) throw conflict('MAINTENANCE_CLOSED', 'That window is over or cancelled.');
-    const tenantIds = await resolveAudience(db(), b);
+    const tenantIds = await resolveAudience(platformDb(), b);
     const moved = before.startsAt.getTime() !== b.startsAt.getTime() || before.endsAt.getTime() !== b.endsAt.getTime();
     // A change of time is a new notice (and a fresh reminder); new words alone just show.
     const w = moved
-      ? await db().$transaction(async (tx) => {
+      ? await platformDb().$transaction(async (tx) => {
           await tx.maintenanceWindow.update({ where: { id }, data: { cancelledAt: new Date() } });
           return tx.maintenanceWindow.create({ data: { ...b, tenantIds, createdById: p.adminId } });
         })
-      : await db().maintenanceWindow.update({ where: { id }, data: { ...b, tenantIds } });
+      : await platformDb().maintenanceWindow.update({ where: { id }, data: { ...b, tenantIds } });
     await log(p.adminId, 'maintenance.update', { id, newId: w.id, startsAt: w.startsAt, endsAt: w.endsAt, moved });
     // Everyone it was or now is for (empty = every organization).
-    await announceMaintenance(db(), { tenantIds: before.tenantIds.length && tenantIds.length ? [...new Set([...before.tenantIds, ...tenantIds])] : [] });
-    if (moved) await maintenanceNotices(db());
+    await announceMaintenance(platformDb(), { tenantIds: before.tenantIds.length && tenantIds.length ? [...new Set([...before.tenantIds, ...tenantIds])] : [] });
+    if (moved) await maintenanceNotices(platformDb());
     res.json({ ...w, status: maintenanceStatus(w) });
   }),
 );
@@ -313,12 +313,12 @@ updatesRouter.post(
   h(async (req, res) => {
     const p = platformOf(req);
     const id = uuid.parse(req.params.id);
-    const before = await db().maintenanceWindow.findUnique({ where: { id } });
+    const before = await platformDb().maintenanceWindow.findUnique({ where: { id } });
     if (!before) throw notFound('Maintenance window');
-    const w = before.cancelledAt ? before : await db().maintenanceWindow.update({ where: { id }, data: { cancelledAt: new Date() } });
+    const w = before.cancelledAt ? before : await platformDb().maintenanceWindow.update({ where: { id }, data: { cancelledAt: new Date() } });
     if (!before.cancelledAt) {
       await log(p.adminId, 'maintenance.cancel', { id });
-      await announceMaintenance(db(), w);
+      await announceMaintenance(platformDb(), w);
     }
     res.json({ ...w, status: maintenanceStatus(w) });
   }),

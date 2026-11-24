@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
-import { db, withTenant, type Tx } from '../../src/lib/db.js';
+import { db, platformDb, withTenant, type Tx } from '../../src/lib/db.js';
 import { owner, seedTenant } from './fixtures.js';
 
 afterAll(async () => {
@@ -62,29 +62,63 @@ describe('row-level security coverage', () => {
     expect(unknown).toEqual([]);
     const cls = (name: string) => new Set(tables.find((t) => t.relname === name)!.policies.map((p) => classOf[p]));
     for (const t of ['PlatformAdmin', 'PlatformSession', 'PlatformPasskey', 'FhBooks', 'FhJournalEntry', 'InvoiceCounter', 'Lead', 'PadBatch', 'RateLimitHit']) expect([...cls(t)], t).toEqual(['fh-only']);
+    // The fallback for an unlisted table with a tenantId has a name of its own, which isn't a class.
+    expect(classOf.tenant_isolation_unclassified).toBeUndefined();
     for (const t of ['StatutoryHoliday', 'CertificationPrerequisite', 'PayrollTaxTable', 'WeatherSite', 'WeatherForecastDay', 'WeatherObservation', 'BenchmarkSnapshot']) expect([...cls(t)], t).toEqual(['global-read-only']);
   });
 
-  it('inside a city’s transaction, FH’s platform tables show and accept nothing, and global tables are read-only', async () => {
+  it('the app role has no access to FH’s platform tables, in a city or not; only the platform role has (review of #61)', async () => {
     const { tenant } = await seedTenant(`rls-${randomBytes(4).toString('hex')}`, 0);
-    await owner.platformAdmin.create({ data: { email: `rls-${tenant.id}@example.ca`, name: 'Console admin', passwordHash: 'x' } });
-    const inCity = <T,>(fn: (tx: Tx) => Promise<T>) => withTenant(tenant.id, fn);
-    expect(await inCity((tx) => tx.platformAdmin.count())).toBe(0);
-    expect(await inCity((tx) => tx.platformSession.count())).toBe(0);
-    expect(await inCity((tx) => tx.lead.count())).toBe(0);
-    expect(await inCity((tx) => tx.rateLimitHit.count())).toBe(0);
-    await expect(inCity((tx) => tx.rateLimitHit.create({ data: { key: `rls:${tenant.id}` } }))).rejects.toThrow(/row-level security|42501/);
-    // Reference data: readable in a city, never written from one.
+    const email = `rls-${tenant.id}@example.ca`;
+    await owner.platformAdmin.create({ data: { email, name: 'Console admin', passwordHash: 'x' } });
+    const denied = /permission denied|42501/;
+    // No city chosen, and a city's transaction that clears its own setting: both refused.
+    await expect(db().platformAdmin.findMany({ select: { passwordHash: true } })).rejects.toThrow(denied);
+    await expect(db().lead.count()).rejects.toThrow(denied);
+    await expect(db().fhBooks.count()).rejects.toThrow(denied);
+    await expect(
+      withTenant(tenant.id, async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.tenant_id', '', true)`;
+        return tx.platformAdmin.findMany({ select: { passwordHash: true } });
+      }),
+    ).rejects.toThrow(denied);
+    // Reference data: the app role reads it, in a city or not, and never writes it.
     const year = 2099;
     await owner.payrollTaxTable.upsert({ where: { year_jurisdiction: { year, jurisdiction: 'CA' } }, create: { year, jurisdiction: 'CA', data: {} }, update: {} });
-    expect(await inCity((tx) => tx.payrollTaxTable.count({ where: { year } }))).toBe(1);
-    await expect(inCity((tx) => tx.payrollTaxTable.updateMany({ where: { year }, data: { note: 'changed from a city' } }))).resolves.toEqual({ count: 0 });
-    await expect(inCity((tx) => tx.payrollTaxTable.create({ data: { year, jurisdiction: 'BC', data: {} } }))).rejects.toThrow(/row-level security|42501/);
-    // With no city chosen (the Dev console, the worker), FH's side still works.
-    expect(await db().platformAdmin.count({ where: { email: `rls-${tenant.id}@example.ca` } })).toBe(1);
-    expect((await db().payrollTaxTable.updateMany({ where: { year }, data: { note: 'FH' } })).count).toBe(1);
+    expect(await withTenant(tenant.id, (tx) => tx.payrollTaxTable.count({ where: { year } }))).toBe(1);
+    expect(await db().payrollTaxTable.count({ where: { year } })).toBe(1);
+    await expect(db().payrollTaxTable.updateMany({ where: { year }, data: { note: 'from the app role' } })).rejects.toThrow(denied);
+    await expect(
+      withTenant(tenant.id, async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.tenant_id', '', true)`;
+        return tx.payrollTaxTable.updateMany({ where: { year }, data: { data: { tampered_from_city: 1 } } });
+      }),
+    ).rejects.toThrow(denied);
+    // The shared rate limiter stays the app's, with no city chosen only.
+    expect(await withTenant(tenant.id, (tx) => tx.rateLimitHit.count())).toBe(0);
+    await expect(withTenant(tenant.id, (tx) => tx.rateLimitHit.create({ data: { key: `rls:${tenant.id}` } }))).rejects.toThrow(/row-level security|42501/);
+    // FH's side, as the platform role: the platform tables, writes to reference data, and a city's
+    // rows only through that city's own context, like the app (it is a member of the app role).
+    expect(await platformDb().platformAdmin.count({ where: { email } })).toBe(1);
+    expect((await platformDb().payrollTaxTable.updateMany({ where: { year }, data: { note: 'FH' } })).count).toBe(1);
+    expect(await platformDb().user.count({ where: { tenantId: tenant.id } })).toBe(0);
     await owner.payrollTaxTable.deleteMany({ where: { year } });
-    await owner.platformAdmin.deleteMany({ where: { email: `rls-${tenant.id}@example.ca` } });
+    await owner.platformAdmin.deleteMany({ where: { email } });
+  });
+
+  it('a new table with a tenantId that no list classifies fails this test, though it is isolated (review of #61)', async () => {
+    const name = `NewCityThing${randomBytes(3).toString('hex')}`;
+    await owner.$executeRawUnsafe(`CREATE TABLE "${name}" (id int, "tenantId" uuid)`);
+    try {
+      // The catalogue block of rls.sql, as a deployment runs it.
+      const sql = (await import('node:fs')).readFileSync(new URL('../../db/rls.sql', import.meta.url), 'utf8');
+      const block = sql.slice(sql.indexOf('-- Generated from the catalogue'), sql.indexOf('-- The owner (the role that runs migrations'));
+      await owner.$executeRawUnsafe(block);
+      const pol = await owner.$queryRawUnsafe<Array<{ polname: string }>>(`SELECT polname FROM pg_policy WHERE polrelid = '"${name}"'::regclass`);
+      expect(pol.map((x) => x.polname)).toEqual(['tenant_isolation_unclassified']);
+    } finally {
+      await owner.$executeRawUnsafe(`DROP TABLE "${name}"`);
+    }
   });
 
   it('audit trails cannot be edited or deleted by the app', async () => {

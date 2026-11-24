@@ -17,7 +17,7 @@
  */
 import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
-import { db, tenantIds, withTenant } from '../../lib/db.js';
+import { tenantIds, withTenant, platformDb } from '../../lib/db.js';
 import { HttpError, invalid, notFound } from '../../lib/errors.js';
 import { csvCell } from '../payroll/export.js';
 
@@ -45,7 +45,7 @@ interface StoredChart { codes?: Partial<Record<ChartKey, string>>; custom?: Arra
 export interface Account { code: string; name: string; type: AccountType; key: ChartKey | null }
 
 export async function books() {
-  return db().fhBooks.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+  return platformDb().fhBooks.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
 }
 
 export async function chart(): Promise<{ accounts: Account[]; byKey: Record<ChartKey, string> }> {
@@ -68,13 +68,13 @@ export async function saveChart(input: z.infer<typeof chartBody>) {
   const dup = all.find((c, i) => all.indexOf(c) !== i);
   if (dup) throw invalid('ACCOUNT_TWICE', `Account ${dup} is used twice.`, { account: dup });
   await books();
-  await db().fhBooks.update({ where: { id: 1 }, data: { accounts: input as unknown as Prisma.InputJsonValue } });
+  await platformDb().fhBooks.update({ where: { id: 1 }, data: { accounts: input as unknown as Prisma.InputJsonValue } });
 }
 
 export const settingsBody = z.object({ fiscalYearStart: z.number().int().min(1).max(12), closedThrough: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() });
 export async function saveSettings(input: z.infer<typeof settingsBody>) {
   await books();
-  await db().fhBooks.update({ where: { id: 1 }, data: { fiscalYearStart: input.fiscalYearStart, closedThrough: input.closedThrough ? new Date(`${input.closedThrough}T00:00:00Z`) : null } });
+  await platformDb().fhBooks.update({ where: { id: 1 }, data: { fiscalYearStart: input.fiscalYearStart, closedThrough: input.closedThrough ? new Date(`${input.closedThrough}T00:00:00Z`) : null } });
 }
 
 /** Nothing can be dated inside a closed period. */
@@ -113,7 +113,7 @@ export async function journal(from: string, to: string): Promise<Entry[]> {
   const acct = (k: ChartKey) => byKey[k];
   const entries: Entry[] = [];
 
-  const invoices = await db().invoice.findMany({
+  const invoices = await platformDb().invoice.findMany({
     where: { OR: [{ issueDate: { gte: fromD, lte: toD } }, { voidedAt: { gte: fromD, lte: toD }, issueDate: { not: null } }] },
     include: { lines: true },
   });
@@ -130,7 +130,7 @@ export async function journal(from: string, to: string): Promise<Entry[]> {
     if (inv.voidedAt && inv.voidedAt >= fromD && inv.voidedAt <= toD) entries.push({ ...base, date: isoDay(inv.voidedAt), kind: 'VOID', memo: `Void of invoice ${base.reference}: ${inv.voidReason ?? ''}`.trim(), lines: merge(lines.map((l) => ({ account: l.account, debitCents: l.creditCents, creditCents: l.debitCents }))) });
   }
 
-  const payments = await db().invoicePayment.findMany({ where: { receivedOn: { gte: fromD, lte: toD } }, include: { invoice: true } });
+  const payments = await platformDb().invoicePayment.findMany({ where: { receivedOn: { gte: fromD, lte: toD } }, include: { invoice: true } });
   for (const p of payments) {
     const inv = p.invoice;
     const base = { date: isoDay(p.receivedOn), reference: inv.number ?? inv.id.slice(0, 8), organization: names.get(inv.tenantId) ?? null, tenantId: inv.tenantId };
@@ -146,7 +146,7 @@ export async function journal(from: string, to: string): Promise<Entry[]> {
     }
   }
 
-  const manual = await db().fhJournalEntry.findMany({ where: { date: { gte: fromD, lte: toD } } });
+  const manual = await platformDb().fhJournalEntry.findMany({ where: { date: { gte: fromD, lte: toD } } });
   for (const m of manual) entries.push({ date: isoDay(m.date), kind: 'MANUAL', reference: m.reference ?? `JE-${m.id.slice(0, 6)}`, memo: m.memo, organization: null, tenantId: null, lines: m.lines as unknown as Line[] });
 
   return entries.sort((a, b) => a.date.localeCompare(b.date) || a.reference.localeCompare(b.reference));
@@ -193,7 +193,7 @@ export async function addManualEntry(input: z.infer<typeof manualBody>, adminId:
   const dr = input.lines.reduce((s, l) => s + l.debitCents, 0);
   const cr = input.lines.reduce((s, l) => s + l.creditCents, 0);
   if (dr !== cr) throw new HttpError(400, 'UNBALANCED', `Debits (${(dr / 100).toFixed(2)}) and credits (${(cr / 100).toFixed(2)}) must be equal.`);
-  return db().fhJournalEntry.create({ data: { date: new Date(`${input.date}T00:00:00Z`), memo: input.memo, reference: input.reference ?? null, lines: input.lines as unknown as Prisma.InputJsonValue, createdById: adminId } });
+  return platformDb().fhJournalEntry.create({ data: { date: new Date(`${input.date}T00:00:00Z`), memo: input.memo, reference: input.reference ?? null, lines: input.lines as unknown as Prisma.InputJsonValue, createdById: adminId } });
 }
 
 // ------------------------------------------------------------------ Credits and write-offs
@@ -202,7 +202,7 @@ export const adjustBody = z.object({ amountCents: z.number().int().min(1).max(10
 /** A credit note (part or all of the balance) or a write-off of what's left. Either closes the invoice when nothing is owing. */
 export async function adjustInvoice(id: string, kind: 'CREDIT' | 'WRITE_OFF', input: z.infer<typeof adjustBody>, adminId: string) {
   await assertOpenPeriod(input.date);
-  return db().$transaction(async (tx) => {
+  return platformDb().$transaction(async (tx) => {
     const inv = await tx.invoice.findUnique({ where: { id } });
     if (!inv) throw notFound('Invoice');
     if (inv.status !== 'SENT') throw new HttpError(409, 'NOT_OPEN', 'Only sent invoices with a balance can be credited or written off.');
@@ -253,7 +253,7 @@ export async function incomeStatement(from: string, to: string) {
 export async function arAging(asOf: string) {
   const names = await orgNames();
   const end = new Date(`${asOf}T23:59:59.999Z`);
-  const invoices = await db().invoice.findMany({ where: { issueDate: { lte: end }, OR: [{ voidedAt: null }, { voidedAt: { gt: end } }] }, include: { payments: true } });
+  const invoices = await platformDb().invoice.findMany({ where: { issueDate: { lte: end }, OR: [{ voidedAt: null }, { voidedAt: { gt: end } }] }, include: { payments: true } });
   const buckets = ['current', 'd1_30', 'd31_60', 'd61_90', 'over90'] as const;
   const byOrg = new Map<string, Record<(typeof buckets)[number], number> & { tenantId: string; organization: string; invoices: number }>();
   for (const inv of invoices) {
@@ -278,7 +278,7 @@ export async function salesTax(from: string, to: string) {
   const { byKey } = await chart();
   const fromD = new Date(`${from}T00:00:00Z`);
   const toD = new Date(`${to}T23:59:59.999Z`);
-  const invoices = await db().invoice.findMany({ where: { issueDate: { gte: fromD, lte: toD } }, select: { subtotalCents: true, billTo: true, taxLines: true } });
+  const invoices = await platformDb().invoice.findMany({ where: { issueDate: { gte: fromD, lte: toD } }, select: { subtotalCents: true, billTo: true, taxLines: true } });
   const byProvince = new Map<string, { province: string; salesCents: number; taxes: Record<string, number> }>();
   for (const inv of invoices) {
     const p = (inv.billTo as { province?: string }).province ?? '??';

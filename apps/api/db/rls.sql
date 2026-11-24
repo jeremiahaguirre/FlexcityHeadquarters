@@ -418,52 +418,65 @@ GRANT DELETE ON "ReleaseRingMember", "ReleaseStage", "ReleaseChange" TO flexcity
 -- test (test/integration/rls-coverage.test.ts) fails on any table without one of these.
 --
 -- FH's platform tables: the Dev console's accounts, sign-in sessions and passkeys, FH's books and
--- invoice numbers, pre-authorized debit batches, marketing enquiries, and the shared rate limiter.
--- Used only with no city chosen (the Dev console, the worker, sign-in before a city is known), so
--- inside any city's transaction they show nothing and accept nothing. Defence in depth: SQL that
--- runs inside a city's transaction, through some other bug, can't read console password hashes
--- or plant a console session. (SQL able to clear app.tenant_id is beyond this; the long-term fix is
--- a separate database role for the console.)
+-- invoice numbers, pre-authorized debit batches, marketing enquiries (SECURITY-AUDIT SEC-35).
+-- Only flexcity_platform (FH's own role: db/roles.sql, platformDb() in the app) may use them. The
+-- app role, which every city's request runs as, has no privilege on them at all, in a city's
+-- transaction or not: a bug or an injection in a city's request can't read console password
+-- hashes, plant a console session, or touch FH's books.
 DO $$
 DECLARE
   t text;
-  platform_tables text[] := ARRAY['PlatformAdmin', 'PlatformSession', 'PlatformPasskey', 'FhBooks', 'FhJournalEntry', 'InvoiceCounter', 'Lead', 'PadBatch', 'RateLimitHit'];
+  platform_tables text[] := ARRAY['PlatformAdmin', 'PlatformSession', 'PlatformPasskey', 'FhBooks', 'FhJournalEntry', 'InvoiceCounter', 'Lead', 'PadBatch'];
 BEGIN
   FOREACH t IN ARRAY platform_tables LOOP
+    EXECUTE format('REVOKE ALL ON %I FROM flexcity_app', t);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE ON %I TO flexcity_platform', t);
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS fh_only ON %I', t);
-    EXECUTE format(
-      'CREATE POLICY fh_only ON %I TO flexcity_app
-         USING (app_current_tenant() IS NULL) WITH CHECK (app_current_tenant() IS NULL)', t);
+    EXECUTE format('CREATE POLICY fh_only ON %I TO flexcity_platform USING (true) WITH CHECK (true)', t);
   END LOOP;
 END
 $$;
+-- Deletes FH's side makes: a removed passkey, a PAD batch withdrawn before it is sent.
+GRANT DELETE ON "PlatformPasskey", "PadBatch" TO flexcity_platform;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO flexcity_platform;
+
+-- The shared rate limiter stays with the app role, by decision: every request (sign-in, public
+-- forms) counts against it before anyone is known, and it holds keyed hashes and times, nothing
+-- readable. Only with no city chosen.
+DROP POLICY IF EXISTS fh_only ON "RateLimitHit";
+CREATE POLICY fh_only ON "RateLimitHit" TO flexcity_app
+  USING (app_current_tenant() IS NULL) WITH CHECK (app_current_tenant() IS NULL);
+ALTER TABLE "RateLimitHit" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "RateLimitHit" FORCE ROW LEVEL SECURITY;
 
 -- Global reference data: statutory holidays, certification prerequisites, payroll tax tables,
--- weather, cross-city benchmarks. Every city reads them; only FH's side (no city chosen: the
--- worker, the Dev console, seeding) writes them. Before, PayrollTaxTable could be rewritten from
--- inside any city's transaction.
+-- weather, cross-city benchmarks. Every city reads them (the app role: SELECT only); only
+-- flexcity_platform writes them (the worker's refreshes, the Dev console, filling in a year's tax
+-- tables). Before, PayrollTaxTable could be rewritten from inside any city's transaction.
 DO $$
 DECLARE
   t text;
   global_tables text[] := ARRAY['StatutoryHoliday', 'CertificationPrerequisite', 'PayrollTaxTable', 'WeatherSite', 'WeatherForecastDay', 'WeatherObservation', 'BenchmarkSnapshot'];
 BEGIN
   FOREACH t IN ARRAY global_tables LOOP
+    EXECUTE format('REVOKE INSERT, UPDATE, DELETE ON %I FROM flexcity_app', t);
+    EXECUTE format('GRANT SELECT ON %I TO flexcity_app', t);
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %I TO flexcity_platform', t);
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
     EXECUTE format('DROP POLICY IF EXISTS global_read ON %I', t);
     EXECUTE format('DROP POLICY IF EXISTS fh_write ON %I', t);
     EXECUTE format('CREATE POLICY global_read ON %I FOR SELECT TO flexcity_app USING (true)', t);
-    EXECUTE format(
-      'CREATE POLICY fh_write ON %I TO flexcity_app
-         USING (app_current_tenant() IS NULL) WITH CHECK (app_current_tenant() IS NULL)', t);
+    EXECUTE format('CREATE POLICY fh_write ON %I TO flexcity_platform USING (true) WITH CHECK (true)', t);
   END LOOP;
 END
 $$;
 
 -- Generated from the catalogue, so a new table can never be left open: a table with a "tenantId"
--- column that no block above covered gets the strict city policy; any other unclassified table is
+-- column that no block above covered gets a strict city policy (tenant_isolation_unclassified);
+-- any other unclassified table is
 -- locked (row-level security on, no policy for the app: it sees and changes nothing) until it is
 -- classified above. The coverage test fails on both, so CI catches them before a deployment does.
 DO $$
@@ -476,12 +489,14 @@ BEGIN
        AND c.relname <> '_prisma_migrations'
        AND EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'tenantId' AND NOT a.attisdropped)
   LOOP
-    RAISE WARNING 'rls.sql: % has a tenantId column but is in no list; applying tenant_isolation', t;
+    RAISE WARNING 'rls.sql: % has a tenantId column but is in no list; applying tenant_isolation_unclassified', t;
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
-    EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS tenant_isolation_unclassified ON %I', t);
+    -- Strictly isolated in production, under a name the coverage test doesn't accept, so CI fails
+    -- until the table is classified (a city table, or one FH's side reads too).
     EXECUTE format(
-      'CREATE POLICY tenant_isolation ON %I TO flexcity_app
+      'CREATE POLICY tenant_isolation_unclassified ON %I TO flexcity_app
          USING ("tenantId" = app_current_tenant())
          WITH CHECK ("tenantId" = app_current_tenant())', t);
   END LOOP;
