@@ -151,7 +151,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_version: 1.9.8
           terraform_wrapper: false
@@ -160,3 +160,19 @@ jobs:
       - run: if [ -f .terraform.lock.hcl ]; then terraform init -backend=false -input=false -lockfile=readonly; else terraform init -backend=false -input=false; fi
       - run: terraform validate
       - run: terraform test
+
+  # The deployment scripts (.github/workflows/deploy.yml): syntax, and the post-deploy check that
+  # decides whether a release stays or is rolled back. No dependencies.
+  deploy-scripts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: bash -n ops/deploy/deploy.sh && bash -n ops/deploy/promote.sh && bash -n ops/deploy/preflight.sh
+      - run: node --test ops/deploy/

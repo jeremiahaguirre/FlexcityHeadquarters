@@ -9,14 +9,15 @@ useDefault = true
 
 # Recorded demo data: the "key" field of catalogue entries, which is a readable name, not a secret:
 # rotation pattern names ("FOUR_ON_FOUR_OFF", "PITMAN_2_2_3") and certificate slugs
-# ("water-treatment-2", "wastewater-collection-4"). Upper-case words, or lower-case words and
-# digits joined by hyphens; a random token would not match either.
+# ("water-treatment-2", "wastewater-collection-4"). Upper-case words joined by underscores (at
+# least two, each at most 16 characters), or lower-case words and digits joined by hyphens. A
+# random token, such as a base32 TOTP seed (no underscores), matches neither.
 [[allowlists]]
 description = "Demo fixtures: catalogue keys (rotation patterns, certificate slugs)"
 condition = "AND"
 targetRules = ["generic-api-key"]
 paths = ['''^apps/web/src/lib/demo-fixtures/(supervisor|hr)\.json$''']
-regexes = ['''^[A-Z][A-Z0-9_]*$''', '''^[a-z]+(-[a-z]+)*(-[0-9])?$''']
+regexes = ['''^[A-Z][A-Z0-9]{0,15}(_[A-Z0-9]{1,16}){1,5}$''', '''^[a-z]+(-[a-z]+)*(-[0-9])?$''']
 
 # A Terraform test asserting the NAME of the environment variable that carries the owner password
 # ("DB_PASSWORD"); there is no password in it.
