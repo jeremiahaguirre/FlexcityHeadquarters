@@ -1,0 +1,8 @@
+# Terraform state settings for one environment. Copy to backend/<env>.s3.tfbackend (not secret,
+# but git-ignored like tfvars) or paste into the <ENV>_TF_BACKEND repository variable for CI.
+# The bucket and table are created by ops/terraform/bootstrap (its outputs print these lines).
+bucket         = "fh-terraform-state-<account-id>"
+key            = "<env>/terraform.tfstate"
+region         = "ca-central-1"
+dynamodb_table = "fh-terraform-locks"
+encrypt        = true

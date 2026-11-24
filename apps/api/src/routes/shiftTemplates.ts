@@ -6,7 +6,7 @@ import { authOf, requireFeature, requirePermission } from '../auth/middleware.js
 import { announceChange } from '../lib/changes.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
-import { parseSolverSettings, withSolverSettings } from '../services/scheduling/solverSettings.js';
+import { parseSolverSettings, updateSolverSettings } from '../services/scheduling/solverSettings.js';
 import { MAX_APPLY_DAYS, applicationView, applyTemplate, assertTemplateInScope, saveTemplate, templateBody, templateView, undoApplication, visibleTemplates } from '../services/scheduling/shiftTemplates.js';
 import { h } from './context.js';
 
@@ -47,11 +47,9 @@ shiftTemplatesRouter.put(
     if (!a.permissions.has('tenant.configure')) throw forbidden();
     const { autoCreate } = z.object({ autoCreate: z.boolean() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      const t = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } });
-      const s = parseSolverSettings(t.overtimePolicy);
-      await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: withSolverSettings(t.overtimePolicy, { ...s, templateAutoCreate: autoCreate }) as Prisma.InputJsonValue } });
+      const { before } = await updateSolverSettings(tx, a.tenantId, (s) => ({ ...s, templateAutoCreate: autoCreate }));
       await announceChange(tx, a.tenantId, 'templates');
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'shift_template.settings', entity: 'Tenant', entityId: a.tenantId, before: { autoCreate: s.templateAutoCreate }, after: { autoCreate } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'shift_template.settings', entity: 'Tenant', entityId: a.tenantId, before: { autoCreate: before.templateAutoCreate }, after: { autoCreate } });
     });
     res.json({ autoCreate });
   }),

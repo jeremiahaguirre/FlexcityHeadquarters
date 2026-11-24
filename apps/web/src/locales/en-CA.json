@@ -448,6 +448,7 @@
     "NOT_ELIGIBLE": "You can’t take this shift.",
     "FORBIDDEN": "You don’t have access to do that.",
     "VALIDATION": "Some details aren’t right. Check the form and try again.",
+    "MALFORMED_ADDRESS": "That address isn’t valid. Go back and try again.",
     "BAD_REQUEST": "Some details aren’t right. Check the form and try again.",
     "ALREADY_CLOCKED_IN": "You’re already clocked in.",
     "NOT_CLOCKED_IN": "You’re not clocked in.",
@@ -469,6 +470,7 @@
     "NO_PASSKEY": "No passkey on this account.",
     "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
+    "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "CSRF_REFUSED": "This request didn’t come from the Dev console. Reload the page and try again.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
     "ALREADY_ENDED": "This session has already ended.",
@@ -604,6 +606,7 @@
     "SHIFT_TOO_LONG": "A shift can be at most {{maxHours}} hours.",
     "TITLE_REQUIRED": "Give this shift a title.",
     "STATION_UNKNOWN": "A station isn’t on this deck.",
+    "POOL_BODY_UNKNOWN": "That pool isn’t at this facility. Choose one of its own pools.",
     "STATION_TWICE": "Someone is on two stations at once.",
     "POOL_DEPTH": "The shallow end must not be deeper than the deep end.",
     "READING_INVALID": "This reading looks wrong. Check it and try again.",
@@ -778,7 +781,11 @@
     "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
     "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
     "CERT_EXISTS": "There’s already a certificate with that name.",
-    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again."
+    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again.",
+    "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days.",
+    "UNTIL_BEFORE_START": "The last year is before the first date.",
+    "NTH_WEEKDAY_FIFTH": "A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.",
+    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -880,7 +887,9 @@
     "holidayObserved": "observed {{date}}",
     "holidayMovedIfOff": "{{date}} if you don’t usually work that day",
     "holidaysMore": "Show all {{count}}",
-    "holidaysLess": "Show fewer"
+    "holidaysLess": "Show fewer",
+    "holidayCity": "City holiday",
+    "holidayClosure": "Closed (unpaid)"
   },
   "availability": {
     "title": "Availability",
@@ -1824,7 +1833,7 @@
       "facilities": "Facilities",
       "pools": "Pools",
       "pay": "Pay codes",
-      "calendar": "School calendar",
+      "calendar": "Holidays and calendar",
       "rules": "Agreement rules",
       "roles": "Roles",
       "departments": "Departments",
@@ -4544,7 +4553,12 @@
     "reportableHelp": "First aid only, with no lost time, is kept on file without a report. If either changes later, update it and the report becomes due.",
     "save": "Save",
     "claimNumber": "Board claim number",
-    "foot": "Deadlines per province are built in but not yet reviewed by counsel. Confirm them with your board. HR and supervisors are reminded a day before and when a report is overdue."
+    "foot": "Deadlines per province are built in but not yet reviewed by counsel. Confirm them with your board. HR and supervisors are reminded a day before and when a report is overdue.",
+    "update": "Update",
+    "updateFor": "Update the injury report for {{name}}",
+    "updateHelp": "Mark lost time or health care found after the report was saved. If either applies, the report to the board becomes due.",
+    "updated": "Saved.",
+    "nowDue": "Saved. The report to {{board}} is now due: it’s on the list to file."
   },
   "departments": {
     "tabs": "Department",
@@ -8760,5 +8774,45 @@
       "wastewater": "Wastewater",
       "licence": "Driver’s licences"
     }
+  },
+  "cityHolidays": {
+    "dateFirst": "The first time it applies. Nothing repeats before it.",
+    "kindHint": {
+      "CLOSURE": "No holiday pay or holiday rate. Leave doesn’t count the day, and facilities set to close on holidays get no new shifts on it.",
+      "PAID": "Paid like a statutory holiday: holiday pay, and the holiday rate for hours worked."
+    },
+    "kindLabel": "Type",
+    "date": "Date",
+    "help": "Days your organization adds on top of each province’s statutory holidays, such as Boxing Day, Easter Monday or a civic holiday. Payroll pays a paid holiday like a statutory one (holiday pay and the holiday rate for hours worked); a closure day pays nothing extra. Leave doesn’t count either day, and rotations and shift templates add no shifts on them at facilities set to close on holidays (Fill settings).",
+    "removed": "Holiday removed.",
+    "recurrence": {
+      "NONE": "Once",
+      "YEARLY_NTH_WEEKDAY": "Every year on the same weekday of the month (e.g. the first Monday of August)",
+      "EASTER_OFFSET": "Every year, the same number of days from Easter (e.g. Easter Monday)",
+      "YEARLY_LAST_WEEKDAY": "Every year on the last such weekday of the month",
+      "YEARLY_DATE": "Every year on the same date"
+    },
+    "edit": "Change {{name}}",
+    "remove": "Remove {{name}}",
+    "recurrenceLabel": "Repeats",
+    "allProvinces": "Every facility",
+    "untilYearHint": "Leave empty to keep repeating.",
+    "kind": {
+      "CLOSURE": "Closure day",
+      "PAID": "Paid holiday"
+    },
+    "nextOn": "Next: {{date}}",
+    "province": "Applies to",
+    "saved": "Holiday saved.",
+    "empty": "No city holidays yet. Statutory holidays apply automatically.",
+    "nameFr": "Name (French)",
+    "untilYear": "Last year (optional)",
+    "noneComing": "None in the coming year.",
+    "editTitle": "Change a holiday or closure day",
+    "title": "City holidays and closure days",
+    "add": "Add a day",
+    "until": "until {{year}}",
+    "name": "Name (English)",
+    "addTitle": "Add a holiday or closure day"
   }
 }
