@@ -61,3 +61,12 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 paths = ['''^apps/api/test/integration/push\.test\.ts$''']
 regexes = ['''^-mDBL3w-m4zwmJSW6O1hpEgwAJBxxO7F98ocPKC9edI$''', '''^c2VjcmV0LWF1dGgtMTIz$''']
+
+# The migration lint's grandfather list: each migration's name and the SHA-256 of its file (64 hex
+# digits), a checksum of a public file, not a secret.
+[[allowlists]]
+description = "Migration lint: SHA-256 checksums of grandfathered migrations"
+condition = "AND"
+targetRules = ["generic-api-key"]
+paths = ['''^apps/api/scripts/migration-lint-grandfathered\.json$''']
+regexes = ['''^[0-9a-f]{64}$''']
