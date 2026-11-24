@@ -8,7 +8,7 @@ import { conflict, notFound } from '../lib/errors.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { INTERVALS, position, raiseHelp, view } from '../services/safety/loneWork.js';
 import { h } from './context.js';
-import { peopleInScope } from '../services/people/scope.js';
+import { peopleInScope, userInScope } from '../services/people/scope.js';
 
 export const loneWorkRouter = Router();
 loneWorkRouter.use(['/lone-work', '/me/lone-work'], requireFeature('loneWork'));
@@ -223,6 +223,9 @@ loneWorkRouter.post(
       await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const s = await tx.loneWorkSession.findUnique({ where: { id } });
       if (!s) throw notFound('Working-alone session');
+      // The monitor board shows a monitor only their own department's people; responding to or
+      // closing another department's session by its id is refused the same way.
+      if (!(await userInScope(tx, a.scope, s.userId))) throw notFound('Working-alone session');
       if (s.status === 'ENDED') throw conflict('ALREADY_ENDED', 'This session has ended.');
       await tx.loneWorkSession.update({ where: { id }, data: { respondingId: a.userId, respondingAt: new Date() } });
       const me = await tx.user.findUnique({ where: { id: a.userId }, select: { firstName: true, lastName: true } });
@@ -245,6 +248,9 @@ loneWorkRouter.post(
       await announceChange(tx, a.tenantId, 'lonework'); // sent at commit only (lib/changes.ts)
       const s = await tx.loneWorkSession.findUnique({ where: { id } });
       if (!s) throw notFound('Working-alone session');
+      // The monitor board shows a monitor only their own department's people; responding to or
+      // closing another department's session by its id is refused the same way.
+      if (!(await userInScope(tx, a.scope, s.userId))) throw notFound('Working-alone session');
       if (s.status === 'ENDED') throw conflict('ALREADY_ENDED', 'This session has ended.');
       await tx.loneWorkSession.update({ where: { id }, data: { status: 'ENDED', endedAt: new Date(), shareLocation: false } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'lonework.close', entity: 'LoneWorkSession', entityId: id, after: { note } });
