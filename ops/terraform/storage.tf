@@ -290,8 +290,8 @@ resource "aws_ecr_lifecycle_policy" "repo" {
 }
 
 # The app's settings that are secret, as one JSON object filled in by hand (never in Terraform
-# state): JWT_SECRET, APP_DATABASE_URL, LISTEN_DATABASE_URL, METRICS_TOKEN, DATABASE_URL (owner,
-# for migrations), and the optional provider keys. See ops/terraform/README.md.
+# state): JWT_SECRET, APP_DATABASE_URL, LISTEN_DATABASE_URL, METRICS_TOKEN and the optional provider
+# keys. The owner password is not in it: RDS manages it. See ops/terraform/README.md.
 # Copied to the recovery region (read-only there until promoted).
 resource "aws_secretsmanager_secret" "app" {
   count      = var.recovery_mode ? 0 : 1
