@@ -312,6 +312,26 @@ describe('a city without departments: whole-organization access is per capabilit
     expect((await ncall(hrTok).get('/api/payees')).status).toBe(200);
   });
 
+  it('positions are changed only with positions.manage for the whole organization, not from a facility-limited role (review of 67d40b7)', async () => {
+    const hrTok = await signAccessToken({ sub: (await owner.user.findFirstOrThrow({ where: { tenantId: n.tenant.id, roles: { has: 'HR_ADMIN' } } })).id, tid: n.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
+    const role = await ncall(hrTok).post('/api/roles', { name: 'Pool positions', permissions: ['positions.manage', 'users.read'], scopeFacilityIds: [n.facility.id] });
+    expect(role.status).toBe(201);
+    // A built-in head lifeguard (a lead, so no department limit is computed) with the facility-limited role.
+    const who = await person(['HEAD_LIFEGUARD', 'STAFF'], 'poolpositions');
+    await owner.userCustomRole.create({ data: { tenantId: n.tenant.id, userId: who, customRoleId: role.body.id } });
+    forgetCustomPermissions(n.tenant.id);
+    const token = await signAccessToken({ sub: who, tid: n.tenant.id, roles: ['HEAD_LIFEGUARD', 'STAFF'], aat: now(), mfa: true });
+    const before = await owner.position.findUniqueOrThrow({ where: { id: n.position.id } });
+    const create = await ncall(token).post('/api/positions', { name: 'Shadow position', requiredCertificationIds: [] });
+    expect([create.status, create.body.code]).toEqual([403, 'WHOLE_ORGANIZATION_ONLY']);
+    const edit = await request(server).put(`/api/positions/${n.position.id}`).set('x-tenant-subdomain', NSUB).auth(token, { type: 'bearer' }).send({ name: 'Renamed', requiredCertificationIds: [] });
+    expect([edit.status, edit.body.code]).toEqual([403, 'WHOLE_ORGANIZATION_ONLY']);
+    expect(await owner.position.findUniqueOrThrow({ where: { id: n.position.id } })).toEqual(before);
+    expect(await owner.position.count({ where: { tenantId: n.tenant.id, name: 'Shadow position' } })).toBe(0);
+    // HR, for the whole organization, still may.
+    expect((await request(server).put(`/api/positions/${n.position.id}`).set('x-tenant-subdomain', NSUB).auth(hrTok, { type: 'bearer' }).send({ name: before.name, requiredCertificationIds: [] })).status).toBe(200);
+  });
+
   it('an unlimited custom role with organization settings, not HR, sees the export but can’t download it (HR_ONLY)', async () => {
     const hrTok = await signAccessToken({ sub: (await owner.user.findFirstOrThrow({ where: { tenantId: n.tenant.id, roles: { has: 'HR_ADMIN' } } })).id, tid: n.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
     const role = await ncall(hrTok).post('/api/roles', { name: 'IT admin', permissions: ['tenant.configure'] });

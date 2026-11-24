@@ -136,6 +136,21 @@ const overlapDays = (aFrom: string, aTo: string, bFrom: string, bTo: string | nu
   return from > to ? 0 : Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000) + 1;
 };
 
+/**
+ * People on this run who are leaving: their latest departure up to the period's end still stands,
+ * because the offboarding is still open or they're still terminated. Final pay in a later off-cycle
+ * run counts; someone who left and was rehired since (offboarding completed, active again) doesn't,
+ * even when both happened in this same period.
+ */
+export async function leavingPeople(tx: Tx, userIds: string[], periodEnd: string): Promise<Set<string>> {
+  if (!userIds.length) return new Set();
+  const departures = await tx.offboarding.findMany({ where: { userId: { in: userIds }, lastDay: { lte: new Date(periodEnd) } }, orderBy: [{ lastDay: 'desc' }, { createdAt: 'desc' }], select: { userId: true, completedAt: true } });
+  const latest = new Map<string, { completedAt: Date | null }>();
+  for (const d of departures) if (!latest.has(d.userId)) latest.set(d.userId, d);
+  const terminated = new Set((await tx.user.findMany({ where: { id: { in: [...latest.keys()] }, status: 'TERMINATED' }, select: { id: true } })).map((u) => u.id));
+  return new Set([...latest].filter(([id, d]) => !d.completedAt || terminated.has(id)).map(([id]) => id));
+}
+
 /** Works out every statement for a run. Replaces a draft's statements when `runId` is given. */
 export async function buildRun(tx: Tx, tenantId: string, preparedById: string, input: RunInput, runId?: string) {
   const periodEnd = addDays(input.periodStart, input.weeks * 7 - 1);
@@ -196,7 +211,7 @@ export async function buildRun(tx: Tx, tenantId: string, preparedById: string, i
   for (const c of claims) if (!runUsers.includes(c.userId)) runUsers.push(c.userId);
   const lieuBanks = await lieuBanksOf(tx, runUsers, { excludeRunId: runId });
   const bankers = new Set(policy.enabled && kind === 'REGULAR' ? (await tx.user.findMany({ where: { id: { in: runUsers }, bankOvertime: true }, select: { id: true } })).map((u) => u.id) : []);
-  const leaving = new Set((await tx.offboarding.findMany({ where: { userId: { in: runUsers }, lastDay: { lte: new Date(periodEnd) } }, select: { userId: true } })).map((o) => o.userId));
+  const leaving = await leavingPeople(tx, runUsers, periodEnd);
   // Someone who also worked in another department this period has to be paid in one run (city-wide), so
   // tax and CPP/EI are worked out once on all their pay, not twice on halves.
   if (kind === 'REGULAR' && input.departmentId && positions && runUsers.length) {

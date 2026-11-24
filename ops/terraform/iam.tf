@@ -10,8 +10,9 @@ data "aws_iam_policy_document" "ecs_assume" {
 
 # Used by ECS itself: pull images, write logs, read the app secret into the container.
 resource "aws_iam_role" "execution" {
-  name               = "${local.gname}-ecs-execution"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+  name                 = "${local.gname}-ecs-execution"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_assume.json
+  permissions_boundary = local.role_boundary
 }
 
 resource "aws_iam_role_policy_attachment" "execution" {
@@ -42,8 +43,9 @@ resource "aws_iam_role_policy" "execution_secrets" {
 # in a permission, which would fail an organization's first sealed record. That is why each
 # environment gets its own AWS account (kms.tf).
 resource "aws_iam_role" "app" {
-  name               = "${local.gname}-app"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+  name                 = "${local.gname}-app"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_assume.json
+  permissions_boundary = local.role_boundary
 }
 
 locals {
@@ -140,6 +142,7 @@ resource "aws_iam_role_policy" "app" {
 
 # The web app needs no AWS permissions.
 resource "aws_iam_role" "web" {
-  name               = "${local.gname}-web"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+  name                 = "${local.gname}-web"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_assume.json
+  permissions_boundary = local.role_boundary
 }

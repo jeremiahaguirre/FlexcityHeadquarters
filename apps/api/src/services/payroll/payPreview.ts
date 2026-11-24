@@ -9,7 +9,7 @@ import type { Tx } from '../../lib/db.js';
 import { Decimal, dec } from '../../lib/money.js';
 import { addDays, localDate, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { loadShiftBundle } from '../scheduling/eligibilityLoader.js';
-import { holidaysTouching, premiumDays, usuallyWorks } from './holidayRules.js';
+import { holidaysTouching, isPaidHoliday, premiumDays, usuallyWorks } from './holidayRules.js';
 import { calculatePay } from './payCalc.js';
 import { breakMinutesOf, paidHours, premiumPieces, reportingMinimum } from '../scheduling/workRules.js';
 
@@ -26,7 +26,7 @@ export async function previewShiftPay(tx: Tx, userId: string, shiftId: string) {
     tx.shift.findMany({ where: { userId, status: { not: 'CANCELLED' }, startsAt: { lt: to }, endsAt: { gt: from }, id: { not: shiftId } }, select: { startsAt: true, endsAt: true, positionId: true, premiumPerHour: true, unpaidBreakMinutes: true, position: { select: { unpaidBreakMinutes: true, departmentId: true } } } }),
     // Their shifts in the 10 weeks before, for whether a holiday is a day they usually work.
     tx.shift.findMany({ where: { userId, status: { not: 'CANCELLED' }, startsAt: { gte: startOfLocalDay(addDays(periodStart, -70), tz), lt: from } }, select: { startsAt: true } }),
-    holidaysTouching(tx, bundle.province, periodStart, addDays(periodStart, 7)),
+    holidaysTouching(tx, bundle.province, periodStart, addDays(periodStart, 7)).then((r) => r.filter(isPaidHoliday)),
     tx.shift.findUniqueOrThrow({ where: { id: shiftId }, select: { premiumPerHour: true, facility: { select: { tenant: { select: { holidayObservance: true } } } } } }),
   ]);
   const worked = new Set(past.map((s) => localDate(s.startsAt, tz)));
