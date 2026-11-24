@@ -18,7 +18,7 @@ import type { Prisma, PrismaClient, ReleaseChange } from '../../generated/prisma
 import { z } from 'zod';
 import { type Tx, db, withTenant } from '../../lib/db.js';
 import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
-import { notify, usersWithRoles } from '../notifications/notifier.js';
+import { notify, organizationAdmins } from '../notifications/notifier.js';
 import { FEATURE_KEYS, type FeatureKey, forgetFeatures, resolveFeatures } from './features.js';
 import { setRingResolver } from './releaseNotes.js';
 
@@ -153,7 +153,7 @@ export async function sendReleaseNotices(prisma: PrismaClient = db(), now = new 
         const claimed = await tx.releaseChange.updateMany({ where: { id: c.id, noticeSentAt: null, status: 'PLANNED' }, data: { noticeSentAt: now } });
         if (!claimed.count) return 0;
         const params = noticeParams(c, await orgTimezone(tx));
-        const hr = await usersWithRoles(tx, ['HR_ADMIN']);
+        const hr = await organizationAdmins(tx, c.tenantId);
         await notify(tx, c.tenantId, hr.map((userId) => ({ userId, type: 'release_scheduled', params, link: '/whats-new', email: 'release_scheduled' })));
         return 1;
       },

@@ -31,7 +31,7 @@ import { type DomainEvent, isPublicEvent, PUBLIC_EVENT_TYPES } from '../../lib/e
 import { webhookDeliveries } from '../../lib/metrics.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
-import { notify } from '../notifications/notifier.js';
+import { notify, organizationAdmins } from '../notifications/notifier.js';
 import { SIGNATURE_HEADER, signatureHeader } from './signing.js';
 
 export const WEBHOOK_EVENT_TYPES = PUBLIC_EVENT_TYPES;
@@ -244,9 +244,10 @@ async function disableForFailures(tx: Tx, tenantId: string, ep: { id: string; ur
   await tx.webhookEndpoint.update({ where: { id: ep.id }, data: { enabled: false, disabledAt: new Date(), disabledReason: 'failures' } });
   await tx.webhookDelivery.updateMany({ where: { endpointId: ep.id, status: 'PENDING' }, data: { status: 'FAILED', error: 'The endpoint was turned off after too many failures.' } });
   await audit(tx, { tenantId, actorId: null, action: 'webhook.auto_disable', entity: 'WebhookEndpoint', entityId: ep.id, after: { failures: ep.consecutiveFailures } });
-  const admins = await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null, roles: { has: 'HR_ADMIN' } }, select: { id: true } });
+  // Whoever manages the integrations (tenant.configure, whole organization), not a role by name.
+  const admins = await organizationAdmins(tx, tenantId);
   const host = new URL(ep.url).host;
-  await notify(tx, tenantId, admins.map((u) => ({ userId: u.id, type: 'webhook_disabled', params: { host, failures: ep.consecutiveFailures }, link: '/manage/settings?tab=integrations', email: 'webhook_disabled' })));
+  await notify(tx, tenantId, admins.map((userId) => ({ userId, type: 'webhook_disabled', params: { host, failures: ep.consecutiveFailures }, link: '/manage/settings?tab=integrations', email: 'webhook_disabled' })));
 }
 
 /** Claims one due delivery for a short lease (SKIP LOCKED), or null. */

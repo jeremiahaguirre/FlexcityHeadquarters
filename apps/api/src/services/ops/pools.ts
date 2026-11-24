@@ -6,7 +6,7 @@ import { z } from 'zod';
 import type { Tx } from '../../lib/db.js';
 import { invalid, notFound } from '../../lib/errors.js';
 import { localIso } from '../../lib/time.js';
-import { notify, usersWithRoles } from '../notifications/notifier.js';
+import { notify, usersWithPermission } from '../notifications/notifier.js';
 import { lifeguardsRequired } from './chemistry.js';
 
 export const poolKinds = z.enum(['POOL', 'LEISURE_POOL', 'HOT_TUB', 'WADING_POOL', 'WAVE_POOL', 'SPLASH_PAD']);
@@ -63,14 +63,16 @@ export const poolDetailsView = (p: {
   archived: p.archivedAt !== null,
 });
 
-/** Records a deck count; above capacity, head guards and supervisors are alerted. */
+/** Records a deck count; above capacity, whoever can close that pool or runs the deck at its facility is alerted. */
 export async function recordHeadcount(tx: Tx, tenantId: string, userId: string, poolBodyId: string, count: number) {
   const pool = await tx.poolBody.findUnique({ where: { id: poolBodyId } });
   if (!pool || pool.archivedAt) throw notFound('Pool');
   const overCapacity = pool.maxCapacity !== null && count > pool.maxCapacity;
   const hc = await tx.headCount.create({ data: { tenantId, poolBodyId, count, overCapacity, recordedById: userId } });
   if (overCapacity) {
-    const leads = await usersWithRoles(tx, ['HEAD_LIFEGUARD', 'AQUATIC_SUPERVISOR'], [userId]);
+    // Whoever can close the pool or runs the deck at its facility (either feature may be off).
+    const about = { facilityId: pool.facilityId };
+    const leads = [...new Set([...(await usersWithPermission(tx, tenantId, 'ops.pool.close', [userId], about)), ...(await usersWithPermission(tx, tenantId, 'deck.rotate', [userId], about))])];
     await notify(tx, tenantId, leads.map((id) => ({ userId: id, type: 'over_capacity', params: { pool: pool.name, count, max: pool.maxCapacity }, link: '/headcount' })));
   }
   return { id: hc.id, overCapacity, maxCapacity: pool.maxCapacity, lifeguardsRequired: lifeguardsRequired(count, pool.bathersPerLifeguard) };

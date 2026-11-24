@@ -12,7 +12,10 @@ import type { DomainEvent } from '../../lib/events.js';
 import { type Permission, ROLE_PERMISSIONS } from '../../auth/permissions.js';
 import { resolveFeatures } from '../platform/features.js';
 import { parseOverrides, rolePermissions } from '../platform/roleOverrides.js';
+import { accessOf } from '../../auth/middleware.js';
+import type { Scope } from '../people/customRoles.js';
 import { approversFor } from '../people/reporting.js';
+import { userInScope } from '../people/scope.js';
 import { pushEnabled, URGENT as URGENT_PUSH } from './push.js';
 import { urgentSoon } from './urgent.js';
 
@@ -91,19 +94,26 @@ export async function notify(tx: Tx, tenantId: string, drafts: NotificationDraft
   return unique.length;
 }
 
-export async function usersWithRoles(tx: Tx, roles: AccessRole[], exclude: string[] = []): Promise<string[]> {
-  const users = await tx.user.findMany({
-    where: { roles: { hasSome: roles }, status: 'ACTIVE', anonymizedAt: null, id: { notIn: exclude } },
-    select: { id: true },
-  });
-  return users.map((u) => u.id);
+/** What an alert is about, for department scope: a person, and/or the facility or position it happened at. */
+export interface AlertAbout {
+  userId?: string;
+  facilityId?: string;
+  positionId?: string;
+}
+
+/** Someone who holds a permission, with the department scope they hold it in (null: the whole organization). */
+export interface Holder {
+  userId: string;
+  scope: Scope;
 }
 
 /**
- * Everyone active who holds a permission: through a built-in role (after the
- * organization's Dev console overrides) or a custom role.
+ * Everyone active who holds a permission, worked out the way sign-in does (accessOf): through a
+ * built-in role (after the organization's Dev console overrides) or a custom role, and never
+ * through a feature the organization has switched off. Alerts go by permission, not by role name:
+ * a library or a water utility has no "aquatic supervisor".
  */
-export async function usersWithPermission(tx: Tx, tenantId: string, permission: Permission, exclude: string[] = []): Promise<string[]> {
+export async function permissionHolders(tx: Tx, tenantId: string, permission: Permission, exclude: string[] = []): Promise<Holder[]> {
   const t = await tx.tenant.findUnique({ where: { id: tenantId }, select: { roleOverrides: true } });
   const overrides = parseOverrides(t?.roleOverrides);
   const roles = (Object.keys(ROLE_PERMISSIONS) as AccessRole[]).filter((r) => rolePermissions(r, overrides).has(permission));
@@ -115,9 +125,62 @@ export async function usersWithPermission(tx: Tx, tenantId: string, permission: 
       id: { notIn: exclude },
       OR: [{ roles: { hasSome: roles } }, { id: { in: custom.map((c) => c.userId) } }],
     },
-    select: { id: true },
+    select: { id: true, roles: true },
   });
-  return users.map((u) => u.id);
+  const out: Holder[] = [];
+  for (const u of users) {
+    const access = await accessOf(tenantId, u.id, u.roles);
+    if (access?.permissions.has(permission)) out.push({ userId: u.id, scope: access.scope });
+  }
+  return out;
+}
+
+/** The organization's own administrators: tenant.configure for the whole organization (notices about the organization itself). */
+export async function organizationAdmins(tx: Tx, tenantId: string): Promise<string[]> {
+  return (await permissionHolders(tx, tenantId, 'tenant.configure')).filter((h) => !h.scope).map((h) => h.userId);
+}
+
+/** How far around today a lead's positions count as working at a facility. */
+const WORKS_AT_DAYS = 90;
+
+/**
+ * Whether a holder's department scope reaches what an alert is about (each part given must be in it):
+ * - the person: userInScope;
+ * - the position: one of the scope's positions;
+ * - the facility: one of the scope's facilities; for a lead limited only by positions, a facility
+ *   where one of those positions has a shift within 90 days either side of today (a library lead
+ *   doesn't hear about the pool, a lifeguard lead does).
+ */
+export async function reaches(tx: Tx, scope: Scope, about: AlertAbout): Promise<boolean> {
+  if (!scope) return true;
+  if (about.positionId && scope.positionIds.length && !scope.positionIds.includes(about.positionId)) return false;
+  if (about.facilityId && scope.facilityIds.length && !scope.facilityIds.includes(about.facilityId)) return false;
+  if (about.facilityId && !scope.facilityIds.length && scope.positionIds.length) {
+    const now = Date.now();
+    const worksThere = await tx.shift.count({
+      where: { facilityId: about.facilityId, positionId: { in: scope.positionIds }, status: { not: 'CANCELLED' }, startsAt: { gte: new Date(now - WORKS_AT_DAYS * 86_400_000), lt: new Date(now + WORKS_AT_DAYS * 86_400_000) } },
+    });
+    if (!worksThere) return false;
+  }
+  if (about.userId && !(await userInScope(tx, scope, about.userId))) return false;
+  return true;
+}
+
+/** The holders whose scope reaches what the alert is about. */
+export async function reaching(tx: Tx, holders: Holder[], about: AlertAbout): Promise<string[]> {
+  const out: string[] = [];
+  for (const h of holders) if (await reaches(tx, h.scope, about)) out.push(h.userId);
+  return out;
+}
+
+/**
+ * Everyone who should hear an alert needing `permission` (permissionHolders). With `about`, only
+ * those whose department scope reaches it: a library supervisor with certs.verify hears about the
+ * library's staff, not the pool's.
+ */
+export async function usersWithPermission(tx: Tx, tenantId: string, permission: Permission, exclude: string[] = [], about?: AlertAbout): Promise<string[]> {
+  const holders = await permissionHolders(tx, tenantId, permission, exclude);
+  return about ? reaching(tx, holders, about) : holders.map((h) => h.userId);
 }
 
 /** Who hears about what. Pure mapping except for role lookups. */
@@ -156,13 +219,14 @@ export async function draftsFor(tx: Tx, e: DomainEvent): Promise<NotificationDra
     case 'shift.offer.denied':
       return [{ userId: e.claimantId, type: 'claim_denied', params: { offerId: e.offerId }, link: '/board' }];
     case 'pool.closure_recommended': {
-      const ids = await usersWithRoles(tx, ['HEAD_LIFEGUARD', 'AQUATIC_SUPERVISOR']);
+      const ids = await usersWithPermission(tx, e.tenantId, 'ops.pool.close', [], { facilityId: e.facilityId });
       return ids.map((userId) => ({ userId, type: 'closure_recommended', params: { poolBodyId: e.poolBodyId, reasons: e.reasons }, link: '/ops' }));
     }
     case 'pool.status_changed':
       return [];
     case 'frontdesk.page': {
-      const ids = await usersWithRoles(tx, ['HEAD_LIFEGUARD'], [e.fromUserId]);
+      // Whoever runs the deck at that facility.
+      const ids = await usersWithPermission(tx, e.tenantId, 'deck.rotate', [e.fromUserId], { facilityId: e.facilityId });
       return ids.map((userId) => ({ userId, type: 'front_desk_page', params: { message: e.message, facilityId: e.facilityId }, link: '/notifications' }));
     }
     case 'notify':

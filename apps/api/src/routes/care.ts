@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { conflict, notFound } from '../lib/errors.js';
-import { notify, usersWithRoles } from '../services/notifications/notifier.js';
+import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { parseCare } from '../services/people/care.js';
 import { h } from './context.js';
 import { peopleInScope } from '../services/people/scope.js';
@@ -107,14 +107,18 @@ careRouter.post(
       if (!c || c.userId !== a.userId) throw notFound('Check-in');
       await tx.careCheckIn.update({ where: { id }, data: { breakAskedAt: new Date() } });
       const me = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { firstName: true, lastName: true } });
-      // A support request after a hard call is private: the leads working at that facility right now,
-      // or, if none is on, the supervisors. Never every lead in the city.
+      // A support request after a hard call is private: the leads (deck.rotate) working at that
+      // facility right now, or, if none is on, whoever follows up after incidents there (care.manage).
+      // Never every lead in the city.
       const incident = await tx.incidentReport.findUnique({ where: { id: c.incidentId }, select: { facilityId: true } });
       const now = new Date();
-      const onDuty = incident
-        ? await tx.shift.findMany({ where: { facilityId: incident.facilityId, status: 'PUBLISHED', startsAt: { lte: now }, endsAt: { gt: now }, user: { roles: { hasSome: ['AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD'] } }, userId: { not: a.userId } }, select: { userId: true } })
-        : [];
-      const leads = onDuty.length ? [...new Set(onDuty.map((s) => s.userId!))] : await usersWithRoles(tx, ['AQUATIC_SUPERVISOR'], [a.userId]);
+      const working = incident
+        ? new Set((await tx.shift.findMany({ where: { facilityId: incident.facilityId, status: 'PUBLISHED', startsAt: { lte: now }, endsAt: { gt: now }, userId: { not: a.userId } }, select: { userId: true } })).map((s) => s.userId!))
+        : new Set<string>();
+      // Only leads whose departments include the person (and who work at that facility): the request names them.
+      const about = { userId: a.userId, ...(incident ? { facilityId: incident.facilityId } : {}) };
+      const onDuty = working.size ? (await usersWithPermission(tx, a.tenantId, 'deck.rotate', [a.userId], about)).filter((id) => working.has(id)) : [];
+      const leads = onDuty.length ? onDuty : await usersWithPermission(tx, a.tenantId, 'care.manage', [a.userId], about);
       await notify(tx, a.tenantId, leads.map((userId) => ({ userId, type: 'care_break_requested', params: { name: `${me.firstName} ${me.lastName}` }, link: '/manage/care' })));
     });
     res.json({ ok: true });
