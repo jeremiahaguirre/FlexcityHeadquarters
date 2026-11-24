@@ -4552,7 +4552,12 @@
     "reportableHelp": "First aid only, with no lost time, is kept on file without a report. If either changes later, update it and the report becomes due.",
     "save": "Save",
     "claimNumber": "Board claim number",
-    "foot": "Deadlines per province are built in but not yet reviewed by counsel. Confirm them with your board. HR and supervisors are reminded a day before and when a report is overdue."
+    "foot": "Deadlines per province are built in but not yet reviewed by counsel. Confirm them with your board. HR and supervisors are reminded a day before and when a report is overdue.",
+    "update": "Update",
+    "updateFor": "Update the injury report for {{name}}",
+    "updateHelp": "Mark lost time or health care found after the report was saved. If either applies, the report to the board becomes due.",
+    "updated": "Saved.",
+    "nowDue": "Saved. The report to {{board}} is now due: it’s on the list to file."
   },
   "departments": {
     "tabs": "Department",
