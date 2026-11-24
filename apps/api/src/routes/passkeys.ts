@@ -47,7 +47,7 @@ passkeyAuthRouter.post(
 passkeyAuthRouter.post(
   '/auth/passkey',
   h(async (req, res) => {
-    // The options call is limited, but a challenge can be answered many times over: limit the answers too.
+    // The options call is limited, and each challenge is single-use, but a client can fetch many: limit the answers too.
     // Only answers that fail stay counted (the slot is given back on success): an office behind one address can all sign in.
     const slot = await reserve(`passkey-signin:${addressKey(req.ip)}:${req.tenantId}`, 30, 10 * 60_000);
     if (!slot) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many attempts. Wait a few minutes.');
