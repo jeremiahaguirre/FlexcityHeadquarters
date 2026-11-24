@@ -13,6 +13,7 @@ ALTER COLUMN "type" DROP NOT NULL;
 
 -- AlterTable
 ALTER TABLE "TimeOffRequest" ADD COLUMN     "approvalStep" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "chargedDays" JSONB,
 ADD COLUMN     "leaveTypeId" UUID;
 
 -- CreateTable

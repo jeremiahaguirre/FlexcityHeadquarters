@@ -8,7 +8,7 @@
  * - Statutory sick days and protected leave usually cannot lawfully be refused;
  *   declining one requires a written reason, which is audited.
  */
-import type { TimeOffType } from '../../generated/prisma/client.js';
+import { Prisma, type TimeOffType } from '../../generated/prisma/client.js';
 import { type Tx, audit } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
 import { lieuAvailable, lieuPolicy } from '../payroll/lieu.js';
@@ -17,7 +17,7 @@ import type { DomainEvent } from '../../lib/events.js';
 import { addDays } from '../../lib/time.js';
 import { approversFor } from './reporting.js';
 import { postOffer } from '../shiftboard/offers.js';
-import { leaveHoursFrom, personLeaveTimeZone, scheduledShifts } from './leaveHours.js';
+import { leaveHoursFrom, personLeaveTimeZone, scheduledShifts, shiftLeaveDays } from './leaveHours.js';
 import { type ApprovalStep, chainOf, resolveLeaveType, typeOfRequest } from './leaveTypes.js';
 
 export interface AvailabilityWindow {
@@ -146,14 +146,18 @@ export async function decideTimeOff(
 
   const status = decision === 'APPROVE' ? 'APPROVED' : 'DENIED';
   // Measured now, from the shifts it takes them off, before those shifts are released below.
-  const charged = status === 'APPROVED' ? leaveHoursFrom(r, await scheduledShifts(tx, [r.userId], r.startsAt, r.endsAt), await personLeaveTimeZone(tx, r.userId, r.startsAt)) : null;
+  const taken = status === 'APPROVED' ? await scheduledShifts(tx, [r.userId], r.startsAt, r.endsAt) : [];
+  const zone = status === 'APPROVED' ? await personLeaveTimeZone(tx, r.userId, r.startsAt) : null;
+  const charged = zone ? leaveHoursFrom(r, taken, zone) : null;
+  // Charged from shifts: the hours on each shift's day, for payroll (leavePay.ts), as the shifts are released below.
+  const chargedDays = charged?.basis === 'SHIFTS' ? shiftLeaveDays(r, taken, zone!) : null;
   if (charged && r.type === 'LIEU') {
     const have = await lieuAvailable(tx, r.userId, r.id);
     if (charged.hours > have + 0.001) throw new HttpError(409, 'LIEU_SHORT', `This needs ${charged.hours} hours of banked time; they have ${Math.max(0, have)}.`, { need: charged.hours, have: Math.max(0, have) });
   }
   await tx.timeOffRequest.update({
     where: { id },
-    data: { status, decisionNote: note ?? null, decidedById: actor.userId, decidedAt: new Date(), ...(status === 'APPROVED' ? { approvalStep: chain.length } : {}), ...(charged ? { chargedHours: charged.hours, chargedBasis: charged.basis } : {}) },
+    data: { status, decisionNote: note ?? null, decidedById: actor.userId, decidedAt: new Date(), ...(status === 'APPROVED' ? { approvalStep: chain.length } : {}), ...(charged ? { chargedHours: charged.hours, chargedBasis: charged.basis, chargedDays: chargedDays ?? Prisma.DbNull } : {}) },
   });
 
   const events: DomainEvent[] = [];

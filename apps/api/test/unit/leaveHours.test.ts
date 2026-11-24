@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vitest';
-import { leaveHoursFrom, weekdayLeaveHours } from '../../src/services/people/leaveHours.js';
+import { leaveHoursFrom, shiftLeaveDays, weekdayLeaveHours } from '../../src/services/people/leaveHours.js';
 
 /** An instant from a local wall-clock time in a zone. */
 const at = (iso: string, zone: string) => DateTime.fromISO(iso, { zone }).toJSDate();
@@ -74,5 +74,26 @@ describe('weekday leave hours count days in the local time zone', () => {
     expect(weekdayLeaveHours(at('2027-01-16T09:00', zone), at('2027-01-16T13:30', zone), zone)).toBe(4.5);
     expect(weekdayLeaveHours(at('2027-01-15T08:00', zone), at('2027-01-15T20:00', zone), zone)).toBe(8);
     expect(weekdayLeaveHours(at('2027-01-15T08:00', zone), at('2027-01-15T08:00', zone), zone)).toBe(0);
+  });
+});
+
+describe('leave charged from shifts, day by day', () => {
+  it('each shift’s hours on the local day it starts, adding up to the hours charged', () => {
+    const zone = 'America/Vancouver';
+    const request = { startsAt: at('2027-05-13T00:00', zone), endsAt: at('2027-05-18T00:00', zone) };
+    const shifts = [
+      { startsAt: at('2027-05-16T22:00', zone), endsAt: at('2027-05-17T02:00', zone) }, // overnight: Sunday's
+      { startsAt: at('2027-05-15T09:00', zone), endsAt: at('2027-05-15T17:00', zone) },
+      { startsAt: at('2027-05-15T18:00', zone), endsAt: at('2027-05-15T20:20', zone) }, // 2 h 20, a third of an hour
+      { startsAt: at('2027-05-12T20:00', zone), endsAt: at('2027-05-13T02:00', zone) }, // only 2 h inside the request, on Thursday
+    ];
+    const days = shiftLeaveDays(request, shifts, zone);
+    expect(days).toEqual([
+      { day: '2027-05-13', hours: 2 },
+      { day: '2027-05-15', hours: 10.33 },
+      { day: '2027-05-16', hours: 4 },
+    ]);
+    expect(Math.round(days.reduce((a, d) => a + d.hours, 0) * 100) / 100).toBe(leaveHoursFrom(request, shifts, zone).hours);
+    expect(shiftLeaveDays(request, [], zone)).toEqual([]);
   });
 });

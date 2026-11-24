@@ -1055,6 +1055,9 @@ model TimeOffRequest {
   /// (their shifts are released when it's approved); weekdays × 8 h when nothing was scheduled.
   chargedHours Decimal? @db.Decimal(8, 2)
   chargedBasis String?
+  /// With chargedBasis SHIFTS: the hours charged on each local day of the shifts taken off,
+  /// [{ day: "YYYY-MM-DD", hours }], so payroll pays them on those days (services/payroll/leavePay.ts).
+  chargedDays  Json?
   /// The kind of leave (LeaveType). A city type's requests have type OTHER; null only on rows from
   /// before leave types (read by their TimeOffType's system type).
   leaveTypeId  String?    @db.Uuid

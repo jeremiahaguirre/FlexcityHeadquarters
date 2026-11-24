@@ -287,3 +287,60 @@ describe('public API', () => {
     expect((await v1('post', '/time-off', { person_id: t.users[1]!.id, starts_at: '2027-07-09T16:00:00Z', ends_at: '2027-07-10T16:00:00Z' })).status).toBe(422);
   });
 });
+
+describe('review round 2', () => {
+  let d: Awaited<ReturnType<typeof seedTenant>>;
+  let clerk = '';
+  let kind = '';
+  let supD = '';
+  const leaveHours = async (week: string, positionIds: string[] | null) => {
+    const out = await withTenant(d.tenant.id, (tx) => runPayroll(tx, d.tenant.id, week, 1, null, positionIds));
+    const lines = out.results.filter((x) => x.userId === d.users[0]!.id).flatMap((x) => x.result.lines).filter((l) => l.code === 'LEAVE_PAY');
+    return { hours: lines.reduce((a, l) => a + Number(l.hours), 0), amount: lines.reduce((a, l) => a + Number(l.amount), 0) };
+  };
+  beforeAll(async () => {
+    d = await seedTenant('leavetypesd', 1);
+    const tid = d.tenant.id;
+    const guard = d.users[0]!.id;
+    // The guard holds a position in two departments: Lifeguard (Aquatics, $25) and Library clerk (Library, $22).
+    const aquatics = await owner.department.create({ data: { tenantId: tid, name: 'Aquatics', aquatic: true } });
+    const libraryDept = await owner.department.create({ data: { tenantId: tid, name: 'Library' } });
+    await owner.position.update({ where: { id: d.position.id }, data: { departmentId: aquatics.id } });
+    clerk = (await owner.position.create({ data: { tenantId: tid, name: 'Library clerk', departmentId: libraryDept.id } })).id;
+    await owner.userPosition.create({ data: { tenantId: tid, userId: guard, positionId: clerk } });
+    await owner.user.update({ where: { id: guard }, data: { hireDate: new Date('2020-01-01') } });
+    await owner.payRate.create({ data: { tenantId: tid, userId: guard, positionId: d.position.id, hourlyRate: 25, effectiveFrom: new Date('2025-01-01') } });
+    await owner.payRate.create({ data: { tenantId: tid, userId: guard, positionId: clerk, hourlyRate: 22, effectiveFrom: new Date('2025-01-01') } });
+    kind = (await owner.leaveType.create({ data: { tenantId: tid, code: 'BEREAVEMENT', name: 'Bereavement', nameFr: 'Deuil', paid: true } })).id;
+    supD = (await owner.user.create({ data: { tenantId: tid, roles: ['HR_ADMIN', 'AQUATIC_SUPERVISOR'], employmentStatus: 'FULL_TIME', firstName: 'sup', lastName: 'D', email: 'sup@leavetypesd.test' } })).id;
+  });
+
+  it('paid leave is paid once, in one department’s run, even when the person works in two departments', async () => {
+    // One approved 8-hour day, Wednesday June 9, 2027.
+    await owner.timeOffRequest.create({ data: { tenantId: d.tenant.id, userId: d.users[0]!.id, type: 'OTHER', leaveTypeId: kind, status: 'APPROVED', ...day('2027-06-09'), chargedHours: 8, chargedBasis: 'WEEKDAYS', decidedAt: new Date('2027-06-01T18:00:00Z') } });
+    expect(await leaveHours('2027-06-06', null)).toEqual({ hours: 8, amount: 200 });
+    const aquaticsRun = await leaveHours('2027-06-06', [d.position.id]);
+    const libraryRun = await leaveHours('2027-06-06', [clerk]);
+    // The day goes to the run of the position whose rate pays it (the same choice as the city-wide run), and only there.
+    expect([aquaticsRun, libraryRun]).toEqual([{ hours: 8, amount: 200 }, { hours: 0, amount: 0 }]);
+  });
+
+  it('leave charged from shifts is paid on the days of those shifts, not spread over weekdays', async () => {
+    const tid = d.tenant.id;
+    const guard = d.users[0]!.id;
+    // 8-hour shifts on Saturday May 15 and Sunday May 16, 2027, 9 a.m. to 5 p.m. in Vancouver.
+    for (const date of ['2027-05-15', '2027-05-16']) {
+      const startsAt = new Date(`${date}T16:00:00.000Z`);
+      await owner.shift.create({ data: { tenantId: tid, facilityId: d.facility.id, positionId: d.position.id, userId: guard, startsAt, endsAt: new Date(startsAt.getTime() + 8 * 3_600_000), status: 'PUBLISHED' } });
+    }
+    // Bereavement from Thursday May 13 to Tuesday May 18 (Vancouver): it takes both shifts off, 16 hours.
+    const r = await withTenant(tid, (tx) => tx.timeOffRequest.create({ data: { tenantId: tid, userId: guard, type: 'OTHER', leaveTypeId: kind, status: 'PENDING', startsAt: new Date('2027-05-13T07:00:00.000Z'), endsAt: new Date('2027-05-18T07:00:00.000Z') } }));
+    const supTok = await signAccessToken({ sub: supD, tid, roles: ['HR_ADMIN', 'AQUATIC_SUPERVISOR'], aat: now(), mfa: true });
+    const decided = await request(server).post(`/api/time-off/${r.id}/decision`).set('x-tenant-subdomain', 'leavetypesd').auth(supTok, { type: 'bearer' }).send({ decision: 'APPROVE' });
+    expect([decided.status, decided.body.status ?? decided.body.code]).toEqual([200, 'APPROVED']);
+    expect(await owner.timeOffRequest.findUniqueOrThrow({ where: { id: r.id } })).toMatchObject({ chargedBasis: 'SHIFTS' });
+    expect(Number((await owner.timeOffRequest.findUniqueOrThrow({ where: { id: r.id } })).chargedHours)).toBe(16);
+    // Pay weeks start on Sunday: May 9–15 holds the Saturday shift, May 16–22 the Sunday one.
+    expect([(await leaveHours('2027-05-09', null)).hours, (await leaveHours('2027-05-16', null)).hours]).toEqual([8, 8]);
+  });
+});
