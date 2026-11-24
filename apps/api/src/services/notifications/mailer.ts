@@ -4,7 +4,7 @@
  */
 import { Prisma, type PrismaClient } from '../../generated/prisma/client.js';
 import { tenantIds, withTenant } from '../../lib/db.js';
-import { maskEmail } from '../../lib/log.js';
+import { logError, maskEmail } from '../../lib/log.js';
 import { emailHtml } from './emailHtml.js';
 import { appUrl } from '../../auth/authTokens.js';
 import { config } from '../../config.js';
@@ -354,9 +354,11 @@ const emailRetryMs = (failures: number) => 60_000 * 2 ** Math.min(Math.max(failu
 
 /**
  * Sends one organization’s due emails, safety alerts first, under row-level security. Each one is
- * claimed with `FOR UPDATE SKIP LOCKED` and sent while the row lock is held, so the API process
- * that queued it (straight after its commit) and the worker never both send it. Retries up to 5
- * times with a growing wait; failures are recorded on the row.
+ * claimed first (`FOR UPDATE SKIP LOCKED`, then counted as an attempt and hidden until its retry
+ * time) and that claim is committed before sending, so the API process that queued it and the
+ * worker never both send it, and a send that hangs or outlasts a transaction is neither repeated
+ * straight away nor holds a database connection. Retries up to 5 times with a growing wait;
+ * the outcome is recorded on the row afterwards.
  */
 export async function deliverEmailTenant(tenantId: string, mailer: Mailer, opts: { prisma?: PrismaClient; limit?: number } = {}): Promise<{ sent: number; failed: number }> {
   let sent = 0;
@@ -377,29 +379,30 @@ export async function deliverEmailTenant(tenantId: string, mailer: Mailer, opts:
            LIMIT 1 FOR UPDATE SKIP LOCKED`;
         const m = rows[0];
         if (!m) return null;
-        let error: string | null = null;
-        try {
-          const { subject, text } = renderEmail(m.template, m.locale, m.params, orgUrl);
-          await mailer.send({ to: m.toEmail, subject, text, html: emailHtml(subject, text, m.locale) });
-        } catch (err) {
-          error = String(err instanceof Error ? err.message : err).slice(0, 500);
-        }
         const attempts = m.attempts + 1;
-        // Once sent (or given up on), the message's contents are dropped: sign-in links and names
-        // shouldn’t sit in the database where anyone with database access could read them.
-        await tx.emailOutbox.update({
-          where: { id: m.id },
-          data: error
-            ? { attempts, lastError: error, params: attempts >= 5 ? {} : ({ ...m.params, [RETRY_AT_KEY]: new Date(Date.now() + emailRetryMs(attempts)).toISOString() } as Prisma.InputJsonValue) }
-            : { sentAt: new Date(), attempts, params: {}, lastError: null },
-        });
-        return error ? 'failed' : 'sent';
+        await tx.emailOutbox.update({ where: { id: m.id }, data: { attempts, params: { ...m.params, [RETRY_AT_KEY]: new Date(Date.now() + emailRetryMs(attempts)).toISOString() } as Prisma.InputJsonValue } });
+        return { ...m, attempts };
       },
-      { prisma: opts.prisma, timeoutMs: 30_000 },
+      { prisma: opts.prisma },
     );
     if (!r) break;
-    if (r === 'sent') sent++;
-    else failed++;
+    let error: string | null = null;
+    try {
+      const { subject, text } = renderEmail(r.template, r.locale, r.params, orgUrl);
+      await mailer.send({ to: r.toEmail, subject, text, html: emailHtml(subject, text, r.locale) });
+    } catch (err) {
+      error = String(err instanceof Error ? err.message : err).slice(0, 500);
+    }
+    // Once sent (or given up on), the message's contents are dropped: sign-in links and names
+    // shouldn’t sit in the database where anyone with database access could read them. A failure
+    // keeps the claim's retry time.
+    await withTenant(
+      tenantId,
+      (tx) => tx.emailOutbox.update({ where: { id: r.id }, data: error ? { lastError: error, ...(r.attempts >= 5 ? { params: {} } : {}) } : { sentAt: new Date(), params: {}, lastError: null } }),
+      { prisma: opts.prisma },
+    );
+    if (error) failed++;
+    else sent++;
   }
   return { sent, failed };
 }
@@ -409,9 +412,14 @@ export async function deliverOutbox(prisma: PrismaClient, mailer: Mailer, batch 
   let sent = 0;
   let failed = 0;
   for (const tenantId of await tenantIds(prisma)) {
-    const r = await deliverEmailTenant(tenantId, mailer, { prisma, limit: batch });
-    sent += r.sent;
-    failed += r.failed;
+    // One organization's trouble (a database error) doesn't hold up everyone after it.
+    try {
+      const r = await deliverEmailTenant(tenantId, mailer, { prisma, limit: batch });
+      sent += r.sent;
+      failed += r.failed;
+    } catch (err) {
+      logError('email delivery', err);
+    }
   }
   return { sent, failed };
 }

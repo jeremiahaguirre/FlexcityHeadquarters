@@ -84,4 +84,10 @@ describe('choosing the mailer from the environment', () => {
     expect(m.constructor.name).toBe('SesMailer');
     expect(await (m as unknown as { client: { config: { region: () => Promise<string> } } }).client.config.region()).toBe('ca-central-1');
   });
+
+  it('SES calls are bounded: two tries, each giving up if it can’t connect or get an answer in time', async () => {
+    const m = (await load({ MAIL_PROVIDER: 'ses', MAIL_FROM: 'notices@example.ca' })) as unknown as { client: { config: { maxAttempts: () => Promise<number>; requestHandler: { configProvider: Promise<{ connectionTimeout?: number; requestTimeout?: number }> } } } };
+    expect(await m.client.config.maxAttempts()).toBe(2);
+    expect(await m.client.config.requestHandler.configProvider).toMatchObject({ connectionTimeout: 3_000, requestTimeout: 10_000 });
+  });
 });

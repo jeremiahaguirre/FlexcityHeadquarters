@@ -49,7 +49,10 @@ export function mailerFromEnv(): Mailer {
   const c = config();
   if (c.MAIL_PROVIDER === 'ses') {
     if (!c.MAIL_FROM) throw new Error('MAIL_PROVIDER=ses needs MAIL_FROM (a sender verified in SES).');
-    return new SesMailer(new SESv2Client({ region: c.SES_REGION }), c.MAIL_FROM, c.SES_CONFIGURATION_SET);
+    // Bounded: a stalled call gives up instead of hanging (the SDK's default request timeout is none).
+    // Two tries of at most 3 s to connect and 10 s to answer, so a send finishes or fails well within a minute.
+    const client = new SESv2Client({ region: c.SES_REGION, maxAttempts: 2, requestHandler: { connectionTimeout: 3_000, requestTimeout: 10_000 } });
+    return new SesMailer(client, c.MAIL_FROM, c.SES_CONFIGURATION_SET);
   }
   return new ConsoleMailer();
 }
