@@ -1,24 +1,29 @@
-# Voiceover
+# Voiceover and music (hook cut)
 
-Generated with ElevenLabs text to speech (model `eleven_v4`), one take per language, from the script in
-`../../PROMPT.md` section 4:
+The finished audio for the 20-second "hook" ad, one mix per language. All of it was made with ElevenLabs:
 
-- English: library voice "Noah - Confident Canadian Narrator" (`9hb1f7xQcMLB90qbYSY3`).
-- French: library voice "Mathieu – Warm French Canadian Narrator" (`ea8mX8XjQt6IYaKiIshC`).
+| File | What it is |
+| --- | --- |
+| `vo-en.mp3` | English voice take: library voice "Noah - Confident Canadian Narrator", model `eleven_v4` |
+| `vo-fr.mp3` | French voice take: library voice "Mathieu – Warm French Canadian Narrator", model `eleven_v4` |
+| `music.mp3` | Upbeat instrumental bed, model `eleven_music_v2_5` (speech to text found no vocals in it) |
+| `mix-en.wav`, `mix-fr.wav` | The final mixes, exactly 20.000 s, 48 kHz stereo, -15 LUFS integrated: voice starting at +0.10 s over the music bed, ducked under the voice; the music decays naturally after about 17 s |
+| `TIMINGS.md` | Every word's start time on the final 20.0 s timeline, for EN and FR |
 
-Both takes were transcribed with ElevenLabs speech to text (`eleven_scribe_v1`) and match the script word
-for word. The name is spoken "Flexcity Headquarters".
+Both voice takes were transcribed with ElevenLabs speech to text and match the script word for word:
 
-`build_vo.py` cuts each line from the take and places it at the PROMPT.md time, then normalizes to
--16 LUFS (peak -1.5 dBTP), 48 kHz stereo. To rebuild the videos' audio:
+- EN: "Still juggling shifts by text, paper and spreadsheet? Meet Flexcity Headquarters! Scheduling, time
+  clocks and payroll export, built for Canadian cities, in English and French, on any phone. Every shift.
+  Every site. One HQ. Try the live demo now!"
+- FR: « Encore des quarts gérés par texto, papier et chiffrier? Découvrez Flexcity Headquarters! Horaires,
+  pointage et exportation de la paie, conçus pour les villes canadiennes, en français et en anglais, sur
+  tout téléphone. Chaque quart. Chaque site. Un seul QG. Essayez la démo dès maintenant! »
 
-```bash
-python3 build_vo.py
-for L in EN FR; do for A in 16x9 9x16; do f=../FH-ad-$L-$A.mp4
-  ffmpeg -y -i $f -i FH-ad-$L-vo-20s.wav -map 0:v:0 -map 1:a:0 -c:v copy -af apad -t 20 \
-    -c:a aac -b:a 160k -ar 48000 -ac 2 -movflags +faststart tmp.mp4 && mv tmp.mp4 $f
-done; done
-```
+How it is used: `../render.cjs` muxes `mix-<lang>.wav` into each cut as AAC 160 kb/s, 48 kHz stereo.
+`../ad.html` (the `TM` table) and the caption files (`../FH-ad-EN.srt`/`.vtt`, `../FH-ad-FR.srt`/`.vtt`)
+are timed from `TIMINGS.md`: supers land on their word, and scene cuts sit on the music's eighth-note grid
+(120 bpm, first beat at 0.475 s, measured from `music.mp3` by onset analysis) at or just before the word.
+If the audio is ever replaced, update `TIMINGS.md`, the `TM` table and the grid (`g`) in `ad.html` and the
+captions together.
 
-The SRT and WebVTT caption files beside the videos follow the voiceover's timing.
-Check the ElevenLabs plan's commercial-use terms before running the ad as paid media.
+Check the ElevenLabs plan's commercial-use terms (voices and music) before running the ad as paid media.

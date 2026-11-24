@@ -1,23 +1,30 @@
 1
-00:00:00,300 --> 00:00:04,300
-« Chaque quart, sur chaque téléphone. »
+00:00:00,360 --> 00:00:03,300
+Encore des quarts gérés par texto,
+papier et chiffrier?
 
 2
-00:00:04,600 --> 00:00:08,300
-« Chaque site : on pointe d'un glissement. »
+00:00:03,860 --> 00:00:05,950
+Découvrez Flexcity Headquarters!
 
 3
-00:00:08,600 --> 00:00:12,300
-« Personne ne travaille seul sans qu'on le sache. »
+00:00:06,420 --> 00:00:09,040
+Horaires, pointage
+et exportation de la paie,
 
 4
-00:00:12,600 --> 00:00:15,300
-« Les heures approuvées passent directement à la paie. »
+00:00:09,100 --> 00:00:10,600
+conçus pour les villes canadiennes,
 
 5
-00:00:15,330 --> 00:00:17,100
-« En français et en anglais. »
+00:00:10,620 --> 00:00:13,200
+en français et en anglais,
+sur tout téléphone.
 
 6
-00:00:17,120 --> 00:00:19,900
-« FlexcityHeadquarters. Un seul QG. »
+00:00:13,740 --> 00:00:17,100
+Chaque quart. Chaque site. Un seul QG.
+
+7
+00:00:17,330 --> 00:00:19,500
+Essayez la démo dès maintenant!

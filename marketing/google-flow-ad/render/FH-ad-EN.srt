@@ -1,23 +1,30 @@
 1
-00:00:00,300 --> 00:00:04,300
-Every shift, on every phone.
+00:00:00,260 --> 00:00:03,600
+Still juggling shifts by text,
+paper and spreadsheet?
 
 2
-00:00:04,600 --> 00:00:08,300
-Every site: one slide to clock in.
+00:00:04,260 --> 00:00:05,900
+Meet Flexcity Headquarters!
 
 3
-00:00:08,600 --> 00:00:12,300
-Nobody works alone unnoticed.
+00:00:06,380 --> 00:00:09,160
+Scheduling, time clocks
+and payroll export,
 
 4
-00:00:12,600 --> 00:00:15,300
-Approved hours go straight to payroll.
+00:00:09,220 --> 00:00:10,680
+built for Canadian cities,
 
 5
-00:00:15,450 --> 00:00:17,000
-In English and French.
+00:00:10,700 --> 00:00:13,400
+in English and French,
+on any phone.
 
 6
-00:00:17,100 --> 00:00:19,900
-FlexcityHeadquarters. One HQ.
+00:00:13,460 --> 00:00:16,620
+Every shift. Every site. One HQ.
+
+7
+00:00:16,780 --> 00:00:19,500
+Try the live demo now!
