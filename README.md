@@ -10,6 +10,8 @@ Scheduling, timekeeping, payroll, safety and HR for Canadian municipalities and 
 
 **Live demo:** https://jeremiahaguirre.github.io/FlexcityHeadquarters/ — a static build with sample data and no server (pick a role on the sign-in page: lifeguard, supervisor, HR, front desk, union steward or a water works employee). Build it locally with `npm run build:demo --workspace apps/web`. Its sample data is recorded from a seeded local stack by `apps/web/scripts/capture-demo.cjs`; rerun it after changing what a screen loads.
 
+**Supported browsers** (the web app, the demo, the facility kiosk and the website): Chrome, Edge and Firefox 111 or newer, and Safari 16.4 or newer (iPhone and iPad on iOS/iPadOS 16.4 or newer). This is the minimum set by Next.js 16, and its own code needs it, so it can't be lowered. On an older browser every page shows a "Please update your browser" notice in English and French that names these versions and how to update; on a kiosk tablet it tells staff to ask their supervisor. The check is a few lines of plain JavaScript that run before Next's own code (`apps/web/src/lib/browserCheck.ts`). **Kiosk tablets and staff phones must meet this minimum before rollout.**
+
 ## What works today
 
 | Area | Status |

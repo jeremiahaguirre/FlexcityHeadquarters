@@ -39,6 +39,12 @@ const FH_VERSION = process.env.NEXT_PUBLIC_FH_VERSION || (RELEASE ? `${new Date(
 // the minifier folds: in a live build every demo-only branch, string and import drops out.
 const env = { NEXT_PUBLIC_FH_VERSION: FH_VERSION, NEXT_PUBLIC_DEMO: DEMO ? '1' : '' };
 
+// `next build` type-checks like Next 15 did: through the TypeScript API, which skips *.test.* files. Next 16
+// defaults to the TypeScript CLI, which checks every file in tsconfig.json, tests included, and the web
+// image's build (Dockerfile) has only the app, not the API code the tests import. `npm run typecheck`
+// still checks the tests in CI.
+const experimental = { useTypeScriptCli: false };
+
 const nextConfig = DEMO
   ? {
       env,
@@ -46,7 +52,7 @@ const nextConfig = DEMO
       basePath: BASE_PATH,
       trailingSlash: true, // board/index.html, which static hosts serve at /board/
       // The demo previews staff imports with the API's own validation (apps/api/src/services/platform).
-      experimental: { externalDir: true },
+      experimental: { ...experimental, externalDir: true },
       // "*.demo.ts" files exist only in the demo (its robots.txt); live builds ignore them.
       pageExtensions: ['tsx', 'ts', 'demo.ts'],
       reactStrictMode: true,
@@ -56,6 +62,7 @@ const nextConfig = DEMO
       env,
       // A separate build folder for a second local build beside the shared one (e.g. NEXT_DIST_DIR=.next-mine).
       ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
+      experimental,
       reactStrictMode: true,
       poweredByHeader: false,
       // "*.live.tsx" pages and middleware.live.ts need a server: only live builds include them.

@@ -7,6 +7,12 @@
     "languageCode": "fr-CA",
     "copyright": "© {{year}} FlexcityHeadquarters. All rights reserved."
   },
+  "oldBrowser": {
+    "title": "Please update your browser",
+    "body": "This browser is too old for FlexcityHeadquarters, so the app can’t open. It needs Chrome, Edge or Firefox 111 or newer, or Safari 16.4 or newer (on iPhone and iPad: iOS or iPadOS 16.4 or newer).",
+    "update": "To update: on an iPhone or iPad, go to Settings › General › Software Update. On Android, update Chrome in the Play Store. On a computer, update the browser from its Help or About menu, or install the newest Chrome, Edge, Firefox or Safari. Then open this page again.",
+    "kiosk": "This is your facility’s shared tablet: ask your supervisor to update it. Until then, punch in and out in the app on your phone, or ask your supervisor how to record your time."
+  },
   "login": {
     "title": "Sign in",
     "email": "Email",
@@ -5965,7 +5971,7 @@
       "CLIENT_OUTDATED": "This tablet is updating. Try again in a moment."
     },
     "adminTitle": "Facility kiosks",
-    "adminHelp": "A shared tablet at a facility where staff punch in and out with their employee number and a PIN, without the app on a phone. Punches there count as on site.",
+    "adminHelp": "A shared tablet at a facility where staff punch in and out with their employee number and a PIN, without the app on a phone. Punches there count as on site. The tablet needs Safari 16.4 or newer (iPad) or Chrome 111 or newer (Android).",
     "setupLink": "Open this link once on the tablet to set it up. For security it isn’t shown again.",
     "setupLinkLabel": "Set-up link",
     "none": "No kiosks yet.",

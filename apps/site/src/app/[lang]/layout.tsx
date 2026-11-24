@@ -3,6 +3,8 @@ import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 import { RevealObserver } from '@/components/Motion';
 import { REVEAL_BOOT } from '@/lib/reveal';
+import { BROWSER_CHECK_SCRIPT } from '@/lib/browserCheck';
+import { OldBrowser } from '@/components/OldBrowser';
 import { DemoReturn } from '@/components/DemoReturn';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteAnalytics } from '@/components/SiteAnalytics';
@@ -41,13 +43,15 @@ export default async function LangLayout(props: { children: ReactNode; params: P
   const params = (await props.params) as { lang: Lang };
   const children = props.children;
   return (
-    <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable}>
+    <html lang={params.lang === 'fr' ? 'fr-CA' : 'en-CA'} className={jakarta.variable} data-scroll-behavior="smooth">
       <head>
         {/* Same rule as the font-src header in vercel.json, for any static host that sends no headers. */}
         <meta httpEquiv="Content-Security-Policy" content="font-src 'self'" />
       </head>
       <body className="min-h-screen bg-page font-sans text-ink antialiased">
-        <script dangerouslySetInnerHTML={{ __html: REVEAL_BOOT }} />
+        {/* The browser check first: on a browser too old for Next 16 it swaps the page for <OldBrowser>. */}
+        <script dangerouslySetInnerHTML={{ __html: BROWSER_CHECK_SCRIPT + REVEAL_BOOT }} />
+        <OldBrowser lang={params.lang} />
         <RevealObserver />
         <DemoReturn />
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-brand focus:px-3 focus:py-2 focus:text-brand-contrast">
