@@ -194,7 +194,7 @@ export function Rotations() {
   const facilities = useQuery<Named[]>('/api/facilities');
   const positions = useQuery<Array<Named & { departmentId: string | null }>>('/api/positions');
   const departments = useQuery<{ departments: Named[] }>('/api/departments');
-  const people = useQuery<Person[]>('/api/users?status=ACTIVE');
+  const people = useQuery<Person[]>('/api/schedule/people');
   const { run, busy } = useAction();
   const [editing, setEditing] = useState<RotationTemplate | null | 'new'>(null);
   const [generating, setGenerating] = useState<RotationTemplate | 'all' | null>(null);

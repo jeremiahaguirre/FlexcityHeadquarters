@@ -76,7 +76,7 @@ export const MENU: MenuItem[] = [
   { href: '/manage/surveys', key: 'manageSurveys', group: 'manage', permissions: ['surveys.manage', 'surveys.department'] },
   { href: '/manage/roles', key: 'roles', group: 'manage', permissions: ['roles.manage'] },
   { href: '/manage/billing', key: 'billing', group: 'manage', permissions: ['billing.manage'] },
-  { href: '/manage/settings', key: 'settings', group: 'manage', permissions: ['tenant.configure', 'ops.configure', 'positions.manage'] },
+  { href: '/manage/settings', key: 'settings', group: 'manage', permissions: ['tenant.configure', 'ops.configure', 'positions.manage', 'timeclock.review'] },
   { href: '/union', key: 'union', group: 'union', permissions: ['union.hub'] },
   { href: '/union/bids', key: 'bidAwards', group: 'union', permissions: ['bidding.observe'] },
   { href: '/surveys', key: 'surveys', group: 'mine', permissions: ['surveys.respond'] },

@@ -13,6 +13,17 @@ import { h } from './context.js';
 export const benefitsRouter = Router();
 benefitsRouter.use(['/benefits', '/me/benefits'], requireFeature('payroll'));
 
+/** Who can be enrolled: active staff's names only, for a benefits administrator without the staff directory. */
+benefitsRouter.get(
+  '/benefits/people',
+  requirePermission('benefits.manage'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const people = await withTenant(a.tenantId, (tx) => tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true, firstName: true, lastName: true }, orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }] }));
+    res.json(people.map((p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}` })));
+  }),
+);
+
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const KINDS = ['PENSION', 'HEALTH', 'DENTAL', 'LIFE', 'DISABILITY', 'UNION_DUES', 'EAP', 'OTHER'] as const;

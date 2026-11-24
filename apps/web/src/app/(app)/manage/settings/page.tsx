@@ -66,7 +66,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'departments' | 'positions' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
+type Tab = 'org' | 'departments' | 'positions' | 'facilities' | 'pools' | 'kiosks' | 'pay' | 'calendar' | 'rules' | 'integrations';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -90,6 +90,7 @@ export default function SettingsPage() {
     ...(can('positions.manage') ? (['positions'] as const) : []),
     ...(org ? (['facilities'] as const) : []),
     ...(can('ops.configure') ? (['pools'] as const) : []),
+    ...(can('timeclock.review') ? (['kiosks'] as const) : []),
     ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : []),
   ];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
@@ -115,6 +116,8 @@ export default function SettingsPage() {
         <PositionsSettings />
       ) : tab === 'pools' ? (
         <Pools />
+      ) : tab === 'kiosks' ? (
+        <div className="grid max-w-4xl gap-6"><KiosksCard /></div>
       ) : tab === 'departments' ? (
         <DepartmentsSettings />
       ) : settings.error ? (
@@ -133,7 +136,6 @@ export default function SettingsPage() {
           {tab === 'org' ? <RetentionCard /> : null}
           {tab === 'org' ? <DataExportCard /> : null}
           {tab === 'facilities' ? <Facilities s={settings.data} reload={settings.reload} /> : null}
-          {tab === 'facilities' ? <KiosksCard /> : null}
           {tab === 'pay' ? <PayCodes s={settings.data} reload={settings.reload} /> : null}
           {tab === 'pay' ? <HolidayWeekendCard /> : null}
           {/* Holidays change pay in every department: only for people who configure the whole organization. */}

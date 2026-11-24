@@ -221,7 +221,7 @@ async function tellSupervisors(tx: Tx, k: { tenantId: string; facilityId: string
   const people = await tx.user.findMany({ where: { status: 'ACTIVE', anonymizedAt: null }, select: { id: true, roles: true } });
   const sups = people.filter((p) => permissionsFor(p.roles).has('timeclock.review')).slice(0, 20);
   if (!sups.length) return;
-  await notify(tx, k.tenantId, sups.map((p) => ({ userId: p.id, type, params: { kiosk: k.name, minutes }, link: '/manage/settings' })));
+  await notify(tx, k.tenantId, sups.map((p) => ({ userId: p.id, type, params: { kiosk: k.name, minutes }, link: '/manage/settings?tab=kiosks' })));
 }
 
 /** Punch in, or out if already in. */

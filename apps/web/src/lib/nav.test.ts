@@ -114,6 +114,10 @@ describe('menus per role', () => {
     expect(menu('HR_ADMIN').home).toBe('/manage/hr');
   });
 
+  it('whoever reviews punches reaches Settings for the kiosks they set up', () => {
+    expect(visibleNav((p) => p === 'timeclock.review').map((n) => n.href)).toContain('/manage/settings');
+  });
+
   it('a menu item the city hid is gone even with the permission', () => {
     const perms = new Set(ROLE_PERMISSIONS.STAFF);
     expect(visibleNav((p) => perms.has(p as never), ['/board']).map((n) => n.href)).not.toContain('/board');
