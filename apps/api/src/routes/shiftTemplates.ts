@@ -2,7 +2,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
 import { announceChange } from '../lib/changes.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
@@ -44,7 +44,7 @@ shiftTemplatesRouter.put(
   '/schedule/templates/settings',
   h(async (req, res) => {
     const a = authOf(req);
-    if (!a.permissions.has('tenant.configure')) throw forbidden();
+    if (!holdsForWholeOrganization(a, 'tenant.configure')) throw forbidden();
     const { autoCreate } = z.object({ autoCreate: z.boolean() }).parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
       const { before } = await updateSolverSettings(tx, a.tenantId, (s) => ({ ...s, templateAutoCreate: autoCreate }));

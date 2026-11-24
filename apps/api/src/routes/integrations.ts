@@ -10,7 +10,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import type { ApiKey, WebhookDelivery, WebhookEndpoint } from '../generated/prisma/client.js';
-import { authOf, requireModule, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { type AuthContext, authOf, holdsForWholeOrganization, requireModule, requirePermission, requireRecentAuth, requireWholeOrganization } from '../auth/middleware.js';
 import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, invalid, notFound } from '../lib/errors.js';
@@ -21,7 +21,7 @@ import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
 
 export const integrationsRouter = Router();
-integrationsRouter.use('/integrations', requirePermission('tenant.configure'));
+integrationsRouter.use('/integrations', requirePermission('tenant.configure'), requireWholeOrganization('tenant.configure'));
 
 const MAX_KEYS = 25;
 const MAX_ENDPOINTS = 10;
@@ -76,7 +76,7 @@ const deliveryView = (d: WebhookDelivery) => ({
 });
 
 /** The scope's data must be the maker's own; a write scope also needs access to the whole organization (keys are organization-wide). */
-const mayGrant = (a: { permissions: Set<Permission>; scope: unknown }, scope: ApiScope) => SCOPE_PERMISSIONS[scope].some((p) => a.permissions.has(p)) && (!isWriteScope(scope) || !a.scope);
+const mayGrant = (a: AuthContext, scope: ApiScope) => SCOPE_PERMISSIONS[scope].some((p) => a.permissions.has(p) && (!isWriteScope(scope) || holdsForWholeOrganization(a, p)));
 
 integrationsRouter.get(
   '/integrations',

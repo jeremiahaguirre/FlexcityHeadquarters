@@ -2,7 +2,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, forbidden, notFound } from '../lib/errors.js';
 import { assertShiftInScope } from '../services/people/scope.js';
@@ -37,6 +37,7 @@ winterRouter.get(
 winterRouter.put(
   '/winter/settings',
   requirePermission('winter.manage'),
+  requireWholeOrganization('winter.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = winterSettingsBody.extend({ callOutsOn: z.boolean(), patrolsOn: z.boolean() }).parse(req.body);

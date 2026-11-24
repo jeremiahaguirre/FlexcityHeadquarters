@@ -10,7 +10,7 @@
 import type { Prisma, TimeOffType } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { type AuthContext, authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { type AuthContext, authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
 import { MENU } from '../auth/menu.js';
 import type { Permission } from '../auth/permissions.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
@@ -350,7 +350,7 @@ hrRouter.post(
   requirePermission('training.manage'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Courses are set up by HR.');
+    if (!holdsForWholeOrganization(a, 'training.manage')) throw forbidden('Courses are set up by HR.');
     const b = courseBody.parse(req.body);
     const c = await withTenant(a.tenantId, async (tx) => {
       if (await tx.trainingCourse.findFirst({ where: { name: { equals: b.name, mode: 'insensitive' } } })) throw conflict('COURSE_EXISTS', 'There is already a course with that name.');
@@ -365,7 +365,7 @@ hrRouter.put(
   requirePermission('training.manage'),
   h(async (req, res) => {
     const a = authOf(req);
-    if (a.scope) throw forbidden('Courses are set up by HR.');
+    if (!holdsForWholeOrganization(a, 'training.manage')) throw forbidden('Courses are set up by HR.');
     const id = uuid.parse(req.params.id);
     const b = courseBody.parse(req.body);
     await withTenant(a.tenantId, async (tx) => {

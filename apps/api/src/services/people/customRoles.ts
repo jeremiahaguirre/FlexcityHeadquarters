@@ -125,6 +125,19 @@ export function scopeOf(builtIn: ReadonlySet<Permission>, access: CustomAccess, 
   };
 }
 
+/**
+ * The capabilities a person holds for the whole organization, decided per capability, not per
+ * person: none when their reach is limited to a department; otherwise those from built-in roles and
+ * from custom roles with no limit of their own. A capability that only a limited custom role gives
+ * stays limited even when another role makes the person unscoped (a city without departments and a
+ * second, unlimited role). HR administrators hold all of theirs for the whole organization.
+ */
+export function wholeOrganizationPermissions(builtIn: ReadonlySet<Permission>, access: CustomAccess, scope: Scope, roles: readonly string[]): Set<Permission> {
+  if (scope) return new Set();
+  if (roles.includes('HR_ADMIN')) return new Set([...builtIn, ...access.perms]);
+  return new Set([...builtIn, ...access.roles.filter((r) => !r.positionIds.length && !r.facilityIds.length).flatMap((r) => r.perms)]);
+}
+
 /** Drops cached permissions here and in every other API process (lib/cacheBus.ts). */
 export const forgetCustomPermissions = sharedForget('customRoles', (tenantId) => {
   accessFlight.forget(tenantId ? (k) => k.startsWith(`${tenantId}:`) : undefined);
@@ -133,16 +146,19 @@ export const forgetCustomPermissions = sharedForget('customRoles', (tenantId) =>
 });
 
 /** Who is creating or assigning a role: HR or a manager (null = the Dev console). */
-export interface RoleActor { permissions: ReadonlySet<Permission>; scope: Scope }
+export interface RoleActor { permissions: ReadonlySet<Permission>; scope: Scope; /** Of those, the ones held for the whole organization (wholeOrganizationPermissions). */ wholeOrg?: ReadonlySet<Permission> }
 
 const within = (inner: string[], outer: string[]) => !outer.length || (inner.length > 0 && inner.every((x) => outer.includes(x)));
 /** Can this actor grant this role? Only capabilities they hold, only inside their department. */
 export function covers(actor: RoleActor | null, role: { permissions: string[]; scopePositionIds: string[]; scopeFacilityIds: string[] }): boolean {
   if (!actor) return true;
-  // The organization's own administrators (unscoped, may configure the organization) can grant any role.
-  if (!actor.scope && actor.permissions.has('tenant.configure')) return true;
+  // What the actor holds for the whole organization (older callers without it: their unscoped permissions).
+  const whole = actor.wholeOrg ?? (actor.scope ? new Set<Permission>() : actor.permissions);
+  // The organization's own administrators (may configure the whole organization) can grant any role.
+  if (whole.has('tenant.configure')) return true;
   if (!role.permissions.every((p) => actor.permissions.has(p as Permission))) return false;
-  if (!actor.scope) return true;
+  // Unscoped, but holding some of these only through a department-limited role: can't hand them out unlimited.
+  if (!actor.scope) return role.permissions.every((p) => whole.has(p as Permission));
   return within(role.scopePositionIds, actor.scope.positionIds) && within(role.scopeFacilityIds, actor.scope.facilityIds);
 }
 
