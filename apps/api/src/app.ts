@@ -30,6 +30,7 @@ import { kioskRouter } from './routes/kiosk.js';
 import { captureError } from './lib/errorReporter.js';
 import { metricsMiddleware, routePattern, startProcessMetrics } from './lib/metrics.js';
 import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
+import { originFormOnly } from './lib/canonicalPath.js';
 import { ipRateLimit } from './lib/ipRateLimit.js';
 import { clientErrorsRouter, opsRouter } from './routes/observability.js';
 import { publicApiRouter } from './routes/publicApi.js';
@@ -45,6 +46,8 @@ export function createApp() {
   startProcessMetrics();
   // First: every request gets an id (X-Request-Id, in every log line and error body) and is counted.
   app.use(requestIdMiddleware, metricsMiddleware);
+  // Origin-form targets only: guards that read the URL see the path the router matches (lib/canonicalPath.ts).
+  app.use(originFormOnly);
   app.use(securityHeaders, versionHeader);
   // Per-address token bucket (lib/ipRateLimit.ts); AWS WAF does the fleet-wide limit in front.
   app.use(ipRateLimit());
