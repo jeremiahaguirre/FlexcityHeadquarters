@@ -1,14 +1,18 @@
 import { pageMeta } from '@/lib/seo';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
+import { AdVideo } from '@/components/AdVideo';
+import { adFiles } from '@/lib/adVideo';
 import { LeadForm } from '@/components/LeadForm';
 import { reveal } from '@/lib/reveal';
-import { Section, SectionHead } from '@/components/Section';
+import { Kicker, Section, SectionHead } from '@/components/Section';
 import { Icon } from '@/components/Icon';
 import { PageHero } from '@/components/PageHero';
 import { PhoneClip } from '@/components/PhoneClip';
 import { DeviceDuo, Laptop, Phone } from '@/components/Device';
 import { captions } from '@/content/screens';
 import { type Lang, copy } from '@/content/copy';
+import { btnPrimary } from '@/lib/buttons';
+import { SITE_URL } from '@/lib/seo';
 import { demoLink } from '@/lib/site';
 
 /** Try the demo (EN/FR): one link per role into the static demo app, signed in as that role. */
@@ -27,8 +31,22 @@ export default async function Demo(props: { params: Promise<{ lang: Lang }> }) {
   const c = all.demo;
   const sc = captions(params.lang);
   const roleTitle = (id: string) => c.roles.find((r) => r.id === id)?.title ?? id;
+  // Structured data for the video: what it is, in this page's language (the landscape cut and its poster).
+  const ad = adFiles(params.lang, '16x9');
+  const ld = {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: c.ad.name,
+    description: c.ad.description,
+    thumbnailUrl: `${SITE_URL}${ad.poster}`,
+    contentUrl: `${SITE_URL}${ad.src}`,
+    uploadDate: '2026-11-23',
+    duration: 'PT20S',
+    inLanguage: params.lang === 'fr' ? 'fr-CA' : 'en-CA',
+  };
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld).replace(/</g, '\\u003c') }} />
       <PageHero eyebrow={all.nav.demo} title={c.title} lead={c.lead} overlap aside={<DeviceDuo laptop="laptop-hr" lang={params.lang} priority className="hidden lg:block" phoneNode={<PhoneClip clip="clock" lang={params.lang} label={all.home.see.clips[2]!.title} />} />} />
       <section className="relative">
         <div className="mx-auto -mt-28 grid max-w-7xl gap-4 px-4 pb-16 sm:grid-cols-2 md:-mt-36 md:px-6 lg:grid-cols-3">
@@ -45,6 +63,31 @@ export default async function Demo(props: { params: Promise<{ lang: Lang }> }) {
           ))}
         </div>
       </section>
+      {/* The 20-second video ad, in this page's language with its captions; it plays only when asked. */}
+      <Section id="video" tone="panel">
+        <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.55fr] lg:gap-14">
+          <div {...reveal()}>
+            <Kicker>{c.ad.kicker}</Kicker>
+            {/* The motto in its three beats, each kept on one line ("Every shift." / "Every site." / "One HQ."). */}
+            <h2 className="text-title [text-wrap:balance]">
+              {all.home.motto.split(/(?<=\.) /).map((beat, i) => (
+                <span key={beat}>
+                  {i ? ' ' : null}
+                  <span className="whitespace-nowrap">{beat}</span>
+                </span>
+              ))}
+            </h2>
+            <p className="mt-4 max-w-xl text-[1.0625rem] leading-7 text-muted">{c.ad.lead}</p>
+            <a href={demoLink('STAFF', params.lang)} className={`${btnPrimary} mt-8`}>
+              {all.home.ctaDemo}
+              <ArrowRight className="nudge h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
+          <div {...reveal(1)}>
+            <AdVideo lang={params.lang} labels={c.ad} />
+          </div>
+        </div>
+      </Section>
       {/* What two of the roles open on: real screens from the demo */}
       <Section className="overflow-hidden">
         <SectionHead title={sc.demoTitle} />

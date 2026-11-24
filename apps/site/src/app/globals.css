@@ -264,3 +264,12 @@ details > summary::-webkit-details-marker { display: none; }
 /* Wordmark descenders (the y and q): truncate clips at the padding box, so give it room below
    (same rule as the app; Logo.tsx stays identical to the app's copy). */
 span[role='img'][aria-label='FlexcityHeadquarters'] > span.truncate { padding-block: 0.14em; }
+
+/* The demo page's video ad (components/AdVideo.tsx): 16:9, or 9:16 on a narrow screen held upright,
+   never taller than the screen. Before the script picks a cut, the same media query sizes the empty
+   frame, so the page does not jump when the video appears. */
+.ad-frame { aspect-ratio: 16 / 9; width: 100%; }
+.ad-frame[data-cut='9x16'] { aspect-ratio: 9 / 16; width: min(100%, calc((100svh - 8rem) * 9 / 16)); margin-inline: auto; }
+@media (orientation: portrait) and (max-width: 767px) {
+  .ad-frame:not([data-cut]) { aspect-ratio: 9 / 16; width: min(100%, calc((100svh - 8rem) * 9 / 16)); margin-inline: auto; }
+}

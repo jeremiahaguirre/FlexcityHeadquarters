@@ -38,7 +38,7 @@ Monorepo: `apps/api` (Express 5, Prisma 7, PostgreSQL with row-level security), 
 # The first time on a machine: (cd apps/web && npx playwright install chromium)
 (cd apps/api && npx prisma generate) && (cd apps/web && npx tsc --noEmit && npm test && npm run build:demo && npx vitest run src/lib/selfHostedFonts.test.ts && npx playwright test --trace off)
 # Marketing site, when it changed
-(cd apps/site && npx tsc --noEmit && npm test && npm run build && npx vitest run src/lib/selfHostedFonts.test.ts)
+(cd apps/site && npx tsc --noEmit && npm test && npm run build && npx vitest run src/lib/selfHostedFonts.test.ts && npm run test:e2e)
 # Terraform, when ops/terraform changed (not in CI yet)
 (cd ops/terraform && terraform fmt -check -recursive && terraform init -backend=false && terraform validate && terraform test)
 ```
