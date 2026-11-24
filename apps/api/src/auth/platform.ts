@@ -3,7 +3,11 @@
  * - opaque, revocable session tokens (only the hash is stored), in an HTTP-only,
  *   SameSite=Strict cookie scoped to /api/platform;
  * - every request must also carry the `x-fh-platform: 1` header, which a
- *   cross-site form or link can't add;
+ *   cross-site form or link can't add, and isn't marked by the browser as
+ *   coming from another site or origin (Sec-Fetch-Site);
+ * - signing in sets `fh_csrf`, a random double-submit token the console's pages
+ *   read and echo in `x-fh-csrf`; a request carrying the cookie without the
+ *   matching header is refused (platformCsrfProtection, before any body is parsed);
  * - organization access tokens are never accepted here, and these sessions are
  *   never accepted by organization routes.
  */
@@ -62,10 +66,40 @@ export async function endPlatformSession(raw: string | undefined): Promise<void>
   if (raw) await db().platformSession.updateMany({ where: { tokenHash: sha256(raw), revokedAt: null }, data: { revokedAt: new Date() } });
 }
 
-/** CSRF guard for every Dev console request, signed in or not. */
-export function requirePlatformHeader(req: Request, _res: Response, next: NextFunction) {
-  if (req.header(PLATFORM_HEADER) !== '1') return next(new HttpError(403, 'FORBIDDEN', 'Missing Dev console header'));
+/**
+ * CSRF protection for every Dev console request, signed in or not, run before the body is parsed.
+ * The session cookie is SameSite=Strict; on top of that a request must
+ * - carry `x-fh-platform: 1`, which a cross-site form or link can't send and a cross-origin script
+ *   can't add without a CORS preflight this API never answers; and
+ * - not be marked by the browser as coming from another site or origin (Fetch Metadata,
+ *   Sec-Fetch-Site). Clients that send no fetch metadata (scripts, older browsers) still need the header.
+ */
+export function platformCsrfProtection(req: Request, _res: Response, next: NextFunction) {
+  const site = req.header('sec-fetch-site');
+  const refused = () => next(new HttpError(403, 'CSRF_REFUSED', 'This request didn’t come from the Dev console.'));
+  if (req.header(PLATFORM_HEADER) !== '1' || (site && site !== 'same-origin' && site !== 'none')) return refused();
+  // Double-submit token: a browser signed in to the console holds fh_csrf, which only the console's
+  // own pages can read and echo in x-fh-csrf. A request carrying the cookie without the matching
+  // header (another site riding on the browser's cookies) is refused. Clients without the cookie
+  // (scripts, the test suite) rely on the header and the same-site cookie rules above.
+  const csrfCookie: string | undefined = req.cookies?.fh_csrf;
+  if (csrfCookie !== undefined && csrfCookie !== req.header(PLATFORM_CSRF_HEADER)) return refused();
   next();
+}
+
+/** The double-submit CSRF token (platformCsrfProtection): readable by the console's pages, never sent cross-site. */
+export const PLATFORM_CSRF_COOKIE = 'fh_csrf';
+export const PLATFORM_CSRF_HEADER = 'x-fh-csrf';
+
+/** Signs the browser in: the HTTP-only session cookie, then a fresh CSRF token for the console's pages to echo. */
+export function setPlatformCookies(res: Response, session: string) {
+  res.cookie(PLATFORM_COOKIE, session, platformCookieOpts());
+  res.cookie(PLATFORM_CSRF_COOKIE, randomBytes(24).toString('base64url'), { ...platformCookieOpts(), httpOnly: false, path: '/' });
+}
+
+export function clearPlatformCookies(res: Response) {
+  res.clearCookie(PLATFORM_COOKIE, { path: '/api/platform' });
+  res.clearCookie(PLATFORM_CSRF_COOKIE, { path: '/' });
 }
 
 /**

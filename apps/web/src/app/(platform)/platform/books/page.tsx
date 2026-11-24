@@ -99,7 +99,7 @@ function Journal({ setup }: { setup: BooksSetup }) {
         action={
           <div className="flex flex-wrap items-center gap-2">
             <Range from={from} to={to} setFrom={setFrom} setTo={setTo} />
-            <Button size="sm" variant="secondary" icon={<Download className="h-4 w-4" aria-hidden="true" />} loading={busy === 'csv'} onClick={() => void run('csv', () => pdownload(`/books/journal.csv?from=${from}&to=${to}`, 'fh-journal.csv'))}>{t('books.csv')}</Button>
+            <Button size="sm" variant="secondary" icon={<Download className="h-4 w-4" aria-hidden="true" />} loading={busy === 'csv'} onClick={() => void run('csv', () => pdownload(`/books/journal.csv?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, 'fh-journal.csv'))}>{t('books.csv')}</Button>
             <Button size="sm" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAdding(true)}>{t('books.addEntry')}</Button>
           </div>
         }

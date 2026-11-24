@@ -469,6 +469,7 @@
     "NO_PASSKEY": "No passkey on this account.",
     "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
+    "CSRF_REFUSED": "This request didn’t come from the Dev console. Reload the page and try again.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
     "ALREADY_ENDED": "This session has already ended.",
     "ACCOUNT_SUSPENDED": "Your organization’s account is read-only until the overdue balance is paid.",
@@ -778,13 +779,13 @@
     "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
     "CERT_EXISTS": "There’s already a certificate with that name.",
     "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again.",
-    "PERIOD_PAID": "This is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.",
-    "RATE_BELOW_MINIMUM": "That rate is below any Canadian minimum wage. Check the amount.",
-    "RATE_ORDER": "That start date would overlap another rate for this position.",
-    "RATE_AFTER_END": "The start must be on or before the day this rate ends.",
-    "RUN_SENT_TO_BANK": "This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.",
     "RUN_CHANGED": "This pay run changed while you were voiding it. Open it again.",
-    "OWN_PAY_RATE": "You can’t set or change your own pay rate. Another administrator has to."
+    "RATE_BELOW_MINIMUM": "That rate is below any Canadian minimum wage. Check the amount.",
+    "OWN_PAY_RATE": "You can’t set or change your own pay rate. Another administrator has to.",
+    "RATE_AFTER_END": "The start must be on or before the day this rate ends.",
+    "PERIOD_PAID": "This is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.",
+    "RUN_SENT_TO_BANK": "This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.",
+    "RATE_ORDER": "That start date would overlap another rate for this position."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1328,14 +1329,17 @@
       "removed": "Confirmation removed.",
       "private": "Only HR sees this."
     },
-    "correctRate": "Correct the {{position}} rate",
-    "correctRateHelp": "For a rate entered wrong. A raise is a new rate. Pay already approved or paid at this rate is corrected with a one-time item instead.",
-    "rateReasonHint": "Kept in the audit log.",
+    "phone": "Phone",
+    "seniorityHours": "Seniority hours",
+    "seniorityHoursHint": "Used where seniority is counted in hours (bid rounds, overtime, call-outs).",
     "removeRate": "Remove this rate",
-    "removeRateHelp": "The rate before it, if any, carries on in its place.",
     "correctInstead": "Correct it instead",
+    "rateRemoved": "Rate removed.",
+    "removeRateHelp": "The rate before it, if any, carries on in its place.",
     "rateCorrected": "Rate corrected.",
-    "rateRemoved": "Rate removed."
+    "rateReasonHint": "Kept in the audit log.",
+    "correctRateHelp": "For a rate entered wrong. A raise is a new rate. Pay already approved or paid at this rate is corrected with a one-time item instead.",
+    "correctRate": "Correct the {{position}} rate"
   },
   "payroll": {
     "title": "Payroll",

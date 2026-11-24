@@ -1,7 +1,7 @@
 import express from 'express';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
-import { TokenBuckets, enabled, hasCredential, ipRateLimit } from '../../src/lib/ipRateLimit.js';
+import { TokenBuckets, enabled, hasCredential, ipRateLimit, isInternal, warnUnusableInternalToken } from '../../src/lib/ipRateLimit.js';
 import { rateLimited } from '../../src/lib/metrics.js';
 
 function app(opts = { authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2 }) {
@@ -96,6 +96,35 @@ describe('global per-address limit', () => {
     const a = app();
     for (let i = 0; i < 6; i++) expect((await request(a).get('/expired').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer old')).status).toBe(401);
     expect((await request(a).get('/me').set('X-Forwarded-For', '192.0.2.21').set('Authorization', 'Bearer good')).status).toBe(200);
+  });
+
+  it('the web app’s server-side calls, with the internal token, get their own budget (SEC-48)', async () => {
+    const token = 't'.repeat(40);
+    const a = express();
+    a.set('trust proxy', 1);
+    a.use(ipRateLimit({ authPerMinute: 10, anonPerMinute: 3, failuresPerMinute: 2, internalPerMinute: 50, internalToken: token, force: true }));
+    a.get('/api/public/tenant', (_q, r) => r.json({ ok: true }));
+    const web = '10.0.1.5';
+    const get = (h: Record<string, string> = {}) => request(a).get('/api/public/tenant').set('X-Forwarded-For', web).set(h);
+    // Anonymous page views through the web task use up its address's anonymous budget...
+    for (let i = 0; i < 3; i++) expect((await get()).status).toBe(200);
+    expect((await get()).status).toBe(429);
+    // ...but the web server's own calls still go through, on their own budget.
+    for (let i = 0; i < 10; i++) expect((await get({ 'x-fh-internal': token })).status).toBe(200);
+    // A wrong or short token is just anonymous.
+    expect((await get({ 'x-fh-internal': 'nope' })).status).toBe(429);
+    expect(isInternal({ headers: { 'x-fh-internal': token } } as never, 'short')).toBe(false);
+  });
+
+  it('a configured internal token too short to be used is reported, not silently ignored (review of #77)', () => {
+    const got: string[] = [];
+    expect(warnUnusableInternalToken('short-token', (m) => got.push(m))).toBe(true);
+    expect(got).toHaveLength(1);
+    expect(got[0]).toContain('INTERNAL_API_TOKEN');
+    expect(got[0]).not.toContain('short-token');
+    expect(warnUnusableInternalToken('t'.repeat(32), (m) => got.push(m))).toBe(false);
+    expect(warnUnusableInternalToken(undefined, (m) => got.push(m))).toBe(false);
+    expect(got).toHaveLength(1);
   });
 
   it('IPv6: one /64 shares a bucket', async () => {
