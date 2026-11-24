@@ -91,6 +91,13 @@ export async function rotateRefreshToken(
   return { userId: current.userId, tenantId: current.tenantId, token, authenticatedAt: current.authenticatedAt, mfa: !!current.mfaAt };
 }
 
+/** The browser's current session (not rotated, nothing changed), or null when it has ended. */
+export async function liveSession(tx: Tx, raw: string): Promise<{ userId: string; tenantId: string; authenticatedAt: Date; mfaAt: Date | null } | null> {
+  const s = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) }, select: { userId: true, tenantId: true, authenticatedAt: true, mfaAt: true, revokedAt: true, expiresAt: true } });
+  if (!s || s.revokedAt || s.expiresAt < new Date()) return null;
+  return { userId: s.userId, tenantId: s.tenantId, authenticatedAt: s.authenticatedAt, mfaAt: s.mfaAt };
+}
+
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (existing) {

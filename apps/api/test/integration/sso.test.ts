@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { SignedXml } from 'xml-crypto';
 import { createApp } from '../../src/app.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
-import { hashPassword, signAccessToken, verifyAccessToken } from '../../src/auth/tokens.js';
+import { hashPassword, issueRefreshToken, signAccessToken, verifyAccessToken } from '../../src/auth/tokens.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 // The OIDC client secret is sealed with the city's key.
@@ -22,6 +22,7 @@ const SUB = 'ssocity';
 const ORIGIN = `http://${SUB}.localhost:3000`;
 let t: Awaited<ReturnType<typeof seedTenant>>;
 let hr = '';
+let hrId = '';
 let staffEmail = '';
 
 /* ---------- A tiny OpenID provider ---------- */
@@ -75,6 +76,7 @@ beforeAll(async () => {
   staffEmail = t.users[0]!.email;
   await owner.user.update({ where: { id: t.users[0]!.id }, data: { passwordHash: await hashPassword('staff password 1') } });
   const h = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'Hana', lastName: 'R', email: `hr@${SUB}.test`, passwordHash: await hashPassword('hr password 12') } });
+  hrId = h.id;
   hr = await signAccessToken({ sub: h.id, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: Math.floor(Date.now() / 1000), mfa: true });
 });
 afterAll(async () => {
@@ -94,8 +96,8 @@ const anon = {
 const stateCookie = (r: request.Response) => String(([] as string[]).concat(r.headers['set-cookie'] ?? []).find((c) => c.startsWith('fc_sso=')) ?? '').split(';')[0]!;
 
 /** Starts a sign-in and comes back from the provider with `claims` in the ID token. */
-async function oidcRound(claims: Record<string, unknown>, opts: { state?: string; code?: string; cookie?: string | null } = {}) {
-  const start = await anon.get('/api/auth/sso/start');
+async function oidcRound(claims: Record<string, unknown>, opts: { state?: string; code?: string; cookie?: string | null; session?: string } = {}) {
+  const start = await anon.get('/api/auth/sso/start', opts.session ? `fc_refresh=${opts.session}` : undefined);
   expect(start.status).toBe(302);
   const to = new URL(start.headers.location!);
   lastChallenge = to.searchParams.get('code_challenge')!;
@@ -256,6 +258,48 @@ describe('OpenID Connect (Microsoft Entra ID)', () => {
   it('only HR can see or change it', async () => {
     const staff = await signAccessToken({ sub: t.users[0]!.id, tid: t.tenant.id, roles: ['STAFF'], aat: Math.floor(Date.now() / 1000) });
     expect((await request(server).get('/api/sso').set('x-tenant-subdomain', SUB).auth(staff, { type: 'bearer' })).status).toBe(403);
+  });
+
+  it('only an HR administrator for the whole organization can change it, not other “Organization settings” holders (SEC-06)', async () => {
+    const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'IT settings', permissions: ['tenant.configure'] } });
+    const itUser = await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'FULL_TIME', firstName: 'Ivy', lastName: 'T', email: `it@${SUB}.test` } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: itUser.id, customRoleId: role.id } });
+    const tok = await signAccessToken({ sub: itUser.id, tid: t.tenant.id, roles: ['STAFF'], aat: Math.floor(Date.now() / 1000), mfa: true });
+    const as = (r: request.Test) => r.set('x-tenant-subdomain', SUB).auth(tok, { type: 'bearer' });
+    // They can look at it,
+    expect((await as(request(server).get('/api/sso'))).status).toBe(200);
+    // but can't point it at a provider of their own, or remove it.
+    const put = await as(request(server).put('/api/sso')).send({ ...oidcConfig, oidcIssuer: issuer, oidcClientId: 'their-own-app', idpMfa: true });
+    expect([put.status, put.body.code]).toEqual([403, 'SSO_HR_ONLY']);
+    const del = await as(request(server).delete('/api/sso'));
+    expect([del.status, del.body.code]).toEqual([403, 'SSO_HR_ONLY']);
+    const c = await owner.ssoConnection.findFirstOrThrow({ where: { tenantId: t.tenant.id } });
+    expect([c.oidcClientId, c.idpMfa]).toEqual([CLIENT, false]);
+  });
+
+  it('an HR administrator is linked only from their own recent sign-in with a second factor, never on the provider’s word (SEC-06)', async () => {
+    const hrEmail = `hr@${SUB}.test`;
+    const reason = (l: URL) => (l.pathname === '/login' ? l.searchParams.get('sso') : 'signed-in');
+    const session = (userId: string, o: { mfa: boolean; minutesAgo?: number }) => {
+      const at = new Date(Date.now() - (o.minutesAgo ?? 0) * 60_000);
+      return issueRefreshToken(owner as never, t.tenant.id, userId, undefined, at, o.mfa ? at : null);
+    };
+    expect((await owner.user.findUniqueOrThrow({ where: { id: hrId } })).ssoSubject).toBeNull();
+    // A provider that asserts the administrator's email isn't enough: not with no session,
+    expect(reason((await oidcRound({ email: hrEmail, sub: 'whoever-the-provider-says' })).location)).toBe('SSO_LINK_FIRST');
+    // nor a password-only one, an old one, or someone else's.
+    expect(reason((await oidcRound({ email: hrEmail, sub: 'whoever-the-provider-says' }, { session: await session(hrId, { mfa: false }) })).location)).toBe('SSO_LINK_FIRST');
+    expect(reason((await oidcRound({ email: hrEmail, sub: 'whoever-the-provider-says' }, { session: await session(hrId, { mfa: true, minutesAgo: 30 }) })).location)).toBe('SSO_LINK_FIRST');
+    expect(reason((await oidcRound({ email: hrEmail, sub: 'whoever-the-provider-says' }, { session: await session(t.users[0]!.id, { mfa: true }) })).location)).toBe('SSO_LINK_FIRST');
+    expect((await owner.user.findUniqueOrThrow({ where: { id: hrId } })).ssoSubject).toBeNull();
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'auth.sso.refused', actorId: hrId } })).toBeGreaterThanOrEqual(4);
+    // Their own recent sign-in with a passkey links it,
+    expect(reason((await oidcRound({ email: hrEmail, sub: 'hr-directory-id' }, { session: await session(hrId, { mfa: true }) })).location)).toBe('signed-in');
+    expect((await owner.user.findUniqueOrThrow({ where: { id: hrId } })).ssoSubject).toContain('hr-directory-id');
+    // and from then on single sign-on works for them as for anyone, but only as that directory account.
+    expect(reason((await oidcRound({ email: hrEmail, sub: 'hr-directory-id' })).location)).toBe('signed-in');
+    expect(reason((await oidcRound({ email: hrEmail, sub: 'whoever-the-provider-says' })).location)).toBe('SSO_SUBJECT_CHANGED');
+    resetLimits(); // these rounds count toward the sign-in limit the SAML tests also use
   });
 });
 

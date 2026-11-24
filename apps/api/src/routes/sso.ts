@@ -1,14 +1,15 @@
 /**
  * Single sign-on routes. The sign-in ones run before anyone is signed in
- * (mounted with resolveTenant); the settings ones need tenant.configure.
+ * (mounted with resolveTenant); the settings ones need tenant.configure to look, and an HR
+ * administrator for the whole organization to change.
  */
 import { addressKey } from '../lib/address.js';
 import express, { Router } from 'express';
 import { z } from 'zod';
 import { appUrl, consumeAuthToken } from '../auth/authTokens.js';
-import { authOf, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
+import { authOf, RECENT_AUTH_MS, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
-import { epochSeconds, issueRefreshToken, signAccessToken } from '../auth/tokens.js';
+import { epochSeconds, issueRefreshToken, liveSession, signAccessToken } from '../auth/tokens.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { checkIssuerHost, checkIssuerUrl, connectionFor, finishSso, samlMetadata, sealClientSecret, spUrls, SsoError, startSso, STATE_COOKIE, stateCookieOpts } from '../services/auth/sso.js';
@@ -18,6 +19,18 @@ import { formBody } from '../lib/bodyParsers.js';
 
 export const ssoAuthRouter = Router();
 
+/**
+ * The account signed in in this browser, if it proved a second factor and signed in within the last
+ * few minutes: only that account can be linked to a directory account by a sign-in started here.
+ */
+async function linkingUser(req: express.Request): Promise<string | undefined> {
+  const raw = req.cookies?.[COOKIE] as string | undefined;
+  if (!raw) return undefined;
+  const s = await withTenant(req.tenantId!, (tx) => liveSession(tx, raw));
+  if (!s || s.tenantId !== req.tenantId || !s.mfaAt || Date.now() - s.authenticatedAt.getTime() > RECENT_AUTH_MS) return undefined;
+  return s.userId;
+}
+
 ssoAuthRouter.get(
   '/auth/sso/start',
   h(async (req, res) => {
@@ -25,7 +38,7 @@ ssoAuthRouter.get(
     if (!(await allow(`sso:${addressKey(req.ip)}:${req.tenantId}`, 30, 10 * 60_000))) throw new HttpError(429, 'TOO_MANY_ATTEMPTS', 'Too many sign-in attempts. Wait a few minutes and try again.');
     const hint = typeof req.query.hint === 'string' && req.query.hint.length < 200 ? req.query.hint : undefined;
     try {
-      const s = await startSso(req.tenantId!, sub, hint, typeof req.query.next === 'string' ? req.query.next : undefined);
+      const s = await startSso(req.tenantId!, sub, hint, typeof req.query.next === 'string' ? req.query.next : undefined, await linkingUser(req));
       res.cookie(STATE_COOKIE, s.cookie, stateCookieOpts(s.protocol));
       res.redirect(302, s.url);
     } catch (e) {
@@ -123,9 +136,14 @@ ssoRouter.get(
 
 const PEM = /^(-----BEGIN CERTIFICATE-----)?[\sA-Za-z0-9+/=]+(-----END CERTIFICATE-----)?$/;
 
-/** Who signs everyone in is the most sensitive setting there is: recent sign-in with a second factor, never a support visit. */
+/**
+ * Who signs everyone in is the most sensitive setting there is: whoever controls the provider can sign
+ * in as anyone it names (SEC-06). Only an HR administrator for the whole organization, after a recent
+ * sign-in with a second factor, and never a support visit.
+ */
 function assertStrongAdmin(a: ReturnType<typeof authOf>) {
   if (a.support) throw new HttpError(403, 'SUPPORT_READ_ONLY', 'FH support can look, not change anything.');
+  if (!a.roles.includes('HR_ADMIN') || a.scope) throw new HttpError(403, 'SSO_HR_ONLY', 'Only an HR administrator for the whole organization can change single sign-on.');
   if (!a.mfa) throw new HttpError(403, 'PASSKEY_REQUIRED', 'Sign in with your passkey to change single sign-on.');
 }
 
