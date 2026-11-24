@@ -12,7 +12,8 @@ import { loadScoreInputs, reliabilityPolicy, scoreOf } from '../reliability/load
 
 export interface ReportParams { from: string; to: string; days: number }
 export interface ReportResult { columns: string[]; rows: Array<Record<string, string | number | null>> }
-interface Report { permissions: Permission[]; kind: 'range' | 'ahead'; wholeOrg?: boolean; run: (tx: Tx, a: AuthContext, p: ReportParams) => Promise<ReportResult> }
+/** `personal`: rows name people (their leave, scores, claims, hours…): never shown to an FH support visit. */
+interface Report { permissions: Permission[]; kind: 'range' | 'ahead'; wholeOrg?: boolean; personal?: boolean; run: (tx: Tx, a: AuthContext, p: ReportParams) => Promise<ReportResult> }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const start = (d: string) => new Date(`${d}T00:00:00Z`);
@@ -30,6 +31,7 @@ async function people(tx: Tx, a: AuthContext) {
 
 export const REPORTS: Record<string, Report> = {
   hours_worked: {
+    personal: true,
     permissions: ['timeclock.review', 'payroll.export'],
     kind: 'range',
     async run(tx, a, p) {
@@ -46,6 +48,7 @@ export const REPORTS: Record<string, Report> = {
     },
   },
   overtime: {
+    personal: true,
     permissions: ['overtime.manage'],
     kind: 'range',
     async run(tx, a, p) {
@@ -82,6 +85,7 @@ export const REPORTS: Record<string, Report> = {
     },
   },
   time_off: {
+    personal: true,
     permissions: ['leave.manage', 'timeoff.approve'],
     kind: 'range',
     async run(tx, a, p) {
@@ -91,6 +95,7 @@ export const REPORTS: Record<string, Report> = {
     },
   },
   certs_expiring: {
+    personal: true,
     permissions: ['certs.verify', 'training.manage'],
     kind: 'ahead',
     async run(tx, a, p) {
@@ -111,6 +116,7 @@ export const REPORTS: Record<string, Report> = {
     },
   },
   lone_work: {
+    personal: true,
     permissions: ['lonework.monitor'],
     kind: 'range',
     async run(tx, a, p) {
@@ -144,6 +150,7 @@ export const REPORTS: Record<string, Report> = {
   },
   /** The advisory reliability score as of the period's end (the same computation as each person's file), and what moved it during the period. */
   reliability: {
+    personal: true,
     permissions: ['reliability.read'],
     kind: 'range',
     async run(tx, a, p) {
@@ -172,6 +179,7 @@ export const REPORTS: Record<string, Report> = {
     },
   },
   expenses: {
+    personal: true,
     permissions: ['expenses.approve'],
     kind: 'range',
     async run(tx, a, p) {
@@ -194,7 +202,8 @@ export const REPORT_KEYS = Object.keys(REPORTS);
 
 export const canRun = (a: AuthContext, key: string) => {
   const r = REPORTS[key];
-  return !!r && r.permissions.some((p) => a.permissions.has(p)) && !(r.wholeOrg && a.scope);
+  // Support visits help with setup; they never see reports that list named people (SEC-08/14).
+  return !!r && r.permissions.some((p) => a.permissions.has(p)) && !(r.wholeOrg && a.scope) && !(r.personal && a.support);
 };
 
 export async function runReport(tx: Tx, a: AuthContext, key: string, p: ReportParams): Promise<ReportResult> {
