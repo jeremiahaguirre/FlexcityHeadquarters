@@ -43,7 +43,8 @@
       "SSO_NO_ACCOUNT": "There’s no active account here for that email. Ask HR to add you.",
       "SSO_SUBJECT_CHANGED": "This account is linked to a different directory account. Ask HR for help.",
       "LINK_EXPIRED": "This sign-in has expired. Try again.",
-      "SSO_EMAIL_UNVERIFIED": "Your organization’s sign-in service says that email address isn’t verified, so it can’t be used to sign in here. Ask your IT team."
+      "SSO_EMAIL_UNVERIFIED": "Your organization’s sign-in service says that email address isn’t verified, so it can’t be used to sign in here. Ask your IT team.",
+      "SSO_LINK_FIRST": "An administrator account links to single sign-on once, from a recent sign-in with your passkey. Sign in with your password and passkey, then choose “Link my directory account” in Settings › Single sign-on."
     },
     "closedExport": "This organization’s account is closed. Administrators can still sign in to download its data until {{date}}.",
     "closedNoAccess": "This organization’s account is closed. Contact your administrator or FlexcityHeadquarters."
@@ -778,7 +779,8 @@
     "CERT_SHARED": "This certificate is shared by every organization and can’t be changed here.",
     "CERT_ORG_WIDE": "Correcting the certificate list changes it for every department. Ask HR.",
     "CERT_EXISTS": "There’s already a certificate with that name.",
-    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again."
+    "UNKNOWN_STARTER_CERT": "That certificate isn’t on the starter list. Reload the page and try again.",
+    "SSO_HR_ONLY": "Only an HR administrator for the whole organization can change single sign-on."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -5469,7 +5471,9 @@
     "idpMfaHint": "Turn on only if your provider enforces MFA for everyone (e.g. a conditional access policy). Otherwise we use what the provider reports.",
     "saved": "Single sign-on saved",
     "lastUsed": "Last used {{time}}",
-    "safety": "Each account is linked to its directory account the first time it’s used. Every sign-in and refusal is in the audit log."
+    "safety": "Each account is linked to its directory account the first time it’s used. Every sign-in and refusal is in the audit log.",
+    "link": "Link my directory account",
+    "linkHint": "Administrator accounts aren’t linked by the directory alone. Sign in with your passkey first, then link here once."
   },
   "address": {
     "line1": "Street address",

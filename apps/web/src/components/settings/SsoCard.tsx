@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, KeyRound } from 'lucide-react';
+import { Copy, KeyRound, Link2 } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { api } from '@/lib/api';
+import { DEMO } from '@/lib/demo';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 type Protocol = 'OIDC' | 'SAML';
@@ -149,6 +150,17 @@ export function SsoCard() {
           </div>
           <p className="text-caption text-muted">{t('sso.safety')}</p>
         </form>
+        {c?.enabled && !DEMO ? (
+          // An administrator's account is linked only from their own recent sign-in with a passkey (the API checks).
+          <div className="mt-5 grid gap-2 border-t border-line pt-5">
+            <div>
+              <Button variant="secondary" icon={<Link2 className="h-4 w-4" aria-hidden="true" />} onClick={() => window.location.assign(`/api/auth/sso/start?next=${encodeURIComponent('/manage/settings')}`)}>
+                {t('sso.link')}
+              </Button>
+            </div>
+            <p className="text-caption text-muted">{t('sso.linkHint')}</p>
+          </div>
+        ) : null}
       </CardBody>
     </Card>
   );

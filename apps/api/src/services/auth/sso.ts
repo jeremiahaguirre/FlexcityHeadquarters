@@ -15,7 +15,8 @@
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { SAML, ValidateInResponseTo, type CacheProvider, type Profile } from '@node-saml/node-saml';
-import type { SsoConnection } from '../../generated/prisma/client.js';
+import type { AccessRole, SsoConnection } from '../../generated/prisma/client.js';
+import { permissionsFor } from '../../auth/permissions.js';
 import { createLocalJWKSet, jwtVerify, SignJWT, type JSONWebKeySet } from 'jose';
 import { appUrl, issueAuthToken } from '../../auth/authTokens.js';
 import { config } from '../../config.js';
@@ -71,6 +72,8 @@ interface State {
   rat?: number;
   /** Where to go after signing in (a path on this site). */
   nx?: string;
+  /** Linking: the account signed in, with a second factor, in the browser that started this. */
+  lu?: string;
 }
 async function signState(s: State) {
   return new SignJWT({ ...s }).setProtectedHeader({ alg: 'HS256' }).setAudience('fh-sso-state').setIssuedAt().setExpirationTime(`${STATE_TTL_S}s`).sign(secret());
@@ -165,7 +168,7 @@ async function discover(issuer: string): Promise<Discovery> {
   return doc;
 }
 
-async function oidcStart(c: SsoConnection, sub: string, loginHint?: string, nx?: string) {
+async function oidcStart(c: SsoConnection, sub: string, loginHint?: string, nx?: string, lu?: string) {
   const doc = await discover(c.oidcIssuer!);
   const state = b64url(randomBytes(24));
   const nonce = b64url(randomBytes(24));
@@ -182,7 +185,7 @@ async function oidcStart(c: SsoConnection, sub: string, loginHint?: string, nx?:
   q.set('code_challenge', b64url(createHash('sha256').update(verifier).digest()));
   q.set('code_challenge_method', 'S256');
   if (loginHint) q.set('login_hint', loginHint);
-  return { url: url.toString(), cookie: await signState({ tid: c.tenantId, p: 'OIDC', state, nonce, verifier, nx }) };
+  return { url: url.toString(), cookie: await signState({ tid: c.tenantId, p: 'OIDC', state, nonce, verifier, nx, lu }) };
 }
 
 async function oidcFinish(c: SsoConnection, sub: string, st: State, query: Record<string, unknown>) {
@@ -271,11 +274,11 @@ export function samlMetadata(sub: string) {
   return new SAML({ issuer: u.entityId, callbackUrl: u.acsUrl, idpCert: 'unused', wantAssertionsSigned: true, identifierFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress' }).generateServiceProviderMetadata(null);
 }
 
-async function samlStart(c: SsoConnection, sub: string, nx?: string) {
+async function samlStart(c: SsoConnection, sub: string, nx?: string, lu?: string) {
   const cache = cookieCache();
   const url = await samlFor(c, sub, cache).getAuthorizeUrlAsync('', undefined, {});
   if (!cache.saved) throw new SsoError('SSO_PROVIDER_MISCONFIGURED');
-  return { url, cookie: await signState({ tid: c.tenantId, p: 'SAML', rid: cache.saved, rat: cache.savedAt ? new Date(cache.savedAt).getTime() || Date.now() : Date.now(), nx }) };
+  return { url, cookie: await signState({ tid: c.tenantId, p: 'SAML', rid: cache.saved, rat: cache.savedAt ? new Date(cache.savedAt).getTime() || Date.now() : Date.now(), nx, lu }) };
 }
 
 const SAML_EMAIL = ['email', 'mail', 'urn:oid:0.9.2342.19200300.100.1.3', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn'];
@@ -307,12 +310,22 @@ export function ready(c: SsoConnection | null): c is SsoConnection {
 
 export { safeNext };
 
-export async function startSso(tenantId: string, sub: string, loginHint?: string, next?: string) {
+/**
+ * `linking`: the account whose recent, second-factor session started this (see linkingUser).
+ * Only then can an account that may sign in without single sign-on be linked to a directory account.
+ */
+export async function startSso(tenantId: string, sub: string, loginHint?: string, next?: string, linking?: string) {
   const c = await withTenant(tenantId, connectionFor);
   if (!ready(c)) throw new SsoError('SSO_OFF');
   const nx = safeNext(next);
-  return { protocol: c.protocol, ...(c.protocol === 'OIDC' ? await oidcStart(c, sub, loginHint, nx) : await samlStart(c, sub, nx)) };
+  return { protocol: c.protocol, ...(c.protocol === 'OIDC' ? await oidcStart(c, sub, loginHint, nx, linking) : await samlStart(c, sub, nx, linking)) };
 }
+
+/**
+ * Accounts that still sign in with their password when single sign-on is enforced (the people who
+ * can turn it off). Their first link to a directory account needs their own sign-in (SEC-06).
+ */
+export const mustLinkFirst = (roles: AccessRole[]) => roles.includes('HR_ADMIN') || permissionsFor(roles).has('tenant.configure');
 
 /** Checks the provider's answer and returns the one-time code for /sso. */
 export async function finishSso(tenantId: string, sub: string, p: State['p'], rawState: string | undefined, input: Record<string, unknown>): Promise<{ code: string; next?: string }> {
@@ -327,6 +340,9 @@ export async function finishSso(tenantId: string, sub: string, p: State['p'], ra
     const user = await tx.user.findUnique({ where: { tenantId_email: { tenantId, email } } });
     if (!user || user.status !== 'ACTIVE' || user.processingRestrictedAt) return { refused: 'SSO_NO_ACCOUNT', userId: user?.id ?? null };
     if (user.ssoSubject && user.ssoSubject !== who.subject) return { refused: 'SSO_SUBJECT_CHANGED', userId: user.id };
+    // Whoever controls the provider can assert any email (SEC-06): an administrator's account is
+    // linked only from their own recent sign-in with a second factor, never by the provider's word.
+    if (!user.ssoSubject && mustLinkFirst(user.roles) && st.lu !== user.id) return { refused: 'SSO_LINK_FIRST', userId: user.id };
     if (!user.ssoSubject) await tx.user.update({ where: { id: user.id }, data: { ssoSubject: who.subject } });
     await tx.ssoConnection.update({ where: { id: c.id }, data: { lastUsedAt: new Date() } });
     const mfa = who.mfa || c.idpMfa;
