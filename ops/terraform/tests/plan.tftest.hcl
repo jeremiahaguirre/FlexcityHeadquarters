@@ -104,6 +104,23 @@ run "production_defaults" {
     condition     = toset([for x in local.app_secrets : x.name]) == toset(["JWT_SECRET", "APP_DATABASE_URL", "LISTEN_DATABASE_URL", "METRICS_TOKEN"]) && !contains(keys(local.app_env), "JWT_SECRET")
     error_message = "Secrets come from Secrets Manager, never plain environment."
   }
+  # An environment created before INTERNAL_API_TOKEN existed keeps starting: no task names it
+  # until it is added to the secret and to app_secret_keys (review of #77).
+  assert {
+    condition     = length(local.web_secrets) == 0
+    error_message = "The web task names INTERNAL_API_TOKEN only when app_secret_keys has it."
+  }
+}
+
+run "internal_api_token_opted_in" {
+  command = plan
+  variables {
+    app_secret_keys = ["JWT_SECRET", "APP_DATABASE_URL", "LISTEN_DATABASE_URL", "METRICS_TOKEN", "INTERNAL_API_TOKEN"]
+  }
+  assert {
+    condition     = [for x in local.web_secrets : x.name] == ["INTERNAL_API_TOKEN"] && contains([for x in local.app_secrets : x.name], "INTERNAL_API_TOKEN")
+    error_message = "Once opted in, the API, worker and web tasks all get INTERNAL_API_TOKEN."
+  }
 }
 
 # The firewalls' rule sets reference pattern sets whose ARNs are only known after an apply, so
