@@ -428,6 +428,7 @@ payrollRouter.put(
     const userId = uuid.parse(req.params.id);
     const body = profileBody.parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
       if (!(await tx.user.findUnique({ where: { id: userId } }))) throw notFound('Person');
       await savePayProfile(tx, a.tenantId, userId, body, false);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.profile.update', entity: 'User', entityId: userId, after: { ...body, sin: body.sin ? 'changed' : undefined } });
@@ -445,6 +446,7 @@ payrollRouter.get(
     const userId = uuid.parse(req.params.id);
     const sin = await withTenant(a.tenantId, async (tx) => {
       requirePasskey(a, await settingsOf(tx));
+      await assertUserInScope(tx, a, userId);
       const p = await tx.payProfile.findUnique({ where: { userId } });
       if (!p) throw notFound('SIN');
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.sin.view', entity: 'User', entityId: userId });
@@ -473,6 +475,7 @@ payrollRouter.post(
     const userId = uuid.parse(req.params.id);
     const body = bankBody.parse(req.body);
     const row = await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, userId);
       const u = await tx.user.findUnique({ where: { id: userId }, select: { locale: true } });
       if (!u) throw notFound('Person');
       const r = await addBankAccount(tx, a.tenantId, { userId, enteredById: a.userId, ...body, locale: u.locale === 'fr-CA' ? 'fr-CA' : 'en-CA' });

@@ -14,6 +14,7 @@ import { permissionsWithOverrides } from '../services/platform/roleOverrides.js'
 import { type Module, allowedWhileSuspended, hasModule } from '../services/billing/entitlements.js';
 import { SETUP_PERMISSIONS, supportStillAllowed } from '../services/platform/support.js';
 import { audit, withTenant } from '../lib/db.js';
+import { canonicalPath, routedPath } from '../lib/canonicalPath.js';
 
 export interface AuthContext {
   userId: string;
@@ -39,15 +40,28 @@ const MFA_EXEMPT = [/^\/api\/me$/, /^\/api\/me\/passkeys(\/|$)/, /^\/api\/auth\/
 /** Powers that need the same second factor as HR. */
 const ADMIN_LEVEL = new Set<string>(['users.write', 'tenant.configure', 'payroll.approve', 'payroll.export', 'roles.manage', 'documents.manage', 'billing.manage', 'audit.read']);
 
-/** Never open to an FH support visit, whatever the organization allowed. */
+/**
+ * Never open to an FH support visit, whatever the organization allowed. Matched against the
+ * canonical path (decoded, lower case, no trailing slash: lib/canonicalPath.ts), because routing
+ * ignores case and decodes parameters; the raw URL let `/api/Users/…/documents` through.
+ */
 const SUPPORT_BLOCKED = [
   /^\/api\/me\/.+/, // the granting person's own pay, documents, discipline…
-  /^\/api\/incidents\/[^/]+$/,
-  /^\/api\/(documents|accommodations|injury-claims|grievances|reviews|households|registrations|online-registrations|care\/checkins|people\/review|discipline)(\/|$)/,
-  /^\/api\/users\/[^/]+\/(documents|accommodations|case-file|discipline|records-export|records-export\.pdf|sin|reliability|conduct|pay-profile|bank-accounts)(\/|$)/,
+  // Incident narratives (some involve children), HR files, health, pay, people's messages and
+  // whereabouts, who is leaving and why, applicants and payees.
+  /^\/api\/(incidents|documents|accommodations|injury-claims|grievances|reviews|households|registrations|online-registrations|care\/checkins|people\/review|discipline|notifications|messages|messages-admin|expenses|lone-work|offboarding|leave|lieu|payees|benefits|training|time-off|applications|surveys-admin\/offboardings)(\/|$)/,
+  /^\/api\/users\/[^/]+\/(documents|accommodations|case-file|discipline|records-export|records-export\.pdf|sin|reliability|conduct|conduct-notes|pay-profile|bank-accounts|salary|payroll-orders|pay-rates|emergency-contacts)(\/|$)/,
+  /^\/api\/jobs\/[^/]+\/applications$/,
   /^\/api\/payroll\/(?!settings$|export-settings$).+/,
   /^\/api\/data-export(\/|$)/,
+  // The union local's hub is never open to FH, whoever allowed the visit.
+  /^\/api\/union(\/|$)/,
 ];
+/** Whether an FH support visit may open this URL at all (nothing on the block list; a malformed escape never). */
+export const supportMayOpen = (url: string) => {
+  const path = canonicalPath(url);
+  return path !== null && !SUPPORT_BLOCKED.some((r) => r.test(path));
+};
 
 /** All a closed organization's administrators can reach: who they are, their passkeys or a sign-in code, and the export. */
 const CLOSED_EXPORT = /^\/api\/(me|me\/passkeys(\/.*)?|auth\/passkeys|auth\/step-up(\/options)?|auth\/mfa\/(options|code|code\/verify)|data-export(\/.*)?)$/;
@@ -113,13 +127,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       req.auth.mfaPending = false;
       if (allowed.level === 'SETUP') req.auth.permissions = new Set([...req.auth.permissions].filter((p) => SETUP_PERMISSIONS.includes(p)));
       // Logged first, so attempts that are refused are on record too.
-      await withTenant(claims.tid, (tx) => audit(tx, { tenantId: claims.tid, actorId: null, action: 'support.view', entity: 'SupportSession', entityId: claims.sup!, after: { method: req.method, path: req.originalUrl.split('?')[0] } }));
+      await withTenant(claims.tid, (tx) => audit(tx, { tenantId: claims.tid, actorId: null, action: 'support.view', entity: 'SupportSession', entityId: claims.sup!, after: { method: req.method, path: routedPath(req) } }));
       if (req.method !== 'GET' && !req.originalUrl.startsWith('/api/auth/logout')) throw new HttpError(403, 'SUPPORT_READ_ONLY', 'FH support can look, not change anything.');
-      // The union local's hub is never open to FH, whoever allowed the visit.
-      if (req.originalUrl.startsWith('/api/union')) throw new HttpError(403, 'FORBIDDEN', 'The union hub isn’t part of support access.');
-      // Nor are individual sensitive records, at any level: support helps with setup and schedules,
-      // it doesn't read narratives, health or HR files, children's details, SINs or anyone's own pages.
-      if (SUPPORT_BLOCKED.some((r) => r.test(req.originalUrl.split('?')[0]!))) throw new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.');
+      // The union hub and individual sensitive records are never open, at any level: support helps
+      // with setup and schedules, it doesn't read narratives, health or HR files, children's
+      // details, SINs, messages, union threads or anyone's own pages.
+      if (!supportMayOpen(routedPath(req))) throw new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.');
       req.auth.permissions.delete('union.hub');
     }
     // Unpaid past the grace period: read-only, except safety work, clocking and paying.

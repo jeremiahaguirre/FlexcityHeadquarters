@@ -16,7 +16,7 @@ import { peopleWhere } from '../services/people/scope.js';
 import { type ChoiceOutcome, MAX_CHOICES, canSeeRound, cancelRound, confirmRound, createRound, liveOrder, overrideAward, roundBody, saveChoices, visibleRounds } from '../services/scheduling/bidding.js';
 import { schedulableDepartments } from '../services/scheduling/fillRun.js';
 import { visibleTemplates } from '../services/scheduling/shiftTemplates.js';
-import { parseSolverSettings, withSolverSettings } from '../services/scheduling/solverSettings.js';
+import { parseSolverSettings, updateSolverSettings } from '../services/scheduling/solverSettings.js';
 import type { Tx } from '../lib/db.js';
 import { h } from './context.js';
 
@@ -254,10 +254,7 @@ biddingRouter.put(
     const a = authOf(req);
     const b = z.object({ seniorityBasis: z.enum(['DATE', 'HOURS']), awardOrder: z.enum(['ROUND_ROBIN', 'SENIOR_FIRST']) }).partial().parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
-      const t = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true } });
-      const s = parseSolverSettings(t.overtimePolicy);
-      const next = { ...s, bidSeniorityBasis: b.seniorityBasis ?? s.bidSeniorityBasis, bidAwardOrder: b.awardOrder ?? s.bidAwardOrder };
-      await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: withSolverSettings(t.overtimePolicy, next) as Prisma.InputJsonValue } });
+      const { before: s, after: next } = await updateSolverSettings(tx, a.tenantId, (cur) => ({ ...cur, bidSeniorityBasis: b.seniorityBasis ?? cur.bidSeniorityBasis, bidAwardOrder: b.awardOrder ?? cur.bidAwardOrder }));
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'bid.settings', entity: 'Tenant', entityId: a.tenantId, before: { seniorityBasis: s.bidSeniorityBasis, awardOrder: s.bidAwardOrder }, after: { seniorityBasis: next.bidSeniorityBasis, awardOrder: next.bidAwardOrder } });
       await announceChange(tx, a.tenantId, 'bids');
       return { seniorityBasis: next.bidSeniorityBasis, awardOrder: next.bidAwardOrder };
