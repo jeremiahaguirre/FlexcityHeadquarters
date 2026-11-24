@@ -78,7 +78,7 @@ export function createApp() {
   app.use('/api', publicLogoRouter);
   // Calendar apps fetch a person's private shift feed by its link (routes/calendar.ts).
   app.use('/api', publicCalendarRouter);
-  // Facility kiosks (shared tablets) sign requests with their own secret, not a person's session.
+  // Facility kiosks (shared tablets) present their own device secret, not a person's session.
   app.use('/api', kioskRouter);
   app.use('/api', resolveTenant, authRouter, supportAuthRouter, ssoAuthRouter, passkeyAuthRouter, mfaCodeRouter, publicJobsRouter, publicApplicationsRouter, publicSignupRouter, publicMaintenanceRouter);
   app.use('/api', api);

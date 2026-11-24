@@ -287,7 +287,7 @@ Passkey and SSO sign-in still work during a lock, so an attacker can't keep some
 
 **Public API keys.** Per key: `rateLimitPerMinute` (120 by default, set per key) and 60 writes a minute; every answer carries `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds until a slot frees), and a 429 carries `Retry-After` with the same number. Per address: 20 failed key checks (missing, unknown, revoked, expired) in 10 minutes and the address gets `429` before any lookup, for the rest of the window.
 
-**Calendar feeds**: 60 fetches an hour per feed, and 30 wrong links an hour per address (calendar services fetch many people's feeds from a few shared addresses, so working links aren't limited by address).
+**Calendar feeds**: 60 fetches an hour per feed, and 300 wrong links an hour per address and organization (`CALENDAR_MISSES_PER_HOUR`) (calendar services fetch many people's feeds from a few shared addresses, so working links aren't limited by address).
 
 **Breached passwords (optional, off).** `PASSWORD_BREACH_CHECK=on` checks new passwords (reset, invitation, change) against Have I Been Pwned's Pwned Passwords range API (`auth/breachedPasswords.ts`): only the first 5 hex characters of the password's SHA-1 leave the server, with `Add-Padding: true`; the match is made here; 2 s timeout; any failure lets the password through. Refused: `400 PASSWORD_BREACHED`. Turning it on makes `api.pwnedpasswords.com` (served through Cloudflare) a service the API calls, so the egress allow list and the subprocessor list need it; the owner decides ([SECURITY-LEGAL-AUDIT.md](SECURITY-LEGAL-AUDIT.md)).
 

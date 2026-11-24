@@ -20,9 +20,10 @@ Decision (November 2026): FlexcityHeadquarters runs on **Amazon Web Services**, 
 - **Database:** Amazon RDS for PostgreSQL, Multi-AZ, with row-level security as today.
   - The worker and the LISTEN connection go to Postgres directly, not through a transaction pooler (see `docs/ARCHITECTURE.md`).
   - Read replicas serve reports.
-- **Files and backups:** Amazon S3 with server-side encryption under customer-managed KMS keys created in Canada. Versioning and object lock protect backups.
-- **Secrets:** AWS Secrets Manager (JWT secret, key-encryption keys, Twilio, metrics token).
-- **Edge:** CloudFront for the website and static app files, plus AWS WAF and Shield Standard.
+- **Uploaded files:** kept in Postgres, sealed with the city's key (employee documents, attachments, résumés) or as bytes (logos), never in S3 or on a disk (`apps/api/src/lib/files.ts`).
+- **Backups:** Amazon S3 with server-side encryption under customer-managed KMS keys created in Canada. Versioning and object lock protect backups.
+- **Secrets:** AWS Secrets Manager (JWT secret, database URLs, metrics token, optional provider keys such as Twilio). Key-encryption keys stay in AWS KMS.
+- **Edge:** CloudFront for the marketing website only; the app's own pages and static files are served by the web service behind the load balancer. AWS WAF and Shield Standard.
   - CloudFront caches at edge locations that may sit outside Canada.
   - Only public, non-personal files are cached there; app API responses that contain personal information are never cached at the edge.
 - **Disaster recovery to `ca-west-1`:**
