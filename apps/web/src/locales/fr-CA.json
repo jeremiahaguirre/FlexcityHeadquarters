@@ -3377,7 +3377,11 @@
     "note": "Les avertissements apparaissent avant que des heures supplémentaires soient attribuées hors de l’ordre. Ils éclairent la décision; un superviseur décide, et chaque dérogation est consignée.",
     "skips_one": "Cela saute {{count}} personne devant dans l’ordre des heures supplémentaires",
     "skips_other": "Cela saute {{count}} personnes devant dans l’ordre des heures supplémentaires",
-    "skippedLine": "{{name}} : {{hours}} h imputées, ancienneté {{since}}"
+    "skippedLine": "{{name}} : {{hours}} h imputées, ancienneté {{since}}",
+    "readOnlyDescription": "Les heures supplémentaires offertes dans l’ordre prévu par votre convention collective : le moins d’heures imputées pendant la période d’abord, puis l’ancienneté. Lecture seule : les superviseurs consignent les appels et fixent la règle.",
+    "whatCounts": "Ce qui compte comme imputé",
+    "refusalsCount": "Offres acceptées, refusées et sans réponse",
+    "acceptedOnly": "Heures supplémentaires acceptées seulement"
   },
   "brand": {
     "category": "FlexcityHeadquarters · Gestion de la main-d’œuvre",

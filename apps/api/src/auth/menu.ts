@@ -42,7 +42,8 @@ export const MENU: MenuItem[] = [
   { href: '/manage/forecast', key: 'forecast', group: 'manage', permissions: ['schedule.write'] },
   { href: '/manage/approvals', key: 'approvals', group: 'manage', permissions: ['timeclock.review', 'timeoff.approve', 'shiftboard.approve'] },
   { href: '/manage/staff', key: 'staff', group: 'manage', permissions: ['users.read'] },
-  { href: '/manage/overtime', key: 'overtime', group: 'manage', permissions: ['overtime.manage'] },
+  // Union stewards read the order (seniority.read), for grievances; only supervisors record call-outs.
+  { href: '/manage/overtime', key: 'overtime', group: 'manage', permissions: ['overtime.manage', 'seniority.read'], feature: 'overtime' },
   { href: '/manage/onboarding', key: 'onboarding', group: 'manage', permissions: ['onboarding.hr', 'onboarding.lead'] },
   { href: '/manage/training', key: 'training', group: 'manage', permissions: ['training.manage'] },
   { href: '/manage/injuries', key: 'injuries', group: 'manage', permissions: ['injury.manage'] },
