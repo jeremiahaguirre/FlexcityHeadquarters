@@ -440,7 +440,7 @@ resource "aws_cloudfront_response_headers_policy" "site" {
     }
     # The same policy the site sends on Vercel (apps/site/vercel.json; a test keeps them equal).
     content_security_policy {
-      content_security_policy = "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      content_security_policy = "font-src 'self'; media-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
       override                = true
     }
   }
