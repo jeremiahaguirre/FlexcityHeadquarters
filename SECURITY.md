@@ -19,9 +19,10 @@ Level 3. It describes FH as it is, not as it should be:
 
 - **Current** cites the code or configuration that does it today (`path:line`). A statement with no
   citation is not a claim about the code.
-- **Decided target** is one of the owner's four decisions of 2026-11-17, quoted word for word in
-  section 2.0 and cited as **record item N**. A decided target that isn't built yet says **planned**.
-  Something the analysis derives from a decision, but the record doesn't state, says **derived**.
+- **Decided target** is one of the owner's four decisions of 2026-11-17 in section 2.0, cited as
+  **decision N**. A decided target that isn't built yet says **planned**. A detail that waits for
+  the owner's confirmation says **pending (D-38)**. Something the analysis derives from a decision
+  says **derived**.
 - **Open decision D-nn** means the owner hasn't decided yet; the recommended answer is listed in
   section 3.2 and marked *recommended*, never as decided.
 - **Gap** means FH doesn't meet the requirement and nothing is decided about it yet.
@@ -58,32 +59,36 @@ section of V4 don't apply.
 
 ## 2. Security decision ledger
 
-### 2.0 Owner decision record (2026-11-17)
+### 2.0 Owner decisions (2026-11-17)
 
-These are the owner's decisions as recorded on 2026-11-17, reproduced word for word. "Decided" in
-this ledger means one of these items, cited as **record item N**. Anything beyond them is either a
-recommendation (section 3.2) or derived by the gap analysis, and is labelled that way.
+**Decided.** "Decided" in this ledger means one of these four, cited as **decision N**:
 
-1. **Passkeys:** admins first.
-   - Phishing-resistant FIDO2/WebAuthn passkey (userVerification required) is mandatory for HR, payroll, managers, city admins and the Dev console.
-   - Other staff keep password + current MFA and can add a passkey; stricter later, per city setting.
-   - The kiosk keeps its own device sign-in.
-   - Email/SMS codes must not count as the factor for the passkey-mandatory roles.
-2. **Sessions:** as written.
-   - Staff: 30 min idle, 12 h absolute, max 3 sessions.
-   - Admins: 15 min idle, 4 h absolute, max 1 session.
-   - Punch in/out and safety check-ins must keep working via quick passkey or PIN re-entry on the phone.
-   - On the N+1 sign-in: confirm with MFA, end the oldest session, notify the user, provide a self-service session list, and let admins terminate sessions.
-3. **Two-person approval:** required, with fallback.
-   - Covers organization-wide permission changes, bulk export/deletion, billing/contract changes and production overrides.
-   - A city with only one eligible admin names a second approver (for example the CAO or treasurer) during setup.
-   - If there truly is none, FH support co-approves under the existing city-consent rule: a city audit entry plus an email to the HR admins.
-4. **Password blocklist:** FH + each city.
-   - Block flexcity, flexcityheadquarters, FH role words (admin, root, supervisor, guard, lifeguard, hr, steward, frontdesk, waterworks, dev, staging, prod, production, operator), and each city's own name and subdomain automatically.
-   - Do NOT include kelo, kelobot, lakeview, okanagan, kelowna or hcos; they come from another project.
+1. Passkeys are mandatory for admin, HR and payroll roles, first.
+2. Sessions: staff 30 minutes idle, 12 hours absolute, at most 3 sessions; admins 15 minutes idle,
+   4 hours absolute, 1 session. Punch in and out and safety check-ins keep working through quick
+   passkey or PIN re-entry.
+3. Two-person approval is required, with a designated second approver as the fallback.
+4. A banned-password list covering FH's and each city's own names. kelo, kelobot, lakeview,
+   okanagan, kelowna and hcos are excluded (they come from another project).
 
-The recommendations section 3.2 lists for questions these items leave open (passkey recovery,
-stewards, attestation, how PIN re-entry works, how short words are matched) are not decisions.
+**Pending owner confirmation (D-38).** The gap analysis was written from a longer note of the same
+decisions, which isn't in this repository. These details from it are **not** decided here until the
+owner confirms them:
+
+- **Decision 1:**
+  - managers, city admins and the Dev console are also passkey-mandatory;
+  - other staff keep password plus current second-factor rules, and can add a passkey (stricter later, per city setting);
+  - the kiosk keeps its own device sign-in;
+  - email and text codes don't count as the factor for the passkey-mandatory roles.
+- **Decision 2:** on the N+1 sign-in, confirm with a second factor, end the oldest session and notify the person; provide a self-service session list; let admins end sessions.
+- **Decision 3:**
+  - it covers organization-wide permission changes, bulk export or deletion, billing and contract changes, and production overrides;
+  - when a city truly has no second approver, FH support co-approves under the city-consent rule, with a city audit entry and an email to the HR admins.
+- **Decision 4:** the role words admin, root, supervisor, guard, lifeguard, hr, steward, frontdesk, waterworks, dev, staging, prod, production, operator; each city's subdomain as well as its name.
+
+Questions these leave open (passkey recovery, stewards, attestation, how PIN re-entry works, how
+short words are matched) are open decisions in section 3.2, with recommendations that are not
+decisions.
 
 ### 2.1 Input structure, consistency and business limits (ASVS 2.1.1, 2.1.2, 2.1.3)
 
@@ -95,7 +100,7 @@ stewards, attestation, how PIN re-entry works, how short words are matched) are 
 | Per-city limits (2.4.1) | None (no limiter keyed on the organization). | Gap. | D-5. | Same as above. |
 | Workflow order (2.3.1) | State checks in services, for example pay runs (`apps/api/src/services/payroll/payRuns.ts:462`) and shift trades (`apps/api/src/services/shiftboard/trades.ts`). Known weak spots: a sent pay run can be voided, approval is not bound to the prepared totals, and approve can race (open PR #71, planned work package WP-5). | Gap until WP-5. | - | - |
 | Human-timing floor (2.4.2) | None; the public enquiry form has a honeypot (`apps/api/src/routes/marketing.ts`). | Gap. | D-6. | A floor on signed-in flows would refuse password managers, passkeys and offline replays. |
-| Two-person approval (2.3.5) | Pay runs only: the preparer can't approve when `twoPersonApproval` is on (`apps/api/src/services/payroll/payRuns.ts:462`); one person can switch it off with a passkey (`apps/api/src/routes/payroll.ts:838-847`). | **Decided (record item 3):** required for organization-wide permission changes, bulk export or deletion, billing and contract changes, and production overrides. A city with one eligible admin names a second approver at setup; with none, FH support co-approves with a city audit entry and an email to the HR admins. **Planned** (WP-18). | D-7 (who may switch pay-run approval off). | - |
+| Two-person approval (2.3.5) | Pay runs only: the preparer can't approve when `twoPersonApproval` is on (`apps/api/src/services/payroll/payRuns.ts:462`); one person can switch it off with a passkey (`apps/api/src/routes/payroll.ts:838-847`). | **Decided (decision 3):** two-person approval, with a designated second approver as the fallback. **Pending (D-38):** which actions it covers (organization-wide permission changes, bulk export or deletion, billing and contract changes, production overrides), and FH support co-approving when a city has no second approver. **Planned** (WP-18). | D-7 (who may switch pay-run approval off). | - |
 
 ### 2.2 Browser baseline and external assets (ASVS 3.1.1, 3.6.1)
 
@@ -130,12 +135,11 @@ uploads don't reach their stated limits (planned fix WP-12a).
 
 ### 2.4 Authentication pathways and passwords (ASVS 6.1.1, 6.1.2, 6.1.3)
 
-**Decided (record item 1), admins first.** A phishing-resistant passkey (WebAuthn, user
-verification required) is mandatory for HR, payroll, managers, city admins and the Dev console.
-Other staff keep their password and current second-factor rules (today a single factor unless the
-city requires more, see the table) and can add a passkey; stricter later, per city setting. The
-kiosk keeps its own device sign-in. Email and text codes must not count as the factor for the
-passkey-mandatory roles. **Planned** (WP-9). Open questions: recovery of a lost only passkey (D-35), union
+**Decided (decision 1).** Passkeys are mandatory for admin, HR and payroll roles, first.
+**Pending (D-38):** managers, city admins and the Dev console as well; other staff keeping their
+password and current second-factor rules (today a single factor unless the city requires more, see
+the table); the kiosk keeping its device sign-in; email and text codes not counting as the factor
+for the passkey-mandatory roles. **Planned** (WP-9). Open questions: recovery of a lost only passkey (D-35), union
 stewards (D-17e), attestation (D-36).
 
 **Brute force.** Org sign-in: 5 wrong passwords from one network lock that network for 15 minutes,
@@ -154,20 +158,20 @@ check against HIBP is off unless `PASSWORD_BREACH_CHECK=on` (`apps/api/src/auth/
 
 | Blocklist item | Current | Decided target |
 | :--- | :--- | :--- |
-| Common and product words | Inline list (`apps/api/src/auth/commonPasswords.ts:6-11`), matched whole after trimming digits and symbols at the ends | **Decided (record item 4):** block flexcity, flexcityheadquarters and the role words admin, root, supervisor, guard, lifeguard, hr, steward, frontdesk, waterworks, dev, staging, prod, production, operator. **Planned** (WP-8). How 2-3 letter words are matched is open (D-34). |
-| Each city's name and subdomain | Only the person's own organization, at reset and change (`apps/api/src/routes/auth.ts:280`) | **Decided (record item 4):** each city's name and subdomain, automatically. **Planned** (WP-8). |
-| Excluded words | `kelowna` is on today's list (`apps/api/src/auth/commonPasswords.ts:9`) | **Decided (record item 4):** kelo, kelobot, lakeview, okanagan, kelowna and hcos are not FH's and are not on the list. **Planned:** remove `kelowna` (WP-8). |
+| Common and product words | Inline list (`apps/api/src/auth/commonPasswords.ts:6-11`), matched whole after trimming digits and symbols at the ends | **Decided (decision 4):** FH's own names (flexcity, flexcityheadquarters). **Pending (D-38):** the role words admin, root, supervisor, guard, lifeguard, hr, steward, frontdesk, waterworks, dev, staging, prod, production, operator. **Planned** (WP-8). How 2-3 letter words are matched is open (D-34). |
+| Each city's name and subdomain | Only the person's own organization, at reset and change (`apps/api/src/routes/auth.ts:280`) | **Decided (decision 4):** each city's own names. **Pending (D-38):** its subdomain too. **Planned** (WP-8). |
+| Excluded words | `kelowna` is on today's list (`apps/api/src/auth/commonPasswords.ts:9`) | **Decided (decision 4):** kelo, kelobot, lakeview, okanagan, kelowna and hcos are not FH's and are not on the list. **Planned:** remove `kelowna` (WP-8). |
 
 | Pathway | Factors today (verified) | Output | Decided target | Gaps |
 | :--- | :--- | :--- | :--- | :--- |
 | Org password (`apps/api/src/routes/auth.ts:102`) | Password; a second factor only for roles the city lists in `mfaRoles`, or for anyone with admin-level powers when HR is listed (`apps/api/src/auth/middleware.ts:103-107`). Built-in roles holding `tenant.configure` can still sign in with a password to a closed organization or past enforced single sign-on (`apps/api/src/routes/auth.ts:158-163`) | 15-minute access token and refresh cookie (2.5) | Passkey for the mandatory roles (planned) | Single factor for most roles |
 | Org passkey (`apps/api/src/routes/passkeys.ts:38-84`) | Passkey with user verification required (`apps/api/src/services/auth/passkeys.ts:78,95`); no attestation (`apps/api/src/services/auth/passkeys.ts:75`) | Same; counts as a second factor | Unchanged; synced passkeys accepted (recommended) | Accepts RS1 credentials (`apps/api/src/services/auth/passkeys.ts:58`) |
-| Email or text code (`apps/api/src/routes/mfaCodes.ts:59-131`) | 6 digits, 10 minutes, stored as an HMAC (`apps/api/src/services/auth/mfaCodes.ts:4,14,23`); a city can turn codes off | Marks the session as having a second factor | **Decided (record item 1):** never the factor for the mandatory roles (planned, WP-9) | Counts for every role today |
+| Email or text code (`apps/api/src/routes/mfaCodes.ts:59-131`) | 6 digits, 10 minutes, stored as an HMAC (`apps/api/src/services/auth/mfaCodes.ts:4,14,23`); a city can turn codes off | Marks the session as having a second factor | **Pending (D-38):** never the factor for the passkey-mandatory roles (planned, WP-9) | Counts for every role today |
 | Step-up (`apps/api/src/routes/passkeys.ts:99-120`) | Passkey or password; sensitive actions need one in the last 10 minutes (`apps/api/src/auth/middleware.ts:187-200`) | New access token; a passkey also marks a second factor | Passkey only and 5 minutes for admin-level actions (open, D-17g) | Password accepted for admin-level actions |
-| Single sign-on, OIDC and SAML (`apps/api/src/routes/sso.ts:21-82`) | The city's IdP; counted as a second factor when the IdP sends any `mfa` amr or the city ticks `idpMfa` (`apps/api/src/services/auth/sso.ts:222-223,294,332`) | One-time code exchanged for the normal session | **Derived** from record item 1 by the gap analysis (not stated in the record): for the mandatory roles, counts only with IdP proof of a phishing-resistant method, else an FH passkey step-up (planned, WP-38) | Any `mfa` amr or the switch counts today |
+| Single sign-on, OIDC and SAML (`apps/api/src/routes/sso.ts:21-82`) | The city's IdP; counted as a second factor when the IdP sends any `mfa` amr or the city ticks `idpMfa` (`apps/api/src/services/auth/sso.ts:222-223,294,332`) | One-time code exchanged for the normal session | **Derived** from decision 1 by the gap analysis (not stated in it): for the mandatory roles, counts only with IdP proof of a phishing-resistant method, else an FH passkey step-up (planned, WP-38) | Any `mfa` amr or the switch counts today |
 | Password reset and invitation (`apps/api/src/routes/auth.ts:236-290`) | Emailed one-time link | Sets a password; ends every session (`apps/api/src/routes/auth.ts:284`) and sends a `password_changed` notification (`apps/api/src/routes/auth.ts:285`) | - | An email on every reset is planned (WP-4) |
-| Facility kiosk (`apps/api/src/routes/kiosk.ts:164-297`) | Paired tablet secret, employee number and a 4-6 digit PIN, scrypt-hashed; lock rules in section 5 | A punch only, no session | **Decided (record item 1):** kiosk keeps its device sign-in | Reduced-assurance pathway by design; 6-digit PINs open (D-17j) |
-| Dev console (`apps/api/src/routes/platform/auth.ts:28`, `apps/api/src/routes/platform/passkeys.ts`) | Password, then a passkey, required in production (`apps/api/src/auth/platform.ts:30-33,126`) | 8-hour console session (2.5) | **Decided (record item 1):** passkey mandatory | First passkey can be added from a password-only session; no password blocklist in `apps/api/scripts/platform-admin.ts` |
+| Facility kiosk (`apps/api/src/routes/kiosk.ts:164-297`) | Paired tablet secret, employee number and a 4-6 digit PIN, scrypt-hashed; lock rules in section 5 | A punch only, no session | **Pending (D-38):** kiosk keeps its device sign-in | Reduced-assurance pathway by design; 6-digit PINs open (D-17j) |
+| Dev console (`apps/api/src/routes/platform/auth.ts:28`, `apps/api/src/routes/platform/passkeys.ts`) | Password, then a passkey, required in production (`apps/api/src/auth/platform.ts:30-33,126`) | 8-hour console session (2.5) | **Pending (D-38):** passkey mandatory | First passkey can be added from a password-only session; no password blocklist in `apps/api/scripts/platform-admin.ts` |
 | FH support visit (`apps/api/src/services/platform/support.ts:19-35`, `apps/api/src/routes/support.ts:24-48`) | Console session with step-up, plus the city's written consent; 2-minute one-time code | Read-only session of up to 30 minutes | Unchanged | The code is a bearer secret for 2 minutes |
 | Public API key (`apps/api/src/services/integrations/apiKeys.ts:56-62`, `apps/api/src/routes/publicApi.ts`) | 256-bit key, SHA-256 stored, optional expiry and IP ranges | Each call checked | Default 12-month expiry, IP ranges for write keys (recommended, D-17i) | Expiry optional |
 | Calendar feed link (`apps/api/src/routes/calendar.ts:40-47,96`) | 192-bit secret in the URL, SHA-256 stored | Read-only feed of the person's shifts | Keep (recommended, D-20d) | No expiry |
@@ -175,10 +179,10 @@ check against HIBP is off unless `PASSWORD_BREACH_CHECK=on` (`apps/api/src/auth/
 
 ### 2.5 Sessions (ASVS 7.1.1, 7.1.2, 7.1.3)
 
-**Decided (record item 2), planned (WP-17).** Staff: 30 minutes idle, 12 hours absolute, at most
-3 sessions. Admins: 15 minutes idle, 4 hours absolute, 1 session. Punch in and out and safety
-check-ins must keep working through a quick passkey or PIN re-entry on the phone. On the N+1
-sign-in: confirm with a second factor, end the oldest session, notify the person; a self-service
+**Decided (decision 2), planned (WP-17).** Staff: 30 minutes idle, 12 hours absolute, at most 3
+sessions. Admins: 15 minutes idle, 4 hours absolute, 1 session. Punch in and out and safety
+check-ins keep working through a quick passkey or PIN re-entry. **Pending (D-38):** on the N+1
+sign-in, confirm with a second factor, end the oldest session and notify the person; a self-service
 session list; admins can end sessions. None of this is built yet. How the PIN re-entry works on a
 personal phone is open (D-33).
 
@@ -187,7 +191,7 @@ personal phone is open (D-33).
 | Organization (staff and admins) | HS256 access token, 15 minutes, kept in memory in the page (`apps/api/src/config.ts:57`, `apps/api/src/auth/tokens.ts:28-35`, `apps/web/src/lib/api.ts:30`); opaque refresh token in the HttpOnly, SameSite=Strict cookie `fc_refresh`, path `/api/auth`, 14 days, renewed on each rotation so the window slides (`apps/api/src/config.ts:58`, `apps/api/src/routes/auth.ts:42-48`, `apps/api/src/auth/tokens.ts:47-92`). Only the hash is stored; a reused token revokes its family. No idle or absolute cap, no session count. Logout revokes the presented family (`apps/api/src/routes/auth.ts:221-228`). | Staff 30 min / 12 h / 3; admins 15 min / 4 h / 1 (planned) | D-12 (cookie prefix; bearer token kept as a deviation, recommended) | The 15-minute access token can't be revoked before it expires; `requireAuth` re-reads the person's status on every request (`apps/api/src/auth/middleware.ts:93`). |
 | Dev console | Opaque token in the `fh_platform` cookie, path `/api/platform`, 8 hours, no idle check (`apps/api/src/auth/platform.ts:20-57`) | Admin values (planned) | - | - |
 | FH support visit | Read-only, at most 30 minutes and never past the city's grant (`apps/api/src/services/platform/support.ts:19,34`); cookie `fh_support`, path `/api/auth/support` (`apps/api/src/routes/support.ts:19-20`); every page audited (`apps/api/src/auth/middleware.ts:126`) | Unchanged | - | Logout clears the cookie only; the visit's own end time still holds (`apps/api/src/routes/support.ts:63-68`) |
-| Kiosk tablet | Device secret, SHA-256 stored, in the `fh_kiosk` cookie, path `/api/kiosk`, 400 days, until someone with `timeclock.review` unpairs it (`apps/api/src/routes/kiosk.ts:142-145`, `apps/api/src/routes/kiosk.ts:67`) | **Decided (record item 1):** keeps its device sign-in | D-18d (re-pairing interval; recommended: no forced expiry, show last-seen) | Reduced assurance by design: a punch only, no session |
+| Kiosk tablet | Device secret, SHA-256 stored, in the `fh_kiosk` cookie, path `/api/kiosk`, 400 days, until someone with `timeclock.review` unpairs it (`apps/api/src/routes/kiosk.ts:142-145`, `apps/api/src/routes/kiosk.ts:67`) | **Pending (D-38):** keeps its device sign-in | D-18d (re-pairing interval; recommended: no forced expiry, show last-seen) | Reduced assurance by design: a punch only, no session |
 | Union Hub | Same access token as the organization (`apps/api/src/unionApp.ts:32`) | Follows the organization's | - | - |
 | Single sign-on | Ends in a normal organization session; the IdP session isn't followed and there is no back-channel or SAML logout (`apps/api/src/routes/sso.ts:62-82`) | - | D-18 | - |
 | GitHub Pages demo | No server session: the demo answers from sample data in the page (`apps/web/src/lib/demoApi.ts`) | n/a | - | - |
@@ -328,15 +332,18 @@ those the file names in `requirePermission(...)` or checks inline.
 
 - **Keys under KMS.** Key-encryption keys (KEKs) live in AWS KMS and never leave it: one per city
   (`alias/flexcity-tenant-<id>`), created as `SYMMETRIC_DEFAULT` encrypt/decrypt keys with
-  rotation on (`apps/api/src/services/crypto/awsKms.ts:26-48`), plus FH's own keys in Terraform
-  (`ops/terraform/kms.tf`). Production refuses to start without `KMS_KEY_ARN`, and refuses a
+  rotation on (`apps/api/src/services/crypto/envelope.ts:166-175`), plus FH's own keys in Terraform
+  (`ops/terraform/kms.tf`) and one key per union local, which operations creates
+  (`apps/api/db/union_hub.sql:24`). Production refuses to start without `KMS_KEY_ARN`, and refuses a
   KMS replica region outside Canada (`apps/api/src/config.ts:155-160`).
 - **Data keys.** A data key (DEK) is generated by KMS for each sealed record and wiped after use
   (`apps/api/src/services/crypto/envelope.ts:29-52`).
 - **Secrets in memory.** Some secrets only work as raw values, so they are held in the app's
-  memory: `JWT_SECRET`, `STRIPE_SECRET_KEY`, `TWILIO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY` and
-  `METRICS_TOKEN`, all read from the environment (`apps/api/src/config.ts:56,88-89,101,106,109`).
-  So are each city's SSO, webhook and bank credentials, unsealed when they are used.
+  memory: `JWT_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TWILIO_AUTH_TOKEN`,
+  `VAPID_PRIVATE_KEY` and `METRICS_TOKEN` (`apps/api/src/config.ts:56,88-89,101,106,109`),
+  `INTERNAL_API_TOKEN` (`apps/api/src/lib/ipRateLimit.ts:151`) and the role passwords inside the
+  database URLs, all read from the environment. So are each city's SSO, webhook and bank
+  credentials, unsealed when they are used.
 - **Policy decision.** Whether this in-memory exception stands is open decision D-25
   (recommended: it stands for third-party secrets and DEKs, and FH's own token signing moves into
   KMS).
@@ -355,17 +362,18 @@ ES256 token-signing keys don't exist at FH.
 
 | Asset | Purpose | Algorithm and size | Where it is kept | Rotation in force |
 | :--- | :--- | :--- | :--- | :--- |
-| City KEK | Wraps that city's data keys | KMS `SYMMETRIC_DEFAULT` (AES-256-GCM in KMS); FH can't choose AES-KW/KWP | KMS, multi-region copy in `ca-west-1` | KMS yearly rotation, enabled at creation (`apps/api/src/services/crypto/awsKms.ts:46-48`); stored data keys aren't re-wrapped |
-| FH's KMS keys | Platform key, also used for FH's own sealed data (`alias/flexcity-trust`, `ops/terraform/kms.tf:9-45`); database, backups and secrets key (`ops/terraform/kms.tf:53`); logs key (`ops/terraform/kms.tf:115`) | KMS `SYMMETRIC_DEFAULT` | KMS, with recovery copies | Yearly (`ops/terraform/kms.tf:13,55,68,117`) |
+| City KEK | Wraps that city's data keys | KMS `SYMMETRIC_DEFAULT` (AES-256-GCM in KMS); FH can't choose AES-KW/KWP | KMS, multi-region copy in `ca-west-1` | KMS yearly rotation, enabled at creation (`apps/api/src/services/crypto/envelope.ts:175`); stored data keys aren't re-wrapped |
+| FH's KMS keys | Platform key, also used for FH's own sealed data (`alias/flexcity-trust`, `ops/terraform/kms.tf:9-45`); database, backups and secrets key (`ops/terraform/kms.tf:53`); logs key (`ops/terraform/kms.tf:115`) | KMS `SYMMETRIC_DEFAULT` | KMS; only the platform key is multi-region with a replica in the recovery region (`ops/terraform/kms.tf:12,22`); the recovery region has its own separate data key (`ops/terraform/kms.tf:64`), and the logs key has none | Yearly (`ops/terraform/kms.tf:13,55,68,117`) |
+| Union local KEK | Wraps that local's data keys (union messages, `apps/api/src/services/union/unionHub.ts:121`) | KMS `SYMMETRIC_DEFAULT` | KMS, one per local, created by operations (`apps/api/db/union_hub.sql:24`); not in Terraform | Not set in code or Terraform (gap) |
 | Record data keys | Seal SINs, bank accounts, documents, narratives, résumés, Trust evidence | AES-256-GCM, 96-bit random IV, AAD (`apps/api/src/services/crypto/envelope.ts:29-52`) | Wrapped beside the record | A new key for every seal |
 | Conversation data keys | Seal messages and files | AES-256-GCM, a fresh IV per part (`apps/api/src/services/messaging/crypto.ts:38-51`) | Wrapped on the conversation | One per conversation, never rotated (gap) |
-| `JWT_SECRET` | The six purposes above; HS256 for tokens | HMAC-SHA-256, at least 32 characters (`apps/api/src/config.ts:56`) | Secrets Manager, injected as an environment variable | Only as an incident action; rotating it breaks unsubscribe links already sent ([docs/COMPLIANCE.md](docs/COMPLIANCE.md)) |
+| `JWT_SECRET` | The six purposes above; HS256 for tokens | HMAC-SHA-256, at least 32 characters (`apps/api/src/config.ts:56`) | Secrets Manager, injected as an environment variable | Only as an incident action. Rotating it ends every access token (`apps/api/src/auth/tokens.ts:26`); voids SSO sign-ins, sign-in codes and text-number codes in progress (`apps/api/src/services/auth/sso.ts:32`, `apps/api/src/services/auth/mfaCodes.ts:23`, `apps/api/src/routes/sms.ts:21`); makes every stored known-network id unrecognisable, so each person's next sign-in looks new (`apps/api/src/auth/bruteForce.ts:107`); and breaks unsubscribe links already sent ([docs/COMPLIANCE.md](docs/COMPLIANCE.md)) |
 | Password and kiosk PIN hashes | Sign-in | scrypt at Node's default cost, 16-byte salt, 64-byte key (`apps/api/src/auth/tokens.ts:101-105`); no pepper | Database | Not re-hashed when parameters change (gap; WP-16) |
 | Bearer secrets (refresh, console, kiosk, calendar, API keys, invitation links) | Sessions and links | 192 to 256 random bits, stored as SHA-256 | Database (hash only) | Per secret: rotation or expiry in 2.4 and 2.5 |
 | Webhook signing secrets | Signing deliveries | HMAC-SHA-256 (`apps/api/src/services/integrations/signing.ts`) | Sealed with the city's key | A rotation keeps the previous secret for an overlap |
 | Stripe webhook secret | Checking Stripe's signature | HMAC-SHA-256, constant-time compare (`apps/api/src/services/billing/stripe.ts:81-85`) | Secrets Manager | By hand |
 | VAPID key | Web Push | P-256 ECDSA; content encryption is AES-128-GCM by RFC 8291 (`apps/api/src/services/notifications/push.ts:25`) | Secrets Manager | By hand |
-| Bank SFTP and PGP keys | Deposit files | SSH host key pinned by SHA-256, OpenPGP encryption to the bank's key (`apps/api/src/services/payroll/bankLink.ts:62-88`) | Sealed with the city's key | The city's, quarterly per [docs/SECURITY-OPERATIONS.md](docs/SECURITY-OPERATIONS.md) |
+| Bank SFTP and PGP keys | Deposit files | SSH host key pinned by SHA-256, OpenPGP encryption to the bank's key when one is set (`apps/api/src/services/payroll/bankLink.ts:62-88`) | The SSH password or private key is sealed with the city's key; the bank's PGP public key and host-key fingerprint are stored as given (`apps/api/src/services/payroll/bankLink.ts:20-35`) | The city's, quarterly per [docs/SECURITY-OPERATIONS.md](docs/SECURITY-OPERATIONS.md) |
 | Database TLS | API to Postgres | `verify-full` against the checksum-pinned RDS bundle (`apps/api/src/config.ts:164-170`, `Dockerfile:21`); RDS CA `rds-ca-rsa2048-g1` (`ops/terraform/database.tf:73`) | - | AWS-managed |
 | Edge TLS | Browsers to the load balancer | `ELBSecurityPolicy-TLS13-1-2-2021-06` (`ops/terraform/edge.tf:73`); certificate from ACM (`ops/terraform/variables.tf:35-38`) | ACM | ACM renewal |
 | HIBP lookup | Breached-password check (off by default) | SHA-1; only 5 hex characters leave the server (`apps/api/src/auth/breachedPasswords.ts:26`) | - | - |
@@ -374,20 +382,21 @@ ES256 token-signing keys don't exist at FH.
 parties it talks to. Microsoft Entra ID signs ID tokens with RS256, SAML IdPs sign with
 RSA-SHA256, Windows Hello passkeys are usually RS256, and banks hold RSA PGP keys. Today FH accepts:
 
-- passkeys with RS256/384/512 and RS1 (`apps/api/src/services/auth/passkeys.ts:57-58`);
-- SAML signatures with no algorithm restriction (`apps/api/src/services/auth/sso.ts:251-266`);
-- the SSH library's default key-exchange list (`apps/api/src/services/payroll/bankLink.ts:77-88`).
+- passkeys with EdDSA, ES256, ES512, PS256/384/512, RS256/384/512 and RS1 (`apps/api/src/services/auth/passkeys.ts:57-58`);
+- SAML signatures with no restriction of FH's own: the library's RSA-SHA1/256/512 defaults apply (`apps/api/src/services/auth/sso.ts:249-267`);
+- the SSH library's default lists, since FH sets none (`apps/api/src/services/payroll/bankLink.ts:77-88`): they include `ssh-rsa` (SHA-1) host keys, AES-CTR ciphers and `hmac-sha1`.
 
 The recommended answer to D-22 keeps RS256, RSA-SHA256 and RSA PGP as listed exceptions and removes
-RS1, SHA-1 SAML signatures, SSH CTR modes and HMAC-SHA1 (planned, WP-39 and WP-54).
+RS1, SHA-1 SAML signatures, SSH `ssh-rsa` host keys, CTR modes and HMAC-SHA1 (planned, WP-39 and WP-54).
 
 **Post-quantum plan (planned, not started).**
 
 - **Stage 1:** AES-256-GCM for FH's own data, which is in place. The hash floor is open: the
   target's SHA-384 line contradicts its own approval of SHA-256 (D-26). Hybrid post-quantum TLS
-  at the edge waits on AWS support in `ca-central-1` (D-27).
+  at the edge waits on AWS support in `ca-central-1` (D-39).
 - **Stage 2:** ML-KEM between services, once internal TLS exists (today the load balancer and the
-  web service reach the API over plain HTTP inside the VPC, `ops/terraform/edge.tf:18-24`).
+  web service reach the API over plain HTTP inside the VPC: `ops/terraform/edge.tf:18-24` and
+  `ops/terraform/compute.tf:203-205`).
 - **Stage 3:** FH owns no asymmetric signing keys or internal PKI to migrate. Passkeys don't offer
   ML-DSA (`apps/api/src/services/auth/passkeys.ts:52-58`).
 
@@ -398,7 +407,10 @@ RS1, SHA-1 SAML signatures, SSH CTR modes and HMAC-SHA1 (planned, WP-39 and WP-5
 User-supplied destinations (typed in by a city) are marked **city**. Outbound HTTPS to city
 addresses goes through `apps/api/src/lib/egress.ts`: https only, no credentials in the URL, the
 address resolved and refused if any resolved address is private, and the connection pinned to the
-checked address. There is no network-level egress allowlist (`ops/terraform/network.tf:204-218`
+checked address. The exception is the payroll providers (gap): their addresses are limited to the
+provider's domain (`apps/api/src/services/payroll/providers.ts:49-61`) but sent with a plain
+`https.request` (`apps/api/src/services/payroll/providers.ts:77-87`), with no private-address
+check, no pinning and no response cap. There is no network-level egress allowlist (`ops/terraform/network.tf:204-218`
 allows all outbound traffic; D-30).
 
 | Service | Authentication | Pool or concurrency | Timeouts and retries | When it fails |
@@ -411,13 +423,13 @@ allows all outbound traffic; D-30).
 | City identity provider (OIDC discovery, token, JWKS; SAML) | **city**; client secret sealed with the city's key, PKCE, issuer pinned (`apps/api/src/services/auth/sso.ts:153-216`) | No cap; a new connection per call | 8 s and 1 MB per call, no retry (`apps/api/src/services/auth/sso.ts:113`); JWKS cached 10 minutes | Sign-in refused with an SSO error code |
 | City webhooks | **city**; HMAC signature | Worker queue, one run per city per worker | 10 s per delivery by default (`apps/api/src/config.ts:40`), up to 8 tries with back-off, redirects not followed | Endpoint disabled after 20 failures in a row (`apps/api/src/config.ts:39`) |
 | City bank (SFTP) | **city**; SSH key, pinned host key (`apps/api/src/services/payroll/bankLink.ts:81-88`) | One per send | 20 s handshake only; transfer has no deadline (gap) | - |
-| ADP, Dayforce, Wagepoint | **city** credentials (client secret, ADP client certificate, Wagepoint API key), sealed | One per send | 30 s (`apps/api/src/services/payroll/providers.ts:79-84`) | - |
+| ADP, Dayforce, Wagepoint | **city** credentials (client secret, ADP client certificate, Wagepoint API key), sealed | One per send | 30 s of socket inactivity, no total deadline (`apps/api/src/services/payroll/providers.ts:79-84`) | - |
 | Twilio | Account SID and auth token | - | 15 s (`apps/api/src/services/notifications/sms.ts:108`) | - |
 | Web Push services | VAPID | - | No timeout (gap) | - |
 | Stripe | Secret key | - | No timeout, redirects followed (`apps/api/src/services/billing/stripe.ts:58`) (gap) | - |
-| Environment and Climate Change Canada | None (open data, `apps/api/src/config.ts:46`) | Worker only | - | The forecast runs without weather |
+| Environment and Climate Change Canada | None (open data, `apps/api/src/config.ts:46`) | Worker only | 10 s by default (`apps/api/src/config.ts:47`) | The forecast runs without weather |
 | HIBP (off by default) | None | - | 2 s, fails open (`apps/api/src/auth/breachedPasswords.ts:1-17`) | Password accepted |
-| Error tracking (off unless `SENTRY_DSN`) | DSN | - | - | - |
+| Error tracking (off unless `SENTRY_DSN`) | DSN; host checked as public, not pinned (`apps/api/src/lib/errorReporter.ts:182`) | - | 5 s (`apps/api/src/lib/errorReporter.ts:207`) | - |
 | Rate-limit store | Postgres `RateLimitHit` rows (`apps/api/src/auth/rateLimit.ts`); the per-address limiter is in memory (`apps/api/src/lib/ipRateLimit.ts`) | Shares the app pool | Same as the app role | 503; no Redis or Valkey (D-29) |
 
 The target's 3 s statement timeout and 250 ms pool wait would break city-wide pay runs (7-15 s,
@@ -425,7 +437,9 @@ The target's 3 s statement timeout and 250 ms pool wait would break city-wide pa
 application circuit breaker (gap; WP-48).
 
 **Secrets.** The app secret in Secrets Manager holds `JWT_SECRET`, `APP_DATABASE_URL`,
-`LISTEN_DATABASE_URL` and `METRICS_TOKEN` by default, plus optional provider keys
+`LISTEN_DATABASE_URL` and `METRICS_TOKEN` by default, `FLEXCITY_APP_PASSWORD` (read by the roles
+task, `ops/terraform/README.md:66`, `ops/terraform/compute.tf:150`) and, when set,
+`FLEXCITY_UNION_PASSWORD`, plus optional provider keys
 (`ops/terraform/variables.tf:132-141`) and the optional `INTERNAL_API_TOKEN`, the only key the web
 tasks also receive (`ops/terraform/compute.tf:36`). The database owner password is not in it: RDS manages and
 rotates it (`ops/terraform/README.md:74`). Only that password and the KMS keys rotate on a
@@ -460,7 +474,7 @@ The current targets don't say whether they cover development dependencies (D-37)
 
 **Checks in place.**
 
-- CodeQL runs on every change and weekly (`.github/workflows/security.yml:17-30`).
+- CodeQL runs on pull requests, pushes to `main` and a weekly schedule (`.github/workflows/security.yml:6-11,17-30`).
 - `npm audit --omit=dev --audit-level=high` fails the build (`.github/workflows/security.yml:47`).
   Development dependencies aren't audited by CI (gap).
 - gitleaks scans the whole history (`.github/workflows/security.yml:55-75`).
@@ -480,8 +494,8 @@ The current targets don't say whether they cover development dependencies (D-37)
 | Fill the schedule (solver) | In the request (`apps/api/src/routes/fill.ts:80-88`), on the event loop | A time budget per week | One city's solve blocks that API process for every city (D-32) |
 | City data export | Streamed in the request (`apps/api/src/routes/dataExport.ts`) | Whole-organization permission | No back-pressure |
 | Password and PIN hashing | scrypt on the libuv pool (`apps/api/src/auth/tokens.ts:101-113`) | Sign-in rate limits (2.4) | - |
-| Upload parsing | 14 MB JSON parser on two routes (`apps/api/src/app.ts:71-76`) | Size caps (2.3) | - |
-| PDF generation | pdfkit in the request (`apps/api/src/services/privacy/recordsPdf.ts`, `apps/api/src/services/privacy/consentCertificate.ts`) | - | - |
+| Upload parsing | 14 MB JSON parser on four POST routes: employee documents (two) and conversation messages (`apps/api/src/app.ts:71-76`), and Trust evidence (`apps/api/src/routes/platform/index.ts:23`) | Size caps (2.3) | - |
+| PDF generation | pdfkit in the request (`apps/api/src/services/privacy/recordsPdf.ts`, `apps/api/src/services/privacy/consentCertificate.ts`, `apps/api/src/services/trust/exports.ts`) | - | - |
 | Notifications, emails, texts, push, webhooks, scheduled reports, retention, weather | Worker ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) | Outbox with retries | - |
 
 **Risky components and dangerous functionality.** None of these runs in a separate sandbox. The
@@ -492,9 +506,9 @@ API container is the boundary (target 15.2.5: gap).
 | `@node-saml/node-saml` 5.2.0 | Parses and checks XML signatures from city IdPs | `apps/api/src/services/auth/sso.ts:251-294` |
 | `openpgp` 6.3.2 | Parses keys a city pastes in | `apps/api/src/services/payroll/bankLink.ts:51,63` |
 | `ssh2` 1.17.0 | Talks to bank servers | `apps/api/src/services/payroll/bankLink.ts:77-88` |
-| `pdfkit` | Decodes an uploaded PNG signature into a PDF | `apps/api/src/services/privacy/consentCertificate.ts` |
+| `pdfkit` | Decodes an uploaded PNG signature into a PDF | `apps/api/src/services/privacy/consentCertificate.ts`, `apps/api/src/services/privacy/recordsPdf.ts`, `apps/api/src/services/trust/exports.ts` |
 | `jose`, `@simplewebauthn/server` | Token and passkey verification | `apps/api/src/auth/tokens.ts`, `apps/api/src/services/auth/passkeys.ts` |
-| `web-push`, `fflate` | Push encryption; ZIP output | `apps/api/src/services/notifications/push.ts`; `apps/api/src/services/platform/cityExport.ts` |
+| `web-push`, `fflate` | Push encryption; ZIP output | `apps/api/src/services/notifications/push.ts`; `apps/api/src/services/platform/cityExport.ts`, `apps/api/src/services/trust/exports.ts` |
 | FH's own parsers | Magic-byte sniffing (`apps/api/src/lib/files.ts:15-20`), the staff CSV parser (`apps/api/src/services/platform/staffImport.ts:17-47`), JSON in a report query string (`apps/api/src/routes/reports.ts:44`) | Uploads, Dev console import, reports |
 
 ### 2.11 Security logging (ASVS 16.1.1)
@@ -522,7 +536,7 @@ reason. Each is a deviation until the owner says otherwise.
 
 | Target requirement | FH's position | Compensating control |
 | :--- | :--- | :--- |
-| Hardware-attested MFA on every login (6.3.3) | **Decided (record item 1):** passkeys for HR, payroll, managers, city admins and the Dev console, admins first; other staff keep password and current second-factor rules; kiosk device sign-in | Kiosk punches only; seasonal staff on personal phones aren't locked out |
+| Hardware-attested MFA on every login (6.3.3) | **Decided (decision 1):** passkeys for admin, HR and payroll roles, first. **Pending (D-38):** managers, city admins and the Dev console; other staff keep password and current second-factor rules; kiosk device sign-in | Kiosk punches only; seasonal staff on personal phones aren't locked out |
 | Stateful `__Host-session` cookie (AUTH-01) | In-memory bearer access token plus a path-scoped refresh cookie (2.5) | D-12; moving to cookie-only sessions brings CSRF exposure to every route |
 | Argon2id for passwords | scrypt; ASVS 11.4.2 accepts any approved KDF with current parameters | Parameters and pepper to be recorded (WP-16) |
 | Column encryption of all L2 personal data (14.1.2) | Not planned: schedules and payroll are queried in SQL | RLS, volume encryption, L3 sealing (2.9) |
@@ -530,7 +544,7 @@ reason. Each is a deviation until the owner says otherwise.
 | Seven-year WORM log archive (16.4.x) | Conflicts with deleting a city's data at offboarding | D-21 |
 | `Clear-Site-Data: "cookies", "storage"` (14.3.1) | Would unpair kiosks and wipe other workers' unsent punches on shared phones | "cache" plus targeted cleanup (D-11, recommended) |
 | TLS 1.3 only at the edge | Older phones and tablets need TLS 1.2 | D-9 |
-| 30-minute idle timeout for shift workers | **Decided (record item 2)** with a condition: punch and safety check-ins keep working through quick passkey or PIN re-entry | Planned, WP-17; the re-entry path comes first |
+| 30-minute idle timeout for shift workers | **Decided (decision 2)** with a condition: punch and safety check-ins keep working through quick passkey or PIN re-entry | Planned, WP-17; the re-entry path comes first |
 | Ed25519 / RFC 9421 signatures on all integrations (4.1.5) | Webhooks are HMAC-signed (section 5); bank and partner support is unknown | D-15 |
 | Per-user 30/min and per-city 300/min caps, 500 ms timing floor | Would refuse shift-change punches, offline queue flushes and lone-worker check-ins | D-4, D-5, D-6 |
 | Flat 365-day deletion of L2 data | Payroll and OHS records have legal retention periods | D-20e |
@@ -571,11 +585,13 @@ The owner hasn't decided these. The recommendation is the author's, not a decisi
 | D-30 | Network egress allowlist | An egress firewall at the first paying customer, with webhook ports 443 and 8443; application-level checks until then. |
 | D-31 | Scheduled `JWT_SECRET` rotation | Split the secret per purpose first (WP-41), then rotate on a schedule. |
 | D-32 | Heavy work off the request path | Fill the schedule and pay runs become start-then-poll background jobs, at most 2 per person. |
-| D-33 | How the quick PIN re-entry of record item 2 works on a personal phone | Reuse the kiosk PIN as a device-bound re-entry factor for punch and lone-work routes only, never other screens, with a peppered KDF from the start. |
+| D-33 | How the quick PIN re-entry of decision 2 works on a personal phone | Reuse the kiosk PIN as a device-bound re-entry factor for punch and lone-work routes only, never other screens, with a peppered KDF from the start. |
 | D-34 | How short blocklist words (hr, dev) are matched | Words of 4 or more letters as substrings after leet-folding; 2-3 letter words only as whole tokens. |
 | D-35 | Recovery when a passkey-mandatory person loses their only passkey | An HR-issued one-time enrolment link that needs a second HR member or the CAO, with a notice to the person. |
 | D-36 | Passkey attestation | Accept synced passkeys; attestation would exclude most personal phones. |
 | D-37 | Vulnerability remediation targets | Adopt the owner's ASVS target document's values: Critical (CVSS 9.0+ or known exploited) 24 hours, 48 at most; High 7 days; Medium 30 days; Low and library freshness 90 days; covering runtime, build and development dependencies. |
+| D-38 | Confirm the details listed as pending in section 2.0 | Confirm them as written: the gap analysis and the work packages were planned on them. |
+| D-39 | Hybrid post-quantum TLS at the edge | Adopt an AWS post-quantum hybrid policy once it is available in `ca-central-1`, checked by the Terraform plan test. |
 
 ## 4. Pre-merge gate
 
