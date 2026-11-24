@@ -177,7 +177,10 @@ export async function updatePerson(tx: Tx, a: AuthContext, id: string, change: P
     const reports = await setReportsOf(tx, id);
     if (reports.length) await setManagers(tx, null, a.tenantId, reports.map((r) => r.id), before.reportsToId && before.reportsToId !== id ? before.reportsToId : null).catch(() => setManagers(tx, null, a.tenantId, reports.map((r) => r.id), null));
   }
-  await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status }, after: { ...body, customRoleIds, positionIds, managerId } });
+  // The previous value of each field sent (seniority hours decide bid, overtime and fill order: a wrong edit must be traceable).
+  const was = before as unknown as Record<string, unknown>;
+  const old = Object.fromEntries(Object.keys(body).map((k) => [k, was[k] instanceof Date ? (was[k] as Date).toISOString().slice(0, 10) : was[k] && typeof was[k] === 'object' && 'toFixed' in (was[k] as object) ? String(was[k]) : was[k]]));
+  await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'user.update', entity: 'User', entityId: id, before: { roles: before.roles, status: before.status, ...old }, after: { ...body, customRoleIds, positionIds, managerId } });
   return before;
 }
 

@@ -72,7 +72,7 @@ Use a **separate AWS account per environment** (staging, production). The API ma
 
    The owner (`fh_owner`) password is **not** copied into this secret: RDS manages and rotates it. The migration and database-role tasks read it from the RDS secret and build the connection themselves (`apps/api/scripts/owner-url.mjs`).
 
-   Optional keys can be added later: `TWILIO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `READ_REPLICA_URL`, `FLEXCITY_UNION_PASSWORD`. Add each one to `app_secret_keys` (or set `union_role_password`) and apply. A task won't start if a key it names is missing.
+   Optional keys can be added later: `INTERNAL_API_TOKEN` (48 random characters: the web tasks send it on their server-side calls, so the API rate-limits those on their own budget instead of the anonymous one every sign-in page shares; the web task gets it too once it is in `app_secret_keys`), `TWILIO_AUTH_TOKEN`, `VAPID_PRIVATE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SENTRY_DSN`, `READ_REPLICA_URL`, `FLEXCITY_UNION_PASSWORD`. Add each one to `app_secret_keys` (or set `union_role_password`) and apply. A task won't start if a key it names is missing.
 6. **Database roles, then migrations.** Run as one-off tasks in the private subnets with the jobs security group (all values are Terraform outputs):
    ```bash
    aws ecs run-task --cluster <cluster> --launch-type FARGATE --task-definition <db_roles_task_definition> \
