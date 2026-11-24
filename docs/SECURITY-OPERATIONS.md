@@ -17,7 +17,7 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
 
 ## Daily
 
-1. **Alerts reviewed** (on-call): the API, load balancer and database alarms. Alert on:
+1. **Alerts reviewed** (on-call): the API, load balancer and database alarms. Terraform defines the load balancer 5xx, unhealthy-task, database CPU and storage, 5xx-ratio and replica-lag alarms, plus a rule for KMS keys created with a custom policy (`ops/terraform/alarms.tf`). No AWS account exists yet, so none is deployed; the other alerts below aren't defined in Terraform (**planned**). Alert on:
    - sign-in failures over 50 in 5 minutes from one IP;
    - more than 3 account lockouts in an hour;
    - any Dev console sign-in from a new IP;
@@ -37,7 +37,7 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
 - Merge Dependabot patch and minor updates after CI passes; schedule majors. This includes the Docker base image, the Terraform provider (with its lock file) and the GitHub Actions commit pins.
 - Review Amazon Inspector findings for the container images (re-scanned continuously, `ecr_continuous_scanning`).
 - Full backup copied to a separate AWS account in `ca-west-1` with S3 Object Lock (compliance mode, 35 days). Confirm the copy landed.
-- Review CI dependency-audit output and the WAF block log.
+- Review CI dependency-audit output. (The WAF block log is **planned**: WAF logging isn't configured in Terraform yet.)
 
 ## Monthly
 
@@ -77,7 +77,7 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
 ## Incident response playbook
 
 1. **Detect and triage.** Who is on call, what's affected, is it ongoing? Open an incident channel and a timeline.
-2. **Contain.** Revoke sessions (set the account inactive, or rotate `JWT_SECRET` to end every session), block IPs at the WAF, isolate affected instances. Preserve logs first.
+2. **Contain.** Revoke sessions (set the account inactive; to end every session, revoke all `RefreshToken` and `PlatformSession` rows **and** rotate `JWT_SECRET`, because access tokens otherwise last up to 15 minutes, and revoke open `SupportGrant`s; rotating `JWT_SECRET` alone leaves refresh and console sessions working), block IPs at the WAF, isolate affected instances. Preserve logs first.
 3. **Assess.** Which cities and which records? The audit log, incident-access log and records-export log show who read what.
 4. **Notify.** Tell each affected city within 24 hours of confirming, with what happened, what data, what we're doing, and a contact. Each city decides its own notices to its privacy commissioner and staff (PIPEDA, Alberta PIPA, Law 25, provincial public-sector laws; see the audit, section 5.6). Keep our own breach record for 24 months.
 5. **Recover.** Restore from the last clean backup if needed; rotate secrets and KMS keys if exposure is suspected.
