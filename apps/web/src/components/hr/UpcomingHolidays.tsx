@@ -16,6 +16,9 @@ interface Holiday {
   kind: 'ACTUAL' | 'MOVED' | 'MOVED_IF_OFF';
   observedOn: string | null;
   closedOn: string;
+  /** CITY: added by the organization (a paid holiday or a closure day). */
+  source?: 'STATUTORY' | 'CITY';
+  paid?: boolean;
 }
 
 /**
@@ -39,12 +42,14 @@ export function UpcomingHolidays({ className }: { className?: string }) {
           {list.map((h) => {
             const name = lng.startsWith('fr') && h.nameFr ? h.nameFr : h.name;
             // MOVED_IF_OFF (the Fête nationale on a Sunday): June 25 for people who don't work Sundays.
+            const tag = h.paid === false ? t('timeOff.holidayClosure') : h.source === 'CITY' ? t('timeOff.holidayCity') : null;
             const note = h.kind === 'MOVED_IF_OFF' && h.observedOn ? t('timeOff.holidayMovedIfOff', { date: fmt(h.observedOn) }) : h.closedOn !== h.date ? t('timeOff.holidayObserved', { date: fmt(h.closedOn) }) : null;
             return (
               <li key={`${h.province}-${h.date}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 py-2.5 text-small">
                 <span className="min-w-0 font-semibold text-ink">
                   {name}
                   {several ? <span className="ml-1.5 font-normal text-muted">{h.province}</span> : null}
+                  {tag ? <span className="ml-1.5 font-normal text-muted">{tag}</span> : null}
                 </span>
                 <span className="text-muted tabular-nums">
                   {fmt(h.date)}

@@ -117,6 +117,16 @@ describe('invitations and passwords', () => {
 
 });
 
+describe('correcting a record', () => {
+  it('the audit keeps the old value of each field changed: seniority hours, names, phone', async () => {
+    await owner.user.update({ where: { id: supId }, data: { seniorityHours: '1500.00', phone: '250-555-0100' } });
+    expect((await call(hr).patch(`/api/users/${supId}`, { seniorityHours: '0', firstName: 'Samira', phone: '250-555-0199' })).status).toBe(200);
+    const row = await owner.auditLog.findFirstOrThrow({ where: { tenantId: t.tenant.id, action: 'user.update', entityId: supId }, orderBy: { at: 'desc' } });
+    expect(row.before).toMatchObject({ seniorityHours: '1500', firstName: 'Sam', phone: '250-555-0100' });
+    expect(row.after).toMatchObject({ seniorityHours: '0', firstName: 'Samira', phone: '250-555-0199' });
+  });
+});
+
 describe('certifications', () => {
   it('a self-entered certification does not count until a supervisor verifies it', async () => {
     const guard = await owner.user.create({

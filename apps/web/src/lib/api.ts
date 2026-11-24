@@ -222,12 +222,36 @@ const emitChange = coalescer(CHANGE_COALESCE_MS, (topic) => {
   for (const set of sets) for (const fn of set ?? []) fn();
 });
 
+/**
+ * The API closed this stream to make room for the same person's newer one (more than 10 tabs or
+ * devices on one server, apps/api lib/streamSlots.ts). Reconnecting at once would close the next
+ * oldest, which would reconnect in turn, for ever: wait at least this long, and until the tab is
+ * visible, so only a tab someone is looking at takes a stream back.
+ */
+export const EVICTED_WAIT_MS = 5 * 60_000;
+
+/** Resolves once `ms` has passed and the page is visible (or `stop` says to give up). */
+function waitVisible(ms: number, stop: () => boolean): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      if (stop() || typeof document === 'undefined' || document.visibilityState === 'visible') return resolve();
+      const on = () => {
+        if (!stop() && document.visibilityState !== 'visible') return;
+        document.removeEventListener('visibilitychange', on);
+        resolve();
+      };
+      document.addEventListener('visibilitychange', on);
+    }, ms);
+  });
+}
+
 export function streamNotifications(onSignal: () => void): () => void {
   if (DEMO) return () => undefined;
   let stopped = false;
   let controller: AbortController | null = null;
   let delay = 2000;
   let connected = false;
+  let evicted = false;
   const run = async () => {
     while (!stopped) {
       try {
@@ -258,6 +282,7 @@ export function streamNotifications(onSignal: () => void): () => void {
           const events = buf.split('\n\n');
           buf = events.pop() ?? '';
           if (events.some((e) => e.includes('event: notification'))) onSignal();
+          if (events.some((e) => e.includes('event: evicted'))) evicted = true;
           for (const e of events) {
             if (!e.includes('event: change')) continue;
             const data = /^data: (.*)$/m.exec(e)?.[1];
@@ -273,6 +298,11 @@ export function streamNotifications(onSignal: () => void): () => void {
         /* fall through to retry */
       }
       if (stopped) break;
+      if (evicted) {
+        evicted = false;
+        await waitVisible(EVICTED_WAIT_MS, () => stopped);
+        continue;
+      }
       // Random jitter: after a deployment every open phone loses its stream at once, and they
       // shouldn't all reconnect in the same second.
       await new Promise((r) => setTimeout(r, delay * (0.5 + Math.random() * 0.5)));
