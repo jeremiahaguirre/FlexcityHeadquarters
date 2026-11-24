@@ -6,12 +6,14 @@ import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simp
 import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requireRecentAuth } from '../auth/middleware.js';
-import { epochSeconds, issueRefreshToken, markReauthenticated, signAccessToken, verifyPassword } from '../auth/tokens.js';
+import { epochSeconds, issueRefreshToken, markReauthenticated, revokeOtherSessions, signAccessToken, verifyPassword } from '../auth/tokens.js';
+import { forgetSessions } from '../services/people/customRoles.js';
 import type { AuthContext } from '../auth/middleware.js';
 import { allow, reserve } from '../auth/rateLimit.js';
 import { signedInFrom } from '../auth/bruteForce.js';
 import { addressKey } from '../lib/address.js';
-import { audit, withTenant } from '../lib/db.js';
+import { type Tx, audit, withTenant } from '../lib/db.js';
+import { codesAllowed } from './mfaCodes.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import { authenticationOptions, deviceName, registrationOptions, tenantRp, verifyAuthentication, verifyRegistration } from '../services/auth/passkeys.js';
 import { COOKIE, cookieOpts } from './auth.js';
@@ -126,8 +128,18 @@ export const myPasskeysRouter = Router();
  * While a required second factor is missing, someone holding only the password
  * may add a first passkey, but not add more or remove any.
  */
-function enrolmentOnly(a: AuthContext, existing: number) {
+async function enrolmentOnly(a: AuthContext, existing: number, tx?: Tx) {
   if (a.mfaPending && existing > 0) throw new HttpError(403, 'MFA_REQUIRED', 'Confirm with your passkey to continue.');
+  // Where the organization accepts emailed or texted codes, a password alone doesn't make a first
+  // passkey (SEC-02): that would turn a stolen password into a full second-factor session, and a
+  // backdoor that outlives a password reset. Confirm with a code first; then add a passkey.
+  if (a.mfaPending && existing === 0 && (await codesAllowed(a.tenantId, tx))) throw new HttpError(403, 'MFA_CODE_FIRST', 'Confirm with a sign-in code first, then add a passkey.');
+}
+
+/** The person hears of every passkey added to or removed from their account. */
+async function tellOwner(tx: Tx, a: AuthContext, template: 'passkey_added' | 'passkey_removed', name: string) {
+  const u = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { email: true, locale: true } });
+  await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: u.email, template, locale: u.locale, params: { name } } });
 }
 
 myPasskeysRouter.get(
@@ -145,7 +157,7 @@ myPasskeysRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const [user, mine] = await withTenant(a.tenantId, (tx) => Promise.all([tx.user.findUniqueOrThrow({ where: { id: a.userId } }), tx.passkey.findMany({ where: { userId: a.userId } })]));
-    enrolmentOnly(a, mine.length);
+    await enrolmentOnly(a, mine.length);
     if (mine.length >= 10) throw new HttpError(400, 'TOO_MANY_PASSKEYS', 'Remove a passkey before adding another.');
     res.json(await registrationOptions(await rpFor(req), { id: user.id, email: user.email, displayName: `${user.firstName} ${user.lastName}` }, mine.map(stored), 'register', { tenantId: a.tenantId, userId: a.userId }));
   }),
@@ -163,11 +175,12 @@ const addPasskey = h(async (req, res) => {
   const r = await verifyRegistration(await rpFor(req), body.challengeId, 'register', body.response as unknown as RegistrationResponseJSON);
   if (r.challenge.userId !== a.userId) throw new HttpError(400, 'PASSKEY_FAILED', 'That passkey could not be set up.');
   const p = await withTenant(a.tenantId, async (tx) => {
-    enrolmentOnly(a, await tx.passkey.count({ where: { userId: a.userId } }));
+    await enrolmentOnly(a, await tx.passkey.count({ where: { userId: a.userId } }), tx);
     const created = await tx.passkey.create({
       data: { tenantId: a.tenantId, userId: a.userId, credentialId: r.credentialId, publicKey: r.publicKey, counter: r.counter, transports: r.transports, name: body.name ?? deviceName(req.header('user-agent')) },
     });
     await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.add', entity: 'User', entityId: a.userId, after: { name: created.name } });
+    await tellOwner(tx, a, 'passkey_added', created.name);
     return created;
   });
   // Setting up a first passkey with the device's lock counts as the second factor.
@@ -191,10 +204,15 @@ myPasskeysRouter.delete(
     const id = uuid.parse(req.params.id);
     if (a.mfaPending) throw new HttpError(403, 'MFA_REQUIRED', 'Confirm with your passkey to continue.');
     await withTenant(a.tenantId, async (tx) => {
-      const gone = await tx.passkey.deleteMany({ where: { id, userId: a.userId } });
-      if (!gone.count) throw notFound('Passkey');
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.remove', entity: 'User', entityId: a.userId });
+      const p = await tx.passkey.findFirst({ where: { id, userId: a.userId }, select: { name: true } });
+      if (!p) throw notFound('Passkey');
+      await tx.passkey.deleteMany({ where: { id, userId: a.userId } });
+      // Removing a passkey someone else added ends their sessions too (SEC-31); this one stays.
+      const ended = await revokeOtherSessions(tx, a.userId, { raw: req.cookies?.[COOKIE] as string | undefined, authenticatedAt: a.authenticatedAt });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.remove', entity: 'User', entityId: a.userId, after: { name: p.name, sessionsEnded: ended } });
+      await tellOwner(tx, a, 'passkey_removed', p.name);
     });
+    await forgetSessions(a.userId);
     res.status(204).end();
   }),
 );

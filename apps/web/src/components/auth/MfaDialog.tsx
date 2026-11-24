@@ -178,6 +178,9 @@ export function MfaDialog() {
           <>
             {!supported ? (
               <p className="rounded-xl bg-warn-bg px-4 py-3 text-small text-warn">{t(channels.length ? 'mfa.unsupportedUseCode' : 'mfa.unsupported')}</p>
+            ) : !hasPasskey && channels.length ? (
+              // Where codes are allowed, a first passkey comes after a code: a password alone can't add one.
+              <p className="text-small text-muted">{t('mfa.codeThenPasskey')}</p>
             ) : (
               <>
                 {!hasPasskey ? <p className="text-small text-muted">{t('mfa.setUpHelp')}</p> : null}

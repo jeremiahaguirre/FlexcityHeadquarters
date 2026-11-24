@@ -42,9 +42,10 @@ describe('access tokens', () => {
     expect(parts(t)[1]).toEqual({ tid: 'tenant-1', roles: ['STAFF'], sub: 'user-1', iat: now, exp: now + 60 });
   });
 
-  it('read back the same claims', async () => {
-    expect(await verifyAccessToken(await signAccessToken({ ...claims, aat: now, mfa: true, sup: 's' }))).toEqual({ ...claims, aat: now, mfa: true, sup: 's' });
-    expect(await verifyAccessToken(await signAccessToken(claims))).toEqual({ ...claims, aat: undefined, mfa: false });
+  it('read back the same claims, and when they were issued', async () => {
+    const iat = Math.floor(Date.now() / 1000);
+    expect(await verifyAccessToken(await signAccessToken({ ...claims, aat: now, mfa: true, sup: 's' }))).toEqual({ ...claims, aat: now, mfa: true, sup: 's', iat });
+    expect(await verifyAccessToken(await signAccessToken(claims))).toEqual({ ...claims, aat: undefined, mfa: false, iat });
   });
 
   it('expire at exp, with no grace period', async () => {

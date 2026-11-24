@@ -51,6 +51,28 @@ export const platformCookieOpts = () => ({
   maxAge: SESSION_MS,
 });
 
+/**
+ * Creates a Dev console account, or re-enables one and sets a new password (scripts/platform-admin.ts).
+ * Every session the account already had ends (SEC-34): a session taken before the account was
+ * disabled, or before the password was reset, must not come back to life with it.
+ */
+export async function setPlatformAdmin(prisma: Pick<ReturnType<typeof db>, '$transaction'>, a: { email: string; name: string; passwordHash: string }) {
+  return prisma.$transaction(async (tx) => {
+    const admin = await tx.platformAdmin.upsert({
+      where: { email: a.email.toLowerCase() },
+      update: { passwordHash: a.passwordHash, name: a.name, disabledAt: null, failedLogins: 0, lockedUntil: null },
+      create: { email: a.email.toLowerCase(), name: a.name, passwordHash: a.passwordHash },
+    });
+    const ended = await tx.platformSession.updateMany({ where: { adminId: admin.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    return { admin, sessionsEnded: ended.count };
+  });
+}
+
+/** Ends every open session of a console account, e.g. when it's disabled. */
+export async function endPlatformSessionsOf(adminId: string): Promise<number> {
+  return (await db().platformSession.updateMany({ where: { adminId, revokedAt: null }, data: { revokedAt: new Date() } })).count;
+}
+
 /** `mfa`: the sign-in used a passkey, which is a second factor on its own. */
 export async function startPlatformSession(adminId: string, mfa = false): Promise<string> {
   const raw = randomBytes(32).toString('base64url');
