@@ -759,7 +759,6 @@
     "SUBDOMAIN_TAKEN": "Another organization already uses that address.",
     "SUPPORT_CODE_INVALID": "This support link has expired or was already used.",
     "SUPPORT_ENDED": "This support visit has ended.",
-    "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "SUPPORT_READ_ONLY": "FH support can look, not change anything.",
     "TEXT_ALERTS_OFF": "Your organization hasn’t turned on text alerts.",
     "TOO_LARGE": "Files can be up to 10 MB.",
@@ -785,7 +784,9 @@
     "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days.",
     "UNTIL_BEFORE_START": "The last year is before the first date.",
     "NTH_WEEKDAY_FIFTH": "A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.",
-    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month."
+    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month.",
+    "PAYROLL_IN_APP": "Payroll runs in the app, so expense claims are paid on pay runs.",
+    "CLAIMS_BUSY": "Another payroll send is using these expense claims. Try again in a minute."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1446,7 +1447,8 @@
       "CALLBACK_PAY": "Call-back minimum",
       "REPORTING_PAY": "Minimum call-in pay",
       "SCHEDULE_CHANGE_PREMIUM": "Late schedule change premium",
-      "STANDBY_PAY": "Standby (on-call) pay"
+      "STANDBY_PAY": "Standby (on-call) pay",
+      "REIMBURSEMENT": "Expense reimbursement (not taxed)"
     },
     "d": {
       "cpp": "CPP contributions",
@@ -1741,10 +1743,25 @@
       "history": "Sent periods",
       "status": {
         "SENT": "Sent",
-        "FAILED": "Refused"
+        "FAILED": "Refused",
+        "DOWNLOADED": "Downloaded"
       },
       "demo": "Provider connections aren’t available in the demo.",
-      "privateKeyPlaceholder": "Paste the PEM private key"
+      "privateKeyPlaceholder": "Paste the PEM private key",
+      "sentClaims_one": "It included {{count}} expense claim, now marked paid.",
+      "sentClaims_other": "It included {{count}} expense claims, now marked paid.",
+      "alreadySent": "This period was already sent to {{what}}. Sending it again could pay people twice. If {{what}} refused the file, or the hours were corrected, select Send again.",
+      "sendAgain": "Send again to {{what}}",
+      "fileClaims_one": "This file includes {{count}} expense claim. Once you’ve uploaded it to {{what}}, mark it reimbursed so the next file leaves it out.",
+      "fileClaims_other": "This file includes {{count}} expense claims. Once you’ve uploaded it to {{what}}, mark them reimbursed so the next file leaves them out.",
+      "markReimbursed": "Mark reimbursed",
+      "claimsMarked_one": "{{count}} claim marked reimbursed.",
+      "claimsMarked_other": "{{count}} claims marked reimbursed.",
+      "putBack": "Not uploaded: put back",
+      "claimsReleased_one": "{{count}} claim put back for the next file.",
+      "claimsReleased_other": "{{count}} claims put back for the next file.",
+      "fileHolds_one": "Holds {{count}} expense claim until it’s marked reimbursed or put back.",
+      "fileHolds_other": "Holds {{count}} expense claims until they’re marked reimbursed or put back."
     },
     "runKind": "Kind of run",
     "runKindHint": "Off-cycle: only the one-time payments you add (a bonus run, final pay, a correction), beside the regular run.",
@@ -1907,7 +1924,8 @@
       "CALLBACK_PAY": "Call-back minimum",
       "REPORTING_PAY": "Minimum call-in pay",
       "SCHEDULE_CHANGE_PREMIUM": "Late schedule change premium",
-      "STANDBY_PAY": "Standby (on-call) pay"
+      "STANDBY_PAY": "Standby (on-call) pay",
+      "REIMBURSEMENT": "Expense reimbursement (not taxed)"
     },
     "calendar": "School calendar",
     "calendarHelp": "Young workers can’t work during school hours on school days. Add terms and breaks so the rules know which days count.",
