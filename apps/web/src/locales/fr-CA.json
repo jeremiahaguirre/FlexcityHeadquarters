@@ -780,7 +780,11 @@
     "CERT_CHANGED": "L’employé a modifié cette inscription depuis que vous l’avez ouverte. Vérifiez-la de nouveau.",
     "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
     "CERT_EXISTS": "Un certificat porte déjà ce nom.",
-    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez."
+    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez.",
+    "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture.",
+    "UNTIL_BEFORE_START": "La dernière année est avant la première date.",
+    "NTH_WEEKDAY_FIFTH": "Un cinquième jour de semaine du mois n’existe pas chaque année. Choisissez plutôt « dernier jour de semaine du mois ».",
+    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -882,7 +886,9 @@
     "holidayObserved": "observé le {{date}}",
     "holidayMovedIfOff": "le {{date}} si vous ne travaillez pas habituellement ce jour-là",
     "holidaysMore": "Afficher les {{count}}",
-    "holidaysLess": "Afficher moins"
+    "holidaysLess": "Afficher moins",
+    "holidayCity": "Congé de l’organisation",
+    "holidayClosure": "Fermé (non payé)"
   },
   "availability": {
     "title": "Disponibilités",
@@ -1826,7 +1832,7 @@
       "facilities": "Installations",
       "pools": "Bassins",
       "pay": "Codes de paie",
-      "calendar": "Calendrier scolaire",
+      "calendar": "Congés et calendrier",
       "rules": "Convention collective",
       "roles": "Rôles",
       "departments": "Services",
@@ -8762,5 +8768,45 @@
       "wastewater": "Eaux usées",
       "licence": "Permis de conduire"
     }
+  },
+  "cityHolidays": {
+    "dateFirst": "La première fois qu’il s’applique. Rien ne se répète avant.",
+    "kindHint": {
+      "CLOSURE": "Aucune indemnité ni taux majoré. Le jour n’est pas compté dans les congés, et les installations réglées pour fermer les jours fériés n’y reçoivent aucun nouveau quart.",
+      "PAID": "Payé comme un jour férié légal : indemnité de jour férié, et taux majoré pour les heures travaillées."
+    },
+    "kindLabel": "Type",
+    "date": "Date",
+    "help": "Les jours que votre organisation ajoute aux jours fériés légaux de chaque province, comme le lendemain de Noël, le lundi de Pâques ou un congé civique. La paie paie un jour férié payé comme un jour férié légal (indemnité de jour férié et taux majoré pour les heures travaillées); un jour de fermeture ne paie rien de plus. Les congés ne comptent ni l’un ni l’autre, et les rotations et modèles de quarts n’y ajoutent aucun quart aux installations réglées pour fermer les jours fériés (paramètres de Remplir).",
+    "removed": "Jour férié retiré.",
+    "recurrence": {
+      "NONE": "Une fois",
+      "YEARLY_NTH_WEEKDAY": "Chaque année le même jour de semaine du mois (p. ex. le premier lundi d’août)",
+      "EASTER_OFFSET": "Chaque année, le même nombre de jours après Pâques (p. ex. le lundi de Pâques)",
+      "YEARLY_LAST_WEEKDAY": "Chaque année le dernier de ces jours de semaine du mois",
+      "YEARLY_DATE": "Chaque année à la même date"
+    },
+    "edit": "Modifier {{name}}",
+    "remove": "Retirer {{name}}",
+    "recurrenceLabel": "Répétition",
+    "allProvinces": "Toutes les installations",
+    "untilYearHint": "Laissez vide pour répéter sans fin.",
+    "kind": {
+      "CLOSURE": "Jour de fermeture",
+      "PAID": "Jour férié payé"
+    },
+    "nextOn": "Prochain : {{date}}",
+    "province": "S’applique à",
+    "saved": "Jour férié enregistré.",
+    "empty": "Aucun jour férié de l’organisation pour l’instant. Les jours fériés légaux s’appliquent automatiquement.",
+    "nameFr": "Nom (français)",
+    "untilYear": "Dernière année (facultatif)",
+    "noneComing": "Aucun dans l’année à venir.",
+    "editTitle": "Modifier un jour férié ou de fermeture",
+    "title": "Jours fériés et jours de fermeture de l’organisation",
+    "add": "Ajouter un jour",
+    "until": "jusqu’en {{year}}",
+    "name": "Nom (anglais)",
+    "addTitle": "Ajouter un jour férié ou de fermeture"
   }
 }
