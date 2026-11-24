@@ -16,6 +16,7 @@ import { config } from './config.js';
 import { type UnionAccessOptions, unionAccessViaApi } from './lib/unionAccess.js';
 import { unionHubRoutes } from './routes/union.js';
 import { installLogContext, requestIdMiddleware } from './lib/requestContext.js';
+import { originFormOnly } from './lib/canonicalPath.js';
 import { jsonBody } from './lib/bodyParsers.js';
 
 export function createUnionApp(access: Partial<UnionAccessOptions> = {}) {
@@ -25,7 +26,7 @@ export function createUnionApp(access: Partial<UnionAccessOptions> = {}) {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
   installLogContext();
-  app.use(requestIdMiddleware);
+  app.use(requestIdMiddleware, originFormOnly);
   app.use(securityHeaders);
   app.use(ipRateLimit());
   app.use(jsonBody({ limit: '100kb' }));

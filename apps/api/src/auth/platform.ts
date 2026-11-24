@@ -67,6 +67,18 @@ export async function endPlatformSession(raw: string | undefined): Promise<void>
 }
 
 /**
+ * Whether a console cookie names a live session (not revoked or expired, its admin not disabled).
+ * The console reads bodies over 100 kB only then: the cookie's presence alone proves nothing, and
+ * an anonymous sender must not make the process parse megabytes first (SECURITY-AUDIT SEC-47).
+ * One indexed lookup, only for requests that carry the console header and a session cookie.
+ */
+export async function isLivePlatformSession(raw: string | undefined): Promise<boolean> {
+  if (!raw) return false;
+  const s = await db().platformSession.findUnique({ where: { tokenHash: sha256(raw) }, select: { revokedAt: true, expiresAt: true, admin: { select: { disabledAt: true } } } });
+  return !!s && !s.revokedAt && s.expiresAt >= new Date() && !s.admin.disabledAt;
+}
+
+/**
  * CSRF protection for every Dev console request, signed in or not, run before the body is parsed.
  * The session cookie is SameSite=Strict; on top of that a request must
  * - carry `x-fh-platform: 1`, which a cross-site form or link can't send and a cross-origin script
