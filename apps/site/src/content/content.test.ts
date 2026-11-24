@@ -21,6 +21,11 @@ describe('site content', () => {
     expect(shape(copy('fr'))).toEqual(shape(copy('en')));
   });
 
+  it('help sends people to whoever can act: only HR (users.write) resends an invitation', () => {
+    const text = JSON.stringify(ARTICLES);
+    expect(text).not.toMatch(/supervisor to resend|superviseur de la renvoyer/i);
+  });
+
   it('every help article is complete in both languages', () => {
     expect(new Set(ARTICLES.map((a) => a.slug)).size).toBe(ARTICLES.length);
     for (const a of ARTICLES) {
