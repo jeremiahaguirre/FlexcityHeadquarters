@@ -136,6 +136,19 @@ describe('public sign-up portal', () => {
     expect((await staff(desk).post(`/api/bookings/${pending[0].id}/decide`, { decision: 'CONFIRMED', note: 'Please arrive 10 minutes early.' })).status).toBe(200);
     expect(await owner.emailOutbox.count({ where: { tenantId: t.tenant.id, template: 'booking_decided' } })).toBe(1);
   });
+
+  it('the answer to a booking made in French is in French', async () => {
+    await owner.bookableService.update({ where: { id: serviceId }, data: { nameFr: 'Salle de fête' } });
+    const day = inDays(10);
+    const r = await pub.post('/api/public/bookings', { serviceId, date: day, startMinute: 840, partySize: 8, locale: 'fr-CA', startedAt: Date.now() - 30_000, contact: { name: 'Léa Roy', email: 'lea@example.ca', phone: '250-555-0188' }, consents: { terms: true, privacy: true, adult: true } });
+    expect(r.status).toBe(201);
+    const id = (await owner.bookingRequest.findFirstOrThrow({ where: { reference: r.body.reference } })).id;
+    expect((await staff(desk).post(`/api/bookings/${id}/decide`, { decision: 'DECLINED', note: 'Salle réservée pour un tournoi.' })).status).toBe(200);
+    const mail = await owner.emailOutbox.findFirstOrThrow({ where: { tenantId: t.tenant.id, template: 'booking_decided', toEmail: 'lea@example.ca' } });
+    expect(mail.locale).toBe('fr-CA');
+    expect(mail.params).toMatchObject({ service: 'Salle de fête', reference: r.body.reference });
+    expect(String((mail.params as { when: string }).when)).not.toMatch(/AM|PM/);
+  });
 });
 
 describe('bookings after they are made', () => {
@@ -144,8 +157,8 @@ describe('bookings after they are made', () => {
     expect((await staff(desk).patch(`/api/bookable-services/${serviceId}`, { priceCents: 17500, nameFr: 'Salle de fête', descriptionFr: 'Deux heures, jusqu’à 20 personnes.' })).status).toBe(200);
     expect((await staff(desk).get('/api/bookable-services')).body.find((v: { id: string }) => v.id === serviceId)).toMatchObject({ priceCents: 17500, nameFr: 'Salle de fête', descriptionFr: 'Deux heures, jusqu’à 20 personnes.' });
     const log = await owner.auditLog.findFirstOrThrow({ where: { tenantId: t.tenant.id, action: 'bookable_service.update', entityId: serviceId } });
-    // The old value of each field changed, not only some.
-    expect(log.before).toEqual({ priceCents: 15000, nameFr: null, descriptionFr: null });
+    // The old value of each field sent, not only some (the French name was set by the booking test above).
+    expect(log.before).toEqual({ priceCents: 15000, nameFr: 'Salle de fête', descriptionFr: null });
   });
 
   it('a French request gets its decision in French; a confirmed booking can be cancelled with a note, freeing the time', async () => {
@@ -198,7 +211,7 @@ describe('bookings after they are made', () => {
     const en = await owner.bookingRequest.create({ data: { tenantId: t.tenant.id, serviceId, startsAt: new Date(`${day}T17:00:00Z`), endsAt: new Date(`${day}T19:00:00Z`), name: 'B', email: 'b@example.ca', phone: '250-555-0101', reference: 'B-OLDEN', locale: 'en-CA' } });
     await owner.emailOutbox.create({ data: { tenantId: t.tenant.id, toEmail: 'a@example.ca', template: 'booking_received', locale: 'fr-CA', params: { reference: 'B-OLDFR' } } });
     await owner.emailOutbox.create({ data: { tenantId: t.tenant.id, toEmail: 'b@example.ca', template: 'booking_received', locale: 'en-CA', params: { reference: 'B-OLDEN' } } });
-    const sql = readFileSync(join(__dirname, '../../prisma/migrations/20261116190000_booking_locale/migration.sql'), 'utf8');
+    const sql = readFileSync(join(__dirname, '../../prisma/migrations/20261124160000_booking_locale_backfill/migration.sql'), 'utf8');
     const backfill = sql.slice(sql.indexOf('UPDATE')).replace(/;\s*$/, '');
     await owner.$executeRawUnsafe(`${backfill} AND b."tenantId" = '${t.tenant.id}'::uuid`);
     expect((await owner.bookingRequest.findUniqueOrThrow({ where: { id: fr.id } })).locale).toBe('fr-CA');

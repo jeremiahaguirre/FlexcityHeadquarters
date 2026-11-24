@@ -269,7 +269,7 @@ describe('people', () => {
     const r = await v1(writeKey).post(`/people/${personId}/terminate`, { last_day: '2026-12-31', reason: 'resignation' });
     expect(r.status).toBe(200);
     expect(r.body.offboarding).toMatchObject({ last_day: '2026-12-31', reason: 'resignation', completed: false });
-    const o = await owner.offboarding.findUniqueOrThrow({ where: { userId: personId } });
+    const o = await owner.offboarding.findFirstOrThrow({ where: { userId: personId } });
     expect(o.lastDay.toISOString().slice(0, 10)).toBe('2026-12-31');
     expect(await owner.user.count({ where: { id: personId } })).toBe(1);
     const again = await v1(writeKey).post(`/people/${personId}/terminate`, { last_day: '2026-12-31', reason: 'resignation' });

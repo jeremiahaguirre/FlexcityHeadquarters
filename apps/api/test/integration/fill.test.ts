@@ -1,4 +1,5 @@
 /** Fill the schedule, end to end: department scope, draft-only until publish, undo, settings, availability window. */
+import pg from 'pg';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DateTime } from 'luxon';
@@ -220,5 +221,35 @@ describe('Plan ahead: one setting for availability and the fill horizon', () => 
     const r = (await run(tok.admin, aquatics, { weights: { seniority: 10 } })).body as RunOut;
     expect(r.settings.useSeniority).toBe(false);
     expect(JSON.stringify(r.proposals)).not.toContain('SENIORITY');
+  });
+});
+
+describe('a fill run and a settings change at the same time (ARCHITECTURE-REVIEW A11)', () => {
+  it('the run records its horizon without undoing a settings change saved while it was solving', async () => {
+    const before = (await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id }, select: { overtimePolicy: true } })).overtimePolicy as { solver?: { lastHorizonWeeks?: number } };
+    const horizon = before.solver?.lastHorizonWeeks === 2 ? 4 : 2;
+    // Hold the organization's row as a concurrent settings save would: the run reads its settings
+    // at the start, solves, then waits here for its one write.
+    const holder = new pg.Client({ connectionString: process.env.DATABASE_URL });
+    await holder.connect();
+    try {
+      await holder.query('BEGIN');
+      await holder.query('SELECT 1 FROM "Tenant" WHERE id = $1 FOR NO KEY UPDATE', [t.tenant.id]);
+      // .then() sends it now (supertest only sends a request once it is awaited or then-ed).
+      const running = run(tok.admin, aquatics, { horizonWeeks: horizon }).then((r) => r);
+      await new Promise((r) => setTimeout(r, 1500));
+      // The settings change, saved while the run is solving.
+      await holder.query(
+        `UPDATE "Tenant" SET "overtimePolicy" = jsonb_set(jsonb_set(coalesce("overtimePolicy", '{}'), '{solver}', coalesce("overtimePolicy"->'solver', '{}')), '{solver,weights}', coalesce("overtimePolicy"->'solver'->'weights', '{}') || '{"fairness": 1}') WHERE id = $1`,
+        [t.tenant.id],
+      );
+      await holder.query('COMMIT');
+      expect((await running).status).toBe(200);
+    } finally {
+      await holder.end();
+    }
+    const after = (await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id }, select: { overtimePolicy: true } })).overtimePolicy as { solver: { lastHorizonWeeks: number; weights: { fairness: number } } };
+    expect(after.solver.lastHorizonWeeks).toBe(horizon);
+    expect(after.solver.weights.fairness).toBe(1);
   });
 });

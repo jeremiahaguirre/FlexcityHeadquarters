@@ -13,6 +13,9 @@ import { h, keys } from './context.js';
  */
 export const unionRouter = Router();
 unionRouter.use('/union', requireFeature('union'));
+// Never open to an FH support visit, here as well as in requireAuth (SEC-24): the router matches
+// whatever the letter case, so this holds even if the path test there were bypassed.
+unionRouter.use('/union', (req, _res, next) => next(req.auth?.support ? new HttpError(403, 'SUPPORT_NOT_RECORDS', 'Individual records aren’t part of support access.') : undefined));
 const uuid = z.string().uuid();
 let hub: UnionHub | undefined;
 const getHub = () => {
