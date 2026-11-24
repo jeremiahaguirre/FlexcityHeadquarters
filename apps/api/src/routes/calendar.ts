@@ -89,7 +89,7 @@ export function icsFor(name: string, shifts: Array<{ id: string; startsAt: Date;
   return `${lines.map(fold).join('\r\n')}\r\n`;
 }
 
-/** Links that don't work, per address and organization per hour, before that address gets 429 for them (working links are unaffected). */
+/** Links that don’t work, per address per hour, before that address gets 429 for them (working links are unaffected). */
 export const CALENDAR_MISSES_PER_HOUR = 300;
 
 /** The feed itself: no sign-in, the secret in the link is the key. Unknown links look the same as a missing feed. */
@@ -98,13 +98,21 @@ publicCalendarRouter.get(
   h(async (req, res) => {
     const tenantId = z.string().uuid().safeParse(req.params.tenantId);
     const m = /^([A-Za-z0-9_-]{20,64})\.ics$/.exec(String(req.params.file));
-    if (!tenantId.success || !m) throw notFound('Calendar');
+    // Every link that doesn't work, however it is answered, counts for the global limiter's
+    // calendar-only bucket (lib/ipRateLimit.ts), never for the address's failure bucket.
+    if (!tenantId.success || !m) {
+      res.locals.calendarMiss = true;
+      throw notFound('Calendar');
+    }
     // Calendar services (Google, Apple, Outlook) fetch many people's feeds from a few shared
     // addresses, so a working link is always served (each feed has its own limit), and only links
     // that don't work are limited, per address and organization, generously: one stale link
     // fetched by a shared service must never block everyone else's feeds. Guessing is hopeless
     // anyway: a link's secret is 24 random bytes (192 bits), stored only as a SHA-256 hash.
-    const missKey = `ics-miss:${addressKey(req.ip)}:${tenantId.data}`;
+    // Per address only: with the organization in the key, every made-up organization id was a fresh
+    // budget (SECURITY-AUDIT SEC-46). The global limiter also counts each miss, per address, in a
+    // bucket that gates calendar requests only.
+    const missKey = `ics-miss:${addressKey(req.ip)}`;
     const out = await withTenant(tenantId.data, async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId.data }, select: { disabledAt: true } });
       if (!tenant || tenant.disabledAt) return null;
@@ -123,6 +131,7 @@ publicCalendarRouter.get(
     });
     if (out === 'busy') throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
     if (!out) {
+      res.locals.calendarMiss = true;
       if (!(await allow(missKey, CALENDAR_MISSES_PER_HOUR, 3_600_000))) throw new HttpError(429, 'RATE_LIMITED', 'Too many requests.');
       throw notFound('Calendar');
     }
