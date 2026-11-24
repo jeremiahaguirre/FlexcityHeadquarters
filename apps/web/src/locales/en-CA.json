@@ -610,6 +610,7 @@
     "SHIFT_TOO_LONG": "A shift can be at most {{maxHours}} hours.",
     "TITLE_REQUIRED": "Give this shift a title.",
     "STATION_UNKNOWN": "A station isn’t on this deck.",
+    "POOL_BODY_UNKNOWN": "That pool isn’t at this facility. Choose one of its own pools.",
     "STATION_TWICE": "Someone is on two stations at once.",
     "POOL_DEPTH": "The shallow end must not be deeper than the deep end.",
     "READING_INVALID": "This reading looks wrong. Check it and try again.",
