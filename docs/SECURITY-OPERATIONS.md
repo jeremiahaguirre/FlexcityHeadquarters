@@ -6,12 +6,9 @@ What whoever hosts FlexcityHeadquarters does every day, week, quarter and year t
 
 | | Target |
 | --- | --- |
-| Critical vulnerability patched (CVSS 9.0 or higher, or known exploited) | 24 hours, 48 at most |
-| High (CVSS 7.0-8.9) | 7 days |
-| Medium (CVSS 4.0-6.9) | 30 days |
-| Low, and library freshness | 90 days |
-
-The vulnerability targets cover runtime, build and development dependencies.
+| Critical vulnerability patched | 48 hours |
+| High | 7 days |
+| Medium | 30 days |
 | Recovery point (RPO) | 15 minutes |
 | Recovery time (RTO) | 4 hours |
 | Detect a critical incident (MTTD) | under 1 hour |
@@ -20,7 +17,7 @@ The vulnerability targets cover runtime, build and development dependencies.
 
 ## Daily
 
-1. **Alerts reviewed** (on-call): the API, load balancer and database alarms. Terraform defines the load balancer 5xx, unhealthy-task, database CPU and storage, 5xx-ratio and replica-lag alarms (`ops/terraform/alarms.tf`); the other alerts below are **planned** (no AWS account exists yet, and the sign-in, export and audit-grant alarms aren't defined). Alert on:
+1. **Alerts reviewed** (on-call): the API, load balancer and database alarms. Terraform defines the load balancer 5xx, unhealthy-task, database CPU and storage, 5xx-ratio and replica-lag alarms, plus a rule for KMS keys created with a custom policy (`ops/terraform/alarms.tf`). No AWS account exists yet, so none is deployed; the other alerts below aren't defined in Terraform (**planned**). Alert on:
    - sign-in failures over 50 in 5 minutes from one IP;
    - more than 3 account lockouts in an hour;
    - any Dev console sign-in from a new IP;

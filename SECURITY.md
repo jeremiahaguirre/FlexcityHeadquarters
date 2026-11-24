@@ -19,17 +19,19 @@ Level 3. It describes FH as it is, not as it should be:
 
 - **Current** cites the code or configuration that does it today (`path:line`). A statement with no
   citation is not a claim about the code.
-- **Decided target** is what the owner decided on 2026-11-17 (passkeys, sessions, two-person
-  approval, password blocklist). A decided target that isn't built yet says **planned**.
+- **Decided target** is one of the owner's four decisions of 2026-11-17, quoted word for word in
+  section 2.0 and cited as **record item N**. A decided target that isn't built yet says **planned**.
+  Something the analysis derives from a decision, but the record doesn't state, says **derived**.
 - **Open decision D-nn** means the owner hasn't decided yet; the recommended answer is listed in
   section 3.2 and marked *recommended*, never as decided.
 - **Gap** means FH doesn't meet the requirement and nothing is decided about it yet.
 
 FH does not meet ASVS Level 3 today, and doesn't claim Level 2 either. The ledger exists so that
 every gap is visible and every change keeps it true (section 4).
-`apps/api/test/unit/securityLedger.test.ts` fails the build when a path cited here doesn't exist,
-when a cited line is past the end of its file, when a route file is missing from 2.6, or when a
-Terraform log group is missing from 2.11.
+`apps/api/test/unit/securityLedger.test.ts` fails the build when a path cited here doesn't exist
+(paths are written from the repository root, and a shortened one fails too), when a cited line is
+past the end of its file, when a route file has no row in 2.6 or its row leaves out a permission
+the file names, or when a Terraform log group is missing from 2.11.
 
 ## 1. Directives
 
@@ -56,6 +58,33 @@ section of V4 don't apply.
 
 ## 2. Security decision ledger
 
+### 2.0 Owner decision record (2026-11-17)
+
+These are the owner's decisions as recorded on 2026-11-17, reproduced word for word. "Decided" in
+this ledger means one of these items, cited as **record item N**. Anything beyond them is either a
+recommendation (section 3.2) or derived by the gap analysis, and is labelled that way.
+
+1. **Passkeys:** admins first.
+   - Phishing-resistant FIDO2/WebAuthn passkey (userVerification required) is mandatory for HR, payroll, managers, city admins and the Dev console.
+   - Other staff keep password + current MFA and can add a passkey; stricter later, per city setting.
+   - The kiosk keeps its own device sign-in.
+   - Email/SMS codes must not count as the factor for the passkey-mandatory roles.
+2. **Sessions:** as written.
+   - Staff: 30 min idle, 12 h absolute, max 3 sessions.
+   - Admins: 15 min idle, 4 h absolute, max 1 session.
+   - Punch in/out and safety check-ins must keep working via quick passkey or PIN re-entry on the phone.
+   - On the N+1 sign-in: confirm with MFA, end the oldest session, notify the user, provide a self-service session list, and let admins terminate sessions.
+3. **Two-person approval:** required, with fallback.
+   - Covers organization-wide permission changes, bulk export/deletion, billing/contract changes and production overrides.
+   - A city with only one eligible admin names a second approver (for example the CAO or treasurer) during setup.
+   - If there truly is none, FH support co-approves under the existing city-consent rule: a city audit entry plus an email to the HR admins.
+4. **Password blocklist:** FH + each city.
+   - Block flexcity, flexcityheadquarters, FH role words (admin, root, supervisor, guard, lifeguard, hr, steward, frontdesk, waterworks, dev, staging, prod, production, operator), and each city's own name and subdomain automatically.
+   - Do NOT include kelo, kelobot, lakeview, okanagan, kelowna or hcos; they come from another project.
+
+The recommendations section 3.2 lists for questions these items leave open (passkey recovery,
+stewards, attestation, how PIN re-entry works, how short words are matched) are not decisions.
+
 ### 2.1 Input structure, consistency and business limits (ASVS 2.1.1, 2.1.2, 2.1.3)
 
 | Item | Current (verified) | Decided target | Open decision | Deviation and compensating control |
@@ -66,7 +95,7 @@ section of V4 don't apply.
 | Per-city limits (2.4.1) | None (no limiter keyed on the organization). | Gap. | D-5. | Same as above. |
 | Workflow order (2.3.1) | State checks in services, for example pay runs (`apps/api/src/services/payroll/payRuns.ts:462`) and shift trades (`apps/api/src/services/shiftboard/trades.ts`). Known weak spots: a sent pay run can be voided, approval is not bound to the prepared totals, and approve can race (open PR #71, planned work package WP-5). | Gap until WP-5. | - | - |
 | Human-timing floor (2.4.2) | None; the public enquiry form has a honeypot (`apps/api/src/routes/marketing.ts`). | Gap. | D-6. | A floor on signed-in flows would refuse password managers, passkeys and offline replays. |
-| Two-person approval (2.3.5) | Pay runs only: the preparer can't approve when `twoPersonApproval` is on (`apps/api/src/services/payroll/payRuns.ts:462`); one person can switch it off with a passkey (`apps/api/src/routes/payroll.ts:835-844`). | **Decided:** required for organization-wide permission changes, bulk export or deletion, billing and contract changes, and production overrides. A city with one eligible admin names a second approver at setup; with none, FH support co-approves with a city audit entry and an email to the HR admins. **Planned** (WP-18). | D-7 (who may switch pay-run approval off). | - |
+| Two-person approval (2.3.5) | Pay runs only: the preparer can't approve when `twoPersonApproval` is on (`apps/api/src/services/payroll/payRuns.ts:462`); one person can switch it off with a passkey (`apps/api/src/routes/payroll.ts:835-844`). | **Decided (record item 3):** required for organization-wide permission changes, bulk export or deletion, billing and contract changes, and production overrides. A city with one eligible admin names a second approver at setup; with none, FH support co-approves with a city audit entry and an email to the HR admins. **Planned** (WP-18). | D-7 (who may switch pay-run approval off). | - |
 
 ### 2.2 Browser baseline and external assets (ASVS 3.1.1, 3.6.1)
 
@@ -101,12 +130,13 @@ uploads don't reach their stated limits (planned fix WP-12a).
 
 ### 2.4 Authentication pathways and passwords (ASVS 6.1.1, 6.1.2, 6.1.3)
 
-**Decided (owner, 2026-11-17).** A phishing-resistant passkey (WebAuthn, user verification
-required) is mandatory for HR, payroll, managers, city admins and the Dev console. Other staff keep
-a password and today's second factor and may add a passkey. The kiosk keeps its device sign-in.
-Email and text codes never count as the factor for the passkey-mandatory roles. **Planned** (WP-9;
-single sign-on in WP-38). Open questions: recovery of a lost only passkey, union stewards (D-17e),
-attestation.
+**Decided (record item 1), admins first.** A phishing-resistant passkey (WebAuthn, user
+verification required) is mandatory for HR, payroll, managers, city admins and the Dev console.
+Other staff keep their password and current second-factor rules (today a single factor unless the
+city requires more, see the table) and can add a passkey; stricter later, per city setting. The
+kiosk keeps its own device sign-in. Email and text codes must not count as the factor for the
+passkey-mandatory roles. **Planned** (WP-9). Open questions: recovery of a lost only passkey (D-35), union
+stewards (D-17e), attestation (D-36).
 
 **Brute force.** Org sign-in: 5 wrong passwords from one network lock that network for 15 minutes,
 doubling to 24 hours; 50 across networks lock the account for 15 minutes, doubling to 1 hour, except
@@ -124,20 +154,20 @@ check against HIBP is off unless `PASSWORD_BREACH_CHECK=on` (`apps/api/src/auth/
 
 | Blocklist item | Current | Decided target |
 | :--- | :--- | :--- |
-| Common and product words | Inline list (`apps/api/src/auth/commonPasswords.ts:6-11`), matched whole after trimming digits and symbols at the ends | **Decided:** block flexcity, flexcityheadquarters and the role words admin, root, supervisor, guard, lifeguard, hr, steward, frontdesk, waterworks, dev, staging, prod, production, operator. **Planned** (WP-8). Matching of 2-3 letter words is open (D-17b covers the breached list). |
-| Each city's name and subdomain | Only the person's own organization, at reset and change (`apps/api/src/routes/auth.ts:280`) | **Decided:** each city's name and subdomain, automatically. **Planned** (WP-8). |
-| Excluded words | `kelowna` is on today's list (`apps/api/src/auth/commonPasswords.ts:9`) | **Decided:** kelo, kelobot, lakeview, okanagan, kelowna and hcos are not FH's and are not on the list. **Planned:** remove `kelowna` (WP-8). |
+| Common and product words | Inline list (`apps/api/src/auth/commonPasswords.ts:6-11`), matched whole after trimming digits and symbols at the ends | **Decided (record item 4):** block flexcity, flexcityheadquarters and the role words admin, root, supervisor, guard, lifeguard, hr, steward, frontdesk, waterworks, dev, staging, prod, production, operator. **Planned** (WP-8). How 2-3 letter words are matched is open (D-34). |
+| Each city's name and subdomain | Only the person's own organization, at reset and change (`apps/api/src/routes/auth.ts:280`) | **Decided (record item 4):** each city's name and subdomain, automatically. **Planned** (WP-8). |
+| Excluded words | `kelowna` is on today's list (`apps/api/src/auth/commonPasswords.ts:9`) | **Decided (record item 4):** kelo, kelobot, lakeview, okanagan, kelowna and hcos are not FH's and are not on the list. **Planned:** remove `kelowna` (WP-8). |
 
 | Pathway | Factors today (verified) | Output | Decided target | Gaps |
 | :--- | :--- | :--- | :--- | :--- |
-| Org password (`apps/api/src/routes/auth.ts:102`) | Password; a second factor only for roles the city lists in `mfaRoles`, or for anyone with admin-level powers when HR is listed (`apps/api/src/auth/middleware.ts:89-93`) | 15-minute access token and refresh cookie (2.5) | Passkey for the mandatory roles (planned) | Single factor for most roles |
+| Org password (`apps/api/src/routes/auth.ts:102`) | Password; a second factor only for roles the city lists in `mfaRoles`, or for anyone with admin-level powers when HR is listed (`apps/api/src/auth/middleware.ts:89-93`). Built-in roles holding `tenant.configure` can still sign in with a password to a closed organization or past enforced single sign-on (`apps/api/src/routes/auth.ts:158-163`) | 15-minute access token and refresh cookie (2.5) | Passkey for the mandatory roles (planned) | Single factor for most roles |
 | Org passkey (`apps/api/src/routes/passkeys.ts:38-84`) | Passkey with user verification required (`apps/api/src/services/auth/passkeys.ts:78,95`); no attestation (`apps/api/src/services/auth/passkeys.ts:75`) | Same; counts as a second factor | Unchanged; synced passkeys accepted (recommended) | Accepts RS1 credentials (`apps/api/src/services/auth/passkeys.ts:58`) |
-| Email or text code (`apps/api/src/routes/mfaCodes.ts:59-131`) | 6 digits, 10 minutes, stored as an HMAC (`apps/api/src/services/auth/mfaCodes.ts:4,14,23`); a city can turn codes off | Marks the session as having a second factor | **Decided:** never the factor for the mandatory roles (planned, WP-9) | Counts for every role today |
+| Email or text code (`apps/api/src/routes/mfaCodes.ts:59-131`) | 6 digits, 10 minutes, stored as an HMAC (`apps/api/src/services/auth/mfaCodes.ts:4,14,23`); a city can turn codes off | Marks the session as having a second factor | **Decided (record item 1):** never the factor for the mandatory roles (planned, WP-9) | Counts for every role today |
 | Step-up (`apps/api/src/routes/passkeys.ts:99-120`) | Passkey or password; sensitive actions need one in the last 10 minutes (`apps/api/src/auth/middleware.ts:174-187`) | New access token; a passkey also marks a second factor | Passkey only and 5 minutes for admin-level actions (open, D-17g) | Password accepted for admin-level actions |
-| Single sign-on, OIDC and SAML (`apps/api/src/routes/sso.ts:21-82`) | The city's IdP; counted as a second factor when the IdP sends any `mfa` amr or the city ticks `idpMfa` (`apps/api/src/services/auth/sso.ts:222-223,294,332`) | One-time code exchanged for the normal session | **Decided:** for the mandatory roles, counts only with IdP proof of a phishing-resistant method, else an FH passkey step-up (planned, WP-38) | Any `mfa` amr or the switch counts today |
+| Single sign-on, OIDC and SAML (`apps/api/src/routes/sso.ts:21-82`) | The city's IdP; counted as a second factor when the IdP sends any `mfa` amr or the city ticks `idpMfa` (`apps/api/src/services/auth/sso.ts:222-223,294,332`) | One-time code exchanged for the normal session | **Derived** from record item 1 by the gap analysis (not stated in the record): for the mandatory roles, counts only with IdP proof of a phishing-resistant method, else an FH passkey step-up (planned, WP-38) | Any `mfa` amr or the switch counts today |
 | Password reset and invitation (`apps/api/src/routes/auth.ts:236-290`) | Emailed one-time link | Sets a password; ends every session (`apps/api/src/routes/auth.ts:284`) and sends a `password_changed` notification (`apps/api/src/routes/auth.ts:285`) | - | An email on every reset is planned (WP-4) |
-| Facility kiosk (`apps/api/src/routes/kiosk.ts:164-297`) | Paired tablet secret, employee number and a 4-6 digit PIN, scrypt-hashed; lock rules in section 5 | A punch only, no session | **Decided:** kiosk keeps its device sign-in | Reduced-assurance pathway by design; 6-digit PINs open (D-17j) |
-| Dev console (`apps/api/src/routes/platform/auth.ts:28`, `apps/api/src/routes/platform/passkeys.ts`) | Password, then a passkey, required in production (`apps/api/src/auth/platform.ts:30-33,126`) | 8-hour console session (2.5) | **Decided:** passkey mandatory | First passkey can be added from a password-only session; no password blocklist in `apps/api/scripts/platform-admin.ts` |
+| Facility kiosk (`apps/api/src/routes/kiosk.ts:164-297`) | Paired tablet secret, employee number and a 4-6 digit PIN, scrypt-hashed; lock rules in section 5 | A punch only, no session | **Decided (record item 1):** kiosk keeps its device sign-in | Reduced-assurance pathway by design; 6-digit PINs open (D-17j) |
+| Dev console (`apps/api/src/routes/platform/auth.ts:28`, `apps/api/src/routes/platform/passkeys.ts`) | Password, then a passkey, required in production (`apps/api/src/auth/platform.ts:30-33,126`) | 8-hour console session (2.5) | **Decided (record item 1):** passkey mandatory | First passkey can be added from a password-only session; no password blocklist in `apps/api/scripts/platform-admin.ts` |
 | FH support visit (`apps/api/src/services/platform/support.ts:19-35`, `apps/api/src/routes/support.ts:24-48`) | Console session with step-up, plus the city's written consent; 2-minute one-time code | Read-only session of up to 30 minutes | Unchanged | The code is a bearer secret for 2 minutes |
 | Public API key (`apps/api/src/services/integrations/apiKeys.ts:56-62`, `apps/api/src/routes/publicApi.ts`) | 256-bit key, SHA-256 stored, optional expiry and IP ranges | Each call checked | Default 12-month expiry, IP ranges for write keys (recommended, D-17i) | Expiry optional |
 | Calendar feed link (`apps/api/src/routes/calendar.ts:40-47,96`) | 192-bit secret in the URL, SHA-256 stored | Read-only feed of the person's shifts | Keep (recommended, D-20d) | No expiry |
@@ -145,18 +175,19 @@ check against HIBP is off unless `PASSWORD_BREACH_CHECK=on` (`apps/api/src/auth/
 
 ### 2.5 Sessions (ASVS 7.1.1, 7.1.2, 7.1.3)
 
-**Decided (owner, 2026-11-17), planned (WP-17).** Staff: 30 minutes idle, 12 hours absolute, at
-most 3 sessions. Admins: 15 minutes idle, 4 hours absolute, 1 session. Punch in and out and safety
-check-ins keep working through a quick passkey or PIN re-entry on the phone. On the N+1 sign-in:
-confirm with a second factor, end the oldest session, tell the person; a self-service session list;
-admins can end sessions. None of this is built yet.
+**Decided (record item 2), planned (WP-17).** Staff: 30 minutes idle, 12 hours absolute, at most
+3 sessions. Admins: 15 minutes idle, 4 hours absolute, 1 session. Punch in and out and safety
+check-ins must keep working through a quick passkey or PIN re-entry on the phone. On the N+1
+sign-in: confirm with a second factor, end the oldest session, notify the person; a self-service
+session list; admins can end sessions. None of this is built yet. How the PIN re-entry works on a
+personal phone is open (D-33).
 
 | Session type | Current (verified) | Decided target | Open decision | Deviation and compensating control |
 | :--- | :--- | :--- | :--- | :--- |
 | Organization (staff and admins) | HS256 access token, 15 minutes, kept in memory in the page (`apps/api/src/config.ts:57`, `apps/api/src/auth/tokens.ts:28-35`, `apps/web/src/lib/api.ts:30`); opaque refresh token in the HttpOnly, SameSite=Strict cookie `fc_refresh`, path `/api/auth`, 14 days, renewed on each rotation so the window slides (`apps/api/src/config.ts:58`, `apps/api/src/routes/auth.ts:42-48`, `apps/api/src/auth/tokens.ts:47-92`). Only the hash is stored; a reused token revokes its family. No idle or absolute cap, no session count. Logout revokes the presented family (`apps/api/src/routes/auth.ts:221-228`). | Staff 30 min / 12 h / 3; admins 15 min / 4 h / 1 (planned) | D-12 (cookie prefix; bearer token kept as a deviation, recommended) | The 15-minute access token can't be revoked before it expires; `requireAuth` re-reads the person's status on every request (`apps/api/src/auth/middleware.ts:79`). |
 | Dev console | Opaque token in the `fh_platform` cookie, path `/api/platform`, 8 hours, no idle check (`apps/api/src/auth/platform.ts:20-57`) | Admin values (planned) | - | - |
 | FH support visit | Read-only, at most 30 minutes and never past the city's grant (`apps/api/src/services/platform/support.ts:19,34`); cookie `fh_support`, path `/api/auth/support` (`apps/api/src/routes/support.ts:19-20`); every page audited (`apps/api/src/auth/middleware.ts:112`) | Unchanged | - | Logout clears the cookie only; the visit's own end time still holds (`apps/api/src/routes/support.ts:63-68`) |
-| Kiosk tablet | Device secret, SHA-256 stored, in the `fh_kiosk` cookie, path `/api/kiosk`, 400 days, until someone with `timeclock.review` unpairs it (`apps/api/src/routes/kiosk.ts:142-145`, `apps/api/src/routes/kiosk.ts:67`) | **Decided:** keeps its device sign-in | D-18d (re-pairing interval; recommended: no forced expiry, show last-seen) | Reduced assurance by design: a punch only, no session |
+| Kiosk tablet | Device secret, SHA-256 stored, in the `fh_kiosk` cookie, path `/api/kiosk`, 400 days, until someone with `timeclock.review` unpairs it (`apps/api/src/routes/kiosk.ts:142-145`, `apps/api/src/routes/kiosk.ts:67`) | **Decided (record item 1):** keeps its device sign-in | D-18d (re-pairing interval; recommended: no forced expiry, show last-seen) | Reduced assurance by design: a punch only, no session |
 | Union Hub | Same access token as the organization (`apps/api/src/unionApp.ts:31`) | Follows the organization's | - | - |
 | Single sign-on | Ends in a normal organization session; the IdP session isn't followed and there is no back-channel or SAML logout (`apps/api/src/routes/sso.ts:62-82`) | - | D-18 | - |
 | GitHub Pages demo | No server session: the demo answers from sample data in the page (`apps/web/src/lib/demoApi.ts`) | n/a | - | - |
@@ -203,7 +234,7 @@ those the file names in `requirePermission(...)` or checks inline.
 | `apps/api/src/routes/accounting.ts` | org | accounting.manage | |
 | `apps/api/src/routes/applications.ts` | public, org | jobs.manage, users.write | Anonymous résumé upload |
 | `apps/api/src/routes/attendance.ts` | org | availability.self, schedule.write, timeclock.review, timeoff.approve, timeoff.self | |
-| `apps/api/src/routes/auth.ts` | public | none (sign-in) | 2.4 |
+| `apps/api/src/routes/auth.ts` | public | none (sign-in); `tenant.configure` decides who may still sign in with a password to a closed or single-sign-on-only organization (`apps/api/src/routes/auth.ts:158`) | 2.4 |
 | `apps/api/src/routes/benchmarks.ts` | org | reliability.read, tenant.configure | |
 | `apps/api/src/routes/benefits.ts` | org | benefits.manage | |
 | `apps/api/src/routes/bidding.ts` | org | bidding.bid, bidding.manage, bidding.observe, tenant.configure | |
@@ -226,7 +257,7 @@ those the file names in `requirePermission(...)` or checks inline.
 | `apps/api/src/routes/fill.ts` | org | availability.self, schedule.assist, schedule.write, tenant.configure | |
 | `apps/api/src/routes/fleet.ts` | org | fleet.inspect, fleet.manage | |
 | `apps/api/src/routes/forecastEvents.ts` | org | schedule.write | |
-| `apps/api/src/routes/hr.ts` | org | grievances.manage, leave.manage, performance.manage, timeoff.approve, training.manage, users.write | |
+| `apps/api/src/routes/hr.ts` | org | grievances.manage, leave.manage, performance.manage, timeoff.approve, training.manage, users.write; the HR dashboard counts also check accommodation.manage, benefits.manage, injury.manage, jobs.manage, payroll.export, reliability.read inline | |
 | `apps/api/src/routes/injury.ts` | org | injury.manage | |
 | `apps/api/src/routes/integrations.ts` | org | tenant.configure | API keys and webhooks |
 | `apps/api/src/routes/jobs.ts` | public, org | jobs.manage | |
@@ -266,7 +297,7 @@ those the file names in `requirePermission(...)` or checks inline.
 | `apps/api/src/routes/platform/updates.ts` | console | releases.manage | |
 | `apps/api/src/routes/policies.ts` | org | policies.manage | |
 | `apps/api/src/routes/preferences.ts` | org | preferences.self, schedule.write | |
-| `apps/api/src/routes/programs.ts` | org | lessons.plan | |
+| `apps/api/src/routes/programs.ts` | org | lessons.plan, or members.manage where either may (`anyOf`) | |
 | `apps/api/src/routes/publicApi.ts` | key | key scopes | [docs/PUBLIC-API.md](docs/PUBLIC-API.md) |
 | `apps/api/src/routes/publicApiShared.ts` | helper | none | Shared by the key routes |
 | `apps/api/src/routes/publicApiWrite.ts` | key | write scopes; timeoff.approve of the key's maker | |
@@ -282,7 +313,7 @@ those the file names in `requirePermission(...)` or checks inline.
 | `apps/api/src/routes/signup.ts` | public, org | bookings.manage, members.manage | |
 | `apps/api/src/routes/sms.ts` | org | none (own text number) | |
 | `apps/api/src/routes/sso.ts` | public (sign-in), org | tenant.configure | 2.4 |
-| `apps/api/src/routes/staff.ts` | org | billing.manage, certs.verify, discipline.write, positions.manage, users.read, users.scheduling, users.write | |
+| `apps/api/src/routes/staff.ts` | org | billing.manage, certs.verify, discipline.write, positions.manage, users.read, users.scheduling, users.write | Adds `union.hub` to `/api/me` for the menu (`apps/api/src/routes/staff.ts:81`), not a check |
 | `apps/api/src/routes/support.ts` | public (code exchange), org | tenant.configure | |
 | `apps/api/src/routes/surveys.ts` | org | surveys.department, surveys.manage, surveys.respond, tenant.configure | |
 | `apps/api/src/routes/trades.ts` | org | shiftboard.approve, shiftboard.post | |
@@ -416,15 +447,16 @@ Confirming that is open decision D-20e.
 
 ### 2.10 Dependencies and dangerous functionality (ASVS 15.1.1-15.1.5)
 
-**Remediation targets** ([docs/SECURITY-OPERATIONS.md](docs/SECURITY-OPERATIONS.md)). These apply
-to runtime, build and development dependencies alike:
+**Remediation targets.**
 
-| Severity | Target |
-| :--- | :--- |
-| Critical: CVSS 9.0 or higher, or on CISA's Known Exploited Vulnerabilities list | 24 hours, 48 at most |
-| High: CVSS 7.0-8.9 | 7 days |
-| Medium: CVSS 4.0-6.9 | 30 days |
-| Low, and library freshness | 90 days |
+| Severity | Current ([docs/SECURITY-OPERATIONS.md](docs/SECURITY-OPERATIONS.md)) | ASVS target document | Status |
+| :--- | :--- | :--- | :--- |
+| Critical | 48 hours | 24 hours (48 at most), CVSS 9.0+ or known exploited | Gap; open decision D-37 |
+| High | 7 days | 7 days, CVSS 7.0-8.9 | Met |
+| Medium | 30 days | 30 days, CVSS 4.0-6.9 | Met |
+| Low, and library freshness | None stated | 90 days | Gap; open decision D-37 |
+
+The current targets don't say whether they cover development dependencies (D-37).
 
 **Checks in place.**
 
@@ -490,7 +522,7 @@ reason. Each is a deviation until the owner says otherwise.
 
 | Target requirement | FH's position | Compensating control |
 | :--- | :--- | :--- |
-| Hardware-attested MFA on every login (6.3.3) | **Decided:** passkeys for HR, payroll, managers, city admins and the Dev console; password plus second factor for other staff; kiosk device sign-in | Kiosk punches only; seasonal staff on personal phones aren't locked out |
+| Hardware-attested MFA on every login (6.3.3) | **Decided (record item 1):** passkeys for HR, payroll, managers, city admins and the Dev console, admins first; other staff keep password and current second-factor rules; kiosk device sign-in | Kiosk punches only; seasonal staff on personal phones aren't locked out |
 | Stateful `__Host-session` cookie (AUTH-01) | In-memory bearer access token plus a path-scoped refresh cookie (2.5) | D-12; moving to cookie-only sessions brings CSRF exposure to every route |
 | Argon2id for passwords | scrypt; ASVS 11.4.2 accepts any approved KDF with current parameters | Parameters and pepper to be recorded (WP-16) |
 | Column encryption of all L2 personal data (14.1.2) | Not planned: schedules and payroll are queried in SQL | RLS, volume encryption, L3 sealing (2.9) |
@@ -498,7 +530,7 @@ reason. Each is a deviation until the owner says otherwise.
 | Seven-year WORM log archive (16.4.x) | Conflicts with deleting a city's data at offboarding | D-21 |
 | `Clear-Site-Data: "cookies", "storage"` (14.3.1) | Would unpair kiosks and wipe other workers' unsent punches on shared phones | "cache" plus targeted cleanup (D-11, recommended) |
 | TLS 1.3 only at the edge | Older phones and tablets need TLS 1.2 | D-9 |
-| 30-minute idle timeout for shift workers | **Decided** with a condition: punch and safety check-ins keep working through quick re-entry | Planned, WP-17; the re-entry path comes first |
+| 30-minute idle timeout for shift workers | **Decided (record item 2)** with a condition: punch and safety check-ins keep working through quick passkey or PIN re-entry | Planned, WP-17; the re-entry path comes first |
 | Ed25519 / RFC 9421 signatures on all integrations (4.1.5) | Webhooks are HMAC-signed (section 5); bank and partner support is unknown | D-15 |
 | Per-user 30/min and per-city 300/min caps, 500 ms timing floor | Would refuse shift-change punches, offline queue flushes and lone-worker check-ins | D-4, D-5, D-6 |
 | Flat 365-day deletion of L2 data | Payroll and OHS records have legal retention periods | D-20e |
@@ -539,6 +571,11 @@ The owner hasn't decided these. The recommendation is the author's, not a decisi
 | D-30 | Network egress allowlist | An egress firewall at the first paying customer, with webhook ports 443 and 8443; application-level checks until then. |
 | D-31 | Scheduled `JWT_SECRET` rotation | Split the secret per purpose first (WP-41), then rotate on a schedule. |
 | D-32 | Heavy work off the request path | Fill the schedule and pay runs become start-then-poll background jobs, at most 2 per person. |
+| D-33 | How the quick PIN re-entry of record item 2 works on a personal phone | Reuse the kiosk PIN as a device-bound re-entry factor for punch and lone-work routes only, never other screens, with a peppered KDF from the start. |
+| D-34 | How short blocklist words (hr, dev) are matched | Words of 4 or more letters as substrings after leet-folding; 2-3 letter words only as whole tokens. |
+| D-35 | Recovery when a passkey-mandatory person loses their only passkey | An HR-issued one-time enrolment link that needs a second HR member or the CAO, with a notice to the person. |
+| D-36 | Passkey attestation | Accept synced passkeys; attestation would exclude most personal phones. |
+| D-37 | Vulnerability remediation targets | Adopt the owner's ASVS target document's values: Critical (CVSS 9.0+ or known exploited) 24 hours, 48 at most; High 7 days; Medium 30 days; Low and library freshness 90 days; covering runtime, build and development dependencies. |
 
 ## 4. Pre-merge gate
 
@@ -642,12 +679,12 @@ Layered, so no single slip opens the database:
   receivers can refuse forged and replayed messages. Signing secrets are sealed with the city's key
   (they must be read back to sign) and shown once. Payloads carry ids and changed field names only.
   Addresses must be https on the public internet, checked when saved and before every send, the
-  connection goes to the checked address, and redirects are never followed (SSRF; `lib/egress.ts`).
+  connection goes to the checked address, and redirects are never followed (SSRF; `apps/api/src/lib/egress.ts`).
   Delivery records keep the response code and 500 characters of the answer, never a secret.
 
 - **Links and devices that act without a sign-in** (a person's calendar feed, a facility kiosk) carry a
   long random secret. Only its SHA-256 hash is stored, it's shown once, and making a new one or
-  removing it stops the old one at once (`apps/api/src/routes/calendar.ts`, `routes/kiosk.ts`).
+  removing it stops the old one at once (`apps/api/src/routes/calendar.ts`, `apps/api/src/routes/kiosk.ts`).
 - **Kiosk PINs** are hashed with scrypt like passwords; easy PINs are refused. Five wrong PINs in 15
   minutes lock an employee number for 15 minutes, doubling with each further lock that day up to 24
   hours; 15 wrong PINs on one tablet in 15 minutes pause the tablet for 15 minutes
@@ -661,11 +698,11 @@ Layered, so no single slip opens the database:
   are recognised (never a double punch), the phone's clock difference is measured and corrected, and
   times in the future, more than 3 days old or out of order are refused; the rest are flagged
   "Recorded offline" for review. Waiting punches are kept per person on the phone and deleted at sign-out
-  (`services/timeclock/punches.ts`).
+  (`apps/api/src/services/timeclock/punches.ts`).
 - **Reporting lines** only route approvals and default reviewers: a manager hears about or acts on a
   request only when their own permissions and department scope already allow it
-  (`services/people/reporting.ts`).
+  (`apps/api/src/services/people/reporting.ts`).
 - **Operations endpoints:** `/metrics` answers only with `METRICS_TOKEN` (404 without the setting), and
   `/readyz` shows counts and ages, never an organization's data. Error reports (server and browser) are
   scrubbed of emails, tokens, SINs and similar before they leave, and only sent when `SENTRY_DSN` is set
-  (`lib/errorReporter.ts`, `lib/scrub.ts`).
+  (`apps/api/src/lib/errorReporter.ts`, `apps/api/src/lib/scrub.ts`).
