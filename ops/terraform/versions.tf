@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "5.100.0"
+      version = "6.73.0"
     }
   }
   # State in S3 in Canada, encrypted and versioned, with a DynamoDB lock: the bucket and table come
