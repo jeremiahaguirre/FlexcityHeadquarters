@@ -23,6 +23,15 @@ Monorepo: `apps/api` (Express 5, Prisma 7, PostgreSQL with row-level security), 
 - **The demo keeps working**: a new endpoint or screen gets a handler in `apps/web/src/lib/demoApi.ts` or recorded sample data, and `npm run build:demo` still builds.
 - **Never invent company facts** (prices, certifications, customers, legal claims).
 
+## Security contract
+
+[SECURITY.md](SECURITY.md) is the security decision ledger (OWASP ASVS v5.0.0). Its sections 1 to 4 bind every change:
+
+- **Update the ledger row in the same pull request** when a change adds or changes an input structure, business limit, upload, sign-in pathway, session type, permission or field rule, key or algorithm, external connection, sensitive field or security event. Cite the code (`path:line`); anything not built is "planned" or "gap", never described as done.
+- **Answer the section 4 gate** in the pull request description (`.github/pull_request_template.md`).
+- **Owner decisions are not guessed.** "Decided" means one of the four owner decisions in SECURITY.md section 2.0; details still waiting for the owner's confirmation are marked pending (D-38). An open decision (D-nn in section 3.2) stays open until the owner decides; its recommendation is not a decision.
+- `apps/api/test/unit/securityLedger.test.ts` fails when the ledger cites a path that doesn't exist (or writes one short), or leaves out a route file, a permission a route names, or a Terraform log group.
+
 ## Checks before a commit
 
 `.github/workflows/ci.yml` is the source of truth; these are the same steps, run from the repository root (each line in its own subshell, so they can be pasted together):

@@ -6,7 +6,7 @@ with their records retention by-law.
 
 | Information | Kept | Then | How |
 | --- | --- | --- | --- |
-| Payroll records (pay runs, statements, T4/RL-1/ROE figures) | The city's payroll retention, at least 6 years after the tax year (CRA); default 7 | The person is anonymized | Automatic (`anonymizeDue`): name, contact, SIN, bank and address removed; amounts kept for the employer's tax records |
+| Payroll records (pay runs, statements, T4/RL-1/ROE figures) | The city's payroll retention, at least 6 years after the tax year (CRA); default 7 | The person is anonymized | Automatic (`anonymizeDue`): name and contact removed; amounts kept for the employer's tax records. Removing the SIN, bank account and mailing address is **planned**: erasure doesn't reach them yet (`apps/api/src/services/privacy/erasure.ts`) |
 | Employee file (profile, HR records, documents) | While employed, then the city's retention period | Anonymized | Same job; uploaded documents' contents are wiped when deleted |
 | Time punches | With payroll records | Anonymized with the person | Clock-in never stores coordinates or IP |
 | Attendance events (late clock-ins, missed shifts, excuses) | With the employee file | Anonymized with the person | The attendance score only looks back 90 days (or to the yearly restart HR sets); older events stop counting but are never deleted for it |
@@ -41,7 +41,7 @@ with their records retention by-law.
 | Known sign-in networks (`User.knownNetworks`, `PlatformAdmin.knownNetworks`: a keyed hash of the network part of the address, IPv4 /24 or IPv6 /64, never the full address) | The last 5 networks for 30 days (Dev console: 3 for 14 days) | Dropped from the list | Updated at each successful sign-in; lets someone sign in from a usual network while attackers elsewhere trigger lockouts (auth/bruteForce.ts) |
 | Domain events (event outbox: kind of event, ids; names or messages only until delivered) | 7 days after delivery; 30 days if delivery gave up | Deleted | Contents cleared as soon as delivered; hourly job; events not yet delivered are kept until they are |
 | Webhook delivery records (event type, status, tries, response code and the first 500 characters of the answer; ids only, never a secret) | 30 days once finished | Deleted | Hourly job |
-| API keys (name, scopes, a SHA-256 of the key) and webhook endpoints (address, events, the signing secret sealed with the city's key) | Keys: for the life of the account (a revoked key stays listed, unusable). Webhooks: until an administrator removes them | Deleted with the organization; a removed webhook is deleted with its delivery history | No personal information beyond who made them; every API request is in the audit log |
+| API keys (name, scopes, a SHA-256 of the key) and webhook endpoints (address, events, the signing secret sealed with the city's key) | Keys: for the life of the account (a revoked key stays listed, unusable). Webhooks: until an administrator removes them | Deleted with the organization; a removed webhook is deleted with its delivery history | No personal information beyond who made them; every public API request made with a key is in the audit log (other requests aren't) |
 | Public API Idempotency-Key records (the key, a SHA-256 of the request, the answer given) | 24 hours | Removed by the retention job; deleted with the organization | The stored answer is what the API returned (no SIN, bank, pay or health details, which the API never returns) |
 | Audit log | For the life of the account | Deleted with the organization | Append-only while the account exists |
 | Signed information and consent agreements (name, signature, choices, time, device address and browser) | For the life of the account: evidence of what each person was told | Deleted with the organization | The app can't change or delete them; FH can download a certificate per record |
@@ -63,4 +63,4 @@ with their records retention by-law.
   signal wait on the phone (per person) until sent. It clears them and the sign-in at sign-out
   (after warning about any punch not sent yet). Downloaded files (exports, T4 and ROE files) are the city's to
   protect; the app reminds people that they contain SINs.
-- **Logs:** application logs never contain personal information (masked emails, error codes only).
+- **Logs:** application logs carry masked emails and error codes, not records' contents. Load balancer access logs do hold IP addresses (90 days), and audit log entries can hold IP addresses and the text of a change.

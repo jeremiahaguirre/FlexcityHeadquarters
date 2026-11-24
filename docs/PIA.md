@@ -60,7 +60,7 @@ describe the product; the city adds its own purposes, authorities and decisions.
 
 ## 4. Information flows
 
-1. Staff and HR enter information in the browser (TLS 1.2+, HSTS, strict content security policy).
+1. Staff and HR enter information in the browser (TLS 1.2 or 1.3 at the load balancer, HSTS, strict content security policy).
 2. Stored in Canada (AWS `ca-central-1`; backups `ca-west-1`), each city isolated by row-level
    security; sensitive fields additionally sealed with the city's own KMS key.
 3. Leaves the system only when the city sends it: the bank deposit file (city's SFTP), T4/RL-1/ROE

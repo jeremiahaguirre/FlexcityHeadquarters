@@ -13,7 +13,7 @@
 The application's design is strong on privacy:
 
 - Each city's data is isolated by the database's row-level security.
-- Sensitive records (incident narratives, union content) are encrypted.
+- Sensitive records (incident narratives, union content, SINs, bank account numbers, employee documents, messages, résumés, Trust evidence, and city SSO, webhook and bank credentials) are encrypted.
 - Audit logs cannot be edited.
 - Decisions about people are always made by a person.
 
@@ -100,7 +100,7 @@ Status values:
 | MFA enforced globally | App (fixed, H1) | Passkey required for the Dev console (and step-up for its sensitive actions); per access level for each city (HR by default): a passkey, or a one-time 6-digit code by email or text (HMAC-hashed, 10 minutes, 5 tries) unless the city allows passkeys only; SSO with Entra ID or SAML. |
 | Terminated employees de-provisioned instantly | App (fixed, F1) | Status change revokes refresh tokens and blocks the next request. Dev console admins: remove in `PlatformAdmin`; their sessions are server-side and end immediately. |
 | Cloud configuration drift (exposed buckets, open security groups, over-privileged accounts) | Ops | No buckets are needed; logos are stored in the database. Use AWS Config / Security Hub with the CIS benchmark; the database is private-subnet only; the app role has no DDL rights and can't edit audit logs. |
-| Network perimeter (firewall, IPS, API gateway) | Ops | Load balancer with WAF (AWS managed rules + rate rules), TLS 1.2+, the Dev console behind an IP allow-list (M6). The API already refuses cross-site requests: strict same-site cookies and CORS limited to the marketing site's address for the enquiry form. |
+| Network perimeter (firewall, IPS, API gateway) | Ops | Load balancer with WAF (AWS managed rules + rate rules), TLS 1.2 or 1.3 at the load balancer (the marketing site's CloudFront minimum is TLS 1.2 only once its own domain is set), the Dev console behind an IP allow-list (M6). The API already refuses cross-site requests: strict same-site cookies and CORS limited to the marketing site's address for the enquiry form. |
 
 ### 4.3 Governance, risk and compliance
 
@@ -134,9 +134,9 @@ Status values:
 | Passwords | 12–128 characters, letters with numbers or symbols, at least 5 different characters; commonly used passwords refused, and ones built from the person's name, email or organization when they set or change one; scrypt with per-user salt; progressive lockout per account and source network (5 wrong from one network → that network locked out for 15 minutes, doubling to 24 hours; 50 across networks → the whole account for 15 minutes, doubling to 1 hour, except networks it recently signed in from; the Dev console 3 and 20, 30 minutes) answered exactly like a wrong password, with one email to the person per whole-account lock; attempts counted before the password check and decided under a row lock, so parallel guesses can't get past it; an address failing on 10 accounts (Dev console: 3) blocked for an hour; optional breached-password check (off); reset links expire in 1 hour; invitations in 7 days. See [ARCHITECTURE.md](ARCHITECTURE.md#brute-force-and-credential-stuffing). |
 | Sessions | 15-minute access tokens kept in memory only (never in browser storage); 14-day refresh tokens in the HTTP-only `fc_refresh` cookie, rotated on use with reuse detection (a reused token revokes the family). A facility kiosk's credential is the HTTP-only `fh_kiosk` cookie (the old `fh-kiosk-token` localStorage entry is moved and deleted), and an FH support visit's is the HTTP-only `fh_support` cookie with only a `fh-support-mode` flag in sessionStorage. All `SameSite=Strict`, `Secure` in production. |
 | Step-up | Payroll export, pay rates, role changes, erasure, records export, suspensions and terminations, passkey changes need a sign-in within 10 minutes. |
-| Encryption | TLS in transit; incident narratives and Union Hub content encrypted with envelope encryption (per-local keys for the union; AWS KMS in production). |
+| Encryption | TLS in transit; incident narratives, Union Hub content, SINs, bank account numbers, employee documents, messages, résumés, Trust evidence and city credentials encrypted with envelope encryption (per-local keys for the union; AWS KMS in production). |
 | Audit | Append-only audit log (the app can't update or delete it), incident access log with stated purpose, Dev console actions logged twice. |
-| Input handling | Every request body validated (zod), 100 KB body limit, no raw SQL, uploads checked by size and magic bytes against one allow-list (`lib/files.ts`: PDF, PNG, JPEG, WebP; SVG, HTML and programs refused), renamed to a plain name with the extension of their real type, kept encrypted in the database (never on a disk the web server serves), and sent back as downloads with `nosniff` and a `sandbox` content policy so nothing in them can run. |
+| Input handling | Every request body validated (zod), 100 KB body limit, raw SQL only as tagged templates with bound parameters (SECURITY.md section 5), uploads checked by size and magic bytes against one allow-list (`lib/files.ts`: PDF, PNG, JPEG, WebP; SVG, HTML and programs refused), renamed to a plain name with the extension of their real type, kept encrypted in the database (never on a disk the web server serves), and sent back as downloads with `nosniff` and a `sandbox` content policy so nothing in them can run. |
 | Least privilege | Permission-based routes; feature switches and per-role overrides enforced server-side, not just hidden in the menu. |
 | Privacy by design | SINs and bank accounts only for payroll, sealed with the city's key and shown masked (full SIN only in a filing file, with a passkey); no police-check results stored; date of birth only for young-worker rules; location only at the moment of clocking in; diagnosis never stored for accommodations; care check-ins record only that they happened. |
 
@@ -276,7 +276,7 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 | Head lifeguard | Staff view, deck rotation, lesson registrations | Facility work |
 | Front desk | Families: contacts, children's ages and safety notes, purchases. Every opening of a family's file is logged | City-wide (they serve every facility) |
 | Supervisor / department lead | Their people's profiles, time off, punches, availability, leave; only the discipline, notes, accommodations and injury claims they recorded; department-shared documents. Never medical notes, police-check results or HR's notes on them; union membership only if they write discipline records (to offer a steward) | Their department (a facility-limited role reaches only people who work there) |
-| Payroll | Tax profiles, masked bank and SIN, pay statements; full SIN only in a filing file, with a passkey, logged | Department scope; whole-city documents (T4, remittance) for HR |
+| Payroll | Tax profiles, masked bank and SIN, pay statements; full SIN only in a filing file, with a passkey, logged | Department scope, today through the central person guard on `/users/:id/...` only (`apps/api/src/routes/features.ts`); per-handler checks planned (WP-3); whole-city documents (T4, remittance) for HR |
 | HR administrator | Everything except the union hub | Whole organization |
 | Union steward | Published shifts, overtime standings, the union hub (membership-gated) | City-wide |
 | FH Dev console | Setup, counts, HR's work contacts. Can switch access off or back to defaults, never widen it; can't add HR administrators once a city has one | Any city |
