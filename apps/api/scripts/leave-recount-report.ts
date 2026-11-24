@@ -5,7 +5,8 @@
  * Read-only report for payroll. Lists approved time off whose hours were counted by weekdays
  * (no shifts in it) and would count differently now. Before the fix, those hours were counted
  * in UTC, so a Friday leave in Vancouver could be charged as a Saturday. Each request is recounted
- * in the person's time zone as of when it was decided (services/people/leaveHours.ts weekdayRecount).
+ * as charging works now, in the person's time zone and leaving out their holidays and the
+ * organization's own, as of when it was decided (services/people/leaveHours.ts weekdayRecount).
  *
  * It changes nothing: the stored hours may already be in closed pay runs. Payroll decides what to correct.
  * Output is CSV on stdout. It identifies people by id only.

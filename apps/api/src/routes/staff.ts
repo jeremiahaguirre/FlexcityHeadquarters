@@ -621,6 +621,7 @@ staffRouter.post(
     const id = uuid.parse(req.params.id);
     const sub = subdomainOf(req)!;
     await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
       const u = await tx.user.findUnique({ where: { id } });
       if (!u || u.status !== 'ACTIVE') throw notFound('Active staff member');
       const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: a.tenantId } });
