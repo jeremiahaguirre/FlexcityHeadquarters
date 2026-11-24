@@ -11,6 +11,7 @@ Builds one environment of FlexcityHeadquarters in `ca-central-1` (Montreal), wit
 | `iam.tf` | Task roles: the API and worker may use and create KMS keys (KMS-generated, symmetric, for encryption only), never delete them or bypass the key-policy safety check |
 | `compute.tf` | ECS Fargate: API, worker and web services, migration and database-role tasks, autoscaling on CPU and requests |
 | `edge.tf` | Load balancer (HTTPS, `/api/*` to the API, health and metrics hidden), web firewalls (app and site: managed rules, rate limits, AI crawlers), the marketing site on S3 + CloudFront |
+| `deploy.tf` | The GitHub Actions deploy role (OIDC, no stored keys; this repository and GitHub environment only), its guardrails, cross-account image pull for promotion |
 | `alarms.tf` | CloudWatch alarms to an SNS topic encrypted under its own key (CloudWatch can publish to it), a server-error ratio per service; the API and web deployments roll back when their alarms go off |
 
 ## Checks
@@ -47,7 +48,7 @@ A user agent can be faked, so this stops honest and lazy crawlers, not a determi
 
 Use a **separate AWS account per environment** (staging, production). The API may use any KMS key in its account, which is safe only when every key there is FlexcityHeadquarters' own (`iam.tf`).
 
-1. **State.** Create an S3 bucket and a DynamoDB table for Terraform state in `ca-central-1`, then uncomment the `backend "s3"` block in `versions.tf`.
+1. **State.** Create the state bucket and lock table with `ops/terraform/bootstrap` (once per account), and write the environment's `backend/<env>.s3.tfbackend` (docs/DEPLOYING.md). Then `terraform init -backend-config=backend/<env>.s3.tfbackend`. Checks that need no state keep using `terraform init -backend=false`.
 2. **Certificates.** In ACM, request a certificate in `ca-central-1` for `<root_domain>` and `*.<root_domain>` (DNS validation). For the marketing site on its own host name, request one in `us-east-1` (CloudFront only accepts certificates from there).
 3. **Apply.** Copy `example.tfvars` to `production.tfvars`, fill it in, then run `terraform apply -var-file=production.tfvars`.
 4. **Images.** Build and push the three images with the tag you deploy (the git commit):
@@ -87,7 +88,7 @@ Use a **separate AWS account per environment** (staging, production). The API ma
 
 ## Every deployment
 
-Push images tagged with the new commit (the web built with the same `NEXT_PUBLIC_RELEASE`), run the migration task, then apply with the new `image_tag`. Tasks stop gracefully on SIGTERM. A full rehearsal of all this on one machine: docs/INFRASTRUCTURE.md, "Production rehearsal". ECS replaces tasks a few at a time, and the circuit breaker rolls back a deployment whose tasks don't become healthy.
+`.github/workflows/deploy.yml` does this for every commit of `main` that passed CI, staging first, then production after approval ([docs/DEPLOYING.md](../../docs/DEPLOYING.md)). By hand: push images tagged with the new commit (the web built with the same `NEXT_PUBLIC_RELEASE`), run the migration task, then apply with the new `image_tag`. Tasks stop gracefully on SIGTERM. A full rehearsal of all this on one machine: docs/INFRASTRUCTURE.md, "Production rehearsal". ECS replaces tasks a few at a time, and the circuit breaker rolls back a deployment whose tasks don't become healthy.
 
 ## Alarms
 
@@ -113,7 +114,7 @@ ECS watches each service's alarms while a deployment runs and rolls back to the 
 
 - Route 53 zones and records.
 - The ACM certificates.
-- The Terraform state bucket.
+- The Terraform state bucket and lock table (`bootstrap/`, applied once per account).
 - AWS Organizations, CloudTrail and GuardDuty: enable them account-wide, once.
 - The metrics collector (docs/MONITORING.md).
 - The marketing-site build itself.
