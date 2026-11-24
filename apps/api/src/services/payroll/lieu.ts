@@ -14,7 +14,7 @@
  */
 import type { Tx } from '../../lib/db.js';
 import type { PayrollSettings } from './payRuns.js';
-import { leaveTimeZones, weekdayLeaveHours } from '../people/leaveHours.js';
+import { leaveDaysOff, leaveHoursOff, leaveProvinces, leaveTimeZones, scheduledShifts } from '../people/leaveHours.js';
 
 export interface LieuPolicy {
   enabled: boolean;
@@ -129,6 +129,15 @@ export async function regularRate(tx: Tx, userId: string, onDate: string, positi
   return r ? Number(r.hourlyRate) : null;
 }
 
+async function openLeaveHours(tx: Tx, userId: string, open: Array<{ userId: string; startsAt: Date; endsAt: Date; status: string }>): Promise<number> {
+  const from = new Date(Math.min(...open.map((r) => r.startsAt.getTime())));
+  const to = new Date(Math.max(...open.map((r) => r.endsAt.getTime())));
+  const [zoneOf, provinceOf, shifts] = await Promise.all([leaveTimeZones(tx, open), leaveProvinces(tx, open), scheduledShifts(tx, [userId], from, to)]);
+  const daysOff = new Map<string | null, Set<string>>();
+  for (const p of new Set(open.map(provinceOf))) daysOff.set(p, await leaveDaysOff(tx, p, from, to));
+  return open.reduce((a, r) => a + leaveHoursOff(r, r.status === 'PENDING' ? shifts : [], zoneOf(r), daysOff.get(provinceOf(r)) ?? new Set()).hours, 0);
+}
+
 /**
  * Hours a person can still ask for: their bank, less time off from it that's approved or
  * pending but not yet paid in an approved run (the pay run checks again when it's built).
@@ -138,7 +147,9 @@ export async function lieuAvailable(tx: Tx, userId: string, ignoreRequestId?: st
   const last = await tx.payRun.findFirst({ where: { kind: 'REGULAR', status: { in: ['APPROVED', 'PAID'] }, statements: { some: { userId } } }, orderBy: { periodEnd: 'desc' }, select: { periodEnd: true } });
   const after = last ? new Date(last.periodEnd.getTime() + 86_400_000) : new Date(0);
   const reqs = await tx.timeOffRequest.findMany({ where: { userId, type: 'LIEU', status: { in: ['APPROVED', 'PENDING'] }, startsAt: { gte: after }, ...(ignoreRequestId ? { id: { not: ignoreRequestId } } : {}) } });
-  const zoneOf = await leaveTimeZones(tx, reqs.filter((r) => r.chargedHours == null));
-  const committed = reqs.reduce((a, r) => a + (r.chargedHours != null ? Number(r.chargedHours) : weekdayLeaveHours(r.startsAt, r.endsAt, zoneOf(r))), 0);
+  // Not charged yet: counted as they will be at approval (and as balances show them): their shifts
+  // (pending ones), else weekdays in the person's zone, less the holidays and closure days of their province.
+  const open = reqs.filter((r) => r.chargedHours == null);
+  const committed = reqs.filter((r) => r.chargedHours != null).reduce((a, r) => a + Number(r.chargedHours), 0) + (open.length ? await openLeaveHours(tx, userId, open) : 0);
   return r2(bank.balance - committed);
 }

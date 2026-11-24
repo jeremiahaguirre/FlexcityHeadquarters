@@ -6,14 +6,12 @@ terraform {
       version = "5.100.0"
     }
   }
-  # State in S3 in Canada, with locking. Create the bucket and table once by hand, then uncomment.
-  # backend "s3" {
-  #   bucket         = "fh-terraform-state-<account-id>"
-  #   key            = "production/terraform.tfstate"
-  #   region         = "ca-central-1"
-  #   dynamodb_table = "fh-terraform-locks"
-  #   encrypt        = true
-  # }
+  # State in S3 in Canada, encrypted and versioned, with a DynamoDB lock: the bucket and table come
+  # from ops/terraform/bootstrap (once per account). The settings are given at init, per
+  # environment: terraform init -backend-config=backend/production.s3.tfbackend
+  # (backend/example.s3.tfbackend; in CI, the <ENV>_TF_BACKEND repository variable). Checks that
+  # need no state use terraform init -backend=false.
+  backend "s3" {}
 }
 
 # Everything with customer data: Canada Central (Montreal).
