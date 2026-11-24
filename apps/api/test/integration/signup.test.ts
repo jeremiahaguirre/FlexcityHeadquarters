@@ -133,4 +133,17 @@ describe('public sign-up portal', () => {
     expect((await staff(desk).post(`/api/bookings/${pending[0].id}/decide`, { decision: 'CONFIRMED', note: 'Please arrive 10 minutes early.' })).status).toBe(200);
     expect(await owner.emailOutbox.count({ where: { tenantId: t.tenant.id, template: 'booking_decided' } })).toBe(1);
   });
+
+  it('the answer to a booking made in French is in French', async () => {
+    await owner.bookableService.update({ where: { id: serviceId }, data: { nameFr: 'Salle de fête' } });
+    const day = inDays(10);
+    const r = await pub.post('/api/public/bookings', { serviceId, date: day, startMinute: 840, partySize: 8, locale: 'fr-CA', startedAt: Date.now() - 30_000, contact: { name: 'Léa Roy', email: 'lea@example.ca', phone: '250-555-0188' }, consents: { terms: true, privacy: true, adult: true } });
+    expect(r.status).toBe(201);
+    const id = (await owner.bookingRequest.findFirstOrThrow({ where: { reference: r.body.reference } })).id;
+    expect((await staff(desk).post(`/api/bookings/${id}/decide`, { decision: 'DECLINED', note: 'Salle réservée pour un tournoi.' })).status).toBe(200);
+    const mail = await owner.emailOutbox.findFirstOrThrow({ where: { tenantId: t.tenant.id, template: 'booking_decided', toEmail: 'lea@example.ca' } });
+    expect(mail.locale).toBe('fr-CA');
+    expect(mail.params).toMatchObject({ service: 'Salle de fête', reference: r.body.reference });
+    expect(String((mail.params as { when: string }).when)).not.toMatch(/AM|PM/);
+  });
 });
