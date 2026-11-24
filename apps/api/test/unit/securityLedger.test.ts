@@ -8,6 +8,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { PERMISSIONS } from '../../src/auth/permissions.js';
 
 const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
@@ -48,6 +49,12 @@ function citations(md: string): Array<{ path: string; lines: number[] }> {
   return out;
 }
 
+/** A path in backticks that is written short (`lib/files.ts`), so the checks below can't see it. */
+const SHORT_PATH = /^[\w@.-]+(?:\/[\w@.[\]-]+)+\.(?:ts|tsx|js|mjs|cjs|sql|md|tf|hcl|yml|yaml|json|prisma)(?::[\d,-]+)?$/;
+function shortPaths(md: string): string[] {
+  return [...md.matchAll(/`([^`\n]+)`/g)].map((m) => m[1]!).filter((t) => SHORT_PATH.test(t) && !PATH.test(t));
+}
+
 /** Citations that point nowhere: a missing file, or a line past its end. */
 function brokenCitations(md: string, exists = (p: string) => existsSync(join(ROOT, p)), lineCount = (p: string) => read(p).split('\n').length): string[] {
   const bad: string[] = [];
@@ -58,10 +65,25 @@ function brokenCitations(md: string, exists = (p: string) => existsSync(join(ROO
   return [...new Set(bad)];
 }
 
-/** Route files the 2.6 inventory doesn't list. */
+/** The 2.6 table row for a route file (the line that starts with its path), if any. */
+const routeRow = (md: string, f: string) => section(md, '2.6').split('\n').find((l) => l.startsWith(`| \`${f}\` |`));
+
+/** Route files the 2.6 inventory has no row for (being named elsewhere in 2.6 doesn't count). */
 function routesMissing(md: string, routeFiles: string[]): string[] {
-  const inv = section(md, '2.6');
-  return routeFiles.filter((f) => !inv.includes(`\`${f}\``));
+  return routeFiles.filter((f) => !routeRow(md, f));
+}
+
+/** Permissions a route file names in its source that its 2.6 row leaves out, as "file: permission". */
+function permissionsMissing(md: string, files: Array<{ file: string; source: string }>): string[] {
+  const known = new Set<string>(PERMISSIONS);
+  const out: string[] = [];
+  for (const { file, source } of files) {
+    const row = routeRow(md, file);
+    if (!row) continue;
+    const named = new Set([...source.matchAll(/'([a-z_]+\.[a-z_.]+)'/g)].map((m) => m[1]!).filter((p) => known.has(p)));
+    for (const p of named) if (!new RegExp(`(^|[^a-z_.])${p.replace(/\./g, '\\.')}($|[^a-z_.])`).test(row)) out.push(`${file}: ${p}`);
+  }
+  return out;
 }
 
 /** Names of the Terraform log groups declared in some .tf sources. */
@@ -75,6 +97,7 @@ function logGroupsMissing(md: string, tf: string[]): string[] {
 
 const ROUTE_FILES = walk('apps/api/src/routes', (n) => n.endsWith('.ts')).map((p) => relative(ROOT, join(ROOT, p)).split('\\').join('/'));
 const TERRAFORM = walk('ops/terraform', (n) => n.endsWith('.tf')).map(read);
+const ROUTE_SOURCES = ROUTE_FILES.map((file) => ({ file, source: read(file) }));
 
 describe('SECURITY.md is the security decision ledger', () => {
   it('keeps the reporting policy first', () => {
@@ -90,14 +113,19 @@ describe('SECURITY.md is the security decision ledger', () => {
     expect(read('CLAUDE.md')).toMatch(/\]\(SECURITY\.md\)/);
   });
 
-  it('cites only paths and lines that exist', () => {
+  it('cites only paths and lines that exist, every path written from the repository root', () => {
     expect(citations(LEDGER).length).toBeGreaterThan(100);
     expect(brokenCitations(LEDGER)).toEqual([]);
+    expect(shortPaths(LEDGER)).toEqual([]);
   });
 
   it('lists every route file in 2.6', () => {
     expect(ROUTE_FILES.length).toBeGreaterThan(80);
     expect(routesMissing(LEDGER, ROUTE_FILES)).toEqual([]);
+  });
+
+  it('names in each 2.6 row every permission its route file names', () => {
+    expect(permissionsMissing(LEDGER, ROUTE_SOURCES)).toEqual([]);
   });
 
   it('lists every Terraform log group in 2.11', () => {
@@ -136,6 +164,26 @@ describe('the ledger checks catch drift (abuse cases, on changed copies of the l
     const fake = LEDGER.split('\n').filter((l) => !l.startsWith('| `apps/api/src/routes/deck.ts`')).join('\n');
     expect(routesMissing(fake, ROUTE_FILES)).toEqual(['apps/api/src/routes/deck.ts']);
     expect(routesMissing(LEDGER, [...ROUTE_FILES, 'apps/api/src/routes/newFeature.ts'])).toEqual(['apps/api/src/routes/newFeature.ts']);
+  });
+
+  it('a route row removed while the file is still named elsewhere in 2.6 fails', () => {
+    const fake = LEDGER.split('\n').filter((l) => !l.startsWith('| `apps/api/src/routes/serializers.ts`')).join('\n');
+    expect(section(fake, '2.6')).toContain('`apps/api/src/routes/serializers.ts`');
+    expect(routesMissing(fake, ROUTE_FILES)).toEqual(['apps/api/src/routes/serializers.ts']);
+  });
+
+  it('a permission left out of a route’s row fails, and so does one a route starts checking', () => {
+    const fake = LEDGER.replace('| org | lessons.plan, or members.manage where either may (`anyOf`) |', '| org | lessons.plan |');
+    expect(fake).not.toBe(LEDGER);
+    expect(permissionsMissing(fake, ROUTE_SOURCES)).toEqual(['apps/api/src/routes/programs.ts: members.manage']);
+    const grown = ROUTE_SOURCES.map((r) => (r.file === 'apps/api/src/routes/deck.ts' ? { ...r, source: `${r.source}\nrequirePermission('payroll.approve');` } : r));
+    expect(permissionsMissing(LEDGER, grown)).toEqual(['apps/api/src/routes/deck.ts: payroll.approve']);
+  });
+
+  it('a path written short is refused', () => {
+    const fake = LEDGER.replace('`apps/api/src/lib/egress.ts`', '`lib/egress.ts`');
+    expect(fake).not.toBe(LEDGER);
+    expect(shortPaths(fake)).toEqual(['lib/egress.ts']);
   });
 
   it('a route named only outside 2.6 still fails', () => {
