@@ -7,6 +7,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { ensureTaxTables } from '../../src/services/payroll/taxTables.js';
+import { prepareBankFile, readSettings, sendToBank } from '../../src/services/payroll/payRuns.js';
+import { withTenant } from '../../src/lib/db.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
@@ -27,6 +29,9 @@ const hostKey = utils.generateKeyPairSync('ed25519');
 const parsed = utils.parseKey(hostKey.public);
 const fingerprint = createHash('sha256').update((Array.isArray(parsed) ? parsed[0] : parsed)!.getPublicSSH()).digest('base64').replace(/=+$/, '');
 const received = new Map<string, Buffer>();
+// Holds uploads while set, so a test can act while a file is on its way to the bank.
+let gate: Promise<void> | null = null;
+let uploading = false;
 let sftpServer: Server;
 let port = 0;
 let bankPgp: { publicKey: string; privateKey: string };
@@ -55,8 +60,13 @@ beforeAll(async () => {
             sftp.handle(id, h);
           });
           sftp.on('WRITE', (id, h, _offset, data) => {
-            handles.get(h.toString('hex'))!.chunks.push(Buffer.from(data));
-            sftp.status(id, STATUS_CODE.OK);
+            uploading = true;
+            const write = () => {
+              handles.get(h.toString('hex'))!.chunks.push(Buffer.from(data));
+              sftp.status(id, STATUS_CODE.OK);
+            };
+            if (gate) void gate.then(write);
+            else write();
           });
           sftp.on('CLOSE', (id, h) => {
             const e = handles.get(h.toString('hex'));
@@ -162,5 +172,111 @@ describe('sending payroll straight to the bank', () => {
     expect(detail.transmissions).toHaveLength(1);
     expect(detail.transmissions[0].status).toBe('SENT');
     expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.bank.sent' } })).toBe(1);
+  });
+
+  it('a run can’t be voided while its deposit file is on its way to the bank', async () => {
+    const u = t.users[0]!;
+    for (const d of [16, 17]) {
+      const start = new Date(Date.UTC(2026, 2, d, 16));
+      await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: u.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 8 * 3_600_000), status: 'APPROVED' } });
+    }
+    const run = await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: '2026-03-16', weeks: 2, payDate: '2026-04-03' });
+    expect(run.status).toBe(201);
+    let release!: () => void;
+    gate = new Promise((r) => (release = r));
+    uploading = false;
+    // Approving sends the file straight away (autoSend); the bank is slow to take it.
+    const approving = call(tok.approver).post(`/api/payroll/runs/${run.body.id}/approve`).then((r) => r);
+    await expect.poll(() => uploading, { timeout: 10_000 }).toBe(true);
+    const v = await call(tok.approver).post(`/api/payroll/runs/${run.body.id}/void`, { reason: 'Wrong pay date, rebuilding' });
+    release();
+    gate = null;
+    expect(v.status).toBe(409);
+    expect(v.body.code).toBe('RUN_SENT_TO_BANK');
+    const a = await approving;
+    expect(a.body.transmission.status).toBe('SENT');
+    expect((await owner.payRun.findUniqueOrThrow({ where: { id: run.body.id } })).status).toBe('APPROVED');
+    expect((await owner.payTransmission.findMany({ where: { payRunId: run.body.id } })).map((x) => x.status)).toEqual(['SENT']);
+  });
+
+  it('a file the bank took is never recorded as failed, even if recording it as sent fails; payroll resolves it after checking with the bank', async () => {
+    const u = t.users[0]!;
+    for (const d of [30, 31]) {
+      const start = new Date(Date.UTC(2026, 2, d, 16));
+      await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: u.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 8 * 3_600_000), status: 'APPROVED' } });
+    }
+    await call(tok.approver).put('/api/payroll/bank-connection', { ...link(), autoSend: false });
+    const run = await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: '2026-03-30', weeks: 2, payDate: '2026-04-17' });
+    expect(run.status).toBe(201);
+    const runId = run.body.id as string;
+    expect((await call(tok.approver).post(`/api/payroll/runs/${runId}/approve`)).status).toBe(200);
+    const settings = readSettings((await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id } })).payrollSettings);
+    const prepared = await withTenant(t.tenant.id, (tx) => prepareBankFile(tx, t.tenant.id, runId, settings));
+    const before = received.size;
+    // The upload works; writing down that it was sent doesn't (a timeout or a dropped connection).
+    const recorded: string[] = [];
+    const out = await sendToBank(t.tenant.id, runId, null, settings, prepared, async (d) => {
+      recorded.push(d.status);
+      if (d.status === 'SENT') throw new Error('Transaction already closed');
+      await owner.payTransmission.update({ where: { id: prepared.transmissionId }, data: { status: d.status, error: d.error } });
+    });
+    expect(received.size).toBe(before + 1);
+    expect(recorded).not.toContain('FAILED');
+    expect(out.status).toBe('SENDING');
+    expect((await owner.payTransmission.findUniqueOrThrow({ where: { id: prepared.transmissionId } })).status).toBe('SENDING');
+    // Still counts as at the bank: no void, no second send.
+    expect((await call(tok.approver).post(`/api/payroll/runs/${runId}/void`, { reason: 'Rebuilding it' })).body.code).toBe('RUN_SENT_TO_BANK');
+    expect((await call(tok.approver).post(`/api/payroll/runs/${runId}/send`)).body.code).toBe('ALREADY_SENT');
+    // After checking with the bank, payroll records what happened, with a reason.
+    const path = `/api/payroll/runs/${runId}/transmissions/${prepared.transmissionId}/resolve`;
+    expect((await call(tok.approver).post(path, { outcome: 'SENT', reason: '' })).status).toBe(400);
+    // Right after the send it might still be uploading, so it can't be resolved yet.
+    expect((await call(tok.approver).post(path, { outcome: 'SENT', reason: 'The bank confirmed it received file 0003 by phone' })).body.code).toBe('SEND_IN_PROGRESS');
+    await owner.payTransmission.update({ where: { id: prepared.transmissionId }, data: { createdAt: new Date(Date.now() - 16 * 60_000) } });
+    const done = await call(tok.approver).post(path, { outcome: 'SENT', reason: 'The bank confirmed it received file 0003 by phone' });
+    expect(done.status).toBe(200);
+    expect((await owner.payTransmission.findUniqueOrThrow({ where: { id: prepared.transmissionId } })).status).toBe('SENT');
+    expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.bank.resolved', entityId: runId } })).toBe(1);
+    expect((await call(tok.approver).post(path, { outcome: 'FAILED', reason: 'Changed my mind' })).body.code).toBe('NOT_SENDING');
+    await call(tok.approver).put('/api/payroll/bank-connection', link());
+  });
+
+  it('a send still uploading can’t be resolved; a result arriving after someone resolved it never overwrites that', async () => {
+    const u = t.users[0]!;
+    for (const d of [13, 14]) {
+      const start = new Date(Date.UTC(2026, 3, d, 16));
+      await owner.timePunch.create({ data: { tenantId: t.tenant.id, userId: u.id, facilityId: t.facility.id, positionId: t.position.id, clockIn: start, clockOut: new Date(start.getTime() + 8 * 3_600_000), status: 'APPROVED' } });
+    }
+    await call(tok.approver).put('/api/payroll/bank-connection', { ...link(), autoSend: false });
+    const run = await call(tok.prep).post('/api/payroll/runs', { departmentId: null, periodStart: '2026-04-13', weeks: 2, payDate: '2026-05-01' });
+    expect(run.status).toBe(201);
+    const runId = run.body.id as string;
+    expect((await call(tok.approver).post(`/api/payroll/runs/${runId}/approve`)).status).toBe(200);
+    let release!: () => void;
+    gate = new Promise((r) => (release = r));
+    uploading = false;
+    const sending = call(tok.approver).post(`/api/payroll/runs/${runId}/send`).then((r) => r);
+    try {
+      await expect.poll(() => uploading, { timeout: 10_000 }).toBe(true);
+      const row = await owner.payTransmission.findFirstOrThrow({ where: { payRunId: runId, status: 'SENDING' } });
+      const path = `/api/payroll/runs/${runId}/transmissions/${row.id}/resolve`;
+      // Someone asks the bank mid-upload, is told nothing has arrived, and tries to record that.
+      const early = await call(tok.approver).post(path, { outcome: 'FAILED', reason: 'The bank has nothing from us yet' });
+      expect(early.status).toBe(409);
+      expect(early.body.code).toBe('SEND_IN_PROGRESS');
+      expect((await call(tok.approver).post(`/api/payroll/runs/${runId}/void`, { reason: 'Rebuilding it' })).body.code).toBe('RUN_SENT_TO_BANK');
+      // Much later (the upload is stuck), it can be resolved; then the upload finishes after all.
+      await owner.payTransmission.update({ where: { id: row.id }, data: { createdAt: new Date(Date.now() - 16 * 60_000) } });
+      expect((await call(tok.approver).post(path, { outcome: 'FAILED', reason: 'The bank has no file from us today' })).status).toBe(200);
+      release();
+      gate = null;
+      await sending;
+      expect((await owner.payTransmission.findUniqueOrThrow({ where: { id: row.id } })).status).toBe('FAILED');
+      expect(await owner.auditLog.count({ where: { tenantId: t.tenant.id, action: 'payroll.bank.late_result', entityId: runId } })).toBe(1);
+    } finally {
+      release();
+      gate = null;
+      await call(tok.approver).put('/api/payroll/bank-connection', link());
+    }
   });
 });

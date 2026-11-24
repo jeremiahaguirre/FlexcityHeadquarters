@@ -12,6 +12,7 @@ import { audit, type Tx, withTenant } from '../lib/db.js';
 import { db as rootDb } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
+import { assertNotPaid } from '../services/payroll/periodLock.js';
 import { checkPersonalPassword, passwordRule } from './auth.js';
 import { h, subdomainOf } from './context.js';
 import { FEATURES, type FeatureKey, tenantSettings } from '../services/platform/features.js';
@@ -731,6 +732,7 @@ staffRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
+    if (id === a.userId) throw new HttpError(403, 'OWN_PAY_RATE', 'You can’t set or change your own pay rate. Another administrator has to.');
     const body = z.object({ positionId: uuid, hourlyRate: z.string().regex(/^\d{1,3}(\.\d{1,2})?$/), effectiveFrom: isoDate }).parse(req.body);
     if (Number(body.hourlyRate) < 10) throw badRequest('That rate is below any Canadian minimum wage. Check the amount.');
     const rate = await withTenant(a.tenantId, async (tx) => {
@@ -746,6 +748,79 @@ staffRouter.post(
       return r;
     });
     res.status(201).json({ id: rate.id });
+  }),
+);
+
+const hourlyRate = z.string().regex(/^\d{1,3}(\.\d{1,2})?$/);
+const today = () => new Date().toISOString().slice(0, 10);
+
+/** A person's pay rate, and the rate before it for the same position (the one it closed). */
+async function rateAndPrevious(tx: Tx, userId: string, rateId: string) {
+  const rate = await tx.payRate.findUnique({ where: { id: rateId } });
+  if (!rate || rate.userId !== userId) throw notFound('Pay rate');
+  const previous = await tx.payRate.findFirst({ where: { userId, positionId: rate.positionId, effectiveTo: d(addDays(iso(rate.effectiveFrom)!, -1)) } });
+  return { rate, previous };
+}
+const rateRow = (r: { hourlyRate: Prisma.Decimal; effectiveFrom: Date; effectiveTo: Date | null; positionId: string }) => ({ positionId: r.positionId, hourlyRate: r.hourlyRate.toString(), effectiveFrom: iso(r.effectiveFrom), effectiveTo: iso(r.effectiveTo) });
+
+/**
+ * Corrects a pay rate entered wrong (225.00 for 22.50, or the wrong start date). Not for a raise
+ * (that is a new rate). Refused when an approved or paid pay run already used the days it changes:
+ * those are corrected with a one-time item (retro pay or a recovery) instead.
+ */
+staffRouter.patch(
+  '/users/:id/pay-rates/:rateId',
+  requirePermission('users.write'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const rateId = uuid.parse(req.params.rateId);
+    if (id === a.userId) throw new HttpError(403, 'OWN_PAY_RATE', 'You can’t set or change your own pay rate. Another administrator has to.');
+    const body = z.object({ hourlyRate: hourlyRate.optional(), effectiveFrom: isoDate.optional(), reason: z.string().trim().min(3).max(500) }).parse(req.body);
+    if (body.hourlyRate !== undefined && Number(body.hourlyRate) < 10) throw invalid('RATE_BELOW_MINIMUM', 'That rate is below any Canadian minimum wage. Check the amount.');
+    await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
+      const { rate, previous } = await rateAndPrevious(tx, id, rateId);
+      const from = body.effectiveFrom ?? iso(rate.effectiveFrom)!;
+      const to = iso(rate.effectiveTo);
+      if (to && from > to) throw new HttpError(400, 'RATE_AFTER_END', 'The start must be on or before the day this rate ends.');
+      if (previous && from <= iso(previous.effectiveFrom)!) throw new HttpError(400, 'RATE_ORDER', 'The start must be after the previous rate’s start.');
+      // Every day whose rate this changes: the old and new start, up to the end (or today).
+      const first = [from, iso(rate.effectiveFrom)!].sort()[0]!;
+      await assertNotPaid(tx, id, first, to && to < today() ? to : today());
+      const after = await tx.payRate.update({ where: { id: rateId }, data: { ...(body.hourlyRate !== undefined ? { hourlyRate: body.hourlyRate } : {}), effectiveFrom: d(from)! } });
+      if (previous && from !== iso(rate.effectiveFrom)) await tx.payRate.update({ where: { id: previous.id }, data: { effectiveTo: d(addDays(from, -1)) } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payrate.correct', entity: 'PayRate', entityId: rateId, before: { ...rateRow(rate), userId: id }, after: { ...rateRow(after), reason: body.reason } });
+    });
+    res.json({ ok: true });
+  }),
+);
+
+/**
+ * Removes a rate entered by mistake; the rate before it (if any) carries on in its place. Refused
+ * when an approved or paid pay run already used it.
+ */
+staffRouter.post(
+  '/users/:id/pay-rates/:rateId/remove',
+  requirePermission('users.write'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const rateId = uuid.parse(req.params.rateId);
+    if (id === a.userId) throw new HttpError(403, 'OWN_PAY_RATE', 'You can’t set or change your own pay rate. Another administrator has to.');
+    const { reason } = z.object({ reason: z.string().trim().min(3).max(500) }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      await assertUserInScope(tx, a, id);
+      const { rate, previous } = await rateAndPrevious(tx, id, rateId);
+      const to = iso(rate.effectiveTo);
+      await assertNotPaid(tx, id, iso(rate.effectiveFrom)!, to && to < today() ? to : today());
+      await tx.payRate.delete({ where: { id: rateId } });
+      if (previous) await tx.payRate.update({ where: { id: previous.id }, data: { effectiveTo: rate.effectiveTo } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payrate.remove', entity: 'PayRate', entityId: rateId, before: { ...rateRow(rate), userId: id }, after: { reason, previousExtended: previous?.id ?? null } });
+    });
+    res.json({ ok: true });
   }),
 );
 

@@ -759,7 +759,6 @@
     "SUBDOMAIN_TAKEN": "Another organization already uses that address.",
     "SUPPORT_CODE_INVALID": "This support link has expired or was already used.",
     "SUPPORT_ENDED": "This support visit has ended.",
-    "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "SUPPORT_READ_ONLY": "FH support can look, not change anything.",
     "TEXT_ALERTS_OFF": "Your organization hasn’t turned on text alerts.",
     "TOO_LARGE": "Files can be up to 10 MB.",
@@ -785,7 +784,17 @@
     "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days.",
     "UNTIL_BEFORE_START": "The last year is before the first date.",
     "NTH_WEEKDAY_FIFTH": "A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.",
-    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month."
+    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month.",
+    "RATE_BELOW_MINIMUM": "That rate is below any Canadian minimum wage. Check the amount.",
+    "BANK_SEND_UNCONFIRMED": "The bank took the file, but it couldn’t be recorded as sent. It stays marked “sending”: check with the bank, then record what they say.",
+    "PERIOD_PAID": "This is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.",
+    "RATE_AFTER_END": "The start must be on or before the day this rate ends.",
+    "RATE_ORDER": "That start date would overlap another rate for this position.",
+    "RUN_SENT_TO_BANK": "This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.",
+    "NOT_SENDING": "This send has already been resolved.",
+    "OWN_PAY_RATE": "You can’t set or change your own pay rate. Another administrator has to.",
+    "RUN_CHANGED": "This pay run changed while you were voiding it. Open it again.",
+    "SEND_IN_PROGRESS": "This file may still be on its way to the bank. Check again later."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1333,7 +1342,15 @@
     },
     "phone": "Phone",
     "seniorityHours": "Seniority hours",
-    "seniorityHoursHint": "Used where seniority is counted in hours (bid rounds, overtime, call-outs)."
+    "seniorityHoursHint": "Used where seniority is counted in hours (bid rounds, overtime, call-outs).",
+    "removeRate": "Remove this rate",
+    "correctInstead": "Correct it instead",
+    "rateRemoved": "Rate removed.",
+    "removeRateHelp": "The rate before it, if any, carries on in its place.",
+    "rateCorrected": "Rate corrected.",
+    "rateReasonHint": "Kept in the audit log.",
+    "correctRateHelp": "For a rate entered wrong. A raise is a new rate. Pay already approved or paid at this rate is corrected with a one-time item instead.",
+    "correctRate": "Correct the {{position}} rate"
   },
   "payroll": {
     "title": "Payroll",
@@ -1559,8 +1576,18 @@
       "pgpShort": "PGP encrypted",
       "status": {
         "SENT": "Sent",
-        "FAILED": "Failed"
-      }
+        "FAILED": "Failed",
+        "SENDING": "Sending"
+      },
+      "resolve": "Record what the bank says",
+      "resolveHelp": "This file may or may not have reached the bank. Check with the bank first: recording it as arrived stops the run from being voided or sent again; recording that it didn’t arrive lets you send it again.",
+      "resolveOutcome": "What the bank says",
+      "resolveSent": "The bank has the file",
+      "resolveFailed": "The bank doesn’t have it",
+      "resolveReason": "How you checked",
+      "resolvePlaceholder": "Called the bank’s payroll line; they have file 0003",
+      "resolved": "Recorded.",
+      "stillSending": "This file may still be on its way to the bank. You can record what the bank says after {{time}}."
     },
     "employerPaid": "Paid by your employer: {{list}}",
     "taxableBenefit": "taxable benefit",
@@ -1822,7 +1849,15 @@
       }
     },
     "saveAll": "Save payroll settings",
-    "saveAllHint": "Saves every card on this page except the bank connection."
+    "saveAllHint": "Saves every card on this page except the bank connection.",
+    "former": {
+      "show": "Show people who left or were laid off",
+      "INACTIVE": "laid off",
+      "TERMINATED": "left"
+    },
+    "voidEffects": "Expense claims this run paid go back to approved, for the next run. One-time items stay on the voided run: add them again on the new one.",
+    "voidClaimsKept_one": "Its deposit file was downloaded, so {{count}} expense claim stays paid. If it wasn’t paid, add it as a one-time reimbursement on the next run.",
+    "voidClaimsKept_other": "Its deposit file was downloaded, so {{count}} expense claims stay paid. If they weren’t paid, add them as one-time reimbursements on the next run."
   },
   "settings": {
     "title": "Settings",

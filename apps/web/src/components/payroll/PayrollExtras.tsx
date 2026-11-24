@@ -39,7 +39,8 @@ export function RunAdjustments({ runId, draft, onChanged }: { runId: string; dra
   const { t, i18n } = useTranslation();
   const money = (n: number) => formatMoney(n, i18n.language);
   const list = useQuery<Array<{ id: string; userId: string; kind: (typeof KINDS)[number]; description: string; amount: number; hours?: number | null }>>(`/api/payroll/runs/${runId}/adjustments`);
-  const people = useQuery<{ people: Array<{ id: string; name: string }> }>(draft ? '/api/payroll/people' : null);
+  // Final vacation pay or retro pay for someone laid off or gone: include the people who left.
+  const people = useQuery<{ people: Array<{ id: string; name: string; status?: string }> }>(draft ? '/api/payroll/people?include=former' : null);
   const { run, busy } = useRun();
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<(typeof KINDS)[number]>('BONUS');
@@ -64,7 +65,7 @@ export function RunAdjustments({ runId, draft, onChanged }: { runId: string; dra
       <p className="text-caption text-muted">{t('payroll.extras.help')}</p>
       {open ? (
         <form onSubmit={(e) => void add(e)} className="grid gap-3 sm:grid-cols-2">
-          <Field label={t('payroll.employee')}>{(p) => <Select {...p} name="userId" required>{people.data?.people.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>}</Field>
+          <Field label={t('payroll.employee')}>{(p) => <Select {...p} name="userId" required>{people.data?.people.map((x) => <option key={x.id} value={x.id}>{x.name}{x.status && x.status !== 'ACTIVE' ? ` · ${t(`payroll.former.${x.status}`)}` : ''}</option>)}</Select>}</Field>
           <Field label={t('payroll.extras.kind')}>{(p) => <Select {...p} name="kind" value={kind} onChange={(e) => setKind(e.target.value as (typeof KINDS)[number])}>{KINDS.map((k) => <option key={k} value={k}>{t(`payroll.extras.kinds.${k}`)}</option>)}</Select>}</Field>
           <Field label={t('payroll.extras.description')}>{(p) => <Input {...p} name="description" required minLength={2} maxLength={120} />}</Field>
           {kind === 'LIEU_PAYOUT' ? (

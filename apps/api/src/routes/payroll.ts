@@ -13,11 +13,12 @@ import { z } from 'zod';
 import { assertUserInScope, peopleWhere } from '../services/people/scope.js';
 import { type AuthContext, authOf, requireFeature, requirePermission, requireRecentAuth, requireModule } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
+import { logError } from '../lib/log.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
 import { linkView, testBankLink } from '../services/payroll/bankLink.js';
 import { bankLinkBody, buildBankLink } from '../services/payroll/setup.js';
-import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
+import { type PayrollSettings, SEND_SETTLE_MS, approveRun, bankHasIt, buildRun, depositFile, lockRun, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
 import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, assignRl1Numbers, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
@@ -164,7 +165,7 @@ payrollRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const run = await payrollTx(a.tenantId, async (tx) => {
-      const r = await tx.payRun.findUnique({ where: { id } });
+      const r = await lockRun(tx, id);
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be recalculated.');
@@ -224,7 +225,15 @@ async function send(a: AuthContext, runId: string, settings: PayrollSettings) {
   const prepared = await withTenant(a.tenantId, (tx) => prepareBankFile(tx, a.tenantId, runId, settings));
   const result = await sendToBank(a.tenantId, runId, a.userId, settings, prepared, (data) =>
     withTenant(a.tenantId, async (tx) => {
-      await tx.payTransmission.create({ data });
+      // The attempt was recorded (SENDING) before the upload; now its outcome. Only over SENDING: if
+      // someone already resolved it after checking with the bank, their answer stands and the late
+      // result is kept in the audit log for them to reconcile.
+      const { count } = await tx.payTransmission.updateMany({ where: { id: prepared.transmissionId, status: 'SENDING' }, data: { status: data.status, error: data.error, sentById: data.sentById } });
+      if (count !== 1) {
+        logError('payroll: a bank send finished after it was resolved by hand', new Error(`transmission ${prepared.transmissionId}: ${data.status}`));
+        await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank.late_result', entity: 'PayRun', entityId: runId, after: { transmissionId: prepared.transmissionId, status: data.status, error: data.error } });
+        return;
+      }
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: data.status === 'SENT' ? 'payroll.bank.sent' : 'payroll.bank.failed', entity: 'PayRun', entityId: runId, after: { fileName: data.fileName, sha256: data.sha256, encrypted: data.encrypted, error: data.error } });
     }),
   );
@@ -247,7 +256,41 @@ payrollRouter.post(
       return s;
     });
     const out = await send(a, id, settings);
+    if (out.status === 'SENDING') {
+      res.status(502).json({ ...out, code: 'BANK_SEND_UNCONFIRMED', message: out.error });
+      return;
+    }
     res.status(out.status === 'SENT' ? 200 : 502).json(out.status === 'SENT' ? out : { ...out, code: 'BANK_SEND_FAILED', message: `The bank didn’t take the file: ${(out as { error?: string }).error ?? 'no answer'}` });
+  }),
+);
+
+/**
+ * A send still marked SENDING (the process stopped part-way, or the result couldn't be recorded):
+ * after checking with the bank, payroll records whether the file arrived. SENT keeps the run from
+ * being voided or sent again; FAILED allows a new send. A reason is required and it's audited.
+ */
+payrollRouter.post(
+  '/payroll/runs/:id/transmissions/:tid/resolve',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const tid = uuid.parse(req.params.tid);
+    const body = z.object({ outcome: z.enum(['SENT', 'FAILED']), reason: z.string().trim().min(5).max(300) }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const r = await lockRun(tx, id);
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      const sending = await tx.payTransmission.findFirst({ where: { id: tid, payRunId: id } });
+      if (!sending) throw notFound('Bank transmission');
+      if (sending.status !== 'SENDING') throw conflict('NOT_SENDING', 'This transmission has already been resolved.');
+      // Too soon to tell a stopped send from one still uploading (the bank would truthfully say it has nothing yet).
+      if (Date.now() - sending.createdAt.getTime() < SEND_SETTLE_MS) throw conflict('SEND_IN_PROGRESS', 'This file may still be on its way to the bank. Check again later.', { after: new Date(sending.createdAt.getTime() + SEND_SETTLE_MS).toISOString() });
+      await tx.payTransmission.update({ where: { id: tid }, data: { status: body.outcome, error: body.outcome === 'FAILED' ? `Resolved as not received: ${body.reason}` : null, sentById: body.outcome === 'SENT' ? a.userId : null } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank.resolved', entity: 'PayRun', entityId: id, before: { transmissionId: tid, status: 'SENDING' }, after: { status: body.outcome, reason: body.reason } });
+    });
+    res.json({ ok: true });
   }),
 );
 
@@ -311,7 +354,8 @@ payrollRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
-      const r = await tx.payRun.findUnique({ where: { id } });
+      // Under the run's lock, like approve and void: a void waiting on it is seen, not overwritten.
+      const r = await lockRun(tx, id);
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status !== 'APPROVED') throw conflict('NOT_APPROVED', 'Only an approved pay run can be marked paid.');
@@ -329,16 +373,31 @@ payrollRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     const reason = z.object({ reason: z.string().trim().min(5).max(500) }).parse(req.body).reason;
-    await withTenant(a.tenantId, async (tx) => {
-      const r = await tx.payRun.findUnique({ where: { id } });
+    const out = await withTenant(a.tenantId, async (tx) => {
+      // Under the run's lock: an approval, a deposit file or a send of this run waits for the void, or the void for it.
+      const r = await lockRun(tx, id);
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status === 'PAID' || r.status === 'VOID') throw conflict('CANNOT_VOID', 'A paid pay run can’t be voided; correct it in the next run.');
       if (r.status === 'APPROVED' && !a.permissions.has('payroll.approve')) throw forbidden('Only someone who approves pay runs can void an approved one.');
-      await tx.payRun.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date() } });
-      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: !!r.depositFileSha256 } });
+      // Money already sent to the bank can't be taken back by voiding: correct it in the next run.
+      if (await bankHasIt(tx, id)) {
+        throw conflict('RUN_SENT_TO_BANK', 'This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.');
+      }
+      // Only from the status just read: a run approved (or voided) meanwhile isn't voided on stale information.
+      const { count } = await tx.payRun.updateMany({ where: { id, status: r.status }, data: { status: 'VOID', voidedAt: new Date() } });
+      if (count !== 1) throw conflict('RUN_CHANGED', 'This pay run changed while you were voiding it. Open it again.');
+      // Expense claims this run paid weren't paid after all: back to approved, for the next run. Not when its
+      // deposit file was downloaded: it may be at the bank already, and the claims with it.
+      const fileOut = !!r.depositFileSha256;
+      const claims = await tx.expenseClaim.findMany({ where: { payRunId: id, status: 'PAID' }, select: { id: true } });
+      if (claims.length && !fileOut) await tx.expenseClaim.updateMany({ where: { id: { in: claims.map((c) => c.id) } }, data: { status: 'APPROVED', payRunId: null } });
+      const released = fileOut ? [] : claims.map((c) => c.id);
+      const oneTimeItems = await tx.payAdjustment.count({ where: { payRunId: id } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: fileOut, releasedClaims: released, claimsKeptPaid: fileOut ? claims.map((c) => c.id) : [], oneTimeItems } });
+      return { releasedClaims: released.length, claimsKeptPaid: fileOut ? claims.length : 0, oneTimeItems };
     });
-    res.json({ ok: true });
+    res.json({ ok: true, ...out });
   }),
 );
 
@@ -379,18 +438,21 @@ payrollRouter.get(
   requirePermission('payroll.export'),
   h(async (req, res) => {
     const a = authOf(req);
+    // ?include=former: also people laid off for the season or who left (an ROE, final vacation pay, retro pay).
+    const former = z.object({ include: z.literal('former').optional() }).parse(req.query).include === 'former';
     const out = await withTenant(a.tenantId, async (tx) => {
       // Tax profiles and banking: only for the people in the viewer's department, and every view is logged.
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.people.view', entity: 'Tenant', entityId: a.tenantId });
       const users = await tx.user.findMany({
-        where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
-        select: { id: true, firstName: true, lastName: true, employeeNumber: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
+        where: { status: former ? { in: ['ACTIVE', 'INACTIVE', 'TERMINATED'] } : 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
+        select: { id: true, firstName: true, lastName: true, employeeNumber: true, status: true, payProfile: true, bankAccounts: { where: { status: { in: ['ACTIVE', 'PENDING'] } }, orderBy: { createdAt: 'desc' } }, positions: { select: { position: { select: { departmentId: true } } } } },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       });
       return users.map((u) => ({
         id: u.id,
         name: `${u.firstName} ${u.lastName}`,
         employeeNumber: u.employeeNumber,
+        status: u.status,
         departmentIds: [...new Set(u.positions.map((p) => p.position.departmentId).filter(Boolean))],
         profile: profileView(u.payProfile),
         bankAccounts: u.bankAccounts.map(bankView),

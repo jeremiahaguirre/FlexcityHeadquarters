@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import type { Prisma, Province } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { logError } from '../../lib/log.js';
 import { addDays } from '../../lib/time.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
@@ -469,9 +470,26 @@ export function runInput(run: { departmentId: string | null; periodStart: Date; 
   return { departmentId: run.departmentId, periodStart: start, weeks: Math.round(days / 7), payDate: run.payDate.toISOString().slice(0, 10), kind: run.kind === 'OFF_CYCLE' ? 'OFF_CYCLE' : 'REGULAR', note: run.note ?? null };
 }
 
+/**
+ * The run, locked for the rest of the transaction. Every change of a run's state (recalculate,
+ * approve, void, deposit file, send) takes this lock first and checks the state it finds, so two of
+ * them can't both act on the same run (an approve and a void of the same draft, a void while the
+ * deposit file is being made or sent).
+ */
+export async function lockRun(tx: Tx, runId: string) {
+  await tx.$queryRaw`SELECT id FROM "PayRun" WHERE id = ${runId}::uuid FOR UPDATE`;
+  return tx.payRun.findUnique({ where: { id: runId } });
+}
+
+/** How long a send stays "may still be uploading": well past the connect timeout (20 s) plus any transfer. */
+export const SEND_SETTLE_MS = 15 * 60_000;
+
+/** A transmission to the bank that may have reached it (sent, or being sent). */
+export const bankHasIt = (tx: Tx, runId: string) => tx.payTransmission.findFirst({ where: { payRunId: runId, status: { in: ['SENT', 'SENDING'] } }, select: { id: true, status: true } });
+
 /** A second person checks and releases the run. It's recalculated first so year-to-date figures are current. */
 export async function approveRun(tx: Tx, tenantId: string, runId: string, approverId: string, settings: PayrollSettings) {
-  const run = await tx.payRun.findUnique({ where: { id: runId } });
+  const run = await lockRun(tx, runId);
   if (!run) throw notFound('Pay run');
   if (run.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be approved.');
   if (settings.twoPersonApproval !== false) {
@@ -500,7 +518,7 @@ export async function approveRun(tx: Tx, tenantId: string, runId: string, approv
 
 /** The bank file for an approved run. The same run always gets the same file creation number. */
 export async function depositFile(tx: Tx, tenantId: string, runId: string, settings: PayrollSettings) {
-  const run = await tx.payRun.findUnique({ where: { id: runId } });
+  const run = await lockRun(tx, runId);
   if (!run) throw notFound('Pay run');
   if (run.status !== 'APPROVED' && run.status !== 'PAID') throw conflict('NOT_APPROVED', 'Approve the pay run before creating its deposit file.');
   const missing = (['originatorId', 'originatorShortName', 'originatorLongName', 'destinationDataCentre', 'returnsInstitution', 'returnsTransit', 'returnsAccount'] as const).filter((k) => !settings[k]);
@@ -559,16 +577,24 @@ export function businessDaysUntil(payDate: string, today = new Date().toISOStrin
 /** Builds (and if the bank asks, encrypts) the file to send. Inside a transaction; sends nothing. */
 export async function prepareBankFile(tx: Tx, tenantId: string, runId: string, settings: PayrollSettings) {
   if (!settings.bank) throw conflict('BANK_NOT_CONNECTED', 'Connect your bank in payroll settings first, or download the deposit file.');
-  if (await tx.payTransmission.findFirst({ where: { payRunId: runId, status: 'SENT' } })) throw conflict('ALREADY_SENT', 'This pay run’s deposit file was already sent to the bank. Sending it again could pay people twice.');
+  // Under the run's lock: the file, and the record that it's on its way, before anything is uploaded.
   const f = await depositFile(tx, tenantId, runId, settings);
+  const out = await bankHasIt(tx, runId);
+  if (out) throw conflict('ALREADY_SENT', 'This pay run’s deposit file was already sent to the bank. Sending it again could pay people twice.');
   const run = await tx.payRun.findUniqueOrThrow({ where: { id: runId }, select: { payDate: true } });
   const encrypted = !!settings.bank.pgpPublicKey;
   const base = `FH-PAY-${String(f.fileCreationNumber).padStart(4, '0')}-${run.payDate.toISOString().slice(0, 10).replace(/-/g, '')}.txt`;
   const content = encrypted ? await encryptForBank(f.file, settings.bank.pgpPublicKey!) : Buffer.from(f.file, 'latin1');
-  return { ...f, fileName: encrypted ? `${base}.pgp` : base, content, encrypted, payDate: run.payDate.toISOString().slice(0, 10) };
+  const fileName = encrypted ? `${base}.pgp` : base;
+  const sending = await tx.payTransmission.create({ data: { tenantId, payRunId: runId, sentById: null, method: 'SFTP', fileName, sha256: f.sha256, encrypted, status: 'SENDING', error: null } });
+  return { ...f, fileName, content, encrypted, payDate: run.payDate.toISOString().slice(0, 10), transmissionId: sending.id };
 }
 
-/** Sends a prepared file and records the attempt, sent or failed. */
+/**
+ * Sends a prepared file and records the attempt. FAILED only when the upload itself failed: once the
+ * bank has the file, recording it as sent is retried, and if that still fails the attempt stays
+ * SENDING (no void, no second send) until payroll checks with the bank and resolves it.
+ */
 export async function sendToBank(
   tenantId: string,
   runId: string,
@@ -577,13 +603,24 @@ export async function sendToBank(
   prepared: Awaited<ReturnType<typeof prepareBankFile>>,
   record: (data: { tenantId: string; payRunId: string; sentById: string | null; method: string; fileName: string; sha256: string; encrypted: boolean; status: 'SENT' | 'FAILED'; error: string | null }) => Promise<unknown>,
 ) {
+  const base = { tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted };
   try {
     await uploadToBank(tenantId, settings.bank!, prepared.fileName, prepared.content);
-    await record({ tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted, status: 'SENT', error: null });
-    return { status: 'SENT' as const, fileName: prepared.fileName, deposits: prepared.count, totalCents: prepared.totalCents, late: businessDaysUntil(prepared.payDate) < 2 };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    await record({ tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted, status: 'FAILED', error: message.slice(0, 500) });
+    await record({ ...base, status: 'FAILED', error: message.slice(0, 500) });
     return { status: 'FAILED' as const, fileName: prepared.fileName, error: message };
   }
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await record({ ...base, status: 'SENT', error: null });
+      return { status: 'SENT' as const, fileName: prepared.fileName, deposits: prepared.count, totalCents: prepared.totalCents, late: businessDaysUntil(prepared.payDate) < 2 };
+    } catch (e) {
+      lastError = e;
+      await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+    }
+  }
+  logError('payroll: the bank took the deposit file but it could not be recorded as sent', lastError);
+  return { status: 'SENDING' as const, fileName: prepared.fileName, error: 'The bank took the file, but it couldn’t be recorded as sent. It stays marked “sending”: check with the bank, then resolve it.' };
 }

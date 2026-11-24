@@ -92,4 +92,111 @@ describe('expense and mileage claims', () => {
     expect(mine.claims[0]).toMatchObject({ status: 'PAID', paid: true });
     expect(mine.kmThisYear).toBe(106);
   });
+  it('voiding the run that paid a claim puts it back to approved, so the next run pays it', async () => {
+    const run = await owner.payRun.findFirstOrThrow({ where: { tenantId: t.tenant.id, status: 'APPROVED' } });
+    const v = await as('approver').post(`/api/payroll/runs/${run.id}/void`, { reason: 'Wrong pay date, rebuilding' });
+    expect(v.status).toBe(200);
+    expect(v.body.releasedClaims).toBe(1);
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: claimId } })).toMatchObject({ status: 'APPROVED', payRunId: null });
+    expect((await owner.auditLog.findFirstOrThrow({ where: { action: 'payroll.run.void', entityId: run.id } })).after).toMatchObject({ releasedClaims: [claimId] });
+    const again = await as('prep').post('/api/payroll/runs', { departmentId: null, periodStart: run.periodStart.toISOString().slice(0, 10), weeks: 2, payDate: run.payDate.toISOString().slice(0, 10) });
+    expect(again.status).toBe(201);
+    const st = await owner.payStatement.findFirstOrThrow({ where: { payRunId: again.body.id, userId: guard } });
+    expect((st.deductions as { expenses: Array<{ id: string }> }).expenses.map((e) => e.id)).toEqual([claimId]);
+  });
+
+  it('a run sent to the bank can’t be voided; one whose file was downloaded keeps its claims paid', async () => {
+    const draft = await owner.payRun.findFirstOrThrow({ where: { tenantId: t.tenant.id, status: 'DRAFT' } });
+    expect((await as('approver').post(`/api/payroll/runs/${draft.id}/approve`)).status).toBe(200);
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: claimId } })).status).toBe('PAID');
+    const sent = await owner.payTransmission.create({ data: { tenantId: t.tenant.id, payRunId: draft.id, method: 'SFTP', fileName: 'deposit.txt', sha256: 'x', encrypted: false, status: 'SENT' } });
+    const refused = await as('approver').post(`/api/payroll/runs/${draft.id}/void`, { reason: 'Wrong pay date again' });
+    expect(refused.status).toBe(409);
+    expect(refused.body.code).toBe('RUN_SENT_TO_BANK');
+    expect((await owner.payRun.findUniqueOrThrow({ where: { id: draft.id } })).status).toBe('APPROVED');
+
+    // Only downloaded (it may be at the bank): voided, but the claim stays paid.
+    await owner.payTransmission.delete({ where: { id: sent.id } });
+    await owner.payRun.update({ where: { id: draft.id }, data: { depositFileSha256: 'abc' } });
+    const v = await as('approver').post(`/api/payroll/runs/${draft.id}/void`, { reason: 'Wrong pay date again' });
+    expect(v.status).toBe(200);
+    expect(v.body).toMatchObject({ releasedClaims: 0, claimsKeptPaid: 1 });
+    expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: claimId } })).status).toBe('PAID');
+  });
+
+  /** Holds the run's row locked (as another request part-way through would), runs `meanwhile`, then lets go. */
+  const holdingRun = (runId: string, change: string | null, meanwhile: () => Promise<void>) =>
+    owner.$transaction(
+      async (tx) => {
+        if (change) await tx.$executeRawUnsafe(`UPDATE "PayRun" SET ${change} WHERE id = '${runId}'`);
+        else await tx.$queryRawUnsafe(`SELECT id FROM "PayRun" WHERE id = '${runId}' FOR UPDATE`);
+        await meanwhile();
+      },
+      { timeout: 20_000 },
+    );
+  const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const newRun = async () => {
+    const prior = await owner.payRun.findFirstOrThrow({ where: { tenantId: t.tenant.id }, orderBy: { createdAt: 'asc' } });
+    const r = await as('prep').post('/api/payroll/runs', { departmentId: null, periodStart: prior.periodStart.toISOString().slice(0, 10), weeks: 2, payDate: prior.payDate.toISOString().slice(0, 10) });
+    expect(r.status).toBe(201);
+    return r.body.id as string;
+  };
+
+  it('an approve and a void of the same draft: only the first one counts', async () => {
+    // A claim to pay, on a fresh draft.
+    const c = await owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId: guard, title: 'Parking', status: 'APPROVED', total: 9, decidedAt: new Date(Date.now() - 86_400_000) } });
+    const runId = await newRun();
+    let voiding!: Promise<request.Response>;
+    let approving!: Promise<request.Response>;
+    await holdingRun(runId, null, async () => {
+      voiding = as('approver').post(`/api/payroll/runs/${runId}/void`, { reason: 'Built for the wrong period' }).then((r) => r);
+      await pause(400);
+      approving = as('approver').post(`/api/payroll/runs/${runId}/approve`).then((r) => r);
+      await pause(400);
+    });
+    const [v, a] = await Promise.all([voiding, approving]);
+    expect(v.status).toBe(200);
+    expect(a.status).toBe(409);
+    expect((await owner.payRun.findUniqueOrThrow({ where: { id: runId } })).status).toBe('VOID');
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'APPROVED', payRunId: null });
+  });
+
+  it('a deposit file made while a void waits keeps the claims paid', async () => {
+    await owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId: guard, title: 'Mileage', status: 'APPROVED', total: 14, decidedAt: new Date(Date.now() - 86_400_000) } });
+    const runId = await newRun();
+    expect((await as('approver').post(`/api/payroll/runs/${runId}/approve`)).status).toBe(200);
+    const paid = await owner.expenseClaim.findMany({ where: { payRunId: runId, status: 'PAID' } });
+    expect(paid.length).toBeGreaterThan(0);
+    let voiding!: Promise<request.Response>;
+    // The deposit file is being written (its hash saved) when the void arrives.
+    await holdingRun(runId, `"depositFileSha256" = 'file-out'`, async () => {
+      voiding = as('approver').post(`/api/payroll/runs/${runId}/void`, { reason: 'Wrong pay date again' }).then((r) => r);
+      await pause(400);
+    });
+    const v = await voiding;
+    expect(v.status).toBe(200);
+    expect(v.body).toMatchObject({ releasedClaims: 0, claimsKeptPaid: paid.length });
+    for (const c of paid) expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('PAID');
+  });
+
+  it('a void and a mark-paid of the same approved run: only the first one counts', async () => {
+    const c = await owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId: guard, title: 'Ferry', status: 'APPROVED', total: 21, decidedAt: new Date(Date.now() - 86_400_000) } });
+    const runId = await newRun();
+    expect((await as('approver').post(`/api/payroll/runs/${runId}/approve`)).status).toBe(200);
+    let voiding!: Promise<request.Response>;
+    let marking!: Promise<request.Response>;
+    await holdingRun(runId, null, async () => {
+      voiding = as('approver').post(`/api/payroll/runs/${runId}/void`, { reason: 'Paid the wrong period' }).then((r) => r);
+      await pause(400);
+      marking = as('approver').post(`/api/payroll/runs/${runId}/paid`).then((r) => r);
+      await pause(400);
+    });
+    const [v, m] = await Promise.all([voiding, marking]);
+    expect(v.status).toBe(200);
+    expect(m.status).toBe(409);
+    const run = await owner.payRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(run.status).toBe('VOID');
+    expect(run.paidAt).toBeNull();
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'APPROVED', payRunId: null });
+  });
 });

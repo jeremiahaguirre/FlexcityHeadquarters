@@ -470,7 +470,7 @@
     "NO_PASSKEY": "Aucune clé d’accès sur ce compte.",
     "TOO_MANY_PASSKEYS": "Retirez une clé d’accès avant d’en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d’accès pour ce compte.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien FH.",
+    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "CSRF_REFUSED": "Cette requête ne vient pas de la console Dev. Rechargez la page et réessayez.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d’abord.",
     "ALREADY_ENDED": "Cette séance est déjà terminée.",
@@ -759,7 +759,6 @@
     "SUBDOMAIN_TAKEN": "Une autre organisation utilise déjà cette adresse.",
     "SUPPORT_CODE_INVALID": "Ce lien de soutien est expiré ou a déjà été utilisé.",
     "SUPPORT_ENDED": "Cette visite de soutien est terminée.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "SUPPORT_READ_ONLY": "Le soutien FH peut consulter, mais ne peut rien modifier.",
     "TEXT_ALERTS_OFF": "Votre organisation n’a pas activé les alertes par texto.",
     "TOO_LARGE": "Les fichiers peuvent faire au plus 10 Mo.",
@@ -785,7 +784,17 @@
     "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture.",
     "UNTIL_BEFORE_START": "La dernière année est avant la première date.",
     "NTH_WEEKDAY_FIFTH": "Un cinquième jour de semaine du mois n’existe pas chaque année. Choisissez plutôt « dernier jour de semaine du mois ».",
-    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois."
+    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois.",
+    "RUN_SENT_TO_BANK": "Le fichier de dépôt de cette paie a été envoyé à la banque; elle ne peut donc pas être annulée. Corrigez-la à la prochaine paie.",
+    "RUN_CHANGED": "Cette paie a changé pendant que vous l’annuliez. Ouvrez-la de nouveau.",
+    "RATE_AFTER_END": "Le début doit être au plus tard le dernier jour de ce taux.",
+    "RATE_ORDER": "Cette date de début chevaucherait un autre taux pour ce poste.",
+    "OWN_PAY_RATE": "Vous ne pouvez pas fixer ni modifier votre propre taux de rémunération. Un autre administrateur doit le faire.",
+    "RATE_BELOW_MINIMUM": "Ce taux est inférieur à tout salaire minimum au Canada. Vérifiez le montant.",
+    "PERIOD_PAID": "Ceci est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
+    "BANK_SEND_UNCONFIRMED": "La banque a reçu le fichier, mais l’envoi n’a pas pu être inscrit. Il reste marqué « envoi en cours » : vérifiez auprès de la banque, puis inscrivez sa réponse.",
+    "NOT_SENDING": "Cet envoi a déjà été réglé.",
+    "SEND_IN_PROGRESS": "Ce fichier est peut-être encore en route vers la banque. Vérifiez plus tard."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1333,7 +1342,15 @@
     },
     "phone": "Téléphone",
     "seniorityHours": "Heures d’ancienneté",
-    "seniorityHoursHint": "Utilisées là où l’ancienneté se compte en heures (rondes de soumissions, heures supplémentaires, rappels)."
+    "seniorityHoursHint": "Utilisées là où l’ancienneté se compte en heures (rondes de soumissions, heures supplémentaires, rappels).",
+    "rateCorrected": "Taux corrigé.",
+    "correctInstead": "Le corriger plutôt",
+    "correctRate": "Corriger le taux de {{position}}",
+    "correctRateHelp": "Pour un taux mal saisi. Une augmentation est un nouveau taux. La paie déjà approuvée ou versée à ce taux se corrige plutôt avec un élément ponctuel.",
+    "removeRate": "Retirer ce taux",
+    "rateReasonHint": "Conservée dans le journal d’audit.",
+    "removeRateHelp": "Le taux précédent, s’il y en a un, s’applique à sa place.",
+    "rateRemoved": "Taux retiré."
   },
   "payroll": {
     "title": "Paie",
@@ -1559,8 +1576,18 @@
       "pgpShort": "chiffré PGP",
       "status": {
         "SENT": "Envoyé",
-        "FAILED": "Échec"
-      }
+        "FAILED": "Échec",
+        "SENDING": "Envoi en cours"
+      },
+      "resolve": "Inscrire la réponse de la banque",
+      "resolveHelp": "Ce fichier s’est peut-être rendu à la banque, ou non. Vérifiez d’abord auprès de la banque : l’inscrire comme reçu empêche d’annuler ou de renvoyer la paie; inscrire qu’il n’a pas été reçu permet de l’envoyer de nouveau.",
+      "resolveOutcome": "Réponse de la banque",
+      "resolveSent": "La banque a le fichier",
+      "resolveFailed": "La banque ne l’a pas",
+      "resolveReason": "Comment vous avez vérifié",
+      "resolvePlaceholder": "Appel à la ligne paie de la banque; elle a le fichier 0003",
+      "resolved": "Inscrit.",
+      "stillSending": "Ce fichier est peut-être encore en route vers la banque. Vous pourrez inscrire la réponse de la banque après {{time}}."
     },
     "employerPaid": "Payé par votre employeur : {{list}}",
     "taxableBenefit": "avantage imposable",
@@ -1822,7 +1849,15 @@
       }
     },
     "saveAll": "Enregistrer les paramètres de paie",
-    "saveAllHint": "Enregistre toutes les cartes de cette page, sauf la connexion bancaire."
+    "saveAllHint": "Enregistre toutes les cartes de cette page, sauf la connexion bancaire.",
+    "former": {
+      "show": "Afficher les personnes parties ou mises à pied",
+      "INACTIVE": "mise à pied",
+      "TERMINATED": "partie"
+    },
+    "voidEffects": "Les demandes de remboursement payées par cette paie redeviennent approuvées, pour la prochaine paie. Les éléments ponctuels restent sur la paie annulée : ajoutez-les de nouveau à la nouvelle.",
+    "voidClaimsKept_one": "Son fichier de dépôt a été téléchargé; {{count}} demande de remboursement reste donc payée. Si elle n’a pas été payée, ajoutez-la comme remboursement ponctuel à la prochaine paie.",
+    "voidClaimsKept_other": "Son fichier de dépôt a été téléchargé; {{count}} demandes de remboursement restent donc payées. Si elles n’ont pas été payées, ajoutez-les comme remboursements ponctuels à la prochaine paie."
   },
   "settings": {
     "title": "Paramètres",

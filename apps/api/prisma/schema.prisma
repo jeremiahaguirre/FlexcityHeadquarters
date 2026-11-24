@@ -2722,6 +2722,8 @@ model PayrollTaxTable {
 enum TransmissionStatus {
   SENT
   FAILED
+  /// Being uploaded: recorded before the upload starts, so a void can't slip in while the bank receives it.
+  SENDING
 }
 
 /// Every attempt to send a pay run's deposit file to the city's bank.
