@@ -70,9 +70,10 @@ locals {
 # secret. The shared execution role (API, worker, web, migrations) can't read that secret, so no
 # other task definition can be given UNION_DATABASE_URL; this role can't read the app secret.
 resource "aws_iam_role" "union_execution" {
-  count              = local.union_enabled ? 1 : 0
-  name               = "${local.gname}-union-execution"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+  count                = local.union_enabled ? 1 : 0
+  name                 = "${local.gname}-union-execution"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_assume.json
+  permissions_boundary = local.role_boundary
 }
 
 resource "aws_iam_role_policy_attachment" "union_execution" {
@@ -104,9 +105,10 @@ resource "aws_iam_role_policy" "union_execution_secret" {
 # its records; no other key (not the platform's, not a city's), and it never creates, deletes or
 # re-points one.
 resource "aws_iam_role" "union" {
-  count              = local.union_enabled ? 1 : 0
-  name               = "${local.gname}-union"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+  count                = local.union_enabled ? 1 : 0
+  name                 = "${local.gname}-union"
+  assume_role_policy   = data.aws_iam_policy_document.ecs_assume.json
+  permissions_boundary = local.role_boundary
 }
 
 data "aws_iam_policy_document" "union" {

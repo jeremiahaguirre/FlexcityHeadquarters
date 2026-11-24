@@ -101,3 +101,28 @@ run "union_hub_as_its_own_service" {
     error_message = "The union task has its own execution role (low finding)."
   }
 }
+
+# The deploy pipeline (#58): every role carries the environment's permissions boundary, or the
+# deploy workflow can't create it.
+run "union_roles_carry_the_deploy_boundary" {
+  command = plan
+  variables {
+    union_hub_separate = true
+    github_repository  = "example-org/example-repo"
+  }
+  assert {
+    condition     = alltrue([for b in [aws_iam_role.union_execution[0].permissions_boundary, aws_iam_role.union[0].permissions_boundary] : b == "arn:aws:iam::111122223333:policy/fh-production-ca-central-1-deploy-boundary"])
+    error_message = "The union task and execution roles carry the deploy boundary."
+  }
+}
+
+run "union_roles_without_deployments" {
+  command = plan
+  variables {
+    union_hub_separate = true
+  }
+  assert {
+    condition     = aws_iam_role.union_execution[0].permissions_boundary == null && aws_iam_role.union[0].permissions_boundary == null
+    error_message = "Without github_repository, no boundary is set (as for the other roles)."
+  }
+}
