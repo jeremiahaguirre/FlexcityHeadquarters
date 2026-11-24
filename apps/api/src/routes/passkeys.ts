@@ -4,6 +4,7 @@
  */
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import { Router } from 'express';
+import { notify } from '../services/notifications/notifier.js';
 import { z } from 'zod';
 import { authOf, requireAuth, requireRecentAuth } from '../auth/middleware.js';
 import { epochSeconds, issueRefreshToken, markReauthenticated, signAccessToken, verifyPassword } from '../auth/tokens.js';
@@ -114,9 +115,9 @@ passkeyAuthRouter.post(
     }
     const usedPasskey = !('password' in body);
     const raw = req.cookies?.[COOKIE] as string | undefined;
-    if (raw) await withTenant(a.tenantId, (tx) => markReauthenticated(tx, raw, new Date(), usedPasskey));
-    // A password step-up doesn't lift a passkey requirement; the token keeps it (the refresh row does too).
-    res.json({ accessToken: await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(), mfa: a.mfa || usedPasskey, pkr: a.passkeyRequired }) });
+    if (raw) await withTenant(a.tenantId, (tx) => markReauthenticated(tx, raw, new Date(), usedPasskey, usedPasskey));
+    // A password step-up doesn't settle what single sign-on didn't prove; the token keeps it (so does the refresh row).
+    res.json({ accessToken: await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(), mfa: a.mfa || usedPasskey, ...(!usedPasskey && a.ssoStrength ? { sso: a.ssoStrength } : {}) }) });
   }),
 );
 
@@ -168,13 +169,24 @@ const addPasskey = h(async (req, res) => {
     const created = await tx.passkey.create({
       data: { tenantId: a.tenantId, userId: a.userId, credentialId: r.credentialId, publicKey: r.publicKey, counter: r.counter, transports: r.transports, name: body.name ?? deviceName(req.header('user-agent')) },
     });
-    await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.add', entity: 'User', entityId: a.userId, after: { name: created.name } });
+    await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.add', entity: 'User', entityId: a.userId, after: { name: created.name, ...(a.passkeyRequired ? { afterUnprovenSso: true } : {}) } });
+    // A first passkey added by a session single sign-on didn't prove (WP-38): until HR-issued
+    // enrolment exists (WP-4, WP-9), the person and the HR admins are told, so a stolen IdP sign-in
+    // that enrols its own passkey is seen.
+    if (a.passkeyRequired) {
+      const me = await tx.user.findUniqueOrThrow({ where: { id: a.userId }, select: { firstName: true, lastName: true } });
+      const hr = await tx.user.findMany({ where: { roles: { has: 'HR_ADMIN' }, status: 'ACTIVE', id: { not: a.userId } }, select: { id: true } });
+      await notify(tx, a.tenantId, [
+        { userId: a.userId, type: 'passkey_added_after_sso', link: '/profile' },
+        ...hr.map((h) => ({ userId: h.id, type: 'staff_passkey_added_after_sso', params: { name: `${me.firstName} ${me.lastName}` }, link: `/manage/staff/person?id=${a.userId}` })),
+      ]);
+    }
     return created;
   });
   // Setting up a first passkey with the device's lock counts as the second factor.
   if (a.mfaPending) {
     const raw = req.cookies?.[COOKIE] as string | undefined;
-    if (raw) await withTenant(a.tenantId, (tx) => markReauthenticated(tx, raw, new Date(), true));
+    if (raw) await withTenant(a.tenantId, (tx) => markReauthenticated(tx, raw, new Date(), true, true));
     const accessToken = await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(), mfa: true });
     return void res.status(201).json({ id: p.id, name: p.name, accessToken });
   }

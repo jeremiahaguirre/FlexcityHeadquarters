@@ -1,20 +1,36 @@
 /**
- * Single sign-on counts as the second factor for the passkey-mandatory roles (HR, payroll, managers,
- * city admins: anyone holding a manager- or admin-level permission) only with the identity
- * provider's proof of a phishing-resistant method (ASVS 6.8.4; owner decision 1, 2026-11-17).
- * Otherwise the session must confirm with an FH passkey before anything else, whatever the city's
- * own second-factor settings, and a code by email or text doesn't do. Other staff keep today's rule:
- * any `mfa` amr, or the city's "our provider always requires MFA" switch.
+ * Single sign-on counts as the second factor for the passkey-mandatory roles (anyone holding a
+ * manager- or admin-level permission; decision 1 names admin, HR and payroll, and managers and city
+ * admins are pending D-38) only with the identity provider's proof of a phishing-resistant method
+ * (ASVS 6.8.4). Otherwise the session must confirm with an FH passkey before anything else, whatever
+ * the city's own second-factor settings, and a code by email or text doesn't do. The rule is applied
+ * on every request, so it also catches someone who gains those powers after signing in. Other staff
+ * keep today's rule: any `mfa` amr, or the city's "our provider always requires MFA" switch.
+ * The WebAuthn checks themselves are covered elsewhere; here they're stubbed.
  */
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { createServer, type Server } from 'node:http';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createApp } from '../../src/app.js';
-import { resetLimits } from '../../src/auth/rateLimit.js';
-import { hashPassword, signAccessToken, verifyAccessToken } from '../../src/auth/tokens.js';
-import { app as appDb, owner, seedTenant } from './fixtures.js';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../src/services/auth/passkeys.js', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../src/services/auth/passkeys.js')>();
+  return {
+    ...real,
+    verifyRegistration: async (_rp: unknown, _id: string, _purpose: string, response: { id: string; who: { userId: string } }) => ({ challenge: response.who, credentialId: response.id, publicKey: Buffer.from('test-key'), counter: 0, transports: [] }),
+    verifyAuthentication: async (_rp: unknown, _id: string, _purpose: string, response: { who: { userId: string } }, passkey: unknown) => {
+      if (!passkey) throw new Error('unknown passkey');
+      return { challenge: response.who, newCounter: 1 };
+    },
+  };
+});
+
+const { createApp } = await import('../../src/app.js');
+const { resetLimits } = await import('../../src/auth/rateLimit.js');
+const { hashPassword, signAccessToken, verifyAccessToken } = await import('../../src/auth/tokens.js');
+const { forgetCustomPermissions } = await import('../../src/services/people/customRoles.js');
+const { app: appDb, owner, seedTenant } = await import('./fixtures.js');
 
 process.env.LOCAL_KEK_BASE64 ||= randomBytes(32).toString('base64');
 
@@ -27,7 +43,7 @@ let issuer = '';
 let nextClaims: Record<string, unknown> = {};
 let signingKey: CryptoKey;
 let setup = '';
-const people = { guard: '', hr: '', sup: '', mgr: '' };
+const people = { guard: '', hr: '', sup: '', mgr: '', promo: '', promo2: '', hr2: '' };
 const now = () => Math.floor(Date.now() / 1000);
 
 beforeAll(async () => {
@@ -60,6 +76,9 @@ beforeAll(async () => {
   people.mgr = (await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'FULL_TIME', firstName: 'Max', lastName: 'M', email: `mgr@${SUB}.test` } })).id;
   const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Case manager', permissions: ['discipline.read', 'reliability.read', 'incidents.read'] } });
   await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: people.mgr, customRoleId: role.id } });
+  // Staff who are given more powers after signing in, and a second HR admin for the reactivation case.
+  for (const who of ['promo', 'promo2'] as const) people[who] = (await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['STAFF'], employmentStatus: 'FULL_TIME', firstName: 'Pat', lastName: who, email: `${who}@${SUB}.test` } })).id;
+  people.hr2 = (await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['HR_ADMIN'], employmentStatus: 'FULL_TIME', firstName: 'Hal', lastName: 'Two', email: `hr2@${SUB}.test` } })).id;
   setup = await signAccessToken({ sub: people.hr, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: now(), mfa: true });
   const r = await request(server).put('/api/sso').set('x-tenant-subdomain', SUB).auth(setup, { type: 'bearer' }).send({ protocol: 'OIDC', enabled: true, enforced: false, idpMfa: false, label: 'Entra', domains: [`${SUB}.test`], oidcIssuer: issuer, oidcClientId: CLIENT, oidcSecret: 'secret' });
   expect(r.status).toBe(200);
@@ -70,7 +89,7 @@ afterAll(async () => {
   await owner.$disconnect();
 });
 
-const emailOf = { guard: `guard0@${SUB}.test`, hr: `hr@${SUB}.test`, sup: `sup@${SUB}.test`, mgr: `mgr@${SUB}.test` };
+const emailOf = { guard: `guard0@${SUB}.test`, hr: `hr@${SUB}.test`, sup: `sup@${SUB}.test`, mgr: `mgr@${SUB}.test`, promo: `promo@${SUB}.test`, promo2: `promo2@${SUB}.test`, hr2: `hr2@${SUB}.test` };
 type Who = keyof typeof people;
 const anon = (p: string, cookie = '') => request(server).get(p).set('x-tenant-subdomain', SUB).set('Cookie', cookie);
 const as = (token: string) => ({
@@ -100,10 +119,9 @@ describe('other staff keep today’s rule', () => {
   it('a lifeguard whose provider says mfa gets a second-factor session; without it, a normal one', async () => {
     const strong = await signIn('guard', { amr: ['pwd', 'mfa'] });
     expect(strong.claims.mfa).toBe(true);
-    expect(strong.claims.pkr).toBeUndefined();
+    expect(await blocked(strong.token)).toBe(false);
     const plain = await signIn('guard', { amr: ['pwd'] });
     expect(plain.claims.mfa).toBe(false);
-    expect(plain.claims.pkr).toBeUndefined();
     expect((await as(plain.token).get('/api/me')).status).toBe(200);
   });
 
@@ -132,7 +150,7 @@ describe('passkey-mandatory roles need phishing-resistant proof', () => {
   it('an HR admin whose provider says only mfa (an SMS or OTP factor) gets no second factor and must confirm with a passkey', async () => {
     const s = await signIn('hr', { amr: ['pwd', 'mfa'], auth_time: now() });
     expect(s.claims.mfa).toBe(false);
-    expect(s.claims.pkr).toBe(true);
+    expect(s.claims.sso).toBe('weak');
     // Blocked although the city requires no second factor for HR (Tenant.mfaRoles is empty).
     expect((await owner.tenant.findUniqueOrThrow({ where: { id: t.tenant.id } })).mfaRoles).toEqual([]);
     expect(await blocked(s.token)).toBe(true);
@@ -171,7 +189,7 @@ describe('passkey-mandatory roles need phishing-resistant proof', () => {
     expect((await signIn('mgr', { amr: ['hwk'] })).claims.mfa).toBe(true);
     const weak = await signIn('mgr', { amr: ['pwd', 'mfa'] });
     expect(weak.claims.mfa).toBe(false);
-    expect(weak.claims.pkr).toBe(true);
+    expect(weak.claims.sso).toBe('weak');
     expect((await as(weak.token).get('/api/me')).status).toBe(200);
     expect((await as(weak.token).get('/api/auth/mfa/options')).body).toEqual({ codes: false, channels: [] });
   });
@@ -181,12 +199,12 @@ describe('passkey-mandatory roles need phishing-resistant proof', () => {
     const r = await request(server).post('/api/auth/refresh').set('x-tenant-subdomain', SUB).set('Cookie', s.refresh);
     expect(r.status).toBe(200);
     const refreshed = await verifyAccessToken(r.body.accessToken);
-    expect(refreshed.pkr).toBe(true);
+    expect(refreshed.sso).toBe('weak');
     expect(refreshed.mfa).toBe(false);
     expect(await blocked(r.body.accessToken)).toBe(true);
     const up = await as(r.body.accessToken).post('/api/auth/step-up', { password: 'a long password 12' }).set('Cookie', s.refresh);
     expect(up.status).toBe(200);
-    expect((await verifyAccessToken(up.body.accessToken)).pkr).toBe(true);
+    expect((await verifyAccessToken(up.body.accessToken)).sso).toBe('weak');
     expect(await blocked(up.body.accessToken)).toBe(true);
   });
 
@@ -194,5 +212,57 @@ describe('passkey-mandatory roles need phishing-resistant proof', () => {
     await signIn('hr', { amr: ['pwd', 'mfa'] });
     const row = await owner.auditLog.findFirstOrThrow({ where: { tenantId: t.tenant.id, action: 'auth.sso', actorId: people.hr }, orderBy: { at: 'desc' } });
     expect(row.after).toMatchObject({ mfa: false, passkeyRequired: true, phishingResistant: false });
+  });
+});
+
+describe('the rule follows the person’s powers on every request', () => {
+  it('a staff session whose provider gave only mfa must confirm with a passkey once the person gets a manager-level custom role', async () => {
+    const s = await signIn('promo', { amr: ['pwd', 'mfa'] });
+    expect(s.claims.mfa).toBe(true);
+    expect(await blocked(s.token)).toBe(false);
+    const role = await owner.customRole.create({ data: { tenantId: t.tenant.id, name: 'Records', permissions: ['documents.manage'] } });
+    await owner.userCustomRole.create({ data: { tenantId: t.tenant.id, userId: people.promo, customRoleId: role.id } });
+    forgetCustomPermissions(t.tenant.id);
+    // The very next request, with the same access token.
+    expect(await blocked(s.token)).toBe(true);
+    expect((await as(s.token).get('/api/auth/mfa/options')).body).toEqual({ codes: false, channels: [] });
+  });
+
+  it('and once a built-in role change reaches the session at its next refresh', async () => {
+    const s = await signIn('promo2', { amr: ['pwd', 'mfa'] });
+    expect(s.claims.mfa).toBe(true);
+    await owner.user.update({ where: { id: people.promo2 }, data: { roles: ['HR_ADMIN'] } });
+    const r = await request(server).post('/api/auth/refresh').set('x-tenant-subdomain', SUB).set('Cookie', s.refresh);
+    expect(r.status).toBe(200);
+    expect(await blocked(r.body.accessToken)).toBe(true);
+  });
+
+  it('a passkey clears it: enrolling a first one is audited and the person and the HR admins are told', async () => {
+    const s = await signIn('hr', { amr: ['pwd', 'mfa'] });
+    expect(await blocked(s.token)).toBe(true);
+    const r = await request(server).post('/api/auth/passkeys').set('x-tenant-subdomain', SUB).set('Cookie', s.refresh).auth(s.token, { type: 'bearer' })
+      .send({ challengeId: randomUUID(), response: { id: `cred-${randomBytes(4).toString('hex')}`, who: { userId: people.hr } } });
+    expect(r.status).toBe(201);
+    expect(await blocked(r.body.accessToken)).toBe(false);
+    // And it stays cleared across a reload.
+    const again = await request(server).post('/api/auth/refresh').set('x-tenant-subdomain', SUB).set('Cookie', s.refresh);
+    expect(await blocked(again.body.accessToken)).toBe(false);
+    const row = await owner.auditLog.findFirstOrThrow({ where: { tenantId: t.tenant.id, action: 'passkey.add', actorId: people.hr }, orderBy: { at: 'desc' } });
+    expect(row.after).toMatchObject({ afterUnprovenSso: true });
+    const told = await owner.notification.findMany({ where: { tenantId: t.tenant.id, type: { in: ['passkey_added_after_sso', 'staff_passkey_added_after_sso'] } } });
+    expect(told.find((n) => n.userId === people.hr && n.type === 'passkey_added_after_sso')).toBeTruthy();
+    // Every other HR admin hears about it (people.hr2 and promo2, who is now HR).
+    expect(told.filter((n) => n.type === 'staff_passkey_added_after_sso').map((n) => n.userId).sort()).toEqual([people.hr2, people.promo2].sort());
+  });
+
+  it('a sign-in in the 30 seconds after an HR admin is reactivated fails closed', async () => {
+    await owner.user.update({ where: { id: people.hr2 }, data: { status: 'INACTIVE' } });
+    const old = await signAccessToken({ sub: people.hr2, tid: t.tenant.id, roles: ['HR_ADMIN'], aat: now() });
+    expect((await as(old).get('/api/me')).status).toBe(401); // the "no longer active" answer is now cached
+    await owner.user.update({ where: { id: people.hr2 }, data: { status: 'ACTIVE' } });
+    const s = await signIn('hr2', { amr: ['pwd', 'mfa'] });
+    expect(s.claims.mfa).toBe(false);
+    const row = await owner.auditLog.findFirstOrThrow({ where: { tenantId: t.tenant.id, action: 'auth.sso', actorId: people.hr2 }, orderBy: { at: 'desc' } });
+    expect(row.after).toMatchObject({ mfa: false });
   });
 });

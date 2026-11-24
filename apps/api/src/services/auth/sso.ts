@@ -25,7 +25,8 @@ import { assertPublicUrl, publicRequest } from '../../lib/egress.js';
 import { safeNext } from '../../lib/safeNext.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
-import { accessOf, isAdminLevel, needsPasskey } from '../../auth/middleware.js';
+import { ADMIN_LEVEL, accessOf, needsPasskey, ssoNeedsPasskey } from '../../auth/middleware.js';
+import type { SsoStrength } from '../../auth/tokens.js';
 
 export const STATE_COOKIE = 'fc_sso';
 const STATE_TTL_S = 10 * 60;
@@ -248,21 +249,29 @@ export interface SsoProof {
   authTime?: number;
 }
 
+/** What the provider proved, as the session keeps it: weak, phishing-resistant, or that within 15 minutes. */
+export function ssoStrengthOf(proof: SsoProof, now = Math.floor(Date.now() / 1000)): SsoStrength {
+  if (!proof.phishingResistant) return 'weak';
+  const fresh = proof.authTime !== undefined && now - proof.authTime <= ADMIN_AUTH_MAX_AGE_S && proof.authTime <= now + 60;
+  return fresh ? 'phr_fresh' : 'phr';
+}
+
 /**
- * Whether a single sign-on gives the session its second factor (ASVS 6.8.4; owner decision 1).
- * - Roles that need a passkey (HR, payroll, managers, admins: needsPasskey): only with proof of a
- *   phishing-resistant method, and for admin-level powers a provider sign-in at most 15 minutes old.
- *   The city's "our provider always requires MFA" switch and a plain `mfa` amr never count. Without
- *   the proof the session owes a passkey (passkeyRequired), whatever the city's own settings.
+ * Whether a single sign-on gives the session its second factor (ASVS 6.8.4; decision 1).
+ * - Roles that need a passkey (needsPasskey): only with proof of a phishing-resistant method, and for
+ *   admin-level powers a provider sign-in at most 15 minutes old. The city's "our provider always
+ *   requires MFA" switch and a plain `mfa` amr never count. Without the proof the session owes a
+ *   passkey (passkeyRequired), whatever the city's own settings.
  * - Everyone else: as before, any second factor the provider reports, or the city's switch.
+ * The strength goes with the session, and requireAuth applies the same rule on every request
+ * (ssoNeedsPasskey), so powers given after sign-in are covered too.
  */
-export function ssoSecondFactor(proof: SsoProof, opts: { idpMfa: boolean; permissions: Iterable<string>; now?: number }): { mfa: boolean; passkeyRequired: boolean } {
+export function ssoSecondFactor(proof: SsoProof, opts: { idpMfa: boolean; permissions: Iterable<string>; now?: number }): { mfa: boolean; passkeyRequired: boolean; strength: SsoStrength } {
   const perms = [...opts.permissions];
-  if (!needsPasskey(perms)) return { mfa: proof.mfa || opts.idpMfa, passkeyRequired: false };
-  const now = opts.now ?? Math.floor(Date.now() / 1000);
-  const fresh = !isAdminLevel(perms) || (proof.authTime !== undefined && now - proof.authTime <= ADMIN_AUTH_MAX_AGE_S && proof.authTime <= now + 60);
-  const mfa = proof.phishingResistant && fresh;
-  return { mfa, passkeyRequired: !mfa };
+  const strength = ssoStrengthOf(proof, opts.now);
+  if (!needsPasskey(perms)) return { mfa: proof.mfa || opts.idpMfa, passkeyRequired: false, strength };
+  const mfa = !ssoNeedsPasskey(strength, perms);
+  return { mfa, passkeyRequired: !mfa, strength };
 }
 
 /* ---------------- SAML 2.0 ---------------- */
@@ -369,16 +378,18 @@ export async function finishSso(tenantId: string, sub: string, p: State['p'], ra
   // What this person may do decides how much the provider's proof has to show.
   const pre = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { tenantId_email: { tenantId, email } }, select: { id: true, roles: true } }));
   const access = pre ? await accessOf(tenantId, pre.id, pre.roles) : null;
-  const factor = ssoSecondFactor(who, { idpMfa: c.idpMfa, permissions: access?.permissions ?? [] });
+  // Access that can't be read (accessOf's cached "not active" right after a reactivation) is treated
+  // as admin-level: fail closed, never the staff rule.
+  const factor = ssoSecondFactor(who, { idpMfa: c.idpMfa, permissions: access?.permissions ?? ADMIN_LEVEL });
   const out: { code: string } | { refused: string; userId: string | null } = await withTenant(tenantId, async (tx) => {
     const user = await tx.user.findUnique({ where: { tenantId_email: { tenantId, email } } });
     if (!user || user.status !== 'ACTIVE' || user.processingRestrictedAt) return { refused: 'SSO_NO_ACCOUNT', userId: user?.id ?? null };
     if (user.ssoSubject && user.ssoSubject !== who.subject) return { refused: 'SSO_SUBJECT_CHANGED', userId: user.id };
     if (!user.ssoSubject) await tx.user.update({ where: { id: user.id }, data: { ssoSubject: who.subject } });
     await tx.ssoConnection.update({ where: { id: c.id }, data: { lastUsedAt: new Date() } });
-    const { mfa, passkeyRequired } = factor;
-    await audit(tx, { tenantId, actorId: user.id, action: 'auth.sso', entity: 'SsoConnection', entityId: c.id, after: { protocol: p, mfa, passkeyRequired, phishingResistant: who.phishingResistant } });
-    return { code: await issueAuthToken(tx, tenantId, user.id, mfa ? 'SSO_MFA' : passkeyRequired ? 'SSO_PASSKEY' : 'SSO') };
+    const { mfa, passkeyRequired, strength } = factor;
+    await audit(tx, { tenantId, actorId: user.id, action: 'auth.sso', entity: 'SsoConnection', entityId: c.id, after: { protocol: p, mfa, passkeyRequired, phishingResistant: who.phishingResistant, strength } });
+    return { code: await issueAuthToken(tx, tenantId, user.id, mfa ? 'SSO_MFA' : 'SSO', { ssoStrength: strength }) };
   });
   if ('code' in out) return { code: out.code, next: safeNext(st.nx) };
   await withTenant(tenantId, (tx) => audit(tx, { tenantId, actorId: out.userId, action: 'auth.sso.refused', entity: 'SsoConnection', entityId: c.id, after: { code: out.refused, protocol: p } }));

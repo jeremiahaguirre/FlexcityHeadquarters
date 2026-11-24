@@ -140,6 +140,6 @@ mfaCodeRouter.post(
       if (out.code === 'MFA_CODE_LOCKED') throw new HttpError(400, out.code, 'Too many wrong tries for this code. Ask for a new one.');
       throw new HttpError(400, out.code, 'This code has expired or was already used. Ask for a new one.');
     }
-    res.json({ accessToken: await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(now), mfa: true }) });
+    res.json({ accessToken: await signAccessToken({ sub: a.userId, tid: a.tenantId, roles: a.roles, aat: epochSeconds(now), mfa: true, ...(a.ssoStrength ? { sso: a.ssoStrength } : {}) }) });
   }),
 );

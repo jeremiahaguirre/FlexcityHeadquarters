@@ -308,6 +308,8 @@
     "front_desk_page": "Front desk: {{message}}",
     "welcome": "Welcome to FlexcityHeadquarters.",
     "password_changed": "Your password was changed.",
+    "passkey_added_after_sso": "A passkey was added to your account right after a single sign-on that didn’t prove a phishing-resistant method. If it wasn’t you, tell HR now.",
+    "staff_passkey_added_after_sso": "{{name}} added a first passkey right after a single sign-on that didn’t prove a phishing-resistant method. Check that it was them.",
     "discipline_issued": "A record was added to your file. Please read and sign it.",
     "cert_expiring": "Your {{certification}} expires in {{days}} days. Renew it to keep getting shifts.",
     "staff_cert_expiring": "{{name}}’s {{certification}} expires in {{days}} days.",
