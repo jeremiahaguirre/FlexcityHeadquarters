@@ -606,6 +606,7 @@
     "SHIFT_TOO_LONG": "Un quart peut durer au plus {{maxHours}} heures.",
     "TITLE_REQUIRED": "Donnez un titre à ce quart.",
     "STATION_UNKNOWN": "Un poste de surveillance ne fait pas partie de cette plage.",
+    "POOL_BODY_UNKNOWN": "Ce bassin ne fait pas partie de cette installation. Choisissez l’un de ses propres bassins.",
     "STATION_TWICE": "Une personne est à deux postes de surveillance en même temps.",
     "POOL_DEPTH": "La partie peu profonde ne doit pas être plus profonde que la partie profonde.",
     "READING_INVALID": "Cette lecture semble erronée. Vérifiez-la et réessayez.",
