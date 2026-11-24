@@ -104,9 +104,10 @@ data "aws_iam_policy_document" "replication_assume" {
 }
 
 resource "aws_iam_role" "replication" {
-  count              = var.recovery_mode ? 0 : 1
-  name               = "${local.gname}-s3-replication"
-  assume_role_policy = data.aws_iam_policy_document.replication_assume[0].json
+  count                = var.recovery_mode ? 0 : 1
+  name                 = "${local.gname}-s3-replication"
+  assume_role_policy   = data.aws_iam_policy_document.replication_assume[0].json
+  permissions_boundary = local.role_boundary
 }
 
 data "aws_iam_policy_document" "replication" {

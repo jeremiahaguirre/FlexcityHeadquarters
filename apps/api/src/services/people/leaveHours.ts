@@ -7,7 +7,9 @@
  * (8 hours) for each weekday the request spans, or its length if shorter than a day.
  */
 import { DateTime } from 'luxon';
+import type { Province } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
+import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 
 export const HOURS_PER_DAY = 8;
 const r2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -111,8 +113,10 @@ export async function orgTimeZone(tx: Tx): Promise<string> {
 
 /**
  * Read-only, for payroll to review: approved requests charged by weekdays whose count differs
- * from the current rule (hours charged before weekdays were counted in local time). Each is
- * recounted in the zone it was counted in when it was decided. Nothing is changed here.
+ * from the current rule (hours charged before weekdays were counted in local time, or before
+ * holidays were left out). Each is recounted as charging works now (leaveHoursOff): in the zone it
+ * was counted in when it was decided, with the holidays of the person's province then and the
+ * organization's own. Nothing is changed here.
  */
 export async function weekdayRecount(tx: Tx) {
   const reqs = await tx.timeOffRequest.findMany({
@@ -120,15 +124,98 @@ export async function weekdayRecount(tx: Tx) {
     select: { id: true, userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true, decidedAt: true },
     orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
   });
-  const zoneOf = await leaveTimeZones(tx, reqs.map((r) => ({ userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt })));
+  const asked = reqs.map((r) => ({ userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt }));
+  const [zoneOf, provinceOf] = await Promise.all([leaveTimeZones(tx, asked), leaveProvinces(tx, asked)]);
   const out = [];
   for (const r of reqs) {
-    const timeZone = zoneOf({ userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt });
-    const recount = weekdayLeaveHours(r.startsAt, r.endsAt, timeZone);
+    const asked = { userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt };
+    const timeZone = zoneOf(asked);
+    const recount = leaveHoursOff(r, [], timeZone, await leaveDaysOff(tx, provinceOf(asked), r.startsAt, r.endsAt)).hours;
     const charged = Number(r.chargedHours);
     if (Math.abs(recount - charged) > 0.001) out.push({ id: r.id, userId: r.userId, type: r.type, startsAt: r.startsAt, endsAt: r.endsAt, charged, recount, timeZone });
   }
   return out;
+}
+
+/**
+ * How many of the weekday-fallback days of a request are holidays (`daysOff`, YYYY-MM-DD), each
+ * day read the same way as weekdayLeaveHours: in the local calendar of `timeZone`, the local day
+ * its middle falls on; a request shorter than a local day is its start's local day.
+ */
+export function holidayWeekdays(startsAt: Date, endsAt: Date, daysOff: ReadonlySet<string>, timeZone: string): number {
+  if (endsAt <= startsAt || !daysOff.size) return 0;
+  const first = DateTime.fromJSDate(startsAt, { zone: timeZone });
+  const length = DateTime.fromJSDate(endsAt, { zone: timeZone }).diff(first, 'days').days;
+  const days = length < 1 ? [first] : Array.from({ length: Math.round(length) }, (_, i) => first.plus({ days: i }).plus({ hours: 12 }));
+  return days.filter((d) => d.weekday <= 5 && daysOff.has(d.toISODate()!)).length;
+}
+
+/**
+ * leaveHoursFrom, without the holidays the person is off for: when nothing is scheduled, a
+ * statutory holiday, a city-added holiday or a closure day inside the request isn't charged.
+ * (Scheduled shifts are charged as they are: someone scheduled on a holiday who takes it off uses leave.)
+ */
+export function leaveHoursOff(request: Interval, shifts: Interval[], timeZone: string, daysOff: ReadonlySet<string>): { hours: number; basis: LeaveBasis } {
+  const r = leaveHoursFrom(request, shifts, timeZone);
+  if (r.basis !== 'WEEKDAYS' || !daysOff.size) return r;
+  const off = holidayWeekdays(request.startsAt, request.endsAt, daysOff, timeZone);
+  if (!off) return r;
+  const length = DateTime.fromJSDate(request.endsAt, { zone: timeZone }).diff(DateTime.fromJSDate(request.startsAt, { zone: timeZone }), 'days').days;
+  return { hours: length < 1 ? 0 : Math.max(0, r.hours - off * HOURS_PER_DAY), basis: r.basis };
+}
+
+/**
+ * The province whose holidays each request is counted with: the province of the facility its zone
+ * comes from (leaveTimeZones: the person's main facility at that moment, by approved punch hours in
+ * the 90 days before), else the organization's oldest facility's; null with no facility at all.
+ */
+export async function leaveProvinces(tx: Tx, requests: readonly ZoneOf[]): Promise<(r: ZoneOf) => Province | null> {
+  const now = new Date();
+  const moment = (r: ZoneOf) => Math.min(r.startsAt.getTime(), (r.asOf ?? now).getTime());
+  const key = (userId: string, at: number) => `${userId}|${at}`;
+  const asked = new Map(requests.map((r) => [key(r.userId, moment(r)), { userId: r.userId, at: moment(r) }]));
+  const provinces = new Map<string, Province | null>();
+  if (asked.size) {
+    const qs = [...asked.values()];
+    const rows = await tx.$queryRaw<Array<{ userId: string; at: Date; province: Province }>>`
+      SELECT q."userId"::text AS "userId", q.at, z.province
+      FROM unnest(${qs.map((q) => q.userId)}::uuid[], ${qs.map((q) => new Date(q.at).toISOString())}::timestamptz[]) AS q("userId", at)
+      CROSS JOIN LATERAL (
+        SELECT f.province FROM "TimePunch" p JOIN "Facility" f ON f.id = p."facilityId"
+        WHERE p."userId" = q."userId" AND p.status = 'APPROVED'
+          AND p."clockIn" < q.at AND p."clockIn" > q.at - make_interval(days => ${LOOKBACK_DAYS + LONGEST_PUNCH_DAYS}::int)
+          AND p."clockOut" > q.at - make_interval(days => ${LOOKBACK_DAYS}::int)
+        GROUP BY f.id
+        ORDER BY sum(p."clockOut" - p."clockIn") DESC, f.id
+        LIMIT 1
+      ) z`;
+    for (const r of rows) provinces.set(key(r.userId, r.at.getTime()), r.province);
+    if (provinces.size < asked.size) {
+      const org = (await tx.facility.findFirst({ orderBy: [{ createdAt: 'asc' }, { id: 'asc' }], select: { province: true } }))?.province ?? null;
+      for (const k of asked.keys()) if (!provinces.has(k)) provinces.set(k, org);
+    }
+  }
+  return (r) => provinces.get(key(r.userId, moment(r))) ?? null;
+}
+
+/**
+ * The days off for holidays in a province over a period, for leave: each holiday's statutory day
+ * and the day the organization observes it, and the organization's own paid holidays and closure
+ * days (TenantHoliday).
+ */
+export async function leaveDaysOff(tx: Tx, province: Province | null, from: Date, to: Date): Promise<Set<string>> {
+  if (!province) return new Set();
+  const t = await tx.tenant.findFirst({ select: { holidayObservance: true } });
+  if (!t) return new Set();
+  const a = new Date(from.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const b = new Date(to.getTime() + 86_400_000).toISOString().slice(0, 10);
+  return new Set((await holidaysTouching(tx, province, a, b)).flatMap((h) => [statutoryDay(h), organizationDay(h, t.holidayObservance)]));
+}
+
+/** One request's holiday days off (its province as leaveProvinces finds it). */
+export async function personLeaveDaysOff(tx: Tx, userId: string, startsAt: Date, endsAt: Date): Promise<Set<string>> {
+  const r = { userId, startsAt };
+  return leaveDaysOff(tx, (await leaveProvinces(tx, [r]))(r), startsAt, endsAt);
 }
 
 /** The person's scheduled shifts overlapping a period (cancelled ones don't count). */
