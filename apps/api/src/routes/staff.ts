@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { consentRequired } from './consent.js';
 import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
-import { type AuthContext, accessOf, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { type AuthContext, accessOf, assertWholeOrganization, authOf, holdsForWholeOrganization, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
@@ -429,12 +429,16 @@ staffRouter.get(
 const limited = (a: AuthContext) => !!a.scope && (a.scope.positionIds.length > 0 || a.scope.facilityIds.length > 0);
 
 /**
- * A supervisor limited to some departments changes only their own departments' positions: the
- * position must be one of theirs, and a new or moved position must land in one of their
- * departments. (A position's department decides whose staff a department supervisor sees.)
+ * Who holds positions.manage for the whole organization (a built-in role or a custom role with no
+ * limit) changes any position. A supervisor limited to some departments changes only their own
+ * departments' positions: the position must be one of theirs, and a new or moved position must land
+ * in one of their departments. (A position's department decides whose staff a department supervisor
+ * sees.) Anyone else, such as a lead whose positions.manage comes only from a facility-limited role
+ * in an organization without departments, is refused.
  */
 async function assertPositionChangeInScope(tx: Tx, a: AuthContext, id: string | null, departmentId: string | null | undefined) {
-  if (!limited(a)) return;
+  if (holdsForWholeOrganization(a, 'positions.manage')) return;
+  if (!limited(a)) assertWholeOrganization(a, 'positions.manage');
   // Limited to facilities only: no positions of their own to change.
   const mine = a.scope!.positionIds;
   if (!mine.length) throw forbidden('Positions are changed by HR, or by a supervisor of their department.');
