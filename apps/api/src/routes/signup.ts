@@ -276,7 +276,7 @@ publicSignupRouter.post(
       if (service.maxPartySize && b.partySize && b.partySize > service.maxPartySize) throw new HttpError(400, 'PARTY_TOO_BIG', `This booking is for up to ${service.maxPartySize} people.`);
       const ref = reference('B');
       const r = await tx.bookingRequest.create({
-        data: { tenantId: req.tenantId!, serviceId: service.id, startsAt: slot.startsAt, endsAt: slot.endsAt, partySize: b.partySize ?? null, name: b.contact.name, email: b.contact.email.toLowerCase(), phone: b.contact.phone, organization: b.organization || null, notes: b.notes || null, reference: ref },
+        data: { tenantId: req.tenantId!, serviceId: service.id, startsAt: slot.startsAt, endsAt: slot.endsAt, partySize: b.partySize ?? null, name: b.contact.name, email: b.contact.email.toLowerCase(), phone: b.contact.phone, organization: b.organization || null, notes: b.notes || null, reference: ref, locale: b.locale },
       });
       const when = DateTime.fromJSDate(slot.startsAt, { zone: timezone }).setLocale(b.locale).toLocaleString(DateTime.DATETIME_MED);
       const name = b.locale === 'fr-CA' && service.nameFr ? service.nameFr : service.name;
@@ -412,8 +412,10 @@ signupRouter.post(
       await tx.bookingRequest.update({ where: { id: r.id }, data: { status: b.decision, decidedById: a.userId, decidedAt: new Date(), decisionNote: b.note || null } });
       const v = await tx.bookableService.findUniqueOrThrow({ where: { id: r.serviceId } });
       const f = await tx.facility.findUniqueOrThrow({ where: { id: v.facilityId }, select: { timezone: true } });
-      const when = DateTime.fromJSDate(r.startsAt, { zone: f.timezone }).setLocale('en-CA').toLocaleString(DateTime.DATETIME_MED);
-      await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: r.email, template: 'booking_decided', locale: 'en-CA', params: { service: v.name, when, reference: r.reference, confirmed: b.decision === 'CONFIRMED', note: b.note } } });
+      // In the language they booked in: the date, the service's name and the message.
+      const fr = r.locale === 'fr-CA';
+      const when = DateTime.fromJSDate(r.startsAt, { zone: f.timezone }).setLocale(r.locale).toLocaleString(DateTime.DATETIME_MED);
+      await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: r.email, template: 'booking_decided', locale: r.locale, params: { service: fr && v.nameFr ? v.nameFr : v.name, when, reference: r.reference, confirmed: b.decision === 'CONFIRMED', note: b.note } } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: `booking.${b.decision.toLowerCase()}`, entity: 'BookingRequest', entityId: r.id });
     });
     res.json({ ok: true });

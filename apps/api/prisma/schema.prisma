@@ -2451,6 +2451,8 @@ model BookingRequest {
   decidedById  String?       @db.Uuid
   decidedAt    DateTime?     @db.Timestamptz(3)
   decisionNote String?
+  /// The language the resident booked in (en-CA or fr-CA): the answer is emailed in it.
+  locale       String        @default("en-CA")
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, serviceId, startsAt])
