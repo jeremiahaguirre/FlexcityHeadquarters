@@ -3,7 +3,8 @@
  * nothing the second time, so overlapping or retried runs are safe.
  */
 import type { Tx } from '../../lib/db.js';
-import { notify, usersWithRoles } from '../notifications/notifier.js';
+import type { Permission } from '../../auth/permissions.js';
+import { type Holder, notify, permissionHolders, reaching } from '../notifications/notifier.js';
 import { anonymizeUser } from '../privacy/erasure.js';
 import { loadScoreInputs, reliabilityPolicy, scoreOf } from '../reliability/load.js';
 import { reviewList } from '../people/reviewList.js';
@@ -59,21 +60,36 @@ export async function detectNoShows(tx: Tx, now = new Date()): Promise<number> {
 }
 
 /**
- * Flags people for review when their facts cross a threshold, and tells HR and
- * supervisors once (not every night). Clears the flag when things improve.
+ * The holders of a permission in each organization a job touches, looked up once per run
+ * (permissionHolders: switched-off features and department scope included).
+ */
+function holdersCache(tx: Tx, permission: Permission) {
+  const seen = new Map<string, Promise<Holder[]>>();
+  return (tenantId: string) => {
+    let h = seen.get(tenantId);
+    if (!h) seen.set(tenantId, (h = permissionHolders(tx, tenantId, permission)));
+    return h;
+  };
+}
+
+/**
+ * Flags people for review when their facts cross a threshold, and tells whoever reads reliability
+ * for that person (HR, and supervisors whose departments include them) once, not every night.
+ * Clears the flag when things improve.
  */
 export async function flagForReview(tx: Tx, now = new Date()): Promise<number> {
   const rows = await reviewList(tx, now);
-  const reviewers = await usersWithRoles(tx, ['HR_ADMIN', 'AQUATIC_SUPERVISOR']);
+  const reviewers = holdersCache(tx, 'reliability.read');
   let flagged = 0;
   for (const r of rows) {
     const substantive = r.review.flags.some((f) => f.code !== 'UNSIGNED_RECORD');
     if (substantive && !r.flaggedSince) {
       await tx.user.update({ where: { id: r.id }, data: { reviewFlaggedAt: now } });
+      const to = await reaching(tx, await reviewers(r.tenantId), { userId: r.id });
       await notify(
         tx,
         r.tenantId,
-        reviewers.filter((id) => id !== r.id).map((userId) => ({ userId, type: 'review_needed', params: { name: r.name }, link: `/manage/staff/person?id=${r.id}` })),
+        to.filter((id) => id !== r.id).map((userId) => ({ userId, type: 'review_needed', params: { name: r.name }, link: `/manage/staff/person?id=${r.id}` })),
       );
       flagged++;
     } else if (!substantive && r.flaggedSince) {
@@ -84,18 +100,18 @@ export async function flagForReview(tx: Tx, now = new Date()): Promise<number> {
 }
 
 /**
- * Every minute: tell the head guards and supervisors on duty at that facility
- * (or all supervisors if none is clocked in) when a rotation is overdue, and
- * the guard on the chair. Once per rotation.
+ * Every minute: when a rotation is overdue, tell whoever runs the deck (deck.rotate) and is clocked
+ * in at that facility, or, if none is, everyone who runs the deck there; and the guard on the
+ * chair. Once per rotation.
  */
 export async function rotationAlerts(tx: Tx, now = new Date()): Promise<number> {
   const due = await overdueRotations(tx, now);
+  const runners = holdersCache(tx, 'deck.rotate');
   for (const log of due) {
-    const leads = await tx.timePunch.findMany({
-      where: { facilityId: log.facilityId, clockOut: null, user: { roles: { hasSome: ['HEAD_LIFEGUARD', 'AQUATIC_SUPERVISOR'] } } },
-      select: { userId: true },
-    });
-    const to = leads.length ? leads.map((l) => l.userId) : await usersWithRoles(tx, ['AQUATIC_SUPERVISOR']);
+    const atFacility = await reaching(tx, await runners(log.tenantId), { facilityId: log.facilityId });
+    const clockedIn = new Set((await tx.timePunch.findMany({ where: { facilityId: log.facilityId, clockOut: null }, select: { userId: true } })).map((p) => p.userId));
+    const onDuty = atFacility.filter((id) => clockedIn.has(id));
+    const to = onDuty.length ? onDuty : atFacility;
     const station = log.stationId ? await tx.deckStation.findUnique({ where: { id: log.stationId }, select: { name: true } }) : null;
     await notify(tx, log.tenantId, [...new Set([...to, log.userId])].map((userId) => ({ userId, type: 'rotation_overdue', params: { station: station?.name ?? '' }, link: '/deck' })));
     await tx.rotationLog.update({ where: { id: log.id }, data: { overdueNotifiedAt: now } });
@@ -113,7 +129,7 @@ export async function onboardingReminders(tx: Tx, now = new Date()): Promise<num
   });
   // Only the latest record per person and item (an older one may already be renewed).
   const seen = new Set<string>();
-  const hr = await usersWithRoles(tx, ['HR_ADMIN']);
+  const hrHolders = holdersCache(tx, 'onboarding.hr');
   let sent = 0;
   for (const r of due) {
     const k = `${r.userId}|${r.itemId}`;
@@ -122,6 +138,7 @@ export async function onboardingReminders(tx: Tx, now = new Date()): Promise<num
     const newer = await tx.onboardingRecord.findFirst({ where: { userId: r.userId, itemId: r.itemId, recordedAt: { gt: r.recordedAt } }, select: { id: true } });
     if (newer || r.item.archivedAt) continue;
     const params = { item: r.item.name, date: r.expiresOn!.toISOString().slice(0, 10), name: `${r.user.firstName} ${r.user.lastName}` };
+    const hr = await reaching(tx, await hrHolders(r.tenantId), { userId: r.userId });
     await notify(tx, r.tenantId, [{ userId: r.userId, type: 'onboarding_expiring', params, link: '/profile' }, ...hr.map((userId) => ({ userId, type: 'staff_onboarding_expiring', params, link: `/manage/onboarding?user=${r.userId}` }))]);
     await tx.onboardingRecord.update({ where: { id: r.id }, data: { reminderSentAt: now } });
     sent++;
@@ -135,8 +152,9 @@ export async function accommodationReviews(tx: Tx, now = new Date()): Promise<nu
     where: { status: 'ACTIVE', reviewNotifiedAt: null, reviewOn: { not: null, lte: new Date(now.getTime() + 7 * 86_400_000) } },
     include: { user: { select: { firstName: true, lastName: true } } },
   });
-  const hr = await usersWithRoles(tx, ['HR_ADMIN']);
+  const hrHolders = holdersCache(tx, 'accommodation.manage');
   for (const c of due) {
+    const hr = await reaching(tx, await hrHolders(c.tenantId), { userId: c.userId });
     await notify(tx, c.tenantId, hr.map((userId) => ({ userId, type: 'accommodation_review', params: { name: `${c.user.firstName} ${c.user.lastName}`, date: c.reviewOn!.toISOString().slice(0, 10) }, link: `/manage/staff/person?id=${c.userId}` })));
     await tx.accommodationCase.update({ where: { id: c.id }, data: { reviewNotifiedAt: now } });
   }
@@ -145,10 +163,10 @@ export async function accommodationReviews(tx: Tx, now = new Date()): Promise<nu
 
 export const REMINDER_DAYS = [90, 60, 30, 7] as const;
 
-/** Certification reminders at 90/60/30/7 days; supervisors hear at 30 and 7. */
+/** Certification reminders at 90/60/30/7 days; whoever verifies that person's certificates hears at 30 and 7. */
 export async function certificationReminders(tx: Tx, now = new Date()): Promise<number> {
   let sent = 0;
-  const supervisors = await usersWithRoles(tx, ['AQUATIC_SUPERVISOR']);
+  const verifiers = holdersCache(tx, 'certs.verify');
   for (const days of REMINDER_DAYS) {
     const target = isoDay(new Date(now.getTime() + days * 86_400_000));
     const certs = await tx.userCertification.findMany({
@@ -159,6 +177,7 @@ export async function certificationReminders(tx: Tx, now = new Date()): Promise<
       const already = await tx.notification.findFirst({ where: { userId: c.userId, type: 'cert_expiring', params: { equals: { userCertificationId: c.id, days, certification: c.certification.name, expiryDate: target } } } });
       if (already) continue;
       const params = { userCertificationId: c.id, days, certification: c.certification.name, expiryDate: target };
+      const supervisors = days <= 30 ? (await reaching(tx, await verifiers(c.tenantId), { userId: c.userId })).filter((id) => id !== c.userId) : [];
       await notify(tx, c.tenantId, [
         { userId: c.userId, type: 'cert_expiring', params, link: '/profile', email: 'cert_expiring' },
         ...(days <= 30

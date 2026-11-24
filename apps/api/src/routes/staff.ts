@@ -159,7 +159,7 @@ const checkCertDates = (b: { issueDate: string; expiryDate: string | null }) => 
  */
 async function certVerifiers(tx: Tx, tenantId: string, subjectId: string): Promise<string[]> {
   const out: string[] = [];
-  for (const id of await usersWithPermission(tx, tenantId, 'certs.verify', [subjectId])) {
+  for (const id of await usersWithPermission(tx, tenantId, 'certs.verify', [subjectId], { userId: subjectId })) {
     const u = await tx.user.findUnique({ where: { id }, select: { roles: true } });
     const access = u ? await accessOf(tenantId, id, u.roles) : null;
     if (access?.permissions.has('certs.verify') && (await userInScope(tx, access.scope, subjectId))) out.push(id);

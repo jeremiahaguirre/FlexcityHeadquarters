@@ -12,7 +12,7 @@ import type { MaintenanceWindow, PrismaClient } from '../../generated/prisma/cli
 import { z } from 'zod';
 import { type Tx, db, tenantIds as allTenantIds, withTenant } from '../../lib/db.js';
 import { announceChange } from '../../lib/changes.js';
-import { notify, usersWithRoles } from '../notifications/notifier.js';
+import { notify, organizationAdmins } from '../notifications/notifier.js';
 import { cleanText } from './releaseNotes.js';
 
 const HOUR = 3_600_000;
@@ -79,7 +79,7 @@ export function windowText(w: Pick<MaintenanceWindow, 'startsAt' | 'endsAt'>, lo
   return `${f.format(w.startsAt)} – ${end}${zone ? ` ${zone}` : ''}`;
 }
 
-/** One organization's HR admins, once per kind of notice. */
+/** One organization's own administrators (organizationAdmins), once per kind of notice. */
 async function tellOrganization(prisma: PrismaClient, w: MaintenanceWindow, tenantId: string, type: 'maintenance_scheduled' | 'maintenance_soon'): Promise<number> {
   return withTenant(
     tenantId,
@@ -88,7 +88,7 @@ async function tellOrganization(prisma: PrismaClient, w: MaintenanceWindow, tena
       if (already) return 0;
       const tz = await orgTimezone(tx);
       const params = { windowId: w.id, whenEn: windowText(w, 'en-CA', tz), whenFr: windowText(w, 'fr-CA', tz), messageEn: w.messageEn, messageFr: w.messageFr };
-      const hr = await usersWithRoles(tx, ['HR_ADMIN']);
+      const hr = await organizationAdmins(tx, tenantId);
       if (!hr.length) return 0;
       return notify(tx, tenantId, hr.map((userId) => ({ userId, type, params, link: '/whats-new', email: type })));
     },
