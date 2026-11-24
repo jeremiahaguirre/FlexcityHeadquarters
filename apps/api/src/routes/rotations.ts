@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { authOf } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
+import { peopleWhere } from '../services/people/scope.js';
 import { notify } from '../services/notifications/notifier.js';
 import { schedulableDepartments } from '../services/scheduling/fillRun.js';
 import { createOnCall, deleteOnCall, onCallRoster, recordCallBack, rotateOnCall, swapOnCall } from '../services/scheduling/onCall.js';
@@ -12,6 +13,26 @@ import { MAX_GENERATE_DAYS, type PresetKey, assertTemplateWritable, generateFrom
 import { h } from './context.js';
 
 export const rotationsRouter = Router();
+
+/**
+ * The people a scheduler puts on call or on a rotation: active people they reach, with the positions they hold.
+ * Head lifeguards schedule without the staff directory (users.read), so this is theirs.
+ */
+rotationsRouter.get(
+  '/schedule/people',
+  (req, _res, next) => (req.auth?.permissions.has('schedule.write') || req.auth?.permissions.has('winter.callout') ? next() : next(forbidden())),
+  h(async (req, res) => {
+    const a = authOf(req);
+    const people = await withTenant(a.tenantId, (tx) =>
+      tx.user.findMany({
+        where: { status: 'ACTIVE', anonymizedAt: null, ...peopleWhere(a.scope) },
+        select: { id: true, firstName: true, lastName: true, status: true, positions: { select: { position: { select: { id: true, departmentId: true } } } } },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      }),
+    );
+    res.json(people.map((p) => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, status: p.status, positions: p.positions.map((x) => x.position) })));
+  }),
+);
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 

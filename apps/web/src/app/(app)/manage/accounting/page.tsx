@@ -11,6 +11,7 @@ import { Field, Input } from '@/components/ui/Field';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Segmented } from '@/components/ui/Segmented';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorNotice } from '@/components/ui/ErrorNotice';
 import { useToast } from '@/components/ui/Toast';
 import { api, apiDownload, saveBlob } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
@@ -44,7 +45,7 @@ function Journals() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const toast = useToast();
-  const runs = useQuery<Run[]>('/api/payroll/runs');
+  const runs = useQuery<Run[]>('/api/accounting/runs');
   const [open, setOpen] = useState<string | null>(null);
   const j = useQuery<Journal>(open ? `/api/accounting/journal/${open}` : null);
   const posted = (runs.data ?? []).filter((r) => r.status === 'APPROVED' || r.status === 'PAID');
@@ -53,6 +54,7 @@ function Journals() {
     if (r.ok) saveBlob(r.blob, `journal-${id.slice(0, 8)}.csv`);
     else toast(String(r.error.message ?? t('common.error')), 'warn');
   }
+  if (runs.error) return <ErrorNotice onRetry={() => void runs.reload()} />;
   if (!runs.data) return <Skeleton className="h-64" />;
   if (!posted.length) return <EmptyState icon={FileSpreadsheet} title={t('accounting.noJournals')}>{t('accounting.noJournalsHelp')}</EmptyState>;
   return (

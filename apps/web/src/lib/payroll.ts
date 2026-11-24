@@ -45,3 +45,6 @@ export interface Run {
   depositFileSha256: string | null;
 }
 export const STATUS_TONE = { DRAFT: 'pending', APPROVED: 'brand', PAID: 'ok', VOID: 'danger' } as const;
+
+/** Who may void a run, as the API decides: a draft whoever prepares runs; an approved one only whoever approves them. */
+export const canVoid = (status: string, can: (p: string) => boolean) => (status === 'DRAFT' && can('payroll.export')) || (status === 'APPROVED' && can('payroll.approve'));

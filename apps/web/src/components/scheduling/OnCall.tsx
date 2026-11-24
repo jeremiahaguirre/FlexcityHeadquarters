@@ -32,7 +32,7 @@ export function OnCall({ canWrite }: { canWrite: boolean }) {
   const q = useQuery<OnCallView>(`/api/schedule/on-call?from=${range.from.toISOString()}&to=${range.to.toISOString()}`);
   const positions = useQuery<Array<Named & { departmentId: string | null }>>('/api/positions');
   const facilities = useQuery<Named[]>('/api/facilities');
-  const people = useQuery<Person[]>('/api/users?status=ACTIVE');
+  const people = useQuery<Person[]>('/api/schedule/people');
   const { run, busy } = useAction();
   const [dept, setDept] = useState('');
   const [dialog, setDialog] = useState<null | 'add' | 'rotate' | 'callback' | { swap: OnCallPeriod }>(null);

@@ -24,7 +24,7 @@ export default function BenefitsPage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const data = useQuery<{ plans: Plan[]; enrollments: Enrollment[] }>('/api/benefits');
-  const people = useQuery<Array<{ id: string; name: string }>>('/api/users');
+  const people = useQuery<Array<{ id: string; name: string }>>('/api/benefits/people');
   const [editing, setEditing] = useState<Plan | 'new' | null>(null);
   const [enrolling, setEnrolling] = useState<Plan | null>(null);
   const { run, busy } = useAction();

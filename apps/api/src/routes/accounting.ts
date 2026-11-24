@@ -14,6 +14,18 @@ import { h } from './context.js';
 
 export const accountingRouter = Router();
 accountingRouter.use('/accounting', requireFeature('payroll'));
+
+/** Pay runs whose journal entries finance posts (approved or paid), for whoever keeps the books, without payroll's own access. */
+accountingRouter.get(
+  '/accounting/runs',
+  requirePermission('accounting.manage'),
+  h(async (req, res) => {
+    const a = authOf(req);
+    if (a.scope) throw forbidden('Journal entries are for HR and finance.');
+    const runs = await withTenant(a.tenantId, (tx) => tx.payRun.findMany({ where: { status: { in: ['APPROVED', 'PAID'] } }, orderBy: [{ periodStart: 'desc' }, { createdAt: 'desc' }], take: 100 }));
+    res.json(runs.map((r) => ({ id: r.id, status: r.status, periodStart: r.periodStart.toISOString().slice(0, 10), periodEnd: r.periodEnd.toISOString().slice(0, 10), payDate: r.payDate.toISOString().slice(0, 10), totals: r.totals })));
+  }),
+);
 const uuid = z.string().uuid();
 
 accountingRouter.get(
