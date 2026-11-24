@@ -173,6 +173,14 @@ describe('offboarding', () => {
     // Done with (as if the checklist were finished), so it doesn’t count as open further on.
     await owner.offboarding.update({ where: { id: again.body.id }, data: { completedAt: new Date() } });
   });
+
+  it('starting the same offboarding several times at once opens only one', async () => {
+    const u = t.users[1]!.id;
+    const results = await Promise.all([0, 1, 2, 3].map(() => call(tok.hr).post(`/api/users/${u}/offboarding`, { lastDay: '2028-08-31', reason: 'END_OF_SEASON' })));
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409, 409, 409]);
+    expect(await owner.offboarding.count({ where: { userId: u, completedAt: null } })).toBe(1);
+    await owner.offboarding.updateMany({ where: { userId: u, completedAt: null }, data: { completedAt: new Date() } });
+  });
 });
 
 describe('HR overview', () => {
