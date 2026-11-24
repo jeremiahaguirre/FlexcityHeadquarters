@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CheckCircle2, ClipboardPlus, FileCheck2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardPlus, FileCheck2, Pencil } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -27,6 +27,8 @@ export default function InjuriesPage() {
   const { run, busy } = useAction();
   const [adding, setAdding] = useState(false);
   const [filing, setFiling] = useState<Claim | null>(null);
+  // Lost time or health care found after the claim was saved: the report to the board becomes due.
+  const [updating, setUpdating] = useState<Claim | null>(null);
   const when = (iso: string) => formatMoment(iso, i18n.language);
   const hoursLeft = (iso: string) => Math.round((new Date(iso).getTime() - Date.now()) / 3_600_000);
   const open = (q.data?.claims ?? []).filter((c) => c.status === 'OPEN');
@@ -39,6 +41,17 @@ export default function InjuriesPage() {
     const body = { userId: s('person'), facilityId: s('facility'), occurredAt: new Date(s('occurred')).toISOString(), learnedAt: new Date(s('learned')).toISOString(), lostTime: f.get('lost') === 'on', healthCare: f.get('care') === 'on', description: s('description') };
     if ((await run('add', () => api('/api/injury-claims', { method: 'POST', body }), t('injuries.added'))) !== undefined) {
       setAdding(false);
+      await q.reload();
+    }
+  }
+  async function update(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const c = updating!;
+    const body = { lostTime: f.get('lost') === 'on', healthCare: f.get('care') === 'on' };
+    const nowDue = c.status === 'NOT_REQUIRED' && (body.lostTime || body.healthCare);
+    if ((await run('update', () => api(`/api/injury-claims/${c.id}`, { method: 'PATCH', body }), nowDue ? t('injuries.nowDue', { board: c.board }) : t('injuries.updated'))) !== undefined) {
+      setUpdating(null);
       await q.reload();
     }
   }
@@ -70,7 +83,10 @@ export default function InjuriesPage() {
                       <p className="text-caption text-muted">{c.description}</p>
                       <p className="text-caption text-muted">{t('injuries.toBoard', { board: c.board, form: c.form, due: when(c.dueAt) })}</p>
                     </div>
-                    <Button size="sm" icon={<FileCheck2 className="h-4 w-4" aria-hidden="true" />} onClick={() => setFiling(c)}>{t('injuries.markFiled')}</Button>
+                    <span className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('injuries.updateFor', { name: c.person })} onClick={() => setUpdating(c)}>{t('injuries.update')}</Button>
+                      <Button size="sm" icon={<FileCheck2 className="h-4 w-4" aria-hidden="true" />} onClick={() => setFiling(c)}>{t('injuries.markFiled')}</Button>
+                    </span>
                   </li>
                 );
               })}
@@ -86,7 +102,12 @@ export default function InjuriesPage() {
               {rest.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
                   <span><span className="font-semibold">{c.person}</span> · {when(c.occurredAt)}<span className="block text-caption text-muted">{c.description}</span></span>
-                  <StatusPill tone={c.status === 'FILED' ? 'ok' : 'neutral'}>{c.status === 'FILED' ? t('injuries.filedWith', { board: c.board, number: c.claimNumber ?? '' }) : t('injuries.notRequired')}</StatusPill>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <StatusPill tone={c.status === 'FILED' ? 'ok' : 'neutral'}>{c.status === 'FILED' ? t('injuries.filedWith', { board: c.board, number: c.claimNumber ?? '' }) : t('injuries.notRequired')}</StatusPill>
+                    {c.status === 'NOT_REQUIRED' ? (
+                      <Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('injuries.updateFor', { name: c.person })} onClick={() => setUpdating(c)}>{t('injuries.update')}</Button>
+                    ) : null}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -111,6 +132,16 @@ export default function InjuriesPage() {
             <p className="text-caption text-muted">{t('injuries.reportableHelp')}</p>
           </fieldset>
           <Button type="submit" loading={busy === 'add'} className="justify-self-start">{t('injuries.save')}</Button>
+        </form>
+      </Dialog>
+      <Dialog open={!!updating} onClose={() => setUpdating(null)} title={t('injuries.updateFor', { name: updating?.person ?? '' })} description={t('injuries.updateHelp')} closeLabel={t('common.cancel')}>
+        <form key={updating?.id ?? 'none'} className="grid gap-4" onSubmit={(e) => void update(e)}>
+          <fieldset className="grid gap-2">
+            <legend className="mb-1 text-small font-semibold">{t('injuries.reportable')}</legend>
+            <label className="flex items-start gap-2 text-small"><input type="checkbox" name="lost" defaultChecked={updating?.lostTime} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />{t('injuries.lostTime')}</label>
+            <label className="flex items-start gap-2 text-small"><input type="checkbox" name="care" defaultChecked={updating?.healthCare} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />{t('injuries.healthCare')}</label>
+          </fieldset>
+          <Button type="submit" loading={busy === 'update'} className="justify-self-start">{t('injuries.save')}</Button>
         </form>
       </Dialog>
       <Dialog open={!!filing} onClose={() => setFiling(null)} title={t('injuries.markFiled')} description={filing ? t('injuries.toBoard', { board: filing.board, form: filing.form, due: when(filing.dueAt) }) : ''} closeLabel={t('common.cancel')}>
