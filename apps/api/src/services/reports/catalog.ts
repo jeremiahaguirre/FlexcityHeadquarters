@@ -10,7 +10,7 @@ import { forbidden } from '../../lib/errors.js';
 import { hrRecordsBy, peopleInScope } from '../people/scope.js';
 import { loadScoreInputs, reliabilityPolicy, scoreOf } from '../reliability/load.js';
 
-export interface ReportParams { from: string; to: string; days: number }
+export interface ReportParams { from: string; to: string; days: number; /** The reader's language, for names the organization gives in both (its own kinds of leave). */ lang?: 'en-CA' | 'fr-CA' }
 export interface ReportResult { columns: string[]; rows: Array<Record<string, string | number | null>> }
 /** `personal`: rows name people (their leave, scores, claims, hours…): never shown to an FH support visit. */
 interface Report { permissions: Permission[]; kind: 'range' | 'ahead'; wholeOrg?: boolean; personal?: boolean; run: (tx: Tx, a: AuthContext, p: ReportParams) => Promise<ReportResult> }
@@ -89,9 +89,10 @@ export const REPORTS: Record<string, Report> = {
     permissions: ['leave.manage', 'timeoff.approve'],
     kind: 'range',
     async run(tx, a, p) {
-      const reqs = await tx.timeOffRequest.findMany({ where: { ...(await people(tx, a)), status: 'APPROVED', startsAt: { lt: after(p.to) }, endsAt: { gt: start(p.from) } }, select: { userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true } });
+      const reqs = await tx.timeOffRequest.findMany({ where: { ...(await people(tx, a)), status: 'APPROVED', startsAt: { lt: after(p.to) }, endsAt: { gt: start(p.from) } }, select: { userId: true, type: true, startsAt: true, endsAt: true, chargedHours: true, leaveType: { select: { system: true, name: true, nameFr: true } } } });
       const n = await names(tx, reqs.map((r) => r.userId));
-      return { columns: ['person', 'type', 'from', 'to', 'hours'], rows: reqs.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()).map((r) => ({ person: n.get(r.userId) ?? '', type: r.type, from: day(r.startsAt), to: day(r.endsAt), hours: r.chargedHours == null ? null : Number(r.chargedHours) })) };
+      // The organization's own kinds by name; built-in kinds by code, as before (the screen translates them).
+      return { columns: ['person', 'type', 'from', 'to', 'hours'], rows: reqs.sort((x, y) => x.startsAt.getTime() - y.startsAt.getTime()).map((r) => ({ person: n.get(r.userId) ?? '', type: r.leaveType && !r.leaveType.system ? (p.lang === 'fr-CA' ? r.leaveType.nameFr : r.leaveType.name) : r.type, from: day(r.startsAt), to: day(r.endsAt), hours: r.chargedHours == null ? null : Number(r.chargedHours) })) };
     },
   },
   certs_expiring: {

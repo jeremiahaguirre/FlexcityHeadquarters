@@ -47,6 +47,33 @@ export function leaveHoursFrom(request: Interval, shifts: Interval[], timeZone: 
   return { hours: weekdayLeaveHours(request.startsAt, request.endsAt, timeZone), basis: 'WEEKDAYS' };
 }
 
+/**
+ * For leave charged from shifts (leaveHoursFrom's SHIFTS basis): the hours on each local day, by
+ * the day each shift's part inside the request starts on. Hundredths, adding up to the hours charged.
+ */
+export function shiftLeaveDays(request: Interval, shifts: Interval[], timeZone: string): Array<{ day: string; hours: number }> {
+  const from = request.startsAt.getTime();
+  const to = request.endsAt.getTime();
+  const byDay = new Map<string, number>();
+  let ms = 0;
+  for (const s of [...shifts].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())) {
+    const start = Math.max(from, s.startsAt.getTime());
+    const part = Math.max(0, Math.min(to, s.endsAt.getTime()) - start);
+    if (!part) continue;
+    const day = DateTime.fromMillis(start, { zone: timeZone }).toISODate()!;
+    byDay.set(day, (byDay.get(day) ?? 0) + part);
+    ms += part;
+  }
+  const days = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const total = Math.round(r2(ms / 3_600_000) * 100);
+  let given = 0;
+  return days.map(([day, partMs], i) => {
+    const hundredths = i === days.length - 1 ? total - given : Math.round(partMs / 36_000);
+    given += hundredths;
+    return { day, hours: hundredths / 100 };
+  });
+}
+
 const LOOKBACK_DAYS = 90;
 /** Longer than any punch, so the window can bound clockIn from below and the index reads only the window. */
 const LONGEST_PUNCH_DAYS = 7;

@@ -1,7 +1,8 @@
 /** HR shapes as the API sends them (leave, reviews, training, grievances, offboarding), shared by the HR screens. */
 export const LEAVE_TYPES = ['VACATION', 'SICK', 'PROTECTED_LEAVE', 'UNPAID_PERSONAL', 'OTHER'] as const;
 export type LeaveType = (typeof LEAVE_TYPES)[number];
-export interface LeaveBalance { type: LeaveType; entitled: number | null; carryover: number; used: number; pending: number; remaining: number | null; set: boolean; note: string | null }
+/** `type` is the kind's code: a built-in TimeOffType, or the organization's own kind's code (with its names). */
+export interface LeaveBalance { type: string; leaveTypeId?: string; name?: string; nameFr?: string; system?: boolean; entitled: number | null; carryover: number; used: number; pending: number; remaining: number | null; set: boolean; note: string | null }
 export interface PersonBalances { userId: string; name: string; types: LeaveBalance[] }
 
 export type ReviewStatus = 'SELF' | 'MANAGER' | 'DISCUSS' | 'ACKNOWLEDGED';

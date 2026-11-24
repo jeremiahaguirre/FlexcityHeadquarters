@@ -11,8 +11,8 @@ export const reportsRouter = Router();
 const uuid = z.string().uuid();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const params = z.object({ key: z.enum(REPORT_KEYS as [string, ...string[]]), from: isoDate.optional(), to: isoDate.optional(), days: z.coerce.number().int().min(1).max(366).default(60) });
-const window = (p: z.infer<typeof params>) => ({ from: p.from ?? iso(new Date(Date.now() - 30 * 86_400_000)), to: p.to ?? iso(new Date()), days: p.days });
+const params = z.object({ key: z.enum(REPORT_KEYS as [string, ...string[]]), from: isoDate.optional(), to: isoDate.optional(), days: z.coerce.number().int().min(1).max(366).default(60), lang: z.enum(['en-CA', 'fr-CA']).optional() });
+const window = (p: z.infer<typeof params>) => ({ from: p.from ?? iso(new Date(Date.now() - 30 * 86_400_000)), to: p.to ?? iso(new Date()), days: p.days, ...(p.lang ? { lang: p.lang } : {}) });
 
 /** The reports this person may run. */
 reportsRouter.get(

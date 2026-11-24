@@ -7,8 +7,9 @@ import type { Tx } from '../../lib/db.js';
 import { badRequest } from '../../lib/errors.js';
 import { Decimal, ZERO, cents, dec } from '../../lib/money.js';
 import { addDays, localDate, payWeekStart, startOfLocalDay, wholeYearsBetween } from '../../lib/time.js';
-import { resolveRules } from '../compliance/provincialRules.js';
+import { resolveRules, vacationPercent } from '../compliance/provincialRules.js';
 import { type ExportEmployee, type ExportOptions, buildPayrollCsv } from './export.js';
+import { type PaidLeaveDay, paidLeaveDays } from './leavePay.js';
 import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
 import { holidaysTouching, isPaidHoliday, offDayRule, personalDay, premiumDays, statutoryDay, usuallyWorks } from './holidayRules.js';
 import { type PayResult, calculatePay } from './payCalc.js';
@@ -40,6 +41,9 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
   const warnings = new IssueSet();
   if (unapproved) warnings.add(issue('PUNCHES_PENDING', { count: unapproved }));
   if (openPunches) warnings.add(issue('PUNCHES_OPEN', { count: openPunches }));
+
+  // Paid leave of the organization's own types: paid in this period below, and wages in holiday pay's look-back.
+  const leaveDays = await paidLeaveDays(tx, { from: addDays(periodStart, -80), to: periodEnd, onlyUsers, positionIds });
 
   // One calculation per person per province, across every facility and position they worked there:
   // daily and weekly overtime count all their hours, not each pool's separately.
@@ -119,7 +123,13 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
       // Statutory holiday pay for each holiday in the period.
       if (holidays.length && formula) {
         const history = calculatePay({ ...common, periodStart: lookbackStart, weeks: Math.round((Date.parse(periodEnd) - Date.parse(lookbackStart)) / (7 * 86_400_000)) });
-        const days: DailyEarnings[] = [...history.dailyWages].map(([localDate, wages]) => ({ localDate, wages, hoursWorked: history.dailyHours.get(localDate) ?? ZERO }));
+        const byDay = new Map([...history.dailyWages].map(([localDate, wages]) => [localDate, { localDate, wages, hoursWorked: history.dailyHours.get(localDate) ?? ZERO }]));
+        // Paid leave of the organization's own types counts as wages for those days, as in the statutes' "wages earned".
+        for (const d of leaveDays.filter((x) => x.userId === userId && x.rate && x.day >= lookbackStart && x.day < periodEnd)) {
+          const e = byDay.get(d.day) ?? { localDate: d.day, wages: ZERO, hoursWorked: ZERO };
+          byDay.set(d.day, { localDate: d.day, wages: e.wages.plus(cents(d.hours.mul(d.rate!))), hoursWorked: e.hoursWorked.plus(d.hours) });
+        }
+        const days: DailyEarnings[] = [...byDay.values()].sort((a, b) => a.localDate.localeCompare(b.localDate));
         const name = `${user.firstName} ${user.lastName}`;
         let missingHire = false;
         for (const h of holidays) {
@@ -177,6 +187,34 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
       employees.push({ userId: x.userId, employeeNumber: x.employeeNumber, displayName: x.displayName, costCenter: f?.costCenter ?? null, lines: target.result.lines });
     }
     for (const l of x.lines) addEarning(target.result, l, tenant.vacationPayMode);
+  }
+
+  // Paid hours of the organization's own leave types (bereavement, jury duty…), day by day: each in the
+  // period that holds it, or the one that holds its approval when that's later (leavePay.ts). At the
+  // person's rate on the day, under the type's own export code when it has one. Built-in types keep
+  // their own rules (vacation pay; time in lieu from the bank in pay runs).
+  const due = new Map<string, { d: PaidLeaveDay; hours: Decimal }>();
+  for (const d of leaveDays.filter((x) => x.payOn >= periodStart && x.payOn < periodEnd)) {
+    if (!d.rate) {
+      warnings.add(issue('LEAVE_NO_RATE', { name: d.person.name, leave: d.leave, leaveFr: d.leaveFr, date: d.day }));
+      continue;
+    }
+    const k = `${d.requestId}|${d.positionId}|${d.rate.toString()}`;
+    const x = due.get(k);
+    if (x) x.hours = x.hours.plus(d.hours);
+    else due.set(k, { d, hours: d.hours });
+  }
+  for (const { d, hours } of due.values()) {
+    let target = results.find((x) => x.userId === d.userId);
+    if (!target) {
+      const facilityId = facilities[0]?.id ?? '';
+      const f = facilities.find((g) => g.id === facilityId);
+      const years = d.person.hireDate ? wholeYearsBetween(d.person.hireDate.toISOString().slice(0, 10), periodStart) : 0;
+      target = { userId: d.userId, facilityId, result: { lines: [], totalHours: ZERO, grossWages: ZERO, vacationPercent: vacationPercent(resolveRules(f?.province ?? 'BC', periodStart, overrides), years), vacationPay: ZERO, vacationAccrued: ZERO, dailyWages: new Map(), dailyHours: new Map(), warnings: [] } };
+      results.push(target);
+      employees.push({ userId: d.userId, employeeNumber: d.person.employeeNumber, displayName: d.person.name, costCenter: f?.costCenter ?? null, lines: target.result.lines });
+    }
+    addEarning(target.result, { code: 'LEAVE_PAY', positionId: d.positionId, hours, rate: d.rate!, multiplier: new Decimal(1), exportCode: d.payCode }, tenant.vacationPayMode);
   }
 
   const resolve = (key: PayCodeKey, positionId: string | null) =>

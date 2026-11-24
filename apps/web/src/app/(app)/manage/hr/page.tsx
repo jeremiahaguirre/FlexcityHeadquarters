@@ -10,6 +10,7 @@ import { type ReactNode, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GrievancesPanel } from '@/components/hr/Grievances';
 import { LeavePanel } from '@/components/hr/LeaveBalances';
+import { LeaveTypesCard } from '@/components/hr/LeaveTypesCard';
 import { PoliciesPanel } from '@/components/hr/Policies';
 import { LieuBalances } from '@/components/payroll/BankedTime';
 import { OffboardingPanel } from '@/components/hr/Offboarding';
@@ -50,7 +51,7 @@ function HrInner() {
     <div className="grid gap-6">
       {tab !== 'overview' ? <PageHeader title={t('hr.title')} description={t('hr.description')} /> : null}
       {tab !== 'overview' ? tabs : null}
-      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <div className="grid gap-6"><LeavePanel canEdit /><LieuBalances /><UpcomingHolidays /></div> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'policies' ? <PoliciesPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
+      {tab === 'overview' ? <Overview onTab={setTab} tabs={tabs} /> : tab === 'leave' ? <div className="grid gap-6"><LeavePanel canEdit /><LeaveTypesCard /><LieuBalances /><UpcomingHolidays /></div> : tab === 'reviews' ? <ReviewsPanel /> : tab === 'policies' ? <PoliciesPanel /> : tab === 'labour' ? <GrievancesPanel /> : <OffboardingPanel />}
     </div>
   );
 }

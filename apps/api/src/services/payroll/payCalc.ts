@@ -58,6 +58,8 @@ export interface PayCalcInput {
 
 export interface PayLine {
   code: PayCodeKey;
+  /** The provider export's code for this line when it has its own (an organization's leave type), instead of the pay-code mapping. */
+  exportCode?: string | null;
   positionId: string | null;
   hours: Decimal;
   rate: Decimal;

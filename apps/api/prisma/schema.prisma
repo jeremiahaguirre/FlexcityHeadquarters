@@ -229,6 +229,8 @@ enum PayCodeKey {
   STANDBY_PAY
   /// Call-back minimum top-up when someone on call is called in.
   CALLBACK_PAY
+  /// Paid hours of an organization's own leave types (bereavement, jury duty…).
+  LEAVE_PAY
 }
 
 enum VacationPayMode {
@@ -1053,8 +1055,53 @@ model TimeOffRequest {
   /// (their shifts are released when it's approved); weekdays × 8 h when nothing was scheduled.
   chargedHours Decimal? @db.Decimal(8, 2)
   chargedBasis String?
+  /// With chargedBasis SHIFTS: the hours charged on each local day of the shifts taken off,
+  /// [{ day: "YYYY-MM-DD", hours }], so payroll pays them on those days (services/payroll/leavePay.ts).
+  chargedDays  Json?
+  /// The kind of leave (LeaveType). A city type's requests have type OTHER; null only on rows from
+  /// before leave types (read by their TimeOffType's system type).
+  leaveTypeId  String?    @db.Uuid
+  leaveType    LeaveType? @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
+  /// Steps of the type's approval chain already approved (0 = waiting for the first).
+  approvalStep Int        @default(0)
 
   @@index([userId, startsAt, endsAt])
+  @@index([leaveTypeId])
+}
+
+/// A kind of leave the organization offers (services/people/leaveTypes.ts). The six system types
+/// (one per TimeOffType) are seeded for every organization and keep their built-in behaviour; an
+/// organization adds its own (bereavement, union leave, jury duty…).
+model LeaveType {
+  id                String       @id @default(uuid()) @db.Uuid
+  tenantId          String       @db.Uuid
+  /// The TimeOffType a system type stands for; null for the organization's own.
+  system            TimeOffType?
+  /// Stable code (system: the TimeOffType name; the organization's own: from its name).
+  code              String
+  name              String
+  nameFr            String
+  paid              Boolean      @default(false)
+  hasBalance        Boolean      @default(false)
+  /// Yearly entitlement in hours when HR hasn't set one for the person (null: none, or the built-in default for system types).
+  yearlyHours       Decimal?     @db.Decimal(8, 2)
+  /// The most HR may carry over into the next year; null = no limit.
+  carryOverMaxHours Decimal?     @db.Decimal(8, 2)
+  /// Refusing needs a written reason (statutory sick days, protected leave).
+  protectedLeave    Boolean      @default(false)
+  /// Who decides, in order: [] = whoever approves time off for the person; ["MANAGER", "HR"] = the manager, then HR.
+  approvalChain     Json         @default("[]")
+  /// The provider export's code for paid hours of the organization's own types (else the LEAVE_PAY mapping).
+  payCode           String?
+  sortOrder         Int          @default(100)
+  archivedAt        DateTime?    @db.Timestamptz(3)
+  createdAt         DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime     @updatedAt @db.Timestamptz(3)
+  requests          TimeOffRequest[]
+  entitlements      LeaveEntitlement[]
+
+  @@unique([tenantId, code])
+  @@unique([tenantId, system])
 }
 
 // ------------------------------------------------------------------
@@ -2807,14 +2854,18 @@ model LeaveEntitlement {
   tenantId  String      @db.Uuid
   userId    String      @db.Uuid
   year      Int
-  type      TimeOffType
+  /// The system type's TimeOffType; null for the organization's own types (leaveTypeId).
+  type      TimeOffType?
   hours     Decimal     @db.Decimal(8, 2)
   carryover Decimal     @default(0) @db.Decimal(8, 2)
   note      String?
   updatedAt DateTime    @updatedAt @db.Timestamptz(3)
   user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  leaveTypeId String?   @db.Uuid
+  leaveType LeaveType?  @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
 
   @@unique([userId, year, type])
+  @@unique([userId, year, leaveTypeId])
 }
 
 enum ReviewStatus {

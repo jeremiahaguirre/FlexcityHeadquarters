@@ -27,6 +27,7 @@ import { hasModule } from '../services/billing/entitlements.js';
 import { hashKey, ipAllowed, looksLikeKey } from '../services/integrations/apiKeys.js';
 import { openApiSpec } from '../services/integrations/openapi.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../services/payroll/holidayRules.js';
+import { chainOf, leaveTypes } from '../services/people/leaveTypes.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
 import { DEPARTMENT_SELECT, PERSON_SELECT, POSITION_SELECT, TIME_OFF_SELECT, day, department, etagOf, iso, money, need, person, position, read, sendProblem, timeOff, toProblem } from './publicApiShared.js';
@@ -346,6 +347,18 @@ publicApiRouter.get(
 );
 
 /* ---------- Time off (approved) ---------- */
+
+/** The organization's leave types: the six built-in ones and its own. */
+publicApiRouter.get(
+  '/leave-types',
+  need('timeoff:read'),
+  h(async (req, res) => {
+    const rows = await read(req, (tx) => leaveTypes(tx, req.apiKey!.tenantId));
+    res.json({
+      data: rows.map((t) => ({ id: t.id, code: t.code, built_in: !!t.system, name: t.name, name_fr: t.nameFr, paid: t.paid, has_balance: t.hasBalance, yearly_hours: money(t.yearlyHours), approval_chain: chainOf(t).map((x) => x.toLowerCase()), pay_code: t.payCode })),
+    });
+  }),
+);
 
 publicApiRouter.get(
   '/time-off',
