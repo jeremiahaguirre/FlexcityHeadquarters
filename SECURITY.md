@@ -395,9 +395,10 @@ application circuit breaker (gap; WP-48).
 
 **Secrets.** The app secret in Secrets Manager holds `JWT_SECRET`, `APP_DATABASE_URL`,
 `LISTEN_DATABASE_URL` and `METRICS_TOKEN` by default, plus optional provider keys
-(`ops/terraform/variables.tf:132-141`). The database owner password is not in it: RDS manages and
+(`ops/terraform/variables.tf:132-141`) and the optional `INTERNAL_API_TOKEN`, the only key the web
+tasks also receive (`ops/terraform/compute.tf:36`). The database owner password is not in it: RDS manages and
 rotates it (`ops/terraform/README.md:73`). Only that password and the KMS keys rotate on a
-schedule. `JWT_SECRET`, `METRICS_TOKEN`, the app and union role passwords, VAPID, Stripe, Twilio
+schedule. `JWT_SECRET`, `METRICS_TOKEN`, `INTERNAL_API_TOKEN`, the app and union role passwords, VAPID, Stripe, Twilio
 and Sentry have no rotation schedule (gap; D-31 and WP-53).
 
 ### 2.9 Data classification (ASVS 14.1.1, 14.1.2)
