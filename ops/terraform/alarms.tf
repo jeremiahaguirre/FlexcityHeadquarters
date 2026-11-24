@@ -283,9 +283,10 @@ data "aws_iam_policy_document" "events_assume" {
 
 # Lets the recovery region's rule put the events on this region's default bus.
 resource "aws_iam_role" "events_forward" {
-  count              = var.recovery_mode ? 0 : 1
-  name               = "${local.gname}-events-forward"
-  assume_role_policy = data.aws_iam_policy_document.events_assume.json
+  count                = var.recovery_mode ? 0 : 1
+  name                 = "${local.gname}-events-forward"
+  assume_role_policy   = data.aws_iam_policy_document.events_assume.json
+  permissions_boundary = local.role_boundary
 }
 
 resource "aws_iam_role_policy" "events_forward" {

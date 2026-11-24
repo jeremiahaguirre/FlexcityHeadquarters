@@ -17,7 +17,7 @@ import { type Tx, audit, withTenant } from '../../lib/db.js';
 import { forbidden, invalid, notFound } from '../../lib/errors.js';
 import { addDays, dayOfWeek, localDate, localIso, payWeekStart, startOfLocalDay } from '../../lib/time.js';
 import { resolveRules } from '../compliance/provincialRules.js';
-import { holidaysTouching, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
+import { holidaysTouching, isPaidHoliday, organizationDay, statutoryDay } from '../payroll/holidayRules.js';
 import { buildSchoolCalendar } from '../compliance/schoolCalendar.js';
 import { blockingItemsForPosition } from '../people/onboarding.js';
 import { facilitiesOf, peopleWhere, shiftInScope, userInScope } from '../people/scope.js';
@@ -32,7 +32,7 @@ import { type StatedPreferences, loadPreferences } from './preferences.js';
 import { type CoverageNeed, type SolverPerson, type SolverSlot, orderKey, solve } from './solver.js';
 import { breakAfterHoursFor, breakMinutesOf, effectiveWorkRules, paidIntervals, parseWorkRules, premiumPieces } from './workRules.js';
 import { isNeverAlone } from './twoPerson.js';
-import { type EffectiveSettings, type HorizonWeeks, type SolverToggles, type SolverWeights, effectiveSettings, parseSolverSettings, withSolverSettings } from './solverSettings.js';
+import { type EffectiveSettings, type HorizonWeeks, type SolverToggles, type SolverWeights, effectiveSettings, parseSolverSettings, updateSolverSettings } from './solverSettings.js';
 
 /** Pseudo-departments: positions that belong to none, and everything the person may schedule. */
 export const NO_DEPARTMENT = 'none';
@@ -154,7 +154,8 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
   // Statutory holidays (as the law and the organization observe them), per province.
   const holidayDays = new Map<Province, Set<string>>();
   for (const prov of new Set(facilities.map((f) => f.province))) {
-    const rows = await holidaysTouching(tx, prov, req.horizonStart, addDays(req.weekStart, 7));
+    // Paid holidays only: the premium and holiday fairness; a city closure day is not paid as one.
+    const rows = (await holidaysTouching(tx, prov, req.horizonStart, addDays(req.weekStart, 7))).filter(isPaidHoliday);
     holidayDays.set(prov, new Set(rows.flatMap((h) => [h.date, statutoryDay(h), organizationDay(h, tenant.holidayObservance)])));
   }
   const isHoliday = (facilityId: string, date: string) => holidayDays.get(facilityById.get(facilityId)!.province)?.has(date) ?? false;
@@ -344,7 +345,9 @@ export async function runFillWeek(tx: Tx, a: AuthContext, req: FillRequest) {
   });
 
   if (req.weekIndex === 0 && stored.lastHorizonWeeks !== req.horizonWeeks) {
-    await tx.tenant.update({ where: { id: a.tenantId }, data: { overtimePolicy: withSolverSettings(tenant.overtimePolicy, { ...stored, lastHorizonWeeks: req.horizonWeeks }) as Prisma.InputJsonValue } });
+    // Only the one key, on what is stored now: the run's own copy (read before solving) would
+    // undo any settings change made meanwhile (ARCHITECTURE-REVIEW A11).
+    await updateSolverSettings(tx, a.tenantId, (s) => ({ ...s, lastHorizonWeeks: req.horizonWeeks }));
   }
   await audit(tx, {
     tenantId: a.tenantId,

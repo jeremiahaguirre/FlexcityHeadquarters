@@ -31,10 +31,12 @@ import { SeniorityCard } from '@/components/settings/SeniorityCard';
 import { FillSettingsCard } from '@/components/settings/FillSettingsCard';
 import { ReliabilityCard } from '@/components/settings/ReliabilityCard';
 import { HolidayWeekendCard } from '@/components/settings/HolidayWeekendCard';
+import { CityHolidaysCard } from '@/components/settings/CityHolidaysCard';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
 import { RetentionCard } from '@/components/settings/RetentionCard';
 import { IntegrationsSettings } from '@/components/settings/IntegrationsSettings';
+import { PositionsSettings } from '@/components/settings/PositionsSettings';
 
 const PAY_KEYS = ['REGULAR', 'OVERTIME_1_5', 'OVERTIME_2_0', 'STAT_WORKED', 'STAT_HOLIDAY_PAY', 'SHIFT_PREMIUM', 'VACATION_PAY', 'REPORTING_PAY', 'SCHEDULE_CHANGE_PREMIUM', 'STANDBY_PAY', 'CALLBACK_PAY'] as const;
 
@@ -64,7 +66,7 @@ interface Pool {
   thresholds: { freeChlorineMinPpm: string | null; freeChlorineMaxPpm: string | null; combinedChlorineMaxPpm: string | null; phMin: string | null; phMax: string | null; source: string | null; bathersPerLifeguard: number | null };
 }
 
-type Tab = 'org' | 'departments' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
+type Tab = 'org' | 'departments' | 'positions' | 'facilities' | 'pools' | 'pay' | 'calendar' | 'rules' | 'integrations';
 const str = (f: FormData, k: string) => String(f.get(k) ?? '').trim() || null;
 const num = (f: FormData, k: string) => (str(f, k) === null ? null : Number(str(f, k)));
 
@@ -80,9 +82,16 @@ function Section({ title, description, action, children }: { title: string; desc
 /** Organization settings: the organization itself, its facilities, pools and pay rules. Sections show only to people allowed to change them. */
 export default function SettingsPage() {
   const { t } = useTranslation();
-  const { can } = useSession();
+  const { can, me } = useSession();
   const org = can('tenant.configure');
-  const tabs: Tab[] = [...(org ? (['org', 'departments', 'facilities'] as const) : []), ...(can('ops.configure') ? (['pools'] as const) : []), ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : [])];
+  const tabs: Tab[] = [
+    ...(org ? (['org', 'departments'] as const) : []),
+    // Positions and the certificate catalog: HR, and supervisors who define their own positions.
+    ...(can('positions.manage') ? (['positions'] as const) : []),
+    ...(org ? (['facilities'] as const) : []),
+    ...(can('ops.configure') ? (['pools'] as const) : []),
+    ...(org ? (['pay', 'calendar', 'rules', 'integrations'] as const) : []),
+  ];
   const [tab, setTab] = useState<Tab>(tabs[0] ?? 'org');
   // A link can open a tab (the email about a webhook that was turned off opens Integrations).
   useEffect(() => {
@@ -102,6 +111,8 @@ export default function SettingsPage() {
       ) : null}
       {tab === 'integrations' ? (
         <IntegrationsSettings />
+      ) : tab === 'positions' ? (
+        <PositionsSettings />
       ) : tab === 'pools' ? (
         <Pools />
       ) : tab === 'departments' ? (
@@ -125,6 +136,8 @@ export default function SettingsPage() {
           {tab === 'facilities' ? <KiosksCard /> : null}
           {tab === 'pay' ? <PayCodes s={settings.data} reload={settings.reload} /> : null}
           {tab === 'pay' ? <HolidayWeekendCard /> : null}
+          {/* Holidays change pay in every department: only for people who configure the whole organization. */}
+          {tab === 'calendar' && !me?.scoped ? <CityHolidaysCard /> : null}
           {tab === 'calendar' ? <SchoolCalendar s={settings.data} reload={settings.reload} /> : null}
           {tab === 'rules' ? <Rules s={settings.data} reload={settings.reload} /> : null}
         </div>
