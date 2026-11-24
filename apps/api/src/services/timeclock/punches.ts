@@ -1,7 +1,8 @@
 /** Clocking in and out (including punches sent late from a phone that was offline), and supervisor corrections. */
 import { announceChange } from '../../lib/changes.js';
 import { type Tx, advisoryLock, audit } from '../../lib/db.js';
-import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { HttpError, badRequest, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
+import { localDate } from '../../lib/time.js';
 import { classifyPunchLocation } from './geofence.js';
 
 const LATE_GRACE_MINUTES = 5;
@@ -204,16 +205,28 @@ export async function clockOut(tx: Tx, userId: string, input: PunchTiming = {}) 
 /** Supervisor correction. The original value is preserved in TimePunchEdit. */
 export async function editPunch(
   tx: Tx,
-  input: { tenantId: string; actorId: string; punchId: string; clockIn?: Date; clockOut?: Date; reason: string; inScope?: (userId: string) => Promise<boolean> },
+  input: { tenantId: string; actorId: string; punchId: string; clockIn?: Date; clockOut?: Date; reason: string; inScope?: (userId: string) => Promise<boolean>; placeInScope?: (place: Place) => boolean },
 ) {
   if (!input.reason.trim()) throw badRequest('A reason is required to edit a punch.');
-  const punch = await tx.timePunch.findUnique({ where: { id: input.punchId } });
-  if (!punch) throw notFound('Punch');
+  const found = await tx.timePunch.findUnique({ where: { id: input.punchId }, select: { userId: true } });
+  if (!found) throw notFound('Punch');
+  // The same lock as clocking in and out, so an edit and a live punch can't both pass the overlap check.
+  await advisoryLock(tx, `punch:${found.userId}`);
+  const punch = await tx.timePunch.findUniqueOrThrow({ where: { id: input.punchId } });
   // Nobody corrects their own time, or time outside their department.
-  if (punch.userId === input.actorId) throw forbidden('You can’t edit your own punches. Ask another supervisor.');
+  if (punch.userId === input.actorId) throw new HttpError(403, 'OWN_PUNCH', 'You can’t edit your own punches. Ask another supervisor.');
   if (input.inScope && !(await input.inScope(punch.userId))) throw forbidden('This person isn’t in your department.');
+  if (input.placeInScope && !input.placeInScope(punch)) throw forbidden('This punch isn’t in your department.');
   const next = { clockIn: input.clockIn ?? punch.clockIn, clockOut: input.clockOut ?? punch.clockOut };
-  if (next.clockOut && next.clockOut <= next.clockIn) throw badRequest('Clock-out must be after clock-in.');
+  if (next.clockOut && next.clockOut.getTime() - next.clockIn.getTime() > MAX_PUNCH_MS) throw invalid('PUNCH_TOO_LONG', 'A punch can’t be longer than 24 hours.');
+  if (next.clockOut && next.clockOut <= next.clockIn) throw punchError('PUNCH_OUT_BEFORE_IN', 'Clock-out must be after clock-in.');
+  if (next.clockIn.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs || (next.clockOut && next.clockOut.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs)) {
+    throw punchError('PUNCH_IN_FUTURE', 'A punch can’t be in the future.');
+  }
+  await assertNoOverlap(tx, punch.userId, next.clockIn, next.clockOut, punch.id);
+  // Time a pay run already paid (or approved) is corrected with an adjustment, not by rewriting it.
+  await assertPeriodOpen(tx, punch);
+  if (next.clockIn.getTime() !== punch.clockIn.getTime()) await assertPeriodOpen(tx, { ...punch, clockIn: next.clockIn });
 
   for (const field of ['clockIn', 'clockOut'] as const) {
     const newVal = input[field];
@@ -232,8 +245,103 @@ export async function editPunch(
     }
   }
   const changed = (input.clockIn && input.clockIn.getTime() !== punch.clockIn.getTime()) || (input.clockOut && input.clockOut.getTime() !== punch.clockOut?.getTime());
-  // A changed approved punch goes back for approval (by someone other than the editor), so it can't be padded after the fact.
-  const updated = await tx.timePunch.update({ where: { id: punch.id }, data: { ...next, varianceReason: input.reason, ...(changed && punch.status === 'APPROVED' ? { status: 'PENDING' } : {}) } });
+  // A changed approved (or rejected) punch goes back for review by someone other than the editor
+  // (review.ts refuses the editor), so time can't be padded and then approved by the same person.
+  const reopen = changed && (punch.status === 'APPROVED' || punch.status === 'REJECTED');
+  const updated = await tx.timePunch.update({ where: { id: punch.id }, data: { ...next, varianceReason: input.reason, ...(reopen ? { status: 'PENDING', reviewedById: null, reviewedAt: null } : {}) } });
   await audit(tx, { tenantId: input.tenantId, actorId: input.actorId, action: 'punch.edit', entity: 'TimePunch', entityId: punch.id, before: punch, after: updated });
   return updated;
+}
+
+export interface Place { positionId: string; facilityId: string }
+const MAX_PUNCH_MS = 24 * 3_600_000;
+
+/**
+ * The punch's local day falls in a regular pay run that was approved or paid (city-wide, or for the
+ * punch's department): its hours are on a pay statement already, so the time is fixed with an
+ * adjustment on a later run, never by changing the record that was paid.
+ */
+export async function assertPeriodOpen(tx: Tx, p: { positionId: string; facilityId: string; clockIn: Date }) {
+  const facility = await tx.facility.findUnique({ where: { id: p.facilityId }, select: { timezone: true } });
+  if (!facility) return;
+  const day = new Date(`${localDate(p.clockIn, facility.timezone)}T00:00:00Z`);
+  const departmentId = (await tx.position.findUnique({ where: { id: p.positionId }, select: { departmentId: true } }))?.departmentId ?? null;
+  const run = await tx.payRun.findFirst({
+    where: { kind: 'REGULAR', status: { in: ['APPROVED', 'PAID'] }, periodStart: { lte: day }, periodEnd: { gte: day }, OR: [{ departmentId: null }, ...(departmentId ? [{ departmentId }] : [])] },
+    select: { id: true },
+  });
+  if (run) throw conflict('PERIOD_PAID', 'This time is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.', { payRunId: run.id });
+}
+
+/** Another punch of this person's overlaps the time (an open punch overlaps everything after its start). */
+async function assertNoOverlap(tx: Tx, userId: string, from: Date, to: Date | null, exceptId: string | null = null) {
+  const clash = await tx.timePunch.findFirst({
+    where: {
+      userId,
+      ...(exceptId ? { id: { not: exceptId } } : {}),
+      // A rejected punch isn't time worked: the right time can be added over it.
+      status: { not: 'REJECTED' },
+      ...(to ? { clockIn: { lt: to } } : {}),
+      OR: [{ clockOut: null }, { clockOut: { gt: from } }],
+    },
+    select: { id: true },
+  });
+  if (clash) throw conflict('PUNCH_OVERLAPS', 'This person already has a punch covering this time.', { punchId: clash.id });
+}
+
+/**
+ * A supervisor adds time someone worked but couldn't punch (forgot, phone dead, an offline punch
+ * refused as too old). It goes to review like any punch, never straight to payroll, and the time
+ * entered and the reason are kept in the punch's edit history and the audit log.
+ */
+export async function addPunch(
+  tx: Tx,
+  input: { tenantId: string; actorId: string; userId: string; facilityId: string; shiftId?: string | null; positionId?: string | null; clockIn: Date; clockOut: Date; reason: string; inScope?: (userId: string) => Promise<boolean>; placeInScope?: (place: Place) => boolean },
+) {
+  const reason = input.reason.trim();
+  if (reason.length < 3) throw invalid('REASON_REQUIRED', 'A reason is required to add a punch.');
+  if (input.userId === input.actorId) throw new HttpError(403, 'OWN_PUNCH', 'You can’t add time for yourself. Ask another supervisor.');
+  if (input.inScope && !(await input.inScope(input.userId))) throw forbidden('This person isn’t in your department.');
+  if (input.clockOut <= input.clockIn) throw punchError('PUNCH_OUT_BEFORE_IN', 'Clock-out must be after clock-in.');
+  if (input.clockOut.getTime() > Date.now() + OFFLINE_RULES.futureSkewMs) throw punchError('PUNCH_IN_FUTURE', 'A punch can’t be in the future.');
+  if (input.clockOut.getTime() - input.clockIn.getTime() > MAX_PUNCH_MS) throw invalid('PUNCH_TOO_LONG', 'A punch can’t be longer than 24 hours.');
+  await advisoryLock(tx, `punch:${input.userId}`);
+  const person = await tx.user.findUnique({ where: { id: input.userId }, select: { id: true, status: true } });
+  if (!person) throw notFound('Person');
+  if (!(await tx.facility.findUnique({ where: { id: input.facilityId }, select: { id: true } }))) throw notFound('Facility');
+  let positionId = input.positionId ?? null;
+  if (input.shiftId) {
+    const shift = await tx.shift.findUnique({ where: { id: input.shiftId } });
+    if (!shift) throw notFound('Shift');
+    if (shift.userId !== input.userId) throw invalid('SHIFT_NOT_THEIRS', 'This shift isn’t theirs.');
+    if (shift.facilityId !== input.facilityId) throw invalid('SHIFT_ELSEWHERE', 'This shift is at another facility.');
+    positionId = shift.positionId;
+  }
+  if (!positionId) throw invalid('POSITION_REQUIRED', 'Choose the position they worked.');
+  // The position decides the pay rate and the department charged: it must be one the lead manages.
+  if (input.placeInScope && !input.placeInScope({ positionId, facilityId: input.facilityId })) throw forbidden('This position or facility isn’t in your department.');
+  if (!(await tx.userPosition.findFirst({ where: { userId: input.userId, positionId }, select: { userId: true } }))) throw invalid('POSITION_NOT_HELD', 'They don’t hold this position.');
+  await assertNoOverlap(tx, input.userId, input.clockIn, input.clockOut);
+  await assertPeriodOpen(tx, { positionId, facilityId: input.facilityId, clockIn: input.clockIn });
+
+  await announceChange(tx, input.tenantId, 'deck');
+  const punch = await tx.timePunch.create({
+    data: {
+      tenantId: input.tenantId,
+      userId: input.userId,
+      facilityId: input.facilityId,
+      shiftId: input.shiftId ?? null,
+      positionId,
+      clockIn: input.clockIn,
+      clockOut: input.clockOut,
+      locationStatus: 'NO_LOCATION',
+      status: 'PENDING',
+      varianceReason: reason,
+    },
+  });
+  for (const field of ['clockIn', 'clockOut'] as const) {
+    await tx.timePunchEdit.create({ data: { tenantId: input.tenantId, punchId: punch.id, editedById: input.actorId, field, oldValue: null, newValue: punch[field]!.toISOString(), reason } });
+  }
+  await audit(tx, { tenantId: input.tenantId, actorId: input.actorId, action: 'punch.add', entity: 'TimePunch', entityId: punch.id, after: { userId: input.userId, clockIn: punch.clockIn, clockOut: punch.clockOut, positionId, facilityId: input.facilityId, reason } });
+  return punch;
 }

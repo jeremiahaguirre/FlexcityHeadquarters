@@ -1,5 +1,7 @@
 /** Dates and times in an organization's own time zone (shifts, pay weeks, local days). */
 import { DateTime } from 'luxon';
+import { z } from 'zod';
+import { HttpError, invalid } from './errors.js';
 
 /**
  * Time-zone conversions are the slowest part of checking a shift (each one formats a date
@@ -120,4 +122,37 @@ export function mergeIntervals(intervals: Interval[]): Interval[] {
     }
   }
   return out;
+}
+
+/**
+ * A facility-local wall-clock time, as a date-time picker sends it (2026-11-14T06:30), optionally
+ * with the UTC offset that says which one is meant on the night clocks go back (…T01:30-07:00).
+ */
+export const localTime = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}([+-]\d{2}:\d{2})?$/);
+
+const WALL = "yyyy-MM-dd'T'HH:mm";
+
+/**
+ * That wall-clock time in a time zone, as an instant. A time that doesn't exist (skipped when clocks
+ * go forward) is refused; a time that happens twice (clocks go back) needs its offset, and the error
+ * lists the two offsets to choose from. `field` names the input in those errors.
+ */
+export function atLocal(local: string, timezone: string, field = 'time'): Date {
+  const wall = local.slice(0, 16);
+  if (local.length > 16) {
+    const at = DateTime.fromISO(local, { setZone: true });
+    if (!at.isValid || at.setZone(timezone).toFormat(WALL) !== wall) throw new HttpError(400, 'BAD_TIME_OFFSET', 'That time and offset don’t match the facility’s time zone.', { field });
+    return at.toJSDate();
+  }
+  const at = DateTime.fromISO(wall, { zone: timezone });
+  if (!at.isValid) throw invalid('BAD_TIME', 'That date and time aren’t valid.', { field });
+  if (at.toFormat(WALL) !== wall) throw new HttpError(400, 'TIME_NOT_EXIST', 'That time doesn’t exist: the clocks went forward then.', { field });
+  // The same wall time an hour either side of the change: two different instants means it happened twice.
+  const offsets = new Set<string>();
+  for (const probe of [-3, 3].map((h) => DateTime.fromMillis(at.toMillis() + h * 3_600_000, { zone: timezone }))) {
+    const candidate = DateTime.fromISO(`${wall}${probe.toFormat('ZZ')}`, { setZone: true });
+    if (candidate.isValid && candidate.setZone(timezone).toFormat(WALL) === wall) offsets.add(probe.toFormat('ZZ'));
+  }
+  if (offsets.size > 1) throw new HttpError(400, 'AMBIGUOUS_TIME', 'That time happened twice (the clocks went back). Say which one.', { field, offsets: [...offsets] });
+  return at.toJSDate();
 }

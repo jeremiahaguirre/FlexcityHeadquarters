@@ -109,7 +109,7 @@ export async function decideTimeOff(
 ) {
   const r = await tx.timeOffRequest.findUnique({ where: { id } });
   if (!r) throw notFound('Time-off request');
-  if (r.userId === actor.userId) throw forbidden('You cannot decide your own request.');
+  if (r.userId === actor.userId) throw new HttpError(403, 'OWN_REQUEST', 'You can’t decide your own request. Another supervisor has to.');
   if (r.status !== 'PENDING') throw conflict('NOT_PENDING', 'This request has already been decided.');
   if (decision === 'DENY' && PROTECTED.has(r.type) && !note?.trim()) {
     throw badRequest('Statutory sick days and protected leave usually cannot be refused. Record the reason to decline.');

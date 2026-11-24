@@ -14,7 +14,7 @@ import { audit, withTenant } from '../lib/db.js';
 import { canonicalPath } from '../lib/canonicalPath.js';
 import { HttpError, forbidden, invalid, notFound } from '../lib/errors.js';
 import { dispatchSoon, recordEvents, withEvents } from '../lib/events.js';
-import { localDate, localIso } from '../lib/time.js';
+import { atLocal, localDate, localIso, localTime } from '../lib/time.js';
 import { resolveRules } from '../services/compliance/provincialRules.js';
 import { createIncident, readIncident } from '../services/ops/incidents.js';
 import { decideClosure, recordReading } from '../services/ops/poolOps.js';
@@ -390,8 +390,19 @@ api.patch(
   requirePermission('timeclock.review'),
   h(async (req, res) => {
     const a = authOf(req);
-    const body = z.object({ clockIn: z.coerce.date().optional(), clockOut: z.coerce.date().optional(), reason: z.string().min(3) }).parse(req.body);
-    const p = await withTenant(a.tenantId, (tx) => editPunch(tx, { ...body, tenantId: a.tenantId, actorId: a.userId, punchId: uuid.parse(req.params.id), inScope: (userId) => userInScope(tx, a.scope, userId) }));
+    const body = z.object({ clockIn: z.coerce.date().optional(), clockOut: z.coerce.date().optional(), localClockIn: localTime.optional(), localClockOut: localTime.optional(), reason: z.string().trim().min(3).max(500) }).parse(req.body);
+    const id = uuid.parse(req.params.id);
+    const p = await withTenant(a.tenantId, async (tx) => {
+      const punch = await tx.timePunch.findUnique({ where: { id }, select: { facility: { select: { timezone: true } } } });
+      if (!punch) throw notFound('Punch');
+      const tz = punch.facility.timezone;
+      const clockIn = body.localClockIn ? atLocal(body.localClockIn, tz, 'localClockIn') : body.clockIn;
+      const clockOut = body.localClockOut ? atLocal(body.localClockOut, tz, 'localClockOut') : body.clockOut;
+      const updated = await editPunch(tx, { tenantId: a.tenantId, actorId: a.userId, punchId: id, clockIn, clockOut, reason: body.reason, inScope: (userId) => userInScope(tx, a.scope, userId), placeInScope: (place) => shiftInScope(a.scope, place) });
+      await recordEvents(tx, { type: 'notify', tenantId: a.tenantId, drafts: [{ userId: updated.userId, type: 'punch_corrected', params: { reason: body.reason }, link: '/timeclock' }] });
+      return updated;
+    });
+    dispatchSoon(a.tenantId);
     res.json({ id: p.id });
   }),
 );
