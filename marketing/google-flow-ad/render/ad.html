@@ -178,7 +178,7 @@ const C = TM.cut;
 const COPY = {
   en: {
     sched: [['Scheduling'], ['Scheduling']], clock: [['Time clocks'], ['Time clocks']], pay: [['Payroll export'], ['Payroll export']],
-    built: [['Built for', 'Canadian cities'], ['Built for', 'Canadian', 'cities']],
+    built: [['Built for', 'Canadian cities'], ['Built for', 'Canadian cities']],
     lang: [['English · Français'], ['English', 'Français']], phone: [['On any phone'], ['On any phone']],
     motto: ['Every shift.', 'Every site.', 'One HQ.'], cta: 'Try the live demo', note: 'Demo screens, sample data',
     notifs: [['Sam', 'Can anyone cover Saturday?'], ['Priya', 'Who’s on at 6 a.m.?'], ['Marc', 'Can I swap my Tuesday?'], ['Jess', 'Who can take my shift?'],
@@ -504,7 +504,7 @@ function enter(pn, t, cut) {   // the panel settles in on the cut: a short rise 
   const first = fr ? '-fr' : '', second = fr ? '' : '-fr';
   const pn = panel(B, A + `signin${first}.png`, 405, fr ? 430 : 406, '#E2E9E7', true, box);
   const im2 = pn.im.cloneNode(); im2.src = A + `signin${second}.png`; im2.style.height = (fr ? 406 : 430) + 'px'; pn.appendChild(im2);
-  const F = V ? [[202, 200, 470], [220, 150, 360]] : [[202, 140, 700], [202, 118, 500]];
+  const F = V ? [[202, 200, 470], [202, 140, 400]] : [[202, 140, 700], [202, 118, 500]];
   const tw = TM.lang2 - 0.16;
   blur(C.lang, 0.35); blur(tw, 0.5);
   U.push(t => {
