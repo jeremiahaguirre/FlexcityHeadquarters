@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { type DemoRole, open, signInAs, tabBar } from './helpers';
+import { type DemoRole, inFrench, open, sideways, signInAs, tabBar } from './helpers';
 
 test.describe('phone layout', () => {
   test('the tab bar hides while typing in a field and comes back after', async ({ page }) => {
@@ -119,4 +119,40 @@ test.describe('phone layout', () => {
       expect(cut, 'tab labels cut off').toEqual([]);
     });
   }
+
+  for (const lang of ['en-CA', 'fr-CA'] as const) {
+    test(`the timeclock’s buttons for other shifts fit at 390 px (${lang})`, async ({ page, context, baseURL }) => {
+      // 4 a.m. in Vancouver, before the water plant's 7:00 shift: it's offered as its own button
+      // ("Clock in · 7:00 a.m.–3:30 p.m. · Water Treatment Plant") instead of being suggested.
+      const now = new Date();
+      await page.clock.setFixedTime(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0)));
+      if (lang === 'fr-CA') await context.addCookies([{ name: 'fc_locale', value: 'fr-CA', url: baseURL! }]);
+      await signInAs(page, 'EMPLOYEE');
+      await open(page, '/timeclock');
+      const shift = page.getByRole('button', { name: lang === 'fr-CA' ? /Pointer l’arrivée ·/ : /Clock in ·/ }).first();
+      await expect(shift).toBeVisible();
+      expect(await sideways(page), 'the timeclock is wider than the screen').toBeLessThanOrEqual(0);
+      const cut = await page.locator('main button').evaluateAll((els) =>
+        els.filter((el) => el.scrollWidth > el.clientWidth + 1 || el.getBoundingClientRect().right > document.documentElement.clientWidth).map((el) => el.textContent),
+      );
+      expect(cut, 'buttons cut off or past the edge').toEqual([]);
+    });
+  }
+
+  test('the demo’s open punch started a few hours ago', async ({ page }) => {
+    await signInAs(page, 'STAFF');
+    const clock = page.getByRole('button', { name: /^On the clock for \d+:\d\d/ }).first();
+    await expect(clock).toBeVisible();
+    const hours = Number(/for (\d+):/.exec((await clock.getAttribute('aria-label')) ?? '')?.[1]);
+    expect(hours).toBeGreaterThanOrEqual(1);
+    expect(hours).toBeLessThan(6);
+  });
+
+  test('the supervisor’s Lone workers screen has someone on it, in French on a French screen', async ({ page, baseURL }) => {
+    await inFrench(page, baseURL);
+    await signInAs(page, 'AQUATIC_SUPERVISOR');
+    await open(page, '/manage/lone-work');
+    await expect(page.getByText('Salle mécanique de la piscine', { exact: false })).toBeVisible();
+    await expect(page.getByText(/Pool mechanical room|Chlorine feed/)).toHaveCount(0);
+  });
 });

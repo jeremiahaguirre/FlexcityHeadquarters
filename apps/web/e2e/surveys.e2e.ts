@@ -87,8 +87,8 @@ test.describe('surveys on a phone', () => {
     await page.getByRole('region', { name: 'Un court sondage des RH' }).getByRole('link', { name: 'Répondre' }).tap();
     await expect(page.getByText('Vos réponses sont anonymes')).toBeVisible();
     await page.getByRole('button', { name: 'Commencer (4 questions)' }).tap();
-    // The questions are the organization's own words (written in English in the sample city).
-    await answer(page, { week: 'How was your work week?', safe: 'I feel safe raising concerns with my supervisor.', load: 'Your workload', right: 'About right' });
+    // The questions are the organization's own words; the demo's sample city has them in French on a French screen (lib/demoFrench.ts).
+    await answer(page, { week: 'Comment s’est passée votre semaine de travail?', safe: 'Je me sens à l’aise de faire part de mes préoccupations à mon superviseur.', load: 'Votre charge de travail', right: 'Correcte' });
     await page.getByRole('button', { name: 'Envoyer mes réponses' }).tap();
     await expect(page.getByText('Merci. Vos réponses sont enregistrées.').first()).toBeVisible();
     await expect(page.getByText('Répondu', { exact: true })).toBeVisible();
@@ -100,7 +100,7 @@ test.describe('surveys on a phone', () => {
     await inFrench(page, baseURL);
     await signInAs(page, 'HR_ADMIN');
     await open(page, '/manage/surveys');
-    await page.getByRole('heading', { name: 'Summer check-in' }).locator('xpath=ancestor::div[contains(@class,"shadow-card")][1]').getByRole('button', { name: 'Résultats' }).tap();
+    await page.getByRole('heading', { name: 'Bilan d’été' }).locator('xpath=ancestor::div[contains(@class,"shadow-card")][1]').getByRole('button', { name: 'Résultats' }).tap();
     const sheet = page.locator('dialog[open]');
     await expect(sheet.getByText(/moyenne 3,9/)).toBeVisible();
     await sheet.getByRole('radio', { name: 'Par service' }).tap();
