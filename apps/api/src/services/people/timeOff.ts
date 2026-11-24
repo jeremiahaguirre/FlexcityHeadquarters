@@ -17,7 +17,7 @@ import type { DomainEvent } from '../../lib/events.js';
 import { addDays } from '../../lib/time.js';
 import { approversFor } from './reporting.js';
 import { postOffer } from '../shiftboard/offers.js';
-import { leaveHoursFrom, personLeaveTimeZone, scheduledShifts, shiftLeaveDays } from './leaveHours.js';
+import { leaveHoursOff, personLeaveDaysOff, personLeaveTimeZone, scheduledShifts, shiftLeaveDays } from './leaveHours.js';
 import { type ApprovalStep, chainOf, resolveLeaveType, typeOfRequest } from './leaveTypes.js';
 
 export interface AvailabilityWindow {
@@ -72,7 +72,7 @@ export async function requestTimeOff(
   if (input.type === 'LIEU') {
     const policy = lieuPolicy(readSettings((await tx.tenant.findFirstOrThrow({ select: { payrollSettings: true } })).payrollSettings));
     if (!policy.enabled) throw badRequest('Your organization doesn’t use time in lieu.');
-    const want = leaveHoursFrom({ startsAt: input.startsAt, endsAt: input.endsAt }, await scheduledShifts(tx, [userId], input.startsAt, input.endsAt), await personLeaveTimeZone(tx, userId, input.startsAt)).hours;
+    const want = leaveHoursOff({ startsAt: input.startsAt, endsAt: input.endsAt }, await scheduledShifts(tx, [userId], input.startsAt, input.endsAt), await personLeaveTimeZone(tx, userId, input.startsAt), await personLeaveDaysOff(tx, userId, input.startsAt, input.endsAt)).hours;
     const have = await lieuAvailable(tx, userId);
     if (want > have + 0.001) throw new HttpError(400, 'LIEU_SHORT', `This needs ${want} hours of banked time; you have ${Math.max(0, have)}.`, { need: want, have: Math.max(0, have) });
   }
@@ -148,7 +148,7 @@ export async function decideTimeOff(
   // Measured now, from the shifts it takes them off, before those shifts are released below.
   const taken = status === 'APPROVED' ? await scheduledShifts(tx, [r.userId], r.startsAt, r.endsAt) : [];
   const zone = status === 'APPROVED' ? await personLeaveTimeZone(tx, r.userId, r.startsAt) : null;
-  const charged = zone ? leaveHoursFrom(r, taken, zone) : null;
+  const charged = zone ? leaveHoursOff(r, taken, zone, await personLeaveDaysOff(tx, r.userId, r.startsAt, r.endsAt)) : null;
   // Charged from shifts: the hours on each shift's day, for payroll (leavePay.ts), as the shifts are released below.
   const chargedDays = charged?.basis === 'SHIFTS' ? shiftLeaveDays(r, taken, zone!) : null;
   if (charged && r.type === 'LIEU') {

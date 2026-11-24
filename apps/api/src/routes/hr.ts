@@ -21,7 +21,7 @@ import { OFFBOARD_ITEMS, OFFBOARD_REASONS, startOffboarding } from '../services/
 import { peopleInScope, peopleWhere, userInScope } from '../services/people/scope.js';
 import { loadGraph, setManagers, setReportsOf } from '../services/people/reporting.js';
 import { h } from './context.js';
-import { leaveHoursFrom, leaveTimeZones, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
+import { leaveDaysOff, leaveHoursOff, leaveProvinces, leaveTimeZones, scheduledShifts, weekdayLeaveHours } from '../services/people/leaveHours.js';
 import { assertUserInScope } from '../services/people/scope.js';
 import { leaveTypes, resolveLeaveType } from '../services/people/leaveTypes.js';
 import { holidaysTouching, organizationDay, statutoryDay } from '../services/payroll/holidayRules.js';
@@ -56,20 +56,27 @@ async function balances(tx: Tx, tenantId: string, userIds: string[], year: numbe
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
   const kinds = (await leaveTypes(tx, tenantId)).filter((t) => (t.system ? t.system !== 'LIEU' : t.hasBalance));
-  const [users, ents, requests, shifts] = await Promise.all([
+  const [users, ents, requests] = await Promise.all([
     tx.user.findMany({ where: { id: { in: userIds } }, select: { id: true, firstName: true, lastName: true, hireDate: true } }),
     tx.leaveEntitlement.findMany({ where: { userId: { in: userIds }, year } }),
     tx.timeOffRequest.findMany({ where: { userId: { in: userIds }, startsAt: { lt: end }, endsAt: { gt: start }, status: { in: ['APPROVED', 'PENDING'] } } }),
-    scheduledShifts(tx, userIds, start, end),
   ]);
-  const zoneOf = await leaveTimeZones(tx, requests); // one query, the zone each request is counted in
+  // Over every day the requests cover, not just this year: a request across New Year counts the same in both years.
+  const from = new Date(Math.min(start.getTime(), ...requests.map((r) => r.startsAt.getTime())));
+  const to = new Date(Math.max(end.getTime(), ...requests.map((r) => r.endsAt.getTime())));
+  const shifts = await scheduledShifts(tx, userIds, from, to);
+  // One query each: the zone and the holidays' province each request is counted in.
+  const [zoneOf, provinceOf] = await Promise.all([leaveTimeZones(tx, requests), leaveProvinces(tx, requests)]);
+  // Holidays (statutory and the organization's own) for each province requests are counted in, once each.
+  const daysOffIn = new Map<string | null, Set<string>>();
+  for (const p of new Set(requests.map(provinceOf))) daysOffIn.set(p, await leaveDaysOff(tx, p, from, to));
   // Approved: what was charged at approval (older requests: the weekday count). Pending: their schedule as it stands.
   const hoursOf = (r: (typeof requests)[number]) =>
     r.status === 'APPROVED'
       ? r.chargedHours != null
         ? Number(r.chargedHours)
         : weekdayLeaveHours(r.startsAt, r.endsAt, zoneOf(r))
-      : leaveHoursFrom(r, shifts.filter((s) => s.userId === r.userId), zoneOf(r)).hours;
+      : leaveHoursOff(r, shifts.filter((s) => s.userId === r.userId), zoneOf(r), daysOffIn.get(provinceOf(r)) ?? new Set()).hours;
   return users.map((u) => ({
     userId: u.id,
     name: `${u.firstName} ${u.lastName}`,
@@ -131,7 +138,7 @@ hrRouter.get(
         tx.facility.findMany({ select: { province: true } }),
       ]);
       const provinces = [...new Set(facilities.map((f) => f.province))].sort();
-      const rows = await Promise.all(provinces.map(async (province) => (await holidaysTouching(tx, province, from, to)).map((h) => ({ province, key: h.key, name: h.name, nameFr: h.nameFr, date: h.date, kind: h.kind, observedOn: h.kind === 'ACTUAL' ? null : statutoryDay(h), closedOn: organizationDay(h, t.holidayObservance) }))));
+      const rows = await Promise.all(provinces.map(async (province) => (await holidaysTouching(tx, province, from, to)).map((h) => ({ province, key: h.key, name: h.name, nameFr: h.nameFr, date: h.date, kind: h.kind, observedOn: h.kind === 'ACTUAL' ? null : statutoryDay(h), closedOn: organizationDay(h, t.holidayObservance), source: h.source ?? 'STATUTORY', paid: h.paid !== false }))));
       return { observance: t.holidayObservance, provinces, holidays: rows.flat().filter((h) => h.closedOn >= from).sort((x, y) => x.closedOn.localeCompare(y.closedOn) || x.province.localeCompare(y.province)) };
     });
     res.json(out);
@@ -496,7 +503,7 @@ hrRouter.post(
     const userId = uuid.parse(req.params.id);
     if (userId === a.userId) throw forbidden('Someone else has to offboard you.');
     const b = z.object({ lastDay: isoDate, reason: z.enum(OFFBOARD_REASONS) }).parse(req.body);
-    const o = await withTenant(a.tenantId, (tx) => startOffboarding(tx, a, userId, b));
+    const o = await withTenant(a.tenantId, async (tx) => (await assertUserInScope(tx, a, userId), startOffboarding(tx, a, userId, b)));
     res.status(201).json({ id: o.id });
   }),
 );

@@ -26,6 +26,7 @@ import { apiKeyAuthFailures, publicApiRequests, rateLimited, routePattern, statu
 import { hasModule } from '../services/billing/entitlements.js';
 import { hashKey, ipAllowed, looksLikeKey } from '../services/integrations/apiKeys.js';
 import { openApiSpec } from '../services/integrations/openapi.js';
+import { holidaysTouching, organizationDay, statutoryDay } from '../services/payroll/holidayRules.js';
 import { chainOf, leaveTypes } from '../services/people/leaveTypes.js';
 import { tenantSettings } from '../services/platform/features.js';
 import { h } from './context.js';
@@ -242,6 +243,42 @@ publicApiRouter.get(
     const q = listQuery.parse(req.query);
     const rows = await read(req, (tx) => tx.facility.findMany({ ...paging(q), select: { id: true, name: true, province: true, timezone: true, costCenter: true, createdAt: true, updatedAt: true } }));
     res.json(pageOf(rows, q.limit, (f) => ({ id: f.id, name: f.name, province: f.province, timezone: f.timezone, cost_center: f.costCenter, created_at: iso(f.createdAt), updated_at: iso(f.updatedAt) })));
+  }),
+);
+
+/**
+ * Holidays for each province the organization has facilities in: the statutory ones and the
+ * organization's own paid holidays and closure days, from `from` (default today) for up to 400 days.
+ */
+publicApiRouter.get(
+  '/holidays',
+  need('facilities:read'),
+  h(async (req, res) => {
+    const q = z.object({ from: z.string().date().optional(), to: z.string().date().optional() }).parse(req.query);
+    const from = q.from ?? new Date().toISOString().slice(0, 10);
+    const to = q.to ?? new Date(Date.parse(`${from}T00:00:00Z`) + 366 * 86_400_000).toISOString().slice(0, 10);
+    if (!(to > from)) throw new HttpError(400, 'BAD_RANGE', '`to` must be after `from`.');
+    if (Date.parse(to) - Date.parse(from) > 400 * 86_400_000) throw new HttpError(400, 'BAD_RANGE', 'Ask for at most 400 days at a time.');
+    const rows = await read(req, async (tx) => {
+      const t = await tx.tenant.findFirstOrThrow({ select: { holidayObservance: true } });
+      const provinces = [...new Set((await tx.facility.findMany({ select: { province: true } })).map((f) => f.province))].sort();
+      const out = await Promise.all(
+        provinces.map(async (p) =>
+          (await holidaysTouching(tx, p, from, to)).map((x) => ({
+            province: p,
+            date: x.date,
+            name: x.name,
+            name_fr: x.nameFr,
+            source: (x.source ?? 'STATUTORY').toLowerCase(),
+            paid: x.paid !== false,
+            observed_on: statutoryDay(x),
+            closed_on: organizationDay(x, t.holidayObservance),
+          })),
+        ),
+      );
+      return out.flat().filter((x) => x.closed_on >= from && x.closed_on < to);
+    });
+    res.json({ data: rows.sort((a, b) => a.closed_on.localeCompare(b.closed_on) || a.province.localeCompare(b.province)) });
   }),
 );
 

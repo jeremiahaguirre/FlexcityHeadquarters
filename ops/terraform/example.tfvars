@@ -13,3 +13,8 @@ app_environment = {
   SECURITY_EMAIL          = ""
   SMS_PROVIDER            = "console" # "twilio" once TWILIO_* are in the app secret
 }
+
+# Continuous deployment (docs/DEPLOYING.md): the repository allowed to deploy this environment, and on
+# staging, the production account that may pull its tested images.
+# github_repository    = "<owner>/<repo>"
+# ecr_pull_account_ids = ["<production account id>"]

@@ -11,7 +11,7 @@ import { resolveRules, vacationPercent } from '../compliance/provincialRules.js'
 import { type ExportEmployee, type ExportOptions, buildPayrollCsv } from './export.js';
 import { type PaidLeaveDay, paidLeaveDays } from './leavePay.js';
 import { type DailyEarnings, statutoryHolidayPay } from './holidayPay.js';
-import { holidaysTouching, offDayRule, personalDay, premiumDays, statutoryDay, usuallyWorks } from './holidayRules.js';
+import { holidaysTouching, isPaidHoliday, offDayRule, personalDay, premiumDays, statutoryDay, usuallyWorks } from './holidayRules.js';
 import { type PayResult, calculatePay } from './payCalc.js';
 import { IssueSet, issue } from './issues.js';
 import { type PayResultWithExtras, addEarning, workRuleExtras, workRuleIntervals } from './workRulePay.js';
@@ -52,7 +52,8 @@ export async function runPayroll(tx: Tx, tenantId: string, periodStart: string, 
   for (const group of byProvince.values()) {
     const f = group[0]!;
     // Holidays whose own date, statutory day or observed weekday is in the period (observed dates in holidayRules.ts).
-    const holidays = await holidaysTouching(tx, f.province, periodStart, periodEnd);
+    // Paid ones only: a city closure day is a day off without holiday pay or the premium.
+    const holidays = (await holidaysTouching(tx, f.province, periodStart, periodEnd)).filter(isPaidHoliday);
     const inPeriod = (d: string) => d >= periodStart && d < periodEnd;
     const statDates = [...new Set(holidays.map(statutoryDay).filter(inPeriod))];
     const mode = tenant.holidayObservance;

@@ -448,6 +448,7 @@
     "NOT_ELIGIBLE": "Vous ne pouvez pas prendre ce quart.",
     "FORBIDDEN": "Vous n’avez pas accès à cette action.",
     "VALIDATION": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez.",
+    "MALFORMED_ADDRESS": "Cette adresse n’est pas valide. Revenez en arrière et réessayez.",
     "BAD_REQUEST": "Certains renseignements ne sont pas valides. Vérifiez le formulaire et réessayez.",
     "ALREADY_CLOCKED_IN": "Votre arrivée est déjà pointée.",
     "NOT_CLOCKED_IN": "Votre arrivée n’est pas pointée.",
@@ -469,6 +470,7 @@
     "NO_PASSKEY": "Aucune clé d’accès sur ce compte.",
     "TOO_MANY_PASSKEYS": "Retirez une clé d’accès avant d’en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d’accès pour ce compte.",
+    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "CSRF_REFUSED": "Cette requête ne vient pas de la console Dev. Rechargez la page et réessayez.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d’abord.",
     "ALREADY_ENDED": "Cette séance est déjà terminée.",
@@ -756,7 +758,6 @@
     "SUBDOMAIN_TAKEN": "Une autre organisation utilise déjà cette adresse.",
     "SUPPORT_CODE_INVALID": "Ce lien de soutien est expiré ou a déjà été utilisé.",
     "SUPPORT_ENDED": "Cette visite de soutien est terminée.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "SUPPORT_READ_ONLY": "Le soutien FH peut consulter, mais ne peut rien modifier.",
     "TEXT_ALERTS_OFF": "Votre organisation n’a pas activé les alertes par texto.",
     "TOO_LARGE": "Les fichiers peuvent faire au plus 10 Mo.",
@@ -779,16 +780,20 @@
     "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
     "CERT_EXISTS": "Un certificat porte déjà ce nom.",
     "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez.",
-    "LEAVE_TYPE_UNKNOWN": "Ce type de congé n’est pas offert ici.",
-    "LEAVE_TYPE_ARCHIVED": "Ce type de congé n’est plus offert.",
-    "LEAVE_TYPE_SYSTEM": "Un type de congé intégré garde ses noms et son fonctionnement : changez seulement son code de paie ou son ordre.",
-    "LEAVE_TYPE_NO_BALANCE": "Ce type de congé n’a pas de solde.",
-    "LEAVE_CHAIN_REPEATS": "Chaque approbateur figure une seule fois dans la chaîne.",
-    "LEAVE_STEP_NOT_YOURS": "Cette demande attend l’approbation de quelqu’un d’autre.",
+    "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture.",
+    "UNTIL_BEFORE_START": "La dernière année est avant la première date.",
+    "NTH_WEEKDAY_FIFTH": "Un cinquième jour de semaine du mois n’existe pas chaque année. Choisissez plutôt « dernier jour de semaine du mois ».",
+    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois.",
     "CARRYOVER_OVER_LIMIT": "C’est plus de report que ce type de congé ne permet.",
     "TOO_MANY_LEAVE_TYPES": "Une organisation peut ajouter jusqu’à 40 types de congé.",
+    "LEAVE_TYPE_UNKNOWN": "Ce type de congé n’est pas offert ici.",
+    "LEAVE_TYPE_ARCHIVED": "Ce type de congé n’est plus offert.",
+    "LEAVE_TYPE_NO_BALANCE": "Ce type de congé n’a pas de solde.",
+    "LEAVE_CHAIN_REPEATS": "Chaque approbateur figure une seule fois dans la chaîne.",
     "LEAVE_TYPE_IN_USE": "Des gens ont déjà demandé ce type de congé; sa paie et sa protection ne peuvent donc plus changer. Archivez-le et ajoutez un nouveau type.",
-    "LEAVE_PAY_CODE_NOT_YOURS": "Seules les personnes qui fixent les codes de paie ou approuvent les paies peuvent changer un code de paie."
+    "LEAVE_PAY_CODE_NOT_YOURS": "Seules les personnes qui fixent les codes de paie ou approuvent les paies peuvent changer un code de paie.",
+    "LEAVE_STEP_NOT_YOURS": "Cette demande attend l’approbation de quelqu’un d’autre.",
+    "LEAVE_TYPE_SYSTEM": "Un type de congé intégré garde ses noms et son fonctionnement : changez seulement son code de paie ou son ordre."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -890,7 +895,9 @@
     "holidayObserved": "observé le {{date}}",
     "holidayMovedIfOff": "le {{date}} si vous ne travaillez pas habituellement ce jour-là",
     "holidaysMore": "Afficher les {{count}}",
-    "holidaysLess": "Afficher moins"
+    "holidaysLess": "Afficher moins",
+    "holidayCity": "Congé de l’organisation",
+    "holidayClosure": "Fermé (non payé)"
   },
   "availability": {
     "title": "Disponibilités",
@@ -1332,7 +1339,10 @@
       "remove": "Retirer la confirmation",
       "removed": "Confirmation retirée.",
       "private": "Seules les RH voient ceci."
-    }
+    },
+    "phone": "Téléphone",
+    "seniorityHours": "Heures d’ancienneté",
+    "seniorityHoursHint": "Utilisées là où l’ancienneté se compte en heures (rondes de soumissions, heures supplémentaires, rappels)."
   },
   "payroll": {
     "title": "Paie",
@@ -1833,7 +1843,7 @@
       "facilities": "Installations",
       "pools": "Bassins",
       "pay": "Codes de paie",
-      "calendar": "Calendrier scolaire",
+      "calendar": "Congés et calendrier",
       "rules": "Convention collective",
       "roles": "Rôles",
       "departments": "Services",
@@ -4554,7 +4564,12 @@
     "reportableHelp": "Les premiers soins seulement, sans perte de temps, restent au dossier sans déclaration. Si l’un ou l’autre change, mettez à jour et la déclaration devient due.",
     "save": "Enregistrer",
     "claimNumber": "Numéro de dossier de l’organisme",
-    "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu’une déclaration est en retard."
+    "foot": "Les échéances par province sont intégrées mais pas encore révisées par un juriste. Confirmez-les auprès de votre organisme. Les RH et les superviseurs reçoivent un rappel la veille et lorsqu’une déclaration est en retard.",
+    "update": "Mettre à jour",
+    "updateFor": "Mettre à jour la déclaration de lésion de {{name}}",
+    "updateHelp": "Indiquez une perte de temps ou des soins de santé constatés après l’enregistrement. Si l’un ou l’autre s’applique, la déclaration à l’organisme devient due.",
+    "updated": "Enregistré.",
+    "nowDue": "Enregistré. La déclaration à {{board}} est maintenant due : elle figure dans la liste à envoyer."
   },
   "departments": {
     "tabs": "Service",
@@ -8772,44 +8787,84 @@
       "licence": "Permis de conduire"
     }
   },
-  "leaveTypes": {
-    "title": "Types de congé",
-    "help": "Ce que les gens peuvent demander. Les types intégrés fonctionnent comme toujours. Ajoutez les vôtres, comme le deuil, le congé syndical ou la fonction de juré, avec des noms en anglais et en français.",
-    "add": "Ajouter un type de congé",
-    "addTitle": "Ajouter un type de congé",
-    "editTitle": "Modifier un type de congé",
+  "cityHolidays": {
+    "dateFirst": "La première fois qu’il s’applique. Rien ne se répète avant.",
+    "kindHint": {
+      "CLOSURE": "Aucune indemnité ni taux majoré. Le jour n’est pas compté dans les congés, et les installations réglées pour fermer les jours fériés n’y reçoivent aucun nouveau quart.",
+      "PAID": "Payé comme un jour férié légal : indemnité de jour férié, et taux majoré pour les heures travaillées."
+    },
+    "kindLabel": "Type",
+    "date": "Date",
+    "help": "Les jours que votre organisation ajoute aux jours fériés légaux de chaque province, comme le lendemain de Noël, le lundi de Pâques ou un congé civique. La paie paie un jour férié payé comme un jour férié légal (indemnité de jour férié et taux majoré pour les heures travaillées); un jour de fermeture ne paie rien de plus. Les congés ne comptent ni l’un ni l’autre, et les rotations et modèles de quarts n’y ajoutent aucun quart aux installations réglées pour fermer les jours fériés (paramètres de Remplir).",
+    "removed": "Jour férié retiré.",
+    "recurrence": {
+      "NONE": "Une fois",
+      "YEARLY_NTH_WEEKDAY": "Chaque année le même jour de semaine du mois (p. ex. le premier lundi d’août)",
+      "EASTER_OFFSET": "Chaque année, le même nombre de jours après Pâques (p. ex. le lundi de Pâques)",
+      "YEARLY_LAST_WEEKDAY": "Chaque année le dernier de ces jours de semaine du mois",
+      "YEARLY_DATE": "Chaque année à la même date"
+    },
     "edit": "Modifier {{name}}",
-    "saved": "Enregistré.",
-    "builtIn": "Intégré",
-    "builtInHelp": "Un type intégré garde ses noms et son fonctionnement. Vous pouvez changer son code de paie et son ordre.",
-    "archived": "Archivé",
-    "name": "Nom (anglais)",
+    "remove": "Retirer {{name}}",
+    "recurrenceLabel": "Répétition",
+    "allProvinces": "Toutes les installations",
+    "untilYearHint": "Laissez vide pour répéter sans fin.",
+    "kind": {
+      "CLOSURE": "Jour de fermeture",
+      "PAID": "Jour férié payé"
+    },
+    "nextOn": "Prochain : {{date}}",
+    "province": "S’applique à",
+    "saved": "Jour férié enregistré.",
+    "empty": "Aucun jour férié de l’organisation pour l’instant. Les jours fériés légaux s’appliquent automatiquement.",
     "nameFr": "Nom (français)",
-    "paid": "Payé",
-    "unpaid": "Non payé",
-    "balance": "A un solde",
-    "yearly": "{{hours}} h par année",
-    "protected": "Ne peut être refusé sans motif",
-    "paidLabel": "Payé : les heures approuvées sont payées dans les paies et l’exportation de paie",
-    "balanceLabel": "A un solde dans les soldes de congé",
-    "yearlyHours": "Heures par année",
-    "yearlyHoursHint": "Le droit de chaque personne, sauf si les RH en fixent un autre.",
-    "carryOver": "Heures reportées au maximum",
-    "carryOverHint": "Laissez vide pour aucune limite.",
-    "protectedLabel": "Protégé : un refus exige un motif écrit",
+    "untilYear": "Dernière année (facultatif)",
+    "noneComing": "Aucun dans l’année à venir.",
+    "editTitle": "Modifier un jour férié ou de fermeture",
+    "title": "Jours fériés et jours de fermeture de l’organisation",
+    "add": "Ajouter un jour",
+    "until": "jusqu’en {{year}}",
+    "name": "Nom (anglais)",
+    "addTitle": "Ajouter un jour férié ou de fermeture"
+  },
+  "leaveTypes": {
     "chainLabel": "Qui approuve",
+    "unpaid": "Non payé",
+    "payCodeShown": "code {{code}}",
     "chains": {
       "default": "Son gestionnaire (comme pour les autres congés)",
-      "hr": "Les RH",
-      "managerHr": "Son gestionnaire, puis les RH"
+      "managerHr": "Son gestionnaire, puis les RH",
+      "hr": "Les RH"
     },
+    "builtInHelp": "Un type intégré garde ses noms et son fonctionnement. Vous pouvez changer son code de paie et son ordre.",
+    "yearlyHours": "Heures par année",
+    "paidLabel": "Payé : les heures approuvées sont payées dans les paies et l’exportation de paie",
+    "name": "Nom (anglais)",
+    "editTitle": "Modifier un type de congé",
+    "edit": "Modifier {{name}}",
+    "payCodeHint": "Le code de gains de votre fournisseur de paie pour ces heures. Vide : le code Congé payé des codes de paie.",
+    "archived": "Archivé",
+    "addTitle": "Ajouter un type de congé",
+    "carryOverHint": "Laissez vide pour aucune limite.",
+    "carryOver": "Heures reportées au maximum",
+    "archiveLabel": "Archivé : plus offert; les demandes passées le gardent",
+    "balanceLabel": "A un solde dans les soldes de congé",
+    "help": "Ce que les gens peuvent demander. Les types intégrés fonctionnent comme toujours. Ajoutez les vôtres, comme le deuil, le congé syndical ou la fonction de juré, avec des noms en anglais et en français.",
+    "protected": "Ne peut être refusé sans motif",
+    "paid": "Payé",
+    "add": "Ajouter un type de congé",
+    "balance": "A un solde",
+    "yearly": "{{hours}} h par année",
+    "nameFr": "Nom (français)",
+    "protectedLabel": "Protégé : un refus exige un motif écrit",
+    "saved": "Enregistré.",
+    "payCode": "Code d’exportation de paie (facultatif)",
+    "builtIn": "Intégré",
     "steps": {
       "MANAGER": "son gestionnaire",
       "HR": "les RH"
     },
-    "payCode": "Code d’exportation de paie (facultatif)",
-    "payCodeHint": "Le code de gains de votre fournisseur de paie pour ces heures. Vide : le code Congé payé des codes de paie.",
-    "payCodeShown": "code {{code}}",
-    "archiveLabel": "Archivé : plus offert; les demandes passées le gardent"
+    "yearlyHoursHint": "Le droit de chaque personne, sauf si les RH en fixent un autre.",
+    "title": "Types de congé"
   }
 }

@@ -1213,6 +1213,46 @@ model StatutoryHoliday {
   @@unique([province, date])
 }
 
+/// What a city-added holiday is: a paid general holiday (holiday pay and the holiday premium, as a
+/// statutory one) or a closure day (the organization is closed, nobody is scheduled, leave doesn't
+/// count it, but no holiday pay).
+enum TenantHolidayKind {
+  PAID
+  CLOSURE
+}
+
+/// How a city holiday repeats, worked out from its first date: the same day each year, the same
+/// nth weekday of the month (first Monday of August), the last such weekday, or the same number
+/// of days from Easter Sunday (Easter Monday).
+enum HolidayRecurrence {
+  NONE
+  YEARLY_DATE
+  YEARLY_NTH_WEEKDAY
+  YEARLY_LAST_WEEKDAY
+  EASTER_OFFSET
+}
+
+/// A holiday or closure day the organization adds on top of its provinces' statutory holidays
+/// (a civic holiday, Boxing Day, Easter Monday, a closure between Christmas and New Year's).
+model TenantHoliday {
+  id         String            @id @default(uuid()) @db.Uuid
+  tenantId   String            @db.Uuid
+  name       String
+  nameFr     String
+  kind       TenantHolidayKind @default(PAID)
+  /// The day (one-off), or the first year's day of a repeating rule: nothing repeats before it.
+  date       DateTime          @db.Date
+  recurrence HolidayRecurrence @default(NONE)
+  /// The last year a repeating rule applies; null = no end.
+  untilYear  Int?
+  /// Only facilities in this province; null = every facility.
+  province   Province?
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime          @updatedAt @db.Timestamptz(3)
+
+  @@index([tenantId, date])
+}
+
 // ------------------------------------------------------------------
 // TIMEKEEPING
 // ------------------------------------------------------------------
