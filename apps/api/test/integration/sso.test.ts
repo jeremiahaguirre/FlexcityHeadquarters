@@ -34,6 +34,8 @@ let nextClaims: Record<string, unknown> = {};
 let signingKey: CryptoKey;
 let otherKey: CryptoKey;
 let useOtherKey = false;
+/** When set, the provider returns this ID token instead of a normal one (for expired or unsigned tokens). */
+let idTokenFor: ((claims: Record<string, unknown>) => Promise<string>) | null = null;
 const CLIENT = 'fh-client-id';
 
 beforeAll(async () => {
@@ -60,7 +62,7 @@ beforeAll(async () => {
         res.statusCode = 400;
         return res.end('{}');
       }
-      const id_token = await new SignJWT({ ...nextClaims }).setProtectedHeader({ alg: 'RS256', kid: 'k1' }).setIssuer(String(nextClaims.iss ?? issuer)).setAudience(String(nextClaims.aud ?? CLIENT)).setSubject(String(nextClaims.sub ?? 'oid-1')).setIssuedAt().setExpirationTime('5m').sign(useOtherKey ? otherKey : signingKey);
+      const id_token = idTokenFor ? await idTokenFor(nextClaims) : await new SignJWT({ ...nextClaims }).setProtectedHeader({ alg: 'RS256', kid: 'k1' }).setIssuer(String(nextClaims.iss ?? issuer)).setAudience(String(nextClaims.aud ?? CLIENT)).setSubject(String(nextClaims.sub ?? 'oid-1')).setIssuedAt().setExpirationTime('5m').sign(useOtherKey ? otherKey : signingKey);
       res.setHeader('content-type', 'application/json');
       return res.end(JSON.stringify({ id_token, access_token: 'x', token_type: 'Bearer' }));
     }
@@ -206,6 +208,30 @@ describe('OpenID Connect (Microsoft Entra ID)', () => {
     expect(await back(await new SignJWT({ ...payload, aud: 'something-else' }).setProtectedHeader({ alg: 'HS256' }).sign(secret))).toBe('SSO_STATE_INVALID');
     expect(await back(await new SignJWT({ ...payload }).setProtectedHeader({ alg: 'HS256' }).sign(new TextEncoder().encode('another-secret-another-secret-000000')))).toBe('SSO_STATE_INVALID');
     expect(await back(await new SignJWT({ ...payload, exp: Math.floor(Date.now() / 1000) - 1 }).setProtectedHeader({ alg: 'HS256' }).sign(secret))).toBe('SSO_STATE_INVALID');
+  });
+
+  it('refuses ID tokens that have expired (past the one-minute clock allowance) or are unsigned', async () => {
+    const reason = (l: URL) => (l.pathname === '/login' ? l.searchParams.get('sso') : 'signed-in');
+    const now = Math.floor(Date.now() / 1000);
+    const b64 = (v: object) => Buffer.from(JSON.stringify(v)).toString('base64url');
+    const full = (c: Record<string, unknown>, exp: number) => ({ ...c, iss: issuer, aud: CLIENT, sub: 'oid-1', iat: exp - 300, exp });
+    const signedUntil = (exp: number) => (c: Record<string, unknown>) => new SignJWT(full(c, exp)).setProtectedHeader({ alg: 'RS256', kid: 'k1' }).sign(signingKey);
+    // These sign-ins would otherwise push the file past the 30-per-10-minutes limit on starting one.
+    resetLimits();
+    try {
+      // The control: a token that expired 30 seconds ago is still inside the allowance for clock drift.
+      idTokenFor = signedUntil(now - 30);
+      expect(reason((await oidcRound({ email: staffEmail })).location)).toBe('signed-in');
+      idTokenFor = signedUntil(now - 120);
+      expect(reason((await oidcRound({ email: staffEmail })).location)).toBe('SSO_TOKEN_INVALID');
+      // Unsigned, with claims that would otherwise be accepted.
+      idTokenFor = async (c) => `${b64({ alg: 'none', kid: 'k1' })}.${b64(full(c, now + 300))}.`;
+      expect(reason((await oidcRound({ email: staffEmail })).location)).toBe('SSO_TOKEN_INVALID');
+      idTokenFor = async (c) => `${b64({ alg: 'none' })}.${b64(full(c, now + 300))}.`;
+      expect(reason((await oidcRound({ email: staffEmail })).location)).toBe('SSO_TOKEN_INVALID');
+    } finally {
+      idTokenFor = null;
+    }
   });
 
   it('never creates accounts, keeps to the city’s domains, and stays bound to the first directory account', async () => {

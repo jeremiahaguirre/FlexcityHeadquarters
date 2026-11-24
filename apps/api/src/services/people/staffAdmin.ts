@@ -16,7 +16,7 @@ import { audit, type Tx } from '../../lib/db.js';
 import { HttpError, conflict, forbidden, invalid, notFound } from '../../lib/errors.js';
 import { forgetActive, setUserCustomRoles } from './customRoles.js';
 import { setManagers, setReportsOf } from './reporting.js';
-import { actorOf } from './scope.js';
+import { actorOf, assertUserInScope } from './scope.js';
 
 /**
  * Nobody gives out more than they hold: outside HR for the whole organization, every permission of
@@ -133,6 +133,8 @@ export interface PersonChange {
 /** Changes a person's record. Only what's given changes. */
 export async function updatePerson(tx: Tx, a: AuthContext, id: string, change: PersonChange) {
   const { customRoleIds, positionIds, managerId, ...body } = change;
+  // Department limits hold here too, not only in the route guard (SEC-04): the public API reaches this.
+  if (id !== a.userId) await assertUserInScope(tx, a, id);
   if (body.roles) {
     if (id === a.userId && !body.roles.includes('HR_ADMIN') && a.roles.includes('HR_ADMIN')) throw invalid('OWN_HR_ROLE', 'You cannot remove your own HR administrator role.');
     // Keeping your own roles exactly as they are is fine; changing them isn't.
@@ -194,7 +196,10 @@ export async function startOffboarding(tx: Tx, a: AuthContext, userId: string, b
   if (userId === a.userId) throw forbidden('Someone else has to offboard you.');
   const u = await tx.user.findUnique({ where: { id: userId }, select: { id: true, anonymizedAt: true, status: true } });
   if (!u || u.anonymizedAt) throw notFound('Staff member');
-  if (await tx.offboarding.findUnique({ where: { userId } })) throw conflict('ALREADY_OFFBOARDING', 'This person is already being offboarded.');
+  // One at a time: a finished offboarding (they were rehired since) doesn't stop a new one. The person's
+  // row is locked first, so two requests at once can't both pass this check and open two.
+  await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+  if (await tx.offboarding.findFirst({ where: { userId, completedAt: null }, select: { id: true } })) throw conflict('ALREADY_OFFBOARDING', 'This person is already being offboarded.');
   const created = await tx.offboarding.create({ data: { tenantId: a.tenantId, userId, lastDay: new Date(b.lastDay), reason: b.reason, checklist: OFFBOARD_ITEMS.map((key) => ({ key, done: false, doneAt: null, doneById: null })), createdById: a.userId } });
   await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'offboarding.start', entity: 'User', entityId: userId, after: b });
   return created;

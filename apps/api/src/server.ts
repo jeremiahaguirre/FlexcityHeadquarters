@@ -6,7 +6,7 @@ import { attachCacheBus } from './lib/cacheBus.js';
 import { sharedListener } from './lib/listen.js';
 import { enableInlineDispatch } from './lib/outbox.js';
 import { startLiveHub } from './services/notifications/liveHub.js';
-import { ConsoleMailer } from './services/notifications/mailer.js';
+import { mailerFromEnv } from './services/notifications/sesMailer.js';
 import { type SmsSender, smsSender } from './services/notifications/sms.js';
 import { enableInlineUrgent } from './services/notifications/urgent.js';
 import { logError } from './lib/log.js';
@@ -64,7 +64,7 @@ if (workers > 1 && cluster.isPrimary) {
   } catch (err) {
     logError('Texts are left to the worker: the text provider is not set up here', err);
   }
-  enableInlineUrgent({ sms, mailer: new ConsoleMailer() });
+  enableInlineUrgent({ sms, mailer: mailerFromEnv() });
 
   // One LISTEN connection per process (lib/listen.ts): live notifications for the browsers whose
   // stream is open here, and cache invalidation from the other processes and instances.
