@@ -4,7 +4,10 @@
  * not the pool's, a pool lead in a city with no "aquatic supervisor" hears about the pool, and a
  * switched-off feature takes its alerts with it.
  */
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createApp } from '../../src/app.js';
+import { signAccessToken } from '../../src/auth/tokens.js';
 import { withTenant } from '../../src/lib/db.js';
 import { certificationReminders } from '../../src/services/jobs/daily.js';
 import { organizationAdmins, usersWithPermission } from '../../src/services/notifications/notifier.js';
@@ -15,7 +18,7 @@ import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 const SUB = 'alertroute';
 let t: Awaited<ReturnType<typeof seedTenant>>;
-const ids = { hr: '', sup: '', head: '', libLead: '', poolLead: '', assistant: '', scopedAdmin: '' };
+const ids = { hr: '', sup: '', head: '', libLead: '', poolLead: '', assistant: '', scopedAdmin: '', libCare: '', libDeck: '' };
 let library = { facility: '', position: '' };
 
 const in30 = () => {
@@ -53,6 +56,15 @@ beforeAll(async () => {
   await role(ids.poolLead, 'Pool lead', ['users.read', 'certs.verify', 'ops.pool.close'], { scopePositionIds: [t.position.id] });
   // Settings for the library only.
   await role(ids.scopedAdmin, 'Library admin', ['tenant.configure'], { scopePositionIds: [library.position] });
+  // The library's care lead and deck runner, limited by position only (no facility list): the usual shape.
+  ids.libCare = await mk(['EMPLOYEE'], 'libcare', library.position);
+  ids.libDeck = await mk(['EMPLOYEE'], 'libdeck', library.position);
+  await role(ids.libCare, 'Library care', ['users.read', 'care.manage'], { scopePositionIds: [library.position] });
+  await role(ids.libDeck, 'Library deck', ['users.read', 'deck.rotate', 'ops.pool.close'], { scopePositionIds: [library.position] });
+  // Where each position works: lifeguards at the pool (Rec Centre), library assistants at the library.
+  const soon = new Date(Date.now() + 7 * 86_400_000);
+  await owner.shift.create({ data: { tenantId: tid, facilityId: t.facility.id, positionId: t.position.id, startsAt: soon, endsAt: new Date(soon.getTime() + 4 * 3_600_000), status: 'PUBLISHED' } });
+  await owner.shift.create({ data: { tenantId: tid, facilityId: library.facility, positionId: library.position, startsAt: soon, endsAt: new Date(soon.getTime() + 4 * 3_600_000), status: 'PUBLISHED' } });
   forgetCustomPermissions(tid);
   // A lifeguard's and the library assistant's certificates both expire in 30 days.
   const cpr = await owner.certification.create({ data: { tenantId: tid, name: 'First aid', issuingBody: 'Red Cross', validityMonths: 36 } });
@@ -84,11 +96,27 @@ describe('alerts follow permission and department scope', () => {
     expect(told).toContain(ids.sup);
     expect(told).not.toContain(ids.libLead);
     expect(told).not.toContain(ids.head); // who counted
+    // A lead limited by position only reaches the facilities their positions work at: not the library's.
+    expect(told).not.toContain(ids.libDeck);
+  });
+
+  it('a care break request names the person: only leads whose departments include them hear', async () => {
+    const tid = t.tenant.id;
+    const guard = t.users[0]!.id;
+    const incident = await owner.incidentReport.create({ data: { tenantId: tid, facilityId: t.facility.id, reportedById: guard, occurredAt: new Date(Date.now() - 3_600_000), category: 'RESCUE', ciphertext: Buffer.from('x'), iv: Buffer.from('x'), authTag: Buffer.from('x'), wrappedDataKey: Buffer.from('x'), kekId: 'test' } });
+    const c = await owner.careCheckIn.create({ data: { tenantId: tid, userId: guard, incidentId: incident.id, dueAt: new Date(Date.now() + 86_400_000) } });
+    const token = await signAccessToken({ sub: guard, tid, roles: ['STAFF'] });
+    // Nobody who runs the deck is on shift: the fallback is care.manage, for this guard.
+    expect((await request(createApp()).post(`/api/me/care/${c.id}/break`).set('x-tenant-subdomain', SUB).auth(token, { type: 'bearer' })).status).toBe(200);
+    const told = (await owner.notification.findMany({ where: { tenantId: tid, type: 'care_break_requested' } })).map((n) => n.userId);
+    expect(told).not.toContain(ids.libCare);
+    expect(told).toContain(ids.sup);
+    expect(told).toContain(ids.hr);
   });
 
   it('a switched-off feature takes its alerts with it', async () => {
     const tid = t.tenant.id;
-    expect((await withTenant(tid, (tx) => usersWithPermission(tx, tid, 'care.manage'))).sort()).toEqual([ids.hr, ids.sup].sort());
+    expect((await withTenant(tid, (tx) => usersWithPermission(tx, tid, 'care.manage'))).sort()).toEqual([ids.hr, ids.sup, ids.libCare].sort());
     await owner.tenant.update({ where: { id: tid }, data: { features: { care: false } } });
     forgetFeatures(tid);
     expect(await withTenant(tid, (tx) => usersWithPermission(tx, tid, 'care.manage'))).toEqual([]);

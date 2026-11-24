@@ -140,11 +140,28 @@ export async function organizationAdmins(tx: Tx, tenantId: string): Promise<stri
   return (await permissionHolders(tx, tenantId, 'tenant.configure')).filter((h) => !h.scope).map((h) => h.userId);
 }
 
-/** Whether a holder's department scope reaches what an alert is about (each part given must be in it). */
+/** How far around today a lead's positions count as working at a facility. */
+const WORKS_AT_DAYS = 90;
+
+/**
+ * Whether a holder's department scope reaches what an alert is about (each part given must be in it):
+ * - the person: userInScope;
+ * - the position: one of the scope's positions;
+ * - the facility: one of the scope's facilities; for a lead limited only by positions, a facility
+ *   where one of those positions has a shift within 90 days either side of today (a library lead
+ *   doesn't hear about the pool, a lifeguard lead does).
+ */
 export async function reaches(tx: Tx, scope: Scope, about: AlertAbout): Promise<boolean> {
   if (!scope) return true;
   if (about.positionId && scope.positionIds.length && !scope.positionIds.includes(about.positionId)) return false;
   if (about.facilityId && scope.facilityIds.length && !scope.facilityIds.includes(about.facilityId)) return false;
+  if (about.facilityId && !scope.facilityIds.length && scope.positionIds.length) {
+    const now = Date.now();
+    const worksThere = await tx.shift.count({
+      where: { facilityId: about.facilityId, positionId: { in: scope.positionIds }, status: { not: 'CANCELLED' }, startsAt: { gte: new Date(now - WORKS_AT_DAYS * 86_400_000), lt: new Date(now + WORKS_AT_DAYS * 86_400_000) } },
+    });
+    if (!worksThere) return false;
+  }
   if (about.userId && !(await userInScope(tx, scope, about.userId))) return false;
   return true;
 }

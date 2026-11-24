@@ -115,7 +115,8 @@ careRouter.post(
       const working = incident
         ? new Set((await tx.shift.findMany({ where: { facilityId: incident.facilityId, status: 'PUBLISHED', startsAt: { lte: now }, endsAt: { gt: now }, userId: { not: a.userId } }, select: { userId: true } })).map((s) => s.userId!))
         : new Set<string>();
-      const about = incident ? { facilityId: incident.facilityId } : {};
+      // Only leads whose departments include the person (and who work at that facility): the request names them.
+      const about = { userId: a.userId, ...(incident ? { facilityId: incident.facilityId } : {}) };
       const onDuty = working.size ? (await usersWithPermission(tx, a.tenantId, 'deck.rotate', [a.userId], about)).filter((id) => working.has(id)) : [];
       const leads = onDuty.length ? onDuty : await usersWithPermission(tx, a.tenantId, 'care.manage', [a.userId], about);
       await notify(tx, a.tenantId, leads.map((userId) => ({ userId, type: 'care_break_requested', params: { name: `${me.firstName} ${me.lastName}` }, link: '/manage/care' })));
