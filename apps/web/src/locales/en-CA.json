@@ -759,7 +759,6 @@
     "SUBDOMAIN_TAKEN": "Another organization already uses that address.",
     "SUPPORT_CODE_INVALID": "This support link has expired or was already used.",
     "SUPPORT_ENDED": "This support visit has ended.",
-    "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "SUPPORT_READ_ONLY": "FH support can look, not change anything.",
     "TEXT_ALERTS_OFF": "Your organization hasn’t turned on text alerts.",
     "TOO_LARGE": "Files can be up to 10 MB.",
@@ -785,7 +784,8 @@
     "TOO_MANY_HOLIDAYS": "An organization can keep up to 100 holidays and closure days.",
     "UNTIL_BEFORE_START": "The last year is before the first date.",
     "NTH_WEEKDAY_FIFTH": "A fifth weekday of the month isn’t there every year. Use “last weekday of the month” instead.",
-    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month."
+    "NOT_LAST_WEEKDAY": "For “last weekday of the month”, pick a date that is the last such weekday of its month.",
+    "BOOKING_OVER": "This booking has already happened."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -4308,7 +4308,34 @@
     "capacity": "At the same time",
     "capacityHint": "e.g. 2 party rooms",
     "party": "Most people",
-    "serviceAdded": "Bookable space added"
+    "serviceAdded": "Bookable space added",
+    "serviceSaved": "Service saved",
+    "editService": "Edit service",
+    "editServiceOne": "Edit {{name}}",
+    "editServiceHelp": "New prices and times apply to bookings made from now on.",
+    "descriptionFr": "Description in French",
+    "bookable": "Bookable online",
+    "bookableHelp": "Untick to take it off the public page, for example during renovations. Bookings already made stay.",
+    "offline": "Not bookable",
+    "cancelBooking": "Cancel booking",
+    "note": "Note to the person",
+    "noteHint": "Sent with the email: why, and what they can do instead.",
+    "noteHintConfirm": "Optional. Sent with the confirmation, e.g. arrive 10 minutes early.",
+    "decideTitle": {
+      "CONFIRMED": "Confirm {{service}}",
+      "DECLINED": "Decline {{service}}",
+      "CANCELLED": "Cancel {{service}}"
+    },
+    "decideAction": {
+      "CONFIRMED": "Confirm and email",
+      "DECLINED": "Decline and email",
+      "CANCELLED": "Cancel and email"
+    },
+    "done": {
+      "CONFIRMED": "Booking confirmed",
+      "DECLINED": "Booking declined",
+      "CANCELLED": "Booking cancelled; the time is free again"
+    }
   },
   "signup": {
     "title": "Sign up at {{org}}",

@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
-import { HttpError, conflict, notFound } from '../lib/errors.js';
+import { HttpError, conflict, invalid, notFound } from '../lib/errors.js';
 import { notify, usersWithPermission } from '../services/notifications/notifier.js';
 import { ageInMonths, fitsAge } from '../services/programs/levels.js';
 import { sessionDates } from '../services/lessons/lessons.js';
@@ -373,8 +373,13 @@ signupRouter.patch(
     const id = uuid.parse(req.params.id);
     const b = serviceBody.partial().parse(req.body);
     await withTenant(a.tenantId, async (tx) => {
-      if (!(await tx.bookableService.findUnique({ where: { id } }))) throw notFound('Service');
+      const before = await tx.bookableService.findUnique({ where: { id } });
+      if (!before) throw notFound('Service');
+      if ((b.closeMinute ?? before.closeMinute) <= (b.openMinute ?? before.openMinute)) throw new HttpError(400, 'BAD_TIMES', 'Closing time must be after opening time.');
       await tx.bookableService.update({ where: { id }, data: b });
+      // Before and after for every field sent.
+      const was = before as unknown as Record<string, unknown>;
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'bookable_service.update', entity: 'BookableService', entityId: id, before: Object.fromEntries(Object.keys(b).map((k) => [k, was[k]])), after: b });
     });
     res.json({ ok: true });
   }),
@@ -409,13 +414,20 @@ signupRouter.post(
       const r = await tx.bookingRequest.findUnique({ where: { id: uuid.parse(req.params.id) } });
       if (!r) throw notFound('Booking');
       if (r.status !== 'REQUESTED' && !(r.status === 'CONFIRMED' && b.decision === 'CANCELLED')) throw conflict('ALREADY_DECIDED', 'This booking was already handled.');
-      await tx.bookingRequest.update({ where: { id: r.id }, data: { status: b.decision, decidedById: a.userId, decidedAt: new Date(), decisionNote: b.note || null } });
+      if (b.decision === 'CANCELLED' && r.status === 'CONFIRMED') {
+        // The person is told why, and only about something still to come.
+        if (!b.note) throw invalid('NOTE_REQUIRED', 'Say why the booking is cancelled: the note goes in the email.');
+        if (r.endsAt <= new Date()) throw conflict('BOOKING_OVER', 'This booking has already happened.');
+      }
+      // Only from the status just read: of two staff deciding at once, one wins and the other is told (one email).
+      const { count } = await tx.bookingRequest.updateMany({ where: { id: r.id, status: r.status }, data: { status: b.decision, decidedById: a.userId, decidedAt: new Date(), decisionNote: b.note || null } });
+      if (!count) throw conflict('ALREADY_DECIDED', 'This booking was already handled.');
       const v = await tx.bookableService.findUniqueOrThrow({ where: { id: r.serviceId } });
       const f = await tx.facility.findUniqueOrThrow({ where: { id: v.facilityId }, select: { timezone: true } });
-      // In the language they booked in: the date, the service's name and the message.
-      const fr = r.locale === 'fr-CA';
-      const when = DateTime.fromJSDate(r.startsAt, { zone: f.timezone }).setLocale(r.locale).toLocaleString(DateTime.DATETIME_MED);
-      await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: r.email, template: 'booking_decided', locale: r.locale, params: { service: fr && v.nameFr ? v.nameFr : v.name, when, reference: r.reference, confirmed: b.decision === 'CONFIRMED', note: b.note } } });
+      const locale = r.locale === 'fr-CA' ? 'fr-CA' : 'en-CA';
+      const when = DateTime.fromJSDate(r.startsAt, { zone: f.timezone }).setLocale(locale).toLocaleString(DateTime.DATETIME_MED);
+      const service = locale === 'fr-CA' && v.nameFr ? v.nameFr : v.name;
+      await tx.emailOutbox.create({ data: { tenantId: a.tenantId, toEmail: r.email, template: 'booking_decided', locale, params: { service, when, reference: r.reference, confirmed: b.decision === 'CONFIRMED', decision: b.decision, note: b.note } } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: `booking.${b.decision.toLowerCase()}`, entity: 'BookingRequest', entityId: r.id });
     });
     res.json({ ok: true });

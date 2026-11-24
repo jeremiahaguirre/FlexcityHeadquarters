@@ -100,9 +100,14 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
     'en-CA': (p) => ({ subject: `Booking request received: ${p.service}`, text: `We received your request for ${p.service} on ${p.when}.\nReference: ${p.reference}\n\nThis is a request, not a confirmation. Staff will confirm or contact you shortly.` }),
     'fr-CA': (p) => ({ subject: `Demande de réservation reçue : ${p.service}`, text: `Nous avons reçu votre demande pour ${p.service} le ${p.when}.\nRéférence : ${p.reference}\n\nIl s’agit d’une demande, pas d’une confirmation. Le personnel la confirmera ou communiquera avec vous sous peu.` }),
   },
+  // decision: CONFIRMED, DECLINED or CANCELLED (a confirmed booking the facility had to cancel). Older rows have only `confirmed`.
   booking_decided: {
-    'en-CA': (p) => ({ subject: `Booking ${p.confirmed ? 'confirmed' : 'not available'}: ${p.service}`, text: `${p.confirmed ? `Your booking for ${p.service} on ${p.when} is confirmed.` : `Sorry, we can't book ${p.service} on ${p.when}.`}\nReference: ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }),
-    'fr-CA': (p) => ({ subject: `Réservation ${p.confirmed ? 'confirmée' : 'non disponible'} : ${p.service}`, text: `${p.confirmed ? `Votre réservation pour ${p.service} le ${p.when} est confirmée.` : `Désolés, nous ne pouvons pas réserver ${p.service} le ${p.when}.`}\nRéférence : ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }),
+    'en-CA': (p) => p.decision === 'CANCELLED'
+      ? { subject: `Booking cancelled: ${p.service}`, text: `We're sorry: we've had to cancel your booking for ${p.service} on ${p.when}.\nReference: ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }
+      : { subject: `Booking ${p.confirmed ? 'confirmed' : 'not available'}: ${p.service}`, text: `${p.confirmed ? `Your booking for ${p.service} on ${p.when} is confirmed.` : `Sorry, we can't book ${p.service} on ${p.when}.`}\nReference: ${p.reference}${p.note ? `\n\n${p.note}` : ''}` },
+    'fr-CA': (p) => p.decision === 'CANCELLED'
+      ? { subject: `Réservation annulée : ${p.service}`, text: `Désolés : nous avons dû annuler votre réservation pour ${p.service} le ${p.when}.\nRéférence : ${p.reference}${p.note ? `\n\n${p.note}` : ''}` }
+      : { subject: `Réservation ${p.confirmed ? 'confirmée' : 'non disponible'} : ${p.service}`, text: `${p.confirmed ? `Votre réservation pour ${p.service} le ${p.when} est confirmée.` : `Désolés, nous ne pouvons pas réserver ${p.service} le ${p.when}.`}\nRéférence : ${p.reference}${p.note ? `\n\n${p.note}` : ''}` },
   },
   bank_changed: {
     'en-CA': (p) => ({ subject: 'Your direct deposit details were changed', text: `New banking details ending in ${p.last4} were added for your pay. They'll be used once payroll verifies them.\n\nIf you didn't make this change, tell your payroll or HR office right away.` }),

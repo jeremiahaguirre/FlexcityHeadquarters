@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Copy, Globe, Plus, X } from 'lucide-react';
+import { Ban, Check, Copy, Globe, Pencil, Plus, X } from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
@@ -13,12 +13,12 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill, type Tone } from '@/components/ui/StatusPill';
 import { useToast } from '@/components/ui/Toast';
 import { api } from '@/lib/api';
-import { hhmm, money, toMinutes } from '@/lib/programs';
+import { hhmm, money, serviceBody } from '@/lib/programs';
 import { useAction, useQuery } from '@/lib/useQuery';
 import { dateFormat } from '@/lib/format';
 
 interface Settings { enabled: boolean; terms: string; termsFr: string; payment: string; paymentFr: string; privacyContact: string }
-interface Service { id: string; facilityId: string; name: string; nameFr: string | null; description: string | null; durationMinutes: number; priceCents: number; capacity: number; maxPartySize: number | null; daysOfWeek: number[]; openMinute: number; closeMinute: number; leadDays: number; active: boolean }
+interface Service { id: string; facilityId: string; name: string; nameFr: string | null; description: string | null; descriptionFr?: string | null; durationMinutes: number; priceCents: number; capacity: number; maxPartySize: number | null; daysOfWeek: number[]; openMinute: number; closeMinute: number; leadDays: number; active: boolean }
 interface Booking { id: string; service: string; startsAt: string; endsAt: string; partySize: number | null; name: string; email: string; phone: string; organization: string | null; notes: string | null; status: 'REQUESTED' | 'CONFIRMED' | 'DECLINED' | 'CANCELLED'; reference: string; timezone: string }
 const TONE: Record<Booking['status'], Tone> = { REQUESTED: 'new', CONFIRMED: 'ok', DECLINED: 'inactive', CANCELLED: 'inactive' };
 
@@ -32,8 +32,12 @@ export default function BookingsPage() {
   const bookings = useQuery<Booking[]>('/api/bookings');
   const facilities = useQuery<Array<{ id: string; name: string }>>('/api/facilities');
   const { run, busy } = useAction();
-  const [adding, setAdding] = useState(false);
+  /** The service being edited, or 'new' to add one. */
+  const [serviceForm, setServiceForm] = useState<Service | 'new' | null>(null);
   const [days, setDays] = useState<number[]>([1, 2, 3, 4, 5, 6, 0]);
+  /** Confirming, declining or cancelling a booking, with a note for the person who asked. */
+  const [deciding, setDeciding] = useState<{ b: Booking; decision: 'CONFIRMED' | 'DECLINED' | 'CANCELLED' } | null>(null);
+  const editing = serviceForm && serviceForm !== 'new' ? serviceForm : null;
   const [url, setUrl] = useState('');
   useEffect(() => setUrl(`${window.location.origin}/signup`), []);
   const dow = (d: number) => dateFormat(lng, { weekday: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 10, 1 + d)));
@@ -46,17 +50,31 @@ export default function BookingsPage() {
     const body = { enabled: f.get('enabled') === 'on', terms: s('terms'), termsFr: s('termsFr'), payment: s('payment'), paymentFr: s('paymentFr'), privacyContact: s('privacy') };
     if ((await run('settings', () => api('/api/signup/settings', { method: 'PUT', body }), t('bookingsPage.saved'))) !== undefined) await settings.reload();
   }
-  async function addService(e: FormEvent<HTMLFormElement>) {
+  async function saveService(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const s = (k: string) => String(f.get(k) ?? '').trim();
-    const body = { facilityId: s('facility'), name: s('name'), nameFr: s('nameFr') || null, description: s('description') || null, durationMinutes: Number(s('duration')), priceCents: Math.round(Number(s('price').replace(',', '.')) * 100), capacity: Number(s('capacity') || 1), maxPartySize: s('party') ? Number(s('party')) : null, daysOfWeek: days, openMinute: toMinutes(s('open')), closeMinute: toMinutes(s('close')), leadDays: Number(s('lead') || 2) };
-    if ((await run('service', () => api('/api/bookable-services', { method: 'POST', body }), t('bookingsPage.serviceAdded'))) !== undefined) {
-      setAdding(false);
+    const body = serviceBody(new FormData(e.currentTarget), days);
+    const done = editing
+      ? await run('service', () => api(`/api/bookable-services/${editing.id}`, { method: 'PATCH', body }), t('bookingsPage.serviceSaved'))
+      : await run('service', () => api('/api/bookable-services', { method: 'POST', body }), t('bookingsPage.serviceAdded'));
+    if (done !== undefined) {
+      setServiceForm(null);
       await services.reload();
     }
   }
-  const decide = (b: Booking, decision: 'CONFIRMED' | 'DECLINED') => void run(`${b.id}${decision}`, () => api(`/api/bookings/${b.id}/decide`, { method: 'POST', body: { decision } }), t(decision === 'CONFIRMED' ? 'bookingsPage.confirmed' : 'bookingsPage.declined')).then(() => bookings.reload());
+  const openService = (v: Service | 'new') => {
+    setDays(v === 'new' ? [1, 2, 3, 4, 5, 6, 0] : v.daysOfWeek);
+    setServiceForm(v);
+  };
+  async function decide(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const { b, decision } = deciding!;
+    const note = String(new FormData(e.currentTarget).get('note') ?? '').trim();
+    const done = await run('decide', () => api(`/api/bookings/${b.id}/decide`, { method: 'POST', body: { decision, note } }), t(`bookingsPage.done.${decision}`));
+    if (done !== undefined) {
+      setDeciding(null);
+      await bookings.reload();
+    }
+  }
 
   return (
     <div className="grid gap-6">
@@ -75,9 +93,11 @@ export default function BookingsPage() {
                   </div>
                   {b.status === 'REQUESTED' ? (
                     <div className="flex gap-2">
-                      <Button size="sm" loading={busy === `${b.id}CONFIRMED`} icon={<Check className="h-4 w-4" aria-hidden="true" />} onClick={() => decide(b, 'CONFIRMED')}>{t('bookingsPage.confirm')}</Button>
-                      <Button size="sm" variant="secondary" loading={busy === `${b.id}DECLINED`} icon={<X className="h-4 w-4" aria-hidden="true" />} onClick={() => decide(b, 'DECLINED')}>{t('bookingsPage.decline')}</Button>
+                      <Button size="sm" icon={<Check className="h-4 w-4" aria-hidden="true" />} onClick={() => setDeciding({ b, decision: 'CONFIRMED' })}>{t('bookingsPage.confirm')}</Button>
+                      <Button size="sm" variant="secondary" icon={<X className="h-4 w-4" aria-hidden="true" />} onClick={() => setDeciding({ b, decision: 'DECLINED' })}>{t('bookingsPage.decline')}</Button>
                     </div>
+                  ) : b.status === 'CONFIRMED' && new Date(b.endsAt).getTime() > Date.now() ? (
+                    <Button size="sm" variant="ghost" icon={<Ban className="h-4 w-4" aria-hidden="true" />} onClick={() => setDeciding({ b, decision: 'CANCELLED' })}>{t('bookingsPage.cancelBooking')}</Button>
                   ) : null}
                 </li>
               ))}
@@ -86,14 +106,14 @@ export default function BookingsPage() {
         </CardBody>
       </Card>
       <Card>
-        <CardHeader title={t('bookingsPage.services')} description={t('bookingsPage.servicesHelp')} action={<Button size="sm" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => setAdding(true)}>{t('bookingsPage.addService')}</Button>} />
+        <CardHeader title={t('bookingsPage.services')} description={t('bookingsPage.servicesHelp')} action={<Button size="sm" icon={<Plus className="h-4 w-4" aria-hidden="true" />} onClick={() => openService('new')}>{t('bookingsPage.addService')}</Button>} />
         <CardBody className="pt-2">
           {!services.data ? <Skeleton className="h-24" /> : !services.data.length ? <EmptyState icon={Globe} title={t('bookingsPage.noServices')}>{t('bookingsPage.noServicesHelp')}</EmptyState> : (
             <ul className="divide-y divide-line text-small">
               {services.data.map((v) => (
                 <li key={v.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                  <span><span className="font-semibold">{v.name}</span><span className="block text-caption text-muted">{facilities.data?.find((f) => f.id === v.facilityId)?.name} · {v.daysOfWeek.map(dow).join(' ')} {hhmm(v.openMinute)}–{hhmm(v.closeMinute)} · {t('signup.duration', { count: v.durationMinutes })} · {t('bookingsPage.atOnce', { count: v.capacity })}</span></span>
-                  <span className="tabular-nums">{money(v.priceCents, lng)}</span>
+                  <span><span className="font-semibold">{v.name}</span>{!v.active ? <StatusPill tone="inactive" className="ml-2">{t('bookingsPage.offline')}</StatusPill> : null}<span className="block text-caption text-muted">{facilities.data?.find((f) => f.id === v.facilityId)?.name} · {v.daysOfWeek.map(dow).join(' ')} {hhmm(v.openMinute)}–{hhmm(v.closeMinute)} · {t('signup.duration', { count: v.durationMinutes })} · {t('bookingsPage.atOnce', { count: v.capacity })}</span></span>
+                  <span className="flex items-center gap-2"><span className="tabular-nums">{money(v.priceCents, lng)}</span><Button size="sm" variant="ghost" icon={<Pencil className="h-4 w-4" aria-hidden="true" />} aria-label={t('bookingsPage.editServiceOne', { name: v.name })} onClick={() => openService(v)}>{t('common.edit')}</Button></span>
                 </li>
               ))}
             </ul>
@@ -123,30 +143,43 @@ export default function BookingsPage() {
           )}
         </CardBody>
       </Card>
-      <Dialog open={adding} onClose={() => setAdding(false)} title={t('bookingsPage.addService')} description={t('bookingsPage.addServiceHelp')} closeLabel={t('common.cancel')}>
+      <Dialog open={!!serviceForm} onClose={() => setServiceForm(null)} title={editing ? t('bookingsPage.editService') : t('bookingsPage.addService')} description={editing ? t('bookingsPage.editServiceHelp') : t('bookingsPage.addServiceHelp')} closeLabel={t('common.cancel')}>
         {!facilities.data ? <Skeleton className="h-32" /> : (
-          <form className="grid gap-4" onSubmit={(e) => void addService(e)}>
+          <form key={editing?.id ?? 'new'} className="grid gap-4" onSubmit={(e) => void saveService(e)}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label={t('bookingsPage.name')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={80} placeholder={t('bookingsPage.namePlaceholder')} />}</Field>
-              <Field label={t('bookingsPage.nameFr')} hint={t('common.optional')}>{(p) => <Input {...p} name="nameFr" maxLength={80} />}</Field>
+              <Field label={t('bookingsPage.name')}>{(p) => <Input {...p} name="name" required minLength={2} maxLength={80} placeholder={t('bookingsPage.namePlaceholder')} defaultValue={editing?.name} />}</Field>
+              <Field label={t('bookingsPage.nameFr')} hint={t('common.optional')}>{(p) => <Input {...p} name="nameFr" maxLength={80} lang="fr-CA" defaultValue={editing?.nameFr ?? ''} />}</Field>
             </div>
-            <Field label={t('bookingsPage.descriptionLabel')} hint={t('common.optional')}>{(p) => <Textarea {...p} name="description" maxLength={1000} rows={2} />}</Field>
+            <Field label={t('bookingsPage.descriptionLabel')} hint={t('common.optional')}>{(p) => <Textarea {...p} name="description" maxLength={1000} rows={2} defaultValue={editing?.description ?? ''} />}</Field>
+            <Field label={t('bookingsPage.descriptionFr')} hint={t('common.optional')}>{(p) => <Textarea {...p} name="descriptionFr" maxLength={1000} rows={2} lang="fr-CA" defaultValue={editing?.descriptionFr ?? ''} />}</Field>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Field label={t('programs.facility')}>{(p) => <Select {...p} name="facility" required>{facilities.data!.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>}</Field>
-              <Field label={t('bookingsPage.length')}>{(p) => <Select {...p} name="duration" defaultValue="60">{[30, 45, 60, 90, 120, 180, 240].map((m) => <option key={m} value={m}>{t('signup.duration', { count: m })}</option>)}</Select>}</Field>
-              <Field label={t('programs.price')}>{(p) => <Input {...p} name="price" inputMode="decimal" required placeholder="150.00" />}</Field>
-              <Field label={t('bookingsPage.opens')}>{(p) => <Input {...p} name="open" type="time" required defaultValue="09:00" />}</Field>
-              <Field label={t('bookingsPage.closes')}>{(p) => <Input {...p} name="close" type="time" required defaultValue="20:00" />}</Field>
-              <Field label={t('bookingsPage.lead')}>{(p) => <Input {...p} name="lead" type="number" min={0} max={365} defaultValue={2} />}</Field>
-              <Field label={t('bookingsPage.capacity')} hint={t('bookingsPage.capacityHint')}>{(p) => <Input {...p} name="capacity" type="number" min={1} max={50} defaultValue={1} />}</Field>
-              <Field label={t('bookingsPage.party')} hint={t('common.optional')}>{(p) => <Input {...p} name="party" type="number" min={1} max={1000} />}</Field>
+              <Field label={t('programs.facility')}>{(p) => <Select {...p} name="facility" required defaultValue={editing?.facilityId}>{facilities.data!.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</Select>}</Field>
+              <Field label={t('bookingsPage.length')}>{(p) => <Select {...p} name="duration" defaultValue={String(editing?.durationMinutes ?? 60)}>{[...new Set([30, 45, 60, 90, 120, 180, 240, editing?.durationMinutes ?? 60])].sort((a, b) => a - b).map((m) => <option key={m} value={m}>{t('signup.duration', { count: m })}</option>)}</Select>}</Field>
+              <Field label={t('programs.price')}>{(p) => <Input {...p} name="price" inputMode="decimal" required placeholder="150.00" defaultValue={editing ? (editing.priceCents / 100).toFixed(2) : undefined} />}</Field>
+              <Field label={t('bookingsPage.opens')}>{(p) => <Input {...p} name="open" type="time" required defaultValue={editing ? hhmm(editing.openMinute) : '09:00'} />}</Field>
+              <Field label={t('bookingsPage.closes')}>{(p) => <Input {...p} name="close" type="time" required defaultValue={editing ? hhmm(editing.closeMinute) : '20:00'} />}</Field>
+              <Field label={t('bookingsPage.lead')}>{(p) => <Input {...p} name="lead" type="number" min={0} max={365} defaultValue={editing?.leadDays ?? 2} />}</Field>
+              <Field label={t('bookingsPage.capacity')} hint={t('bookingsPage.capacityHint')}>{(p) => <Input {...p} name="capacity" type="number" min={1} max={50} defaultValue={editing?.capacity ?? 1} />}</Field>
+              <Field label={t('bookingsPage.party')} hint={t('common.optional')}>{(p) => <Input {...p} name="party" type="number" min={1} max={1000} defaultValue={editing?.maxPartySize ?? ''} />}</Field>
             </div>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('programs.days')}>
               {[1, 2, 3, 4, 5, 6, 0].map((d) => <button key={d} type="button" aria-pressed={days.includes(d)} onClick={() => setDays((x) => (x.includes(d) ? (x.length > 1 ? x.filter((y) => y !== d) : x) : [...x, d]))} className={`h-10 min-w-[3rem] rounded-xl border px-2 text-small font-semibold ${days.includes(d) ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}`}>{dow(d)}</button>)}
             </div>
-            <Button type="submit" loading={busy === 'service'} className="justify-self-start">{t('bookingsPage.addService')}</Button>
+            <label className="flex items-start gap-3 text-small">
+              <input type="checkbox" name="active" defaultChecked={editing?.active ?? true} className="mt-0.5 h-5 w-5 accent-[rgb(var(--brand))]" />
+              <span><span className="font-semibold">{t('bookingsPage.bookable')}</span><span className="block text-caption text-muted">{t('bookingsPage.bookableHelp')}</span></span>
+            </label>
+            <Button type="submit" loading={busy === 'service'} className="justify-self-start">{editing ? t('common.save') : t('bookingsPage.addService')}</Button>
           </form>
         )}
+      </Dialog>
+      <Dialog open={!!deciding} onClose={() => setDeciding(null)} title={deciding ? t(`bookingsPage.decideTitle.${deciding.decision}`, { service: deciding.b.service }) : ''} description={deciding ? `${deciding.b.name} · ${when(deciding.b.startsAt, deciding.b.timezone)}` : undefined} closeLabel={t('common.cancel')}>
+        {deciding ? (
+          <form className="grid gap-4" onSubmit={(e) => void decide(e)}>
+            <Field label={t('bookingsPage.note')} hint={t(deciding.decision === 'CONFIRMED' ? 'bookingsPage.noteHintConfirm' : 'bookingsPage.noteHint')}>{(p) => <Textarea {...p} name="note" maxLength={500} rows={3} required={deciding.decision === 'CANCELLED'} />}</Field>
+            <Button type="submit" variant={deciding.decision === 'CONFIRMED' ? 'primary' : 'danger'} loading={busy === 'decide'} className="justify-self-start">{t(`bookingsPage.decideAction.${deciding.decision}`)}</Button>
+          </form>
+        ) : null}
       </Dialog>
     </div>
   );

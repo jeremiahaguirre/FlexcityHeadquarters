@@ -470,7 +470,7 @@
     "NO_PASSKEY": "Aucune clé d’accès sur ce compte.",
     "TOO_MANY_PASSKEYS": "Retirez une clé d’accès avant d’en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d’accès pour ce compte.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien FH.",
+    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "CSRF_REFUSED": "Cette requête ne vient pas de la console Dev. Rechargez la page et réessayez.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d’abord.",
     "ALREADY_ENDED": "Cette séance est déjà terminée.",
@@ -759,7 +759,6 @@
     "SUBDOMAIN_TAKEN": "Une autre organisation utilise déjà cette adresse.",
     "SUPPORT_CODE_INVALID": "Ce lien de soutien est expiré ou a déjà été utilisé.",
     "SUPPORT_ENDED": "Cette visite de soutien est terminée.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "SUPPORT_READ_ONLY": "Le soutien FH peut consulter, mais ne peut rien modifier.",
     "TEXT_ALERTS_OFF": "Votre organisation n’a pas activé les alertes par texto.",
     "TOO_LARGE": "Les fichiers peuvent faire au plus 10 Mo.",
@@ -785,7 +784,8 @@
     "TOO_MANY_HOLIDAYS": "Une organisation peut garder jusqu’à 100 jours fériés et jours de fermeture.",
     "UNTIL_BEFORE_START": "La dernière année est avant la première date.",
     "NTH_WEEKDAY_FIFTH": "Un cinquième jour de semaine du mois n’existe pas chaque année. Choisissez plutôt « dernier jour de semaine du mois ».",
-    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois."
+    "NOT_LAST_WEEKDAY": "Pour « dernier jour de semaine du mois », choisissez une date qui est le dernier de ces jours de semaine de son mois.",
+    "BOOKING_OVER": "Cette réservation a déjà eu lieu."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -4308,7 +4308,34 @@
     "capacity": "En même temps",
     "capacityHint": "p. ex. 2 salles de fête",
     "party": "Nombre maximal de personnes",
-    "serviceAdded": "Espace réservable ajouté"
+    "serviceAdded": "Espace réservable ajouté",
+    "serviceSaved": "Service enregistré",
+    "editService": "Modifier le service",
+    "editServiceOne": "Modifier {{name}}",
+    "editServiceHelp": "Les nouveaux prix et horaires s’appliquent aux réservations faites à partir de maintenant.",
+    "descriptionFr": "Description en français",
+    "bookable": "Réservable en ligne",
+    "bookableHelp": "Décochez pour le retirer de la page publique, par exemple pendant des rénovations. Les réservations déjà faites restent.",
+    "offline": "Non réservable",
+    "cancelBooking": "Annuler la réservation",
+    "note": "Note à la personne",
+    "noteHint": "Envoyée avec le courriel : pourquoi, et ce qu’elle peut faire à la place.",
+    "noteHintConfirm": "Facultatif. Envoyée avec la confirmation, p. ex. arriver 10 minutes à l’avance.",
+    "decideTitle": {
+      "CONFIRMED": "Confirmer {{service}}",
+      "DECLINED": "Refuser {{service}}",
+      "CANCELLED": "Annuler {{service}}"
+    },
+    "decideAction": {
+      "CONFIRMED": "Confirmer et envoyer le courriel",
+      "DECLINED": "Refuser et envoyer le courriel",
+      "CANCELLED": "Annuler et envoyer le courriel"
+    },
+    "done": {
+      "CONFIRMED": "Réservation confirmée",
+      "DECLINED": "Réservation refusée",
+      "CANCELLED": "Réservation annulée; la plage est de nouveau libre"
+    }
   },
   "signup": {
     "title": "Inscriptions : {{org}}",
