@@ -2451,6 +2451,8 @@ model BookingRequest {
   decidedById  String?       @db.Uuid
   decidedAt    DateTime?     @db.Timestamptz(3)
   decisionNote String?
+  /// The language the resident booked in (en-CA or fr-CA): the answer is emailed in it.
+  locale       String        @default("en-CA")
   createdAt    DateTime      @default(now()) @db.Timestamptz(3)
 
   @@index([tenantId, serviceId, startsAt])
@@ -2923,10 +2925,11 @@ model Grievance {
 }
 
 /// Someone leaving: the checklist from last day to final pay, Record of Employment and access removed.
+/// One for each time someone leaves: a person rehired after leaving can be offboarded again.
 model Offboarding {
   id          String    @id @default(uuid()) @db.Uuid
   tenantId    String    @db.Uuid
-  userId      String    @unique @db.Uuid
+  userId      String    @db.Uuid
   lastDay     DateTime  @db.Date
   reason      String
   /// [{ key, done, doneAt, doneById }]
@@ -2934,6 +2937,8 @@ model Offboarding {
   completedAt DateTime? @db.Timestamptz(3)
   createdById String    @db.Uuid
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([userId])
 }
 
 enum PadStatus {
