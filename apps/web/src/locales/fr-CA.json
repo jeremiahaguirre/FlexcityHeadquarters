@@ -785,7 +785,9 @@
     "PERIOD_PAID": "Ceci est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
     "RUN_CHANGED": "Cette paie a changé pendant que vous l’annuliez. Ouvrez-la de nouveau.",
     "RUN_SENT_TO_BANK": "Le fichier de dépôt de cette paie a été envoyé à la banque; elle ne peut donc pas être annulée. Corrigez-la à la prochaine paie.",
-    "OWN_PAY_RATE": "Vous ne pouvez pas fixer ni modifier votre propre taux de rémunération. Un autre administrateur doit le faire."
+    "OWN_PAY_RATE": "Vous ne pouvez pas fixer ni modifier votre propre taux de rémunération. Un autre administrateur doit le faire.",
+    "BANK_SEND_UNCONFIRMED": "La banque a reçu le fichier, mais l’envoi n’a pas pu être inscrit. Il reste marqué « envoi en cours » : vérifiez auprès de la banque, puis inscrivez sa réponse.",
+    "NOT_SENDING": "Cet envoi a déjà été réglé."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1567,7 +1569,15 @@
         "SENT": "Envoyé",
         "FAILED": "Échec",
         "SENDING": "Envoi en cours"
-      }
+      },
+      "resolve": "Inscrire la réponse de la banque",
+      "resolveHelp": "Ce fichier s’est peut-être rendu à la banque, ou non. Vérifiez d’abord auprès de la banque : l’inscrire comme reçu empêche d’annuler ou de renvoyer la paie; inscrire qu’il n’a pas été reçu permet de l’envoyer de nouveau.",
+      "resolveOutcome": "Réponse de la banque",
+      "resolveSent": "La banque a le fichier",
+      "resolveFailed": "La banque ne l’a pas",
+      "resolveReason": "Comment vous avez vérifié",
+      "resolvePlaceholder": "Appel à la ligne paie de la banque; elle a le fichier 0003",
+      "resolved": "Inscrit."
     },
     "employerPaid": "Payé par votre employeur : {{list}}",
     "taxableBenefit": "avantage imposable",

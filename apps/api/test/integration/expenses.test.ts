@@ -178,4 +178,25 @@ describe('expense and mileage claims', () => {
     expect(v.body).toMatchObject({ releasedClaims: 0, claimsKeptPaid: paid.length });
     for (const c of paid) expect((await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).status).toBe('PAID');
   });
+
+  it('a void and a mark-paid of the same approved run: only the first one counts', async () => {
+    const c = await owner.expenseClaim.create({ data: { tenantId: t.tenant.id, userId: guard, title: 'Ferry', status: 'APPROVED', total: 21, decidedAt: new Date(Date.now() - 86_400_000) } });
+    const runId = await newRun();
+    expect((await as('approver').post(`/api/payroll/runs/${runId}/approve`)).status).toBe(200);
+    let voiding!: Promise<request.Response>;
+    let marking!: Promise<request.Response>;
+    await holdingRun(runId, null, async () => {
+      voiding = as('approver').post(`/api/payroll/runs/${runId}/void`, { reason: 'Paid the wrong period' }).then((r) => r);
+      await pause(400);
+      marking = as('approver').post(`/api/payroll/runs/${runId}/paid`).then((r) => r);
+      await pause(400);
+    });
+    const [v, m] = await Promise.all([voiding, marking]);
+    expect(v.status).toBe(200);
+    expect(m.status).toBe(409);
+    const run = await owner.payRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(run.status).toBe('VOID');
+    expect(run.paidAt).toBeNull();
+    expect(await owner.expenseClaim.findUniqueOrThrow({ where: { id: c.id } })).toMatchObject({ status: 'APPROVED', payRunId: null });
+  });
 });

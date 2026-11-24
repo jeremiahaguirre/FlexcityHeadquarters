@@ -24,7 +24,7 @@ import { errorText } from '@/lib/apiError';
 
 interface RunDetail {
   run: Run;
-  transmissions: Array<{ id: string; at: string; fileName: string; status: 'SENT' | 'FAILED'; error: string | null; encrypted: boolean }>;
+  transmissions: Array<{ id: string; at: string; fileName: string; status: 'SENT' | 'FAILED' | 'SENDING'; error: string | null; encrypted: boolean }>;
   departments: Array<{ id: string; name: string; nameFr: string | null }>;
   byDepartment: Array<{ departmentId: string | null; people: number; gross: number; net: number; employerCost: number }>;
   statements: Array<{ id: string; name: string; employeeNumber: string | null; province: string; hours: number; gross: number; totalDeductions: number; net: number; deposit: string | null; deductions: { cpp: number; cpp2: number; ei: number; federalTax: number; provincialTax: number } }>;
@@ -148,6 +148,8 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
   const settings = useQuery<{ twoPersonApproval: boolean; bank: { configured: boolean; autoSend?: boolean } }>('/api/payroll/settings');
   const [statement, setStatement] = useState<string | null>(null);
   const [voiding, setVoiding] = useState(false);
+  // A send still marked “sending”: payroll checks with the bank, then records whether it arrived.
+  const [resolving, setResolving] = useState<string | null>(null);
   const st = useQuery<Statement>(statement ? `/api/payroll/statements/${statement}` : null);
   const money = (n: number) => formatMoney(n, lng);
   const refresh = async () => {
@@ -156,7 +158,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
   };
   async function act(key: string, path: string, success: string, body?: object) {
     const r = await run(key, () => api<{ transmission?: { status: string; error?: string } | null }>(path, { method: 'POST', body }), success);
-    if (r?.transmission) toast(r.transmission.status === 'SENT' ? t('payroll.bank.sent') : t('payroll.bank.autoFailed', { error: r.transmission.error ?? '' }), r.transmission.status === 'SENT' ? 'ok' : 'warn');
+    if (r?.transmission) toast(r.transmission.status === 'SENT' ? t('payroll.bank.sent') : r.transmission.status === 'SENDING' ? t('errors.BANK_SEND_UNCONFIRMED') : t('payroll.bank.autoFailed', { error: r.transmission.error ?? '' }), r.transmission.status === 'SENT' ? 'ok' : 'warn');
     if (r !== undefined) await refresh();
     return r;
   }
@@ -216,7 +218,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
                 {t('payroll.approve')}
               </Button>
             ) : null}
-            {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') && settings.data?.bank.configured && !d.transmissions.some((x) => x.status === 'SENT') ? (
+            {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') && settings.data?.bank.configured && !d.transmissions.some((x) => x.status === 'SENT' || x.status === 'SENDING') ? (
               <Button size="sm" icon={<Send className="h-4 w-4" aria-hidden="true" />} loading={busy === 'send'} onClick={() => void sendToBank()}>{t('payroll.bank.send')}</Button>
             ) : null}
             {(d.run.status === 'APPROVED' || d.run.status === 'PAID') && can('payroll.approve') ? <Button size="sm" variant={settings.data?.bank.configured ? 'secondary' : 'primary'} icon={<Download className="h-4 w-4" aria-hidden="true" />} onClick={() => void download(`/api/payroll/runs/${id}/deposit-file`, 'deposit.txt', 'deposit')}>{t('payroll.depositFile')}</Button> : null}
@@ -229,9 +231,33 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
             <ul className="grid gap-1 text-small">
               {d.transmissions.map((x) => (
                 <li key={x.id} className="flex flex-wrap items-center gap-2">
-                  <StatusPill tone={x.status === 'SENT' ? 'ok' : 'danger'}>{t(`payroll.bank.status.${x.status}`)}</StatusPill>
+                  <StatusPill tone={x.status === 'SENT' ? 'ok' : x.status === 'SENDING' ? 'warn' : 'danger'}>{t(`payroll.bank.status.${x.status}`)}</StatusPill>
                   <span className="text-muted">{new Date(x.at).toLocaleString(lng)} · {x.fileName}{x.encrypted ? ` · ${t('payroll.bank.pgpShort')}` : ''}</span>
                   {x.error ? <span className="basis-full text-caption text-danger">{x.error}</span> : null}
+                  {x.status === 'SENDING' && can('payroll.approve') ? (
+                    resolving === x.id ? (
+                      <form
+                        className="grid basis-full gap-3 rounded-xl border border-line p-3"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const f = new FormData(e.currentTarget);
+                          void act('resolve', `/api/payroll/runs/${id}/transmissions/${x.id}/resolve`, t('payroll.bank.resolved'), { outcome: String(f.get('outcome')), reason: String(f.get('reason') ?? '').trim() }).then((r) => {
+                            if (r !== undefined) setResolving(null);
+                          });
+                        }}
+                      >
+                        <p className="text-caption text-muted">{t('payroll.bank.resolveHelp')}</p>
+                        <Field label={t('payroll.bank.resolveOutcome')}>{(p) => <Select {...p} name="outcome" defaultValue="SENT"><option value="SENT">{t('payroll.bank.resolveSent')}</option><option value="FAILED">{t('payroll.bank.resolveFailed')}</option></Select>}</Field>
+                        <Field label={t('payroll.bank.resolveReason')}>{(p) => <Input {...p} name="reason" required minLength={5} maxLength={300} placeholder={t('payroll.bank.resolvePlaceholder')} />}</Field>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="submit" size="sm" loading={busy === 'resolve'}>{t('payroll.bank.resolve')}</Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => setResolving(null)}>{t('common.cancel')}</Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => setResolving(x.id)}>{t('payroll.bank.resolve')}</Button>
+                    )
+                  ) : null}
                 </li>
               ))}
             </ul>

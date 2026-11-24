@@ -248,7 +248,39 @@ payrollRouter.post(
       return s;
     });
     const out = await send(a, id, settings);
+    if (out.status === 'SENDING') {
+      res.status(502).json({ ...out, code: 'BANK_SEND_UNCONFIRMED', message: out.error });
+      return;
+    }
     res.status(out.status === 'SENT' ? 200 : 502).json(out.status === 'SENT' ? out : { ...out, code: 'BANK_SEND_FAILED', message: `The bank didn’t take the file: ${(out as { error?: string }).error ?? 'no answer'}` });
+  }),
+);
+
+/**
+ * A send still marked SENDING (the process stopped part-way, or the result couldn't be recorded):
+ * after checking with the bank, payroll records whether the file arrived. SENT keeps the run from
+ * being voided or sent again; FAILED allows a new send. A reason is required and it's audited.
+ */
+payrollRouter.post(
+  '/payroll/runs/:id/transmissions/:tid/resolve',
+  requirePermission('payroll.approve'),
+  requireRecentAuth,
+  h(async (req, res) => {
+    const a = authOf(req);
+    const id = uuid.parse(req.params.id);
+    const tid = uuid.parse(req.params.tid);
+    const body = z.object({ outcome: z.enum(['SENT', 'FAILED']), reason: z.string().trim().min(5).max(300) }).parse(req.body);
+    await withTenant(a.tenantId, async (tx) => {
+      const r = await lockRun(tx, id);
+      if (!r) throw notFound('Pay run');
+      await assertRunInScope(tx, a, r.departmentId);
+      const sending = await tx.payTransmission.findFirst({ where: { id: tid, payRunId: id } });
+      if (!sending) throw notFound('Bank transmission');
+      if (sending.status !== 'SENDING') throw conflict('NOT_SENDING', 'This transmission has already been resolved.');
+      await tx.payTransmission.update({ where: { id: tid }, data: { status: body.outcome, error: body.outcome === 'FAILED' ? `Resolved as not received: ${body.reason}` : null, sentById: body.outcome === 'SENT' ? a.userId : null } });
+      await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.bank.resolved', entity: 'PayRun', entityId: id, before: { transmissionId: tid, status: 'SENDING' }, after: { status: body.outcome, reason: body.reason } });
+    });
+    res.json({ ok: true });
   }),
 );
 
@@ -312,7 +344,8 @@ payrollRouter.post(
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
-      const r = await tx.payRun.findUnique({ where: { id } });
+      // Under the run's lock, like approve and void: a void waiting on it is seen, not overwritten.
+      const r = await lockRun(tx, id);
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status !== 'APPROVED') throw conflict('NOT_APPROVED', 'Only an approved pay run can be marked paid.');

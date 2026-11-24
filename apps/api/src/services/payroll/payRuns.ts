@@ -10,6 +10,7 @@ import { createHash } from 'node:crypto';
 import type { Prisma, Province } from '../../generated/prisma/client.js';
 import type { Tx } from '../../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../../lib/errors.js';
+import { logError } from '../../lib/log.js';
 import { addDays } from '../../lib/time.js';
 import { keys, tenantKekId } from '../../routes/context.js';
 import { open, seal } from '../crypto/envelope.js';
@@ -571,7 +572,11 @@ export async function prepareBankFile(tx: Tx, tenantId: string, runId: string, s
   return { ...f, fileName, content, encrypted, payDate: run.payDate.toISOString().slice(0, 10), transmissionId: sending.id };
 }
 
-/** Sends a prepared file and records the attempt, sent or failed. */
+/**
+ * Sends a prepared file and records the attempt. FAILED only when the upload itself failed: once the
+ * bank has the file, recording it as sent is retried, and if that still fails the attempt stays
+ * SENDING (no void, no second send) until payroll checks with the bank and resolves it.
+ */
 export async function sendToBank(
   tenantId: string,
   runId: string,
@@ -580,13 +585,24 @@ export async function sendToBank(
   prepared: Awaited<ReturnType<typeof prepareBankFile>>,
   record: (data: { tenantId: string; payRunId: string; sentById: string | null; method: string; fileName: string; sha256: string; encrypted: boolean; status: 'SENT' | 'FAILED'; error: string | null }) => Promise<unknown>,
 ) {
+  const base = { tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted };
   try {
     await uploadToBank(tenantId, settings.bank!, prepared.fileName, prepared.content);
-    await record({ tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted, status: 'SENT', error: null });
-    return { status: 'SENT' as const, fileName: prepared.fileName, deposits: prepared.count, totalCents: prepared.totalCents, late: businessDaysUntil(prepared.payDate) < 2 };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    await record({ tenantId, payRunId: runId, sentById, method: 'SFTP', fileName: prepared.fileName, sha256: prepared.sha256, encrypted: prepared.encrypted, status: 'FAILED', error: message.slice(0, 500) });
+    await record({ ...base, status: 'FAILED', error: message.slice(0, 500) });
     return { status: 'FAILED' as const, fileName: prepared.fileName, error: message };
   }
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await record({ ...base, status: 'SENT', error: null });
+      return { status: 'SENT' as const, fileName: prepared.fileName, deposits: prepared.count, totalCents: prepared.totalCents, late: businessDaysUntil(prepared.payDate) < 2 };
+    } catch (e) {
+      lastError = e;
+      await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+    }
+  }
+  logError('payroll: the bank took the deposit file but it could not be recorded as sent', lastError);
+  return { status: 'SENDING' as const, fileName: prepared.fileName, error: 'The bank took the file, but it couldn’t be recorded as sent. It stays marked “sending”: check with the bank, then resolve it.' };
 }

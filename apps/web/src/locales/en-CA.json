@@ -785,7 +785,9 @@
     "RATE_AFTER_END": "The start must be on or before the day this rate ends.",
     "PERIOD_PAID": "This is in a pay period that was already approved or paid. Correct it with a one-time item on the next pay run.",
     "RUN_SENT_TO_BANK": "This pay run’s deposit file was sent to the bank, so it can’t be voided. Correct it in the next run.",
-    "RATE_ORDER": "That start date would overlap another rate for this position."
+    "RATE_ORDER": "That start date would overlap another rate for this position.",
+    "BANK_SEND_UNCONFIRMED": "The bank took the file, but it couldn’t be recorded as sent. It stays marked “sending”: check with the bank, then record what they say.",
+    "NOT_SENDING": "This send has already been resolved."
   },
   "timeclock": {
     "title": "Timeclock",
@@ -1567,7 +1569,15 @@
         "SENT": "Sent",
         "FAILED": "Failed",
         "SENDING": "Sending"
-      }
+      },
+      "resolve": "Record what the bank says",
+      "resolveHelp": "This file may or may not have reached the bank. Check with the bank first: recording it as arrived stops the run from being voided or sent again; recording that it didn’t arrive lets you send it again.",
+      "resolveOutcome": "What the bank says",
+      "resolveSent": "The bank has the file",
+      "resolveFailed": "The bank doesn’t have it",
+      "resolveReason": "How you checked",
+      "resolvePlaceholder": "Called the bank’s payroll line; they have file 0003",
+      "resolved": "Recorded."
     },
     "employerPaid": "Paid by your employer: {{list}}",
     "taxableBenefit": "taxable benefit",
