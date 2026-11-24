@@ -1,7 +1,7 @@
 /** Benchmarks: this city's measures, and peers' quartiles if it shares too. */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden } from '../lib/errors.js';
 import { METRICS, MIN_CITIES, cityMetrics } from '../services/platform/benchmarks.js';
@@ -36,6 +36,7 @@ benchmarksRouter.get(
 benchmarksRouter.put(
   '/benchmarks/opt-in',
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const { on } = z.object({ on: z.boolean() }).parse(req.body);

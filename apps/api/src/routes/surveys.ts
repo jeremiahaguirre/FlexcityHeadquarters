@@ -4,7 +4,7 @@
  */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, forbidden } from '../lib/errors.js';
 import { allow } from '../auth/rateLimit.js';
@@ -211,6 +211,7 @@ surveysRouter.put(
   '/surveys-admin/settings',
   requirePermission('surveys.manage'),
   requirePermission('tenant.configure'),
+  requireWholeOrganization('tenant.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = z.object({ minGroup: z.number().int().min(MIN_GROUP_FLOOR).max(MIN_GROUP_CEILING), managersCreate: z.boolean() }).parse(req.body);

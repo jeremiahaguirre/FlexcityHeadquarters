@@ -184,6 +184,16 @@ const TEMPLATES: Record<string, { 'en-CA': Template; 'fr-CA': Template }> = {
       text: `Quelqu’un a modifié la façon dont votre organisation se connecte à FlexcityHeadquarters (authentification unique). Si ce n’était pas prévu, vérifiez-le maintenant dans les paramètres et consultez le journal d’audit.`,
     }),
   },
+  data_exported: {
+    'en-CA': (p) => ({
+      subject: 'Your organization’s data was downloaded',
+      text: `${p.name} downloaded your organization’s full data export from FlexcityHeadquarters. It includes social insurance numbers, bank details and HR documents. If this wasn’t expected, review the audit log in Settings right away.`,
+    }),
+    'fr-CA': (p) => ({
+      subject: 'Les données de votre organisation ont été téléchargées',
+      text: `${p.name} a téléchargé l’exportation complète des données de votre organisation dans FlexcityHeadquarters. Elle comprend les numéros d’assurance sociale, les coordonnées bancaires et les documents RH. Si ce n’était pas prévu, consultez sans tarder le journal d’audit dans les paramètres.`,
+    }),
+  },
   email_changed: {
     'en-CA': (p) => ({
       subject: 'Your FlexcityHeadquarters sign-in email was changed',
@@ -327,7 +337,7 @@ export function renderEmail(template: string, locale: string, params: Params, or
  * services/marketing/casl.ts instead. Each one still names the sender, and staff messages say where
  * the choice of emails is made.
  */
-const STAFF_NOTIFICATIONS = new Set(['injury_report_due', 'vehicle_out_of_service', 'coverage_gap', 'bank_changed', 'bank_active', 'bank_rejected', 'pay_statement_ready', 'report_ready', 'callout_offer', 'lonework_escalated', 'lonework_help', 'webhook_disabled', 'sso_changed', 'shift_assigned', 'claim_needs_approval', 'time_off_decided', 'cert_expiring']);
+const STAFF_NOTIFICATIONS = new Set(['injury_report_due', 'vehicle_out_of_service', 'coverage_gap', 'bank_changed', 'bank_active', 'bank_rejected', 'pay_statement_ready', 'report_ready', 'callout_offer', 'lonework_escalated', 'lonework_help', 'webhook_disabled', 'sso_changed', 'data_exported', 'shift_assigned', 'claim_needs_approval', 'time_off_decided', 'cert_expiring']);
 export const EMAIL_KIND: Record<string, 'transactional'> = Object.fromEntries(Object.keys(TEMPLATES).map((k) => [k, 'transactional' as const]));
 
 export function transactionalFooter(template: string, locale: string): string {

@@ -12,7 +12,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Router } from 'express';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { type Tx, audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
@@ -315,6 +315,7 @@ signupRouter.get(
 signupRouter.put(
   '/signup/settings',
   requirePermission('bookings.manage'),
+  requireWholeOrganization('bookings.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const b = settingsBody.parse(req.body);

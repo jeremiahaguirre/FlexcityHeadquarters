@@ -1,8 +1,9 @@
 /** Payees who aren't employees and what they were paid, for T4A slips (services/payroll/t4a.ts). */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
 import type { AuthContext } from '../auth/middleware.js';
+import type { Permission } from '../auth/permissions.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, forbidden, notFound } from '../lib/errors.js';
 import { seal } from '../services/crypto/envelope.js';
@@ -14,8 +15,9 @@ import { h, keys, tenantKekId } from './context.js';
 export const payeesRouter = Router();
 payeesRouter.use(['/payees', '/payroll/t4a'], requireFeature('payroll'), requirePermission('payroll.export'));
 const uuid = z.string().uuid();
-const wholeCity = (a: AuthContext) => {
-  if (a.scope) throw forbidden('Payees are for the whole organization, kept by HR.');
+/** For the whole organization only: the route's capability must not come only from a department-limited role. */
+const wholeCity = (a: AuthContext, perm: Permission) => {
+  if (!holdsForWholeOrganization(a, perm)) throw forbidden('Payees are for the whole organization, kept by HR.');
 };
 const address = z.object({ line1: z.string().trim().min(3).max(60), line2: z.string().trim().max(60).nullable().optional(), city: z.string().trim().min(2).max(40), province: z.enum(PROVINCES), postalCode: z.string().trim().regex(/^[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d$/, 'A postal code looks like A1A 1A1.') });
 const payeeBody = z
@@ -48,7 +50,7 @@ payeesRouter.get(
   '/payees',
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year ?? new Date().getUTCFullYear());
     res.json(
       await withTenant(a.tenantId, async (tx) => {
@@ -67,7 +69,7 @@ payeesRouter.post(
   '/payees',
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const { sin, ...b } = payeeBody.parse(req.body);
     const p = await withTenant(a.tenantId, async (tx) => {
       const id = crypto.randomUUID();
@@ -83,7 +85,7 @@ payeesRouter.patch(
   '/payees/:id',
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const id = uuid.parse(req.params.id);
     const { sin, ...b } = payeeBody.parse(req.body);
     const p = await withTenant(a.tenantId, async (tx) => {
@@ -100,7 +102,7 @@ payeesRouter.post(
   '/payees/:id/archive',
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const id = uuid.parse(req.params.id);
     await withTenant(a.tenantId, async (tx) => {
       const done = await tx.payee.updateMany({ where: { id, archivedAt: null }, data: { archivedAt: new Date() } });
@@ -115,7 +117,7 @@ payeesRouter.post(
   '/payees/:id/payments',
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const payeeId = uuid.parse(req.params.id);
     const b = z.object({ paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), box: z.enum(Object.keys(T4A_BOXES) as ['048', '028', '020']), amount: z.number().positive().max(10_000_000), taxWithheld: z.number().min(0).max(10_000_000).default(0), description: z.string().trim().min(2).max(160) }).parse(req.body);
     const x = await withTenant(a.tenantId, async (tx) => {
@@ -132,7 +134,7 @@ payeesRouter.delete(
   '/payees/:id/payments/:paymentId',
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const id = uuid.parse(req.params.paymentId);
     await withTenant(a.tenantId, async (tx) => {
       const x = await tx.payeePayment.findUnique({ where: { id } });
@@ -149,7 +151,7 @@ payeesRouter.get(
   '/payroll/t4a',
   h(async (req, res) => {
     const a = authOf(req);
-    wholeCity(a);
+    wholeCity(a, 'payroll.export');
     const year = z.coerce.number().int().min(2020).max(2100).parse(req.query.year);
     res.json(await withTenant(a.tenantId, (tx) => t4aSlips(tx, year)));
   }),

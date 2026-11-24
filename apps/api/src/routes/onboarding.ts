@@ -1,7 +1,7 @@
 /** Onboarding: the catalogue, per-position requirements, people's checklists and the employee's own. */
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { MINORS_SET, checklist, ensureDefaults, recordItem } from '../services/people/onboarding.js';
@@ -52,6 +52,7 @@ const itemBody = z.object({
 onboardingRouter.post(
   '/onboarding/items',
   requirePermission('onboarding.configure'),
+  requireWholeOrganization('onboarding.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = itemBody.parse(req.body);
@@ -67,6 +68,7 @@ onboardingRouter.post(
 onboardingRouter.patch(
   '/onboarding/items/:id',
   requirePermission('onboarding.configure'),
+  requireWholeOrganization('onboarding.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -86,6 +88,7 @@ onboardingRouter.patch(
 onboardingRouter.put(
   '/onboarding/positions/:positionId',
   requirePermission('onboarding.configure'),
+  requireWholeOrganization('onboarding.configure'),
   h(async (req, res) => {
     const a = authOf(req);
     const positionId = uuid.parse(req.params.positionId);

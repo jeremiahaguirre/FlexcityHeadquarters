@@ -2,7 +2,7 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, requireFeature, requirePermission, requireWholeOrganization } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { updateTenantJson } from '../lib/tenantSettings.js';
 import { forbidden, notFound } from '../lib/errors.js';
@@ -76,6 +76,7 @@ overtimeRouter.get(
 overtimeRouter.put(
   '/overtime/policy',
   requirePermission('overtime.manage'),
+  requireWholeOrganization('overtime.manage'),
   h(async (req, res) => {
     const a = authOf(req);
     const body = z.object({ countRefusals: z.boolean(), clause: z.string().trim().max(200).nullable(), periodStartMonth: z.number().int().min(1).max(12) }).parse(req.body);

@@ -7,12 +7,13 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireFeature, requirePermission } from '../auth/middleware.js';
+import { authOf, holdsForWholeOrganization, requireFeature, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, conflict, notFound } from '../lib/errors.js';
 import { ageInMonths, fitsAge } from '../services/programs/levels.js';
 import { setView } from './programs.js';
 import { h } from './context.js';
+import { shiftInScope } from '../services/people/scope.js';
 
 export const membersRouter = Router();
 membersRouter.use(['/households', '/registrations', '/offerings', '/fees', '/sales'], requireFeature('registration'));
@@ -322,7 +323,15 @@ membersRouter.get(
   h(async (req, res) => {
     const a = authOf(req);
     const { setId } = z.object({ setId: uuid }).parse(req.query);
-    const list = await withTenant(a.tenantId, (tx) => tx.lessonEnrollment.findMany({ where: { classId: setId, status: { not: 'CANCELLED' } }, orderBy: [{ status: 'asc' }, { createdAt: 'asc' }] }));
+    const list = await withTenant(a.tenantId, async (tx) => {
+      // A planner limited to some facilities, outside member services, reads only their own sets'
+      // class lists: children's names and safety notes (SEC-29).
+      if (!a.permissions.has('members.manage') && !holdsForWholeOrganization(a, 'lessons.plan')) {
+        const set = await tx.lessonClass.findUnique({ where: { id: setId }, select: { facilityId: true, positionId: true } });
+        if (!set || !shiftInScope(a.scope, set)) throw notFound('Set');
+      }
+      return tx.lessonEnrollment.findMany({ where: { classId: setId, status: { not: 'CANCELLED' } }, orderBy: [{ status: 'asc' }, { createdAt: 'asc' }] });
+    });
     res.json(list.map((e) => ({ id: e.id, swimmerName: e.swimmerName, status: e.status, householdId: e.householdId, ageOverride: e.ageOverride, safetyNote: e.safetyNote })));
   }),
 );

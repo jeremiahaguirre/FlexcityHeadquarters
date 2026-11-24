@@ -148,10 +148,11 @@ describe('settings', () => {
     await owner.userCustomRole.create({ data: { tenantId: a.tenant.id, userId: scopedId, customRoleId: role.id } });
     forgetCustomPermissions(a.tenant.id);
     const scoped = await signAccessToken({ sub: scopedId, tid: a.tenant.id, roles: ['EMPLOYEE'], aat: now(), mfa: true });
-    expect((await call(scoped).get('/api/settings')).status).toBe(200); // they do configure the organization…
+    // Organization settings are for whole-organization access only (SEC-25, wholeOrganization.test.ts),
+    expect((await call(scoped).get('/api/settings')).status).toBe(403);
     const body = { name: 'Scoped day', nameFr: 'Jour limité', kind: 'PAID', date: CIVIC };
     for (const r of [await call(scoped).get('/api/settings/city-holidays'), await call(scoped).post('/api/settings/city-holidays', body), await call(scoped).patch(`/api/settings/city-holidays/${civicId}`, body), await call(scoped).del(`/api/settings/city-holidays/${civicId}`)]) {
-      expect(r.status).toBe(403); // …but not holidays
+      expect(r.status).toBe(403); // and holidays change pay everywhere
     }
     expect(await owner.tenantHoliday.count({ where: { tenantId: a.tenant.id } })).toBe(2);
   });
