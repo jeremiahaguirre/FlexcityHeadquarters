@@ -4,8 +4,9 @@
  *
  * - Leave charged from the shifts it took off is paid on those shifts' days (chargedDays, recorded
  *   at approval). Otherwise the hours charged are spread over the request's local working days
- *   (Monday to Friday, in the person's leave time zone, as leave is counted: leaveHours.ts), or over
- *   all its days when it has no weekday. A request shorter than a day is one day: the one it starts on.
+ *   (Monday to Friday, in the person's leave time zone, without the holidays they're off for, as
+ *   leave is counted: leaveHours.ts leaveHoursOff), or over all its days when it has none. A request
+ *   shorter than a day is one day: the one it starts on.
  * - Each day is paid in the pay period that holds it, unless the request was approved later: then
  *   in the period that holds the approval day. So leave across two periods is paid in each, and
  *   leave approved after its period's run is paid in the next run, never twice and never lost.
@@ -19,7 +20,7 @@ import { DateTime } from 'luxon';
 import type { Tx } from '../../lib/db.js';
 import { Decimal, dec } from '../../lib/money.js';
 import { localDate } from '../../lib/time.js';
-import { leaveTimeZones } from '../people/leaveHours.js';
+import { leaveDaysOff, leaveProvinces, leaveTimeZones } from '../people/leaveHours.js';
 
 export interface PaidLeaveDay {
   requestId: string;
@@ -37,13 +38,13 @@ export interface PaidLeaveDay {
   person: { employeeNumber: string | null; name: string; hireDate: Date | null };
 }
 
-/** A request's hours over its local days: weekdays when it has any, else every day it touches. */
-export function splitLeaveHours(startsAt: Date, endsAt: Date, hours: number, timeZone: string): Array<{ day: string; hours: number }> {
+/** A request's hours over its local days: weekdays that aren't days off when it has any, else every day it touches. */
+export function splitLeaveHours(startsAt: Date, endsAt: Date, hours: number, timeZone: string, daysOff: ReadonlySet<string> = new Set()): Array<{ day: string; hours: number }> {
   const first = DateTime.fromJSDate(startsAt, { zone: timeZone });
   const length = DateTime.fromJSDate(endsAt, { zone: timeZone }).diff(first, 'days').days;
   // Each day as the local day its middle falls on, as weekdayLeaveHours counts them.
   const all = length < 1 ? [first] : Array.from({ length: Math.round(length) }, (_, i) => first.plus({ days: i }).plus({ hours: 12 }));
-  const weekdays = all.filter((d) => d.weekday <= 5);
+  const weekdays = all.filter((d) => d.weekday <= 5 && !daysOff.has(d.toISODate()!));
   const days = (weekdays.length ? weekdays : all).map((d) => d.toISODate()!);
   // Hundredths of an hour, the remainder on the last day, so the days add up to the hours charged.
   const total = Math.round(hours * 100);
@@ -75,13 +76,17 @@ export async function paidLeaveDays(tx: Tx, opts: { from: string; to: string; on
     orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
   });
   const asked = reqs.map((r) => ({ userId: r.userId, startsAt: r.startsAt, asOf: r.decidedAt }));
-  const zoneOf = await leaveTimeZones(tx, asked);
+  const [zoneOf, provinceOf] = await Promise.all([leaveTimeZones(tx, asked), leaveProvinces(tx, asked)]);
+  // The holidays each province's requests skip, over all the requests' days, once per province.
+  const span = reqs.length ? { from: new Date(Math.min(...reqs.map((r) => r.startsAt.getTime()))), to: new Date(Math.max(...reqs.map((r) => r.endsAt.getTime()))) } : null;
+  const daysOffIn = new Map<string | null, Set<string>>();
+  if (span) for (const p of new Set(asked.map(provinceOf))) daysOffIn.set(p, await leaveDaysOff(tx, p, span.from, span.to));
   const out: PaidLeaveDay[] = [];
   for (const [i, r] of reqs.entries()) {
     const tz = zoneOf(asked[i]!);
     const decided = r.decidedAt ? localDate(r.decidedAt, tz) : '0000-00-00';
     const firstPosition = r.user.positions.map((p) => p.positionId).sort()[0] ?? null;
-    const days = recordedDays(r.chargedDays, Number(r.chargedHours)) ?? splitLeaveHours(r.startsAt, r.endsAt, Number(r.chargedHours), tz);
+    const days = recordedDays(r.chargedDays, Number(r.chargedHours)) ?? splitLeaveHours(r.startsAt, r.endsAt, Number(r.chargedHours), tz, daysOffIn.get(provinceOf(asked[i]!)));
     for (const { day, hours } of days) {
       // Chosen without regard to the run, so every run agrees on which one pays the day.
       const rate = r.user.payRates

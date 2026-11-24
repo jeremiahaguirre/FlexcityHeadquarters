@@ -11,6 +11,7 @@ import { createApp } from '../../src/app.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { withTenant } from '../../src/lib/db.js';
+import { paidLeaveDays } from '../../src/services/payroll/leavePay.js';
 import { runPayroll } from '../../src/services/payroll/payrollRun.js';
 import { forgetCustomPermissions } from '../../src/services/people/customRoles.js';
 import { addDays, startOfLocalDay } from '../../src/lib/time.js';
@@ -323,6 +324,24 @@ describe('review round 2', () => {
     const libraryRun = await leaveHours('2027-06-06', [clerk]);
     // The day goes to the run of the position whose rate pays it (the same choice as the city-wide run), and only there.
     expect([aquaticsRun, libraryRun]).toEqual([{ hours: 8, amount: 200 }, { hours: 0, amount: 0 }]);
+  });
+
+  it('leave counted by weekdays is paid on the days it was charged for: a holiday inside it is neither charged nor paid', async () => {
+    const tid = d.tenant.id;
+    const guard = d.users[0]!.id;
+    // The city's own paid holiday on Wednesday August 4, 2027; bereavement Monday August 2 to Saturday August 7, nothing scheduled.
+    await owner.tenantHoliday.create({ data: { tenantId: tid, name: 'Civic day', nameFr: 'Journée civique', date: new Date('2027-08-04') } });
+    const r = await withTenant(tid, (tx) => tx.timeOffRequest.create({ data: { tenantId: tid, userId: guard, type: 'OTHER', leaveTypeId: kind, status: 'PENDING', startsAt: new Date('2027-08-02T07:00:00.000Z'), endsAt: new Date('2027-08-07T07:00:00.000Z') } }));
+    const supTok = await signAccessToken({ sub: supD, tid, roles: ['HR_ADMIN', 'AQUATIC_SUPERVISOR'], aat: now(), mfa: true });
+    expect((await request(server).post(`/api/time-off/${r.id}/decision`).set('x-tenant-subdomain', 'leavetypesd').auth(supTok, { type: 'bearer' }).send({ decision: 'APPROVE' })).body.status).toBe('APPROVED');
+    expect(Number((await owner.timeOffRequest.findUniqueOrThrow({ where: { id: r.id } })).chargedHours)).toBe(32);
+    const days = (await withTenant(tid, (tx) => paidLeaveDays(tx, { from: '2027-08-01', to: '2027-08-08', onlyUsers: null, positionIds: null }))).filter((x) => x.requestId === r.id);
+    expect(days.map((x) => [x.day, Number(x.hours)])).toEqual([
+      ['2027-08-02', 8],
+      ['2027-08-03', 8],
+      ['2027-08-05', 8],
+      ['2027-08-06', 8],
+    ]);
   });
 
   it('leave charged from shifts is paid on the days of those shifts, not spread over weekdays', async () => {
