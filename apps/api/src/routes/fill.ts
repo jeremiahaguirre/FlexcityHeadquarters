@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
+import { lockTenant } from '../lib/tenantSettings.js';
 import { forbidden, notFound } from '../lib/errors.js';
 import { notify } from '../services/notifications/notifier.js';
 import { facilitiesOf, peopleWhere } from '../services/people/scope.js';
@@ -185,6 +186,8 @@ fillRouter.put(
       })
       .parse(req.body);
     const out = await withTenant(a.tenantId, async (tx) => {
+      // Read under the row lock: a schedule fill or another settings change waits, then starts from this one.
+      await lockTenant(tx, a.tenantId);
       const tenant = await tx.tenant.findFirstOrThrow({ select: { overtimePolicy: true, features: true } });
       const s = parseSolverSettings(tenant.overtimePolicy);
       const before = structuredClone(s);
