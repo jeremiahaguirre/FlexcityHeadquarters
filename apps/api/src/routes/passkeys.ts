@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { authOf, requireAuth, requireRecentAuth } from '../auth/middleware.js';
 import { epochSeconds, issueRefreshToken, markReauthenticated, revokeOtherSessions, signAccessToken, verifyPassword } from '../auth/tokens.js';
+import { forgetSessions } from '../services/people/customRoles.js';
 import type { AuthContext } from '../auth/middleware.js';
 import { allow, reserve } from '../auth/rateLimit.js';
 import { signedInFrom } from '../auth/bruteForce.js';
@@ -127,12 +128,12 @@ export const myPasskeysRouter = Router();
  * While a required second factor is missing, someone holding only the password
  * may add a first passkey, but not add more or remove any.
  */
-async function enrolmentOnly(a: AuthContext, existing: number) {
+async function enrolmentOnly(a: AuthContext, existing: number, tx?: Tx) {
   if (a.mfaPending && existing > 0) throw new HttpError(403, 'MFA_REQUIRED', 'Confirm with your passkey to continue.');
   // Where the organization accepts emailed or texted codes, a password alone doesn't make a first
   // passkey (SEC-02): that would turn a stolen password into a full second-factor session, and a
   // backdoor that outlives a password reset. Confirm with a code first; then add a passkey.
-  if (a.mfaPending && existing === 0 && (await codesAllowed(a.tenantId))) throw new HttpError(403, 'MFA_CODE_FIRST', 'Confirm with a sign-in code first, then add a passkey.');
+  if (a.mfaPending && existing === 0 && (await codesAllowed(a.tenantId, tx))) throw new HttpError(403, 'MFA_CODE_FIRST', 'Confirm with a sign-in code first, then add a passkey.');
 }
 
 /** The person hears of every passkey added to or removed from their account. */
@@ -174,7 +175,7 @@ const addPasskey = h(async (req, res) => {
   const r = await verifyRegistration(await rpFor(req), body.challengeId, 'register', body.response as unknown as RegistrationResponseJSON);
   if (r.challenge.userId !== a.userId) throw new HttpError(400, 'PASSKEY_FAILED', 'That passkey could not be set up.');
   const p = await withTenant(a.tenantId, async (tx) => {
-    await enrolmentOnly(a, await tx.passkey.count({ where: { userId: a.userId } }));
+    await enrolmentOnly(a, await tx.passkey.count({ where: { userId: a.userId } }), tx);
     const created = await tx.passkey.create({
       data: { tenantId: a.tenantId, userId: a.userId, credentialId: r.credentialId, publicKey: r.publicKey, counter: r.counter, transports: r.transports, name: body.name ?? deviceName(req.header('user-agent')) },
     });
@@ -211,6 +212,7 @@ myPasskeysRouter.delete(
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'passkey.remove', entity: 'User', entityId: a.userId, after: { name: p.name, sessionsEnded: ended } });
       await tellOwner(tx, a, 'passkey_removed', p.name);
     });
+    await forgetSessions(a.userId);
     res.status(204).end();
   }),
 );

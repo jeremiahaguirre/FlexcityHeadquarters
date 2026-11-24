@@ -239,22 +239,32 @@ export async function setUserCustomRoles(tx: Tx, tenantId: string, userId: strin
   await forgetCustomPermissions(tenantId, tx);
 }
 
-/** Whether a person may still use the app (active, not restricted). Cached 30 s; HR changes clear it. */
-const active = new Map<string, { at: number; ok: boolean }>();
-export async function stillActive(tenantId: string, userId: string): Promise<boolean> {
+/**
+ * Whether a person may still use the app (active, not restricted), and from when (epoch seconds)
+ * their access tokens are valid: tokens issued before their sessions were last ended don't work.
+ * Cached 30 s; HR changes and ended sessions clear it.
+ */
+type SessionState = { at: number; ok: boolean; from: number };
+const active = new Map<string, SessionState>();
+export async function sessionState(tenantId: string, userId: string): Promise<SessionState> {
   const hit = active.get(userId);
-  if (hit && Date.now() - hit.at < 30_000) return hit.ok;
+  if (hit && Date.now() - hit.at < 30_000) return hit;
   return activeFlight.run(userId, async () => {
     const gen = activeFlight.generation;
-    const u = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { id: userId }, select: { status: true, processingRestrictedAt: true, anonymizedAt: true } }));
-    const ok = !!u && u.status === 'ACTIVE' && !u.processingRestrictedAt && !u.anonymizedAt;
-    if (activeFlight.fresh(gen)) active.set(userId, { at: Date.now(), ok });
-    return ok;
+    const u = await withTenant(tenantId, (tx) => tx.user.findUnique({ where: { id: userId }, select: { status: true, processingRestrictedAt: true, anonymizedAt: true, sessionsValidFrom: true } }));
+    const state = { at: Date.now(), ok: !!u && u.status === 'ACTIVE' && !u.processingRestrictedAt && !u.anonymizedAt, from: u?.sessionsValidFrom ? Math.floor(u.sessionsValidFrom.getTime() / 1000) : 0 };
+    if (activeFlight.fresh(gen)) active.set(userId, state);
+    return state;
   });
 }
-const activeFlight = singleFlight<boolean>();
+export async function stillActive(tenantId: string, userId: string): Promise<boolean> {
+  return (await sessionState(tenantId, userId)).ok;
+}
+const activeFlight = singleFlight<SessionState>();
 export function forgetActive(userId?: string): void {
   activeFlight.forget(userId);
   if (userId) active.delete(userId);
   else active.clear();
 }
+/** forgetActive in every API process, once a person's sessions were ended (the key is the person's id). */
+export const forgetSessions = sharedForget('sessions', (userId) => forgetActive(userId));

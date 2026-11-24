@@ -7,7 +7,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { HttpError, forbidden } from '../lib/errors.js';
 import type { Permission } from './permissions.js';
 import { verifyAccessToken } from './tokens.js';
-import { type Scope, customAccess, scopeOf, stillActive } from '../services/people/customRoles.js';
+import { type Scope, customAccess, scopeOf, sessionState, stillActive } from '../services/people/customRoles.js';
 import { managedScope } from '../services/people/departments.js';
 import { type FeatureKey, tenantFeatures, tenantSettings, withoutDisabled } from '../services/platform/features.js';
 import { permissionsWithOverrides } from '../services/platform/roleOverrides.js';
@@ -88,9 +88,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       throw new HttpError(401, 'UNAUTHENTICATED', 'Invalid or expired access token');
     });
     if (req.tenantId && req.tenantId !== claims.tid) throw forbidden('Token does not belong to this organization');
-    const [{ features, overrides, mfaRoles, billing, disabledAt, exportUntil }, custom, ok, managed] = await Promise.all([tenantSettings(claims.tid), customAccess(claims.tid, claims.sub), stillActive(claims.tid, claims.sub), managedScope(claims.tid, claims.sub)]);
+    const [{ features, overrides, mfaRoles, billing, disabledAt, exportUntil }, custom, person, managed] = await Promise.all([tenantSettings(claims.tid), customAccess(claims.tid, claims.sub), sessionState(claims.tid, claims.sub), managedScope(claims.tid, claims.sub)]);
     // Terminated, deactivated or restricted people lose access at once, not when their token expires.
-    if (!ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
+    if (!person.ok) throw new HttpError(401, 'ACCOUNT_INACTIVE', 'This account is no longer active.');
+    // So do sessions ended by a password change, a passkey removal or a reset (SEC-31): a token
+    // issued before then stops working. The session that made the change refreshes for a new one.
+    if (claims.iat !== undefined && claims.iat < person.from) throw new HttpError(401, 'SESSION_ENDED', 'This session was signed out. Sign in again.');
     // Each role's permissions after the city's Dev console overrides, plus custom roles.
     const builtIn = permissionsWithOverrides(claims.roles, overrides);
     const granted = new Set([...builtIn, ...custom.perms]);

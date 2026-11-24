@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { authOf, requireAuth } from '../auth/middleware.js';
 import { allow } from '../auth/rateLimit.js';
 import { epochSeconds, markReauthenticated, signAccessToken } from '../auth/tokens.js';
-import { audit, withTenant } from '../lib/db.js';
+import { audit, type Tx, withTenant } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { CODE_MINUTES, MAX_ATTEMPTS, RESEND_SECONDS, codeMatches, codeOptions, hashCode, newCode } from '../services/auth/mfaCodes.js';
 import { tenantSettings } from '../services/platform/features.js';
@@ -27,9 +27,10 @@ export const mfaCodeRouter = Router();
 const MIN = 60_000;
 const tooMany = (code: string, message: string) => new HttpError(429, code, message);
 
-export async function codesAllowed(tenantId: string): Promise<boolean> {
-  const t = await withTenant(tenantId, (tx) => tx.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { mfaCodes: true } }));
-  return t.mfaCodes;
+/** `tx`: read inside the caller's transaction instead of opening a second one while it's open. */
+export async function codesAllowed(tenantId: string, tx?: Tx): Promise<boolean> {
+  const read = (t: Tx) => t.tenant.findUniqueOrThrow({ where: { id: tenantId }, select: { mfaCodes: true } });
+  return (await (tx ? read(tx) : withTenant(tenantId, read))).mfaCodes;
 }
 const codesOff = () => new HttpError(403, 'MFA_CODES_OFF', 'Your organization accepts only passkeys as the second factor.');
 /** Only a session that still owes a second factor sends or checks codes: they're not a general-purpose step-up. */

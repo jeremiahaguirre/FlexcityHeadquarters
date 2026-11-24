@@ -21,6 +21,8 @@ export interface AccessClaims {
   mfa?: boolean;
   /** An FH support visit (SupportSession id): read-only, consent-based. */
   sup?: string;
+  /** When the token was issued (epoch seconds), set by verifyAccessToken. */
+  iat?: number;
 }
 
 const secret = () => new TextEncoder().encode(config().JWT_SECRET);
@@ -39,7 +41,7 @@ export async function verifyAccessToken(token: string): Promise<AccessClaims> {
   if (typeof payload.sub !== 'string' || typeof payload.tid !== 'string' || !Array.isArray(payload.roles)) {
     throw new Error('Malformed token');
   }
-  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true, ...(typeof payload.sup === 'string' ? { sup: payload.sup } : {}) };
+  return { sub: payload.sub, tid: payload.tid, roles: payload.roles as AccessRole[], aat: typeof payload.aat === 'number' ? payload.aat : undefined, mfa: payload.mfa === true, ...(typeof payload.sup === 'string' ? { sup: payload.sup } : {}), ...(typeof payload.iat === 'number' ? { iat: payload.iat } : {}) };
 }
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
@@ -76,6 +78,11 @@ export async function rotateRefreshToken(
   tx: Tx,
   raw: string,
 ): Promise<{ userId: string; tenantId: string; token: string; authenticatedAt: Date; mfa: boolean } | null> {
+  const found = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) }, select: { userId: true } });
+  if (!found) return null;
+  // Waits for an "end other sessions" in progress, then reads the token as it left it: a rotation
+  // can't slip a new token past it (SEC-31).
+  await lockSessions(tx, found.userId, 'rotate');
   const existing = await tx.refreshToken.findUnique({ where: { tokenHash: sha256(raw) } });
   if (!existing) return null;
   if (existing.revokedAt || existing.expiresAt < new Date()) {
@@ -98,13 +105,26 @@ export async function rotateRefreshToken(
  * the one whose last sign-in matches the access token's (`aat`, to the second). Returns how many ended.
  */
 export async function revokeOtherSessions(tx: Tx, userId: string, current: { raw?: string; authenticatedAt?: Date | null }): Promise<number> {
+  // No rotation of this person's tokens runs meanwhile, so every family read here is every family there is.
+  await lockSessions(tx, userId, 'end');
+  // Access tokens issued before now stop working too (auth/middleware.ts); this session gets a new one by refreshing.
+  await tx.user.update({ where: { id: userId }, data: { sessionsValidFrom: new Date() } });
   const live = await tx.refreshToken.findMany({ where: { userId, revokedAt: null }, select: { id: true, familyId: true, tokenHash: true, authenticatedAt: true } });
   const byCookie = current.raw ? live.find((t) => t.tokenHash === sha256(current.raw!)) : undefined;
   const sec = (d: Date | null | undefined) => (d ? Math.floor(d.getTime() / 1000) : null);
   const keep = new Set(byCookie ? [byCookie.familyId] : live.filter((t) => current.authenticatedAt && sec(t.authenticatedAt) === sec(current.authenticatedAt)).map((t) => t.familyId));
-  const end = live.filter((t) => !keep.has(t.familyId)).map((t) => t.id);
-  if (end.length) await tx.refreshToken.updateMany({ where: { id: { in: end } }, data: { revokedAt: new Date() } });
-  return end.length;
+  const ended = await tx.refreshToken.updateMany({ where: { userId, revokedAt: null, familyId: { notIn: [...keep] } }, data: { revokedAt: new Date() } });
+  return ended.count;
+}
+
+/**
+ * One person's session changes in order. Ending sessions (`end`) waits for refreshes already
+ * running and holds new ones off until it commits; refreshes (`rotate`) don't wait for each other
+ * (FOR KEY SHARE doesn't conflict with itself, or with ordinary updates of the person's row).
+ */
+export async function lockSessions(tx: Tx, userId: string, mode: 'rotate' | 'end'): Promise<void> {
+  if (mode === 'end') await tx.$queryRaw`SELECT 1 FROM "User" WHERE id = ${userId}::uuid FOR UPDATE`;
+  else await tx.$queryRaw`SELECT 1 FROM "User" WHERE id = ${userId}::uuid FOR KEY SHARE`;
 }
 
 export async function revokeRefreshFamily(tx: Tx, raw: string): Promise<void> {

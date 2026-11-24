@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { appUrl, consumeAuthToken, issueAuthToken } from '../auth/authTokens.js';
 import { allow, reserve } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
-import { epochSeconds, hashPassword, signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword } from '../auth/tokens.js';
+import { epochSeconds, hashPassword, signAccessToken, issueRefreshToken, rotateRefreshToken, revokeRefreshFamily, verifyPassword, lockSessions } from '../auth/tokens.js';
+import { forgetSessions } from '../services/people/customRoles.js';
 import { config } from '../config.js';
 import { isCommonPassword, isPersonalPassword } from '../auth/commonPasswords.js';
 import { audit, type Tx, withTenant } from '../lib/db.js';
@@ -281,11 +282,15 @@ authRouter.post(
       await tx.user.update({ where: { id: t.userId }, data: { passwordHash, failedLoginCount: 0, lockedUntil: null, lockoutLevel: 0 } });
       // Every network's failures and locks on the account are forgotten too.
       await clearAccount('org', `${tenantId}:${who.email.toLowerCase()}`);
+      // Every session ends, refreshes in progress included, and access tokens issued before now stop working.
+      await lockSessions(tx, t.userId, 'end');
+      await tx.user.update({ where: { id: t.userId }, data: { sessionsValidFrom: new Date() } });
       await tx.refreshToken.updateMany({ where: { userId: t.userId, revokedAt: null }, data: { revokedAt: new Date() } });
       await notify(tx, tenantId, [{ userId: t.userId, type: t.purpose === 'INVITE' ? 'welcome' : 'password_changed', link: '/profile' }]);
-      return true;
+      return t.userId;
     });
     if (!done) throw new HttpError(400, 'LINK_EXPIRED', 'This link has expired or was already used. Ask for a new one.');
+    await forgetSessions(done);
     res.json({ ok: true });
   }),
 );

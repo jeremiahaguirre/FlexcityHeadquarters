@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { appUrl, issueAuthToken } from '../auth/authTokens.js';
 import { type AuthContext, accessOf, authOf, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { hashPassword, revokeOtherSessions, verifyPassword } from '../auth/tokens.js';
+import { forgetSessions } from '../services/people/customRoles.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
 import { audit, type Tx, withTenant } from '../lib/db.js';
@@ -148,6 +149,7 @@ staffRouter.post(
       return true;
     });
     if (!ok) throw new HttpError(400, 'WRONG_PASSWORD', 'Your current password is incorrect.');
+    await forgetSessions(a.userId);
     res.json({ ok: true });
   }),
 );

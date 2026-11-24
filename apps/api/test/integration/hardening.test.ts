@@ -358,6 +358,8 @@ describe('access control basics', () => {
     expect(personal.status).toBe(400);
     expect(personal.body.code).toBe('PASSWORD_PERSONAL');
     expect((await reset('river-otter-paddle-42')).status).toBe(200);
+    // A reset ends the person's sessions, access tokens included (SEC-31): sign in again.
+    tok.staff = await signAccessToken({ sub: t.users[0]!.id, tid: t.tenant.id, roles: ['STAFF'], aat: now() });
   });
 
   it('refuses common passwords', async () => {

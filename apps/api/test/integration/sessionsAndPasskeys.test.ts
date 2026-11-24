@@ -98,6 +98,73 @@ describe('a changed password or a removed passkey ends every other session (SEC-
   });
 });
 
+describe('ending sessions can’t be outrun (review of 2b96c6c)', () => {
+  const PW = ['amber lantern over quiet river 41', 'cobalt orchard beneath winter sky 58'];
+  const GUARD = `guard@${SUB}.test`;
+  let guardId = '';
+  /** The guard's password as the tests leave it. */
+  let pw = PW[0]!;
+  const login = async (password: string) => {
+    const r = await request(server).post('/api/auth/login').set('x-tenant-subdomain', SUB).send({ email: GUARD, password });
+    expect(r.status).toBe(200);
+    return { token: r.body.accessToken as string, cookie: String(r.headers['set-cookie']).split(';')[0]! };
+  };
+  const refresh = (cookie: string) => request(server).post('/api/auth/refresh').set('x-tenant-subdomain', SUB).set('Cookie', cookie);
+  const cookieOf = (r: request.Response) => String(([] as string[]).concat(r.headers['set-cookie'] ?? []).find((c) => c.startsWith('fc_refresh=')) ?? '').split(';')[0]!;
+
+  beforeAll(async () => {
+    // An employee: no second factor required, as in the review's reproduction.
+    guardId = (await owner.user.create({ data: { tenantId: t.tenant.id, roles: ['EMPLOYEE'], employmentStatus: 'FULL_TIME', firstName: 'Kai', lastName: 'Guard', email: GUARD, passwordHash: await hashPassword(PW[0]!) } })).id;
+  });
+
+  it('a session refreshing in a loop while the password changes is still ended', async () => {
+    let current = 0;
+    for (let round = 0; round < 3; round++) {
+      resetLimits();
+      const other = await login(PW[current]!);
+      const mine = await login(PW[current]!);
+      let cookie = other.cookie;
+      let done = false;
+      const loop = (async () => {
+        while (!done) {
+          const r = await refresh(cookie);
+          if (r.status !== 200) break;
+          cookie = cookieOf(r);
+        }
+      })();
+      await new Promise((r) => setTimeout(r, 30));
+      const changed = await as(mine.token, mine.cookie).post('/api/me/password', { currentPassword: PW[current]!, newPassword: PW[1 - current]! });
+      expect(changed.status).toBe(200);
+      current = 1 - current;
+      done = true;
+      await loop;
+      // Whatever token the loop ended on no longer refreshes, and the person has one live session: this one.
+      expect((await refresh(cookie)).status, `round ${round}`).toBe(401);
+      expect(new Set((await owner.refreshToken.findMany({ where: { userId: guardId, revokedAt: null } })).map((x) => x.familyId)).size, `round ${round}`).toBe(1);
+      expect((await refresh(mine.cookie)).status).toBe(200);
+    }
+    pw = PW[current]!;
+  });
+
+  it('an access token issued before the password change stops working at once, so it can’t add a passkey', async () => {
+    resetLimits();
+    const now = pw;
+    const other = await login(now);
+    // Tokens carry whole seconds: the change comes in a later second than the other session's token.
+    await new Promise((r) => setTimeout(r, 1100));
+    const mine = await login(now);
+    expect((await as(mine.token, mine.cookie).post('/api/me/password', { currentPassword: now, newPassword: now === PW[0] ? PW[1]! : PW[0]! })).status).toBe(200);
+    for (const r of [await as(other.token).get('/api/me'), await as(other.token).post('/api/me/passkeys/options'), await as(other.token).post('/api/me/passkeys', { challengeId: randomUUID(), response: { id: 'cred-after-change', who: { userId: guardId } } })]) {
+      expect([r.status, r.body.code]).toEqual([401, 'SESSION_ENDED']);
+    }
+    expect(await owner.passkey.count({ where: { userId: guardId } })).toBe(0);
+    // The session that made the change carries on with a refreshed token.
+    const fresh = await refresh(mine.cookie);
+    expect(fresh.status).toBe(200);
+    expect((await as(fresh.body.accessToken).get('/api/me')).status).toBe(200);
+  });
+});
+
 describe('re-enabling or resetting a console admin ends their old sessions (SEC-34)', () => {
   it('a session taken before the account was disabled doesn’t come back with it', async () => {
     const email = `fh-${randomBytes(3).toString('hex')}@fh.test`;

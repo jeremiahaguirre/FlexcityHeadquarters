@@ -92,6 +92,9 @@ describe('invitations and passwords', () => {
     expect((await call(sup).post('/api/me/password', { currentPassword: 'nope', newPassword: 'new-pass-456' })).status).toBe(400);
     expect((await call(sup).post('/api/me/password', { currentPassword: 'old-pass-123', newPassword: 'old-pass-123' })).body.code).toBe('PASSWORD_REUSED');
     expect((await call(sup).post('/api/me/password', { currentPassword: 'old-pass-123', newPassword: 'new-pass-456' })).status).toBe(200);
+    // The change ends earlier access tokens (SEC-31); the app gets a new one by refreshing, as here.
+    expect((await call(sup).get('/api/me')).body.code).toBe('SESSION_ENDED');
+    sup = await signAccessToken({ sub: supId, tid: t.tenant.id, roles: ['AQUATIC_SUPERVISOR'] });
   });
 
   it('returns my profile with permissions', async () => {

@@ -471,6 +471,7 @@
     "TOO_MANY_PASSKEYS": "Remove a passkey before adding another.",
     "MFA_REQUIRED": "Your organization requires a passkey for this account.",
     "MFA_CODE_FIRST": "Confirm with a sign-in code first, then add a passkey.",
+    "SESSION_ENDED": "This session was signed out because the password changed or a passkey was removed. Sign in again.",
     "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "CSRF_REFUSED": "This request didn’t come from the Dev console. Reload the page and try again.",
     "ALREADY_ALONE": "You already have a working-alone session. End it first.",
