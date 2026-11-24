@@ -156,3 +156,24 @@ run "retention_within_the_lock" {
   }
   expect_failures = [var.backup_retention_days]
 }
+
+# The deploy pipeline (#58): every role carries the environment's permissions boundary, or the
+# deploy workflow can't create it.
+run "backup_role_carries_the_deploy_boundary" {
+  command = plan
+  variables {
+    github_repository = "example-org/example-repo"
+  }
+  assert {
+    condition     = aws_iam_role.backup[0].permissions_boundary == "arn:aws:iam::111122223333:policy/fh-production-ca-central-1-deploy-boundary"
+    error_message = "The backup role carries the deploy boundary."
+  }
+}
+
+run "backup_role_without_deployments" {
+  command = plan
+  assert {
+    condition     = aws_iam_role.backup[0].permissions_boundary == null
+    error_message = "Without github_repository, no boundary is set (as for the other roles)."
+  }
+}

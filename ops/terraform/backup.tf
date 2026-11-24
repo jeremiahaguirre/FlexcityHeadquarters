@@ -96,9 +96,10 @@ data "aws_iam_policy_document" "backup_assume" {
 }
 
 resource "aws_iam_role" "backup" {
-  count              = local.backup_enabled ? 1 : 0
-  name               = "${local.gname}-backup"
-  assume_role_policy = data.aws_iam_policy_document.backup_assume.json
+  count                = local.backup_enabled ? 1 : 0
+  name                 = "${local.gname}-backup"
+  assume_role_policy   = data.aws_iam_policy_document.backup_assume.json
+  permissions_boundary = local.role_boundary
 }
 
 resource "aws_iam_role_policy_attachment" "backup" {
