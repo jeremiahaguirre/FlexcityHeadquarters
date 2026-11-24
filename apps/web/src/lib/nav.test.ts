@@ -12,8 +12,8 @@ function menu(...roles: Array<keyof typeof ROLE_PERMISSIONS>) {
 }
 
 describe('menus per role', () => {
-  it('union steward: only the Union hub, which is also their home page', () => {
-    expect(menu('UNION_STEWARD')).toEqual({ items: ['/union', '/union/bids'], home: '/union' });
+  it('union steward: the Union hub, which is also their home page, and the overtime order (read only)', () => {
+    expect(menu('UNION_STEWARD')).toEqual({ items: ['/manage/overtime', '/union', '/union/bids'], home: '/union' });
   });
 
   it('lifeguard / instructor: their own work and the pool deck tasks', () => {

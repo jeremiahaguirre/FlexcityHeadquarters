@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { api } from '@/lib/api';
 import { formatDate, dateFormat } from '@/lib/format';
+import { useSession } from '@/lib/session';
 import { useAction, useQuery } from '@/lib/useQuery';
 
 interface Row { userId: string; name: string; chargedHours: number; acceptedHours: number; refusals: number; seniorityDate: string | null }
@@ -19,17 +20,22 @@ interface Standings { policy: { countRefusals: boolean; clause: string | null; p
 
 const localInput = (d = new Date()) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 
-/** Overtime in agreement order: fewest hours charged, then seniority. */
+/**
+ * Overtime in agreement order: fewest hours charged, then seniority. Union stewards (seniority.read)
+ * read the order and the rule, for grievances; recording call-outs and the rule are for supervisors.
+ */
 export default function OvertimePage() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
+  const { can } = useSession();
+  const manage = can('overtime.manage');
   const positions = useQuery<Array<{ id: string; name: string; nameFr: string | null }>>('/api/positions');
   const [positionId, setPositionId] = useState('');
   useEffect(() => {
     if (!positionId && positions.data?.[0]) setPositionId(positions.data[0].id);
   }, [positions.data, positionId]);
   const data = useQuery<Standings>(positionId ? `/api/overtime/standings?positionId=${positionId}` : null);
-  const policy = useQuery<Standings['policy']>('/api/overtime/policy');
+  const policy = useQuery<Standings['policy']>(manage ? '/api/overtime/policy' : null);
   const { run, busy } = useAction();
   const [calling, setCalling] = useState<Row | null>(null);
   const pos = (p: { name: string; nameFr: string | null }) => (lng === 'fr-CA' && p.nameFr ? p.nameFr : p.name);
@@ -56,7 +62,7 @@ export default function OvertimePage() {
     <div className="grid gap-6">
       <PageHeader
         title={t('overtime.title')}
-        description={t('overtime.description')}
+        description={manage ? t('overtime.description') : t('overtime.readOnlyDescription')}
         actions={
           <Field label={t('overtime.position')}>
             {(p) => (
@@ -75,7 +81,7 @@ export default function OvertimePage() {
               <Skeleton className="h-48" />
             ) : (
               <table className="w-full min-w-[34rem] text-left text-small">
-                <thead className="text-caption font-semibold text-muted"><tr><th className="py-2">#</th><th>{t('overtime.person')}</th><th className="text-right">{t('overtime.charged')}</th><th className="text-right">{t('overtime.refusals')}</th>{data.data.useSeniority !== false ? <th>{t('overtime.seniority')}</th> : null}<th className="relative"><span className="sr-only">{t('common.actions')}</span></th></tr></thead>
+                <thead className="text-caption font-semibold text-muted"><tr><th className="py-2">#</th><th>{t('overtime.person')}</th><th className="text-right">{t('overtime.charged')}</th><th className="text-right">{t('overtime.refusals')}</th>{data.data.useSeniority !== false ? <th>{t('overtime.seniority')}</th> : null}{manage ? <th className="relative"><span className="sr-only">{t('common.actions')}</span></th> : null}</tr></thead>
                 <tbody className="divide-y divide-line">
                   {data.data.rows.map((r, i) => (
                     <tr key={r.userId}>
@@ -84,7 +90,7 @@ export default function OvertimePage() {
                       <td className="text-right tabular-nums">{r.chargedHours.toFixed(2)} h</td>
                       <td className="text-right tabular-nums">{r.refusals}</td>
                       {data.data?.useSeniority !== false ? <td>{r.seniorityDate ? formatDate(`${r.seniorityDate}T12:00:00`, lng, 'dated') : '—'}</td> : null}
-                      <td className="text-right"><Button size="sm" variant="ghost" icon={<PhoneCall className="h-4 w-4" aria-hidden="true" />} onClick={() => setCalling(r)}>{t('overtime.call')}</Button></td>
+                      {manage ? <td className="text-right"><Button size="sm" variant="ghost" icon={<PhoneCall className="h-4 w-4" aria-hidden="true" />} onClick={() => setCalling(r)}>{t('overtime.call')}</Button></td> : null}
                     </tr>
                   ))}
                 </tbody>
@@ -95,7 +101,15 @@ export default function OvertimePage() {
         <Card>
           <CardHeader title={t('overtime.policy')} description={t('overtime.policyHelp')} />
           <CardBody className="pt-2">
-            {policy.data ? (
+            {!manage ? (
+              data.data ? (
+                <dl className="grid gap-3 text-small">
+                  <div><dt className="text-caption text-muted">{t('overtime.clause')}</dt><dd className="font-semibold">{data.data.policy.clause ?? '—'}</dd></div>
+                  <div><dt className="text-caption text-muted">{t('overtime.periodStart')}</dt><dd className="font-semibold">{months[data.data.policy.periodStartMonth - 1]}</dd></div>
+                  <div><dt className="text-caption text-muted">{t('overtime.whatCounts')}</dt><dd className="font-semibold">{data.data.policy.countRefusals ? t('overtime.refusalsCount') : t('overtime.acceptedOnly')}</dd></div>
+                </dl>
+              ) : <Skeleton className="h-32" />
+            ) : policy.data ? (
               <form key={JSON.stringify(policy.data)} className="grid gap-4" onSubmit={(e) => void savePolicy(e)}>
                 <Field label={t('overtime.clause')} hint={t('overtime.clauseHint')}>{(p) => <Input {...p} name="clause" maxLength={200} defaultValue={policy.data!.clause ?? ''} placeholder="Article 12.3" />}</Field>
                 <Field label={t('overtime.periodStart')}>{(p) => <Select {...p} name="month" defaultValue={policy.data!.periodStartMonth}>{months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</Select>}</Field>

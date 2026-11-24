@@ -53,7 +53,7 @@ export const NAV: NavItem[] = [
   { href: '/manage/forecast', key: 'forecast', icon: TrendingUp, group: 'manage', section: 'time', permission: 'schedule.write', ready: true },
   { href: '/manage/approvals', key: 'approvals', icon: ClipboardCheck, group: 'manage', section: 'time', permission: ['timeclock.review', 'timeoff.approve', 'shiftboard.approve'], ready: true },
   { href: '/manage/staff', key: 'staff', icon: Users, group: 'manage', section: 'people', permission: 'users.read', ready: true },
-  { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', section: 'time', permission: 'overtime.manage', ready: true },
+  { href: '/manage/overtime', key: 'overtime', icon: Scale, group: 'manage', section: 'time', permission: ['overtime.manage', 'seniority.read'], feature: 'overtime', home: false, ready: true },
   { href: '/manage/onboarding', key: 'onboarding', icon: ClipboardList, group: 'manage', section: 'people', permission: ['onboarding.hr', 'onboarding.lead'], ready: true },
   { href: '/manage/training', key: 'training', icon: GraduationCap, group: 'manage', section: 'people', permission: 'training.manage', ready: true },
   { href: '/manage/injuries', key: 'injuries', icon: Bandage, group: 'manage', section: 'safety', permission: 'injury.manage', ready: true },

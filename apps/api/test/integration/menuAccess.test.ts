@@ -69,7 +69,7 @@ const LANDING: Record<string, Call[]> = {
   '/manage/forecast': ['/api/facilities'],
   '/manage/approvals': [['/api/offers/pending', ['shiftboard.approve']], ['/api/time-off', ['timeoff.approve']], ['/api/punches', ['timeclock.review']], ['/api/trades', ['shiftboard.approve']]],
   '/manage/staff': ['/api/users?status=ACTIVE', '/api/positions'],
-  '/manage/overtime': ['/api/positions', '/api/overtime/policy'],
+  '/manage/overtime': ['/api/positions', ['/api/overtime/policy', ['overtime.manage']]],
   '/manage/onboarding': ['/api/onboarding/people'],
   '/manage/training': ['/api/training'],
   '/manage/injuries': ['/api/injury-claims'],
@@ -213,6 +213,44 @@ describe('the API refuses what the menu doesn’t offer', () => {
     const deposit = await request(server).post('/api/me/bank-accounts').set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' }).send({ holderName: 'S', institution: '004', transit: '12345', account: '1234567' });
     expect(deposit.status).toBe(403);
     expect(await owner.bankAccount.count({ where: { tenantId } })).toBe(0);
+  });
+});
+
+describe('overtime standings for union stewards', () => {
+  // Stewards hold seniority.read while the city has the union feature on.
+  const withFeatures = async (features: Record<string, boolean>, fn: () => Promise<void>) => {
+    await owner.tenant.update({ where: { id: tenantId }, data: { features } });
+    forgetFeatures(tenantId);
+    try {
+      await fn();
+    } finally {
+      await owner.tenant.update({ where: { id: tenantId }, data: { features: {} } });
+      forgetFeatures(tenantId);
+    }
+  };
+
+  it('a steward opens Overtime from the menu and reads the order, but can’t record call-outs or see the policy form', async () => {
+    const steward = await tokenFor('role-UNION_STEWARD', ['UNION_STEWARD']);
+    const position = await owner.position.create({ data: { tenantId, name: 'Overtime lifeguard' } });
+    await withFeatures({ union: true }, async () => {
+      expect((await menuOf(steward)).items.map((m) => m.href)).toContain('/manage/overtime');
+      // What the screen asks for when it opens (the Union hub itself needs the city's hub connection, not set up here).
+      expect((await get(steward, '/api/positions')).status).toBe(200);
+      const r = await get(steward, `/api/overtime/standings?positionId=${position.id}`);
+      expect(r.status).toBe(200);
+      expect(r.body).toMatchObject({ policy: expect.any(Object), rows: [] });
+      expect((await get(steward, '/api/overtime/policy')).status).toBe(403);
+      const entry = await request(server).post('/api/overtime/entries').set('x-tenant-subdomain', SUB).auth(steward, { type: 'bearer' }).send({ userId: position.id, positionId: position.id, kind: 'REFUSED', hours: '4', occurredAt: new Date().toISOString() });
+      expect(entry.status).toBe(403);
+    });
+  });
+
+  it('hides it while overtime is switched off', async () => {
+    const steward = await tokenFor('role-UNION_STEWARD', ['UNION_STEWARD']);
+    await withFeatures({ union: true, overtime: false }, async () => {
+      expect((await menuOf(steward)).items.map((m) => m.href)).not.toContain('/manage/overtime');
+      expect((await menuOf(steward)).items.map((m) => m.href)).toContain('/union');
+    });
   });
 });
 
