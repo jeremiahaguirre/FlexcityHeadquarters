@@ -276,7 +276,8 @@
     "mine": "Mon travail",
     "deck": "Bord du bassin",
     "manage": "Gestion",
-    "union": "Syndicat"
+    "union": "Syndicat",
+    "deckGeneral": "Sur place"
   },
   "roles": {
     "HR_ADMIN": "Administration RH",
@@ -470,7 +471,7 @@
     "NO_PASSKEY": "Aucune clé d’accès sur ce compte.",
     "TOO_MANY_PASSKEYS": "Retirez une clé d’accès avant d’en ajouter une autre.",
     "MFA_REQUIRED": "Votre organisation exige une clé d’accès pour ce compte.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien FH.",
+    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "CSRF_REFUSED": "Cette requête ne vient pas de la console Dev. Rechargez la page et réessayez.",
     "ALREADY_ALONE": "Vous avez déjà une séance de travail seul. Terminez-la d’abord.",
     "ALREADY_ENDED": "Cette séance est déjà terminée.",
@@ -759,7 +760,6 @@
     "SUBDOMAIN_TAKEN": "Une autre organisation utilise déjà cette adresse.",
     "SUPPORT_CODE_INVALID": "Ce lien de soutien est expiré ou a déjà été utilisé.",
     "SUPPORT_ENDED": "Cette visite de soutien est terminée.",
-    "SUPPORT_NOT_RECORDS": "Les dossiers individuels ne font pas partie de l’accès du soutien.",
     "SUPPORT_READ_ONLY": "Le soutien FH peut consulter, mais ne peut rien modifier.",
     "TEXT_ALERTS_OFF": "Votre organisation n’a pas activé les alertes par texto.",
     "TOO_LARGE": "Les fichiers peuvent faire au plus 10 Mo.",
@@ -2455,7 +2455,8 @@
         "TOO_MANY_ROWS": "Plus de 2 000 lignes; importez le reste séparément.",
         "MANAGER_SELF": "Une personne ne peut pas relever d’elle-même.",
         "MANAGER_UNKNOWN": "Personne avec le courriel {{value}} dans le personnel ou le fichier.",
-        "MANAGER_CYCLE": "Les gestionnaires du fichier tournent en rond (en passant par {{value}})."
+        "MANAGER_CYCLE": "Les gestionnaires du fichier tournent en rond (en passant par {{value}}).",
+        "POOL_ROLE": "« {{value}} » est un rôle de piscine, et cette organisation n’a pas de piscine. Utilisez un de ses propres noms de rôle."
       },
       "help_one": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} poste reconnu.",
       "help_other": "Téléversez un CSV (depuis Excel ou Google Sheets : Fichier → Enregistrer sous / Télécharger → CSV). Chaque ligne est vérifiée avant toute création. Cette ville compte {{count}} postes reconnus."
@@ -8814,5 +8815,47 @@
     "until": "jusqu’en {{year}}",
     "name": "Nom (anglais)",
     "addTitle": "Ajouter un jour férié ou de fermeture"
+  },
+  "roleNames": {
+    "PRIVATE": {
+      "HEAD_LIFEGUARD": "Chef d’équipe",
+      "HR_ADMIN": "Administration RH",
+      "STAFF": "Membre de l’équipe",
+      "AQUATIC_SUPERVISOR": "Gestionnaire",
+      "EMPLOYEE": "Employé",
+      "FRONT_DESK": "Réception",
+      "UNION_STEWARD": "Délégué syndical"
+    },
+    "MUNICIPAL": {
+      "HR_ADMIN": "Administration RH",
+      "AQUATIC_SUPERVISOR": "Superviseur",
+      "FRONT_DESK": "Accueil",
+      "UNION_STEWARD": "Délégué syndical",
+      "STAFF": "Personnel de première ligne",
+      "HEAD_LIFEGUARD": "Chef d’équipe",
+      "EMPLOYEE": "Employé (général)"
+    }
+  },
+  "roleLabels": {
+    "profiles": {
+      "MUNICIPAL": "municipaux",
+      "PRIVATE": "de milieu de travail",
+      "AQUATIC": "aquatiques"
+    },
+    "title": "Noms des rôles intégrés",
+    "help": "Votre organisation utilise les termes {{profile}} par défaut. Donnez à un rôle votre propre nom en anglais et en français; laissez les deux vides pour garder celui par défaut.",
+    "both": "Donnez le nom dans les deux langues, ou laissez les deux vides.",
+    "fr": "Français",
+    "wordsOnly": "Seuls les noms changent; ce que chaque rôle peut faire reste le même.",
+    "saved": "Noms des rôles enregistrés.",
+    "profile": "Termes par défaut",
+    "profileNames": {
+      "PRIVATE": "Milieu de travail (Membre de l’équipe, Gestionnaire)",
+      "MUNICIPAL": "Municipal (Personnel de première ligne, Sur place)",
+      "AQUATIC": "Aquatique (Sauveteur / moniteur, Bord du bassin)"
+    },
+    "profileAuto": "Automatique",
+    "en": "Anglais",
+    "profileHint": "Automatique : termes de milieu de travail pour un employeur privé, termes aquatiques si vous avez des bassins ou un service aquatique, termes neutres dès que vous avez des services et qu’aucun n’est aquatique."
   }
 }

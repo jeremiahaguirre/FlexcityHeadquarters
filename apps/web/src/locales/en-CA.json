@@ -276,7 +276,8 @@
     "mine": "My work",
     "deck": "Pool deck",
     "manage": "Manage",
-    "union": "Union"
+    "union": "Union",
+    "deckGeneral": "On site"
   },
   "roles": {
     "HR_ADMIN": "HR administrator",
@@ -759,7 +760,6 @@
     "SUBDOMAIN_TAKEN": "Another organization already uses that address.",
     "SUPPORT_CODE_INVALID": "This support link has expired or was already used.",
     "SUPPORT_ENDED": "This support visit has ended.",
-    "SUPPORT_NOT_RECORDS": "Individual records aren’t part of support access.",
     "SUPPORT_READ_ONLY": "FH support can look, not change anything.",
     "TEXT_ALERTS_OFF": "Your organization hasn’t turned on text alerts.",
     "TOO_LARGE": "Files can be up to 10 MB.",
@@ -2455,7 +2455,8 @@
         "TOO_MANY_ROWS": "Over 2,000 rows; import the rest separately.",
         "MANAGER_SELF": "Someone can’t report to themselves.",
         "MANAGER_UNKNOWN": "No one with the email {{value}} on staff or in the file.",
-        "MANAGER_CYCLE": "The managers in the file go in a circle (through {{value}})."
+        "MANAGER_CYCLE": "The managers in the file go in a circle (through {{value}}).",
+        "POOL_ROLE": "“{{value}}” is a pool role, and this organization has no pools. Use one of its own role names."
       },
       "help_one": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} position to match against.",
       "help_other": "Upload a CSV (from Excel or Google Sheets: File → Save as / Download → CSV). You’ll see every row checked before anything is created. This city has {{count}} positions to match against."
@@ -8814,5 +8815,47 @@
     "until": "until {{year}}",
     "name": "Name (English)",
     "addTitle": "Add a holiday or closure day"
+  },
+  "roleNames": {
+    "PRIVATE": {
+      "HEAD_LIFEGUARD": "Team lead",
+      "HR_ADMIN": "HR administrator",
+      "STAFF": "Team member",
+      "AQUATIC_SUPERVISOR": "Manager",
+      "EMPLOYEE": "Employee",
+      "FRONT_DESK": "Reception",
+      "UNION_STEWARD": "Union steward"
+    },
+    "MUNICIPAL": {
+      "HR_ADMIN": "HR administrator",
+      "AQUATIC_SUPERVISOR": "Supervisor",
+      "FRONT_DESK": "Front desk",
+      "UNION_STEWARD": "Union steward",
+      "STAFF": "Frontline staff",
+      "HEAD_LIFEGUARD": "Lead hand",
+      "EMPLOYEE": "General employee"
+    }
+  },
+  "roleLabels": {
+    "profiles": {
+      "MUNICIPAL": "municipal",
+      "PRIVATE": "workplace",
+      "AQUATIC": "aquatics"
+    },
+    "title": "Names for the built-in roles",
+    "help": "Your organization uses the {{profile}} words by default. Give any role your own name in English and French; leave both empty to keep the default.",
+    "both": "Give the name in both languages, or leave both empty.",
+    "fr": "French",
+    "wordsOnly": "Only the names change; what each role can do stays the same.",
+    "saved": "Role names saved.",
+    "profile": "Default words",
+    "profileNames": {
+      "PRIVATE": "Workplace (Team member, Manager)",
+      "MUNICIPAL": "Municipal (Frontline staff, On site)",
+      "AQUATIC": "Aquatics (Lifeguard / instructor, Pool deck)"
+    },
+    "profileAuto": "Automatic",
+    "en": "English",
+    "profileHint": "Automatic: workplace words for a private employer, pool words where you have pools or an aquatic department, neutral words once you have departments and none is aquatic."
   }
 }

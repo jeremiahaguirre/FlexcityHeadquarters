@@ -1,5 +1,6 @@
 'use client';
 
+import { useVocabulary } from '@/lib/vocabulary';
 import { useLogoSeen } from '@/lib/colorScheme';
 import { Lock, MoreHorizontal, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 import Link from 'next/link';
@@ -39,6 +40,7 @@ function isActive(pathname: string, href: string) {
 /** The signed-in frame: side menu on wide screens, tab bar plus "More" on phones, header with search, notifications and the user menu. Only menu items the person may use are shown. */
 export function AppShell({ children, organization }: { children: ReactNode; organization: Organization }) {
   const { t } = useTranslation();
+  const vocab = useVocabulary();
   const { can, me } = useSession();
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -62,7 +64,7 @@ export function AppShell({ children, organization }: { children: ReactNode; orga
       </span>
     ) : null;
   const destinations: Destination[] = [
-    ...items.map((n) => ({ href: n.href, label: t(`nav.${n.key}`), group: n.section ? t(`navSections.${n.section}`) : t(`navGroups.${n.group}`), icon: n.icon })),
+    ...items.map((n) => ({ href: n.href, label: t(`nav.${n.key}`), group: n.section ? t(`navSections.${n.section}`) : vocab.group(n.group), icon: n.icon })),
     { href: '/profile', label: t('jump.profile'), group: t('navGroups.mine'), icon: UserRound },
     { href: '/whats-new', label: t('whatsNew.menu'), group: t('navGroups.mine'), icon: Sparkles },
   ];

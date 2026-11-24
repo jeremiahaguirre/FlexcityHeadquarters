@@ -31,6 +31,7 @@ import { SeniorityCard } from '@/components/settings/SeniorityCard';
 import { FillSettingsCard } from '@/components/settings/FillSettingsCard';
 import { ReliabilityCard } from '@/components/settings/ReliabilityCard';
 import { HolidayWeekendCard } from '@/components/settings/HolidayWeekendCard';
+import { RoleLabelsCard } from '@/components/settings/RoleLabelsCard';
 import { CityHolidaysCard } from '@/components/settings/CityHolidaysCard';
 import { KiosksCard } from '@/components/kiosk/KioskCards';
 import { DataExportCard } from '@/components/settings/DataExportCard';
@@ -124,6 +125,7 @@ export default function SettingsPage() {
       ) : (
         <div className="grid max-w-4xl gap-6">
           {tab === 'org' ? <Organization s={settings.data} reload={settings.reload} /> : null}
+          {tab === 'org' && !me?.scoped ? <RoleLabelsCard /> : null}
           {tab === 'org' ? <SeniorityCard /> : null}
           {tab === 'org' ? <FillSettingsCard /> : null}
           {tab === 'org' ? <ReliabilityCard /> : null}

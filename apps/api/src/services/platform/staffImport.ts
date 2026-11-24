@@ -81,6 +81,9 @@ const ROLES: Record<string, AccessRole> = {
   employee: 'EMPLOYEE', general: 'EMPLOYEE', 'general employee': 'EMPLOYEE', employé: 'EMPLOYEE', employe: 'EMPLOYEE',
 };
 
+/** The built-in roles named for aquatics. */
+const POOL_ROLES: ReadonlySet<AccessRole> = new Set(['AQUATIC_SUPERVISOR', 'HEAD_LIFEGUARD', 'STAFF']);
+
 export interface ImportIssue { field: string; code: string; value?: string }
 export interface ImportRow {
   line: number;
@@ -123,6 +126,12 @@ export function previewImport(
     existingEmails: Set<string>;
     positions: Array<{ id: string; name: string; nameFr: string | null }>;
     customRoles?: Array<{ id: string; name: string; nameFr: string | null }>;
+    /**
+     * The organization's profile (services/people/vocabulary.ts). Outside aquatics the pool roles
+     * aren't guessed from everyday words: "supervisor" or "lifeguard" must name one of the
+     * organization's own roles, "staff" is a general employee, and no role at all is a general employee.
+     */
+    profile?: 'AQUATIC' | 'MUNICIPAL' | 'PRIVATE';
     today: string;
   },
 ): ImportPreview {
@@ -176,15 +185,21 @@ export function previewImport(
     const builtIn = (r: string) => ROLES[norm(r)] ?? ROLES[norm(r).replace(/ /g, '_')];
     const accessRoles = new Set<AccessRole>();
     const customRoleIds = new Set<string>();
+    const aquatic = (ctx.profile ?? 'AQUATIC') === 'AQUATIC';
     for (const r of roleNames) {
       const b = builtIn(r);
       const c = customByName.get(norm(r));
-      if (b) accessRoles.add(b);
+      if (!aquatic && c) customRoleIds.add(c);
+      else if (!aquatic && b && POOL_ROLES.has(b)) {
+        // "staff" is everyone's word; "supervisor", "lifeguard"… are pool roles a library or a plant doesn't have.
+        if (norm(r) === 'staff') accessRoles.add('EMPLOYEE');
+        else errors.push({ field: 'roles', code: 'POOL_ROLE', value: r });
+      } else if (b) accessRoles.add(b);
       else if (c) customRoleIds.add(c);
       else errors.push({ field: 'roles', code: 'UNKNOWN_ROLE', value: r });
     }
-    // Nothing given → lifeguard/instructor; only the city's own roles → general employee underneath.
-    if (!accessRoles.size) accessRoles.add(customRoleIds.size ? 'EMPLOYEE' : 'STAFF');
+    // Nothing given → lifeguard/instructor in aquatics, a general employee elsewhere; only the city's own roles → general employee underneath.
+    if (!accessRoles.size) accessRoles.add(customRoleIds.size || !aquatic ? 'EMPLOYEE' : 'STAFF');
     const roles = [...accessRoles];
 
     const positions = list(get('positions'));
