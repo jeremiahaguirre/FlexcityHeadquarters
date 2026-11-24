@@ -387,7 +387,10 @@
     "release_scheduled": "À venir le {{whenFr}} : {{titleFr}}. Voyez ce qui change pour votre organisation.",
     "maintenance_scheduled": "Maintenance prévue le {{whenFr}} : {{messageFr}}",
     "maintenance_soon": "Maintenance demain, le {{whenFr}} : {{messageFr}}",
-    "cert_rejected": "Votre certification {{nameFr}} n’a pas été acceptée : {{reason}}. Vérifiez-la et ajoutez-la de nouveau."
+    "cert_rejected": "Votre certification {{nameFr}} n’a pas été acceptée : {{reason}}. Vérifiez-la et ajoutez-la de nouveau.",
+    "time_off_cancelled": "{{name}} a annulé un congé approuvé. {{restored}} de ses quarts lui ont été rendus; {{taken}} avaient déjà été pris par quelqu’un d’autre.",
+    "time_off_revoked": "Votre congé approuvé a été annulé : {{reason}}",
+    "time_off_shortened": "Votre congé approuvé se termine maintenant plus tôt : {{reason}}"
   },
   "today": {
     "morning": "Bonjour",
@@ -778,7 +781,14 @@
     "CERT_CHANGED": "L’employé a modifié cette inscription depuis que vous l’avez ouverte. Vérifiez-la de nouveau.",
     "CERT_SHARED": "Ce certificat est commun à toutes les organisations et ne peut pas être modifié ici.",
     "CERT_EXISTS": "Un certificat porte déjà ce nom.",
-    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez."
+    "UNKNOWN_STARTER_CERT": "Ce certificat ne figure pas dans la liste de départ. Rechargez la page et réessayez.",
+    "PERIOD_PAID": "Ce temps est dans une période de paie déjà approuvée ou payée. Corrigez-le avec un élément ponctuel sur la prochaine paie.",
+    "BAD_END": "Le nouveau dernier jour doit suivre le début et précéder la fin actuelle.",
+    "LEAVE_NOT_APPROVED": "Seul un congé approuvé peut être modifié de cette façon.",
+    "TIME_OFF_TOO_OLD": "Un congé de plus de deux semaines ne peut pas être inscrit ici. Adressez-vous aux RH.",
+    "OWN_REQUEST": "Vous ne pouvez pas trancher votre propre demande. Un autre superviseur doit le faire.",
+    "PERSON_NOT_ACTIVE": "Cette personne n’est pas un membre actif du personnel.",
+    "END_REQUIRED": "Choisissez le nouveau dernier jour."
   },
   "timeclock": {
     "title": "Horodateur",
@@ -1191,7 +1201,28 @@
     },
     "whose": "Demandes de qui",
     "myTeam": "Mon équipe",
-    "everyone": "Tous ceux que je peux approuver"
+    "everyone": "Tous ceux que je peux approuver",
+    "leaveView": "Quels congés",
+    "leaveViews": {
+      "PENDING": "En attente de décision",
+      "APPROVED": "Approuvés"
+    },
+    "noApprovedLeave": "Aucun congé approuvé à venir",
+    "noApprovedLeaveHelp": "Les congés approuvés qui ne sont pas terminés s’affichent ici, pour que vous puissiez les écourter ou les annuler.",
+    "changeLeave": "Modifier",
+    "changeLeaveFor": "Modifier le congé de {{name}}",
+    "changeLeaveHelp": "Les quarts libérés que personne n’a pris lui sont rendus. Les heures de congé sont recalculées.",
+    "changeLeaveReason": "La personne voit cette raison. Elle est conservée dans le journal d’audit.",
+    "leaveActions": {
+      "END_EARLY": "L’écourter",
+      "CANCEL": "Annuler le congé"
+    },
+    "newLastDay": "Nouveau dernier jour de congé",
+    "recordTimeOff": "Inscrire un congé",
+    "recordTimeOffHelp": "Pour une personne qui s’est déclarée malade, ou un congé que les RH inscrivent. Il est enregistré comme approuvé, jusqu’à deux semaines en arrière, et la personne en est informée.",
+    "recordNoteHint": "Facultatif. La personne le voit.",
+    "timeOffRecorded": "Congé inscrit.",
+    "person": "Personne"
   },
   "certs": {
     "title": "Certifications",
