@@ -1321,7 +1321,10 @@
       "remove": "Retirer la confirmation",
       "removed": "Confirmation retirée.",
       "private": "Seules les RH voient ceci."
-    }
+    },
+    "phone": "Téléphone",
+    "seniorityHours": "Heures d’ancienneté",
+    "seniorityHoursHint": "Utilisées là où l’ancienneté se compte en heures (rondes de soumissions, heures supplémentaires, rappels)."
   },
   "payroll": {
     "title": "Paie",
