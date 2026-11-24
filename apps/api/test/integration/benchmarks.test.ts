@@ -4,6 +4,7 @@ import { createApp } from '../../src/app.js';
 import { resetLimits } from '../../src/auth/rateLimit.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { computeBenchmarks } from '../../src/services/platform/benchmarks.js';
+import { platformDb } from '../../src/lib/db.js';
 import { app as appDb, owner, seedTenant } from './fixtures.js';
 
 const server = createApp();
@@ -42,13 +43,15 @@ describe('benchmarks across cities', () => {
 
   it('with only four cities sharing, nothing is published', async () => {
     for (const i of [0, 1, 2, 3]) await put(i, '/api/benchmarks/opt-in', { on: true });
-    expect(await computeBenchmarks(appDb)).toBe(0);
+    expect(await computeBenchmarks(platformDb())).toBe(0);
     expect((await get(0, '/api/benchmarks')).body.peers).toEqual({});
   });
 
   it('with five cities, quartiles are published, and only quartiles are stored', async () => {
     await put(4, '/api/benchmarks/opt-in', { on: true });
-    expect(await computeBenchmarks(appDb)).toBeGreaterThan(0);
+    // The app role, which cities' requests run as, can't write the shared snapshots (review of #61).
+    await expect(computeBenchmarks(appDb)).rejects.toThrow(/permission denied|42501/);
+    expect(await computeBenchmarks(platformDb())).toBeGreaterThan(0);
     const peers = (await get(4, '/api/benchmarks')).body.peers;
     expect(peers.noShowRate).toEqual({ p25: 10, p50: 20, p75: 30, cities: 5 });
     const row = await owner.benchmarkSnapshot.findFirstOrThrow({ where: { metric: 'noShowRate' } });

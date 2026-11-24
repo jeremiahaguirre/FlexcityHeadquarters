@@ -8,7 +8,7 @@ import { type NextFunction, type Request, type Response, Router } from 'express'
 import { z } from 'zod';
 import { allow } from '../auth/rateLimit.js';
 import { config } from '../config.js';
-import { db } from '../lib/db.js';
+import { platformDb } from '../lib/db.js';
 import { HttpError } from '../lib/errors.js';
 import { h } from './context.js';
 import { jsonBody } from '../lib/bodyParsers.js';
@@ -59,7 +59,7 @@ marketingRouter.post(
     // Bots that fill the honeypot get the same answer as people, and nothing is stored.
     if (!parsed.success && (req.body?.website ?? '') !== '') return res.status(201).json({ ok: true });
     const b = leadBody.parse(req.body);
-    await db().lead.create({
+    await platformDb().lead.create({
       data: {
         kind: b.kind,
         name: b.name,

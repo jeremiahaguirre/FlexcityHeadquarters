@@ -17,6 +17,7 @@ Every tenant-scoped table has a `tenantId` column. Postgres row-level security (
 - The API connects as `flexcity_app`, which is **not** the table owner, so RLS always applies (`FORCE ROW LEVEL SECURITY` as well).
 - With no tenant set, every policy evaluates to false: a forgotten context returns **no rows**, never all rows.
 - `flexcity_app` has no `DELETE` on payroll-bearing tables, and audit logs are append-only.
+- FH's own side (the Dev console, billing and PAD, FH's books, leads, the worker's refreshes of reference data) connects as `flexcity_platform` (`platformDb()`, `PLATFORM_DATABASE_URL`): a member of `flexcity_app`, so the same city policies apply, plus FH's platform tables (console accounts, sessions and passkeys, books, invoice numbering, PAD batches, leads) and writes to the global reference tables (tax tables, holidays, weather, benchmarks). `flexcity_app` has no privilege on the platform tables and only reads the global ones, so a city's request, in its transaction or not, can't reach them (`db/rls.sql`). The shared rate limiter stays with `flexcity_app`.
 - The tenant is resolved from the request's subdomain before login through a `SECURITY DEFINER` function that exposes only public branding fields. Access tokens must belong to the same tenant as the subdomain.
 
 ## Roles vs. positions

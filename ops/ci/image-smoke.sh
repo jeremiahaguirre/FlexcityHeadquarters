@@ -23,6 +23,7 @@ pw() { openssl rand -hex 24; }
 OWNER_PW=$(pw)
 APP_PW=$(pw)
 UNION_PW=$(pw)
+PLATFORM_PW=$(pw)
 CONSOLE_PW=$(pw)
 JWT_SECRET=$(openssl rand -hex 48)
 # PostgreSQL 16, pinned by digest (as the Dockerfile pins its base image).
@@ -66,7 +67,7 @@ OWNER_ENV=(-e NODE_ENV=production -e DB_HOST=db -e DB_NAME=flexcity -e DB_USER=f
 run_job() { docker run --rm --network "$net" -v "$work:/certs:ro" "${OWNER_ENV[@]}" "$@"; }
 
 echo "== db-roles task"
-run_job -e FLEXCITY_APP_PASSWORD="$APP_PW" -e FLEXCITY_UNION_PASSWORD="$UNION_PW" "fh-migrate:$TAG" node scripts/set-role-passwords.mjs
+run_job -e FLEXCITY_APP_PASSWORD="$APP_PW" -e FLEXCITY_PLATFORM_PASSWORD="$PLATFORM_PW" -e FLEXCITY_UNION_PASSWORD="$UNION_PW" "fh-migrate:$TAG" node scripts/set-role-passwords.mjs
 echo "== migrate task"
 run_job "fh-migrate:$TAG"
 echo "== migrate task again (a redeploy)"
@@ -85,7 +86,7 @@ db_url() { echo "postgresql://$1:$2@db:5432/flexcity?sslmode=verify-full&sslroot
 APP_ENV=(-e NODE_ENV=production -e AWS_REGION=ca-central-1 -e KMS_KEY_ARN=arn:aws:kms:ca-central-1:111122223333:key/smoke
   -e ROOT_DOMAIN=example.ca -e "PUBLIC_APP_URL=https://{subdomain}.example.ca" -e RELEASE="$TAG" -e WEB_CONCURRENCY=1
   -e JWT_SECRET="$JWT_SECRET" -e METRICS_TOKEN="$(pw)"
-  -e APP_DATABASE_URL="$(db_url flexcity_app "$APP_PW")" -e LISTEN_DATABASE_URL="$(db_url flexcity_app "$APP_PW")")
+  -e APP_DATABASE_URL="$(db_url flexcity_app "$APP_PW")" -e PLATFORM_DATABASE_URL="$(db_url flexcity_platform "$PLATFORM_PW")" -e LISTEN_DATABASE_URL="$(db_url flexcity_app "$APP_PW")")
 
 echo "== API and worker"
 docker run -d --name "$net-api" --network "$net" --network-alias api -p 127.0.0.1:4000:4000 -v "$work:/certs:ro" "${APP_ENV[@]}" -e PORT=4000 "fh-api:$TAG" >/dev/null

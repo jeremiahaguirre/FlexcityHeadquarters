@@ -2,7 +2,7 @@
 // environment. Run with the owner connection, e.g. as the one-off "db-roles" task on AWS
 // (ops/terraform/README.md). Passwords come from the environment, never the command line or logs.
 //
-//   DATABASE_URL=… FLEXCITY_APP_PASSWORD=… [FLEXCITY_UNION_PASSWORD=…] node scripts/set-role-passwords.mjs
+//   DATABASE_URL=… FLEXCITY_APP_PASSWORD=… FLEXCITY_PLATFORM_PASSWORD=… [FLEXCITY_UNION_PASSWORD=…] node scripts/set-role-passwords.mjs
 import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 import { ownerUrl } from './owner-url.mjs';
@@ -14,9 +14,13 @@ try {
   console.error(e.message);
   process.exit(1);
 }
-const passwords = { flexcity_app: process.env.FLEXCITY_APP_PASSWORD, flexcity_union: process.env.FLEXCITY_UNION_PASSWORD };
+const passwords = { flexcity_app: process.env.FLEXCITY_APP_PASSWORD, flexcity_platform: process.env.FLEXCITY_PLATFORM_PASSWORD, flexcity_union: process.env.FLEXCITY_UNION_PASSWORD };
 if (!passwords.flexcity_app || passwords.flexcity_app.length < 24) {
   console.error('FLEXCITY_APP_PASSWORD is required (24 characters or more)');
+  process.exit(1);
+}
+if (!passwords.flexcity_platform || passwords.flexcity_platform.length < 24) {
+  console.error('FLEXCITY_PLATFORM_PASSWORD is required (24 characters or more)');
   process.exit(1);
 }
 if (passwords.flexcity_union !== undefined && passwords.flexcity_union.length < 24) {

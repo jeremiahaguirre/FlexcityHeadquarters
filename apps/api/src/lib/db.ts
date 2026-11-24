@@ -9,11 +9,35 @@ import { createPrismaClient } from './prismaClient.js';
 
 let client: PrismaClient | undefined;
 let replicaClient: PrismaClient | undefined;
+let platformClient: PrismaClient | undefined;
 
 /** Prisma client connected as the non-owner app role (RLS enforced). */
 export function db(): PrismaClient {
   if (!client) client = connect(config().APP_DATABASE_URL);
   return client;
+}
+
+/**
+ * Prisma client connected as FH's own role, flexcity_platform (SECURITY-AUDIT SEC-35): everything
+ * the app role may do, plus the platform tables (Dev console accounts and sessions, FH's books,
+ * invoice numbering, PAD batches, leads) and writes to the global reference tables (tax tables,
+ * holidays, weather, benchmarks). Only FH's side uses it: the Dev console's routes, billing, the
+ * public enquiry and unsubscribe forms, the worker's refreshes. The app role, which every city's
+ * request runs as, has no access to the platform tables and only reads the global ones.
+ */
+export function platformDb(): PrismaClient {
+  if (!platformClient) platformClient = connect(platformDatabaseUrl());
+  return platformClient;
+}
+
+/** PLATFORM_DATABASE_URL; outside production, APP_DATABASE_URL with the platform role's name. */
+export function platformDatabaseUrl(): string {
+  const cfg = config();
+  if (cfg.PLATFORM_DATABASE_URL) return cfg.PLATFORM_DATABASE_URL;
+  if (cfg.NODE_ENV === 'production') throw new Error('PLATFORM_DATABASE_URL is required in production');
+  const u = new URL(cfg.APP_DATABASE_URL);
+  u.username = 'flexcity_platform';
+  return u.toString();
 }
 
 /**

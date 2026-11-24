@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { appUrl } from '../../auth/authTokens.js';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
-import { audit, db, withTenant } from '../../lib/db.js';
+import { audit, withTenant, platformDb } from '../../lib/db.js';
 import { HttpError, conflict, notFound } from '../../lib/errors.js';
 import { forgetFeatures } from '../../services/platform/features.js';
 import { activeGrant, startSupportVisit } from '../../services/platform/support.js';
@@ -17,7 +17,7 @@ export const lifecycleRouter = Router();
 const uuid = z.string().uuid();
 
 async function record(adminId: string, tenantId: string, action: string, detail?: object) {
-  await db().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
+  await platformDb().platformAudit.create({ data: { adminId, tenantId, action, detail: detail ? JSON.parse(JSON.stringify(detail)) : undefined } });
   await withTenant(tenantId, (tx) => audit(tx, { tenantId, actorId: null, action: `fh.${action}`, entity: 'Tenant', entityId: tenantId, after: detail ?? {} }));
 }
 
@@ -43,8 +43,8 @@ lifecycleRouter.get(
     const id = uuid.parse(req.params.id);
     const t = await tenantOr404(id);
     const grant = await activeGrant(id);
-    const visits = await db().supportSession.findMany({ where: { tenantId: id, usedAt: { not: null } }, orderBy: { usedAt: 'desc' }, take: 10 });
-    const admins = await db().platformAdmin.findMany({ where: { id: { in: [...new Set(visits.map((v) => v.adminId))] } }, select: { id: true, name: true } });
+    const visits = await platformDb().supportSession.findMany({ where: { tenantId: id, usedAt: { not: null } }, orderBy: { usedAt: 'desc' }, take: 10 });
+    const admins = await platformDb().platformAdmin.findMany({ where: { id: { in: [...new Set(visits.map((v) => v.adminId))] } }, select: { id: true, name: true } });
     res.json({
       disabledAt: t.disabledAt,
       disabledReason: t.disabledReason,

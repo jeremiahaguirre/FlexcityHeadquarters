@@ -5,6 +5,10 @@
 --                   Has no privileges on the union_hub schema.
 --   flexcity_union  used only by the Union Hub service. Privileges on union_hub only
 --                   (plus read on a minimal user directory view).
+--   flexcity_platform  FH's own side (Dev console, billing, leads, the worker's refreshes): a member
+--                   of flexcity_app (so everything the app may do, RLS included), plus the platform
+--                   tables and writes to global reference data (db/rls.sql). The app role is not a
+--                   member of it, so a city's request can't reach those tables.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'flexcity_app') THEN
@@ -13,5 +17,9 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'flexcity_union') THEN
     CREATE ROLE flexcity_union LOGIN PASSWORD 'change-me' NOSUPERUSER NOBYPASSRLS;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'flexcity_platform') THEN
+    CREATE ROLE flexcity_platform LOGIN PASSWORD 'change-me' NOSUPERUSER NOBYPASSRLS INHERIT;
+  END IF;
 END
 $$;
+GRANT flexcity_app TO flexcity_platform;

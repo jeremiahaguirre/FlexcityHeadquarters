@@ -20,7 +20,7 @@
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config, realContact } from '../../config.js';
-import { db } from '../../lib/db.js';
+import { platformDb } from '../../lib/db.js';
 import type { Mailer } from '../notifications/mailer.js';
 
 export const UNSUBSCRIBE_KIND = 'UNSUBSCRIBE';
@@ -104,7 +104,7 @@ export function consentFrom(rows: Array<{ kind: string; marketingConsent: boolea
 }
 
 export async function consentFor(email: string, now = new Date()): Promise<Consent> {
-  const rows = await db().lead.findMany({ where: { email: email.trim().toLowerCase() }, select: { kind: true, marketingConsent: true, consentText: true, createdAt: true } });
+  const rows = await platformDb().lead.findMany({ where: { email: email.trim().toLowerCase() }, select: { kind: true, marketingConsent: true, consentText: true, createdAt: true } });
   return consentFrom(rows, now);
 }
 
@@ -112,7 +112,7 @@ export async function consentFor(email: string, now = new Date()): Promise<Conse
 export async function recordUnsubscribe(email: string, source: 'link' | 'one-click' | 'admin', locale = 'en-CA'): Promise<void> {
   const e = email.trim().toLowerCase();
   if ((await consentFor(e)).state === 'WITHDRAWN') return;
-  await db().lead.create({
+  await platformDb().lead.create({
     data: { kind: UNSUBSCRIBE_KIND, name: '(unsubscribe)', email: e, message: `Unsubscribed from FH commercial email (${source}).`, locale, marketingConsent: false, consentText: null, status: 'CLOSED' },
   });
 }
@@ -160,7 +160,7 @@ export const ENQUIRY_RETENTION_MONTHS = 24;
 export const REMOVED = '(removed)';
 export async function purgeOldEnquiries(now = new Date()): Promise<number> {
   const cutoff = addMonths(now, -ENQUIRY_RETENTION_MONTHS);
-  const r = await db().lead.updateMany({
+  const r = await platformDb().lead.updateMany({
     where: { kind: { in: ENQUIRY_KINDS }, status: { not: 'WON' }, updatedAt: { lt: cutoff }, name: { not: REMOVED } },
     data: { name: REMOVED, email: '', organization: null, role: null, province: null, facilities: null, message: REMOVED, notes: null, marketingConsent: false, consentText: null, status: 'CLOSED' },
   });

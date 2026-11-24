@@ -147,7 +147,7 @@ resource "aws_ecs_task_definition" "db_roles" {
     essential   = true
     command     = ["node", "scripts/set-role-passwords.mjs"]
     environment = local.owner_env
-    secrets = concat([local.owner_password], [for k in concat(["FLEXCITY_APP_PASSWORD"], var.union_role_password ? ["FLEXCITY_UNION_PASSWORD"] : []) :
+    secrets = concat([local.owner_password], [for k in concat(["FLEXCITY_APP_PASSWORD", "FLEXCITY_PLATFORM_PASSWORD"], var.union_role_password ? ["FLEXCITY_UNION_PASSWORD"] : []) :
     { name = k, valueFrom = "${local.app_secret_arn}:${k}::" }])
     logConfiguration = local.log["migrate"]
   }])

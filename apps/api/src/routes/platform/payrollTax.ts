@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { platformOf, requirePlatformStepUp } from '../../auth/platform.js';
-import { db } from '../../lib/db.js';
+import { platformDb } from '../../lib/db.js';
 import { notFound } from '../../lib/errors.js';
 import { ensureTaxTables } from '../../services/payroll/taxTables.js';
 import { h } from '../context.js';
@@ -57,8 +57,8 @@ payrollTaxRouter.get(
   h(async (req, res) => {
     platformOf(req);
     const y = year.parse(req.query.year ?? new Date().getFullYear());
-    await ensureTaxTables(db(), y);
-    res.json({ year: y, jurisdictions: JURISDICTIONS, tables: await db().payrollTaxTable.findMany({ where: { year: y }, orderBy: { jurisdiction: 'asc' } }) });
+    await ensureTaxTables(platformDb(), y);
+    res.json({ year: y, jurisdictions: JURISDICTIONS, tables: await platformDb().payrollTaxTable.findMany({ where: { year: y }, orderBy: { jurisdiction: 'asc' } }) });
   }),
 );
 
@@ -71,12 +71,12 @@ payrollTaxRouter.put(
     const body = z.object({ data: z.unknown(), note: z.string().max(500).nullable().optional() }).parse(req.body);
     const data = (j === 'CA' ? federal : j === 'QC' ? quebec : provincial).parse(body.data);
     // Any change needs a fresh check against CRA's tables.
-    const row = await db().payrollTaxTable.upsert({
+    const row = await platformDb().payrollTaxTable.upsert({
       where: { year_jurisdiction: { year: y, jurisdiction: j } },
       update: { data, note: body.note ?? null, verifiedAt: null, verifiedBy: null },
       create: { year: y, jurisdiction: j, data, note: body.note ?? null },
     });
-    await db().platformAudit.create({ data: { adminId: p.adminId, action: 'payroll_tax.update', detail: { year: y, jurisdiction: j } } });
+    await platformDb().platformAudit.create({ data: { adminId: p.adminId, action: 'payroll_tax.update', detail: { year: y, jurisdiction: j } } });
     res.json(row);
   }),
 );
@@ -89,10 +89,10 @@ payrollTaxRouter.post(
     const y = year.parse(req.params.year);
     const j = z.enum(JURISDICTIONS).parse(req.params.jurisdiction);
     const body = z.object({ attest: z.literal(true), source: z.string().trim().min(5).max(300) }).parse(req.body);
-    const row = await db().payrollTaxTable.findUnique({ where: { year_jurisdiction: { year: y, jurisdiction: j } } });
+    const row = await platformDb().payrollTaxTable.findUnique({ where: { year_jurisdiction: { year: y, jurisdiction: j } } });
     if (!row) throw notFound('Payroll table');
-    const out = await db().payrollTaxTable.update({ where: { id: row.id }, data: { verifiedAt: new Date(), verifiedBy: `${p.name} <${p.email}>`, note: `Checked against: ${body.source}` } });
-    await db().platformAudit.create({ data: { adminId: p.adminId, action: 'payroll_tax.verify', detail: { year: y, jurisdiction: j, source: body.source } } });
+    const out = await platformDb().payrollTaxTable.update({ where: { id: row.id }, data: { verifiedAt: new Date(), verifiedBy: `${p.name} <${p.email}>`, note: `Checked against: ${body.source}` } });
+    await platformDb().platformAudit.create({ data: { adminId: p.adminId, action: 'payroll_tax.verify', detail: { year: y, jurisdiction: j, source: body.source } } });
     res.json(out);
   }),
 );

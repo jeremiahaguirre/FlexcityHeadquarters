@@ -7,6 +7,13 @@ const schema = z.object({
   PORT: z.coerce.number().default(4000),
   /** Runtime connection: the non-owner `flexcity_app` role, so RLS applies. */
   APP_DATABASE_URL: z.string().url(),
+  /**
+   * FH's own side (the Dev console, billing and PAD, FH's books, leads, the worker's refreshes of
+   * global reference data): the `flexcity_platform` role, which has everything the app role has plus
+   * the platform tables and writes to the global ones (db/rls.sql). Required in production; in
+   * development and tests it defaults to APP_DATABASE_URL with the platform role's name.
+   */
+  PLATFORM_DATABASE_URL: z.string().url().optional(),
   /** Union Hub only: the `flexcity_union` role. Optional when no tenant enables the hub. */
   UNION_DATABASE_URL: z.string().url().optional(),
   /**
@@ -171,7 +178,8 @@ export function config(): Config {
     }
     // Encryption in transit to the database, not just to the browser.
     if (parsed.data.NODE_ENV === 'production') {
-      for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL], ['LISTEN_DATABASE_URL', parsed.data.LISTEN_DATABASE_URL], ['READ_REPLICA_URL', parsed.data.READ_REPLICA_URL]] as const) {
+      if (!parsed.data.PLATFORM_DATABASE_URL) throw new Error('PLATFORM_DATABASE_URL is required in production (the flexcity_platform role: db/roles.sql)');
+      for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['PLATFORM_DATABASE_URL', parsed.data.PLATFORM_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL], ['LISTEN_DATABASE_URL', parsed.data.LISTEN_DATABASE_URL], ['READ_REPLICA_URL', parsed.data.READ_REPLICA_URL]] as const) {
         // The server's certificate must be checked, not just encrypted: sslmode=require (pg or Prisma)
         // would accept any certificate. lib/dbUrl.ts translates this form for Prisma.
         if (url && !verifiesServer(url)) throw new Error(`${name} must verify the database's certificate in production (sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem)`);

@@ -18,7 +18,7 @@
 import pg from 'pg';
 import { computeBenchmarks } from './services/platform/benchmarks.js';
 import { config } from './config.js';
-import { db, tenantIds, withTenant } from './lib/db.js';
+import { db, tenantIds, withTenant, platformDb } from './lib/db.js';
 import { anonymizeDue, certificationReminders, accommodationReviews, detectNoShows, flagForReview, forgottenClockOuts, onboardingReminders, rotationAlerts, recomputeReliability } from './services/jobs/daily.js';
 import { loneWorkChecks } from './services/safety/loneWork.js';
 import { callOutTimeouts } from './services/winter/callOuts.js';
@@ -203,13 +203,13 @@ const hourly = async () => {
   await exclusive('scheduled-reports', () => perTenant((tx) => sendScheduledReports(tx)));
   // Weekly shift templates: drafts N weeks ahead, only where the organization turned it on.
   await exclusive('shift-templates', () => perTenant((tx) => autoDraftTemplates(tx)));
-  await exclusive('renewal-reminders', () => sendRenewalReminders(db()));
+  await exclusive('renewal-reminders', () => sendRenewalReminders(platformDb()));
   await exclusive('enquiry-retention', () => purgeOldEnquiries());
   // Sign-in and API rate-limit hits older than a day, in batches (requests no longer purge inline).
   await exclusive('rate-limit-purge', () => purgeRateLimitHits());
-  await exclusive('benchmarks', () => computeBenchmarks(db()));
-  await exclusive('trust-reminders', () => runReminders(db()));
-  await exclusive('trust-prune', () => pruneTrustHistory(db()));
+  await exclusive('benchmarks', () => computeBenchmarks(platformDb()));
+  await exclusive('trust-reminders', () => runReminders(platformDb()));
+  await exclusive('trust-prune', () => pruneTrustHistory(platformDb()));
   // Each distinct forecast site every WEATHER_REFRESH_HOURS (3 by default); failures are recorded, never fatal.
   await exclusive('weather', () => refreshWeather());
 };
@@ -258,10 +258,10 @@ const trust = async () => {
     await snapshot(db());
     return ran.length;
   });
-  await exclusive('trust-alerts', () => deliverTrustAlerts(db(), mailer));
+  await exclusive('trust-alerts', () => deliverTrustAlerts(platformDb(), mailer));
 };
 
-await ensureTrustSeeded(db()).catch((err) => captureError(err, { source: 'job', tags: { job: 'trust-seed' } }));
+await ensureTrustSeeded(platformDb()).catch((err) => captureError(err, { source: 'job', tags: { job: 'trust-seed' } }));
 // Timers first, then the first minute round, then the first hourly round in the background: the
 // lone-work checks never wait for a full hourly round after a deploy (lib/workerSchedule.ts).
 const { firstHourly } = await startSchedule({ events, urgentSweep, minutely, heartbeat, hourly, trust });

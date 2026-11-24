@@ -8,7 +8,7 @@ import { type AuthContext, accessOf, authOf, requirePermission, requireRecentAut
 import { hashPassword, verifyPassword } from '../auth/tokens.js';
 import { allow } from '../auth/rateLimit.js';
 import { refuseBreached } from '../auth/breachedPasswords.js';
-import { audit, type Tx, withTenant } from '../lib/db.js';
+import { audit, type Tx, withTenant, platformDb } from '../lib/db.js';
 import { db as rootDb } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, invalid, notFound } from '../lib/errors.js';
 import { addDays } from '../lib/time.js';
@@ -81,7 +81,7 @@ staffRouter.get(
     if (features.union && me.unionMember && !a.support) permissions.add('union.hub');
     // An FH support visit shows as support, not as the person who allowed it.
     if (a.support) {
-      const admin = await rootDb().platformAdmin.findUnique({ where: { id: a.support.adminId }, select: { name: true } });
+      const admin = await platformDb().platformAdmin.findUnique({ where: { id: a.support.adminId }, select: { name: true } });
       res.json({ id: me.id, firstName: 'FH', lastName: 'support', email: '', phone: null, locale: me.locale, timeFormat: tenant.timeFormat, roles: me.roles, customRoles: [], permissions: [...permissions].filter((p) => p !== 'union.hub').sort(), features, hiddenMenu: [], employmentStatus: me.employmentStatus, positions: [], certifications: [], mfaRequired: false, lockedMenu: [], billing: { stage: billing.stage, overdueSince: billing.overdueSince, suspendsOn: billing.suspendsOn, trialEndsAt: billing.trialEndsAt, canPay: false }, support: { admin: admin?.name ?? 'FH support', level: a.support.level, endsAt: a.support.endsAt } });
       return;
     }

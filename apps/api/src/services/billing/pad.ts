@@ -18,7 +18,7 @@
 import type { Prisma } from '../../generated/prisma/client.js';
 import { z } from 'zod';
 import { billingContact, config } from '../../config.js';
-import { db, withTenant } from '../../lib/db.js';
+import { withTenant, platformDb } from '../../lib/db.js';
 import { HttpError, conflict, invalid, notFound } from '../../lib/errors.js';
 import { type Sealed, open, seal } from '../crypto/envelope.js';
 import { keys, tenantKekId } from '../../routes/context.js';
@@ -96,15 +96,15 @@ export function agreementView(a: { id: string; tenantId: string; status: string;
 }
 
 export async function activeAgreement(tenantId: string) {
-  return db().padAgreement.findFirst({ where: { tenantId, status: 'ACTIVE' }, orderBy: { authorizedAt: 'desc' } });
+  return platformDb().padAgreement.findFirst({ where: { tenantId, status: 'ACTIVE' }, orderBy: { authorizedAt: 'desc' } });
 }
 
 /** A new agreement replaces any active one. The billing contact gets the written confirmation the rules call for. */
 export async function createAgreement(tenantId: string, input: z.infer<typeof agreementBody>, channel: 'DEV_CONSOLE' | 'ORGANIZATION', authorizedBy: string) {
-  const account = await db().billingAccount.findUnique({ where: { tenantId } });
+  const account = await platformDb().billingAccount.findUnique({ where: { tenantId } });
   if (!account) throw invalid('BILLING_ACCOUNT_REQUIRED', 'Set up the billing account first.');
   const sealed = await seal(keys(), tenantKekId(tenantId), input.account, padAad(tenantId));
-  const created = await db().$transaction(async (tx) => {
+  const created = await platformDb().$transaction(async (tx) => {
     await tx.padAgreement.updateMany({ where: { tenantId, status: 'ACTIVE' }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Replaced by a new agreement' } });
     const a = await tx.padAgreement.create({
       data: {
@@ -141,11 +141,11 @@ export async function createAgreement(tenantId: string, input: z.infer<typeof ag
 }
 
 export async function cancelAgreement(id: string, reason: string) {
-  const a = await db().padAgreement.findUnique({ where: { id } });
+  const a = await platformDb().padAgreement.findUnique({ where: { id } });
   if (!a || a.status !== 'ACTIVE') throw notFound('Agreement');
-  await db().$transaction([
-    db().padAgreement.update({ where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason } }),
-    db().billingAccount.updateMany({ where: { tenantId: a.tenantId, preferredPayment: 'PAD' }, data: { preferredPayment: 'INVOICE' } }),
+  await platformDb().$transaction([
+    platformDb().padAgreement.update({ where: { id }, data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: reason } }),
+    platformDb().billingAccount.updateMany({ where: { tenantId: a.tenantId, preferredPayment: 'PAD' }, data: { preferredPayment: 'INVOICE' } }),
   ]);
 }
 
@@ -161,16 +161,16 @@ export const originatorBody = z.object({
 type StoredOriginator = Omit<z.infer<typeof originatorBody>, 'returns'> & { returns: { institution: string; transit: string; last4: string; sealed: SealedJson } };
 
 export async function saveOriginator(input: z.infer<typeof originatorBody>) {
-  const books = await db().fhBooks.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+  const books = await platformDb().fhBooks.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
   const prev = books.padOriginator as StoredOriginator | null;
   if (!input.returns.account && !prev) throw invalid('RETURNS_ACCOUNT_REQUIRED', 'Enter the account returned debits go back to.');
   const sealed = input.returns.account ? toJson(await seal(keys(), platformKekId(), input.returns.account, 'pad:returns')) : prev!.returns.sealed;
   const stored: StoredOriginator = { ...input, returns: { institution: input.returns.institution, transit: input.returns.transit, last4: input.returns.account?.slice(-4) ?? prev!.returns.last4, sealed } };
-  await db().fhBooks.update({ where: { id: 1 }, data: { padOriginator: stored as unknown as Prisma.InputJsonValue } });
+  await platformDb().fhBooks.update({ where: { id: 1 }, data: { padOriginator: stored as unknown as Prisma.InputJsonValue } });
 }
 
 export async function originatorView() {
-  const books = await db().fhBooks.findUnique({ where: { id: 1 } });
+  const books = await platformDb().fhBooks.findUnique({ where: { id: 1 } });
   const o = books?.padOriginator as StoredOriginator | null;
   if (!o) return null;
   return { originatorId: o.originatorId, dataCentre: o.dataCentre, shortName: o.shortName, longName: o.longName, transactionCode: o.transactionCode, returns: { institution: o.returns.institution, transit: o.returns.transit, account: `•••${o.returns.last4}` }, lastFileNumber: books!.lastFileNumber };
@@ -180,10 +180,10 @@ export async function originatorView() {
 /** Invoices that can be debited on a date: sent, owing, due by then, noticed in time, with an active agreement, not already in a batch. */
 export async function debitable(debitDate: string) {
   const date = day(debitDate);
-  const agreements = await db().padAgreement.findMany({ where: { status: 'ACTIVE' } });
+  const agreements = await platformDb().padAgreement.findMany({ where: { status: 'ACTIVE' } });
   if (!agreements.length) return [];
-  const invoices = await db().invoice.findMany({ where: { status: 'SENT', tenantId: { in: agreements.map((a) => a.tenantId) }, dueDate: { lte: date } }, orderBy: { dueDate: 'asc' } });
-  const inFlight = await db().padDebit.findMany({ where: { invoiceId: { in: invoices.map((i) => i.id) }, status: 'PENDING' }, select: { invoiceId: true, amountCents: true } });
+  const invoices = await platformDb().invoice.findMany({ where: { status: 'SENT', tenantId: { in: agreements.map((a) => a.tenantId) }, dueDate: { lte: date } }, orderBy: { dueDate: 'asc' } });
+  const inFlight = await platformDb().padDebit.findMany({ where: { invoiceId: { in: invoices.map((i) => i.id) }, status: 'PENDING' }, select: { invoiceId: true, amountCents: true } });
   const out = [];
   for (const inv of invoices) {
     const a = agreements.find((x) => x.tenantId === inv.tenantId)!;
@@ -198,11 +198,11 @@ export async function debitable(debitDate: string) {
 
 export async function createBatch(debitDate: string, invoiceIds: string[] | null, adminId: string) {
   await assertOpenPeriod(debitDate);
-  const books = await db().fhBooks.findUnique({ where: { id: 1 } });
+  const books = await platformDb().fhBooks.findUnique({ where: { id: 1 } });
   if (!books?.padOriginator) throw new HttpError(409, 'NO_ORIGINATOR', 'Enter FH’s originator details from the bank first.');
   const candidates = (await debitable(debitDate)).filter((c) => c.ready && (!invoiceIds || invoiceIds.includes(c.invoiceId)));
   if (!candidates.length) throw new HttpError(409, 'NOTHING_TO_DEBIT', 'No invoices are ready to debit on that date.');
-  return db().$transaction(async (tx) => {
+  return platformDb().$transaction(async (tx) => {
     const b = await tx.fhBooks.update({ where: { id: 1 }, data: { lastFileNumber: { increment: 1 } } });
     const fileNumber = ((b.lastFileNumber - 1) % 9999) + 1;
     return tx.padBatch.create({
@@ -221,12 +221,12 @@ export async function createBatch(debitDate: string, invoiceIds: string[] | null
 
 /** The CPA-005 debit file for FH's bank. Opening each account number is audited by the caller. */
 export async function batchFile(batchId: string) {
-  const batch = await db().padBatch.findUnique({ where: { id: batchId }, include: { debits: { include: { agreement: true } } } });
+  const batch = await platformDb().padBatch.findUnique({ where: { id: batchId }, include: { debits: { include: { agreement: true } } } });
   if (!batch) throw notFound('Batch');
-  const books = await db().fhBooks.findUniqueOrThrow({ where: { id: 1 } });
+  const books = await platformDb().fhBooks.findUniqueOrThrow({ where: { id: 1 } });
   const o = books.padOriginator as StoredOriginator;
   const returnsAccount = await open(keys(), fromJson(o.returns.sealed), 'pad:returns');
-  const invoices = await db().invoice.findMany({ where: { id: { in: batch.debits.map((d) => d.invoiceId) } }, select: { id: true, number: true } });
+  const invoices = await platformDb().invoice.findMany({ where: { id: { in: batch.debits.map((d) => d.invoiceId) } }, select: { id: true, number: true } });
   const payments = [];
   for (const d of batch.debits.filter((x) => x.status !== 'RETURNED')) {
     const account = await open(keys(), fromJson(d.agreement.accountSealed as unknown as SealedJson), padAad(d.tenantId));
@@ -243,40 +243,40 @@ export async function batchFile(batchId: string) {
 }
 
 export async function markSent(batchId: string) {
-  const b = await db().padBatch.findUnique({ where: { id: batchId } });
+  const b = await platformDb().padBatch.findUnique({ where: { id: batchId } });
   if (!b) throw notFound('Batch');
   if (b.status !== 'CREATED') throw conflict('BATCH_STEP', 'This batch was already sent.');
-  await db().padBatch.update({ where: { id: batchId }, data: { status: 'SENT', sentAt: new Date() } });
+  await platformDb().padBatch.update({ where: { id: batchId }, data: { status: 'SENT', sentAt: new Date() } });
 }
 
 /** A batch not yet sent can be thrown away; its file number stays used (banks expect them to go up). */
 export async function discardBatch(batchId: string) {
-  const b = await db().padBatch.findUnique({ where: { id: batchId } });
+  const b = await platformDb().padBatch.findUnique({ where: { id: batchId } });
   if (!b) throw notFound('Batch');
   if (b.status !== 'CREATED') throw conflict('BATCH_STEP', 'A batch sent to the bank can’t be discarded; record returns instead.');
-  await db().padBatch.delete({ where: { id: batchId } });
+  await platformDb().padBatch.delete({ where: { id: batchId } });
 }
 
 /** The bank has taken the money: each debit becomes a payment on its invoice. */
 export async function settleBatch(batchId: string, settledOn: string, adminId: string) {
   await assertOpenPeriod(settledOn);
-  const b = await db().padBatch.findUnique({ where: { id: batchId }, include: { debits: true } });
+  const b = await platformDb().padBatch.findUnique({ where: { id: batchId }, include: { debits: true } });
   if (!b) throw notFound('Batch');
   if (b.status !== 'SENT') throw conflict('BATCH_STEP', b.status === 'CREATED' ? 'Mark the batch as sent to the bank first.' : 'This batch is already settled.');
   for (const d of b.debits.filter((x) => x.status === 'PENDING')) {
     await recordPayment(d.invoiceId, adminId, { amountCents: d.amountCents, receivedOn: settledOn, method: 'PAD', reference: `PAD file ${b.fileNumber}` });
-    await db().padDebit.update({ where: { id: d.id }, data: { status: 'SETTLED' } });
+    await platformDb().padDebit.update({ where: { id: d.id }, data: { status: 'SETTLED' } });
   }
-  await db().padBatch.update({ where: { id: batchId }, data: { status: 'SETTLED', settledAt: new Date() } });
+  await platformDb().padBatch.update({ where: { id: batchId }, data: { status: 'SETTLED', settledAt: new Date() } });
 }
 
 /** The bank returned a debit (NSF, account closed, stopped). If it was settled, the payment is reversed and the balance is owing again. */
 export async function returnDebit(debitId: string, reason: string, returnedOn: string, adminId: string) {
   await assertOpenPeriod(returnedOn);
-  const d = await db().padDebit.findUnique({ where: { id: debitId }, include: { batch: true } });
+  const d = await platformDb().padDebit.findUnique({ where: { id: debitId }, include: { batch: true } });
   if (!d) throw notFound('Debit');
   if (d.status === 'RETURNED') throw conflict('ALREADY_RETURNED', 'This debit was already returned.');
-  await db().$transaction(async (tx) => {
+  await platformDb().$transaction(async (tx) => {
     if (d.status === 'SETTLED') {
       const inv = await tx.invoice.findUniqueOrThrow({ where: { id: d.invoiceId } });
       await tx.invoicePayment.create({ data: { invoiceId: d.invoiceId, amountCents: -d.amountCents, receivedOn: day(returnedOn), method: 'PAD_RETURN', reference: `PAD file ${d.batch.fileNumber}: ${reason}`.slice(0, 120), recordedById: adminId } });
@@ -288,8 +288,8 @@ export async function returnDebit(debitId: string, reason: string, returnedOn: s
 }
 
 export async function batches() {
-  const rows = await db().padBatch.findMany({ orderBy: { createdAt: 'desc' }, take: 50, include: { debits: { include: { agreement: { select: { payorName: true } } } } } });
-  const invoices = await db().invoice.findMany({ where: { id: { in: rows.flatMap((b) => b.debits.map((d) => d.invoiceId)) } }, select: { id: true, number: true } });
+  const rows = await platformDb().padBatch.findMany({ orderBy: { createdAt: 'desc' }, take: 50, include: { debits: { include: { agreement: { select: { payorName: true } } } } } });
+  const invoices = await platformDb().invoice.findMany({ where: { id: { in: rows.flatMap((b) => b.debits.map((d) => d.invoiceId)) } }, select: { id: true, number: true } });
   return rows.map((b) => ({
     id: b.id,
     fileNumber: b.fileNumber,

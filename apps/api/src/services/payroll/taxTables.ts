@@ -7,7 +7,7 @@
  * (and the January / July editions when rates change mid-year) and mark the
  * table verified in the Dev console.
  */
-import type { Tx } from '../../lib/db.js';
+import { db, type Tx, platformDb } from '../../lib/db.js';
 import type { FederalTable, ProvincialTable, QuebecTable } from './tax.js';
 
 export const STARTING_VALUES: Record<number, Record<string, FederalTable | ProvincialTable | QuebecTable>> = {
@@ -207,7 +207,9 @@ export interface LoadedTables {
 }
 
 export async function loadTaxTables(tx: Tx, year: number): Promise<LoadedTables> {
-  await ensureTaxTables(tx, year);
+  // The tables are global reference data: only FH's side (no city chosen) may add them, so the
+  // starting values are added outside this city's transaction (db/rls.sql, global_read).
+  await ensureTaxTables(platformDb(), year);
   const rows = await tx.payrollTaxTable.findMany({ where: { year } });
   const fed = rows.find((r) => r.jurisdiction === 'CA');
   return {
