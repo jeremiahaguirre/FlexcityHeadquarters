@@ -25,7 +25,8 @@ import { callOutTimeouts } from './services/winter/callOuts.js';
 import { patrolReminders } from './services/winter/patrols.js';
 import { coverageAlerts } from './services/coverage/gaps.js';
 import { injuryReminders } from './routes/injury.js';
-import { ConsoleMailer, deliverOutbox } from './services/notifications/mailer.js';
+import { deliverOutbox } from './services/notifications/mailer.js';
+import { mailerFromEnv } from './services/notifications/sesMailer.js';
 import { deliverSms, smsSender } from './services/notifications/sms.js';
 import { sendScheduledReports } from './services/reports/scheduled.js';
 import { captureError, installProcessHandlers } from './lib/errorReporter.js';
@@ -63,7 +64,7 @@ await lockClient.connect();
 async function heartbeat() {
   await lockClient.query("SELECT set_config('application_name', $1, false)", [workerBeatName()]).catch((err) => captureError(err, { source: 'job', tags: { job: 'heartbeat' } }));
 }
-const mailer = new ConsoleMailer();
+const mailer = mailerFromEnv();
 const sms = smsSender();
 
 const running = new Set<string>();

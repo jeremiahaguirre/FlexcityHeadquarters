@@ -76,8 +76,8 @@ export async function billingState(tenantId: string, now = new Date()): Promise<
 }
 
 /**
- * What a suspended (read-only) organization can still change: signing in,
- * safety records, clocking in and out, and paying what it owes.
+ * What a suspended (read-only) organization can still change: signing in, signing the consent agreement,
+ * safety records (injury reports included), clocking in and out, and paying what it owes.
  */
 const STILL_WORKS = [
   /^\/api\/auth\//,
@@ -88,6 +88,10 @@ const STILL_WORKS = [
   /^\/api\/ops\/pools\/[^/]+\/closure$/,
   /^\/api\/(me\/)?lone-work/,
   /^\/api\/timeclock\//,
+  // Signing the consent agreement: until it's signed nobody (a new hire, everyone after a new version) can clock in.
+  /^\/api\/me\/consent$/,
+  // Workplace injury reports: the board's deadline doesn't wait for an invoice.
+  /^\/api\/injury-claims(\/|$)/,
   /^\/api\/notifications\/read$/,
   /^\/api\/billing\//,
 ];

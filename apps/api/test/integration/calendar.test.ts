@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { signAccessToken } from '../../src/auth/tokens.js';
 import { randomBytes } from 'node:crypto';
@@ -64,8 +64,15 @@ describe('calendar feed', () => {
     expect((await request(server).get('/api/calendar/not-a-uuid/x.ics')).status).toBe(404);
   });
 
-  it('a shared calendar service fetching broken links never loses the working feeds; broken links alone are limited, per address and organization', async () => {
+  it('a shared calendar service fetching broken links never loses the working feeds; broken links alone are limited, per address', async () => {
     resetLimits();
+    // With the global per-address limiter on, as in production (review of #67): it is off in tests otherwise.
+    const saved = process.env.GLOBAL_RATE_LIMIT;
+    process.env.GLOBAL_RATE_LIMIT = 'on';
+    onTestFinished(() => {
+      if (saved === undefined) delete process.env.GLOBAL_RATE_LIMIT;
+      else process.env.GLOBAL_RATE_LIMIT = saved;
+    });
     const google = '66.249.84.1';
     const r = await as().post('/api/me/calendar');
     const good = path(r.body.url);
@@ -74,6 +81,8 @@ describe('calendar feed', () => {
     expect((await bogus()).status).toBe(429);
     // The working feed from the same address is still served.
     expect((await request(server).get(good).set('X-Forwarded-For', google)).status).toBe(200);
+    // And a signed-in person behind the same address is unaffected.
+    expect((await as().get('/api/me/calendar').set('X-Forwarded-For', google)).status).toBe(200);
     resetLimits();
   });
 });

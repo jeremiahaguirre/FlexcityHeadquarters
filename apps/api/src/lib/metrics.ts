@@ -110,7 +110,7 @@ export const authLockouts = new Counter('fh_auth_lockouts_total', 'Accounts lock
 export const authIpBlocks = new Counter('fh_auth_ip_blocks_total', 'Addresses blocked from signing in after failing on many different accounts, by surface (org, platform).');
 export const kioskPinLocks = new Counter('fh_kiosk_pin_locks_total', 'Kiosk PIN locks, by scope (employee, tablet).');
 export const apiKeyAuthFailures = new Counter('fh_api_key_auth_failures_total', 'Public API requests refused for a missing, unknown, revoked or expired key, or blocked after too many of those.');
-export const rateLimited = new Counter('fh_rate_limited_total', 'Requests refused by a rate limit, by layer (global_anon, global_auth, global_failures, api_key).');
+export const rateLimited = new Counter('fh_rate_limited_total', 'Requests refused by a rate limit, by layer (global_anon, global_auth, global_failures, global_calendar_misses, api_key).');
 export const dbQueryDuration = new Histogram('fh_db_query_duration_seconds', 'Time the database took per query (Prisma).', [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]);
 
 let loopDelay: IntervalHistogram | undefined;

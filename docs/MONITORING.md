@@ -177,7 +177,7 @@ Every alert links to a section here. **Page** means someone is woken up; **ticke
 
 *Ticket.* The per-address limit is refusing more than 300 requests a minute for 10 minutes (`fh_rate_limited_total{layer=~"global_.*"}`).
 
-1. `global_anon` is usually scraping or a flood on public pages; `global_failures` a client sending bad tokens in a loop (a broken integration or an attack).
+1. `global_anon` is usually scraping or a flood on public pages; `global_failures` a client sending bad tokens in a loop (a broken integration or an attack); `global_calendar_misses` an address fetching calendar links that don't work, fast (made-up links, or a calendar service with very many stale ones).
 2. If a legitimate customer is refused (a large office behind one address), raise `GLOBAL_RATE_LIMIT_AUTH` or `GLOBAL_RATE_LIMIT_ANON` for the API service and tell the owner.
 
 ### Memory high
