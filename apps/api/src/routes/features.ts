@@ -9,7 +9,7 @@ import { offerCare } from '../services/people/care.js';
 import { tenantFeatures } from '../services/platform/features.js';
 import { Router } from 'express';
 import { z } from 'zod';
-import { authOf, requireAuth, requirePermission, requireRecentAuth } from '../auth/middleware.js';
+import { authOf, requireAuth, requireFeature, requirePermission, requireRecentAuth } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { canonicalPath } from '../lib/canonicalPath.js';
 import { HttpError, forbidden, invalid, notFound } from '../lib/errors.js';
@@ -78,6 +78,7 @@ import { benchmarksRouter } from './benchmarks.js';
 import { settingsRouter } from './settings.js';
 import { lessonsRouter } from './lessons.js';
 import { unionRouter } from './union.js';
+import { UNION_CHECK_HEADER, unionAccessOf } from '../lib/unionAccess.js';
 import { jobsRouter } from './jobs.js';
 import { myPasskeysRouter } from './passkeys.js';
 import { rolesRouter } from './roles.js';
@@ -182,8 +183,14 @@ api.use(benchmarksRouter);
 api.use(settingsRouter);
 api.use(lessonsRouter);
 // The Union Hub runs here unless it has its own service (UNION_HUB_MODE=separate): then this API
-// doesn't answer for it, and holds no union credentials.
-api.use('/union', (_req, _res, next) => next(process.env.UNION_HUB_MODE === 'separate' ? new HttpError(404, 'UNION_ELSEWHERE', 'The Union Hub is served by its own service.') : undefined));
+// doesn't answer for it and holds no union credentials, but it is where the hub checks each
+// request's sign-in (lib/unionAccess.ts): requireAuth and requireConsent above have run, as for
+// every route here, then the union feature; the answer is who and which organization, nothing more.
+api.use('/union', (req, res, next) => {
+  if (process.env.UNION_HUB_MODE !== 'separate') return next();
+  if (req.header(UNION_CHECK_HEADER) !== '1') return next(new HttpError(404, 'UNION_ELSEWHERE', 'The Union Hub is served by its own service.'));
+  requireFeature('union')(req, res, (err?: unknown) => (err ? next(err) : void res.json(unionAccessOf(authOf(req)))));
+});
 api.use(unionRouter);
 api.use(jobsRouter);
 

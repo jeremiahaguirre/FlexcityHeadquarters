@@ -109,7 +109,14 @@ locals {
   # that had one, so for alb-5xx an empty minute is a good minute (notBreaching); before, "breaching"
   # held the alarm in ALARM during normal operation, so a real spike changed nothing and notified
   # no one (SEC-51). A missing health count or database metric does mean something is wrong.
-  alarms = {
+  alarms = merge(local.core_alarms, !local.union_enabled ? {} : {
+    union-unhealthy = {
+      namespace = "AWS/ApplicationELB", metric = "HealthyHostCount", stat = "Minimum", threshold = 1, op = "LessThanThreshold", periods = 2, missing = "breaching"
+      dims      = { LoadBalancer = aws_lb.main.arn_suffix, TargetGroup = aws_lb_target_group.union[0].arn_suffix }
+      text      = "No healthy Union Hub task behind the load balancer"
+    }
+  })
+  core_alarms = {
     alb-5xx = {
       namespace = "AWS/ApplicationELB", metric = "HTTPCode_Target_5XX_Count", stat = "Sum", threshold = 50, op = "GreaterThanThreshold", periods = 2, missing = "notBreaching"
       dims      = { LoadBalancer = aws_lb.main.arn_suffix }
@@ -142,10 +149,10 @@ locals {
   # trip the *-unhealthy alarms and the circuit breaker instead). Quiet minutes
   # (fewer than error_ratio_min_requests) count as healthy, so a handful of requests at night
   # can't page anyone. These two also stop and roll back a deployment (compute.tf).
-  ratio_alarms = {
+  ratio_alarms = merge({
     api = aws_lb_target_group.api.arn_suffix
     web = aws_lb_target_group.web.arn_suffix
-  }
+  }, local.union_enabled ? { union = aws_lb_target_group.union[0].arn_suffix } : {})
 }
 
 resource "aws_cloudwatch_metric_alarm" "main" {

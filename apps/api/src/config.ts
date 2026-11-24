@@ -1,4 +1,5 @@
 /** Environment settings, checked once at start-up; a missing or unsafe value stops the process. */
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { verifiesServer } from './lib/dbUrl.js';
 
@@ -53,6 +54,8 @@ const schema = z.object({
    * union database credentials at all, and the union service must be the one given them.
    */
   UNION_HUB_MODE: z.enum(['embedded', 'separate']).default('embedded'),
+  /** Union Hub service only: the main API's private address, which checks the hub's sign-ins (lib/unionAccess.ts). */
+  API_URL: z.string().url().optional(),
   JWT_SECRET: z.string().min(32),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().default(15 * 60),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(14),
@@ -153,10 +156,27 @@ const schema = z.object({
 
 export type Config = z.infer<typeof schema>;
 
+/**
+ * The separate Union Hub service is given neither the main database's app role nor the token
+ * signing secret (review of #75): the main API checks its sign-ins. In their place it gets a
+ * database address that can't connect (any use of the app role fails loudly) and a random
+ * per-process secret (it can't sign a token the API accepts).
+ */
+export const UNION_NO_APP_DB = 'postgresql://no-app-role.invalid/the-union-hub-has-no-app-role';
+function environment(): NodeJS.ProcessEnv {
+  if (process.env.FLEXCITY_SERVICE !== 'union') return process.env;
+  if (process.env.NODE_ENV === 'production') {
+    const given = (['APP_DATABASE_URL', 'JWT_SECRET'] as const).filter((k) => process.env[k]);
+    if (given.length) throw new Error(`The Union Hub service must not be given ${given.join(' or ')}: the main API checks its sign-ins (API_URL).`);
+    if (!process.env.API_URL) throw new Error('The Union Hub service needs API_URL (the main API checks its sign-ins).');
+  }
+  return { ...process.env, APP_DATABASE_URL: process.env.APP_DATABASE_URL ?? UNION_NO_APP_DB, JWT_SECRET: process.env.JWT_SECRET ?? randomBytes(48).toString('base64') };
+}
+
 let cached: Config | undefined;
 export function config(): Config {
   if (!cached) {
-    const parsed = schema.safeParse(process.env);
+    const parsed = schema.safeParse(environment());
     if (!parsed.success) {
       throw new Error(`Invalid environment: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
     }
@@ -171,7 +191,7 @@ export function config(): Config {
     }
     // Encryption in transit to the database, not just to the browser.
     if (parsed.data.NODE_ENV === 'production') {
-      for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL], ['LISTEN_DATABASE_URL', parsed.data.LISTEN_DATABASE_URL], ['READ_REPLICA_URL', parsed.data.READ_REPLICA_URL]] as const) {
+      for (const [name, url] of [['APP_DATABASE_URL', parsed.data.APP_DATABASE_URL === UNION_NO_APP_DB ? undefined : parsed.data.APP_DATABASE_URL], ['UNION_DATABASE_URL', parsed.data.UNION_DATABASE_URL], ['LISTEN_DATABASE_URL', parsed.data.LISTEN_DATABASE_URL], ['READ_REPLICA_URL', parsed.data.READ_REPLICA_URL]] as const) {
         // The server's certificate must be checked, not just encrypted: sslmode=require (pg or Prisma)
         // would accept any certificate. lib/dbUrl.ts translates this form for Prisma.
         if (url && !verifiesServer(url)) throw new Error(`${name} must verify the database's certificate in production (sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem)`);

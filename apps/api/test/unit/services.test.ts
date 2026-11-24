@@ -448,6 +448,35 @@ describe('Union Hub deployment settings', () => {
     await expect(run({ UNION_HUB_MODE: 'separate' })).resolves.toBeTruthy();
     vi.resetModules();
   });
+
+  it('the separate hub is given neither the app database role nor the token secret (review of #75)', async () => {
+    const { vi } = await import('vitest');
+    const keys = ['APP_DATABASE_URL', 'JWT_SECRET', 'UNION_HUB_MODE', 'UNION_DATABASE_URL', 'FLEXCITY_SERVICE', 'NODE_ENV', 'API_URL', 'KMS_KEY_ARN', 'AWS_REGION'] as const;
+    const tls = '?sslmode=verify-full&sslrootcert=/etc/ssl/rds/global-bundle.pem';
+    const run = async (env: Partial<Record<(typeof keys)[number], string>>) => {
+      const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+      for (const k of keys) delete process.env[k];
+      Object.assign(process.env, { NODE_ENV: 'production', AWS_REGION: 'ca-central-1', KMS_KEY_ARN: 'arn:aws:kms:ca-central-1:111122223333:key/x', FLEXCITY_SERVICE: 'union', UNION_HUB_MODE: 'separate', UNION_DATABASE_URL: `postgresql://flexcity_union@db/x${tls}`, API_URL: 'http://api.fh-production.internal:4000', ...env });
+      for (const k of keys) if (env[k] === undefined && k in env) delete process.env[k];
+      try {
+        vi.resetModules();
+        const m = await import('../../src/config.js');
+        return { cfg: m.config(), none: m.UNION_NO_APP_DB };
+      } finally {
+        for (const k of keys) {
+          if (saved[k] === undefined) delete process.env[k];
+          else process.env[k] = saved[k];
+        }
+      }
+    };
+    const ok = await run({});
+    expect(ok.cfg.APP_DATABASE_URL).toBe(ok.none);
+    expect(ok.cfg.JWT_SECRET.length).toBeGreaterThanOrEqual(32);
+    await expect(run({ APP_DATABASE_URL: `postgresql://flexcity_app@db/x${tls}` })).rejects.toThrow(/must not be given APP_DATABASE_URL/);
+    await expect(run({ JWT_SECRET: 'x'.repeat(40) })).rejects.toThrow(/must not be given JWT_SECRET/);
+    await expect(run({ API_URL: undefined })).rejects.toThrow(/needs API_URL/);
+    vi.resetModules();
+  });
 });
 
 describe('bonus method for one-time payments', async () => {
