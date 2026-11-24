@@ -46,7 +46,12 @@ pensionable but not insurable; amounts go on T4 boxes 20, 40 and 44 (RL-1 D, F, 
 
 ## Controls around paying people
 
-Two-person approval and a passkey to release pay (on by default); a bank account change is
+Two-person approval and a passkey to release pay (on by default). The approval pays exactly what
+was prepared and reviewed: if a rate, salary, hours or deduction changed since, it is refused
+until the run is recalculated, and whoever recalculates it or adds a one-time item becomes its
+preparer. While two people are required, nobody changes their own pay rate, salary or tax profile
+through HR's screens. A run whose deposit file was created or sent can't be voided (mark it paid
+and correct it in the next run). A bank account change is
 verified by someone other than whoever entered it, and never by the account holder; edited
 approved punches go back for approval; pay files are audited and SINs are only unsealed into
 filing files, with a passkey.

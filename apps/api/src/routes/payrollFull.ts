@@ -5,7 +5,7 @@ import { authOf, requirePermission } from '../auth/middleware.js';
 import { audit, withTenant } from '../lib/db.js';
 import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/errors.js';
 import { banks as lieuBanks, regularRate } from '../services/payroll/lieu.js';
-import { ADJUSTMENT_KINDS, buildRun, runInput } from '../services/payroll/payRuns.js';
+import { ADJUSTMENT_KINDS, assertNotOwnPay, buildRun, runInput } from '../services/payroll/payRuns.js';
 import { h } from './context.js';
 
 /** Building or approving a pay run works through every statement: it gets two minutes, not the usual 15 s. */
@@ -51,6 +51,7 @@ payrollFullRouter.post(
     const b = z.object({ positionId: uuid, annualAmount: money(10_000_000), weeklyHours: z.number().min(1).max(80).default(37.5), overtimeEligible: z.boolean().default(false), effectiveFrom: isoDate }).parse(req.body);
     const row = await withTenant(a.tenantId, async (tx) => {
       await person(tx, userId);
+      await assertNotOwnPay(tx, a.userId, userId);
       if (!(await tx.position.findUnique({ where: { id: b.positionId } }))) throw notFound('Position');
       const dayBefore = new Date(Date.parse(b.effectiveFrom) - 86_400_000);
       // Whatever salary is still running on the new start date (open-ended or ending later) ends the day before.
@@ -74,6 +75,7 @@ payrollFullRouter.post(
     const userId = uuid.parse(req.params.id);
     const { lastDay } = z.object({ lastDay: isoDate }).parse(req.body);
     const n = await withTenant(a.tenantId, async (tx) => {
+      await assertNotOwnPay(tx, a.userId, userId);
       const r = await tx.salary.updateMany({ where: { userId, effectiveTo: null }, data: { effectiveTo: new Date(lastDay) } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.salary.end', entity: 'User', entityId: userId, after: { lastDay } });
       return r.count;
@@ -127,7 +129,8 @@ payrollFullRouter.post(
       }
       const x = await tx.payAdjustment.create({ data: { tenantId: a.tenantId, payRunId, userId: b.userId, kind: b.kind, description: b.description, amount, hours: b.kind === 'LIEU_PAYOUT' ? b.hours! : null, positionId: b.positionId ?? null, createdById: a.userId } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.adjustment.add', entity: 'PayAdjustment', entityId: x.id, after: b });
-      return buildRun(tx, a.tenantId, r.preparedById, runInput(r), r.id);
+      // Whoever changes what the run pays prepared this version of it, and someone else approves it (SEC-10).
+      return buildRun(tx, a.tenantId, a.userId, runInput(r), r.id);
     });
     res.status(201).json({ totals: run.totals, blockers: run.blockers });
   }),
@@ -147,7 +150,7 @@ payrollFullRouter.delete(
       if (!x) throw notFound('One-time item');
       await tx.payAdjustment.delete({ where: { id } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.adjustment.remove', entity: 'PayAdjustment', entityId: id, before: { kind: x.kind, amount: Number(x.amount), userId: x.userId } });
-      await buildRun(tx, a.tenantId, r.preparedById, runInput(r), r.id);
+      await buildRun(tx, a.tenantId, a.userId, runInput(r), r.id);
     });
     res.status(204).end();
   }),

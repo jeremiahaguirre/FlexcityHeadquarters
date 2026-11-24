@@ -17,7 +17,7 @@ import { HttpError, badRequest, conflict, forbidden, notFound } from '../lib/err
 import { CONSENT, addBankAccount, bankView, profileView, revealSin, savePayProfile, verifyBankAccount } from '../services/payroll/bank.js';
 import { linkView, testBankLink } from '../services/payroll/bankLink.js';
 import { bankLinkBody, buildBankLink } from '../services/payroll/setup.js';
-import { type PayrollSettings, approveRun, buildRun, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
+import { type PayrollSettings, approveRun, assertNotOwnPay, buildRun, runFingerprint, depositFile, prepareBankFile, readSettings, runInput, sealReturnsAccount, sendToBank } from '../services/payroll/payRuns.js';
 import type { Deductions } from '../services/payroll/tax.js';
 import { remittance, rl1s, roeFigures, t4s } from '../services/payroll/yearEnd.js';
 import { type Person, ROE_REASONS, type Rl1Transmitter, type RoeReason, assignRl1Numbers, payPeriodType, rl1Problems, rl1Xml, roeXml, t4Problems, t4Xml } from '../services/payroll/filingXml.js';
@@ -144,6 +144,7 @@ payrollRouter.get(
       }
       return {
         run: runView(run),
+        fingerprint: await runFingerprint(tx, id),
         transmissions: transmissions.map((t) => ({ id: t.id, at: t.createdAt, fileName: t.fileName, status: t.status, error: t.error, encrypted: t.encrypted, sha256: t.sha256 })),
         departments,
         byDepartment: [...byDepartment.values()].map((d) => ({ ...d, gross: Math.round(d.gross * 100) / 100, net: Math.round(d.net * 100) / 100, employerCost: Math.round(d.employerCost * 100) / 100 })),
@@ -168,7 +169,7 @@ payrollRouter.post(
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status !== 'DRAFT') throw conflict('NOT_DRAFT', 'Only a draft pay run can be recalculated.');
-      return buildRun(tx, a.tenantId, r.preparedById, runInput(r), r.id);
+      return buildRun(tx, a.tenantId, a.userId, runInput(r), r.id);
     });
     res.json(runView(run));
   }),
@@ -181,13 +182,14 @@ payrollRouter.post(
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
+    const { fingerprint } = z.object({ fingerprint: z.string().regex(/^[0-9a-f]{64}$/).optional() }).parse(req.body ?? {});
     const run = await payrollTx(a.tenantId, async (tx) => {
       const settings = await settingsOf(tx);
       requirePasskey(a, settings);
       const r = await tx.payRun.findUnique({ where: { id } });
       if (!r) throw notFound('Pay run');
       await assertRunInScope(tx, a, r.departmentId);
-      const approved = await approveRun(tx, a.tenantId, id, a.userId, settings);
+      const approved = await approveRun(tx, a.tenantId, id, a.userId, settings, fingerprint);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.approve', entity: 'PayRun', entityId: id, after: approved.totals as object });
       return { approved, settings };
     });
@@ -325,6 +327,7 @@ payrollRouter.post(
 payrollRouter.post(
   '/payroll/runs/:id/void',
   requirePermission('payroll.export'),
+  requireRecentAuth,
   h(async (req, res) => {
     const a = authOf(req);
     const id = uuid.parse(req.params.id);
@@ -335,7 +338,12 @@ payrollRouter.post(
       await assertRunInScope(tx, a, r.departmentId);
       if (r.status === 'PAID' || r.status === 'VOID') throw conflict('CANNOT_VOID', 'A paid pay run can’t be voided; correct it in the next run.');
       if (r.status === 'APPROVED' && !a.permissions.has('payroll.approve')) throw forbidden('Only someone who approves pay runs can void an approved one.');
+      // Once its deposit file exists, the run may already be at the bank: voiding it would reopen the
+      // period to be paid again (SEC-19). Mark it paid and correct it in the next run instead.
+      if (r.depositFileSha256 || (await tx.payTransmission.count({ where: { payRunId: id, status: 'SENT' } }))) throw conflict('VOID_AFTER_FILE', 'This pay run’s deposit file was already created or sent, so it can’t be voided. Mark it paid and correct it in the next run.');
       await tx.payRun.update({ where: { id }, data: { status: 'VOID', voidedAt: new Date() } });
+      // Expense claims it was paying go back to waiting for a run.
+      await tx.expenseClaim.updateMany({ where: { payRunId: id, status: 'PAID' }, data: { status: 'APPROVED', payRunId: null } });
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.run.void', entity: 'PayRun', entityId: id, after: { reason, wasApproved: r.status === 'APPROVED', depositFileCreated: !!r.depositFileSha256 } });
     });
     res.json({ ok: true });
@@ -430,6 +438,7 @@ payrollRouter.put(
     await withTenant(a.tenantId, async (tx) => {
       await assertUserInScope(tx, a, userId);
       if (!(await tx.user.findUnique({ where: { id: userId } }))) throw notFound('Person');
+      await assertNotOwnPay(tx, a.userId, userId);
       await savePayProfile(tx, a.tenantId, userId, body, false);
       await audit(tx, { tenantId: a.tenantId, actorId: a.userId, action: 'payroll.profile.update', entity: 'User', entityId: userId, after: { ...body, sin: body.sin ? 'changed' : undefined } });
     });

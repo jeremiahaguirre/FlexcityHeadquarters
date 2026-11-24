@@ -439,6 +439,9 @@
     "emptyBody": "Shifts appear here once a supervisor publishes the schedule."
   },
   "errors": {
+    "RUN_CHANGED": "Pay, hours or deductions changed since this pay run was prepared. Ask the person who prepared it to recalculate it, then review it again.",
+    "SELF_PAY_CHANGE": "Someone else has to change your own pay: pay runs need two people.",
+    "VOID_AFTER_FILE": "This pay run’s deposit file was already created or sent, so it can’t be voided. Mark it paid and correct it in the next run.",
     "SHIFT_ALREADY_CLAIMED": "Someone else took this shift first.",
     "SHIFT_CHANGED": "This shift just changed. Refresh to see the latest.",
     "OWN_OFFER": "That’s your own shift.",

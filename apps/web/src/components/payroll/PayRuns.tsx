@@ -24,6 +24,8 @@ import { errorText } from '@/lib/apiError';
 
 interface RunDetail {
   run: Run;
+  /** What the run pays, as a hash: the approval is for exactly this (the API refuses it if the run changed). */
+  fingerprint?: string;
   transmissions: Array<{ id: string; at: string; fileName: string; status: 'SENT' | 'FAILED'; error: string | null; encrypted: boolean }>;
   departments: Array<{ id: string; name: string; nameFr: string | null }>;
   byDepartment: Array<{ departmentId: string | null; people: number; gross: number; net: number; employerCost: number }>;
@@ -212,7 +214,7 @@ function RunPanel({ id, deptName, onClose, onChanged }: { id: string; deptName: 
           <div className="flex flex-wrap gap-2">
             {d.run.status === 'DRAFT' ? <Button size="sm" variant="secondary" icon={<RefreshCw className="h-4 w-4" aria-hidden="true" />} loading={busy === 'recalc'} onClick={() => void act('recalc', `/api/payroll/runs/${id}/recalculate`, t('payroll.recalculated'))}>{t('payroll.recalculate')}</Button> : null}
             {d.run.status === 'DRAFT' && can('payroll.approve') ? (
-              <Button size="sm" icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />} disabled={!!d.run.blockers.length} loading={busy === 'approve'} onClick={() => void act('approve', `/api/payroll/runs/${id}/approve`, t('payroll.approved'))}>
+              <Button size="sm" icon={<ShieldCheck className="h-4 w-4" aria-hidden="true" />} disabled={!!d.run.blockers.length} loading={busy === 'approve'} onClick={() => void act('approve', `/api/payroll/runs/${id}/approve`, t('payroll.approved'), d.fingerprint ? { fingerprint: d.fingerprint } : undefined)}>
                 {t('payroll.approve')}
               </Button>
             ) : null}
