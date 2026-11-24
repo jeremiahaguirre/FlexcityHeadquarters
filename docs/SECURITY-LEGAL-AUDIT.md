@@ -276,7 +276,7 @@ finding below was fixed and has a regression test (`apps/api/test/integration/ha
 | Head lifeguard | Staff view, deck rotation, lesson registrations | Facility work |
 | Front desk | Families: contacts, children's ages and safety notes, purchases. Every opening of a family's file is logged | City-wide (they serve every facility) |
 | Supervisor / department lead | Their people's profiles, time off, punches, availability, leave; only the discipline, notes, accommodations and injury claims they recorded; department-shared documents. Never medical notes, police-check results or HR's notes on them; union membership only if they write discipline records (to offer a steward) | Their department (a facility-limited role reaches only people who work there) |
-| Payroll | Tax profiles, masked bank and SIN, pay statements; full SIN only in a filing file, with a passkey, logged | Department scope, today through the central person guard only (`apps/api/src/routes/features.ts`), which an encoded id can skip (open PR #41; planned WP-3); whole-city documents (T4, remittance) for HR |
+| Payroll | Tax profiles, masked bank and SIN, pay statements; full SIN only in a filing file, with a passkey, logged | Department scope, today through the central person guard on `/users/:id/...` only (`apps/api/src/routes/features.ts`); per-handler checks planned (WP-3); whole-city documents (T4, remittance) for HR |
 | HR administrator | Everything except the union hub | Whole organization |
 | Union steward | Published shifts, overtime standings, the union hub (membership-gated) | City-wide |
 | FH Dev console | Setup, counts, HR's work contacts. Can switch access off or back to defaults, never widen it; can't add HR administrators once a city has one | Any city |

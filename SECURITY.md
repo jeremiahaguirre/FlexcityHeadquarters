@@ -428,7 +428,7 @@ application circuit breaker (gap; WP-48).
 `LISTEN_DATABASE_URL` and `METRICS_TOKEN` by default, plus optional provider keys
 (`ops/terraform/variables.tf:132-141`) and the optional `INTERNAL_API_TOKEN`, the only key the web
 tasks also receive (`ops/terraform/compute.tf:36`). The database owner password is not in it: RDS manages and
-rotates it (`ops/terraform/README.md:73`). Only that password and the KMS keys rotate on a
+rotates it (`ops/terraform/README.md:74`). Only that password and the KMS keys rotate on a
 schedule. `JWT_SECRET`, `METRICS_TOKEN`, `INTERNAL_API_TOKEN`, the app and union role passwords, VAPID, Stripe, Twilio
 and Sentry have no rotation schedule (gap; D-31 and WP-53).
 
@@ -477,10 +477,10 @@ The current targets don't say whether they cover development dependencies (D-37)
 | Work | Where it runs today | Protection | Gap |
 | :--- | :--- | :--- | :--- |
 | Pay runs and payroll-provider exports | In the request, with a 120 s transaction limit ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)); 7-15 s for a city-wide run ([docs/SCALABILITY.md](docs/SCALABILITY.md)) | Transaction limit | Not a background job (D-32) |
-| Fill the schedule (solver) | In the request (`apps/api/src/routes/fill.ts:79-87`), on the event loop | A time budget per week | One city's solve blocks that API process for every city (D-32) |
+| Fill the schedule (solver) | In the request (`apps/api/src/routes/fill.ts:80-88`), on the event loop | A time budget per week | One city's solve blocks that API process for every city (D-32) |
 | City data export | Streamed in the request (`apps/api/src/routes/dataExport.ts`) | Whole-organization permission | No back-pressure |
 | Password and PIN hashing | scrypt on the libuv pool (`apps/api/src/auth/tokens.ts:101-113`) | Sign-in rate limits (2.4) | - |
-| Upload parsing | 14 MB JSON parser on two routes (`apps/api/src/app.ts:68-73`) | Size caps (2.3) | - |
+| Upload parsing | 14 MB JSON parser on two routes (`apps/api/src/app.ts:71-76`) | Size caps (2.3) | - |
 | PDF generation | pdfkit in the request (`apps/api/src/services/privacy/recordsPdf.ts`, `apps/api/src/services/privacy/consentCertificate.ts`) | - | - |
 | Notifications, emails, texts, push, webhooks, scheduled reports, retention, weather | Worker ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) | Outbox with retries | - |
 
