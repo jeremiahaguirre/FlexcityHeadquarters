@@ -6146,7 +6146,9 @@
     "untilHint": "Laissez vide pour l’afficher jusqu’à ce que vous la terminiez.",
     "pin": "L’épingler en haut",
     "post": "Publier",
-    "posted": "Annonce publiée; le personnel a été avisé"
+    "posted": "Annonce publiée; le personnel a été avisé",
+    "nothingYet": "Aucune annonce pour le moment.",
+    "pageHelp": "Les avis de votre organisation, du plus récent au plus ancien. Ceux que vous avez lus restent ici pour les relire."
   },
   "t4a": {
     "title": "Feuillets T4A de {{year}}",

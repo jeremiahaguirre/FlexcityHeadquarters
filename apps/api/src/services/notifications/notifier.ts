@@ -163,7 +163,7 @@ export async function draftsFor(tx: Tx, e: DomainEvent): Promise<NotificationDra
       return [];
     case 'frontdesk.page': {
       const ids = await usersWithRoles(tx, ['HEAD_LIFEGUARD'], [e.fromUserId]);
-      return ids.map((userId) => ({ userId, type: 'front_desk_page', params: { message: e.message, facilityId: e.facilityId }, link: '/notifications' }));
+      return ids.map((userId) => ({ userId, type: 'front_desk_page', params: { message: e.message, facilityId: e.facilityId }, link: '/status' }));
     }
     case 'notify':
       return e.drafts;

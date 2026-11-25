@@ -97,7 +97,9 @@ export async function rotationAlerts(tx: Tx, now = new Date()): Promise<number> 
     });
     const to = leads.length ? leads.map((l) => l.userId) : await usersWithRoles(tx, ['AQUATIC_SUPERVISOR']);
     const station = log.stationId ? await tx.deckStation.findUnique({ where: { id: log.stationId }, select: { name: true } }) : null;
-    await notify(tx, log.tenantId, [...new Set([...to, log.userId])].map((userId) => ({ userId, type: 'rotation_overdue', params: { station: station?.name ?? '' }, link: '/deck' })));
+    // Leads run the rotation on Deck; the guard still on the station opens Today (they can't open Deck).
+    const leadsTo = new Set(to);
+    await notify(tx, log.tenantId, [...new Set([...to, log.userId])].map((userId) => ({ userId, type: 'rotation_overdue', params: { station: station?.name ?? '' }, link: leadsTo.has(userId) ? '/deck' : '/today' })));
     await tx.rotationLog.update({ where: { id: log.id }, data: { overdueNotifiedAt: now } });
   }
   return due.length;

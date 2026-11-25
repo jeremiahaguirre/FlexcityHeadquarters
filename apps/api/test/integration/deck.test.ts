@@ -80,6 +80,12 @@ describe('deck rotation', () => {
     expect(await run()).toBe(2);
     expect(await run()).toBe(0);
     expect(await owner.notification.count({ where: { userId: headId, type: 'rotation_overdue' } })).toBe(2);
+    // Leads open Deck; a guard can't, so theirs opens Today (which shows their station and when to move).
+    const alerts = await owner.notification.findMany({ where: { tenantId: t.tenant.id, type: 'rotation_overdue' }, select: { userId: true, link: true } });
+    expect(alerts.filter((n) => n.userId === headId).map((n) => n.link)).toEqual(['/deck', '/deck']);
+    const guards = alerts.filter((n) => n.userId !== headId);
+    expect(guards.length).toBeGreaterThan(0);
+    expect(guards.map((n) => n.link)).toEqual(guards.map(() => '/today'));
     const plan = await call(head).get(`/api/deck/plan?facilityId=${t.facility.id}`);
     expect(plan.body.stations[0].current.overdue).toBe(true);
     // Rotate again: the log closes the old entries and the person leaving goes on break.

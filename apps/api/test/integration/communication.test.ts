@@ -53,6 +53,8 @@ describe('announcements', () => {
     expect(r.status).toBe(201);
     annId = r.body.id;
     expect(await owner.notification.count({ where: { type: 'announcement', userId: id.guard } })).toBe(1);
+    // It opens the Announcements page, which every role can open (Today hides read notices).
+    expect((await owner.notification.findFirst({ where: { type: 'announcement', userId: id.guard } }))?.link).toBe('/announcements');
     expect((await as('works').get('/api/me/announcements')).body).toEqual([]);
     const mine = (await as('guard').get('/api/me/announcements')).body;
     expect(mine).toEqual([expect.objectContaining({ id: annId, pinned: true, read: false })]);
